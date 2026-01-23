@@ -148,6 +148,7 @@ Event parseLegacyEvent(std::string_view rawEvent, const json::Json& hostInfo)
     }
 
     // If the location is in the legacy agent format "[ID] (Name) IP->Module", parse it.
+    // TODO: The events should be recibed always with the 4.x agent format.
     if (!parseLegacyLocation(rawLocation, parseEvent))
     {
         try

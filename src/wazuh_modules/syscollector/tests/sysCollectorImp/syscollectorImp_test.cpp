@@ -15,11 +15,21 @@
 #include "syscollector.hpp"
 #include "../../module_query_errors.h"
 #include "../../src/syscollectorTablesDef.hpp"
+#include "schemaValidator.hpp"
 
 #include <mock_sysinfo.hpp>
 
 constexpr auto SYSCOLLECTOR_DB_PATH {":memory:"};
 constexpr auto SYSCOLLECTOR_TEST_DB_PATH {"syscollector_test.db"};
+
+// Mock SchemaValidatorEngine for dependency injection in tests
+class MockSchemaValidatorEngine : public SchemaValidator::ISchemaValidatorEngine
+{
+    public:
+        MOCK_METHOD(SchemaValidator::ValidationResult, validate, (const std::string&), (override));
+        MOCK_METHOD(SchemaValidator::ValidationResult, validate, (const nlohmann::json&), (override));
+        MOCK_METHOD(std::string, getSchemaName, (), (const, override));
+};
 
 // Helper to populate test DB manually
 void populateTestDb()
@@ -129,23 +139,23 @@ const auto expected_dbsync_network_protocol_2
 };
 const auto expected_dbsync_network_address_1
 {
-    R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":1}},"module":"inventory"})"
+    R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":"1"}},"module":"inventory"})"
 };
 const auto expected_dbsync_network_address_2
 {
-    R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":0}},"module":"inventory"})"
+    R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":"0"}},"module":"inventory"})"
 };
 const auto expected_dbsync_ports
 {
-    R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":0},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":"System Idle Process","pid":0},"source":{"ip":"127.0.0.1","port":631}},"module":"inventory"})"
+    R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"0"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":"System Idle Process","pid":0},"source":{"ip":"127.0.0.1","port":631}},"module":"inventory"})"
 };
 const auto expected_dbsync_ports_udp
 {
-    R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":0},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":"System Idle Process","pid":0},"source":{"ip":"127.0.0.1","port":631}},"module":"inventory"})"
+    R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"0"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":"System Idle Process","pid":0},"source":{"ip":"127.0.0.1","port":631}},"module":"inventory"})"
 };
 const auto expected_dbsync_processes
 {
-    R"({"collector":"dbsync_processes","data":{"event":{"changed_fields":[],"type":"created"},"process":{"args":null,"args_count":null,"command_line":null,"name":"kworker/u256:2-","parent":{"pid":2},"pid":"431625","start":9302261,"state":"I","stime":3,"utime":0}},"module":"inventory"})"
+    R"({"collector":"dbsync_processes","data":{"event":{"changed_fields":[],"type":"created"},"process":{"args":null,"args_count":null,"command_line":null,"name":"kworker/u256:2-","parent":{"pid":2},"pid":431625,"start":9302261,"state":"I","stime":3,"utime":0}},"module":"inventory"})"
 };
 const auto expected_dbsync_packages
 {
@@ -161,11 +171,11 @@ const auto expected_dbsync_groups
 };
 const auto expected_dbsync_users
 {
-    R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
+    R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":"0","is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
 };
 const auto expected_dbsync_services
 {
-    R"({"collector":"dbsync_services","data":{"error":{"log":{"file":{"path":null}}},"event":{"changed_fields":[],"type":"created"},"file":{"path":"sourcePath"},"log":{"file":{"path":null}},"process":{"args":null,"executable":"/usr/bin/wazuh-agent","group":{"name":null},"pid":1234,"root_directory":null,"user":{"name":null},"working_directory":null},"service":{"address":"/lib/systemd/system/wazuh-agent.service","description":"Monitors system activity","enabled":"enabled","exit_code":0,"following":"following","frequency":null,"id":"wazuh-agent","inetd_compatibility":null,"name":"Wazuh Agent","object_path":"objectPath","restart":null,"start_type":"auto","starts":{"on_mount":null,"on_not_empty_directory":null,"on_path_modified":null},"state":"running","sub_state":"subState","target":{"address":"jobPath","ephemeral_id":0,"type":"jobType"},"type":"type","win32_exit_code":0}},"module":"inventory"})"
+    R"({"collector":"dbsync_services","data":{"error":{"log":{"file":{"path":null}}},"event":{"changed_fields":[],"type":"created"},"file":{"path":"sourcePath"},"log":{"file":{"path":null}},"process":{"args":null,"executable":"/usr/bin/wazuh-agent","group":{"name":null},"pid":1234,"root_directory":null,"user":{"name":null},"working_directory":null},"service":{"address":"/lib/systemd/system/wazuh-agent.service","description":"Monitors system activity","enabled":"enabled","exit_code":0,"following":"following","frequency":null,"id":"wazuh-agent","inetd_compatibility":null,"name":"Wazuh Agent","object_path":"objectPath","restart":null,"start_type":"auto","starts":{"on_mount":null,"on_not_empty_directory":null,"on_path_modified":null},"state":"running","sub_state":"subState","target":{"address":"jobPath","ephemeral_id":"0","type":"jobType"},"type":"type","win32_exit_code":0}},"module":"inventory"})"
 };
 const auto expected_dbsync_browser_extensions
 {
@@ -175,11 +185,45 @@ const auto expected_dbsync_browser_extensions
 void SyscollectorImpTest::SetUp()
 {
     std::remove(SYSCOLLECTOR_TEST_DB_PATH);
+
+    // Initialize SchemaValidatorFactory with mocks to prevent issues in Wine/Windows tests
+    // This ensures all tests use mock validators instead of loading real embedded schemas
+    m_mockValidator = std::make_shared<MockSchemaValidatorEngine>();
+    SchemaValidator::ValidationResult successResult;
+    successResult.isValid = true;
+
+    EXPECT_CALL(*m_mockValidator, validate(testing::An<const std::string&>()))
+    .WillRepeatedly(testing::Return(successResult));
+    EXPECT_CALL(*m_mockValidator, validate(testing::An<const nlohmann::json&>()))
+    .WillRepeatedly(testing::Return(successResult));
+    EXPECT_CALL(*m_mockValidator, getSchemaName())
+    .WillRepeatedly(testing::Return("mock-validator"));
+
+    // Inject mock validators for all indices
+    std::map<std::string, std::shared_ptr<SchemaValidator::ISchemaValidatorEngine>> mockValidators;
+    mockValidators["wazuh-states-inventory-hardware"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-system"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-interfaces"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-networks"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-ports"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-packages"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-processes"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-hotfixes"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-groups"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-users"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-services"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-browser-extensions"] = m_mockValidator;
+
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+    SchemaValidator::SchemaValidatorFactory::getInstance().initialize(mockValidators);
 };
 
 void SyscollectorImpTest::TearDown()
 {
     std::remove(SYSCOLLECTOR_TEST_DB_PATH);
+
+    // Clean up SchemaValidatorFactory after each test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 };
 
 using ::testing::_;
@@ -293,7 +337,7 @@ static const auto expectedPersistNetProtoIPv4
 };
 static const auto expectedPersistNetAddrIPv4
 {
-    R"({"checksum":{"hash":{"sha1":"24ecdd6a316b2320c809085106812f6cf8a4cf67"}},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":0}})"
+    R"({"checksum":{"hash":{"sha1":"24ecdd6a316b2320c809085106812f6cf8a4cf67"}},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":"0"}})"
 };
 static const auto expectedPersistNetProtoIPv6
 {
@@ -301,19 +345,19 @@ static const auto expectedPersistNetProtoIPv6
 };
 static const auto expectedPersistNetAddrIPv6
 {
-    R"({"checksum":{"hash":{"sha1":"7271714e0616caea85422916dd6ab2fbdac2b5cd"}},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":1}})"
+    R"({"checksum":{"hash":{"sha1":"7271714e0616caea85422916dd6ab2fbdac2b5cd"}},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":"1"}})"
 };
 static const auto expectedPersistPorts
 {
-    R"({"checksum":{"hash":{"sha1":"7223807075622557e855677b47f23f321091353c"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":0},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":"System Idle Process","pid":0},"source":{"ip":"127.0.0.1","port":631}})"
+    R"({"checksum":{"hash":{"sha1":"7223807075622557e855677b47f23f321091353c"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":"0"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":"System Idle Process","pid":0},"source":{"ip":"127.0.0.1","port":631}})"
 };
 static const auto expectedPersistPortsUdp
 {
-    R"({"checksum":{"hash":{"sha1":"dff9e7c5127ea90f4e9c38840683330b8c1351c9"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":0},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":"System Idle Process","pid":0},"source":{"ip":"127.0.0.1","port":631}})"
+    R"({"checksum":{"hash":{"sha1":"dff9e7c5127ea90f4e9c38840683330b8c1351c9"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":"0"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":"System Idle Process","pid":0},"source":{"ip":"127.0.0.1","port":631}})"
 };
 static const auto expectedPersistProcess
 {
-    R"({"checksum":{"hash":{"sha1":"78e4e090e42f88d949428eb56836287f99de9f4f"}},"process":{"args":null,"args_count":null,"command_line":null,"name":"kworker/u256:2-","parent":{"pid":2},"pid":"431625","start":9302261,"state":"I","stime":3,"utime":0}})"
+    R"({"checksum":{"hash":{"sha1":"78e4e090e42f88d949428eb56836287f99de9f4f"}},"process":{"args":null,"args_count":null,"command_line":null,"name":"kworker/u256:2-","parent":{"pid":2},"pid":431625,"start":9302261,"state":"I","stime":3,"utime":0}})"
 };
 static const auto expectedPersistPackage
 {
@@ -329,11 +373,11 @@ static const auto expectedPersistGroup
 };
 static const auto expectedPersistUser
 {
-    R"({"checksum":{"hash":{"sha1":"11769088416d594d547a508e084cec990e282ece"}},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}})"
+    R"({"checksum":{"hash":{"sha1":"11769088416d594d547a508e084cec990e282ece"}},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":"0","is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}})"
 };
 static const auto expectedPersistService
 {
-    R"({"checksum":{"hash":{"sha1":"daa615e783788aec35ae17eeed912ace3910f209"}},"error":{"log":{"file":{"path":null}}},"file":{"path":"sourcePath"},"log":{"file":{"path":null}},"process":{"args":null,"executable":"/usr/bin/wazuh-agent","group":{"name":null},"pid":1234,"root_directory":null,"user":{"name":null},"working_directory":null},"service":{"address":"/lib/systemd/system/wazuh-agent.service","description":"Monitors system activity","enabled":"enabled","exit_code":0,"following":"following","frequency":null,"id":"wazuh-agent","inetd_compatibility":null,"name":"Wazuh Agent","object_path":"objectPath","restart":null,"start_type":"auto","starts":{"on_mount":null,"on_not_empty_directory":null,"on_path_modified":null},"state":"running","sub_state":"subState","target":{"address":"jobPath","ephemeral_id":0,"type":"jobType"},"type":"type","win32_exit_code":0}})"
+    R"({"checksum":{"hash":{"sha1":"daa615e783788aec35ae17eeed912ace3910f209"}},"error":{"log":{"file":{"path":null}}},"file":{"path":"sourcePath"},"log":{"file":{"path":null}},"process":{"args":null,"executable":"/usr/bin/wazuh-agent","group":{"name":null},"pid":1234,"root_directory":null,"user":{"name":null},"working_directory":null},"service":{"address":"/lib/systemd/system/wazuh-agent.service","description":"Monitors system activity","enabled":"enabled","exit_code":0,"following":"following","frequency":null,"id":"wazuh-agent","inetd_compatibility":null,"name":"Wazuh Agent","object_path":"objectPath","restart":null,"start_type":"auto","starts":{"on_mount":null,"on_not_empty_directory":null,"on_path_modified":null},"state":"running","sub_state":"subState","target":{"address":"jobPath","ephemeral_id":"0","type":"jobType"},"type":"type","win32_exit_code":0}})"
 };
 static const auto expectedPersistBrowserExtension
 {
@@ -436,6 +480,8 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser, testing::_)).Times(1);
     EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistService, testing::_)).Times(1);
     EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistBrowserExtension, testing::_)).Times(1);
+
+    // Note: Mock validators are automatically initialized in SetUp() to prevent Wine issues
 
     std::thread t
     {
@@ -2104,22 +2150,22 @@ TEST_F(SyscollectorImpTest, portAllEnable)
 
     const auto expectedResult1
     {
-        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":43481},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":null,"pid":0},"source":{"ip":"0.0.0.0","port":47748}},"module":"inventory"})"
+        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"43481"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":null,"pid":0},"source":{"ip":"0.0.0.0","port":47748}},"module":"inventory"})"
     };
 
     const auto expectedResult2
     {
-        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"::","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":43482},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp6"},"process":{"name":null,"pid":0},"source":{"ip":"::","port":51087}},"module":"inventory"})"
+        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"::","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"43482"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp6"},"process":{"name":null,"pid":0},"source":{"ip":"::","port":51087}},"module":"inventory"})"
     };
 
     const auto expectedResult3
     {
-        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":50324},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"127.0.0.1","port":33060}},"module":"inventory"})"
+        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"50324"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"127.0.0.1","port":33060}},"module":"inventory"})"
     };
 
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"44.238.116.130","port":443},"event":{"changed_fields":[],"type":"created"},"file":{"inode":122575},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"established"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"192.168.0.104","port":39106}},"module":"inventory"})"
+        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"44.238.116.130","port":443},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"122575"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"established"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"192.168.0.104","port":39106}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
@@ -2129,22 +2175,22 @@ TEST_F(SyscollectorImpTest, portAllEnable)
 
     const auto expectedPersistPorts1
     {
-        R"({"checksum":{"hash":{"sha1":"88b40f1347d9ef9d381287b00c9e924e800a25f7"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":43481},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":null,"pid":0},"source":{"ip":"0.0.0.0","port":47748}})"
+        R"({"checksum":{"hash":{"sha1":"88b40f1347d9ef9d381287b00c9e924e800a25f7"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":"43481"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":null,"pid":0},"source":{"ip":"0.0.0.0","port":47748}})"
     };
 
     const auto expectedPersistPorts2
     {
-        R"({"checksum":{"hash":{"sha1":"62a2fc1c9277988df156c208c2a7897b1fb41236"}},"destination":{"ip":"::","port":0},"file":{"inode":43482},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp6"},"process":{"name":null,"pid":0},"source":{"ip":"::","port":51087}})"
+        R"({"checksum":{"hash":{"sha1":"62a2fc1c9277988df156c208c2a7897b1fb41236"}},"destination":{"ip":"::","port":0},"file":{"inode":"43482"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp6"},"process":{"name":null,"pid":0},"source":{"ip":"::","port":51087}})"
     };
 
     const auto expectedPersistPorts3
     {
-        R"({"checksum":{"hash":{"sha1":"e049eb5f4a3dbf71dc1e6bdd11a4d070459b36fe"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":50324},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"127.0.0.1","port":33060}})"
+        R"({"checksum":{"hash":{"sha1":"e049eb5f4a3dbf71dc1e6bdd11a4d070459b36fe"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":"50324"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"127.0.0.1","port":33060}})"
     };
 
     const auto expectedPersistPorts4
     {
-        R"({"checksum":{"hash":{"sha1":"1fcee2154ec4ad7e68c2627a731760dd72fb45ae"}},"destination":{"ip":"44.238.116.130","port":443},"file":{"inode":122575},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"established"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"192.168.0.104","port":39106}})"
+        R"({"checksum":{"hash":{"sha1":"1fcee2154ec4ad7e68c2627a731760dd72fb45ae"}},"destination":{"ip":"44.238.116.130","port":443},"file":{"inode":"122575"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"established"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"192.168.0.104","port":39106}})"
     };
 
     // Only ports enabled in this test
@@ -2292,17 +2338,17 @@ TEST_F(SyscollectorImpTest, portAllDisable)
 
     const auto expectedResult1
     {
-        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":43481},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":null,"pid":0},"source":{"ip":"0.0.0.0","port":47748}},"module":"inventory"})"
+        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"43481"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":null,"pid":0},"source":{"ip":"0.0.0.0","port":47748}},"module":"inventory"})"
     };
 
     const auto expectedResult2
     {
-        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"::","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":43482},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp6"},"process":{"name":null,"pid":0},"source":{"ip":"::","port":51087}},"module":"inventory"})"
+        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"::","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"43482"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp6"},"process":{"name":null,"pid":0},"source":{"ip":"::","port":51087}},"module":"inventory"})"
     };
 
     const auto expectedResult3
     {
-        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":50324},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"127.0.0.1","port":33060}},"module":"inventory"})"
+        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"50324"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"127.0.0.1","port":33060}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
@@ -2311,17 +2357,17 @@ TEST_F(SyscollectorImpTest, portAllDisable)
 
     const auto expectedPersistPorts1
     {
-        R"({"checksum":{"hash":{"sha1":"88b40f1347d9ef9d381287b00c9e924e800a25f7"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":43481},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":null,"pid":0},"source":{"ip":"0.0.0.0","port":47748}})"
+        R"({"checksum":{"hash":{"sha1":"88b40f1347d9ef9d381287b00c9e924e800a25f7"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":"43481"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":null,"pid":0},"source":{"ip":"0.0.0.0","port":47748}})"
     };
 
     const auto expectedPersistPorts2
     {
-        R"({"checksum":{"hash":{"sha1":"62a2fc1c9277988df156c208c2a7897b1fb41236"}},"destination":{"ip":"::","port":0},"file":{"inode":43482},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp6"},"process":{"name":null,"pid":0},"source":{"ip":"::","port":51087}})"
+        R"({"checksum":{"hash":{"sha1":"62a2fc1c9277988df156c208c2a7897b1fb41236"}},"destination":{"ip":"::","port":0},"file":{"inode":"43482"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp6"},"process":{"name":null,"pid":0},"source":{"ip":"::","port":51087}})"
     };
 
     const auto expectedPersistPorts3
     {
-        R"({"checksum":{"hash":{"sha1":"e049eb5f4a3dbf71dc1e6bdd11a4d070459b36fe"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":50324},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"127.0.0.1","port":33060}})"
+        R"({"checksum":{"hash":{"sha1":"e049eb5f4a3dbf71dc1e6bdd11a4d070459b36fe"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":"50324"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"127.0.0.1","port":33060}})"
     };
 
     // Only ports enabled in this test
@@ -2458,7 +2504,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"name":" kworker/u256:2-  ","pid":"  431625  ","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
+              (R"({"name":" kworker/u256:2-  ","pid":"431625","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
@@ -3824,4 +3870,469 @@ TEST_F(SyscollectorImpTest, runRecoveryProcessWithSyncProtocol)
     EXPECT_NO_THROW(Syscollector::instance().runRecoveryProcess());
 
     Syscollector::instance().destroy();
+}
+
+// Schema validation tests
+TEST_F(SyscollectorImpTest, schemaValidationAcceptsValidDataAfterCorrections)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // Return valid hardware data (cpu_speed as integer, which our correction handles)
+    const std::string validHardwareJson =
+        R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400","memory_free":2257872,"memory_total":4972208,"memory_used":54})";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(validHardwareJson)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    // Expect persist callback for valid hardware data (will pass validation)
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+            // Initialize sync protocol to enable schema validation
+            MQ_Functions mqFuncs;
+            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+            Syscollector::instance().initSyncProtocol(
+                "syscollector",
+                ":memory:",
+                ":memory:",
+                mqFuncs,
+                std::chrono::seconds(10),
+                std::chrono::seconds(5),
+                3,
+                100,
+                86400
+            );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
+TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // Data that our corrections should handle:
+    // - file_inode as number (will be converted to string)
+    // - cpu_speed as float (will be converted to integer)
+    const std::string hardwareJson = R"({"serial_number":"Intel", "cpu_speed":2688.0,"cpu_cores":2,"cpu_name":"Intel i5","memory_free":1000000,"memory_total":2000000,"memory_used":1000000})";
+    const std::string portsJson =
+        R"([{"file_inode":6822,"source_ip":"127.0.0.1","source_port":22,"process_pid":822,"process_name":"sshd","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(hardwareJson)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(portsJson)));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            // Verify corrected data types in the actual data
+            auto jsonData = nlohmann::json::parse(data);
+
+            if (index == "wazuh-states-inventory-hardware")
+            {
+                // cpu_speed should be integer now
+                EXPECT_TRUE(jsonData["host"]["cpu"]["speed"].is_number_integer());
+                EXPECT_EQ(jsonData["host"]["cpu"]["speed"].get<int>(), 2688);
+            }
+            else if (index == "wazuh-states-inventory-ports")
+            {
+                // file.inode should be string now
+                EXPECT_TRUE(jsonData["file"]["inode"].is_string());
+                EXPECT_EQ(jsonData["file"]["inode"].get<std::string>(), "6822");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    // Expect persist callbacks for valid data after corrections
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-ports"), testing::_, testing::_)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, true, true, false, false, false, true, false, false, false, false, false, false, false, false);
+
+            // Initialize sync protocol to enable schema validation
+            MQ_Functions mqFuncs;
+            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+            Syscollector::instance().initSyncProtocol(
+                "syscollector",
+                ":memory:",
+                ":memory:",
+                mqFuncs,
+                std::chrono::seconds(10),
+                std::chrono::seconds(5),
+                3,
+                100,
+                86400
+            );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
+// Schema validation test using mock to force rejection
+TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // Return any hardware data (content doesn't matter, mock will force failure)
+    const std::string hardwareJson =
+        R"({"serial_number":"Intel Corporation", "cpu_speed":2688,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400","memory_free":2257872,"memory_total":4972208,"memory_used":54})";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(hardwareJson)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    // Expect NO persist callback for invalid hardware data (will be rejected by mock validator)
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(0);
+
+    // Capture log messages to verify validation errors
+    std::vector<std::string> loggedMessages;
+    auto customLogFunction = [&loggedMessages](modules_log_level_t level, const std::string & message)
+    {
+        loggedMessages.push_back(message);
+    };
+
+    // Create mock validator that will reject all validations
+    auto mockValidator = std::make_shared<MockSchemaValidatorEngine>();
+
+    SchemaValidator::ValidationResult failureResult;
+    failureResult.isValid = false;
+    failureResult.errors = {"Field 'host.memory.free' has invalid type: expected 'long', got 'string'"};
+
+    EXPECT_CALL(*mockValidator, validate(testing::An<const std::string&>()))
+    .WillRepeatedly(testing::Return(failureResult));
+
+    EXPECT_CALL(*mockValidator, getSchemaName())
+    .WillRepeatedly(testing::Return("wazuh-states-inventory-hardware"));
+
+    // Inject mock validator into factory
+    std::map<std::string, std::shared_ptr<SchemaValidator::ISchemaValidatorEngine>> mockValidators;
+    mockValidators["wazuh-states-inventory-hardware"] = mockValidator;
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist, &customLogFunction, &mockValidators]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          customLogFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+            // Reset and initialize factory with mock BEFORE initSyncProtocol
+            SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+            SchemaValidator::SchemaValidatorFactory::getInstance().initialize(mockValidators);
+
+            // Initialize sync protocol
+            MQ_Functions mqFuncs;
+            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+            Syscollector::instance().initSyncProtocol(
+                "syscollector",
+                ":memory:",
+                ":memory:",
+                mqFuncs,
+                std::chrono::seconds(10),
+                std::chrono::seconds(5),
+                3,
+                100,
+                86400
+            );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+
+    // Verify that validation errors were logged
+    EXPECT_FALSE(loggedMessages.empty());
+
+    bool foundValidationError = false;
+    bool foundDiscardMessage = false;
+    bool foundDeferredDeletion = false;
+
+    for (const auto& msg : loggedMessages)
+    {
+        if (msg.find("Schema validation failed") != std::string::npos)
+        {
+            foundValidationError = true;
+        }
+
+        if (msg.find("Discarding invalid Syscollector message") != std::string::npos)
+        {
+            foundDiscardMessage = true;
+        }
+
+        if (msg.find("Marking entry from table") != std::string::npos &&
+                msg.find("for deferred deletion") != std::string::npos)
+        {
+            foundDeferredDeletion = true;
+        }
+    }
+
+    EXPECT_TRUE(foundValidationError) << "Expected validation error not found";
+    EXPECT_TRUE(foundDiscardMessage) << "Expected discard message not found";
+    EXPECT_TRUE(foundDeferredDeletion) << "Expected deferred deletion log not found";
+}
+
+// Test for missing validator: factory is initialized but no validator for the index
+TEST_F(SyscollectorImpTest, schemaValidationQueuesWhenValidatorNotFound)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    const std::string hardwareJson =
+        R"({"serial_number":"Intel Corporation", "cpu_speed":2688,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400","memory_free":2257872,"memory_total":4972208,"memory_used":54})";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(hardwareJson)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    // Expect persist callback for hardware data (should be queued despite missing validator)
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
+
+    // Capture log messages to verify warning is logged
+    std::vector<std::string> loggedMessages;
+    auto customLogFunction = [&loggedMessages](modules_log_level_t level, const std::string & message)
+    {
+        loggedMessages.push_back(message);
+    };
+
+    // Create mock validator for a DIFFERENT index (not for hardware)
+    auto mockValidator = std::make_shared<MockSchemaValidatorEngine>();
+
+    EXPECT_CALL(*mockValidator, getSchemaName())
+    .WillRepeatedly(testing::Return("some-other-index"));
+
+    // Inject mock validator for a different index (factory is initialized, but no validator for hardware)
+    std::map<std::string, std::shared_ptr<SchemaValidator::ISchemaValidatorEngine>> mockValidators;
+    mockValidators["some-other-index"] = mockValidator;
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist, &customLogFunction, &mockValidators]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          customLogFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+            // Reset and initialize factory with mock for DIFFERENT index
+            SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+            SchemaValidator::SchemaValidatorFactory::getInstance().initialize(mockValidators);
+
+            // Initialize sync protocol
+            MQ_Functions mqFuncs;
+            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+            Syscollector::instance().initSyncProtocol(
+                "syscollector",
+                ":memory:",
+                ":memory:",
+                mqFuncs,
+                std::chrono::seconds(10),
+                std::chrono::seconds(5),
+                3,
+                100,
+                86400
+            );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+
+    // Verify that warning was logged for missing validator
+    EXPECT_FALSE(loggedMessages.empty());
+
+    bool foundMissingValidatorWarning = false;
+
+    for (const auto& msg : loggedMessages)
+    {
+        if (msg.find("No schema validator found for index: wazuh-states-inventory-hardware") != std::string::npos)
+        {
+            foundMissingValidatorWarning = true;
+            break;
+        }
+    }
+
+    EXPECT_TRUE(foundMissingValidatorWarning) << "Expected warning for missing validator not found";
 }

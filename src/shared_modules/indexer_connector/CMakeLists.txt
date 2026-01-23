@@ -23,6 +23,7 @@ include_directories(include)
 include_directories(${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/external/cJSON)
 include_directories(${SRC_FOLDER}/external/nlohmann)
+include_directories(${SRC_FOLDER}/external/simdjson/include)
 include_directories(${SRC_FOLDER}/external/rocksdb/include)
 include_directories(${SRC_FOLDER}/external/openssl/include)
 
@@ -34,12 +35,14 @@ include_directories(${SHARED_MODULES}/keystore/include)
 # Link directories
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/rocksdb/build)
+link_directories(${SRC_FOLDER}/external/simdjson/build)
 link_directories(${SHARED_MODULES}/http-request/build)
 link_directories(${SHARED_MODULES}/keystore/build)
 
-file(GLOB INDEXER_CONNECTOR_SRC
-    "src/*.cpp"
-    )
+set(INDEXER_CONNECTOR_SRC
+    src/indexerConnectorAsync.cpp
+    src/indexerConnectorSync.cpp
+)
 
 add_library(indexer_connector SHARED
     ${INDEXER_CONNECTOR_SRC}

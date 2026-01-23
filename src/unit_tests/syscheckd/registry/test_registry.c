@@ -26,6 +26,8 @@
 #include "../../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../../wrappers/wazuh/syscheckd/fim_diff_changes_wrappers.h"
 #include "../../wrappers/wazuh/shared/utf8_winapi_wrapper_wrappers.h"
+#include "../../wrappers/wazuh/shared_modules/schema_validator_wrappers.h"
+#include "../../wrappers/wazuh/shared_modules/agent_sync_protocol_wrappers.h"
 
 #include "test_fim.h"
 
@@ -157,6 +159,7 @@ static int setup_group(void **state) {
 
     syscheck.registry = default_config;
     syscheck.key_ignore = default_ignore;
+    syscheck.enable_synchronization = 1;  // Enable synchronization for tests
 
     for (i = 0; default_ignore_regex_patterns[i]; i++) {
         default_ignore_regex[i].regex = calloc(1, sizeof(OSMatch));
@@ -840,8 +843,8 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     syscheck.registry = one_entry_config;
     syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // Set value of FirstSubKey
     wchar_t *value_name = L"test_value";
@@ -902,8 +905,8 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
 static void test_fim_registry_scan_regular_scan(void **state) {
     syscheck.registry = default_config;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // Set value of FirstSubKey
     wchar_t *value_name = L"test_value";
@@ -1001,8 +1004,8 @@ static void test_fim_registry_scan_RegOpenKeyExW_fail(void **state) {
     expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\Classes\\batfile", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, -1);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
@@ -1029,8 +1032,9 @@ static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, -1);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    // Expect pthread calls from C++ singletons and syscheck mutexes
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
@@ -1097,7 +1101,9 @@ static void test_fim_registry_key_transaction_callback_insert(){
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
+
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     registry_key_transaction_callback(resultType, result_json, &user_data);
 }
@@ -1111,7 +1117,9 @@ static void test_fim_registry_key_transaction_callback_modify(){
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
+
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     registry_key_transaction_callback(resultType, result_json, &user_data);
 }
@@ -1125,7 +1133,9 @@ static void test_fim_registry_key_transaction_callback_delete(){
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
+
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     registry_key_transaction_callback(resultType, result_json, &user_data);
 }
@@ -1206,7 +1216,9 @@ static void test_fim_registry_value_transaction_callback_insert(){
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
+
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     registry_value_transaction_callback(resultType, result_json, &user_data);
 }
@@ -1220,7 +1232,9 @@ static void test_fim_registry_value_transaction_callback_modify(){
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
+
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     registry_value_transaction_callback(resultType, result_json, &user_data);
 }
@@ -1234,7 +1248,9 @@ static void test_fim_registry_value_transaction_callback_modify_with_diff(){
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = "test diff string"};
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
+
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     registry_value_transaction_callback(resultType, result_json, &user_data);
 }
@@ -1248,7 +1264,9 @@ static void test_fim_registry_value_transaction_callback_delete(){
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
+
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/6797a8200934259ad5d56d1eb8dd24afc4f7ae2e', it does not exist.");
 

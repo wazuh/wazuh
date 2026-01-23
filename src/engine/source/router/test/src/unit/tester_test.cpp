@@ -89,13 +89,13 @@ TEST_F(TesterTest, AddEntryRepeatdly)
     fakeAssets.insert(base::Name("asset/test/0"));
 
     addEntryCallers(fakeAssets, hash);
-    auto error = m_test->addEntry(entryPost);
+    auto error = m_test->addEntry(entryPost, /*ignoreFail=*/false);
     stopControllerCall();
 
     EXPECT_EQ(error, std::nullopt);
 
     addEntryCallers(fakeAssets, hash);
-    error = m_test->addEntry(entryPost);
+    error = m_test->addEntry(entryPost, /*ignoreFail=*/false);
     stopControllerCall();
 
     EXPECT_STREQ(error.value().message.c_str(), "The name of the testing environment already exist");
@@ -125,7 +125,7 @@ TEST_F(TesterTest, FailedCreatingEnvironment)
 {
     auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, "decoder", LIFESPAM};
 
-    auto error = m_test->addEntry(entryPost);
+    auto error = m_test->addEntry(entryPost, /*ignoreFail=*/false);
 
     EXPECT_TRUE(error.has_value());
 
@@ -280,7 +280,7 @@ TEST_F(TesterTest, SuccessIngestTest)
     fakeAssets.insert(base::Name("asset/test/0"));
 
     addEntryCallers(fakeAssets, hash);
-    m_test->addEntry(entryPost);
+    m_test->addEntry(entryPost, /*ignoreFail=*/false);
 
     m_test->enableEntry(ENVIRONMENT_NAME);
 
@@ -317,7 +317,7 @@ TEST_F(TesterTest, FailtureIngestTestNotEnabled)
     fakeAssets.insert(base::Name("asset/test/0"));
 
     addEntryCallers(fakeAssets, hash);
-    m_test->addEntry(entryPost);
+    m_test->addEntry(entryPost, /*ignoreFail=*/false);
 
     std::unordered_set<std::string> fakeAssetsString {};
     fakeAssetsString.insert("asset/test/0");
@@ -338,7 +338,7 @@ TEST_F(TesterTest, FailtureIngestTestNotSubscribe)
     fakeAssets.insert(base::Name("asset/test/0"));
 
     addEntryCallers(fakeAssets, hash);
-    m_test->addEntry(entryPost);
+    m_test->addEntry(entryPost, /*ignoreFail=*/false);
 
     m_test->enableEntry(ENVIRONMENT_NAME);
 
@@ -372,7 +372,7 @@ TEST_F(TesterTest, FailtureGetAssetsNameNotEnabled)
     fakeAssets.insert(base::Name("asset/test/0"));
 
     addEntryCallers(fakeAssets, hash);
-    m_test->addEntry(entryPost);
+    m_test->addEntry(entryPost, /*ignoreFail=*/false);
 
     auto error = m_test->getAssets(ENVIRONMENT_NAME);
 
@@ -391,7 +391,7 @@ TEST_F(TesterTest, SuccessGetAssets)
     fakeAssets.insert(base::Name("asset/test/0"));
 
     addEntryCallers(fakeAssets, hash);
-    m_test->addEntry(entryPost);
+    m_test->addEntry(entryPost, /*ignoreFail=*/false);
     m_test->enableEntry(ENVIRONMENT_NAME);
 
     std::unordered_set<std::string> fakeAssetsString {};
@@ -417,7 +417,7 @@ TEST_F(TesterTest, SucessUpdateLast)
     fakeAssets.insert(base::Name("asset/test/0"));
 
     addEntryCallers(fakeAssets, hash);
-    m_test->addEntry(entryPost);
+    m_test->addEntry(entryPost, /*ignoreFail=*/false);
     EXPECT_TRUE(m_test->updateLastUsed(ENVIRONMENT_NAME));
 
     stopControllerCall();

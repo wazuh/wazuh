@@ -98,7 +98,9 @@ INSTANTIATE_TEST_SUITE_P(Parses,
                                            ParseExprT("lit(?lit", false),
                                            ParseExprT("literal<text><~custom/long><~>", false),
                                            ParseExprT("literal<text>:<~custom/long/error_arg><~>", false),
-                                           ParseExprT("literal<array>", true)));
+                                           ParseExprT("literal<array>", true),
+                                           ParseExprT("literal<text>:<~custom/error>", false),
+                                           ParseExprT("literal<text>:<~custom/error>", false)));
 
 using BuildParseT = std::tuple<bool, std::string, std::string, json::Json>;
 class LogparBuildParseTest
@@ -457,3 +459,187 @@ INSTANTIATE_TEST_SUITE_P(
                        logp::Literal {":"},
                        logp::Field {logp::FieldName {"~"}, {}, false}},
                       40)));
+
+namespace schematypetest
+{
+
+using TypeParseT = std::tuple<std::string, schemf::Type, hlp::ParserType, std::string, std::string, json::Json>;
+
+class LogparAdditionalTypesTest
+    : public ::testing::TestWithParam<TypeParseT>
+{
+protected:
+    std::shared_ptr<MockSchema> schema;
+    std::shared_ptr<hlp::logpar::Logpar> logpar;
+
+    void SetUp() override
+    {
+        json::Json config {};
+        config.setObject();
+        config.setString("schema/wazuh-logpar-test/0", "/name");
+        config.setObject("/fields");
+
+        schema = std::make_shared<MockSchema>();
+
+        // Schema to recognize all test fields
+        ON_CALL(*schema, hasField(::testing::_)).WillByDefault(::testing::Return(true));
+
+        ON_CALL(*schema, getType(::testing::_))
+            .WillByDefault(::testing::Invoke(
+                [](const auto& param) -> schemf::Type
+                {
+                    if (param == "unsigned_long_field")
+                        return schemf::Type::UNSIGNED_LONG;
+                    if (param == "token_count_field")
+                        return schemf::Type::TOKEN_COUNT;
+                    if (param == "completion_field")
+                        return schemf::Type::COMPLETION;
+                    if (param == "search_as_you_type_field")
+                        return schemf::Type::SEARCH_AS_YOU_TYPE;
+                    if (param == "semantic_field")
+                        return schemf::Type::SEMANTIC;
+                    if (param == "match_only_text_field")
+                        return schemf::Type::MATCH_ONLY_TEXT;
+                    if (param == "constant_keyword_field")
+                        return schemf::Type::CONSTANT_KEYWORD;
+                    return schemf::Type::ERROR;
+                }));
+
+        logpar = std::make_shared<hlp::logpar::Logpar>(config, schema);
+
+        logpar->registerBuilder(hlp::ParserType::P_UNSIGNED_LONG, hlp::parsers::getUnsignedLongParser);
+        logpar->registerBuilder(hlp::ParserType::P_TEXT, hlp::parsers::getTextParser);
+        logpar->registerBuilder(hlp::ParserType::P_LITERAL, hlp::parsers::getLiteralParser);
+    }
+};
+
+TEST_P(LogparAdditionalTypesTest, ParsesNewTypes)
+{
+    auto [fieldName, schemaType, parserType, expression, inputText, expectedJson] = GetParam();
+
+    // Build the parser
+    auto parser = logpar->build(expression);
+    ASSERT_TRUE(parser != nullptr);
+
+    // Parse the input
+    json::Json event;
+    auto error = hlp::parser::run(parser, inputText, event);
+
+    ASSERT_FALSE(error) << "Parser failed: " << error.value().message;
+    ASSERT_EQ(event, expectedJson)
+        << fmt::format("Field: {}, Type: {}, Parser: {}\nExpected: {}\nGot: {}",
+                       fieldName,
+                       schemf::typeToStr(schemaType),
+                       hlp::parserTypeToStr(parserType),
+                       expectedJson.str(),
+                       event.str());
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AdditionalSchemaTypes,
+    LogparAdditionalTypesTest,
+    ::testing::Values(
+        // UNSIGNED_LONG type - should use P_UNSIGNED_LONG parser
+        TypeParseT("unsigned_long_field",
+                      schemf::Type::UNSIGNED_LONG,
+                      hlp::ParserType::P_UNSIGNED_LONG,
+                      "<unsigned_long_field>",
+                      "12345",
+                      logpar_test::J(R"({"unsigned_long_field":12345})")),
+        // TOKEN_COUNT type - should use P_UNSIGNED_LONG parser
+        TypeParseT("token_count_field",
+                      schemf::Type::TOKEN_COUNT,
+                      hlp::ParserType::P_UNSIGNED_LONG,
+                      "<token_count_field>",
+                      "42",
+                      logpar_test::J(R"({"token_count_field":42})")),
+        // COMPLETION type - should use P_TEXT parser
+        TypeParseT("completion_field",
+                      schemf::Type::COMPLETION,
+                      hlp::ParserType::P_TEXT,
+                      "<completion_field>",
+                      "completion text",
+                      logpar_test::J(R"({"completion_field":"completion text"})")),
+        // SEARCH_AS_YOU_TYPE type - should use P_TEXT parser
+        TypeParseT("search_as_you_type_field",
+                      schemf::Type::SEARCH_AS_YOU_TYPE,
+                      hlp::ParserType::P_TEXT,
+                      "<search_as_you_type_field>",
+                      "search text",
+                      logpar_test::J(R"({"search_as_you_type_field":"search text"})")),
+        // SEMANTIC type - should use P_TEXT parser
+        TypeParseT("semantic_field",
+                      schemf::Type::SEMANTIC,
+                      hlp::ParserType::P_TEXT,
+                      "<semantic_field>",
+                      "semantic value",
+                      logpar_test::J(R"({"semantic_field":"semantic value"})")),
+        // MATCH_ONLY_TEXT type - should use P_TEXT parser
+        TypeParseT("match_only_text_field",
+                      schemf::Type::MATCH_ONLY_TEXT,
+                      hlp::ParserType::P_TEXT,
+                      "<match_only_text_field>",
+                      "match only text",
+                      logpar_test::J(R"({"match_only_text_field":"match only text"})")),
+        // CONSTANT_KEYWORD type - should use P_TEXT parser
+        TypeParseT("constant_keyword_field",
+                      schemf::Type::CONSTANT_KEYWORD,
+                      hlp::ParserType::P_TEXT,
+                      "<constant_keyword_field>",
+                      "constant",
+                      logpar_test::J(R"({"constant_keyword_field":"constant"})"))),
+    [](const testing::TestParamInfo<LogparAdditionalTypesTest::ParamType>& info)
+    {
+        return std::get<0>(info.param);
+    });
+
+
+class LogparIncompatibleTypeTest : public ::testing::Test
+{
+protected:
+    std::shared_ptr<MockSchema> schema;
+
+    void SetUp() override { schema = std::make_shared<MockSchema>(); }
+};
+
+TEST_F(LogparIncompatibleTypeTest, IncompatibleTypesMapToErrorType)
+{
+    json::Json config {};
+    config.setObject();
+    config.setString("schema/wazuh-logpar-test/0", "/name");
+    config.setObject("/fields");
+
+    // These types should all map to ERROR_TYPE in logpar
+    const std::vector<schemf::Type> incompatibleTypes = {
+        schemf::Type::JOIN,
+        schemf::Type::KNN_VECTOR,
+        schemf::Type::SPARSE_VECTOR,
+        schemf::Type::RANK_FEATURES,
+        schemf::Type::PERCOLATOR,
+        schemf::Type::STAR_TREE,
+        schemf::Type::DERIVED,
+        schemf::Type::INTEGER_RANGE,
+        schemf::Type::LONG_RANGE,
+        schemf::Type::FLOAT_RANGE,
+        schemf::Type::DOUBLE_RANGE,
+        schemf::Type::DATE_RANGE,
+        schemf::Type::IP_RANGE};
+
+    for (auto incompatibleType : incompatibleTypes)
+    {
+        std::string fieldName = fmt::format("field_{}", schemf::typeToStr(incompatibleType));
+
+        ON_CALL(*schema, hasField(::testing::StrEq(fieldName))).WillByDefault(::testing::Return(true));
+        ON_CALL(*schema, getType(::testing::StrEq(fieldName))).WillByDefault(::testing::Return(incompatibleType));
+
+        auto logpar = std::make_shared<hlp::logpar::Logpar>(config, schema);
+
+        // Attempting to build a parser for an incompatible type should throw
+        std::string expression = fmt::format("<{}>", fieldName);
+        EXPECT_THROW(logpar->build(expression), std::runtime_error)
+            << fmt::format("Expected build to throw for incompatible type: {}", schemf::typeToStr(incompatibleType));
+    }
+}
+
+} // namespace schematypetest
+

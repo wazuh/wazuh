@@ -45,6 +45,7 @@ int shared_reload_interval;
 int disk_storage;
 size_t batch_events_capacity;
 size_t batch_events_per_agent_capacity;
+int enrich_cache_expire_time;
 
 /* Read the config file (the remote access) */
 int RemotedConfig(const char *cfgfile, remoted *cfg)
@@ -92,6 +93,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     _s_verify_counter = getDefine_Int("remoted", "verify_msg_id", 0, 1);
     batch_events_capacity = (size_t)getDefine_Int("remoted", "batch_events_capacity", 0, 0x1<<20);
     batch_events_per_agent_capacity = (size_t)getDefine_Int("remoted", "batch_events_per_agent_capacity", 0, 0x1<<20);
+    enrich_cache_expire_time = getDefine_Int("remoted", "enrich_cache_expire_time", 60, 86400);
 
     /* Setting default values for global parameters */
     cfg->global.agents_disconnection_time = 900;
@@ -111,8 +113,9 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
         mwarn("Queue size is very high. The application may run out of memory.");
     }
 
-    /* Get node name of the manager in cluster */
+    /* Get node name and cluster name of the manager */
     node_name = get_node_name();
+    cluster_name = get_cluster_name();
 
     return (1);
 }
@@ -225,6 +228,7 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"state_interval",state_interval);
     cJSON_AddNumberToObject(remoted,"batch_events_capacity",batch_events_capacity);
     cJSON_AddNumberToObject(remoted,"batch_events_per_agent_capacity",batch_events_per_agent_capacity);
+    cJSON_AddNumberToObject(remoted,"enrich_cache_expire_time",enrich_cache_expire_time);
 
     cJSON_AddItemToObject(internals,"remoted",remoted);
     cJSON_AddItemToObject(root,"internal",internals);

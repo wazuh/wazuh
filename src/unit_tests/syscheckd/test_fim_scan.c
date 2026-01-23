@@ -31,6 +31,8 @@
 #include "../wrappers/wazuh/syscheckd/registry.h"
 #include "../wrappers/wazuh/os_crypto/md5_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared_modules/schema_validator_wrappers.h"
+#include "../wrappers/wazuh/shared_modules/agent_sync_protocol_wrappers.h"
 
 #include "syscheck.h"
 #include "file/file.h"
@@ -1110,6 +1112,13 @@ static void test_fim_file_add(void **state) {
     char file_path[OS_SIZE_256] = "/bin/ls";
 #endif
 
+    // Ignore trying to match the exact pthread calls since OSList operations make this hard and these tests verify FIM file handling behavior, not locking implementation.
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+
     expect_get_data(strdup("user"), strdup("group"), file_path, 1);
 
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
@@ -1179,6 +1188,14 @@ static void test_fim_file_modify(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
+
+    // Ignore trying to match the exact pthread calls since OSList operations make this hard and these tests verify FIM file handling behavior, not locking implementation.
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
     cJSON *permissions = create_win_permissions_object();
@@ -1275,6 +1292,14 @@ static void test_fim_file_error_on_insert(void **state) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
+
+    // Ignore trying to match the exact pthread calls since OSList operations make this hard and these tests verify FIM file handling behavior, not locking implementation.
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
     cJSON *permissions = create_win_permissions_object();
@@ -3439,7 +3464,9 @@ static void test_transaction_callback_add(void **state) {
 #endif
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
+
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     transaction_callback(INSERTED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_ADD);
@@ -3477,7 +3504,9 @@ static void test_transaction_callback_modify(void **state) {
 #endif
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
+
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     transaction_callback(MODIFIED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_MODIFICATION);
@@ -3519,6 +3548,9 @@ static void test_transaction_callback_modify_empty_changed_attributes(void **sta
 #else
     expect_string(__wrap__mdebug2, formatted_msg, "(6954): Entry 'c:\\windows\\a_test_file.txt' does not have any modified fields. No event will be generated.");
 #endif
+
+    // Schema validator mocks (not called in this case due to empty changed_attributes)
+
     transaction_callback(MODIFIED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_MODIFICATION);
 
@@ -3552,7 +3584,9 @@ static void test_transaction_callback_modify_report_changes(void **state) {
     expect_fim_file_diff(entry.file_entry.path, strdup("diff"));
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
+
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     transaction_callback(MODIFIED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_MODIFICATION);
@@ -3589,7 +3623,9 @@ static void test_transaction_callback_delete(void **state) {
 #endif
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
+
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_DELETE);
@@ -3621,7 +3657,9 @@ static void test_transaction_callback_delete_report_changes(void **state) {
     expect_fim_diff_process_delete_file(path, 0);
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
+
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_DELETE);
@@ -3656,11 +3694,14 @@ static void test_transaction_callback_delete_full_db(void **state) {
 #endif
 
     expect_function_call(__wrap_send_syscheck_msg);
-    expect_function_call(__wrap_persist_syscheck_msg);
+
+    // validate_and_persist_fim_event wrapper returns validation success
+    will_return(__wrap_validate_and_persist_fim_event, true);
 
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_DELETE);
 }
+
 
 static void test_transaction_callback_full_db(void **state) {
     txn_data_t *data = (txn_data_t *) *state;
@@ -3850,7 +3891,7 @@ static void test_dbsync_attributes_json(void **state) {
     directory_t configuration = { .options = -1, .tag = "tag_name" };
     json_struct_t *data = *state;
 #ifndef TEST_WINAGENT
-    const char *result_str = "{\"size\":11,\"permissions\":[\"rw-r--r--\"],\"uid\":\"0\",\"owner\":\"root\",\"gid\":\"0\",\"group\":\"root\",\"inode\":\"271017\",\"device\":64768,\"mtime\":1646124392,\"hash\":{\"md5\":\"d73b04b0e696b0945283defa3eee4538\",\"sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\"}}";
+    const char *result_str = "{\"size\":11,\"permissions\":[\"rw-r--r--\"],\"uid\":\"0\",\"owner\":\"root\",\"gid\":\"0\",\"group\":\"root\",\"inode\":\"271017\",\"device\":\"64768\",\"mtime\":1646124392,\"hash\":{\"md5\":\"d73b04b0e696b0945283defa3eee4538\",\"sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\"}}";
     cJSON *dbsync_event = cJSON_Parse("{\"attributes\":\"\",\"checksum\":\"c0edc82c463da5f4ab8dd420a778a9688a923a72\",\"device\":64768,\"gid\":\"0\",\"group_\":\"root\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"inode\":\"271017\",\"mtime\":1646124392,\"path\":\"/etc/testfile\",\"permissions\":\"rw-r--r--\",\"size\":11,\"uid\":\"0\",\"owner\":\"root\"}");
 #else
     cJSON *dbsync_event = cJSON_Parse("{\"size\":0, \"permissions\":\"{\\\"S-1-5-32-544\\\":{\\\"name\\\":\\\"Administrators\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-18\\\":{\\\"name\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-32-545\\\":{\\\"name\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"execute\\\",\\\"read_attributes\\\"]},\\\"S-1-5-11\\\":{\\\"name\\\":\\\"Authenticated Users\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\", \"attributes\":\"ARCHIVE\", \"uid\":\"0\", \"gid\":\"0\", \

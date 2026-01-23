@@ -22,6 +22,7 @@
 #include "dbRegistryKey.hpp"
 #include "dbRegistryValue.hpp"
 #include "fimCommonDefs.h"
+#include "../../config/syscheck-config.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -150,6 +151,72 @@ void fim_db_clean_registry_tables()
     }
 
     // LCOV_EXCL_STOP
+}
+
+FIMDBErrorCode fim_db_registry_key_delete(const char* path, int arch)
+{
+    auto retVal {FIMDB_ERR};
+
+    if (!path)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+    }
+    else
+    {
+        try
+        {
+            std::string arch_str = (arch == ARCH_32BIT) ? "[x32]" : "[x64]";
+            auto deleteQuery
+            {
+                DeleteQuery::builder()
+                .table(FIMDB_REGISTRY_KEY_TABLENAME)
+                .data({{"path", path}, {"architecture", arch_str}})
+                .rowFilter("")
+                .build()
+            };
+            FIMDB::instance().removeItem(deleteQuery.query());
+            retVal = FIMDB_OK;
+        }
+        catch (const std::exception& err)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        }
+    }
+
+    return retVal;
+}
+
+FIMDBErrorCode fim_db_registry_value_delete(const char* path, const char* value, int arch)
+{
+    auto retVal {FIMDB_ERR};
+
+    if (!path || !value)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+    }
+    else
+    {
+        try
+        {
+            std::string arch_str = (arch == ARCH_32BIT) ? "[x32]" : "[x64]";
+            auto deleteQuery
+            {
+                DeleteQuery::builder()
+                .table(FIMDB_REGISTRY_VALUE_TABLENAME)
+                .data({{"path", path}, {"value", value}, {"architecture", arch_str}})
+                .rowFilter("")
+                .build()
+            };
+            FIMDB::instance().removeItem(deleteQuery.query());
+            retVal = FIMDB_OK;
+        }
+        catch (const std::exception& err)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        }
+    }
+
+    return retVal;
 }
 
 #ifdef __cplusplus

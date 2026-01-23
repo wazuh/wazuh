@@ -267,6 +267,55 @@ TransformOp alphanumericParseBuilder(const Reference& targetField,
                                      const std::vector<OpArg>& opArgs,
                                      const std::shared_ptr<const IBuildCtx>& buildCtx);
 
+/**
+ * @brief Helper function of unsigned long parser from HLP
+ * @param targetField target field of the helper
+ * @param opArgs vector of parameters as present in the raw definition
+ * @param buildCtx Build context
+ * @return TransformOp Expression of the operation
+ * @throw std::runtime_error If the number of parameters is not 1 (source)
+ */
+TransformOp unsignedLongParseBuilder(const Reference& targetField,
+                                     const std::vector<OpArg>& opArgs,
+                                     const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Helper function of integer parser from HLP
+ * @param targetField target field of the helper
+ * @param opArgs vector of parameters as present in the raw definition
+ * @param buildCtx Build context
+ * @return TransformOp Expression of the operation
+ * @throw std::runtime_error If the number of parameters is not 1 (source)
+ */
+TransformOp integerParseBuilder(const Reference& targetField,
+                                const std::vector<OpArg>& opArgs,
+                                const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Helper function of short parser from HLP
+ * @param targetField target field of the helper
+ * @param opArgs vector of parameters as present in the raw definition
+ * @param buildCtx Build context
+ * @return TransformOp Expression of the operation
+ * @throw std::runtime_error If the number of parameters is not 1 (source)
+ */
+TransformOp shortParseBuilder(const Reference& targetField,
+                             const std::vector<OpArg>& opArgs,
+                             const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Helper function of half float parser from HLP
+ * @param targetField target field of the helper
+ * @param opArgs vector of parameters as present in the raw definition
+ * @param buildCtx Build context
+ * @return TransformOp Expression of the operation
+ * @throw std::runtime_error If the number of parameters is not 1 (source)
+ */
+TransformOp halfFloatParseBuilder(const Reference& targetField,
+                                  const std::vector<OpArg>& opArgs,
+                                  const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+
 } // namespace builder::builders::optransform
 
 #endif // _BUILDER_BUILDERS_OPTRANSFORM_HLP_HPP

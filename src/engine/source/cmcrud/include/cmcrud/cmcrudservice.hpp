@@ -21,32 +21,48 @@ namespace cm::crud
 class CrudService final : public ICrudService
 {
 public:
-    CrudService(std::shared_ptr<cm::store::ICMStore> store, std::shared_ptr<builder::IValidator> validator);
+    CrudService(const std::shared_ptr<cm::store::ICMStore>& store,
+                const std::shared_ptr<builder::IValidator>& validator);
 
     ~CrudService() override = default;
 
     /******************************* Namespaces *******************************/
     std::vector<cm::store::NamespaceId> listNamespaces() const override;
-    void createNamespace(std::string_view nsName) override;
-    void deleteNamespace(std::string_view nsName) override;
-    void importNamespace(std::string_view nsName, std::string_view jsonDocument, bool force) override;
+    void createNamespace(const cm::store::NamespaceId& nsId) override;
+    bool existsNamespace(const cm::store::NamespaceId& nsId) const override;
+    void deleteNamespace(const cm::store::NamespaceId& nsId) override;
+    void importNamespace(const cm::store::NamespaceId& nsId, std::string_view jsonDocument, bool force) override;
+    void importNamespace(const cm::store::NamespaceId& nsId,
+                         const std::vector<json::Json>& kvdbs,
+                         const std::vector<json::Json>& decoders,
+                         const std::vector<json::Json>& integrations,
+                         const json::Json& policy,
+                         bool softValidation) override;
 
     /********************************* Policy *********************************/
-    void upsertPolicy(std::string_view nsName, std::string_view policyDocument) override;
-    void deletePolicy(std::string_view nsName) override;
+    void upsertPolicy(const cm::store::NamespaceId& nsId, std::string_view policyDocument) override;
+    void deletePolicy(const cm::store::NamespaceId& nsId) override;
 
     /***************************** Generic resources **************************/
-    std::vector<ResourceSummary> listResources(std::string_view nsName, cm::store::ResourceType type) const override;
-    std::string getResourceByUUID(std::string_view nsName, const std::string& uuid, bool asJson = false) const override;
-    void upsertResource(std::string_view nsName, cm::store::ResourceType type, std::string_view document) override;
-    void deleteResourceByUUID(std::string_view nsName, const std::string& uuid) override;
+    std::vector<ResourceSummary> listResources(const cm::store::NamespaceId& nsId,
+                                               cm::store::ResourceType type) const override;
+    std::string
+    getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid, bool asJson) const override;
+    void upsertResource(const cm::store::NamespaceId& nsId,
+                        cm::store::ResourceType type,
+                        std::string_view document) override;
+    void deleteResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid) override;
 
     // Public validate
     void validateResource(cm::store::ResourceType type, const json::Json& payload) override;
 
 private:
-    std::shared_ptr<cm::store::ICMStore> m_store;
-    std::shared_ptr<builder::IValidator> m_validator;
+    std::weak_ptr<cm::store::ICMStore> m_store;
+    std::weak_ptr<builder::IValidator> m_validator;
+
+    // Helper methods to safely access weak_ptr resources
+    std::shared_ptr<cm::store::ICMStore> getStore() const;
+    std::shared_ptr<builder::IValidator> getValidator() const;
 
     void validatePolicy(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
                         const cm::store::dataType::Policy& policy) const;

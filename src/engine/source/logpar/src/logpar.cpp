@@ -312,6 +312,7 @@ Logpar::Logpar(const json::Json& fieldParserOverrides,
         throw std::runtime_error("Field parser overrides file must have a fields object");
     }
 
+    // Overrdes default parser for a field
     auto asObj = fieldParserOverrides.getObject("/fields").value();
     for (const auto& [key, value] : asObj)
     {
@@ -338,11 +339,11 @@ Logpar::Logpar(const json::Json& fieldParserOverrides,
     // Schema type -> parser table
     m_typeParsers = {{schemf::Type::BOOLEAN, ParserType::P_BOOL},
                      {schemf::Type::BYTE, ParserType::P_BYTE},
-                     {schemf::Type::SHORT, ParserType::P_LONG},
-                     {schemf::Type::INTEGER, ParserType::P_LONG},
+                     {schemf::Type::SHORT, ParserType::P_SHORT},
+                     {schemf::Type::INTEGER, ParserType::P_INTEGER},
                      {schemf::Type::LONG, ParserType::P_LONG},
                      {schemf::Type::FLOAT, ParserType::P_FLOAT},
-                     {schemf::Type::HALF_FLOAT, ParserType::P_FLOAT},
+                     {schemf::Type::HALF_FLOAT, ParserType::P_HALF_FLOAT},
                      {schemf::Type::SCALED_FLOAT, ParserType::P_SCALED_FLOAT},
                      {schemf::Type::DOUBLE, ParserType::P_DOUBLE},
                      {schemf::Type::KEYWORD, ParserType::P_TEXT},
@@ -354,7 +355,29 @@ Logpar::Logpar(const json::Json& fieldParserOverrides,
                      {schemf::Type::BINARY, ParserType::P_BINARY},
                      {schemf::Type::OBJECT, ParserType::ERROR_TYPE},
                      {schemf::Type::NESTED, ParserType::ERROR_TYPE},
-                     {schemf::Type::GEO_POINT, ParserType::ERROR_TYPE}};
+                     {schemf::Type::GEO_POINT, ParserType::ERROR_TYPE},
+                     {schemf::Type::UNSIGNED_LONG, ParserType::P_UNSIGNED_LONG},
+                     {schemf::Type::MATCH_ONLY_TEXT, ParserType::P_TEXT},
+                     {schemf::Type::COMPLETION, ParserType::P_TEXT},
+                     {schemf::Type::SEARCH_AS_YOU_TYPE, ParserType::P_TEXT},
+                     {schemf::Type::CONSTANT_KEYWORD, ParserType::P_TEXT},
+                     {schemf::Type::SEMANTIC, ParserType::P_TEXT},
+                     {schemf::Type::TOKEN_COUNT, ParserType::P_UNSIGNED_LONG},
+                     {schemf::Type::FLAT_OBJECT, ParserType::ERROR_TYPE},
+                     {schemf::Type::JOIN, ParserType::ERROR_TYPE},
+                     {schemf::Type::KNN_VECTOR, ParserType::ERROR_TYPE},
+                     {schemf::Type::SPARSE_VECTOR, ParserType::ERROR_TYPE},
+                     {schemf::Type::RANK_FEATURE, ParserType::ERROR_TYPE},
+                     {schemf::Type::RANK_FEATURES, ParserType::ERROR_TYPE},
+                     {schemf::Type::PERCOLATOR, ParserType::ERROR_TYPE},
+                     {schemf::Type::STAR_TREE, ParserType::ERROR_TYPE},
+                     {schemf::Type::DERIVED, ParserType::ERROR_TYPE},
+                     {schemf::Type::INTEGER_RANGE, ParserType::ERROR_TYPE},
+                     {schemf::Type::LONG_RANGE, ParserType::ERROR_TYPE},
+                     {schemf::Type::FLOAT_RANGE, ParserType::ERROR_TYPE},
+                     {schemf::Type::DOUBLE_RANGE, ParserType::ERROR_TYPE},
+                     {schemf::Type::DATE_RANGE, ParserType::ERROR_TYPE},
+                     {schemf::Type::IP_RANGE, ParserType::ERROR_TYPE}};
 
     m_parserBuilders = {};
 }

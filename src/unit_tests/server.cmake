@@ -11,7 +11,8 @@ add_compile_options(-ggdb -O0 -g -coverage -DTEST_SERVER -DENABLE_AUDIT -DINOTIF
 link_libraries(-fsanitize=address -fsanitize=undefined)
 # Set tests dependencies
 link_directories("${SRC_FOLDER}/syscheckd/build/lib/")
-set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -ldl -lfimebpf -lcmocka -fprofile-arcs -ftest-coverage)
+link_directories("${SRC_FOLDER}/shared_modules/agent_metadata/build/lib/")
+set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lagent_metadata -lpthread -ldl -lfimebpf -lcmocka -fprofile-arcs -ftest-coverage)
 
 add_subdirectory(remoted)
 add_subdirectory(wazuh_db)

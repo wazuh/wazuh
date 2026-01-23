@@ -90,7 +90,26 @@ test_data = InitAgent()
 
 def send_msg_to_wdb(msg, raw=False):
     query = ' '.join(msg.split(' ')[2:])
+    # Normalize column names from API/query layer to test DB schema
+    # (e.g. camelCase -> snake_case, legacy aliases)
+    import re
+    query = re.sub(r"\bids\b", 'id', query)
+    query = re.sub(r"\bregisterIP\b", 'register_ip', query)
+    query = re.sub(r"\blastKeepAlive\b", 'last_keepalive', query)
+
     result = list(map(remove_nones_to_dict, map(dict, test_data.cur.execute(query).fetchall())))
+
+    # Map DB-style snake_case keys back to expected camelCase aliases used by the API
+    key_map = {
+        'register_ip': 'registerIP',
+        'last_keepalive': 'lastKeepAlive',
+        'date_add': 'dateAdd',
+        'manager_host': 'manager',
+    }
+    for row in result:
+        for old, new in list(key_map.items()):
+            if old in row and new not in row:
+                row[new] = row.pop(old)
     return ['ok', dumps(result)] if raw else result
 
 

@@ -76,6 +76,8 @@ function BuildWazuhMsi(){
             "..\data_provider\build\bin\sysinfo.dll",
             "..\shared_modules\dbsync\build\bin\dbsync.dll",
             "..\shared_modules\sync_protocol\build\bin\libagent_sync_protocol.dll",
+            "..\shared_modules\schema_validator\build\bin\schema_validator.dll",
+            "..\shared_modules\agent_metadata\build\bin\libagent_metadata.dll",
             "..\wazuh_modules\syscollector\build\bin\syscollector.dll",
             "..\wazuh_modules\sca\build\bin\sca.dll",
             "..\wazuh_modules\agent_info\build\bin\agent_info.dll",
@@ -104,7 +106,7 @@ function ExtractDebugSymbols(){
 
 	#all executables in current folder
 	$exeFiles = Get-ChildItem -Filter "*.exe"
-	$exeFiles += Get-ChildItem -Filter "*.dll" 
+	$exeFiles += Get-ChildItem -Filter "*.dll"
 
 	#all executables in parent folder
 	cd .. #Get-ChildItem does not take "..\" so we have to do it manually
@@ -114,6 +116,8 @@ function ExtractDebugSymbols(){
 	$exeFiles +=  Get-ChildItem -Filter "data_provider\build\bin\sysinfo.dll"
 	$exeFiles +=  Get-ChildItem -Filter "shared_modules\dbsync\build\bin\dbsync.dll"
     $exeFiles +=  Get-ChildItem -Filter "shared_modules\sync_protocol\build\bin\libagent_sync_protocol.dll"
+    $exeFiles +=  Get-ChildItem -Filter "shared_modules\schema_validator\build\bin\schema_validator.dll"
+    $exeFiles +=  Get-ChildItem -Filter "shared_modules\agent_metadata\build\bin\libagent_metadata.dll"
 	$exeFiles +=  Get-ChildItem -Filter "wazuh_modules\syscollector\build\bin\syscollector.dll"
     $exeFiles +=  Get-ChildItem -Filter "wazuh_modules\sca\build\bin\sca.dll"
     $exeFiles +=  Get-ChildItem -Filter "wazuh_modules\agent_info\build\bin\agent_info.dll"

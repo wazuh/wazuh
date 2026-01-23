@@ -13,8 +13,12 @@ inline void registerParsers(std::shared_ptr<logpar::Logpar> logpar)
     logpar->registerBuilder(ParserType::P_LONG, parsers::getLongParser);
     logpar->registerBuilder(ParserType::P_DOUBLE, parsers::getDoubleParser);
     logpar->registerBuilder(ParserType::P_FLOAT, parsers::getFloatParser);
+    logpar->registerBuilder(ParserType::P_HALF_FLOAT, parsers::getHalfFloatParser);
     logpar->registerBuilder(ParserType::P_SCALED_FLOAT, parsers::getScaledFloatParser);
     logpar->registerBuilder(ParserType::P_BYTE, parsers::getByteParser);
+    logpar->registerBuilder(ParserType::P_UNSIGNED_LONG, parsers::getUnsignedLongParser);
+    logpar->registerBuilder(ParserType::P_INTEGER, parsers::getIntegerParser);
+    logpar->registerBuilder(ParserType::P_SHORT, parsers::getShortParser);
     // String
     logpar->registerBuilder(ParserType::P_TEXT, parsers::getTextParser);
     logpar->registerBuilder(ParserType::P_LITERAL, parsers::getLiteralParser);

@@ -550,8 +550,8 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     agent_meta_t *mocked_meta_ptr = NULL;
     os_calloc(1, sizeof(*mocked_meta_ptr), mocked_meta_ptr);
     mocked_meta_ptr->agent_id = 1;
-    mocked_meta_ptr->agent_ip = strdup("127.0.0.1");
-    mocked_meta_ptr->version  = strdup("5.0.0");
+    mocked_meta_ptr->agent_name = strdup("test-agent");
+    mocked_meta_ptr->agent_version = strdup("5.0.0");
 
     keyentry** keyentries;
     os_calloc(1, sizeof(keyentry*), keyentries);
@@ -612,6 +612,7 @@ void test_HandleSecureMessage_shutdown_message(void** state)
 
     /* __wrap_agent_meta_from_agent_info */
     expect_string(__wrap_agent_meta_from_agent_info, id_str, "009");
+    expect_any(__wrap_agent_meta_from_agent_info, agent_name);
     expect_any(__wrap_agent_meta_from_agent_info, ai);
     will_return(__wrap_agent_meta_from_agent_info, mocked_meta_ptr);
 
@@ -836,8 +837,8 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
     agent_meta_t *mocked_meta_ptr = NULL;
     os_calloc(1, sizeof(*mocked_meta_ptr), mocked_meta_ptr);
     mocked_meta_ptr->agent_id = 1;
-    mocked_meta_ptr->agent_ip = strdup("127.0.0.1");
-    mocked_meta_ptr->version  = strdup("5.0.0");
+    mocked_meta_ptr->agent_name = strdup("test-agent");
+    mocked_meta_ptr->agent_version = strdup("5.0.0");
 
     keyentry** keyentries;
     os_calloc(1, sizeof(keyentry*), keyentries);
@@ -901,6 +902,7 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
 
     /* __wrap_agent_meta_from_agent_info */
     expect_string(__wrap_agent_meta_from_agent_info, id_str, "009");
+    expect_any(__wrap_agent_meta_from_agent_info, agent_name);
     expect_any(__wrap_agent_meta_from_agent_info, ai);
     will_return(__wrap_agent_meta_from_agent_info, mocked_meta_ptr);
 
@@ -1783,8 +1785,8 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
     agent_meta_t *mocked_meta_ptr = NULL;
     os_calloc(1, sizeof(*mocked_meta_ptr), mocked_meta_ptr);
     mocked_meta_ptr->agent_id = 1;
-    mocked_meta_ptr->agent_ip = strdup("127.0.0.1");
-    mocked_meta_ptr->version  = strdup("5.0.0");
+    mocked_meta_ptr->agent_name = strdup("test-agent");
+    mocked_meta_ptr->agent_version = strdup("5.0.0");
 
     keyentry** keyentries;
     os_calloc(2, sizeof(keyentry*), keyentries);
@@ -1876,6 +1878,7 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
 
     /* __wrap_agent_meta_from_agent_info */
     expect_string(__wrap_agent_meta_from_agent_info, id_str, "001");
+    expect_any(__wrap_agent_meta_from_agent_info, agent_name);
     expect_any(__wrap_agent_meta_from_agent_info, ai);
     will_return(__wrap_agent_meta_from_agent_info, mocked_meta_ptr);
 

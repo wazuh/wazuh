@@ -175,11 +175,7 @@ typedef struct {
 } evt_item_t;
 
 typedef struct {
-    const char *agent_key;
-    char *agent_id;
-    char *agent_name;
-    char *agent_ip;
-
+    const char *agent_id;
     int   header_added;
     bulk_t bulk;             // body to send (header + events)
 } dispatch_ctx_t;
@@ -293,8 +289,11 @@ void HandleSecure()
     // Create upsert control message thread
     w_create_thread(save_control_thread, (void *) control_msg_queue);
 
-    // Create upsert control message thread
+    // Create dispatch events thread
     w_create_thread(dispach_events_thread, (void *) events_queue);
+
+    /* Create agent metadata cache cleanup thread (after events_queue is initialized) */
+    w_create_thread(agent_meta_cleanup_thread, events_queue);
 
     rem_handler_args_t *worker_args;
     os_malloc(sizeof(*worker_args), worker_args);
@@ -885,17 +884,52 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 {
                     agent_info_data *agent_data;
                     os_calloc(1, sizeof(agent_info_data), agent_data);
-                    int result = parse_agent_update_msg(tmp_msg, agent_data);
+
+                    // Detect JSON format (5.0+ agent) vs text format (4.x agent)
+                    int result;
+                    char **groups = NULL;
+                    size_t groups_count = 0;
+
+                    if (tmp_msg[0] == '{') {
+                        // JSON keepalive from 5.0+ agent - extract groups during parsing
+                        result = parse_json_keepalive(tmp_msg, agent_data, &groups, &groups_count);
+                        if (result == OS_SUCCESS) {
+                            mdebug2("Parsed JSON keepalive from agent %s", key->id);
+                        } else {
+                            mwarn("Failed to parse JSON keepalive from agent %s", key->id);
+                        }
+                    } else {
+                        // Text keepalive from 4.x agent
+                        result = parse_agent_update_msg(tmp_msg, agent_data);
+                    }
 
                     if (OS_SUCCESS == result) {
                         // Build metadata from parsed agent_info_data and upsert in the global map
-                        agent_meta_t *fresh = agent_meta_from_agent_info(key->id, agent_data);
+                        agent_meta_t *fresh = agent_meta_from_agent_info(key->id, key->name, agent_data);
                         if (fresh) {
+                            // Add groups if available (5.0+ agents only)
+                            if (groups) {
+                                fresh->groups = groups;
+                                fresh->groups_count = groups_count;
+                                groups = NULL;  // Transfer ownership to fresh
+                            }
                             if (agent_meta_upsert_locked(key->id, fresh) != 0) {
-                                mwarn("Error upsert metadata from agent ID '%s'.", key->id);
+                                mwarn("Failed to update metadata cache for agent ID '%s'", key->id);
                                 agent_meta_free(fresh);
                             }
+                        } else if (groups) {
+                            // Free groups if agent_meta creation failed
+                            for (size_t i = 0; i < groups_count; i++) {
+                                os_free(groups[i]);
+                            }
+                            os_free(groups);
                         }
+                    } else if (groups) {
+                        // Free groups if parsing failed
+                        for (size_t i = 0; i < groups_count; i++) {
+                            os_free(groups[i]);
+                        }
+                        os_free(groups);
                     }
 
                     wdb_free_agent_info_data(agent_data);
@@ -911,6 +945,11 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 ctrl_msg_data->is_startup = is_startup;
                 ctrl_msg_data->is_shutdown = is_shutdown;
                 ctrl_msg_data->post_startup = post_startup;
+
+                // Mark metadata for cleanup on shutdown (will be deleted when queue drains)
+                if (is_shutdown) {
+                    agent_meta_mark_shutdown(key->id);
+                }
 
                 // Use upsert to allow updating existing control messages for the same agent
                 int res = indexed_queue_upsert_ex(control_msg_queue, key->id, ctrl_msg_data);
@@ -1250,46 +1289,30 @@ void * save_control_thread(void * control_msg_queue)
     return NULL;
 }
 
+static const char* infer_os_type(const char *os_platform) {
+    if (!os_platform) return NULL;
+
+    if (strcmp(os_platform, "windows") == 0) {
+        return "windows";
+    } else if (strcmp(os_platform, "darwin") == 0) {
+        return "macos";
+    } else if (strcmp(os_platform, "bsd") == 0) {
+        return "unix";
+    }
+
+    return "linux";
+}
+
 // Encode the header ONLY once above the body
 static int append_header(dispatch_ctx_t *ctx) {
+    if (!ctx || !ctx->agent_id) return -1;
     if (ctx->header_added) return 0;
-    if (!ctx || !ctx->agent_key) return -1;
 
     // Snapshot metadata for this agent (copies strings into 'snap')
     agent_meta_t snap = {0};
-    int have_meta = (agent_meta_snapshot_str(ctx->agent_key, &snap) == 0);
+    int have_meta = (agent_meta_snapshot_str(ctx->agent_id, &snap) == 0);
 
-    // Fallbacks
-    char *agent_name = NULL;
-    char *agent_ip   = NULL;
-
-    // Prefer metadata snapshot
-    if (have_meta) {
-        if (snap.agent_ip) os_strdup(snap.agent_ip, agent_ip);
-    }
-
-    // Fallback name from keystore (never deref without lock)
-    key_lock_read();
-    int idx = OS_IsAllowedID(&keys, ctx->agent_key);
-    if (idx >= 0 && idx < (int)keys.keysize) {
-        if (!agent_name && keys.keyentries[idx]->name) {
-            os_strdup(keys.keyentries[idx]->name, agent_name);
-        }
-    }
-    key_unlock();
-
-    if (!agent_name) os_strdup("-", agent_name);
-    if (!agent_ip)   os_strdup("-", agent_ip);
-
-    // Also keep these in ctx for router / metrics
-    if (!ctx->agent_id) {
-        // agent_id is the string key (e.g. "002"); keep a borrowed pointer or duplicate:
-        os_strdup(ctx->agent_key, ctx->agent_id);
-    }
-    if (!ctx->agent_name) os_strdup(agent_name, ctx->agent_name);
-    if (!ctx->agent_ip)   os_strdup(agent_ip,   ctx->agent_ip);
-
-    // --- Build nested JSON: { "agent": {...}, "host": { "ip":[...], "os": {...}, "architecture": ... } } ---
+    // --- Build nested JSON: { "agent": { "id", "name", "version", "host": { "architecture", "os": {...} } } } ---
     cJSON *root = cJSON_CreateObject();
     if (!root) goto fail;
 
@@ -1299,39 +1322,72 @@ static int append_header(dispatch_ctx_t *ctx) {
     if (!agent || !host || !os) { cJSON_Delete(root); goto fail; }
 
     cJSON_AddItemToObject(root, "agent", agent);
-    cJSON_AddItemToObject(root, "host",  host);
+    cJSON_AddItemToObject(agent, "host", host);
     cJSON_AddItemToObject(host, "os",    os);
 
     // agent.*
-    cJSON_AddStringToObject(agent, "name", agent_name ? agent_name : "-");
-    if (have_meta && snap.version) {
-        cJSON_AddStringToObject(agent, "version", snap.version);
+    cJSON_AddStringToObject(agent, "id", ctx->agent_id);
+    if (have_meta && snap.agent_name) {
+        cJSON_AddStringToObject(agent, "name", snap.agent_name);
     }
-    cJSON_AddStringToObject(agent, "id", ctx->agent_key);
+    if (have_meta && snap.agent_version) {
+        cJSON_AddStringToObject(agent, "version", snap.agent_version);
+    }
 
-    // host.ip (array)
-    cJSON *ips = cJSON_CreateArray();
-    if (!ips) { cJSON_Delete(root); goto fail; }
-    if (agent_ip && *agent_ip) cJSON_AddItemToArray(ips, cJSON_CreateString(agent_ip));
-    cJSON_AddItemToObject(host, "ip", ips);
+    // agent.groups (array)
+    if (have_meta && snap.groups && snap.groups_count > 0) {
+        cJSON *groups_array = cJSON_CreateArray();
+        if (groups_array) {
+            for (size_t i = 0; i < snap.groups_count; i++) {
+                if (snap.groups[i]) {
+                    cJSON_AddItemToArray(groups_array, cJSON_CreateString(snap.groups[i]));
+                }
+            }
+            cJSON_AddItemToObject(agent, "groups", groups_array);
+        }
+    }
 
-    // host.os.*
+    // agent.host.os.*
     if (have_meta && snap.os_name)     cJSON_AddStringToObject(os, "name",     snap.os_name);
     if (have_meta && snap.os_version)  cJSON_AddStringToObject(os, "version",  snap.os_version);
-    if (have_meta && snap.os_codename) cJSON_AddStringToObject(os, "full",     snap.os_codename);
     if (have_meta && snap.os_platform) cJSON_AddStringToObject(os, "platform", snap.os_platform);
-    if (have_meta && snap.os_build)    cJSON_AddStringToObject(os, "build",    snap.os_build);
-    if (have_meta && snap.os_kernel)   cJSON_AddStringToObject(os, "kernel",   snap.os_kernel);
 
-    // host.architecture
+    // agent.host.os.type (ECS-compliant)
+    if (have_meta && snap.os_type) {
+        cJSON_AddStringToObject(os, "type", snap.os_type);
+    } else if (have_meta && snap.os_platform) {
+        const char *os_type = infer_os_type(snap.os_platform);
+        if (os_type) cJSON_AddStringToObject(os, "type", os_type);
+    }
+
+    // agent.host.architecture
     if (have_meta && snap.arch) cJSON_AddStringToObject(host, "architecture", snap.arch);
+
+    // agent.host.hostname (only for Linux/macOS, empty for Windows)
+    if (have_meta && snap.hostname) cJSON_AddStringToObject(host, "hostname", snap.hostname);
+
+    // Add wazuh.cluster.name and wazuh.cluster.node from manager
+    if (cluster_name || node_name) {
+        cJSON *wazuh = cJSON_CreateObject();
+        cJSON *cluster = cJSON_CreateObject();
+        if (wazuh && cluster) {
+            if (cluster_name && strcmp(cluster_name, "undefined") != 0) {
+                cJSON_AddStringToObject(cluster, "name", cluster_name);
+            }
+            if (node_name && strcmp(node_name, "undefined") != 0) {
+                cJSON_AddStringToObject(cluster, "node", node_name);
+            }
+            cJSON_AddItemToObject(wazuh, "cluster", cluster);
+            cJSON_AddItemToObject(root, "wazuh", wazuh);
+        }
+    }
 
     // Emit header line
     char *json = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     if (!json) goto fail;
 
-    if (bulk_append_fmt(&ctx->bulk, "H\t%s\n", json) < 0) {
+    if (bulk_append_fmt(&ctx->bulk, "H %s\n", json) < 0) {
         free(json);
         goto fail;
     }
@@ -1339,17 +1395,11 @@ static int append_header(dispatch_ctx_t *ctx) {
 
     ctx->header_added = 1;
 
-    os_free(agent_name);
-    os_free(agent_ip);
     agent_meta_clear(&snap);
     return 0;
 
 fail:
-    // Free local fallbacks
-    os_free(agent_name);
-    os_free(agent_ip);
     agent_meta_clear(&snap);
-    // If you duplicated strings inside 'snap' with snapshot API, free them (see below).
     return -1;
 }
 
@@ -1374,15 +1424,15 @@ static void rr_collect_one(void *data, void *user) {
     // Ensure header at the top of the body
     if (!ctx->header_added) {
         if (append_header(ctx) < 0) {
-            mwarn("Unable to append header for agent '%s'", ctx->agent_key ?: "?");
+            mwarn("Unable to append header for agent '%s'", ctx->agent_id ?: "?");
         }
     }
 
-    // Event Framing: "E\t<payload>\n"
-    if (bulk_append_fmt(&ctx->bulk, "E\t") < 0 ||
+    // Event Framing: "E <payload>\n"
+    if (bulk_append_fmt(&ctx->bulk, "E ") < 0 ||
         bulk_append(&ctx->bulk, e->raw, e->len) < 0 ||
         bulk_append(&ctx->bulk, "\n", 1) < 0) {
-        mwarn("Unable to append event for agent '%s'", ctx->agent_key ?: "?");
+        mwarn("Unable to append event for agent '%s'", ctx->agent_id ?: "?");
     }
 
     dispose_evt_item(e);
@@ -1446,14 +1496,13 @@ void *dispach_events_thread(void *arg) {
 
         // Online path: build one agent batch and POST it
         dispatch_ctx_t ctx = {
-            .agent_key    = NULL,
-            .agent_id     = NULL, .agent_name = NULL, .agent_ip = NULL,
+            .agent_id     = NULL,
             .header_added = 0
         };
         bulk_init(&ctx.bulk, 8192);
 
         size_t drained = batch_queue_drain_next_ex(q, /*abstime=*/NULL,
-                                                   rr_collect_one, &ctx, &ctx.agent_key);
+                                                   rr_collect_one, &ctx, &ctx.agent_id);
 
         if (drained > 0 && ctx.bulk.len > 0) {
             uhttp_result_t res = {0};
@@ -1477,7 +1526,6 @@ void *dispach_events_thread(void *arg) {
         }
 
         bulk_free(&ctx.bulk);
-        os_free(ctx.agent_id); os_free(ctx.agent_name); os_free(ctx.agent_ip);
     }
 
     if (cli) uhttp_client_free(cli);

@@ -36,19 +36,12 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // Store module
     addUnit<std::string>(key::STORE_PATH, "WAZUH_STORE_PATH", (wazuhRoot / "engine/store").c_str());
 
-    // KVDB module
-    addUnit<std::string>(key::KVDB_PATH, "WAZUH_KVDB_PATH", (wazuhRoot / "engine/kvdb/").c_str());
-
     // Default outputs
     addUnit<std::string>(key::OUTPUTS_PATH, "WAZUH_OUTPUTS_PATH", (wazuhRoot / "engine/outputs/").c_str());
 
     // Content Manager
     addUnit<std::string>(key::CM_RULESET_PATH, "WAZUH_CM_RULESET_PATH", (wazuhRoot / "etc/ruleset").c_str());
-
-    // CTI Store module
-    addUnit<std::string>(key::CTI_PATH, "WAZUH_CTI_PATH", (wazuhRoot / "engine/cti/").c_str());
-    addUnit<bool>(key::CTI_FORCE_IF_EMPTY, "WAZUH_CTI_FORCE_IF_EMPTY", true);
-    addUnit<bool>(key::CTI_ENABLED, "WAZUH_CTI_ENABLED", true);
+    addUnit<size_t>(key::CM_SYNC_INTERVAL, "WAZUH_CM_SYNC_INTERVAL", 360);
 
     // Indexer connector
     addUnit<std::vector<std::string>>(key::INDEXER_HOST, "WAZUH_INDEXER_HOSTS", {"http://localhost:9200"});
@@ -76,6 +69,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<std::string>(
         key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", (wazuhRoot / "queue/sockets/analysis").c_str());
     addUnit<int>(key::SERVER_API_TIMEOUT, "WAZUH_SERVER_API_TIMEOUT", 5000);
+    addUnit<int64_t>(key::SERVER_API_PAYLOAD_MAX_BYTES, "WAZUH_SERVER_API_PAYLOAD_MAX_BYTES", 0);
 
     // Event server (dgram)
     addUnit<std::string>(
@@ -87,15 +81,13 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
                          "WAZUH_SERVER_ENRICHED_EVENTS_SOCKET",
                          (wazuhRoot / "queue/sockets/queue-http.sock").c_str());
 
+    // Enable or disable server event processing
+    addUnit<bool>(key::SERVER_ENABLE_EVENT_PROCESSING, "WAZUH_SERVER_ENABLE_EVENT_PROCESSING", true);
+
     // TZDB module
     addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", (wazuhRoot / "queue/tzdb").c_str());
     addUnit<bool>(key::TZDB_AUTO_UPDATE, "WAZUH_TZDB_AUTO_UPDATE", false);
     addUnit<std::string>(key::TZDB_FORCE_VERSION_UPDATE, "WAZUH_TZDB_FORCE_VERSION_UPDATE", "");
-
-    // Metrics module
-    addUnit<bool>(key::METRICS_ENABLED, "WAZUH_METRICS_ENABLED", false);
-    addUnit<int64_t>(key::METRICS_EXPORT_INTERVAL, "WAZUH_METRICS_EXPORT_INTERVAL", 10000);
-    addUnit<int64_t>(key::METRICS_EXPORT_TIMEOUT, "WAZUH_METRICS_EXPORT_TIMEOUT", 1000);
 
     // Streamlog module
     addUnit<std::string>(key::STREAMLOG_BASE_PATH, "WAZUH_STREAMLOG_BASE_PATH", (wazuhRoot / "logs/").c_str());
@@ -135,12 +127,6 @@ void Conf::validate(const OptionMap& config) const
         {
             case UnitConfType::INTEGER:
             {
-                if (!base::utils::string::isNumber(valueStr))
-                {
-                    throw std::runtime_error(fmt::format(
-                        "Invalid configuration type for key '{}'. Expected integer, got '{}'.", key, valueStr));
-                }
-
                 std::size_t pos = 0;
                 try
                 {

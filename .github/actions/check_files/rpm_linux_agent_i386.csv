@@ -61,6 +61,8 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/tmp/sca-5.*-*-tmp/sles/12/cis_sles12_linux.yml,root,wazuh,640,file,-rw-r-----,62673,0.1
 /var/ossec/tmp/sca-5.*-*-tmp/sles/15/sca.files,root,wazuh,640,file,-rw-r-----,29,0.1
 /var/ossec/tmp/sca-5.*-*-tmp/sles/15/cis_sles15_linux.yml,root,wazuh,640,file,-rw-r-----,290194,0.1
+/var/ossec/tmp/sca-5.*-*-tmp/sles/16/sca.files,root,wazuh,640,file,-rw-r-----,29,0.1
+/var/ossec/tmp/sca-5.*-*-tmp/sles/16/cis_sles16_linux.yml,root,wazuh,640,file,-rw-r-----,290281,0.1
 /var/ossec/var/selinux/wazuh.pp,root,wazuh,640,file,-rw-r-----,3199,0.1
 /var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,947696,0.1
 /var/ossec/bin/wazuh-execd,root,root,750,file,-rwxr-x---,745284,0.1
@@ -73,6 +75,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,12362096,0.1
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,492352,0.1
 /var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,1267268,0.1
+/var/ossec/lib/libschema_validator.so,root,wazuh,750,file,-rwxr-x---,398136,0.1
 /var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2717844,0.1
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,259032,0.1
 /var/ossec/lib/libbpf.so,root,wazuh,750,file,-rwxr-x---,470152,0.1
@@ -82,6 +85,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,751124,0.1
 /var/ossec/lib/libsca.so,root,wazuh,750,file,-rwxr-x---,701200,0.1
 /var/ossec/lib/libagent_info.so,root,wazuh,750,file,-rwxr-x---,416056,0.1
+/var/ossec/lib/libagent_metadata.so,root,wazuh,750,file,-rwxr-x---,8768,0.1
 /var/ossec/lib/libgcc_s.so.1,root,wazuh,750,file,-rwxr-x---,111408,0.1
 /var/ossec/etc/internal_options.conf,root,wazuh,640,file,-rw-r-----,13249,0.1
 /var/ossec/etc/wpk_root.pem,root,wazuh,640,file,-rw-r-----,1367,0.1

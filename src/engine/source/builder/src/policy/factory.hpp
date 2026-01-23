@@ -36,6 +36,7 @@ using BuiltAssets = std::map<cm::store::ResourceType, SubgraphData>;
  * @param data Policy data.
  * @param store The store interface to query assets and namespaces.
  * @param assetBuilder The asset builder instance to build each asset.
+ * @param sandbox Flag indicating sandbox mode.
  *
  * @return BuiltAssets
  *
@@ -69,18 +70,13 @@ struct PolicyGraph
  * @brief Build a subgraph of the policy.
  *
  * @param subgraphName Name of the subgraph.
- * @param subgraphData Asset names of the subgraph.
- * @param filtersData Filter names of the policy.
- * @param assets Assets of the subgraph.
- * @param filters Filters of the policy.
+ * @param assetsData Assets of the subgraph (ordered and indexed).
  *
  * @return Graph<base::Name, Asset>
  *
  * @throw std::runtime_error If any error occurs.
  */
-Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName,
-                                       const SubgraphData& assetsData,
-                                       const std::unordered_map<base::Name, Asset>& filters);
+Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName, const SubgraphData& assetsData);
 
 /**
  * @brief Build the policy graph from the built assets and the relations defined in the policy data.
@@ -96,6 +92,10 @@ PolicyGraph buildGraph(const BuiltAssets& assets);
 
 /**
  * @brief Generates the expression of a subgraph.
+ *
+ * @note Child evaluation order follows the insertion order of edges in the graph.
+ * For decoders this means siblings are evaluated in the same order they were declared
+ * across integrations (see buildAssets/buildSubgraph).
  *
  * @tparam ChildOperator Expression type of the children nodes and the root node.
  * @param subgraph Subgraph to generate the expression from.
@@ -134,27 +134,15 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
 
             if (subgraph.hasChildren(current))
             {
-                auto assetChildren = ChildOperator::create(asset.name() + "Children", {});
+                auto assetChildren = ChildOperator::create(asset.name() + "/Children", {});
 
-                assetNode = base::Implication::create(asset.name() + "Node", asset.expression(), assetChildren);
+                assetNode = base::Implication::create(asset.name() + "/Node", asset.expression(), assetChildren);
 
                 // Visit children and add them to the children node
                 for (auto& child : subgraph.children(current))
                 {
                     assetChildren->getOperands().push_back(visitRef(child, current, visitRef));
                 }
-
-#ifdef ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE
-                if constexpr (std::is_same_v<ChildOperator, base::Or>)
-                {
-                    if (const auto env = std::getenv("WAZUH_REVERSE_ORDER_DECODERS");
-                        env != nullptr && std::string(env) == "true")
-                    {
-                        auto& ops = assetChildren->getOperands();
-                        std::reverse(ops.begin(), ops.end());
-                    }
-                }
-#endif // !ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE
             }
             else
             {
@@ -172,7 +160,7 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
         }
     };
 
-    // Visit root childs and add them to the root expression
+    // Visit root children and add them to the root expression in graph insertion order.
     for (auto& child : subgraph.children(subgraph.rootId()))
     {
         root->getOperands().push_back(visit(child, subgraph.rootId(), visit));

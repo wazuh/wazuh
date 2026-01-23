@@ -18,6 +18,12 @@ constexpr auto KS_NAME {"keystore"};
 constexpr auto KS_VERSION {"2"};
 constexpr auto KS_VERSION_FIELD {"version"};
 
+namespace Log
+{
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
+        GLOBAL_LOG_FUNCTION;
+};
+
 static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& columnFamily)
 {
     std::string versionValue;

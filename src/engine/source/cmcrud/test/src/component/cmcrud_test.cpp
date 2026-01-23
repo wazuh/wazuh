@@ -112,20 +112,19 @@ TEST(CrudService_Component, UpsertPolicy_Success_EndToEnd)
 {
     CmCrudStack stack;
 
-    const std::string nsName {"dev"};
-    NamespaceId nsId {nsName};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
     ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
 
-    EXPECT_CALL(*stack.store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*stack.store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
     EXPECT_CALL(*stack.validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
 
-    EXPECT_NO_THROW(stack.service.upsertPolicy(nsName, kPolicyYAML));
+    EXPECT_NO_THROW(stack.service.upsertPolicy(nsId, kPolicyYAML));
 }
 
 // ---------------------------------------------------------------------
@@ -136,13 +135,12 @@ TEST(CrudService_Component, UpsertPolicy_BuilderErrorIsPropagated)
 {
     CmCrudStack stack;
 
-    const std::string nsName {"dev"};
-    NamespaceId nsId {nsName};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
     ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
 
-    EXPECT_CALL(*stack.store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*stack.store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
@@ -154,7 +152,7 @@ TEST(CrudService_Component, UpsertPolicy_BuilderErrorIsPropagated)
 
     try
     {
-        stack.service.upsertPolicy(nsName, kPolicyYAML);
+        stack.service.upsertPolicy(nsId, kPolicyYAML);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -173,13 +171,12 @@ TEST(CrudService_Component, UpsertIntegration_Success_EndToEnd)
 {
     CmCrudStack stack;
 
-    const std::string nsName {"dev"};
-    NamespaceId nsId {nsName};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
     ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
 
-    EXPECT_CALL(*stack.store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*stack.store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
@@ -190,7 +187,7 @@ TEST(CrudService_Component, UpsertIntegration_Success_EndToEnd)
     EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(stack.service.upsertResource(nsName, ResourceType::INTEGRATION, kIntegrationYAML));
+    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::INTEGRATION, kIntegrationYAML));
 }
 
 // ---------------------------------------------------------------------
@@ -201,13 +198,12 @@ TEST(CrudService_Component, UpsertIntegration_BuilderErrorIsPropagated)
 {
     CmCrudStack stack;
 
-    const std::string nsName {"dev"};
-    NamespaceId nsId {nsName};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
     ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
 
-    EXPECT_CALL(*stack.store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*stack.store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
@@ -221,7 +217,7 @@ TEST(CrudService_Component, UpsertIntegration_BuilderErrorIsPropagated)
 
     try
     {
-        stack.service.upsertResource(nsName, ResourceType::INTEGRATION, kIntegrationYAML);
+        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, kIntegrationYAML);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -241,10 +237,10 @@ TEST(CrudService_Component, UpsertKVDB_Success_EndToEnd)
 {
     CmCrudStack stack;
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
-    EXPECT_CALL(*stack.store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*stack.store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
@@ -253,7 +249,7 @@ TEST(CrudService_Component, UpsertKVDB_Success_EndToEnd)
     EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(stack.service.upsertResource(nsName, ResourceType::KVDB, kKVDBYAML));
+    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::KVDB, kKVDBYAML));
 }
 
 // ---------------------------------------------------------------------
@@ -264,13 +260,12 @@ TEST(CrudService_Component, UpsertDecoder_BuilderAssetErrorIsPropagated)
 {
     CmCrudStack stack;
 
-    const std::string nsName {"dev"};
-    NamespaceId nsId {nsName};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
     ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
 
-    EXPECT_CALL(*stack.store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*stack.store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
@@ -284,7 +279,7 @@ TEST(CrudService_Component, UpsertDecoder_BuilderAssetErrorIsPropagated)
 
     try
     {
-        stack.service.upsertResource(nsName, ResourceType::DECODER, kDecoderYAML);
+        stack.service.upsertResource(nsId, ResourceType::DECODER, kDecoderYAML);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -303,13 +298,12 @@ TEST(CrudService_Component, UpsertDecoder_Success_CreateByName)
 {
     CmCrudStack stack;
 
-    const std::string nsName {"dev"};
-    NamespaceId nsId {nsName};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
     ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
 
-    EXPECT_CALL(*stack.store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*stack.store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
@@ -320,20 +314,19 @@ TEST(CrudService_Component, UpsertDecoder_Success_CreateByName)
     EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByName(_, _, _)).Times(0);
 
-    EXPECT_NO_THROW(stack.service.upsertResource(nsName, ResourceType::DECODER, kDecoderYAML));
+    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::DECODER, kDecoderYAML));
 }
 
 TEST(CrudService_Component, UpsertDecoder_Success_UpdateByName)
 {
     CmCrudStack stack;
 
-    const std::string nsName {"dev"};
-    NamespaceId nsId {nsName};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
     ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(ReturnRef(nsId));
 
-    EXPECT_CALL(*stack.store, getNS(Truly([&nsName](const NamespaceId& id) { return id.toStr() == nsName; })))
+    EXPECT_CALL(*stack.store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(nsPtr));
 
@@ -344,7 +337,7 @@ TEST(CrudService_Component, UpsertDecoder_Success_UpdateByName)
     EXPECT_CALL(*nsPtr, updateResourceByName("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
 
-    EXPECT_NO_THROW(stack.service.upsertResource(nsName, ResourceType::DECODER, kDecoderYAML));
+    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::DECODER, kDecoderYAML));
 }
 
 // ---------------------------------------------------------------------
@@ -355,7 +348,7 @@ TEST(CrudService_Component, UpsertKVDB_ContentNotObject_Throws_NoMutation)
 {
     CmCrudStack stack;
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
     // In case the service resolves NS before parsing/validating
@@ -381,7 +374,7 @@ TEST(CrudService_Component, UpsertKVDB_ContentNotObject_Throws_NoMutation)
 
     try
     {
-        stack.service.upsertResource(nsName, ResourceType::KVDB, kBadKvdbYaml);
+        stack.service.upsertResource(nsId, ResourceType::KVDB, kBadKvdbYaml);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -394,7 +387,7 @@ TEST(CrudService_Component, UpsertKVDB_InvalidUUID_Throws_NoMutation)
 {
     CmCrudStack stack;
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
     ON_CALL(*stack.store, getNS(_)).WillByDefault(Return(nsPtr));
@@ -418,7 +411,7 @@ TEST(CrudService_Component, UpsertKVDB_InvalidUUID_Throws_NoMutation)
 
     try
     {
-        stack.service.upsertResource(nsName, ResourceType::KVDB, kBadKvdbUuidYaml);
+        stack.service.upsertResource(nsId, ResourceType::KVDB, kBadKvdbUuidYaml);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -435,7 +428,7 @@ TEST(CrudService_Component, UpsertIntegration_InvalidCategory_Throws_NoValidator
 {
     CmCrudStack stack;
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
     ON_CALL(*stack.store, getNS(_)).WillByDefault(Return(nsPtr));
@@ -457,7 +450,7 @@ TEST(CrudService_Component, UpsertIntegration_InvalidCategory_Throws_NoValidator
 
     try
     {
-        stack.service.upsertResource(nsName, ResourceType::INTEGRATION, kBadCategoryIntegrationYaml);
+        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, kBadCategoryIntegrationYaml);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -471,7 +464,7 @@ TEST(CrudService_Component, UpsertIntegration_InvalidDecoderUUID_Throws_NoValida
 {
     CmCrudStack stack;
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
     ON_CALL(*stack.store, getNS(_)).WillByDefault(Return(nsPtr));
@@ -494,7 +487,7 @@ TEST(CrudService_Component, UpsertIntegration_InvalidDecoderUUID_Throws_NoValida
 
     try
     {
-        stack.service.upsertResource(nsName, ResourceType::INTEGRATION, kBadDecoderUuidIntegrationYaml);
+        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, kBadDecoderUuidIntegrationYaml);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -507,7 +500,7 @@ TEST(CrudService_Component, UpsertIntegration_InvalidKVDBUUID_Throws_NoValidator
 {
     CmCrudStack stack;
 
-    const std::string nsName {"dev"};
+    const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
     ON_CALL(*stack.store, getNS(_)).WillByDefault(Return(nsPtr));
@@ -530,7 +523,7 @@ TEST(CrudService_Component, UpsertIntegration_InvalidKVDBUUID_Throws_NoValidator
 
     try
     {
-        stack.service.upsertResource(nsName, ResourceType::INTEGRATION, kBadKvdbUuidIntegrationYaml);
+        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, kBadKvdbUuidIntegrationYaml);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)

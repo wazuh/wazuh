@@ -13,18 +13,18 @@ def run(args, resource_handler: rs.ResourceHandler):
 
     wcs_path = args['wcs_path']
     output_dir = args['output_dir']
-    allowed_fields_path = args['allowed_fields_path']
     types_output = args['types_output']
+    decoder_template = args['decoder_template']
 
-    decoder_fields_schema, rule_fields_schema, jmappings, jlogpar, jengine = generate(
-        wcs_path, resource_handler, allowed_fields_path)
+    decoder_fields_schema, jmappings, jlogpar, jengine = generate(
+        wcs_path, resource_handler)
 
     # Save generated files
     print(f'Saving files to "{output_dir}"...')
-    resource_handler.save_file(
-        output_dir, 'fields_decoder', decoder_fields_schema, rs.Format.JSON)
-    resource_handler.save_file(
-        output_dir, 'fields_rule', rule_fields_schema, rs.Format.JSON)
+
+    _inline_decoder_template(
+        decoder_template, decoder_fields_schema, output_dir, resource_handler)
+
     resource_handler.save_file(
         output_dir, 'wazuh-logpar-overrides', jlogpar, rs.Format.JSON)
     resource_handler.save_file(
@@ -47,10 +47,23 @@ def configure(subparsers):
     parser_generate.add_argument('--output-dir', type=str, default=DEFAULT_OUTPUT_DIR,
                                  help=f'[default="{DEFAULT_OUTPUT_DIR}"] Root directory to store generated files')
 
-    parser_generate.add_argument('--allowed-fields-path', type=str, required=True,
-                                 help='Path to the allowed fields JSON file used to filter the generated schema.')
+    parser_generate.add_argument('--decoder-template', type=str, required=True,
+                                 help='Path to wazuh-decoders.json template file for fields injection.')
 
     parser_generate.add_argument('--types-output', type=Path, default=DEFAULT_TYPES_PATH,
                                  help='Path to write the list of ECS field types. Provide a destination file when using this option. If omitted, the list is not generated.')
 
     parser_generate.set_defaults(func=run)
+
+
+def _inline_decoder_template(template_path: str, fields_decoder: dict, output_dir: str,
+                              resource_handler: rs.ResourceHandler) -> None:
+    template = resource_handler.load_file(template_path, rs.Format.JSON)
+    definitions = template.get('definitions')
+    if not isinstance(definitions, dict):
+        raise ValueError('Template has no definitions block')
+    if definitions.get('_fieldsDecoder') != "__FIELDS_DECODER_PLACEHOLDER__":
+        raise ValueError('Template placeholder not found in definitions')
+    definitions['_fieldsDecoder'] = fields_decoder
+    resource_handler.save_file(output_dir, 'wazuh-decoders', template, rs.Format.JSON)
+    print('Generated wazuh-decoders.json')

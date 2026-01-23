@@ -19,6 +19,8 @@ services:
   wazuh-worker1:
     image: integration_test_wazuh-manager
     hostname: wazuh-worker1
+    ports:
+      - "55001:55000"
     volumes:
       - ./configurations/tmp/manager:/tmp_volume
       - ./tools/:/tools
@@ -33,6 +35,8 @@ services:
   wazuh-worker2:
     image: integration_test_wazuh-manager
     hostname: wazuh-worker2
+    ports:
+      - "55002:55000"
     volumes:
       - ./configurations/tmp/manager:/tmp_volume
       - ./tools/:/tools

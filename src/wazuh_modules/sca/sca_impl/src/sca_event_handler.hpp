@@ -141,6 +141,30 @@ class SCAEventHandler
         /// @brief Callback function used to push stateful messages to the message queue.
         std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> m_pushStatefulMessage;
 
+        /// @brief Validates a stateful message against the schema and handles validation failures.
+        ///
+        /// If validation fails, logs errors and attempts to delete the entry from DBSync to prevent
+        /// integrity sync loops.
+        ///
+        /// @param statefulEvent The JSON event to validate.
+        /// @param context Context string for logging (e.g., check ID or description).
+        /// @param checkData Optional JSON data to identify the row for deletion if validation fails.
+        /// @param failedChecks Optional vector to accumulate failed checks for deferred deletion (nullptr to delete immediately).
+        /// @return true if validation passed or schema validator is not initialized, false if validation failed.
+        bool ValidateAndHandleStatefulMessage(const nlohmann::json& statefulEvent,
+                                              const std::string& context,
+                                              const nlohmann::json& checkData = nlohmann::json(),
+                                              std::vector<nlohmann::json>* failedChecks = nullptr) const;
+
+        /// @brief Deletes failed checks from DBSync in a batch transaction.
+        ///
+        /// This function encapsulates the common pattern of deleting checks that failed
+        /// schema validation using a DBSync transaction. It logs the number of deleted
+        /// checks on success or errors on failure.
+        ///
+        /// @param failedChecks Vector of check JSON objects to delete (must contain id, policy_id fields)
+        void DeleteFailedChecksFromDB(const std::vector<nlohmann::json>& failedChecks) const;
+
     private:
         /// @brief Pointer to the IDBSync object for database synchronization.
         std::shared_ptr<IDBSync> m_dBSync;

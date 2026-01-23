@@ -151,7 +151,7 @@ base::OptError Builder::softIntegrationValidate(const std::shared_ptr<cm::store:
         const auto& parentName = *opt;
         if (!nsReader->assetExistsByUUID(parentName))
         {
-            return base::Error {fmt::format("Default parent '{}' does not exist as asset for integration '{}'.",
+            return base::Error {fmt::format("Root decoder '{}' does not exist as asset for integration '{}.'.",
                                             std::get<0>(nsReader->resolveNameFromUUID(parentName)),
                                             integrationName)};
         }
@@ -221,11 +221,11 @@ base::OptError Builder::softPolicyValidate(const std::shared_ptr<cm::store::ICMS
 {
     const auto policyName = nsReader->getNamespaceId().toStr();
 
-    // Default parent
-    const auto& defaultParent = policy.getDefaultParent();
+    // Root decoder
+    const auto& defaultParent = policy.getRootDecoder();
     if (!nsReader->assetExistsByUUID(defaultParent))
     {
-        return base::Error {fmt::format("Default parent '{}' does not exist as asset in policy '{}'.",
+        return base::Error {fmt::format("Root decoder '{}' does not exist as asset in policy '{}.'.",
                                         std::get<0>(nsReader->resolveNameFromUUID(defaultParent)),
                                         policyName)};
     }

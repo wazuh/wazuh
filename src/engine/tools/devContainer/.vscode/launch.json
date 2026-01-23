@@ -95,28 +95,15 @@
                     "name": "WAZUH_INDEXER_SSL_CA_BUNDLE",
                     "value": "/etc/wazuh-indexer/certs/root-ca.pem"
                 },
-                // CMSync
-                {
-                    "name": "WAZUH_CMSYNC_OUTPUT_PATH",
-                    "value": "${env:ENGINE_STANDALONE_DIR}/outputs"
-                },
-                {
-                    "name": "WAZUH_CTI_PATH",
-                    "value": "${env:ENGINE_STANDALONE_DIR}/cti"
-                },
-                {
-                    "name": "WAZUH_CTI_ENABLED",
-                    "value": "false"
-                },
                 // Standalone mode
-                {
-                    "name": "WAZUH_SKIP_GROUP_CHANGE",
-                    "value": "true"
-                },
                 {
                     "name": "WAZUH_ENGINE_STANDALONE",
                     "value": "true"
-                }
+                },
+                {
+                    "name": "WAZUH_SERVER_ENABLE_EVENT_PROCESSING",
+                    "value": "true"
+                },
             ],
             "MIMode": "gdb",
             "setupCommands": [
@@ -153,9 +140,6 @@
                 {
                     "name": "WAZUH_ORCHESTRATOR_THREADS",
                     "value": "2"
-                },                {
-                    "name": "WAZUH_SKIP_USER_CHANGE",
-                    "value": "true"
                 },
                 {
                     "name": "WAZUH_LOG_LEVEL",
@@ -195,13 +179,10 @@
                     "name": "MALLOC_CHECK_",
                     "value": "2"
                 },
-                // {
-                //     "name": "WAZUH_ORCHESTRATOR_THREADS",
-                //     "value": "2"
-                // },                {
-                //     "name": "WAZUH_SKIP_USER_CHANGE",
-                //     "value": "true"
-                // }
+                {
+                    "name": "WAZUH_ORCHESTRATOR_THREADS",
+                    "value": "2"
+                },
             ],
             "MIMode": "gdb",
             "setupCommands": [

@@ -324,7 +324,15 @@ void ExecdRun(char *exec_msg, int *childcount)
                 char *keys = get_keys_from_json(keys_json);
                 if (keys != NULL) {
                     /* Append to rkey the alert keys that the AR script will use */
-                    strcat(rkey, keys);
+                    size_t rkey_len = strlen(rkey);
+                    size_t keys_len = strlen(keys);
+
+                    if (rkey_len + keys_len >= OS_SIZE_4096) {
+                        mwarn("Active response key exceeds maximum size (%d). Truncating keys.",
+                              OS_SIZE_4096);
+                    }
+
+                    strncat(rkey, keys, OS_SIZE_4096 - rkey_len - 1);
                     os_free(keys);
                 }
             }

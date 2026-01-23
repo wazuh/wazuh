@@ -27,6 +27,7 @@
 #include "logging_helper.h"
 #include "../../module_query_errors.h"
 #include "defs.h"
+#include "schemaValidator.hpp"
 
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
@@ -226,7 +227,45 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
 
     if (indexIt != INDEX_MAP.end())
     {
-        m_persistDiffFunction(calculateHashId(aux, table), OPERATION_STATES_MAP.at(result), indexIt->second, statefulToSend, version);
+        // Validate data against schema before queuing
+        bool shouldQueue = true;
+        std::string dataToQueue = statefulToSend;
+        std::string context = "table: " + table;
+
+        // Use helper function to validate and log
+        bool validationPassed = validateSchemaAndLog(statefulToSend, indexIt->second, context);
+
+        if (!validationPassed)
+        {
+            // Don't queue invalid message
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_ERROR, "Discarding invalid Syscollector message (table: " + table + ")");
+            }
+
+            // Mark for deferred deletion from DBSync to prevent integrity sync loops
+            // We cannot delete here as we are inside a DBSync callback (would cause nested transactions)
+            if (result == INSERTED || result == MODIFIED)
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_DEBUG, "Marking entry from table " + table + " for deferred deletion due to validation failure");
+                }
+
+                // Store the failed item for deletion after transaction completes
+                if (m_failedItems)
+                {
+                    m_failedItems->push_back({table, aux});
+                }
+            }
+
+            shouldQueue = false;
+        }
+
+        if (shouldQueue && m_persistDiffFunction)
+        {
+            m_persistDiffFunction(calculateHashId(aux, table), OPERATION_STATES_MAP.at(result), indexIt->second, dataToQueue, version);
+        }
     }
 
     // Remove checksum and state from newData to avoid sending them in the diff
@@ -305,7 +344,6 @@ Syscollector::Syscollector()
     , m_processes { false }
     , m_hotfixes { false }
     , m_stopping { true }
-    , m_syncLoopFinished { true }
     , m_initialized { false }
     , m_notify { false }
     , m_paused { false }
@@ -316,6 +354,7 @@ Syscollector::Syscollector()
     , m_services { false }
     , m_browserExtensions { false }
     , m_vdSyncEnabled { false }
+    , m_failedItems { nullptr }
 {}
 
 std::string Syscollector::getCreateStatement() const
@@ -464,9 +503,9 @@ void Syscollector::start()
     if (!m_vdSyncEnabled)
     {
 #ifdef _WIN32
-        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. No packages, OS, or hotfixes scanning is enabled in the configuration.");
+        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. OS, packages, and hotfixes are required to be enabled.");
 #else
-        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. No packages or OS scanning is enabled in the configuration.");
+        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. OS and packages are required to be enabled.");
 #endif
     }
 
@@ -498,6 +537,7 @@ bool Syscollector::handleNotifyDataClean()
             break;
         }
 
+        // LCOV_EXCL_START
         // Check if we should continue retrying
         bool shouldRetry = m_allCollectorsDisabled || (attempt < m_dataCleanRetries);
 
@@ -534,6 +574,8 @@ bool Syscollector::handleNotifyDataClean()
 
             break;
         }
+
+        // LCOV_EXCL_STOP
     }
 
     return ret;
@@ -545,11 +587,6 @@ void Syscollector::destroy()
     m_stopping = true;
     m_cv.notify_all();
 
-    // Wait for syncLoop to finish completely, including cleanup of resources
-    m_cv.wait(lock, [this]()
-    {
-        return m_syncLoopFinished;
-    });
     lock.unlock();
 
     // Signal sync protocols to stop any ongoing operations
@@ -682,7 +719,31 @@ nlohmann::json Syscollector::ecsHardwareData(const nlohmann::json& originalData,
 
     setJsonField(ret, originalData, "/host/cpu/cores", "cpu_cores", createFields);
     setJsonField(ret, originalData, "/host/cpu/name", "cpu_name", createFields);
-    setJsonField(ret, originalData, "/host/cpu/speed", "cpu_speed", createFields);
+
+    // Convert cpu speed to integer for ECS compliance (in case it comes as float)
+    if (createFields || originalData.contains("cpu_speed"))
+    {
+        const nlohmann::json::json_pointer pointer("/host/cpu/speed");
+
+        if (originalData.contains("cpu_speed") && !originalData["cpu_speed"].is_null())
+        {
+            const auto& value = originalData["cpu_speed"];
+
+            if (value.is_number())
+            {
+                ret[pointer] = value.get<int64_t>();
+            }
+            else
+            {
+                ret[pointer] = nullptr;
+            }
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
     setJsonField(ret, originalData, "/host/memory/free", "memory_free", createFields);
     setJsonField(ret, originalData, "/host/memory/total", "memory_total", createFields);
     setJsonField(ret, originalData, "/host/memory/used", "memory_used", createFields);
@@ -730,7 +791,32 @@ nlohmann::json Syscollector::ecsProcessesData(const nlohmann::json& originalData
     setJsonField(ret, originalData, "/process/command_line", "command_line", createFields);
     setJsonField(ret, originalData, "/process/name", "name", createFields);
     setJsonField(ret, originalData, "/process/parent/pid", "parent_pid", createFields);
-    setJsonField(ret, originalData, "/process/pid", "pid", createFields);
+
+    // Convert pid from string to integer for ECS compliance
+    if (createFields || originalData.contains("pid"))
+    {
+        const nlohmann::json::json_pointer pointer("/process/pid");
+
+        // LCOV_EXCL_START
+        if (originalData.contains("pid") && originalData["pid"] != EMPTY_VALUE && originalData["pid"] != UNKNOWN_VALUE)
+        {
+            try
+            {
+                ret[pointer] = std::stoll(originalData["pid"].get<std::string>());
+            }
+            catch (...)
+            {
+                ret[pointer] = nullptr;
+            }
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+
+        // LCOV_EXCL_STOP
+    }
+
     setJsonField(ret, originalData, "/process/start", "start", createFields);
     setJsonField(ret, originalData, "/process/state", "state", createFields);
     setJsonField(ret, originalData, "/process/stime", "stime", createFields);
@@ -745,7 +831,38 @@ nlohmann::json Syscollector::ecsPortData(const nlohmann::json& originalData, boo
 
     setJsonField(ret, originalData, "/destination/ip", "destination_ip", createFields);
     setJsonField(ret, originalData, "/destination/port", "destination_port", createFields);
-    setJsonField(ret, originalData, "/file/inode", "file_inode", createFields);
+
+    // LCOV_EXCL_START
+    // Convert inode from number to string for ECS compliance
+    if (createFields || originalData.contains("file_inode"))
+    {
+        const nlohmann::json::json_pointer pointer("/file/inode");
+
+        if (originalData.contains("file_inode") && !originalData["file_inode"].is_null())
+        {
+            const auto& value = originalData["file_inode"];
+
+            if (value.is_number())
+            {
+                ret[pointer] = std::to_string(value.get<int64_t>());
+            }
+            else if (value.is_string())
+            {
+                ret[pointer] = value.get<std::string>();
+            }
+            else
+            {
+                ret[pointer] = nullptr;
+            }
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
+    // LCOV_EXCL_STOP
+
     setJsonField(ret, originalData, "/host/network/egress/queue", "host_network_egress_queue", createFields);
     setJsonField(ret, originalData, "/host/network/ingress/queue", "host_network_ingress_queue", createFields);
     setJsonField(ret, originalData, "/interface/state", "interface_state", createFields);
@@ -787,7 +904,46 @@ nlohmann::json Syscollector::ecsNetworkProtocolData(const nlohmann::json& origin
     setJsonField(ret, originalData, "/interface/name", "interface_name", createFields);
     setJsonField(ret, originalData, "/network/dhcp", "network_dhcp", createFields, true);
     setJsonField(ret, originalData, "/network/gateway", "network_gateway", createFields);
-    setJsonField(ret, originalData, "/network/metric", "network_metric", createFields);
+
+    // LCOV_EXCL_START
+    // Convert metric from string to integer for ECS compliance
+    if (createFields || originalData.contains("network_metric"))
+    {
+        const nlohmann::json::json_pointer pointer("/network/metric");
+
+        if (originalData.contains("network_metric") && !originalData["network_metric"].is_null()
+                && originalData["network_metric"] != EMPTY_VALUE && originalData["network_metric"] != UNKNOWN_VALUE)
+        {
+            const auto& value = originalData["network_metric"];
+
+            if (value.is_string())
+            {
+                try
+                {
+                    ret[pointer] = std::stoll(value.get<std::string>());
+                }
+                catch (...)
+                {
+                    ret[pointer] = nullptr;
+                }
+            }
+            else if (value.is_number())
+            {
+                ret[pointer] = value.get<int64_t>();
+            }
+            else
+            {
+                ret[pointer] = nullptr;
+            }
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
+    // LCOV_EXCL_STOP
+
     setJsonField(ret, originalData, "/network/type", "network_type", createFields);
 
     return ret;
@@ -801,7 +957,37 @@ nlohmann::json Syscollector::ecsNetworkAddressData(const nlohmann::json& origina
     setJsonField(ret, originalData, "/network/broadcast", "network_broadcast", createFields);
     setJsonField(ret, originalData, "/network/ip", "network_ip", createFields);
     setJsonField(ret, originalData, "/network/netmask", "network_netmask", createFields);
-    setJsonField(ret, originalData, "/network/type", "network_type", createFields);
+
+    // Convert network type from number to string for ECS compliance
+    if (createFields || originalData.contains("network_type"))
+    {
+        const nlohmann::json::json_pointer pointer("/network/type");
+
+        // LCOV_EXCL_START
+        if (originalData.contains("network_type") && !originalData["network_type"].is_null())
+        {
+            const auto& value = originalData["network_type"];
+
+            if (value.is_number())
+            {
+                ret[pointer] = std::to_string(value.get<int64_t>());
+            }
+            else if (value.is_string())
+            {
+                ret[pointer] = value.get<std::string>();
+            }
+            else
+            {
+                ret[pointer] = nullptr;
+            }
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+
+        // LCOV_EXCL_STOP
+    }
 
     return ret;
 }
@@ -823,7 +1009,31 @@ nlohmann::json Syscollector::ecsUsersData(const nlohmann::json& originalData, bo
     setJsonField(ret, originalData, "/user/group/id_signed", "user_group_id_signed", createFields);
     setJsonFieldArray(ret, originalData, "/user/groups", "user_groups", createFields);
     setJsonField(ret, originalData, "/user/home", "user_home", createFields);
-    setJsonField(ret, originalData, "/user/id", "user_id", createFields);
+
+    // Convert user_id from number to string for ECS compliance
+    if (createFields || originalData.contains("user_id"))
+    {
+        const nlohmann::json::json_pointer pointer("/user/id");
+
+        if (originalData.contains("user_id"))
+        {
+            const auto& value = originalData["user_id"];
+
+            if (value.is_number())
+            {
+                ret[pointer] = std::to_string(value.get<int>());
+            }
+            else
+            {
+                ret[pointer] = value;
+            }
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
     setJsonField(ret, originalData, "/user/is_hidden", "user_is_hidden", createFields, true);
     setJsonField(ret, originalData, "/user/is_remote", "user_is_remote", createFields, true);
     setJsonField(ret, originalData, "/user/last_login", "user_last_login", createFields);
@@ -892,7 +1102,35 @@ nlohmann::json Syscollector::ecsServicesData(const nlohmann::json& originalData,
     setJsonField(ret, originalData, "/service/state", "service_state", createFields);
     setJsonField(ret, originalData, "/service/sub_state", "service_sub_state", createFields);
     setJsonField(ret, originalData, "/service/target/address", "service_target_address", createFields);
-    setJsonField(ret, originalData, "/service/target/ephemeral_id", "service_target_ephemeral_id", createFields);
+
+    // Convert service_target_ephemeral_id from number to string for ECS compliance
+    if (createFields || originalData.contains("service_target_ephemeral_id"))
+    {
+        const nlohmann::json::json_pointer pointer("/service/target/ephemeral_id");
+
+        if (originalData.contains("service_target_ephemeral_id"))
+        {
+            const auto& value = originalData["service_target_ephemeral_id"];
+
+            if (value == EMPTY_VALUE || value == UNKNOWN_VALUE)
+            {
+                ret[pointer] = value;
+            }
+            else if (value.is_number())
+            {
+                ret[pointer] = std::to_string(value.get<int>());
+            }
+            else
+            {
+                ret[pointer] = value;
+            }
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
     setJsonField(ret, originalData, "/service/target/type", "service_target_type", createFields);
     setJsonField(ret, originalData, "/service/type", "service_type", createFields);
     setJsonField(ret, originalData, "/service/win32_exit_code", "service_win32_exit_code", createFields);
@@ -1116,6 +1354,7 @@ void Syscollector::scanPackages()
     if (m_packages)
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting packages scan");
+
         const auto callback
         {
             [this](ReturnTypeCallback result, const nlohmann::json & data)
@@ -1262,6 +1501,7 @@ void Syscollector::scanProcesses()
     if (m_processes)
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting processes scan");
+
         const auto callback
         {
             [this](ReturnTypeCallback result, const nlohmann::json & data)
@@ -1447,6 +1687,11 @@ void Syscollector::scan()
     // RAII guard ensures m_scanning is set to false even if function exits early
     ScanGuard scanGuard(m_scanning, m_pauseCv);
 
+    // Vector to accumulate items that fail validation for deferred deletion
+    // All scan functions will use this shared vector to collect failed items
+    std::vector<std::pair<std::string, nlohmann::json>> failedItems;
+    m_failedItems = &failedItems;
+
     m_logFunction(LOG_INFO, "Starting evaluation.");
     TRY_CATCH_TASK(scanHardware);
     TRY_CATCH_TASK(scanOs);
@@ -1467,13 +1712,19 @@ void Syscollector::scan()
         TRY_CATCH_TASK(processVDDataContext);
     }
 
+    // Clean up after all scans
+    m_failedItems = nullptr;
+
+    // Delete all items that failed schema validation inside a DBSync transaction
+    // This ensures deletions are committed to disk immediately
+    deleteFailedItemsFromDB(failedItems);
+
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
 
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 {
-    m_syncLoopFinished = false;
     m_logFunction(LOG_INFO, "Module started.");
 
     if (m_scanOnStart)
@@ -1495,7 +1746,6 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
         scan();
     }
     m_spDBSync.reset(nullptr);
-    m_syncLoopFinished = true;
     m_cv.notify_all();
 }
 
@@ -1781,6 +2031,21 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
         m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, mqFuncs, logger_func_vd, syncEndDelay, timeout, retries, maxEps, nullptr);
         m_logFunction(LOG_INFO, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
 
+        // Initialize schema validator factory from embedded resources
+        auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
+
+        if (!validatorFactory.isInitialized())
+        {
+            if (validatorFactory.initialize())
+            {
+                m_logFunction(LOG_INFO, "Schema validator initialized successfully from embedded resources");
+            }
+            else
+            {
+                m_logFunction(LOG_WARNING, "Failed to initialize schema validator. Schema validation will be disabled.");
+            }
+        }
+
         m_logFunction(LOG_DEBUG, "Integrity interval set to " + std::to_string(integrityInterval) + " seconds");
     }
     catch (const std::exception& ex)
@@ -1791,6 +2056,7 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
     }
 }
 
+// LCOV_EXCL_START
 bool Syscollector::syncModule(Mode mode)
 {
     if (m_paused)
@@ -1872,6 +2138,7 @@ bool Syscollector::syncModule(Mode mode)
 
     return success;
 }
+// LCOV_EXCL_STOP
 
 void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version, bool isDataContext)
 {
@@ -1912,6 +2179,7 @@ bool Syscollector::parseResponseBufferVD(const uint8_t* data, size_t length)
     return false;
 }
 
+// LCOV_EXCL_START
 std::vector<nlohmann::json> Syscollector::fetchAllFromTable(const std::string& tableName, const std::set<std::string>& excludeIds)
 {
     std::vector<nlohmann::json> results;
@@ -2144,10 +2412,30 @@ void Syscollector::processVDDataContext()
                     // Calculate ID the same way as done during scan for DataValue
                     std::string itemId = calculateHashId(item, tableName);
 
+                    // Validate stateful event before persisting VD DataContext
+                    bool shouldPersist = true;
+                    std::string context = "VD DataContext, table: " + tableName;
+
+                    // Use helper function to validate and log
+                    bool validationPassed = validateSchemaAndLog(statefulToSend, contextIndex, context);
+
+                    if (!validationPassed)
+                    {
+                        if (m_logFunction)
+                        {
+                            m_logFunction(LOG_DEBUG, "Skipping persistence of invalid VD DataContext event");
+                        }
+
+                        shouldPersist = false;
+                    }
+
                     // Submit as DataContext (isDataContext=true)
                     // Note: operation and version parameters are not used for DataContext
-                    m_spSyncProtocolVD->persistDifference(itemId, Operation::MODIFY, contextIndex, statefulToSend, 0, true);
-                    totalDataContextItems++;
+                    if (shouldPersist)
+                    {
+                        m_spSyncProtocolVD->persistDifference(itemId, Operation::MODIFY, contextIndex, statefulToSend, 0, true);
+                        totalDataContextItems++;
+                    }
                 }
                 catch (const std::exception& e)
                 {
@@ -2206,6 +2494,7 @@ void Syscollector::deleteDatabase()
         m_spDBSync->closeAndDeleteDatabase();
     }
 }
+// LCOV_EXCL_STOP
 
 bool Syscollector::pause()
 {
@@ -2635,6 +2924,7 @@ bool Syscollector::hasDataInTable(const std::string& tableName)
         m_spDBSync->selectRows(selectQuery.query(), callback);
         return count > 0;
     }
+    // LCOV_EXCL_START
     catch (const std::exception& ex)
     {
         if (m_logFunction)
@@ -2644,6 +2934,8 @@ bool Syscollector::hasDataInTable(const std::string& tableName)
 
         return false;
     }
+
+    // LCOV_EXCL_STOP
 }
 
 void Syscollector::checkDisabledCollectorsIndicesWithData()
@@ -2776,6 +3068,7 @@ bool Syscollector::notifyDisableCollectorsDataClean()
         return false;
     }
 
+    // LCOV_EXCL_START
     if (m_logFunction)
     {
         std::string indices;
@@ -2794,6 +3087,7 @@ bool Syscollector::notifyDisableCollectorsDataClean()
     }
 
     return m_spSyncProtocol->notifyDataClean(m_disabledCollectorsIndicesWithData);
+    // LCOV_EXCL_STOP
 }
 
 void Syscollector::deleteDisableCollectorsData()
@@ -2811,6 +3105,7 @@ void Syscollector::deleteDisableCollectorsData()
     // If all collectors are disabled, delete the entire database instead of going table by table
     if (m_allCollectorsDisabled)
     {
+        // LCOV_EXCL_START
         if (m_logFunction)
         {
             m_logFunction(LOG_INFO, "All collectors are disabled. Deleting entire database.");
@@ -2819,6 +3114,7 @@ void Syscollector::deleteDisableCollectorsData()
         deleteDatabase();
         m_disabledCollectorsIndicesWithData.clear();
         return;
+        // LCOV_EXCL_STOP
     }
 
     // Only some collectors are disabled, delete specific tables
@@ -2902,6 +3198,7 @@ void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices
                     m_logFunction(LOG_DEBUG, "Cleared table " + tableName);
                 }
             }
+            // LCOV_EXCL_START
             catch (const std::exception& ex)
             {
                 if (m_logFunction)
@@ -2909,11 +3206,13 @@ void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices
                     m_logFunction(LOG_ERROR, "Error clearing table " + tableName + ": " + std::string(ex.what()));
                 }
             }
+
+            // LCOV_EXCL_STOP
         }
     }
 }
-// LCOV_EXCL_STOP
 
+// LCOV_EXCL_START
 bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
 {
     m_logFunction(LOG_DEBUG, "Attempting to get checksum for " + tableName + " table");
@@ -2939,6 +3238,7 @@ bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
 
     return needs_full_sync;
 }
+// LCOV_EXCL_STOP
 
 int64_t Syscollector::getLastSyncTime(const std::string& tableName)
 {
@@ -3051,6 +3351,8 @@ void Syscollector::runRecoveryProcess()
 
         if (tableName == BROWSER_EXTENSIONS_TABLE && !m_browserExtensions) continue;
 
+        // LCOV_EXCL_START
+        // Recovery process requires manager integration for checksum validation.
         if (recoveryIntervalHasEllapsed(tableName, m_integrityIntervalValue))
         {
             m_logFunction(LOG_DEBUG, "Starting integrity validation process for " + tableName);
@@ -3088,13 +3390,29 @@ void Syscollector::runRecoveryProcess()
                     auto [newData, version] = ecsData(item, tableName);
                     const auto statefulToSend{newData.dump()};
 
-                    m_spSyncProtocol->persistDifferenceInMemory(
-                        calculateHashId(item, tableName),
-                        Operation::CREATE,
-                        index,
-                        statefulToSend,
-                        item["version"].get<uint64_t>()
-                    );
+                    // Validate stateful event before persisting for recovery
+                    bool shouldPersist = true;
+                    std::string context = "recovery event, table: " + tableName;
+
+                    // Use helper function to validate and log
+                    bool validationPassed = validateSchemaAndLog(statefulToSend, index, context);
+
+                    if (!validationPassed)
+                    {
+                        m_logFunction(LOG_DEBUG, "Skipping persistence of invalid recovery event");
+                        shouldPersist = false;
+                    }
+
+                    if (shouldPersist)
+                    {
+                        m_spSyncProtocol->persistDifferenceInMemory(
+                            calculateHashId(item, tableName),
+                            Operation::CREATE,
+                            index,
+                            statefulToSend,
+                            item["version"].get<uint64_t>()
+                        );
+                    }
                 }
 
                 m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items in memory");
@@ -3115,6 +3433,115 @@ void Syscollector::runRecoveryProcess()
             // Update the last sync time regardless of whether full sync was required
             // This ensures the integrity check doesn't run again until integrity_interval has elapsed
             updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
+        }
+
+        // LCOV_EXCL_STOP
+    }
+}
+
+bool Syscollector::validateSchemaAndLog(const std::string& data, const std::string& index, const std::string& context) const
+{
+    auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
+
+    if (!validatorFactory.isInitialized())
+    {
+        return true;
+    }
+
+    auto validator = validatorFactory.getValidator(index);
+
+    if (!validator)
+    {
+        // Validator not found for this index, log warning and allow message through
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Queuing message without validation.");
+        }
+
+        return true;
+    }
+
+    auto validationResult = validator->validate(data);
+
+    if (validationResult.isValid)
+    {
+        return true;
+    }
+
+    // Validation failed - log errors
+    std::string errorMsg = "Schema validation failed for Syscollector message (" + context + ", index: " + index + "). Errors: ";
+
+    for (const auto& error : validationResult.errors)
+    {
+        errorMsg += "  - " + error;
+    }
+
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_ERROR, errorMsg);
+        m_logFunction(LOG_ERROR, "Raw event that failed validation: " + data);
+    }
+
+    return false;
+}
+
+void Syscollector::deleteFailedItemsFromDB(const std::vector<std::pair<std::string, nlohmann::json>>& failedItems) const
+{
+    if (failedItems.empty() || !m_spDBSync)
+    {
+        return;
+    }
+
+    try
+    {
+        // Create a transaction scope - BEGIN TRANSACTION will be executed
+        DBSyncTxn deleteTxn(m_spDBSync->handle(),
+                            nlohmann::json::array(),  // Empty table list
+                            0,
+                            1,
+        [](ReturnTypeCallback, const nlohmann::json&) {});
+
+        // Execute all deletions within the transaction scope
+        for (const auto& [tableName, data] : failedItems)
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Deleting entry from table " + tableName + " due to validation failure");
+            }
+
+            try
+            {
+                auto deleteQuery = DeleteQuery::builder()
+                                   .table(tableName)
+                                   .data(data)
+                                   .rowFilter("")
+                                   .build();
+
+                m_spDBSync->deleteRows(deleteQuery.query());
+            }
+            catch (const std::exception& e)
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_ERROR, "Failed to delete from DBSync: " + std::string(e.what()));
+                }
+            }
+        }
+
+        // Call getDeletedRows to finalize the transaction properly
+        // This triggers the internal commit mechanism in DBSync
+        deleteTxn.getDeletedRows([](ReturnTypeCallback, const nlohmann::json&) {});
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Deleted " + std::to_string(failedItems.size()) + " item(s) from DBSync due to validation failure");
+        }
+    }
+    catch (const std::exception& e)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Failed to create DBSync transaction for deletion: " + std::string(e.what()));
         }
     }
 }

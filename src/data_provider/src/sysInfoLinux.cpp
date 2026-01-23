@@ -138,7 +138,7 @@ static std::string getSerialNumber()
     std::string serial;
     std::fstream file{WM_SYS_HW_DIR, std::ios_base::in};
 
-    if (file.is_open())
+    if (file.is_open() && std::filesystem::file_size(WM_SYS_HW_DIR) > 0)
     {
         file >> serial;
     }

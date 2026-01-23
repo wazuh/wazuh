@@ -77,6 +77,17 @@ INSTANTIATE_TEST_SUITE_P(
                        return base::Broadcast::create("outputs",
                                                       {base::And::create("dummy", {}), base::And::create("dummy", {})});
                    })),
+        StageT(R"([{"wazuh-indexer":{"index":"wazuh-events-v5-${wazuh.integration.category}"}}])",
+               outputsBuilder,
+               SUCCESS(
+                   [](const auto& mocks)
+                   {
+                       const auto& innerRegistry = mocks.registry->template getRegistry<StageBuilder>();
+                       EXPECT_CALL(*mocks.ctx, registry()).WillOnce(testing::ReturnRef(*mocks.registry));
+                       EXPECT_CALL(innerRegistry, get("wazuh-indexer")).WillOnce(testing::Return(dummyStageBuilder()));
+                       return base::Broadcast::create("outputs",
+                                                      {base::And::create("dummy", {})});
+                   })),
         StageT(R"([{"output1": "ingnored", "output2": "ingnored"}])", outputsBuilder, FAILURE())),
     testNameFormatter<StageBuilderTest>("Outputs"));
 } // namespace stagebuildtest

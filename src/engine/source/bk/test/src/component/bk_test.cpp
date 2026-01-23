@@ -667,6 +667,68 @@ INSTANTIATE_TEST_SUITE_P(
             Path(order("or",
                        order("implication_0", term("cond0", false)),
                        order("implication_1", term("cond1", true), term("imp1", false))))},
+
+        // Complex: Or of implication - first_of semantics (first match wins)
+        PipelineParams {
+            "Complex: Or of implication - first_of: first rule matches",
+            Or::create("first_of",
+                       {Implication::create("rule_0", build::term("check0", true), build::term("then0", true)),
+                        Implication::create("rule_1", build::term("check1", true), build::term("then1", true)),
+                        Implication::create("rule_2", build::term("check2", true), build::term("then2", true))}),
+            Path(order("first_of", order("rule_0", term("check0", true), term("then0", true))))},
+
+        PipelineParams {
+            "Complex: Or of implication - first_of: second rule matches",
+            Or::create("first_of",
+                       {Implication::create("rule_0", build::term("check0", false), build::term("then0", true)),
+                        Implication::create("rule_1", build::term("check1", true), build::term("then1", true)),
+                        Implication::create("rule_2", build::term("check2", true), build::term("then2", true))}),
+            Path(order("first_of",
+                       order("rule_0", term("check0", false)),
+                       order("rule_1", term("check1", true), term("then1", true))))},
+
+        PipelineParams {
+            "Complex: Or of implication - first_of: third rule matches",
+            Or::create("first_of",
+                       {Implication::create("rule_0", build::term("check0", false), build::term("then0", true)),
+                        Implication::create("rule_1", build::term("check1", false), build::term("then1", true)),
+                        Implication::create("rule_2", build::term("check2", true), build::term("then2", true))}),
+            Path(order("first_of",
+                       order("rule_0", term("check0", false)),
+                       order("rule_1", term("check1", false)),
+                       order("rule_2", term("check2", true), term("then2", true))))},
+
+        PipelineParams {
+            "Complex: Or of implication - first_of: no rules match",
+            Or::create("first_of",
+                       {Implication::create("rule_0", build::term("check0", false), build::term("then0", true)),
+                        Implication::create("rule_1", build::term("check1", false), build::term("then1", true)),
+                        Implication::create("rule_2", build::term("check2", false), build::term("then2", true))}),
+            Path(order("first_of",
+                       order("rule_0", term("check0", false)),
+                       order("rule_1", term("check1", false)),
+                       order("rule_2", term("check2", false))))},
+
+        PipelineParams {
+            "Complex: Or of implication - first_of: first rule check succeeds, then fails",
+            Or::create("first_of",
+                       {Implication::create("rule_0", build::term("check0", true), build::term("then0", false)),
+                        Implication::create("rule_1", build::term("check1", true), build::term("then1", true))}),
+            Path(order("first_of", order("rule_0", term("check0", true), term("then0", false))))},
+
+        PipelineParams {
+            "Complex: Or of implication - first_of: skip multiple failed checks",
+            Or::create("first_of",
+                       {Implication::create("rule_0", build::term("check0", false), build::term("then0", true)),
+                        Implication::create("rule_1", build::term("check1", false), build::term("then1", true)),
+                        Implication::create("rule_2", build::term("check2", false), build::term("then2", true)),
+                        Implication::create("rule_3", build::term("check3", true), build::term("then3", true)),
+                        Implication::create("rule_4", build::term("check4", true), build::term("then4", true))}),
+            Path(order("first_of",
+                       order("rule_0", term("check0", false)),
+                       order("rule_1", term("check1", false)),
+                       order("rule_2", term("check2", false)),
+                       order("rule_3", term("check3", true), term("then3", true))))},
         // Complex: Or of or
         PipelineParams {"Complex: Or of or",
                         Or::create("or",

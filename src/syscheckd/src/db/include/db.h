@@ -131,6 +131,15 @@ EXPORTED void fim_db_clean_file_table();
 EXPORTED FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback);
 
 /**
+ * @brief Remove a file entry from the database.
+ *
+ * @param file_path The path of the file to remove.
+ *
+ * @return FIMDB_OK on success.
+ */
+EXPORTED FIMDBErrorCode fim_db_file_delete(const char* file_path);
+
+/**
  * @brief Find entries using the inode.
  *
  * @param inode Inode.
@@ -277,6 +286,27 @@ EXPORTED int fim_db_set_version_registry(int version);
  * Used when all registry paths are removed from configuration to clean orphaned data.
  */
 EXPORTED void fim_db_clean_registry_tables();
+
+/**
+ * @brief Remove a registry key entry from the database.
+ *
+ * @param path The path of the registry key to remove.
+ * @param arch The architecture (ARCH_32BIT or ARCH_64BIT).
+ *
+ * @return FIMDB_OK on success.
+ */
+EXPORTED FIMDBErrorCode fim_db_registry_key_delete(const char* path, int arch);
+
+/**
+ * @brief Remove a registry value entry from the database.
+ *
+ * @param path The path of the registry key containing the value.
+ * @param value The name of the registry value to remove.
+ * @param arch The architecture (ARCH_32BIT or ARCH_64BIT).
+ *
+ * @return FIMDB_OK on success.
+ */
+EXPORTED FIMDBErrorCode fim_db_registry_value_delete(const char* path, const char* value, int arch);
 
 #endif /* WIN32 */
 

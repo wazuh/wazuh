@@ -575,7 +575,8 @@ public:
         // Build the URL with query parameters
         const std::string baseUrl {m_selector->getNext()};
         std::string url;
-        // Pre-reserve: base_url + '/' + indices + '/_search/point_in_time?keep_alive=' + keepAlive + potential '&expand_wildcards=all'
+        // Pre-reserve: base_url + '/' + indices + '/_search/point_in_time?keep_alive=' + keepAlive + potential
+        // '&expand_wildcards=all'
         url.reserve(baseUrl.size() + 1 + indicesStr.size() + 35 + keepAlive.size() + 25);
         url = baseUrl;
         url += "/";

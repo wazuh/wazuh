@@ -63,4 +63,11 @@ else()
         dl
         proc
     )
+    if(UNIT_TEST)
+        if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            target_link_libraries(syscollector_test_tool -fprofile-arcs)
+        else()
+            target_link_libraries(syscollector_test_tool gcov)
+        endif()
+    endif()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")

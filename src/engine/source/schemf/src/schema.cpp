@@ -174,7 +174,7 @@ bool Schema::hasField(const DotPath& name) const
                 }
             }
 
-            if (entry->second.type() != Type::OBJECT && entry->second.type() != Type::NESTED)
+            if (!hasProperties(entry->second.type()))
             {
                 return false;
             }

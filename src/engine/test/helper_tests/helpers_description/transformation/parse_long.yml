@@ -42,7 +42,14 @@ test:
     description: Success long parse (negative integer)
 
   - arguments:
-      input_field: 12a3
+      input_field: "42.23"
+    target_field: any_value
+    should_pass: true
+    expected: 42
+    description: Success long parse with truncation
+
+  - arguments:
+      input_field: "12a3"
     target_field: any_value
     should_pass: false
     expected: any_value

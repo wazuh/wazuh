@@ -216,6 +216,15 @@ list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int,--wrap,control_check_co
                                 -Wl,--wrap,getpid,--wrap,fcntl")
 endif()
 
+list(APPEND shared_tests_names "test_labels_op")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+else()
+list(APPEND shared_tests_flags " ")
+endif()
+
 list(APPEND shared_tests_names "test_custom_output_search_replace")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck ${DEBUG_OP_WRAPPERS}")
@@ -247,14 +256,6 @@ list(APPEND shared_tests_names "test_schedule_scan")
 list(APPEND shared_tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=w_time_delay,--wrap=time,--wrap=_mwarn \
                                 -Wl,--wrap=OSRegex_Compile -Wl,--wrap=OSRegex_Execute -Wl,--wrap,OSMatch_Execute \
                                 -Wl,--wrap,OSRegex_Execute_ex")
-
-list(APPEND shared_tests_names "test_rootcheck_op")
-set(ROOTCHECK_OP_BASE_FLAGS "-Wl,--wrap=wdbc_query_ex -Wl,--wrap=_merror,--wrap=close")
-if(${TARGET} STREQUAL "winagent")
-list(APPEND shared_tests_flags "${ROOTCHECK_OP_BASE_FLAGS}")
-else()
-list(APPEND shared_tests_flags "${ROOTCHECK_OP_BASE_FLAGS} -Wl,--wrap=getpid")
-endif()
 
 list(APPEND shared_tests_names "test_fs_op")
 list(APPEND shared_tests_flags " ")

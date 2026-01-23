@@ -14,6 +14,7 @@
 #include "agent_sync_protocol_c_interface.h"
 #include "../os_crypto/sha1/sha1_op.h"
 #include "../file/file.h"
+#include "schemaValidator_c.h"
 #ifdef WIN32
 #include "utf8_winapi_wrapper.h"
 #include "../registry/registry.h"
@@ -190,7 +191,30 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         if (stateful_event) {
             char* stateful_event_str = cJSON_PrintUnformatted(stateful_event);
             if (stateful_event_str) {
-                asp_persist_diff_in_memory(handle, hashed_id, OPERATION_CREATE, index, stateful_event_str, document_version);
+                // Validate stateful event before persisting for recovery
+                bool validation_passed = true;
+                if (schema_validator_is_initialized()) {
+                    char* errorMessage = NULL;
+
+                    if (!schema_validator_validate(index, stateful_event_str, &errorMessage)) {
+                        // Validation failed - log but don't persist
+                        if (errorMessage) {
+                            merror("Schema validation failed for recovery event (table: %s, id: %s, index: %s). Errors: %s",
+                                   table_name, id_str, index, errorMessage);
+                            os_free(errorMessage);
+                        }
+
+                        merror("Raw recovery event that failed validation: %s", stateful_event_str);
+                        mdebug1("Skipping persistence of invalid recovery event for %s", id_str);
+                        validation_passed = false;
+                    }
+                }
+
+                // Persist only if validation passed
+                if (validation_passed) {
+                    asp_persist_diff_in_memory(handle, hashed_id, OPERATION_CREATE, index, stateful_event_str, document_version);
+                }
+
                 os_free(stateful_event_str);
             }
             cJSON_Delete(stateful_event);

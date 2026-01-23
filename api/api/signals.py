@@ -14,12 +14,16 @@ from wazuh.core.cluster.utils import running_in_master_node
 from wazuh.core.configuration import update_check_is_enabled
 from wazuh.core.manager import query_update_check_service
 
+from asyncinotify import Inotify, Mask
+
 from api import configuration
 from api.constants import (
     INSTALLATION_UID_KEY,
     INSTALLATION_UID_PATH,
     UPDATE_INFORMATION_KEY,
+    SECURITY_PATH
 )
+from api.authentication import generate_keypair, _private_key_path, _public_key_path
 
 ONE_DAY_SLEEP = 60*60*24
 
@@ -75,6 +79,19 @@ async def get_update_information() -> None:
         await asyncio.sleep(ONE_DAY_SLEEP)
 
 
+@cancel_signal_handler
+async def clean_auth_keys_cache():
+    """Watch for changes in authentication key files and clear the cache of generated keys."""
+
+    FILES = {_private_key_path, _public_key_path}
+
+    with Inotify() as inotify:
+        inotify.add_watch(SECURITY_PATH, Mask.MODIFY | Mask.CREATE )
+        async for event in inotify:
+            if event.path and event.path.as_posix() in FILES:
+                generate_keypair.cache_clear()
+
+
 @contextlib.asynccontextmanager
 async def lifespan_handler(_: ConnexionMiddleware):
     """Logs the API startup/shutdown messages and register background tasks."""
@@ -85,6 +102,8 @@ async def lifespan_handler(_: ConnexionMiddleware):
         tasks.append(asyncio.create_task(load_installation_uid()))
         if update_check_is_enabled():
             tasks.append(asyncio.create_task(get_update_information()))
+
+    tasks.append(asyncio.create_task(clean_auth_keys_cache()))
 
     # Log the initial server startup message.
     logger.info(f'Listening on {configuration.api_conf["host"]}:{configuration.api_conf["port"]}.')

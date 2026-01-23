@@ -17,63 +17,36 @@ inline base::Expression assetExpr(const base::Name& name)
 class AssetData
 {
 public:
-    factory::PolicyData policyData;
     factory::BuiltAssets builtAssets;
-    factory::PolicyGraph policyGraph;
 
-    AssetData()
-    {
-        policyData = factory::PolicyData({.name = "policy/testname", .hash = "hash"});
-        builtAssets = factory::BuiltAssets {};
-        policyGraph = factory::PolicyGraph {};
-    }
+    AssetData() { builtAssets = factory::BuiltAssets {}; }
 
     template<typename... Parents>
-    AssetData& operator()(factory::PolicyData::AssetType type, const base::Name& name, Parents&&... parents)
+    AssetData& operator()(cm::store::ResourceType type, const base::Name& name, Parents&&... parents)
     {
         auto nameCpy = name;
-        auto asset = Asset {std::move(nameCpy), assetExpr(name), {parents...}};
+
+        // Filter out "Input" parents as they should be implicit (empty parents list)
+        // buildSubgraph will automatically connect assets with empty parents to the subgraph root
+        std::vector<base::Name> parentVec;
+        for (auto& parent : {parents...})
+        {
+            std::string parentStr(parent);
+            // Skip parents that end with "Input" - buildSubgraph handles these automatically
+            if (parentStr.find("Input") == std::string::npos)
+            {
+                parentVec.push_back(base::Name(parent));
+            }
+        }
+
+        auto asset = Asset {std::move(nameCpy), assetExpr(name), std::move(parentVec)};
+
         if (builtAssets.find(type) == builtAssets.end())
         {
-            builtAssets.emplace(type, std::unordered_map<base::Name, Asset> {});
+            builtAssets.emplace(type, factory::SubgraphData {});
         }
-        builtAssets.at(type).emplace(name, asset);
-        policyData.add(type, "fakeNs", name);
-
-        if (type != factory::PolicyData::AssetType::FILTER)
-        {
-            if (policyGraph.subgraphs.find(type) == policyGraph.subgraphs.end())
-            {
-                auto rootName = base::Name(factory::PolicyData::assetTypeStr(type)) + "Input";
-                Graph<base::Name, Asset> subgraph {rootName, Asset {}};
-                policyGraph.subgraphs.emplace(type, std::move(subgraph));
-            }
-
-            policyGraph.subgraphs.at(type).addNode(name, asset);
-            (policyGraph.subgraphs.at(type).addEdge(base::Name(parents), name), ...);
-        }
-        else
-        {
-            for (auto& parent : {parents...})
-            {
-                factory::PolicyData::AssetType parentType;
-                base::Name parentName(parent);
-                if (builder::syntax::name::isDecoder(parentName, false))
-                {
-                    parentType = factory::PolicyData::AssetType::DECODER;
-                }
-                else if (builder::syntax::name::isRule(parentName, false))
-                {
-                    parentType = factory::PolicyData::AssetType::RULE;
-                }
-                else if (builder::syntax::name::isOutput(parentName, false))
-                {
-                    parentType = factory::PolicyData::AssetType::OUTPUT;
-                }
-
-                policyGraph.subgraphs.at(parentType).injectNode(name, asset, parentName);
-            }
-        }
+        builtAssets.at(type).orderedAssets.push_back(name);
+        builtAssets.at(type).assets.emplace(name, asset);
 
         return *this;
     };

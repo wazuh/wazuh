@@ -95,7 +95,12 @@ INSTANTIATE_TEST_SUITE_P(
                 protoRes.set_status(eEngine::ReturnStatus::OK);
                 return userResponse<eEngine::GenericStatus_Response>(protoRes);
             },
-            [](auto& mock) { EXPECT_CALL(mock, createNamespace("draft")); }),
+            [](auto& mock)
+            {
+                EXPECT_CALL(mock,
+                            createNamespace(::testing::Truly([](const cm::store::NamespaceId& nsId)
+                                                             { return nsId.toStr() == "draft"; })));
+            }),
         // Wrong request type
         CmCrudHandlerT(
             []()
@@ -127,7 +132,12 @@ INSTANTIATE_TEST_SUITE_P(
                 protoRes.set_status(eEngine::ReturnStatus::OK);
                 return userResponse<eEngine::GenericStatus_Response>(protoRes);
             },
-            [](auto& mock) { EXPECT_CALL(mock, deleteNamespace("draft")); }),
+            [](auto& mock)
+            {
+                EXPECT_CALL(mock,
+                            deleteNamespace(::testing::Truly([](const cm::store::NamespaceId& nsId)
+                                                             { return nsId.toStr() == "draft"; })));
+            }),
         // Wrong request type
         CmCrudHandlerT(
             []()
@@ -160,7 +170,13 @@ INSTANTIATE_TEST_SUITE_P(
                 protoRes.set_status(eEngine::ReturnStatus::OK);
                 return userResponse<eEngine::GenericStatus_Response>(protoRes);
             },
-            [](auto& mock) { EXPECT_CALL(mock, upsertPolicy("draft", ::testing::_)); }),
+            [](auto& mock)
+            {
+                EXPECT_CALL(mock,
+                            upsertPolicy(::testing::Truly([](const cm::store::NamespaceId& nsId)
+                                                          { return nsId.toStr() == "draft"; }),
+                                         ::testing::_));
+            }),
         // Wrong request type
         CmCrudHandlerT(
             []()
@@ -192,7 +208,12 @@ INSTANTIATE_TEST_SUITE_P(
                 protoRes.set_status(eEngine::ReturnStatus::OK);
                 return userResponse<eEngine::GenericStatus_Response>(protoRes);
             },
-            [](auto& mock) { EXPECT_CALL(mock, deletePolicy("draft")); }),
+            [](auto& mock)
+            {
+                EXPECT_CALL(mock,
+                            deletePolicy(::testing::Truly([](const cm::store::NamespaceId& nsId)
+                                                          { return nsId.toStr() == "draft"; })));
+            }),
         // Wrong request type
         CmCrudHandlerT(
             []()
@@ -241,7 +262,10 @@ INSTANTIATE_TEST_SUITE_P(
                 r.hash = "hash-1";
                 list.emplace_back(std::move(r));
 
-                EXPECT_CALL(mock, listResources("draft", cm::store::ResourceType::DECODER))
+                EXPECT_CALL(mock,
+                            listResources(::testing::Truly([](const cm::store::NamespaceId& nsId)
+                                                           { return nsId.toStr() == "draft"; }),
+                                          cm::store::ResourceType::DECODER))
                     .WillOnce(::testing::Return(list));
             }),
         // Wrong request type
@@ -279,7 +303,11 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](auto& mock)
             {
-                EXPECT_CALL(mock, getResourceByUUID("draft", "uuid-1", false))
+                EXPECT_CALL(mock,
+                            getResourceByUUID(::testing::Truly([](const cm::store::NamespaceId& nsId)
+                                                               { return nsId.toStr() == "draft"; }),
+                                              "uuid-1",
+                                              false))
                     .WillOnce(::testing::Return("yml: content"));
             }),
         // Wrong request type
@@ -316,7 +344,13 @@ INSTANTIATE_TEST_SUITE_P(
                 return userResponse<eEngine::GenericStatus_Response>(protoRes);
             },
             [](auto& mock)
-            { EXPECT_CALL(mock, upsertResource("draft", cm::store::ResourceType::DECODER, ::testing::_)); }),
+            {
+                EXPECT_CALL(mock,
+                            upsertResource(::testing::Truly([](const cm::store::NamespaceId& nsId)
+                                                            { return nsId.toStr() == "draft"; }),
+                                           cm::store::ResourceType::DECODER,
+                                           ::testing::_));
+            }),
         // Wrong request type
         CmCrudHandlerT(
             []()
@@ -349,7 +383,13 @@ INSTANTIATE_TEST_SUITE_P(
                 protoRes.set_status(eEngine::ReturnStatus::OK);
                 return userResponse<eEngine::GenericStatus_Response>(protoRes);
             },
-            [](auto& mock) { EXPECT_CALL(mock, deleteResourceByUUID("draft", "uuid-1")); }),
+            [](auto& mock)
+            {
+                EXPECT_CALL(mock,
+                            deleteResourceByUUID(::testing::Truly([](const cm::store::NamespaceId& nsId)
+                                                                  { return nsId.toStr() == "draft"; }),
+                                                 "uuid-1"));
+            }),
         // Wrong request type
         CmCrudHandlerT(
             []()

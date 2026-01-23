@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import _hashlib
-import _io
 import abc
 import asyncio
 import hashlib
@@ -13,12 +12,12 @@ import os
 import sys
 from contextvars import ContextVar
 from datetime import datetime
-from unittest.mock import patch, MagicMock, mock_open, call, ANY, AsyncMock
+from unittest.mock import patch, MagicMock, call, ANY, AsyncMock, mock_open
 
 import cryptography
 import pytest
 from freezegun import freeze_time
-from uvloop import EventLoopPolicy, new_event_loop, Loop
+from uvloop import EventLoopPolicy, new_event_loop
 
 from wazuh import Wazuh
 from wazuh.core import exception
@@ -737,7 +736,7 @@ async def test_handler_send_string():
         with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
             assert exception.WazuhClusterError(3020).message.encode() in await handler.send_string(b"something")
             logger_mock.assert_called_once_with(
-                f'There was an error while trying to send a string: Error 3020 - Timeout sending request',
+                'There was an error while trying to send a string: Error 3020 - Timeout sending request',
                 exc_info=False)
 
 
@@ -1036,11 +1035,22 @@ def test_handler_receive_file():
     """Test if a descriptor file is created for an incoming file."""
     handler = cluster_common.Handler(fernet_key, cluster_items)
 
-    assert handler.receive_file(b"data") == (b"ok ", b"Ready to receive new file")
-    assert "fd" in handler.in_file[b"data"]
-    assert isinstance(handler.in_file[b"data"]["fd"], _io.BufferedWriter)
-    assert "checksum" in handler.in_file[b"data"]
-    assert isinstance(handler.in_file[b"data"]["checksum"], _hashlib.HASH)
+    path = b"/queue/cluster/testfile"
+
+    with patch('builtins.open', mock_open()) as open_mock:
+        assert handler.receive_file(path) == (b"ok ", b"Ready to receive new file")
+    assert "fd" in handler.in_file[path]
+    assert handler.in_file[path]["fd"] == open_mock.return_value
+    assert "checksum" in handler.in_file[path]
+    assert isinstance(handler.in_file[path]["checksum"], _hashlib.HASH)
+
+
+def test_handler_receive_file_rejects_invalid_and_disallowed_paths():
+    """Ensure receive_file rejects invalid paths and writes outside allowed cluster directories."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+
+    # Disallowed path (attempt to write into /etc)
+    assert handler.receive_file(b"/etc/ossec.conf") == (b"err", b"Write path not allowed")
 
 
 def test_handler_update_file():
@@ -1524,7 +1534,7 @@ async def test_sync_wazuh_db_retrieve_agents_information(wdb_http_client_mock):
     wdb_http_client_mock.return_value.close = AsyncMock()
     get_agents_sync_mock = AsyncMock(return_value=agents_info)
     wdb_http_client_mock.return_value.get_agents_sync = get_agents_sync_mock
-    
+
     assert await sync_object.retrieve_agents_information() == {'id': 1, 'name': 'test'}
 
 
@@ -1536,7 +1546,7 @@ async def test_sync_wazuh_db_retrieve_agents_information_ko():
                                              data_retriever=None,
                                              get_data_command='global sync-agent-info-get ',
                                              set_data_command='global sync-agent-info-set')
-    
+
     with patch('wazuh.core.wdb_http.WazuhDBHTTPClient', side_effect=exception.WazuhException(1000)):
         with patch.object(sync_object.logger, 'error') as logger_error_mock:
             assert await sync_object.retrieve_agents_information() is None
@@ -1564,14 +1574,14 @@ async def test_sync_wazuh_db_sync_ok(perf_counter_mock, json_dumps_mock):
                 send_request_mock.assert_called_once_with(command=b"cmd", data=b"OK")
                 json_dumps_mock.assert_called_with({'set_data_command': 'set_command',
                                                     'payload': {}, 'chunks': ['a', 'b']})
-                logger_debug_mock.assert_has_calls([call(f"Sending chunks.")])
+                logger_debug_mock.assert_has_calls([call("Sending chunks.")])
 
             send_string_mock.assert_called_with(b"")
 
     # Test else
     with patch.object(sync_wazuh_db.logger, "info") as logger_info_mock:
         assert await sync_wazuh_db.sync(start_time=-10, chunks=[]) is True
-        logger_info_mock.assert_called_once_with(f"Finished in 10.000s. Updated 0 chunks.")
+        logger_info_mock.assert_called_once_with("Finished in 10.000s. Updated 0 chunks.")
 
     # Test except
     with patch("wazuh.core.cluster.common.Handler.send_string", return_value=b'Error 1'):
@@ -1652,13 +1662,13 @@ async def test_send_data_to_wdb(WazuhDBConnection_mock):
     WazuhDBConnection_mock.return_value = MockWazuhDBConnection()
     chunks = ['[{"data": "1chunk"}]', '[{"data": "2chunk"}]']
 
-    result = await cluster_common.send_data_to_wdb(data={'chunks': ['[{"data": ""}]'], 'payload': {}, 
+    result = await cluster_common.send_data_to_wdb(data={'chunks': ['[{"data": ""}]'], 'payload': {},
                                                          'set_data_command': ''}, timeout=15, info_type='agent-groups')
     assert result['error_messages']['others'] == ['Timeout while processing agent-groups chunks.']
 
     WazuhDBConnection_mock.return_value.exceptions += 1
-    result = await cluster_common.send_data_to_wdb(data={'chunks': chunks, 
-                                                         'payload': {}, 'set_data_command': ''}, 
+    result = await cluster_common.send_data_to_wdb(data={'chunks': chunks,
+                                                         'payload': {}, 'set_data_command': ''},
                                                          timeout=15, info_type='agent-groups')
     assert result['updated_chunks'] == 2
 
@@ -1773,13 +1783,33 @@ def test_as_wazuh_object_ok(mock_chmod, mock_chown, mock_gid, mock_uid):
     # Test the first condition and nested if
     assert cluster_common.as_wazuh_object({"__callable__": {"__name__": "type", "__wazuh__": "version"}}) == "server"
 
-    # Test the first condition and nested else
-    assert isinstance(
+    # Test the first condition - non-internal callable must be blocked
+    with pytest.raises(exception.WazuhInternalError) as err:
         cluster_common.as_wazuh_object({"__callable__": {"__name__": "path", "__qualname__": "__loader__.value",
-                                                         "__module__": "os"}}), str)
+                                                        "__module__": "os"}})
+    assert "Decoding callable from module" in str(err.value)
 
-    assert cluster_common.as_wazuh_object({"__callable__": {"__name__": "__name__", "__qualname__": "value",
-                                                            "__module__": "itertools"}}) == "itertools"
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({"__callable__": {"__name__": "__name__", "__qualname__": "value",
+                                                        "__module__": "itertools"}})
+    assert "Decoding callable from module" in str(err.value)
+
+    # Test the first condition - allowed callable packages must be processed
+    func =  cluster_common.as_wazuh_object({"__callable__": {"__name__": "check_user_master",
+                                                             "__module__": "api.authentication",
+                                                             "__qualname__": "check_user_master",
+                                                             "__type__": "function"}})
+    assert callable(func)
+    assert func.__module__ == "api.authentication"
+    assert func.__name__ == "check_user_master"
+
+    func =  cluster_common.as_wazuh_object({"__callable__": {"__name__": "get_node",
+                                                             "__module__": "wazuh.core.cluster.cluster",
+                                                             "__qualname__": "get_node",
+                                                             "__type__": "function"}})
+    assert callable(func)
+    assert func.__module__ == "wazuh.core.cluster.cluster"
+    assert func.__name__ == "get_node"
 
     # Test the second condition
     assert isinstance(cluster_common.as_wazuh_object(

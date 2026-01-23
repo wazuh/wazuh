@@ -12,10 +12,10 @@
 #ifndef _CACHELRU_HPP
 #define _CACHELRU_HPP
 
+#include <functional>
 #include <list>
 #include <map>
 #include <optional>
-#include <functional>
 
 /**
  * @brief A class for implementing a Least Recently Used (LRU) Cache.

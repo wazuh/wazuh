@@ -180,7 +180,6 @@ void Scheduler::workerThread()
         if (!task.isOneTime && task.config.interval > 0)
         {
             LOG_DEBUG("Rescheduling recurring task '{}'", task.name);
-
             // Create updated task with new next run time
             auto updatedTask = task; // Copy the task
             // Update next run time manually since TaskItem doesn't have updateNextRun anymore

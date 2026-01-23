@@ -44,7 +44,7 @@ struct ResponseMessage
 
 using ResponseQueue = Utils::AsyncValueDispatcher<ResponseMessage, std::function<void(ResponseMessage&&)>>;
 
-constexpr auto ARQUEUE {"queue/alerts/ar"};
+constexpr auto ARQUEUE_PATH {"queue/alerts/ar"};
 constexpr auto AGENT_ZERO_ID {"000"};
 
 template<typename TQueue>
@@ -68,16 +68,16 @@ public:
     explicit ResponseDispatcherImpl()
     {
         auto responseSocketClient =
-            std::make_shared<SocketClient<Socket<OSPrimitives, NoHeaderProtocol>, EpollWrapper>>(ARQUEUE);
+            std::make_shared<SocketClient<Socket<OSPrimitives, NoHeaderProtocol>, EpollWrapper>>(ARQUEUE_PATH);
         responseSocketClient->connect(
             [](const char*, uint32_t, const char*, uint32_t)
             {
-                logDebug2(LOGGER_DEFAULT_TAG, "OnRead to %s", ARQUEUE);
+                logDebug2(LOGGER_DEFAULT_TAG, "OnRead to %s", ARQUEUE_PATH);
                 // Not used
             },
             []()
             {
-                logDebug2(LOGGER_DEFAULT_TAG, "Connected to %s", ARQUEUE);
+                logDebug2(LOGGER_DEFAULT_TAG, "Connected to %s", ARQUEUE_PATH);
                 // Not used
             },
             SOCK_DGRAM);

@@ -103,7 +103,13 @@ void fim_calculate_dbsync_difference(const directory_t *configuration,
 
     if (configuration->options & CHECK_DEVICE) {
         if (aux = cJSON_GetObjectItem(old_data, "device"), aux != NULL) {
-            cJSON_AddNumberToObject(old_attributes, "device", aux->valueint);
+            if (cJSON_IsString(aux)) {
+                cJSON_AddStringToObject(old_attributes, "device", cJSON_GetStringValue(aux));
+            } else if (cJSON_IsNumber(aux)) {
+                char device_str[32];
+                snprintf(device_str, sizeof(device_str), "%d", aux->valueint);
+                cJSON_AddStringToObject(old_attributes, "device", device_str);
+            }
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("file.device"));
         }
     }
@@ -227,7 +233,9 @@ cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data
         }
 
         if (configuration->options & CHECK_DEVICE) {
-            cJSON_AddNumberToObject(attributes, "device", data->device);
+            char device_str[32];
+            snprintf(device_str, sizeof(device_str), "%lu", data->device);
+            cJSON_AddStringToObject(attributes, "device", device_str);
         }
 
         if (configuration->options & CHECK_MTIME) {
@@ -355,7 +363,13 @@ cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data
 
         if (configuration->options & CHECK_DEVICE) {
             if (aux = cJSON_GetObjectItem(dbsync_event, "device"), aux != NULL) {
-                cJSON_AddNumberToObject(attributes, "device", aux->valueint);
+                if (cJSON_IsString(aux)) {
+                    cJSON_AddStringToObject(attributes, "device", cJSON_GetStringValue(aux));
+                } else if (cJSON_IsNumber(aux)) {
+                    char device_str[32];
+                    snprintf(device_str, sizeof(device_str), "%d", aux->valueint);
+                    cJSON_AddStringToObject(attributes, "device", device_str);
+                }
             }
         }
 

@@ -5,6 +5,7 @@ services:
     build:
       context: ./wazuh-indexer
     image: dev-wazuh-indexer
+    pull_policy: build
     hostname: wazuh-indexer
     container_name: wazuh-indexer
     entrypoint: ["/entrypoint.sh"]
@@ -22,6 +23,7 @@ services:
     build:
         context: ./wazuh-dashboard
     image: dev-wazuh-dashboard
+    pull_policy: build
     hostname: wazuh-dashboard
     container_name: wazuh-dashboard
     entrypoint: ["/entrypoint.sh"]

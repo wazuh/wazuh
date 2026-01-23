@@ -206,12 +206,6 @@ class UsersHelper : public IUsersHelper
         static constexpr std::uint32_t BATCH_SIZE = 100;
         static constexpr std::chrono::milliseconds BATCH_DELAY{250};
 
-        /// @brief Static cache for both local and roaming users (thread-local)
-        /// Both types are loaded together to maintain consistency
-        static thread_local std::vector<User> s_cachedLocalUsers;
-        static thread_local std::vector<User> s_cachedRoamingUsers;
-        static thread_local std::chrono::steady_clock::time_point s_cacheTimestamp;
-        static thread_local bool s_cacheValid;
         static constexpr std::chrono::seconds s_cacheTimeout{60}; // Cache válido por 60 segundos
 
         /// @brief Validates cache and clears it if expired (> 60 seconds old).

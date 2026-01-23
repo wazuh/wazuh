@@ -127,16 +127,34 @@ bool UnixOsParser::parseFile(std::istream& in, nlohmann::json& info)
     {
         {"NAME",             "os_name"},
         {"VERSION",          "os_version"},
-        {"VERSION_ID",       "os_version"},
+        {"VERSION_ID",       "version_id"},
         {"ID",               "os_platform"},
         {"BUILD_ID",         "os_build"},
         {"VERSION_CODENAME", "os_codename"}
     };
     const auto ret {parseUnixFile(KEY_MAPPING, SEPARATOR, in, info)};
 
-    if (ret && info.find("os_version") != info.end())
+    if (ret)
     {
-        findMajorMinorVersionInString(info["os_version"], info);
+        if (info.find("os_version") != info.end())
+        {
+            findMajorMinorVersionInString(info["os_version"], info);
+
+            // If VERSION doesn't have major.minor, try VERSION_ID as fallback
+            if ((!info.contains("os_major") || !info.contains("os_minor")) && info.find("version_id") != info.end())
+            {
+                findMajorMinorVersionInString(info["version_id"], info);
+            }
+        }
+        else if (info.find("version_id") != info.end())
+        {
+            // If VERSION is not found, use VERSION_ID as os_version
+            info["os_version"] = info["version_id"];
+            findMajorMinorVersionInString(info["os_version"], info);
+        }
+
+        // Clean up temporary field
+        info.erase("version_id");
     }
 
     return ret;

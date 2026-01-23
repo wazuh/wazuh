@@ -45,3 +45,18 @@ void parse_uname_string (char *uname,
  */
 int parse_agent_update_msg (char *msg,
                             agent_info_data *agent_data);
+
+/**
+ * @brief Parses a JSON keepalive message from 5.0+ agents.
+ *
+ * @param[in] json_str The JSON keepalive message string to be parsed.
+ * @param[in] agent_data An agent_info_data structure to be filled with the agent's data.
+ * @param[out] groups_out Optional array to receive groups (caller must free). Can be NULL.
+ * @param[out] groups_count_out Optional count of groups. Can be NULL.
+ * @retval -1 Error parsing the message.
+ * @retval 0 Success.
+ */
+int parse_json_keepalive(const char *json_str,
+                         agent_info_data *agent_data,
+                         char ***groups_out,
+                         size_t *groups_count_out);

@@ -27,6 +27,7 @@
 // Stage builders
 #include "builders/stage/check.hpp"
 #include "builders/stage/fileOutput.hpp"
+#include "builders/stage/first_of.hpp"
 #include "builders/stage/indexerOutput.hpp"
 #include "builders/stage/map.hpp"
 #include "builders/stage/normalize.hpp"
@@ -309,7 +310,16 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
     registry->template add<builders::OpBuilderEntry>(
         "parse_float", {schemf::STypeToken::create(schemf::Type::FLOAT), builders::optransform::floatParseBuilder});
     registry->template add<builders::OpBuilderEntry>(
+        "parse_half_float", {schemf::STypeToken::create(schemf::Type::HALF_FLOAT), builders::optransform::halfFloatParseBuilder});
+    registry->template add<builders::OpBuilderEntry>(
         "parse_double", {schemf::STypeToken::create(schemf::Type::DOUBLE), builders::optransform::doubleParseBuilder});
+    registry->template add<builders::OpBuilderEntry>(
+        "parse_unsigned_long",
+        {schemf::STypeToken::create(schemf::Type::UNSIGNED_LONG), builders::optransform::unsignedLongParseBuilder});
+    registry->template add<builders::OpBuilderEntry>(
+        "parse_integer", {schemf::STypeToken::create(schemf::Type::INTEGER), builders::optransform::integerParseBuilder});
+    registry->template add<builders::OpBuilderEntry>(
+        "parse_short", {schemf::STypeToken::create(schemf::Type::SHORT), builders::optransform::shortParseBuilder});
     registry->template add<builders::OpBuilderEntry>(
         "parse_binary", {schemf::STypeToken::create(schemf::Type::BINARY), builders::optransform::binaryParseBuilder});
     registry->template add<builders::OpBuilderEntry>(
@@ -391,6 +401,7 @@ void registerStageBuilders(const std::shared_ptr<Registry>& registry, const Buil
     registry->template add<builders::StageBuilder>(syntax::asset::PARSE_KEY,
                                                    builders::getParseBuilder(deps.logpar, deps.logparDebugLvl));
     registry->template add<builders::StageBuilder>(syntax::asset::OUTPUTS_KEY, builders::outputsBuilder);
+    registry->template add<builders::StageBuilder>(syntax::asset::FIRST_OF_KEY, builders::firstOfBuilder);
     registry->template add<builders::StageBuilder>(syntax::asset::FILE_OUTPUT_KEY,
                                                    builders::getFileOutputBuilder(deps.logManager));
     registry->template add<builders::StageBuilder>(syntax::asset::INDEXER_OUTPUT_KEY,

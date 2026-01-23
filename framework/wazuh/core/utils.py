@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import errno
-import glob
 import hashlib
 import json
 import operator
@@ -17,12 +16,13 @@ from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from itertools import groupby, chain
-from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, walk, path
+from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, path
 import psutil
 from pyexpat import ExpatError
 from requests import get, exceptions
 from shutil import Error, move, copy2
 from signal import signal, alarm, SIGALRM, SIGKILL
+from xml.etree.ElementTree import Element  # nosec B405
 
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
@@ -164,7 +164,7 @@ def process_array(array: list, search_text: str = None, complementary_search: bo
     """
     if not array:
         return {'items': [], 'totalItems': 0}
-    
+
     if isinstance(filters, dict) and len(filters.keys()) > 0:
         new_array = []
         for element in array:
@@ -862,36 +862,168 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     return nested_dict
 
 
-def check_remote_commands(data: str):
-    """Check if remote commands are allowed. If not, it will check if the found command is in the list of exceptions.
+def check_remote_commands(new_conf: Element, original_conf: Element):
+    """Check if higher version agents are allowed.
 
     Parameters
     ----------
-    data : str
-        Configuration file
+    new_conf : Element
+        New configuration file.
+    original_conf : Element
+        Original configuration file.
+
+    Raises
+    ------
+    WazuhError(1127)
+        Raised if the agents allow_higher_versions setting is modified in the configuration to upload.
     """
-    blocked_configurations = configuration.api_conf['upload_configuration']
 
-    def check_section(command_regex, section, split_section):
-        try:
-            for line in command_regex.findall(data)[0].split(split_section):
-                command_matches = re.match(r".*<(command|full_command)>(.*)</(command|full_command)>.*",
-                                           line, flags=re.MULTILINE | re.DOTALL)
-                if command_matches and \
-                        (line.count('<command>') > 1 or
-                         command_matches.group(2) not in
-                         blocked_configurations['remote_commands'][section].get('exceptions', [])):
-                    raise WazuhError(1124)
-        except IndexError:
-            pass
+    def _filter_remote_commands(commands: list, exceptions: list) -> list:
+        """Keep only remote commands that are not part of the exception list.
 
-    if not blocked_configurations['remote_commands']['localfile']['allow']:
-        command_section = re.compile(r"<localfile>(.*?)</localfile>", flags=re.MULTILINE | re.DOTALL)
-        check_section(command_section, section='localfile', split_section='</localfile>')
+        Parameters
+        ----------
+        commands : list
+            List of commands to filter.
+        exceptions : list
+            List of exceptions to exclude from filtering.
 
-    if not blocked_configurations['remote_commands']['wodle_command']['allow']:
-        command_section = re.compile(r"<wodle name=\"command\">(.*?)</wodle>", flags=re.MULTILINE | re.DOTALL)
-        check_section(command_section, section='wodle_command', split_section='<wodle name=\"command\">')
+        Returns
+        -------
+        list
+            List of remote commands.
+        """
+        remote_commands = []
+
+        for command in commands:
+            if command['localfile']['log_format']['value'] in ['command', 'full_command'] \
+                and command['localfile']['command']['value'] not in exceptions:
+                remote_commands.append(command)
+
+        return remote_commands
+
+    def _filter_wodle_commands(commands: list, exceptions: list) -> list:
+        """Keep only wodle commands that are not part of the exception list.
+
+        Parameters
+        ----------
+        commands : list
+            List of commands to filter.
+        exceptions : list
+            List of exceptions to exclude from filtering.
+
+        Returns
+        -------
+        list
+            List of wodle commands.
+        """
+        wodle_commands = []
+
+        for command in commands:
+            if 'command' in command['wodle'] and command['wodle']['command']['value'] not in exceptions:
+                wodle_commands.append(command)
+
+        return wodle_commands
+
+    ALLOW_KEY = 'allow'
+    EXCEPTIONS_KEY = 'exceptions'
+    LOCALFILE_HIERACHY = ['ossec_config', 'localfile']
+    WODLE_HIERACHY = ['ossec_config', 'wodle']
+    LOCALFILE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['localfile']
+    WODLE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['wodle_command']
+
+    if not LOCALFILE_SETTINGS[ALLOW_KEY]:
+        new_localfile = xml_to_dict(new_conf, LOCALFILE_HIERACHY)
+        original_localfile = xml_to_dict(original_conf, LOCALFILE_HIERACHY)
+
+        if normalize(_filter_remote_commands(new_localfile, LOCALFILE_SETTINGS[EXCEPTIONS_KEY])) \
+            != normalize(_filter_remote_commands(original_localfile, LOCALFILE_SETTINGS[EXCEPTIONS_KEY])):
+            raise WazuhError(1124, extra_message="localfile")
+
+    if not WODLE_SETTINGS[ALLOW_KEY]:
+        new_wodle = xml_to_dict(new_conf, WODLE_HIERACHY)
+        original_wodle = xml_to_dict(original_conf, WODLE_HIERACHY)
+
+        if normalize(_filter_wodle_commands(new_wodle, WODLE_SETTINGS[EXCEPTIONS_KEY])) \
+            != normalize(_filter_wodle_commands(original_wodle, WODLE_SETTINGS[EXCEPTIONS_KEY])):
+            raise WazuhError(1124, extra_message="wodle")
+
+def xml_to_dict(root, section_path: list):
+    """Extract configuration sections from an XML tree using dotted paths.
+
+    Parameters
+    ----------
+    root : Element
+        Root element containing one or more ossec_config nodes.
+    section_path : list
+        List of strings representing the path to the desired section.
+
+    Returns
+    -------
+    list
+        Dictionaries with the configuration.
+    """
+    def element_to_dict(element):
+        """Convert an XML element into a nested dictionary."""
+        result = {}
+
+        for child in element:
+            if len(child):  # Has children
+                result[child.tag] = element_to_dict(child)
+            else:
+                result[child.tag] = {
+                    'attrib': child.attrib,
+                    'value': child.text.strip() if child.text else None
+                }
+
+        return result
+
+    matched_configurations = []
+    current_nodes = [root]
+
+    for part in section_path:
+        next_nodes = []
+        for node in current_nodes:
+            next_nodes.extend(node.findall(part))
+        current_nodes = next_nodes
+
+    for section in current_nodes:
+        section_dict = {
+            section.tag: element_to_dict(section)
+        }
+        matched_configurations.append(section_dict)
+
+    return matched_configurations
+
+
+def normalize(data, preserve_root_order=True):
+    """Normalize data structures for comparison.
+
+    Parameters
+    ----------
+    data : Any
+        Data to normalize.
+    preserve_root_order : bool, optional
+        Preserve the order of root-level lists.
+    """
+    def _normalize(value, is_root):
+        if isinstance(value, list):
+            items = [_normalize(i, False) for i in value]
+
+            if preserve_root_order and is_root:
+                return items
+
+            return sorted(items, key=str)
+
+        if isinstance(value, dict):
+            return {
+                k: _normalize(v, False)
+                for k, v in sorted(value.items())
+            }
+
+        return value
+
+    return _normalize(data, True)
 
 
 def check_wazuh_limits_unchanged(new_conf, original_conf):
@@ -899,9 +1031,9 @@ def check_wazuh_limits_unchanged(new_conf, original_conf):
 
     Parameters
     ----------
-    new_conf : str
+    new_conf : Element
         New configuration file.
-    original_conf : str
+    original_conf : Element
         Original configuration file.
 
     Raises
@@ -909,82 +1041,56 @@ def check_wazuh_limits_unchanged(new_conf, original_conf):
     WazuhError(1127)
         Raised if one of the protected limits is modified in the configuration to upload.
     """
-
-    def xml_to_dict(conf, section_name):
-        """Convert XML to list of dictionaries.
-
-        Parameters
-        ----------
-        conf : str
-            XML configuration file.
-        section_name : str
-            Name of the section to extract from the configuration file.
-
-        Returns
-        -------
-        matched_configurations : list
-            Dictionaries with the configuration.
-        """
-        matched_configurations = []
-
-        for str_conf in re.findall(r'<ossec_config>.*?</ossec_config>', conf, re.MULTILINE | re.DOTALL | re.IGNORECASE):
-            ossec_config_section = fromstring(str_conf)
-            for global_section in ossec_config_section.iter('global'):
-                for limits_section in global_section.iter('limits'):
-                    for section in limits_section.iter(section_name):
-                        section_dict = {section.tag: {}}
-                        for config in section:
-                            section_dict[section.tag].update({config.tag: {'attrib': config.attrib,
-                                                                           'value': config.text.strip()}})
-                        matched_configurations.append(section_dict)
-
-        return matched_configurations
-
+    CONFIG_LIMITS_HIERACHY = ['ossec_config', 'global', 'limits']
     limits_configuration = configuration.api_conf['upload_configuration']['limits']
     for disabled_limit in [conf for conf, allowed in limits_configuration.items() if not allowed['allow']]:
-        new_limits = xml_to_dict(new_conf, disabled_limit)
-        original_limits = xml_to_dict(original_conf, disabled_limit)
+        new_limits = xml_to_dict(new_conf, CONFIG_LIMITS_HIERACHY + [disabled_limit])
+        original_limits = xml_to_dict(original_conf, CONFIG_LIMITS_HIERACHY + [disabled_limit])
 
-        if len(new_limits) != len(original_limits) or any(x != y for x, y in zip(new_limits, original_limits)):
+        if normalize(new_limits) != normalize(original_limits):
             raise WazuhError(1127, extra_message=f"global > limits > {disabled_limit}")
 
 
-def check_agents_allow_higher_versions(data: str):
+def check_agents_allow_higher_versions(new_conf: Element, original_conf: Element):
     """Check if higher version agents are allowed.
 
     Parameters
     ----------
-    data : str
-        Configuration file content.
+    new_conf : Element
+        New configuration file.
+    original_conf : Element
+        Original configuration file.
+
+    Raises
+    ------
+    WazuhError(1129)
+        Raised if the agents allow_higher_versions setting is modified in the configuration to upload.
     """
-    blocked_configurations = configuration.api_conf['upload_configuration']
 
-    def check_section(agents_regex, split_section):
-        try:
-            for line in agents_regex.findall(data)[0].split(split_section):
-                tag_matches = re.match(r".*<allow_higher_versions>(.*)</allow_higher_versions>.*",
-                                            line, flags=re.MULTILINE | re.DOTALL)
-                if tag_matches and (tag_matches.group(1) == 'yes'):
-                    raise WazuhError(1129)
-        except IndexError:
-            pass
+    AUTH_HIERACHY = ['ossec_config', 'auth', 'allow_higher_versions']
+    REMOTE_HIERACHY = ['ossec_config', 'remote', 'allow_higher_versions']
+    upload_configuration = configuration.api_conf['upload_configuration']
 
-    if not blocked_configurations['agents']['allow_higher_versions']['allow']:
-        remote_section = re.compile(r"<remote>(.*)</remote>", flags=re.MULTILINE | re.DOTALL)
-        check_section(remote_section, split_section='</remote>')
+    if not upload_configuration['agents']['allow_higher_versions']['allow']:
+        new_auth = xml_to_dict(new_conf, AUTH_HIERACHY)
+        original_auth = xml_to_dict(original_conf, AUTH_HIERACHY)
+        if normalize(new_auth) != normalize(original_auth):
+            raise WazuhError(1129, extra_message='auth > allow_higher_versions')
 
-        auth_section = re.compile(r"<auth>(.*)</auth>", flags=re.MULTILINE | re.DOTALL)
-        check_section(auth_section, split_section='</auth>')
+        new_remote = xml_to_dict(new_conf, REMOTE_HIERACHY)
+        original_remote = xml_to_dict(original_conf, REMOTE_HIERACHY)
+        if normalize(new_remote) != normalize(original_remote):
+            raise WazuhError(1129, extra_message='remote > allow_higher_versions')
 
 
-def check_indexer(new_conf: str, original_conf: str):
+def check_indexer(new_conf, original_conf):
     """Check if modifying the indexer configuration is allowed.
 
     Parameters
     ----------
-    new_conf : str
+    new_conf : Element
         New configuration file.
-    original_conf : str
+    original_conf : Element
         Original configuration file.
 
     Raises
@@ -993,55 +1099,13 @@ def check_indexer(new_conf: str, original_conf: str):
         Raised if the indexer section is modified in the configuration to upload.
     """
 
-    def update_dict(section_dict: dict, section):
-        """Updates a dictionary with the values of a section recursively.
-
-        Parameters
-        ----------
-        section_dict : dict
-            Section dictionary.
-        section : Element
-            XML section to get the values from.
-        """
-        for value in section:
-            if value.text is None:
-                # The value contains more tags, iterate over them
-                update_dict(section_dict, value)
-                return
-
-            section_dict.update({value.tag: {'attrib': value.attrib, 'value': value.text.strip()}})
-
-    def xml_to_dict(conf: str) -> list:
-        """Convert XML to a list of dictionaries.
-
-        Parameters
-        ----------
-        conf : str
-            XML configuration file.
-
-        Returns
-        -------
-        matched_configurations : list
-            Dictionaries with the configuration.
-        """
-        matched_configurations = []
-
-        for str_conf in re.findall(r'<indexer>.*?</indexer>', conf, re.MULTILINE | re.DOTALL | re.IGNORECASE):
-            indexer_section = fromstring(str_conf)
-
-            for section in indexer_section.iter():
-                section_dict = {section.tag: {}}
-                update_dict(section_dict[section.tag], section)
-                matched_configurations.append(section_dict)
-
-        return matched_configurations
-
+    CONFIG_INDEXER_HIERACHY = ['ossec_config', 'indexer']
     upload_configuration = configuration.api_conf['upload_configuration']
 
     if not upload_configuration['indexer']['allow']:
-        new_indexer = xml_to_dict(new_conf)
-        original_indexer = xml_to_dict(original_conf)
-        if len(new_indexer) != len(original_indexer) or any(x != y for x, y in zip(new_indexer, original_indexer)):
+        new_indexer = xml_to_dict(new_conf, CONFIG_INDEXER_HIERACHY)
+        original_indexer = xml_to_dict(original_conf, CONFIG_INDEXER_HIERACHY)
+        if normalize(new_indexer) != normalize(original_indexer):
             raise WazuhError(1127, extra_message='indexer')
 
 
@@ -1747,7 +1811,7 @@ class WazuhDBQuery(object):
             repeat_close = 1
             if curr_level > level:
                 repeat_close += curr_level - level
-            
+
             self.query += ')' * repeat_close
             self.query += ' {} '.format(q_filter['separator'])
             curr_level = level
@@ -2024,15 +2088,15 @@ def validate_wazuh_xml(content: str):
         final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
         final_xml = replace_in_comments(final_xml, '%wildcard%', '--')
 
-        # Check if remote commands are allowed
-        check_remote_commands(final_xml)
-        check_agents_allow_higher_versions(final_xml)
-        with open(common.OSSEC_CONF, 'r') as f:
-            current_xml = f.read()
-        check_indexer(final_xml, current_xml)
-        check_wazuh_limits_unchanged(final_xml, current_xml)
         # Check xml format
-        load_wazuh_xml(xml_path='', data=final_xml)
+        incoming_xml = load_wazuh_xml(xml_path='', data=final_xml)
+        current_xml = load_wazuh_xml(xml_path=common.OSSEC_CONF)
+        # Check if remote commands are allowed
+        check_remote_commands(incoming_xml, current_xml)
+        check_agents_allow_higher_versions(incoming_xml, current_xml)
+        check_indexer(incoming_xml, current_xml)
+        check_wazuh_limits_unchanged(incoming_xml, current_xml)
+
     except ExpatError:
         raise WazuhError(1113)
     except WazuhError as e:

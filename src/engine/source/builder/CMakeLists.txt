@@ -39,6 +39,7 @@ add_library(builder STATIC
     ${SRC_DIR}/builders/stage/outputs.cpp
     ${SRC_DIR}/builders/stage/fileOutput.cpp
     ${SRC_DIR}/builders/stage/indexerOutput.cpp
+	${SRC_DIR}/builders/stage/first_of.cpp
 
     # Map
     ${SRC_DIR}/builders/opmap/map.cpp
@@ -78,9 +79,6 @@ target_link_libraries(builder
     date::date
 )
 
-if(ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE)
-    target_compile_definitions(builder PRIVATE ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE)
-endif()
 
 # Tests
 if(ENGINE_BUILD_TEST)
@@ -88,26 +86,26 @@ if(ENGINE_BUILD_TEST)
 set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
 set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
 set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
-# set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
+set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 ## Mocks
 add_library(builder_mocks INTERFACE)
 target_include_directories(builder_mocks INTERFACE ${TEST_MOCK_DIR})
 target_link_libraries(builder_mocks INTERFACE GTest::gmock builder::ibuilder)
 add_library(builder::mocks ALIAS builder_mocks)
-# ## Component test
-# add_executable(builder_ctest
-#     ${COMPONENT_SRC_DIR}/builder_test.cpp
-#     ${COMPONENT_SRC_DIR}/validator_test.cpp
-# )
-# target_link_libraries(builder_ctest PRIVATE builder GTest::gtest_main schemf::mocks cmstore::mocks defs::mocks base::test)
-# gtest_discover_tests(builder_ctest)
+## Component test
+add_executable(builder_ctest
+    ${COMPONENT_SRC_DIR}/builder_test.cpp
+    ${COMPONENT_SRC_DIR}/validator_test.cpp
+)
+target_link_libraries(builder_ctest PRIVATE builder GTest::gtest_main schemf::mocks cmstore::mocks defs::mocks base::test)
+gtest_discover_tests(builder_ctest)
 ## Unit tests
 add_executable(builder_utest
 	${UNIT_SRC_DIR}/builders/baseBuilders_test.cpp
 	${UNIT_SRC_DIR}/allowedFields_test.cpp
 	${UNIT_SRC_DIR}/registry_test.cpp
-	# ${UNIT_SRC_DIR}/policy/factory_test.cpp
-	# ${UNIT_SRC_DIR}/policy/assetBuilder_test.cpp
+	${UNIT_SRC_DIR}/policy/factory_test.cpp
+	${UNIT_SRC_DIR}/policy/assetBuilder_test.cpp
 	${UNIT_SRC_DIR}/builders/helperParser_test.cpp
 	# # Filter Builders
 	${UNIT_SRC_DIR}/builders/opfilter/filter_test.cpp
@@ -159,8 +157,9 @@ add_executable(builder_utest
 	${UNIT_SRC_DIR}/builders/stage/parse_test.cpp
 	${UNIT_SRC_DIR}/builders/stage/outputs_test.cpp
 	${UNIT_SRC_DIR}/builders/stage/fileOutput_test.cpp
-	# # TODO: Until the indexer connector is unified with the rest of wazuh-manager
+	# TODO: Until the indexer connector is unified with the rest of wazuh-manager
 	${UNIT_SRC_DIR}/builders/stage/indexerOutput_test.cpp
+	${UNIT_SRC_DIR}/builders/stage/first_of_test.cpp
 )
 target_include_directories(builder_utest PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})
 target_link_libraries(builder_utest
@@ -179,8 +178,5 @@ target_link_libraries(builder_utest
 	wIndexerConnector::mocks
 )
 gtest_discover_tests(builder_utest)
-if(ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE)
-	target_compile_definitions(builder_utest PRIVATE ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE)
-endif()
 
 endif(ENGINE_BUILD_TEST)

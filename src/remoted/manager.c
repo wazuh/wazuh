@@ -349,14 +349,17 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
         }
     } else {
         /* Clean msg and shared files (remove random string) */
-
-        if ((clean = strchr(clean, '\n'))) {
-            /* Forward to random string (pass shared files) */
-            for (clean++; (end = strchr(clean, '\n')); clean = end + 1);
-            *clean = '\0';
+        if (clean[0] == '{') {
+            mdebug2("Received JSON keepalive from agent '%s'", key->name);
         } else {
-            mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
-            return -1;
+            if ((clean = strchr(clean, '\n'))) {
+                /* Forward to random string (pass shared files) */
+                for (clean++; (end = strchr(clean, '\n')); clean = end + 1);
+                *clean = '\0';
+            } else {
+                mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
+                return -1;
+            }
         }
 
         rem_inc_recv_ctrl_keepalive(key->id);
@@ -423,13 +426,17 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
         /* Clean msg and shared files (remove random string) for keepalive messages */
         msg = r_msg;
 
-        if ((r_msg = strchr(r_msg, '\n'))) {
-            /* Forward to random string (pass shared files) */
-            for (r_msg++; (end = strchr(r_msg, '\n')); r_msg = end + 1);
-            *r_msg = '\0';
+        if (r_msg[0] == '{') {
+            mdebug2("Processing JSON keepalive from agent '%s'", key->id);
         } else {
-            mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
-            return;
+            if ((r_msg = strchr(r_msg, '\n'))) {
+                /* Forward to random string (pass shared files) */
+                for (r_msg++; (end = strchr(r_msg, '\n')); r_msg = end + 1);
+                *r_msg = '\0';
+            } else {
+                mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
+                return;
+            }
         }
     }
 
@@ -520,7 +527,14 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
             /* Parsing msg */
             os_calloc(1, sizeof(agent_info_data), agent_data);
 
-            result = parse_agent_update_msg(msg, agent_data);
+            // Detect JSON format (5.0+ agent) vs text format (4.x agent)
+            if (msg[0] == '{') {
+                // JSON keepalive from 5.0+ agent (groups not needed here, only for cache)
+                result = parse_json_keepalive(msg, agent_data, NULL, NULL);
+            } else {
+                // Text keepalive from 4.x agent
+                result = parse_agent_update_msg(msg, agent_data);
+            }
 
             if (OS_SUCCESS != result) {
                 merror("Error parsing message for agent '%s'", key->id);
@@ -1552,6 +1566,44 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
         return OS_SUCCESS;
     }
 
+    // JSON keepalive format (5.0+ agents)
+    if (msg[0] == '{') {
+        cJSON *json_msg = cJSON_Parse(msg);
+        if (json_msg) {
+            cJSON *agent_obj = cJSON_GetObjectItem(json_msg, "agent");
+            if (agent_obj) {
+                cJSON *merged_sum = cJSON_GetObjectItem(agent_obj, "merged_sum");
+                if (cJSON_IsString(merged_sum) && merged_sum->valuestring) {
+                    cJSON *group_json = NULL;
+                    cJSON *value = NULL;
+
+                    if (!logr.worker_node) {
+                        group_json = assign_group_to_agent(agent_id, merged_sum->valuestring);
+                    } else {
+                        group_json = assign_group_to_agent_worker(agent_id, merged_sum->valuestring);
+                    }
+
+                    value = cJSON_GetObjectItem(group_json, "group");
+                    if (cJSON_IsString(value) && value->valuestring != NULL) {
+                        os_strdup(value->valuestring, *r_group);
+                        cJSON_Delete(group_json);
+                        cJSON_Delete(json_msg);
+                        return OS_SUCCESS;
+                    } else {
+                        merror("Agent '%s' invalid or empty group assigned.", agent_id);
+                        cJSON_Delete(group_json);
+                        cJSON_Delete(json_msg);
+                        return OS_INVALID;
+                    }
+                }
+            }
+            cJSON_Delete(json_msg);
+        }
+        merror("Unable to parse JSON keepalive or missing agent.merged_sum from agent ID '%s'", agent_id);
+        return OS_INVALID;
+    }
+
+    // Text format keepalive (legacy)
     os_strdup(msg, message);
     fmsg = message;
 

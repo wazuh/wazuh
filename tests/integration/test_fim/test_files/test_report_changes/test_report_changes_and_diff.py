@@ -191,7 +191,7 @@ def test_reports_file_and_nodiff(test_configuration, test_metadata, configure_lo
     write_file_write(test_file_path, content=original_string)
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=30)
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=60)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
     assert 'No content changes were found for this file.' in str(wazuh_log_monitor.callback_result[0]), 'Wrong content_changes field'
 

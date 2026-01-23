@@ -16,10 +16,7 @@ constexpr std::string_view KVDB_PATH = "analysisd.kvdb_path";
 constexpr std::string_view OUTPUTS_PATH = "analysisd.output_path";
 
 constexpr std::string_view CM_RULESET_PATH = "analysisd.cm_ruleset_path";
-
-constexpr std::string_view CTI_PATH = "analysisd.cti_path";
-constexpr std::string_view CTI_FORCE_IF_EMPTY = "analysisd.cti_force_if_empty";
-constexpr std::string_view CTI_ENABLED = "analysisd.cti_enabled";
+constexpr std::string_view CM_SYNC_INTERVAL = "analysisd.cm_sync_interval";
 
 constexpr std::string_view INDEXER_HOST = "analysisd.indexer_hosts";
 constexpr std::string_view INDEXER_USER = "analysisd.indexer_username";
@@ -38,19 +35,17 @@ constexpr std::string_view ORCHESTRATOR_THREADS = "analysisd.orchestrator_thread
 
 constexpr std::string_view SERVER_API_SOCKET = "analysisd.server_api_socket";
 constexpr std::string_view SERVER_API_TIMEOUT = "analysisd.server_api_timeout";
+constexpr std::string_view SERVER_API_PAYLOAD_MAX_BYTES = "analysisd.server_api_payload_max_bytes";
 
-constexpr std::string_view SERVER_ENRICHED_EVENTS_SOCKET = "/analysisd/server/enriched_events_socket";
+constexpr std::string_view SERVER_ENRICHED_EVENTS_SOCKET = "analysisd.server_enriched_events_socket";
 
-constexpr std::string_view SERVER_EVENT_SOCKET = "/analysisd/server/event_socket";
-constexpr std::string_view SERVER_EVENT_THREADS = "/analysisd/server/event_threads";
+constexpr std::string_view SERVER_EVENT_SOCKET = "analysisd.server_event_socket";
+constexpr std::string_view SERVER_EVENT_THREADS = "analysisd.server_event_threads";
+constexpr std::string_view SERVER_ENABLE_EVENT_PROCESSING = "analysisd.server_enable_event_processing";
 
 constexpr std::string_view TZDB_PATH = "analysisd.tzdb_path";
 constexpr std::string_view TZDB_AUTO_UPDATE = "analysisd.tzdb_auto_update";
 constexpr std::string_view TZDB_FORCE_VERSION_UPDATE = "analysisd.tzdb_force_version_update";
-
-constexpr std::string_view METRICS_ENABLED = "analysisd.metrics_enabled";
-constexpr std::string_view METRICS_EXPORT_INTERVAL = "analysisd.metrics_export_interval";
-constexpr std::string_view METRICS_EXPORT_TIMEOUT = "analysisd.metrics_export_timeout";
 
 constexpr std::string_view STREAMLOG_BASE_PATH = "analysisd.streamlog_base_path";
 constexpr std::string_view STREAMLOG_SHOULD_COMPRESS = "analysisd.streamlog_compress";

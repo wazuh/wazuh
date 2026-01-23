@@ -27,6 +27,7 @@ link_directories(${SRC_FOLDER}/shared_modules/file_helper/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build)
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
+link_directories(${SRC_FOLDER}/shared_modules/schema_validator/build/lib)
 link_directories(${SRC_FOLDER}/data_provider/build)
 link_directories(${SRC_FOLDER}/data_provider/build/lib)
 include_directories(${SRC_FOLDER}/external/bzip2/)
@@ -44,6 +45,7 @@ include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
+include_directories(${SRC_FOLDER}/shared_modules/schema_validator/include/)
 include_directories(${SRC_FOLDER}/data_provider/include/)
 
 # Dependencies should be built externally and made available
@@ -122,6 +124,7 @@ target_link_libraries(
             ${FILE_IO_LIB}
             ${SYNC_PROTOCOL_LIB}
             ${DBSYNC_LIB}
+            schema_validator
             wazuhext # contains hash_helper, string_helper, time_helper utilities
             cjson
             ${PCRE2_LIB}

@@ -25,7 +25,13 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
             return;
         }
 
-        archiver->archive(req.body);
+        // Archive the batch, stripping trailing newline to prevent blank lines between batches.
+        std::string_view batchToArchive = req.body;
+        if (!batchToArchive.empty() && batchToArchive.back() == '\n')
+        {
+            batchToArchive.remove_suffix(1);
+        }
+        archiver->archive(batchToArchive);
 
         std::queue<base::Event> events;
         try

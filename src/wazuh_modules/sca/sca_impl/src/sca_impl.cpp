@@ -16,6 +16,7 @@
 #include "logging_helper.hpp"
 #include "hashHelper.h"
 #include "../../include/sca.h"
+#include "schemaValidator.hpp"
 
 // Static member definitions
 int (*SecurityConfigurationAssessment::s_wmExecFunc)(char*, char**, int*, int, const char*) = nullptr;
@@ -133,9 +134,11 @@ void SecurityConfigurationAssessment::Run()
         // Check if paused for coordination - skip scanning but stay in loop
         if (m_paused)
         {
+            // LCOV_EXCL_START
             LoggingHelper::getInstance().log(LOG_DEBUG, "SCA scanning paused, skipping scan iteration");
             firstScan = false;  // Clear first scan flag even when paused
             continue;
+            // LCOV_EXCL_STOP
         }
 
         if (firstScan && m_scanOnStart)
@@ -178,6 +181,7 @@ void SecurityConfigurationAssessment::Run()
         // Check again after policy loading in case stop was called during load
         if (!m_keepRunning)
         {
+            // LCOV_EXCL_START
             // Mark scan as complete before returning
             m_scanInProgress.store(false);
             {
@@ -185,6 +189,7 @@ void SecurityConfigurationAssessment::Run()
                 m_pauseCv.notify_all();
             }
             return;
+            // LCOV_EXCL_STOP
         }
 
         auto reportCheckResult = [this](const CheckResult & checkResult)
@@ -200,6 +205,7 @@ void SecurityConfigurationAssessment::Run()
         {
             if (!m_keepRunning)
             {
+                // LCOV_EXCL_START
                 // Mark scan as complete before returning
                 m_scanInProgress.store(false);
                 {
@@ -207,6 +213,7 @@ void SecurityConfigurationAssessment::Run()
                     m_pauseCv.notify_all();
                 }
                 return;
+                // LCOV_EXCL_STOP
             }
 
             policy->Run(reportCheckResult);
@@ -322,6 +329,21 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
     {
         m_spSyncProtocol = std::make_shared<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
         LoggingHelper::getInstance().log(LOG_INFO, "SCA sync protocol initialized successfully with database: " + syncDbPath);
+
+        // Initialize schema validator factory from embedded resources
+        auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
+
+        if (!validatorFactory.isInitialized())
+        {
+            if (validatorFactory.initialize())
+            {
+                LoggingHelper::getInstance().log(LOG_INFO, "Schema validator initialized successfully from embedded resources");
+            }
+            else
+            {
+                LoggingHelper::getInstance().log(LOG_WARNING, "Failed to initialize schema validator. Schema validation will be disabled.");
+            }
+        }
 
         // Set integrity interval
         m_integrityInterval = integrityInterval;
@@ -900,20 +922,56 @@ bool SecurityConfigurationAssessment::performRecovery()
             // Build stateful message in the format required by the indexer
             nlohmann::json statefulMessage = sca::recovery::buildStatefulMessage(check, policy);
 
-            // Calculate SHA1 of policy_id:check_id for sync protocol (same as event handler)
-            std::string baseId = policyId + ":" + checkId;
-            Utils::HashData hash(Utils::HashType::Sha1);
-            hash.update(baseId.c_str(), baseId.length());
-            const std::vector<unsigned char> hashResult = hash.hash();
-            std::string hashedId = Utils::asciiToHex(hashResult);
+            // Validate stateful message before persisting for recovery
+            auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
+            bool shouldPersist = true;
 
-            m_spSyncProtocol->persistDifferenceInMemory(
-                hashedId,
-                Operation::CREATE,
-                SCA_SYNC_INDEX,
-                statefulMessage.dump(),
-                check["version"].get<uint64_t>()
-            );
+            if (validatorFactory.isInitialized())
+            {
+                auto validator = validatorFactory.getValidator(SCA_SYNC_INDEX);
+
+                if (validator)
+                {
+                    auto validationResult = validator->validate(statefulMessage.dump());
+
+                    if (!validationResult.isValid)
+                    {
+                        // Log validation errors
+                        std::string errorMsg = "Schema validation failed for SCA recovery message (policy: " +
+                                               policyId + ", check: " + checkId + ", index: " +
+                                               std::string(SCA_SYNC_INDEX) + "). Errors: ";
+
+                        for (const auto& error : validationResult.errors)
+                        {
+                            errorMsg += "  - " + error;
+                        }
+
+                        LoggingHelper::getInstance().log(LOG_ERROR, errorMsg);
+                        LoggingHelper::getInstance().log(LOG_ERROR, "Raw recovery event that failed validation: " + statefulMessage.dump());
+                        LoggingHelper::getInstance().log(LOG_DEBUG, "Skipping persistence of invalid recovery event for check " + checkId);
+                        shouldPersist = false;
+                    }
+                }
+            }
+
+            // Persist only if validation passed
+            if (shouldPersist)
+            {
+                // Calculate SHA1 of policy_id:check_id for sync protocol (same as event handler)
+                std::string baseId = policyId + ":" + checkId;
+                Utils::HashData hash(Utils::HashType::Sha1);
+                hash.update(baseId.c_str(), baseId.length());
+                const std::vector<unsigned char> hashResult = hash.hash();
+                std::string hashedId = Utils::asciiToHex(hashResult);
+
+                m_spSyncProtocol->persistDifferenceInMemory(
+                    hashedId,
+                    Operation::CREATE,
+                    SCA_SYNC_INDEX,
+                    statefulMessage.dump(),
+                    check["version"].get<uint64_t>()
+                );
+            }
         }
 
         // Trigger full synchronization

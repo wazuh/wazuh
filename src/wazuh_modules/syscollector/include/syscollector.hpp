@@ -237,6 +237,31 @@ class EXPORTED Syscollector final
          */
         bool recoveryIntervalHasEllapsed(const std::string& tableName, int64_t integrityInterval);
 
+        /**
+         * @brief Validates a JSON message against schema and logs validation errors
+         *
+         * This helper function encapsulates the common pattern of schema validation
+         * used across different parts of syscollector. It validates the message against
+         * the schema for the given index and logs detailed error messages if validation fails.
+         *
+         * @param data JSON string to validate
+         * @param index Index name for schema lookup (e.g., "wazuh-states-inventory-packages")
+         * @param context Context string for logging (e.g., "table: dbsync_packages")
+         * @return true if validation passed or validator not initialized, false if validation failed
+         */
+        bool validateSchemaAndLog(const std::string& data, const std::string& index, const std::string& context) const;
+
+        /**
+         * @brief Deletes failed items from DBSync in a batch transaction
+         *
+         * This helper function encapsulates the common pattern of deleting items that failed
+         * schema validation. It uses a DBSync transaction to ensure all deletions are atomic
+         * and properly committed to disk.
+         *
+         * @param failedItems Vector of (table_name, json_data) pairs to delete
+         */
+        void deleteFailedItemsFromDB(const std::vector<std::pair<std::string, nlohmann::json>>& failedItems) const;
+
         std::shared_ptr<ISysInfo>                                                m_spInfo;
         std::function<void(const std::string&)>                                  m_reportDiffFunction;
         std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> m_persistDiffFunction;
@@ -253,7 +278,6 @@ class EXPORTED Syscollector final
         bool                                                                     m_processes;
         bool                                                                     m_hotfixes;
         bool                                                                     m_stopping;
-        bool                                                                     m_syncLoopFinished;
         bool                                                                     m_initialized;
         bool                                                                     m_notify;
         std::atomic<bool>                                                        m_paused;
@@ -275,6 +299,7 @@ class EXPORTED Syscollector final
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
         std::vector<std::string>                                                 m_disabledCollectorsIndicesWithData;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocolVD;
+        std::vector<std::pair<std::string, nlohmann::json>>*                     m_failedItems;  // Pointer to list of items that failed validation (for deferred deletion)
 };
 
 

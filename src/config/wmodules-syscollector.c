@@ -291,6 +291,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_USERS, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
+            syscollector->flags.users = !strcmp(node[i]->content, "yes");
         } else if (!strcmp(node[i]->element, XML_SERVICES)) {
             if (!strcmp(node[i]->content, "yes"))
                 syscollector->flags.services = 1;
@@ -300,7 +301,6 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_SERVICES, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
-            syscollector->flags.users = !strcmp(node[i]->content, "yes");
         } else if (!strcmp(node[i]->element, XML_BROWSER_EXTENSIONS)) {
             if (!node[i]->content || !strlen(node[i]->content) ||
                 (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no"))) {

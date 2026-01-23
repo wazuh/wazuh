@@ -57,31 +57,69 @@ public:
      *
      * If the namespace already exists, the implementation should fail.
      *
-     * @param nsName Namespace name.
+     * @param nsId Namespace identifier.
      *
      * @throws std::runtime_error on invalid name, if the namespace already
      *         exists, or on storage errors.
      */
-    virtual void createNamespace(std::string_view nsName) = 0;
+    virtual void createNamespace(const cm::store::NamespaceId& nsId) = 0;
+
+    /**
+     * @brief Check if a namespace exists.
+     *
+     * @param nsId Namespace identifier.
+     * @return true if the namespace exists, false otherwise.
+     */
+    virtual bool existsNamespace(const cm::store::NamespaceId& nsId) const = 0;
 
     /**
      * @brief Delete an existing namespace and all of its resources.
      *
-     * @param nsName Namespace name.
+     * @param nsId Namespace identifier.
      *
      * @throws std::runtime_error if the namespace does not exist or the
      *         deletion cannot be completed.
      */
-    virtual void deleteNamespace(std::string_view nsName) = 0;
+    virtual void deleteNamespace(const cm::store::NamespaceId& nsId) = 0;
 
     /*
-     * @brief Import a full namespace from a JSON document.
+     * @brief Import a full namespace from a JSON document in a new namespace.
      *
-     * @param nsName Namespace name (space).
+     * The document is expected to contain a full representation of the policy
+     * and resources to be imported into the new namespace. The structure must be:
+     * {
+     *  "resources": {
+     *    "kvdbs": [ ... ],     // Array of KVDB objects
+     *    "decoders": [ ... ],  // Array of decoder objects
+     *    "integrations": [ ... ], // Array of integration objects
+     *    "policy": { ... }        // Policy object
+     * }
+     *
+     * @param nsId Namespace identifier, to store the imported data.
      * @param jsonDocument JSON string with policy + resources. must end in \0
      * @param force If true, skip all validations.
+     * @throws std::runtime_error on errors.
+     * TODO: Change jsonDocument from string_view to json::Json
      */
-    virtual void importNamespace(std::string_view nsName, std::string_view jsonDocument, bool force) = 0;
+    virtual void importNamespace(const cm::store::NamespaceId& nsId, std::string_view jsonDocument, bool force) = 0;
+
+    /**
+     * @brief Import a full namespace from individual components.
+     *
+     * @param nsName Namespace identifier, to store the imported data.
+     * @param kvdbs list of KVDB definitions in json format
+     * @param decoders list of decoder definitions in json format
+     * @param integrations list of integration definitions in json format
+     * @param policy policy definition in json format
+     * @param softValidation if true, only check the most critical validations.
+     * @throws std::runtime_error on errors.
+     */
+    virtual void importNamespace(const cm::store::NamespaceId& nsId,
+                                 const std::vector<json::Json>& kvdbs,
+                                 const std::vector<json::Json>& decoders,
+                                 const std::vector<json::Json>& integrations,
+                                 const json::Json& policy,
+                                 bool softValidation) = 0;
 
     /********************************* Policy *********************************/
 
@@ -94,25 +132,25 @@ public:
      *  - The document is parsed into cm::store::dataType::Policy.
      *  - The resulting policy is validated before being stored.
      *
-     * @param nsName     Target namespace name.
+     * @param nsId       Target namespace identifier.
      * @param document   Policy document (typically YAML).
      *
      * @throws std::runtime_error on parse errors, validation failures
      *         or storage errors.
      */
-    virtual void upsertPolicy(std::string_view nsName, std::string_view document) = 0;
+    virtual void upsertPolicy(const cm::store::NamespaceId& nsId, std::string_view document) = 0;
 
     /**
      * @brief Delete the policy of the given namespace.
      *
      * After this call, the namespace has no policy associated.
      *
-     * @param nsName Target namespace name.
+     * @param nsId Target namespace identifier.
      *
      * @throws std::runtime_error if the namespace does not exist or the
      *         policy cannot be removed.
      */
-    virtual void deletePolicy(std::string_view nsName) = 0;
+    virtual void deletePolicy(const cm::store::NamespaceId& nsId) = 0;
 
     /***************************** Generic Resources **************************/
 
@@ -122,7 +160,7 @@ public:
      * The result is a lightweight catalog view including UUID, logical
      * name and a content hash suitable for change tracking.
      *
-     * @param nsName Target namespace name.
+     * @param nsId   Target namespace identifier.
      * @param type   Resource type to list.
      *
      * @return List of resource summaries.
@@ -130,7 +168,8 @@ public:
      * @throws std::runtime_error if the namespace does not exist or the
      *         operation fails.
      */
-    virtual std::vector<ResourceSummary> listResources(std::string_view nsName, cm::store::ResourceType type) const = 0;
+    virtual std::vector<ResourceSummary> listResources(const cm::store::NamespaceId& nsId,
+                                                       cm::store::ResourceType type) const = 0;
 
     /**
      * @brief Get the serialized representation of a resource by UUID.
@@ -140,7 +179,7 @@ public:
      *  - Load the underlying object from the store.
      *  - Serialize it back to a document string (typically YAML).
      *
-     * @param nsName Target namespace name.
+     * @param nsId   Target namespace identifier.
      * @param uuid   Resource UUID.
      * @param asJSon Get with json format
      *
@@ -149,7 +188,8 @@ public:
      * @throws std::runtime_error if the namespace or resource does not exist
      *         or if the serialization fails.
      */
-    virtual std::string getResourceByUUID(std::string_view nsName, const std::string& uuid, bool asJson) const = 0;
+    virtual std::string
+    getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid, bool asJson) const = 0;
 
     /**
      * @brief Upsert a resource (asset, integration or KVDB) from a document.
@@ -162,14 +202,15 @@ public:
      *  - For KVDBs:
      *      - The document is parsed into cm::store::dataType::KVDB.
      *
-     * @param nsName     Target namespace name.
+     * @param nsId       Target namespace identifier.
      * @param type       Resource type.
      * @param document   Resource document (typically YAML).
      *
      * @throws std::runtime_error on parse errors, validation failures
      *         or storage errors.
      */
-    virtual void upsertResource(std::string_view nsName, cm::store::ResourceType type, std::string_view document) = 0;
+    virtual void
+    upsertResource(const cm::store::NamespaceId& nsId, cm::store::ResourceType type, std::string_view document) = 0;
 
     /**
      * @brief Delete a resource by UUID.
@@ -179,13 +220,13 @@ public:
      *  - Apply any business rules regarding deletions.
      *  - Remove the resource from the underlying store.
      *
-     * @param nsName Target namespace name.
+     * @param nsId   Target namespace identifier.
      * @param uuid   Resource UUID.
      *
      * @throws std::runtime_error if the namespace or resource does not exist
      *         or the deletion cannot be performed.
      */
-    virtual void deleteResourceByUUID(std::string_view nsName, const std::string& uuid) = 0;
+    virtual void deleteResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid) = 0;
 
     /**
      * @brief Validate a resource payload (isolated, no namespace).

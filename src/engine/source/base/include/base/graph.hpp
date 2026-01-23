@@ -255,6 +255,8 @@ public:
      *
      * @param id Id of the node.
      * @return const std::vector<K>& Children of the node.
+     * @note Children are stored in insertion order of edges; callers should
+     * rely on this if deterministic traversal order is required.
      *
      * @throws std::runtime_error if node does not have children.
      */

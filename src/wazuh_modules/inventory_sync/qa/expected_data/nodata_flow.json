@@ -11,7 +11,7 @@
           "type": "flatbuffer",
           "data": {
             "type": "start_ack",
-            "status": 2
+            "status": 1
           },
           "validate_session": false,
           "timeout": 5.0

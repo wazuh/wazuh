@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
+import json
 import os
 import sys
 from unittest.mock import MagicMock, patch
@@ -260,36 +261,86 @@ def test_get_cluster_items():
     """Verify the cluster files information."""
     utils.get_cluster_items.cache_clear()
 
-    with patch('os.path.abspath', side_effect=FileNotFoundError):
-        with pytest.raises(WazuhException, match='.* 3005 .*'):
+    with patch("os.path.abspath", side_effect=FileNotFoundError):
+        with pytest.raises(WazuhException, match=".* 3005 .*"):
             utils.get_cluster_items()
 
     items = utils.get_cluster_items()
-    assert items == {'files': {'etc/': {'permissions': 416, 'source': 'master', 'files': ['client.keys'],
-                                        'recursive': False, 'restart': False, 'remove_subdirs_if_empty': False,
-                                        'extra_valid': False, 'description': 'client keys file database'},
-                               'etc/shared/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                               'recursive': True, 'restart': False, 'remove_subdirs_if_empty': True,
-                                               'extra_valid': False, 'description': 'shared configuration files'},
-                               'var/multigroups/': {'permissions': 432, 'source': 'master', 'files': ['merged.mg'],
-                                                    'recursive': True, 'restart': False,
-                                                    'remove_subdirs_if_empty': True, 'extra_valid': False,
-                                                    'description': 'shared configuration files'},
-                               'excluded_files': ['ar.conf', 'ossec.conf'],
-                               'excluded_extensions': ['~', '.tmp', '.lock', '.swp']},
-                     'intervals': {'worker': {'sync_integrity': 9, 'sync_agent_info': 10, 'sync_agent_groups': 30,
-                                              'keep_alive': 60, 'connection_retry': 10, 'timeout_agent_groups': 40,
-                                              'max_failed_keepalive_attempts': 2, "agent_groups_mismatch_limit": 5},
-                                   'master': {'timeout_extra_valid': 40, 'recalculate_integrity': 8,
-                                              'check_worker_lastkeepalive': 60,
-                                              'max_allowed_time_without_keepalive': 120, 'process_pool_size': 2,
-                                              'sync_agent_groups': 10, 'timeout_agent_info': 40,
-                                              'max_locked_integrity_time': 1000, 'agent_group_start_delay': 30},
-                                   'communication': {'timeout_cluster_request': 20, 'timeout_dapi_request': 200,
-                                                     'timeout_receiving_file': 120, 'min_zip_size': 31457280,
-                                                     'max_zip_size': 1073741824, 'compress_level': 1,
-                                                     'zip_limit_tolerance': 0.2}},
-                     'distributed_api': {'enabled': True}}
+
+    expected = {
+        "files": {
+            "etc/": {
+                "permissions": 416,
+                "source": "master",
+                "files": ["client.keys"],
+                "recursive": False,
+                "restart": False,
+                "remove_subdirs_if_empty": False,
+                "extra_valid": False,
+                "description": "client keys file database",
+            },
+            "etc/shared/": {
+                "permissions": 432,
+                "source": "master",
+                "files": ["all"],
+                "recursive": True,
+                "restart": False,
+                "remove_subdirs_if_empty": True,
+                "extra_valid": False,
+                "description": "shared configuration files",
+            },
+            "var/multigroups/": {
+                "permissions": 432,
+                "source": "master",
+                "files": ["merged.mg"],
+                "recursive": True,
+                "restart": False,
+                "remove_subdirs_if_empty": True,
+                "extra_valid": False,
+                "description": "shared configuration files",
+            },
+            "excluded_files": ["ar.conf", "ossec.conf"],
+            "excluded_extensions": ["~", ".tmp", ".lock", ".swp"],
+        },
+        "intervals": {
+            "worker": {
+                "sync_integrity": 9,
+                "sync_agent_info": 10,
+                "sync_agent_groups": 30,
+                "keep_alive": 60,
+                "connection_retry": 10,
+                "timeout_agent_groups": 40,
+                "max_failed_keepalive_attempts": 2,
+                "agent_groups_mismatch_limit": 5,
+            },
+            "master": {
+                "timeout_extra_valid": 40,
+                "recalculate_integrity": 8,
+                "check_worker_lastkeepalive": 60,
+                "max_allowed_time_without_keepalive": 120,
+                "process_pool_size": 2,
+                "sync_agent_groups": 10,
+                "timeout_agent_info": 40,
+                "max_locked_integrity_time": 1000,
+                "agent_group_start_delay": 30,
+                "sync_disconnected_agent_groups": 300,
+                "sync_disconnected_agent_groups_batch_size": 100,
+                "sync_disconnected_agent_groups_min_offline": 600,
+            },
+            "communication": {
+                "timeout_cluster_request": 20,
+                "timeout_dapi_request": 200,
+                "timeout_receiving_file": 120,
+                "min_zip_size": 31457280,
+                "max_zip_size": 1073741824,
+                "compress_level": 1,
+                "zip_limit_tolerance": 0.2,
+            },
+        },
+        "distributed_api": {"enabled": True},
+    }
+
+    assert json.dumps(items, sort_keys=True) == json.dumps(expected, sort_keys=True)
 
 
 def test_ClusterFilter():

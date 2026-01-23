@@ -63,7 +63,7 @@ nlohmann::json getQueryFilter(std::string_view space)
 {
     if (space.empty())
     {
-        throw std::invalid_argument("Space name cannot be empty");
+        throw std::runtime_error("Space name cannot be empty");
     }
     nlohmann::json query = R"({"bool": {"filter": [{ "term": { "space.name": "" }}]}})"_json;
     query["bool"]["filter"][0]["term"]["space.name"] = space;
@@ -80,7 +80,7 @@ nlohmann::json getSearchAfter(const nlohmann::json& hits)
 {
     if (!hits.contains("hits") || !hits["hits"].is_array() || hits["hits"].empty())
     {
-        throw std::invalid_argument("Hits object is invalid or empty");
+        throw std::runtime_error("Hits object is invalid or empty");
     }
 
     return hits["hits"].back().at("sort");
@@ -90,7 +90,7 @@ size_t getTotalHits(const nlohmann::json& hits)
 {
     if (!hits.contains("total") || !hits["total"].is_object())
     {
-        throw std::invalid_argument("Hits object is invalid or does not contain total hits");
+        throw std::runtime_error("Hits object is invalid or does not contain total hits");
     }
 
     const auto& total = hits["total"];
@@ -104,10 +104,33 @@ size_t getTotalHits(const nlohmann::json& hits)
     }
     else
     {
-        throw std::invalid_argument("Total hits format is unrecognized");
+        throw std::runtime_error("Total hits format is unrecognized");
     }
 }
 
+json::Json extractDocumentFromHit(const nlohmann::json& hit)
+{
+    if (!hit.contains("_source") || !hit["_source"].is_object())
+    {
+        throw std::runtime_error("Hit does not contain _source field");
+    }
+
+    const auto& source = hit["_source"];
+    if (!source.contains("document"))
+    {
+        throw std::runtime_error("Source does not contain document field");
+    }
+
+    try
+    {
+        return json::Json {source["document"].dump().c_str()};
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format(
+            "Failed to parse document JSON: '{}'. Original error: {}", source["document"].dump(), e.what()));
+    }
+}
 } // namespace
 
 /****************************************************************************************
@@ -235,7 +258,7 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
         throw std::runtime_error("IndexerConnectorAsync is not initialized");
     }
 
-    std::vector<std::pair<IndexResourceType, std::string>> resourceList;
+    std::vector<std::pair<IndexResourceType, json::Json>> resourceList;
 
     // Create Point In Time (PIT) - Can throw IndexerConnectorException
     auto pit = m_indexerConnectorAsync->createPointInTime(POLICY_ALIASES, PIT_KEEP_ALIVE, true);
@@ -287,7 +310,7 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
         for (const auto& hit : hitArray)
         {
             auto indexName = hit["_index"].get<std::string>();
-            auto sourceData = hit["_source"].dump();
+            auto sourceData = extractDocumentFromHit(hit);
             IndexResourceType resourceType = fromIndexName(indexName);
             resourceList.emplace_back(resourceType, std::move(sourceData));
         }

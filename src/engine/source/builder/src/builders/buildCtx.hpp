@@ -39,6 +39,7 @@ public:
         m_allowedFields = nullptr;
         m_storeNSReader = nullptr;
         m_allowMissingDependencies = false;
+        m_context.availableKvdbs = std::nullopt;
     }
 
     ~BuildCtx() = default;
@@ -60,7 +61,7 @@ public:
              const std::shared_ptr<const schemf::IValidator>& schemaValidator,
              const std::shared_ptr<const builder::IAllowedFields>& allowedFields,
              const std::shared_ptr<cm::store::ICMStoreNSReader>& storeNSReader,
-             bool allowMissingDependencies = false)
+             bool allowMissingDependencies)
         : m_runState(runState)
         , m_context(context)
         , m_registry(registry)
@@ -197,6 +198,25 @@ public:
      * @copydoc IBuildCtx::setAllowMissingDependencies
      */
     inline void setAllowMissingDependencies(bool allow) override { m_allowMissingDependencies = allow; }
+
+    /**
+     * @copydoc IBuildCtx::isKvdbAvailable
+     */
+    inline std::pair<bool, bool> isKvdbAvailable(const std::string& kvdbName) const override
+    {
+        if (!m_context.availableKvdbs.has_value())
+        {
+            return {false, false};
+        }
+
+        auto it = m_context.availableKvdbs.value().find(kvdbName);
+        if (it == m_context.availableKvdbs.value().end())
+        {
+            return {false, false};
+        }
+
+        return {true, it->second};
+    }
 };
 
 } // namespace builder::builders

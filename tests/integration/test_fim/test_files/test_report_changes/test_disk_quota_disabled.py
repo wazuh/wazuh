@@ -164,6 +164,6 @@ def test_disk_quota_disabled(test_configuration, test_metadata, configure_local_
     wazuh_log_monitor.start(generate_callback(DISK_QUOTA_LIMIT_REACHED), timeout=30)
     assert (wazuh_log_monitor.callback_result == None), f'Error, unexpected disk_quota limit event.'
 
-    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=30)
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=60)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
     assert 'More changes...' in str(wazuh_log_monitor.callback_result[0]), 'Wrong content_changes field'

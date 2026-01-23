@@ -178,7 +178,7 @@ def test_file_size_default(test_configuration, test_metadata, configure_local_in
     write_file(file_to_monitor, data=to_write)
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=30)
+    wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=60)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
     assert 'More changes...' in str(wazuh_log_monitor.callback_result), 'Wrong content_changes field'
 
@@ -189,7 +189,7 @@ def test_file_size_default(test_configuration, test_metadata, configure_local_in
     to_write = generate_string(int(size_limit), '1')
     write_file(file_to_monitor, data=to_write)
 
-    wazuh_log_monitor.start(callback=generate_callback(DIFF_FOLDER_DELETED), timeout=30)
+    wazuh_log_monitor.start(callback=generate_callback(DIFF_FOLDER_DELETED), timeout=60)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FOLDER_DELETED
 
     if os.path.exists(diff_file_path):

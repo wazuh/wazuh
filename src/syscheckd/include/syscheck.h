@@ -16,6 +16,7 @@
 #include "commonDefs.h"
 #include "syscheck_op.h"
 #include <cJSON.h>
+#include <stdbool.h>
 
 #define MAX_LINE PATH_MAX + 256
 
@@ -315,6 +316,62 @@ void send_syscheck_msg(const cJSON* msg) __attribute__((nonnull));
  * @param version The document version (64-bit unsigned integer)
  */
 void persist_syscheck_msg(const char *id, Operation_t operation, const char *index, const cJSON* _msg, uint64_t version) __attribute__((nonnull(1,3,4)));
+
+/**
+ * @brief Validate and persist a FIM event with schema validation
+ *
+ * Validates the event against the schema and persists it if valid.
+ * Logs errors if validation fails. Can optionally mark items for deferred deletion.
+ *
+ * IMPORTANT - Memory management of failed_item_data:
+ * - If returns FALSE (validation failed): failed_item_data was added to failed_list, DO NOT free it
+ * - If returns TRUE (validation passed): caller MUST free failed_item_data if it was allocated
+ *
+ * @param stateful_event The cJSON event to validate and persist
+ * @param id The unique identifier for the event
+ * @param operation The type of operation (CREATE, MODIFY, DELETE)
+ * @param index The index pattern for schema validation (e.g., FIM_FILES_SYNC_INDEX)
+ * @param document_version The document version (64-bit unsigned integer)
+ * @param item_description Description of the item for logging (e.g., "file /path/to/file")
+ * @param mark_for_deletion If true and validation fails for INSERT/MODIFY, failed_item_data will be added to failed_list
+ * @param failed_list Optional OSList to add failed items for deferred deletion (can be NULL if mark_for_deletion is false)
+ * @param failed_item_data Optional data to add to failed_list if validation fails (can be NULL).
+ *                          Caller must free this if function returns true and it was allocated.
+ *
+ * @return true if validation passed and event was persisted (or schema validation is disabled), false if validation failed
+ */
+bool validate_and_persist_fim_event(
+    const cJSON* stateful_event,
+    const char* id,
+    Operation_t operation,
+    const char* index,
+    uint64_t document_version,
+    const char* item_description,
+    bool mark_for_deletion,
+    OSList* failed_list,
+    void* failed_item_data
+) __attribute__((nonnull(1,2,4,6)));
+
+/**
+ * @brief Clean up files that failed schema validation by deleting them from DBSync
+ *
+ * @param failed_paths OSList containing file paths (char*) that failed validation. Can be NULL.
+ */
+void cleanup_failed_fim_files(OSList* failed_paths);
+
+/**
+ * @brief Clean up registry keys that failed schema validation by deleting them from DBSync
+ *
+ * @param failed_keys OSList containing failed_registry_key_t structures. Can be NULL.
+ */
+void cleanup_failed_registry_keys(OSList* failed_keys);
+
+/**
+ * @brief Clean up registry values that failed schema validation by deleting them from DBSync
+ *
+ * @param failed_values OSList containing failed_registry_value_t structures. Can be NULL.
+ */
+void cleanup_failed_registry_values(OSList* failed_values);
 
 /**
  * @brief Send a log message

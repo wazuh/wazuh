@@ -15,6 +15,9 @@
 
 #include "../headers/shared.h"
 
+#define OS_TRIMCRLF_ARRAY_SIZE 11
+#define OS_TRIMCRLF_MAX_STR_SIZE 8
+
 char * w_tolower_str(const char *string);
 
 /* setup/teardown */
@@ -1109,6 +1112,88 @@ void test_os_substr_success(void **state) {
     }
 }
 
+// Tests os_strcnt
+
+void test_os_strcnt(void **state) {
+    (void)state;
+
+    // NULL parameter handling
+    assert_int_equal(os_strcnt(NULL, 'a'), 0);
+
+    // Matrix of combinations covering all cases
+    const char *haystacks[] = {
+        "hello world",
+        "hello",
+        "",
+        "a",
+        "aaaaaa",
+        "abc",
+        "test\nstring"
+    };
+
+    const char needles[] = { 'l', 'o', 'z', 'a', ' ', '\n' };
+
+    const size_t expected[][6] = {
+        // haystacks[i] × needles[j]: 'l', 'o', 'z', 'a', ' ', '\n'
+        { 3, 2, 0, 0, 1, 0 }, // "hello world"
+        { 2, 1, 0, 0, 0, 0 }, // "hello"
+        { 0, 0, 0, 0, 0, 0 }, // ""
+        { 0, 0, 0, 1, 0, 0 }, // "a"
+        { 0, 0, 0, 6, 0, 0 }, // "aaaaaa"
+        { 0, 0, 0, 1, 0, 0 }, // "abc"
+        { 0, 0, 0, 0, 0, 1 }, // "test\nstring"
+    };
+
+    for (size_t i = 0; i < sizeof(haystacks)/sizeof(haystacks[0]); ++i) {
+        for (size_t j = 0; j < sizeof(needles)/sizeof(needles[0]); ++j) {
+            assert_int_equal(os_strcnt(haystacks[i], needles[j]), expected[i][j]);
+        }
+    }
+}
+/* os_trimcrlf  */
+
+void test_os_trimcrlf(void **state) {
+    char initial_value_array[OS_TRIMCRLF_ARRAY_SIZE][OS_TRIMCRLF_MAX_STR_SIZE] = {
+        "",
+        "TEST",
+        "\n",
+        "\r",
+        "TEST\n",
+        "TEST\r",
+        "TEST\n\r",
+        "TE\nST",
+        "TE\rST",
+        "TEST\n\n",
+        "TEST\r\r"
+    };
+
+    char result_value_array[OS_TRIMCRLF_ARRAY_SIZE][OS_TRIMCRLF_MAX_STR_SIZE] = {
+        "",
+        "TEST",
+        "",
+        "",
+        "TEST",
+        "TEST",
+        "TEST",
+        "TE\nST",
+        "TE\rST",
+        "TEST",
+        "TEST"
+    };
+
+    for (int idx = 0; idx < OS_TRIMCRLF_ARRAY_SIZE; ++idx) {
+        os_trimcrlf(initial_value_array[idx]);
+        assert_string_equal(initial_value_array[idx], result_value_array[idx]);
+    }
+
+}
+
+void test_os_trimcrlf_NULL(void **state) {
+    char *str = NULL;
+    os_trimcrlf(str);
+    assert_null(str);
+}
+
 /* Tests */
 
 int main(void) {
@@ -1229,7 +1314,12 @@ int main(void) {
         cmocka_unit_test(test_print_hex_string_equal_dest_ok),
         cmocka_unit_test(test_print_hex_string_miss_last_dest_ok),
         cmocka_unit_test(test_print_hex_string_null_src_err),
-        cmocka_unit_test(test_print_hex_string_null_dst_err)
+        cmocka_unit_test(test_print_hex_string_null_dst_err),
+        // Tests os_strcnt
+        cmocka_unit_test(test_os_strcnt),
+        // Test os_trimcrlf
+        cmocka_unit_test(test_os_trimcrlf),
+        cmocka_unit_test(test_os_trimcrlf_NULL)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

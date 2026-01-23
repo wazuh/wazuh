@@ -8,6 +8,7 @@ endif()
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
+link_directories(${SRC_FOLDER}/shared_modules/schema_validator/build/lib)
 
 include_directories(${SRC_FOLDER}/data_provider/tests/mocks/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
@@ -56,6 +57,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         ssl
         crypt32
         agent_sync_protocol
+        schema_validator
         -static-libgcc -static-libstdc++
     )
 else()
@@ -74,7 +76,12 @@ else()
         crypto
         dl
         agent_sync_protocol
+        schema_validator
     )
+    # Link gcov only on Linux (not available on macOS with clang)
+    if(NOT APPLE)
+        target_link_libraries(syscollectorimp_unit_test gcov)
+    endif()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME syscollectorimp_unit_test

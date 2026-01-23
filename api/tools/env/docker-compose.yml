@@ -1,4 +1,65 @@
 services:
+    certs-generator:
+        build:
+            context: ./certs-generator
+        image: wazuh-certs-generator
+        volumes:
+            - wazuh-certs:/var/ossec/etc/certs
+        restart: "no"
+
+    wazuh-indexer:
+        build:
+            context: ./wazuh-indexer
+            args:
+                GH_TOKEN: ${GH_TOKEN}
+        image: dev-wazuh-indexer
+        hostname: wazuh-indexer
+        ports:
+            - "9200:9200"
+            - "9300:9300"
+        volumes:
+            - wazuh-indexer-data:/usr/share/opensearch/data
+            - wazuh-certs:/var/ossec/etc/certs
+        environment:
+            # Cluster
+            node.name: wazuh-indexer
+            cluster.name: wazuh-cluster
+            discovery.type: single-node
+
+            # Network
+            network.host: 0.0.0.0
+
+            # JVM
+            OPENSEARCH_JAVA_OPTS: "-Xms1g -Xmx2g -XX:MaxDirectMemorySize=512m"
+
+            # Security
+            plugins.security.disabled: "false"
+
+            # HTTP TLS
+            plugins.security.ssl.http.enabled: "true"
+            plugins.security.ssl.http.pemcert_filepath: certs/indexer.pem
+            plugins.security.ssl.http.pemkey_filepath: certs/indexer-key.pem
+            plugins.security.ssl.http.pemtrustedcas_filepath: certs/root-ca.pem
+
+            # Transport TLS
+            plugins.security.ssl.transport.enabled: "true"
+            plugins.security.ssl.transport.pemcert_filepath: certs/indexer.pem
+            plugins.security.ssl.transport.pemkey_filepath: certs/indexer-key.pem
+            plugins.security.ssl.transport.pemtrustedcas_filepath: certs/root-ca.pem
+
+        depends_on:
+            certs-generator:
+                condition: service_completed_successfully
+        healthcheck:
+            test: ["CMD", "curl", "-k", "-u", "admin:admin", "https://localhost:9200/_cluster/health"]
+            interval: 10s
+            timeout: 5s
+            retries: 20
+            start_period: 120s
+        networks:
+            custom-network:
+                ipv4_address:  172.20.0.15
+
     wazuh-base:
         build:
             context: ./wazuh-base
@@ -12,31 +73,43 @@ services:
             target: server
         image: dev-wazuh-manager
         hostname: wazuh-master
+        ports:
+            - "55050:55000"
         volumes:
+            - wazuh-certs:/var/ossec/etc/certs
             - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
             - ${WAZUH_LOCAL_PATH}/api/scripts:/var/ossec/api/scripts
             - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
             - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
-        ports:
-            - "55050:55000"
+        environment:
+            OPENDISTRO_SECURITY_ENABLED: "false"
+            NODE_NAME: "wazuh-master"
         entrypoint:
             - /scripts/entrypoint.sh
             - wazuh-master
             - master-node
             - master
         depends_on:
-            - wazuh-base
+            wazuh-indexer:
+                condition: service_healthy
+        networks:
+            custom-network:
+                ipv4_address:  172.20.0.7
 
     wazuh-worker1:
         image: dev-wazuh-manager
         hostname: wazuh-worker1
         volumes:
+            - wazuh-certs:/var/ossec/etc/certs
             - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
             - ${WAZUH_LOCAL_PATH}/api/scripts:/var/ossec/api/scripts
             - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
             - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
         depends_on:
-            - wazuh-master
+            wazuh-master:
+                condition: service_started
+        environment:
+            NODE_NAME: "wazuh-worker1"
         ports:
             - "55051:55000"
         entrypoint:
@@ -44,17 +117,24 @@ services:
             - wazuh-master
             - worker1
             - worker
+        networks:
+            custom-network:
+                ipv4_address:  172.20.0.5
 
     wazuh-worker2:
         image: dev-wazuh-manager
         hostname: wazuh-worker2
         volumes:
+            - wazuh-certs:/var/ossec/etc/certs
             - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
             - ${WAZUH_LOCAL_PATH}/api/scripts:/var/ossec/api/scripts
             - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
             - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
         depends_on:
-            - wazuh-master
+            wazuh-master:
+                condition: service_started
+        environment:
+            NODE_NAME: "wazuh-worker2"
         ports:
             - "55052:55000"
         entrypoint:
@@ -62,18 +142,30 @@ services:
             - wazuh-master
             - worker2
             - worker
+        networks:
+            custom-network:
+                ipv4_address:  172.20.0.4
 
     nginx-lb:
         build:
             context: ./nginx-lb
         image: dev-nginx-lb
         restart: on-failure:5
+        ports:
+            - "443:443"
+        depends_on:
+            wazuh-master:
+                condition: service_started
+            wazuh-worker1:
+                condition: service_started
+            wazuh-worker2:
+                condition: service_started
         entrypoint:
             - /scripts/entrypoint.sh
-        depends_on:
-            - wazuh-master
-            - wazuh-worker1
-            - wazuh-worker2
+        networks:
+            custom-network:
+                ipv4_address:  172.20.0.12
+
 
     wazuh-agent:
         build:
@@ -84,7 +176,19 @@ services:
             - nginx-lb
             - ${WAZUH_VERSION}
         depends_on:
-            - wazuh-master
-            - wazuh-worker1
-            - wazuh-worker2
-            - nginx-lb
+            nginx-lb:
+                condition: service_started
+        networks:
+            custom-network:
+
+volumes:
+  wazuh-indexer-data:
+  wazuh-certs:
+
+networks:
+  custom-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24 # Define the network subnet
+          gateway: 172.20.0.1 # Define the network gateway

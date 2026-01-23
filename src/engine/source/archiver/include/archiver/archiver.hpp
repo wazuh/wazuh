@@ -51,6 +51,11 @@ public:
     void archive(const char* data) override;
 
     /**
+     * @copydoc IArchiver::archive
+     */
+    void archive(std::string_view data) override;
+
+    /**
      * @copydoc IArchiver::activate
      */
     void activate() override

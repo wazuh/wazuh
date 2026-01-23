@@ -11,6 +11,7 @@
 #include "logging_helper.hpp"
 #include "agent_sync_protocol.hpp"
 #include "../../include/sca.h"
+#include "schemaValidator.hpp"
 
 /// @brief Map of stateless operations
 static const std::map<ReturnTypeCallback, std::string> STATELESS_OPERATION_MAP
@@ -45,11 +46,36 @@ void SCAEventHandler::ReportPoliciesDelta(
 {
     const nlohmann::json events = ProcessEvents(modifiedPoliciesMap, modifiedChecksMap);
 
+    // Vector to accumulate checks that fail validation for deferred deletion
+    std::vector<nlohmann::json> failedChecks;
+
     for (const auto& event : events)
     {
         const auto [processedStatefulEvent, operation, version] = ProcessStateful(event);
 
-        if (!processedStatefulEvent.empty())
+        // Validate and handle stateful message
+        nlohmann::json checkDataForDelete;
+
+        if (event.contains("check") && event["check"].is_object())
+        {
+            if (event["check"].contains("new") && event["check"]["new"].is_object())
+            {
+                checkDataForDelete = event["check"]["new"];
+            }
+            else
+            {
+                checkDataForDelete = event["check"];
+            }
+        }
+
+        const bool validationPassed = ValidateAndHandleStatefulMessage(
+                                          processedStatefulEvent,
+                                          "policy/check event",
+                                          checkDataForDelete,
+                                          &failedChecks
+                                      );
+
+        if (validationPassed)
         {
             PushStateful(processedStatefulEvent, operation, version);
         }
@@ -61,6 +87,9 @@ void SCAEventHandler::ReportPoliciesDelta(
             PushStateless(processedStatelessEvent);
         }
     }
+
+    // Delete checks that failed schema validation (batch delete with transaction)
+    DeleteFailedChecksFromDB(failedChecks);
 }
 
 void SCAEventHandler::ReportCheckResult(const std::string& policyId,
@@ -76,6 +105,15 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
 
     auto policyData = GetPolicyById(policyId);
     auto checkData = GetPolicyCheckById(checkId);
+
+    // Check if the check exists in DB (may have been deleted due to validation failure)
+    if (checkData.empty() || !checkData.contains("id"))
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "Check " + checkId + " not found in DB (may have been deleted due to validation failure), skipping report");
+        return;
+    }
+
     checkData["result"] = checkResult;
 
     // Set reason field if provided and check result indicates an invalid check
@@ -101,6 +139,9 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
 
     auto updateResultQuery = SyncRowQuery::builder().table("sca_check").data(checkData).returnOldData().build();
 
+    // List to accumulate checks that fail validation for deferred deletion
+    std::vector<nlohmann::json> failedChecks;
+
     const auto callback = [&, this](ReturnTypeCallback result, const nlohmann::json & rowData)
     {
         if (result == MODIFIED)
@@ -112,7 +153,26 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
 
             const auto [stateful, operation, version] = ProcessStateful(event);
 
-            if (!stateful.empty())
+            // Validate and handle stateful message
+            nlohmann::json dataForDelete;
+
+            if (rowData.contains("new"))
+            {
+                dataForDelete = rowData["new"];
+            }
+            else
+            {
+                dataForDelete = rowData;
+            }
+
+            const bool validationPassed = ValidateAndHandleStatefulMessage(
+                                              stateful,
+                                              "checkId: " + checkId,
+                                              dataForDelete,
+                                              &failedChecks
+                                          );
+
+            if (validationPassed)
             {
                 PushStateful(stateful, operation, version);
             }
@@ -131,6 +191,9 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
     };
 
     m_dBSync->syncRow(updateResultQuery.query(), callback);
+
+    // Delete checks that failed schema validation (batch delete with transaction)
+    DeleteFailedChecksFromDB(failedChecks);
 }
 
 nlohmann::json
@@ -594,6 +657,12 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
     {
         check.erase("regex_type");
     }
+
+    // Remove impact field - present in YAML but not in database schema or indexer mapping
+    if (check.contains("impact"))
+    {
+        check.erase("impact");
+    }
 }
 
 void SCAEventHandler::NormalizePolicy(nlohmann::json& policy) const
@@ -603,4 +672,104 @@ void SCAEventHandler::NormalizePolicy(nlohmann::json& policy) const
         policy["references"] = StringToJsonArray(policy["refs"].get<std::string>());
         policy.erase("refs");
     }
+
+    // Remove internal field not part of indexer schema
+    if (policy.contains("regex_type"))
+    {
+        policy.erase("regex_type");
+    }
+}
+
+bool SCAEventHandler::ValidateAndHandleStatefulMessage(const nlohmann::json& statefulEvent,
+                                                       const std::string& context,
+                                                       const nlohmann::json& checkData,
+                                                       std::vector<nlohmann::json>* failedChecks) const
+{
+    if (statefulEvent.empty())
+    {
+        return true;
+    }
+
+    auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
+
+    if (!validatorFactory.isInitialized())
+    {
+        return true;
+    }
+
+    auto validator = validatorFactory.getValidator(SCA_SYNC_INDEX);
+
+    if (!validator)
+    {
+        return true;
+    }
+
+    std::string statefulData = statefulEvent.dump();
+    auto validationResult = validator->validate(statefulData);
+
+    if (validationResult.isValid)
+    {
+        return true;
+    }
+
+    // Validation failed - log errors
+    std::string errorMsg = "Schema validation failed for SCA message (" + context +
+                           ", index: " + std::string(SCA_SYNC_INDEX) + "). Errors: ";
+
+    for (const auto& error : validationResult.errors)
+    {
+        errorMsg += "  - " + error;
+    }
+
+    LoggingHelper::getInstance().log(LOG_ERROR, errorMsg);
+    LoggingHelper::getInstance().log(LOG_ERROR, "Raw event that failed validation: " + statefulData);
+
+    // Handle deletion from DBSync to prevent integrity sync loops
+    if (!checkData.empty() && failedChecks)
+    {
+        // Deferred deletion: accumulate for batch deletion with transaction
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Marking SCA check for deferred deletion due to validation failure");
+        failedChecks->push_back(checkData);
+    }
+
+    return false;
+}
+
+void SCAEventHandler::DeleteFailedChecksFromDB(const std::vector<nlohmann::json>& failedChecks) const
+{
+    if (failedChecks.empty() || !m_dBSync)
+    {
+        return;
+    }
+
+    // LCOV_EXCL_START
+    try
+    {
+        DBSyncTxn deleteTxn(m_dBSync->handle(),
+                            nlohmann::json::array(),
+                            0, 1,
+        [](ReturnTypeCallback, const nlohmann::json&) {});
+
+        for (const auto& failedCheck : failedChecks)
+        {
+            auto deleteQuery = DeleteQuery::builder()
+                               .table("sca_check")
+                               .data(failedCheck)
+                               .build();
+
+            m_dBSync->deleteRows(deleteQuery.query());
+        }
+
+        // Finalize transaction to commit changes
+        deleteTxn.getDeletedRows([](ReturnTypeCallback, const nlohmann::json&) {});
+
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Deleted " + std::to_string(failedChecks.size()) +
+                                         " SCA check(s) from DBSync due to validation failure");
+    }
+    catch (const std::exception& e)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Failed to delete from DBSync: " + std::string(e.what()));
+    }
+
+    // LCOV_EXCL_STOP
 }

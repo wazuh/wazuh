@@ -38,7 +38,7 @@ public:
         String,
         Number,
         Boolean,
-        Unknow
+        Unknown
     };
 
     friend std::ostream& operator<<(std::ostream& os, Type type)
@@ -328,6 +328,15 @@ public:
     std::optional<int64_t> getInt64(std::string_view path = "") const;
 
     /**
+     * @brief Get the Uint64 object field.
+     *
+     * @param basePointerPath The base pointer path to set.
+     * @return std::optional<uint32_t>
+     * @throws std::runtime_error If any pointer path is invalid.
+     */
+    std::optional<uint64_t> getUint64(std::string_view path = "") const;
+
+    /**
      * @brief Get the value of the int or int64 field as int64.
      *
      * @param path The path to the field.
@@ -539,6 +548,19 @@ public:
     bool isInt(std::string_view path = "") const;
 
     /**
+     * @brief Check if the Json described by the path is uint64.
+     *
+     * Ensure that the path exists before calling this function.
+     *
+     * @param path The path to the object, default value is root object ("").
+     * @return true if Json is uint64.
+     * @return false if Json is not uint64.
+     *
+     * @throws std::runtime_error If path is invalid or cannot be found.
+     */
+    bool isUint64(std::string_view path = "") const;
+
+    /**
      * @brief Check if the Json described by the path is int64.
      *
      * Ensure that the path exists before calling this function.
@@ -718,6 +740,17 @@ public:
      * @throws std::runtime_error If path is invalid.
      */
     void setInt64(int64_t value, std::string_view path = "");
+
+    /**
+     * @brief Set the Unsigned Integer object at the path.
+     * Parents objects are created if they do not exist.
+     *
+     * @param value The value to set.
+     * @param path The path to the object, default value is root object ("").
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void setUint64(uint64_t value, std::string_view path = "");
 
     /**
      * @brief Set the Double object at the path.

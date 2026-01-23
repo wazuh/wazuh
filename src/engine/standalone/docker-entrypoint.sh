@@ -18,8 +18,16 @@ build_dir="/build_wazuh"
 
 make -C /workspace/wazuh/src deps TARGET=server
 
-if [${BUILD_TYPE} == "debug" ]; then
+if [ "${BUILD_TYPE}" = "debug" ]; then
     make -j2 -C /workspace/wazuh/src TARGET=server DEBUG="yes"
 else
     make -j2 -C /workspace/wazuh/src TARGET=server
+fi
+
+if [ -d "/opt/gcc-14/lib64" ]; then
+    mkdir -p /workspace/wazuh/gcc-libs
+    find /opt/gcc-14/lib64 -name "libstdc++.so.6*" ! -name "*.py*" -exec cp {} /workspace/wazuh/gcc-libs/ \; 2>/dev/null || true
+else
+    echo "ERROR: /opt/gcc-14/lib64 not found. Cannot copy libstdc++.so.6"
+    exit 1
 fi

@@ -16,9 +16,11 @@
 #include "flatbuffers/include/inventorySync_generated.h"
 #include "hashHelper.h"
 #include "inventorySyncQueryBuilder.hpp"
+#include "keyStore.hpp"
 #include "loggerHelper.h"
 #include "routerSubscriber.hpp"
 #include "singleton.hpp"
+#include "socketServer.hpp"
 #include "stringHelper.h"
 #include "vulnerabilityScannerFacade.hpp"
 #include <asyncValueDispatcher.hpp>
@@ -40,6 +42,7 @@ constexpr auto INVENTORY_SYNC_PATH {"inventory_sync"};
 constexpr auto INVENTORY_SYNC_TOPIC {"inventory-states"};
 constexpr auto INVENTORY_SYNC_SUBSCRIBER_ID {"inventory-sync-module"};
 constexpr auto WAZUH_STATES_INDEX_PATTERN {"wazuh-states-*"};
+constexpr auto SOCKET_KEYSTORE_PATH {"queue/sockets/keystore"};
 
 using WorkersQueue = Utils::AsyncValueDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
 using IndexerQueue = Utils::AsyncValueDispatcher<Response, std::function<void(const Response&)>>;
@@ -380,6 +383,78 @@ class InventorySyncFacadeImpl final
         return finalChecksum;
     }
 
+    void initializeKeystoreSocket()
+    {
+        m_keystoreSocketServer = std::make_unique<SocketServer<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(
+            SOCKET_KEYSTORE_PATH);
+
+        m_keystoreSocketServer->listen(
+            [keystoreServer = m_keystoreSocketServer.get()](
+                const int fd, const char* body, const uint32_t bodySize, const char*, const uint32_t)
+            {
+                std::string_view queryView(body, bodySize);
+                nlohmann::json result;
+
+                try
+                {
+                    size_t pos1 = queryView.find('|');
+                    size_t pos2 = queryView.find('|', pos1 + 1);
+                    size_t pos3 = queryView.find('|', pos2 + 1);
+
+                    if (pos1 == std::string_view::npos || pos2 == std::string_view::npos)
+                    {
+                        throw std::runtime_error("Invalid query format");
+                    }
+
+                    auto queryOp = queryView.substr(0, pos1);
+                    auto queryCf = queryView.substr(pos1 + 1, pos2 - pos1 - 1);
+                    auto key = (pos3 == std::string_view::npos) ? queryView.substr(pos2 + 1)
+                                                                : queryView.substr(pos2 + 1, pos3 - pos2 - 1);
+                    auto val = (pos3 == std::string_view::npos) ? std::string_view() : queryView.substr(pos3 + 1);
+
+                    if (queryOp == "GET")
+                    {
+                        std::string value;
+                        Keystore::get(std::string(queryCf), std::string(key), value);
+                        result["status"] = "ok";
+                        result["operation"] = "get";
+                        result["columnFamily"] = queryCf;
+                        result["key"] = key;
+                        result["value"] = value;
+                    }
+                    else if (queryOp == "PUT")
+                    {
+                        Keystore::put(std::string(queryCf), std::string(key), std::string(val));
+                        result["status"] = "ok";
+                        result["operation"] = "put";
+                        result["columnFamily"] = queryCf;
+                        result["key"] = key;
+                    }
+                    else if (queryOp == "DELETE")
+                    {
+                        Keystore::put(std::string(queryCf), std::string(key), "");
+                        result["status"] = "ok";
+                        result["operation"] = "delete";
+                        result["columnFamily"] = queryCf;
+                        result["key"] = key;
+                    }
+                    else
+                    {
+                        result["status"] = "error";
+                        result["message"] = "Unknown operation";
+                    }
+                }
+                catch (const std::exception& e)
+                {
+                    result["status"] = "error";
+                    result["message"] = e.what();
+                }
+
+                auto response = result.dump();
+                keystoreServer->send(fd, response.c_str(), response.size());
+            });
+    }
+
 public:
     /**
      * @brief Starts facade.
@@ -459,7 +534,7 @@ public:
             UNLIMITED_QUEUE_SIZE);
 
         m_inventorySubscription =
-            std::make_unique<TRouterSubscriber>(INVENTORY_SYNC_TOPIC, INVENTORY_SYNC_SUBSCRIBER_ID);
+            std::make_unique<TRouterSubscriber>(INVENTORY_SYNC_TOPIC, INVENTORY_SYNC_SUBSCRIBER_ID, false);
         m_inventorySubscription->subscribe(
             // coverity[copy_constructor_call]
             [queue = m_workersQueue.get()](const std::vector<char>& message)
@@ -1105,6 +1180,9 @@ public:
                 }
             });
 
+        // Init the socket server to attend keystore requests
+        initializeKeystoreSocket();
+
         logInfo(LOGGER_DEFAULT_TAG, "InventorySyncFacade started.");
     }
 
@@ -1352,11 +1430,18 @@ public:
             m_stopping = true;
             m_sessionTimeoutCv.notify_all();
         }
+
+        if (m_sessionTimeoutThread.joinable())
+        {
+            m_sessionTimeoutThread.join();
+        }
+
         m_inventorySubscription.reset();
         m_workersQueue.reset();
         m_indexerQueue.reset();
         m_indexerConnector.reset();
         m_dataStore.reset();
+        m_keystoreSocketServer.reset();
     }
 
 private:
@@ -1427,6 +1512,7 @@ private:
     std::unordered_set<std::string> m_blockedAgents; ///< Set of locked agent IDs
     mutable std::shared_mutex m_blockedAgentsMutex;  ///< Mutex for blocked agents set
     std::atomic<bool> m_allAgentsLocked {false};     ///< Global lock for all agents
+    std::unique_ptr<SocketServer<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>> m_keystoreSocketServer;
 };
 
 using InventorySyncFacade = InventorySyncFacadeImpl<AgentSession,

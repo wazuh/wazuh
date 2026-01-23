@@ -27,10 +27,10 @@ public:
     /**
      * @brief Add a new environment to the router. The environment is disabled by default.
      * @param entryPost The entry information for the environment.
-     * @paran ignoreFail
+     * @param ignoreFail If true, if the operation fails the entry is added in disabled state.
      * @return An optional error if the operation failed.
      */
-    virtual base::OptError addEntry(const prod::EntryPost& entryPost, bool ignoreFail = false) = 0;
+    virtual base::OptError addEntry(const prod::EntryPost& entryPost, bool ignoreFail) = 0;
 
     /**
      * @brief Removes the environment
@@ -77,6 +77,17 @@ public:
      * @return An entry or error.
      */
     virtual base::RespOrError<prod::Entry> getEntry(const std::string& name) const = 0;
+
+    /**
+     * @brief Hot swap the namespace of an entry with minimal blocking.
+     * Creates a new environment with the new namespace, then atomically swaps it.
+     * If the build fails, the old environment remains unchanged.
+     *
+     * @param name The name of the entry to hot swap
+     * @param newNamespace The new namespace to use
+     * @return An optional error if the operation failed
+     */
+    virtual base::OptError hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace) = 0;
 
     /**
      * @brief Ingest an event into the router.

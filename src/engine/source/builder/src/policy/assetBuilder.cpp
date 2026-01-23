@@ -216,6 +216,7 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
 
     if (isDecoder)
     {
+        // Automapping term to set integration fields and decoder name
         auto automapping =
             base::Term<base::EngineOp>::create("Automapping",
                                                [integrationCategory, integrationName, name](auto e)
@@ -228,10 +229,8 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
                                                    return base::result::makeSuccess(e, "");
                                                });
         consequenceExpressions.emplace_back(std::move(automapping));
-    }
 
-    // Delete variables from the event when asset is executed (TODO: Find a better way to manage variables)
-    {
+        // Delete variables from the event when asset is executed (TODO: Find a better way to manage variables)
         auto ifVar = [](const std::string& attr) -> bool
         {
             return !attr.empty() && attr[0] == syntax::field::VAR_ANCHOR;

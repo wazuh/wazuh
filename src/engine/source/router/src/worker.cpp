@@ -20,7 +20,7 @@ void RouterWorker::start()
             std::size_t tID = std::hash<std::thread::id> {}(std::this_thread::get_id());
             LOG_DEBUG_L(functionName.c_str(), "Router Worker {} started", tID);
 
-            base::process::setThreadName("ORWorker-" + std::to_string(tID));
+            base::process::setThreadName("ORProd-" + std::to_string(tID));
 
             while (m_isRunning)
             {
@@ -71,7 +71,7 @@ void TesterWorker::start()
             std::size_t tID = std::hash<std::thread::id> {}(std::this_thread::get_id());
             LOG_DEBUG_L(functionName.c_str(), "Tester Worker {} started", tID);
 
-            base::process::setThreadName("ORWorker-" + std::to_string(tID));
+            base::process::setThreadName("ORTester-" + std::to_string(tID));
 
             while (m_isRunning)
             {

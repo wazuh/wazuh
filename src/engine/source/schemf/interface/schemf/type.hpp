@@ -33,7 +33,27 @@ enum class Type
     OBJECT,
     NESTED,
     FLAT_OBJECT,
-    GEO_POINT
+    GEO_POINT,
+    UNSIGNED_LONG,
+    COMPLETION,
+    SEARCH_AS_YOU_TYPE,
+    TOKEN_COUNT,
+    SEMANTIC,
+    JOIN,
+    KNN_VECTOR,
+    SPARSE_VECTOR,
+    RANK_FEATURE,
+    RANK_FEATURES,
+    PERCOLATOR,
+    STAR_TREE,
+    DERIVED,
+    INTEGER_RANGE,
+    LONG_RANGE,
+    FLOAT_RANGE,
+    DOUBLE_RANGE,
+    DATE_RANGE,
+    IP_RANGE,
+
 };
 
 inline constexpr bool hasProperties(Type type)
@@ -73,6 +93,25 @@ inline constexpr auto typeToStr(Type type)
         case Type::NESTED: return "nested";
         case Type::FLAT_OBJECT: return "flat_object";
         case Type::GEO_POINT: return "geo_point";
+        case Type::UNSIGNED_LONG: return "unsigned_long";
+        case Type::COMPLETION: return "completion";
+        case Type::SEARCH_AS_YOU_TYPE: return "search_as_you_type";
+        case Type::TOKEN_COUNT: return "token_count";
+        case Type::SEMANTIC: return "semantic";
+        case Type::JOIN: return "join";
+        case Type::KNN_VECTOR: return "knn_vector";
+        case Type::SPARSE_VECTOR: return "sparse_vector";
+        case Type::RANK_FEATURES: return "rank_features";
+        case Type::RANK_FEATURE: return "rank_feature";
+        case Type::PERCOLATOR: return "percolator";
+        case Type::STAR_TREE: return "star_tree";
+        case Type::DERIVED: return "derived";
+        case Type::INTEGER_RANGE: return "integer_range";
+        case Type::LONG_RANGE: return "long_range";
+        case Type::FLOAT_RANGE: return "float_range";
+        case Type::DOUBLE_RANGE: return "double_range";
+        case Type::DATE_RANGE: return "date_range";
+        case Type::IP_RANGE: return "ip_range";
         default: return "error";
     }
 }
@@ -123,6 +162,44 @@ inline constexpr auto strToType(std::string_view strType)
         return Type::FLAT_OBJECT;
     if (typeToStr(Type::GEO_POINT) == strType)
         return Type::GEO_POINT;
+    if (typeToStr(Type::UNSIGNED_LONG) == strType)
+        return Type::UNSIGNED_LONG;
+    if (typeToStr(Type::COMPLETION) == strType)
+        return Type::COMPLETION;
+    if (typeToStr(Type::SEARCH_AS_YOU_TYPE) == strType)
+        return Type::SEARCH_AS_YOU_TYPE;
+    if (typeToStr(Type::TOKEN_COUNT) == strType)
+        return Type::TOKEN_COUNT;
+    if (typeToStr(Type::SEMANTIC) == strType)
+        return Type::SEMANTIC;
+    if (typeToStr(Type::JOIN) == strType)
+        return Type::JOIN;
+    if (typeToStr(Type::KNN_VECTOR) == strType)
+        return Type::KNN_VECTOR;
+    if (typeToStr(Type::SPARSE_VECTOR) == strType)
+        return Type::SPARSE_VECTOR;
+    if (typeToStr(Type::RANK_FEATURES) == strType)
+        return Type::RANK_FEATURES;
+    if (typeToStr(Type::RANK_FEATURE) == strType)
+        return Type::RANK_FEATURE;
+    if (typeToStr(Type::PERCOLATOR) == strType)
+        return Type::PERCOLATOR;
+    if (typeToStr(Type::STAR_TREE) == strType)
+        return Type::STAR_TREE;
+    if (typeToStr(Type::DERIVED) == strType)
+        return Type::DERIVED;
+    if (typeToStr(Type::INTEGER_RANGE) == strType)
+        return Type::INTEGER_RANGE;
+    if (typeToStr(Type::LONG_RANGE) == strType)
+        return Type::LONG_RANGE;
+    if (typeToStr(Type::FLOAT_RANGE) == strType)
+        return Type::FLOAT_RANGE;
+    if (typeToStr(Type::DOUBLE_RANGE) == strType)
+        return Type::DOUBLE_RANGE;
+    if (typeToStr(Type::DATE_RANGE) == strType)
+        return Type::DATE_RANGE;
+    if (typeToStr(Type::IP_RANGE) == strType)
+        return Type::IP_RANGE;
     return Type::ERROR;
 }
 
@@ -139,6 +216,7 @@ inline constexpr auto typeToJType(Type type)
         case Type::HALF_FLOAT: return json::Json::Type::Number;
         case Type::SCALED_FLOAT: return json::Json::Type::Number;
         case Type::DOUBLE: return json::Json::Type::Number;
+        case Type::UNSIGNED_LONG: return json::Json::Type::Number;
         case Type::KEYWORD: return json::Json::Type::String;
         case Type::TEXT: return json::Json::Type::String;
         case Type::MATCH_ONLY_TEXT: return json::Json::Type::String;
@@ -151,7 +229,12 @@ inline constexpr auto typeToJType(Type type)
         case Type::OBJECT: return json::Json::Type::Object;
         case Type::NESTED: return json::Json::Type::Object;
         case Type::FLAT_OBJECT: return json::Json::Type::Object;
-        case Type::GEO_POINT: return json::Json::Type::Array;
+        case Type::GEO_POINT: return json::Json::Type::Object;
+        case Type::COMPLETION: return json::Json::Type::String;
+        case Type::SEARCH_AS_YOU_TYPE: return json::Json::Type::String;
+        case Type::TOKEN_COUNT: return json::Json::Type::Number;
+        case Type::SEMANTIC: return json::Json::Type::String;
+        case Type::JOIN: return json::Json::Type::Object;
         default: return json::Json::Type::Null;
     }
 }

@@ -69,17 +69,7 @@ class UserGroupsProvider
         std::shared_ptr<IUsersHelper> m_usersHelper;
         std::shared_ptr<IGroupsHelper> m_groupsHelper;
 
-        /// @brief Static thread-local cache for user-group memberships (username -> group names)
-        /// This cache is automatically invalidated after 60 seconds and shared across instances in same thread.
-        static thread_local std::unordered_map<std::string, std::vector<std::string>> s_userGroupsCache;
-
-        /// @brief Cache timestamp and validity tracking (static thread-local)
-        static thread_local std::chrono::steady_clock::time_point s_cacheTimestamp;
-        static thread_local bool s_cacheValid;
         static constexpr std::chrono::seconds s_cacheTimeout{60};
-
-        /// @brief Thread-local counter for rate limiting API calls
-        static thread_local std::size_t s_apiCallCount;
 
         /// @brief Rate limiting constants (only applied during cache refresh)
         static constexpr std::uint32_t BATCH_SIZE = 100;

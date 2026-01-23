@@ -210,6 +210,12 @@
                     <Component Id="AGENT_SYNC_PROTOCOL_DLL" DiskId="1" Guid="0B6A98BA-DC42-4DD4-8F60-E18987A36A75">
                         <File Id="AGENT_SYNC_PROTOCOL_DLL" Name="libagent_sync_protocol.dll" Source="..\shared_modules\sync_protocol\build\bin\libagent_sync_protocol.dll" />
                     </Component>
+                    <Component Id="SCHEMA_VALIDATOR_DLL" DiskId="1" Guid="7F3C8E9D-4A2B-4E5F-9C1D-8B6A5E3F2C1A">
+                        <File Id="SCHEMA_VALIDATOR_DLL" Name="schema_validator.dll" Source="..\shared_modules\schema_validator\build\bin\schema_validator.dll" />
+                    </Component>
+                    <Component Id="AGENT_METADATA_DLL" DiskId="1" Guid="3C7D19FC-E68A-4F5E-9D71-F29998B47B86">
+                        <File Id="AGENT_METADATA_DLL" Name="libagent_metadata.dll" Source="..\shared_modules\agent_metadata\build\bin\libagent_metadata.dll" />
+                    </Component>
                     <Component Id="SYSINFO_DLL" DiskId="1" Guid="1D244B64-E1C3-4BED-A4CF-9C25E3B3BA0F">
                         <File Id="SYSINFO_DLL" Name="sysinfo.dll" Source="..\data_provider\build\bin\sysinfo.dll" />
                     </Component>
@@ -612,6 +618,8 @@
             <ComponentRef Id="DBSYNC_DLL" />
             <ComponentRef Id="SYSINFO_DLL" />
             <ComponentRef Id="AGENT_SYNC_PROTOCOL_DLL" />
+            <ComponentRef Id="SCHEMA_VALIDATOR_DLL" />
+            <ComponentRef Id="AGENT_METADATA_DLL" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
             <ComponentRef Id="INTERNAL_OPTIONS.CONF" />

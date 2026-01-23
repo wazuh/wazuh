@@ -10,7 +10,6 @@
 #include <cmstore/cmstore.hpp>
 
 #include "fileutils.hpp"
-#include "storecti.hpp"
 #include "storens.hpp"
 
 namespace cm::store
@@ -27,9 +26,7 @@ const std::vector<NamespaceId> FORBIDDEN_NAMESPACES = {
 
 CMStore::~CMStore() = default;
 
-CMStore::CMStore(std::string_view path,
-                 std::string_view outputsPath,
-                 const std::shared_ptr<cti::store::ICMReader>& ctiReader)
+CMStore::CMStore(std::string_view path, std::string_view outputsPath)
     : m_baseStoragePath(path)
     , m_defaultOutputsPath(outputsPath)
     , m_namespaces()
@@ -82,9 +79,6 @@ CMStore::CMStore(std::string_view path,
 
     // Load existing namespaces from disk
     loadAllNamespacesFromDisk();
-
-    // Load CTI Store, read-only namespace
-    m_namespaces[CTI_NAMESPACE_ID] = std::make_shared<CMStoreCTI>(ctiReader, CTI_NAMESPACE_ID, m_defaultOutputsPath);
 }
 
 void CMStore::loadAllNamespacesFromDisk()
@@ -248,9 +242,11 @@ void CMStore::renameNamespace(const NamespaceId& from, const NamespaceId& to)
     const auto activeRefs = itFrom->second.use_count();
     if (activeRefs > 1)
     {
-        throw std::runtime_error(fmt::format(
-            "Cannot rename namespace '{}' -> '{}': active references detected (use_count={})",
-            from.toStr(), to.toStr(), activeRefs));
+        throw std::runtime_error(
+            fmt::format("Cannot rename namespace '{}' -> '{}': active references detected (use_count={})",
+                        from.toStr(),
+                        to.toStr(),
+                        activeRefs));
     }
 
     // Keep the instance only to rollback the map if filesystem rename fails.

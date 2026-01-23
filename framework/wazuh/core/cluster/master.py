@@ -24,6 +24,8 @@ from wazuh.core.cluster.utils import context_tag, log_subprocess_execution
 from wazuh.core.common import DECIMALS_DATE_FORMAT
 from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
+from wazuh.core.indexer.disconnected_agents import DisconnectedAgentGroupSyncTask
+
 
 DEFAULT_DATE: str = 'n/a'
 
@@ -1020,7 +1022,11 @@ class Master(server.AbstractServer):
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
-        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update])
+        self.disconected_agent_groups_sync_tasks = DisconnectedAgentGroupSyncTask(server=self,
+                                                                                  cluster_items=self.cluster_items)
+
+        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update,
+                          self.disconected_agent_groups_sync_tasks.run])
         # pending API requests waiting for a response
         self.pending_api_requests = {}
 

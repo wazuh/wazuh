@@ -16,6 +16,7 @@
 #include "../os_crypto/md5/md5_op.h"
 #include "../os_crypto/sha1/sha1_op.h"
 #include "agent_sync_protocol_c_interface.h"
+#include "schemaValidator_c.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
@@ -215,9 +216,13 @@ STATIC void handle_orphaned_delete(const char* path,
     char file_path_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(path, -1, file_path_sha1);
 
-    // Persist stateful event for sync
-    persist_syscheck_msg(file_path_sha1, OPERATION_DELETE, FIM_FILES_SYNC_INDEX,
-                         stateful_event, document_version);
+    // Validate and persist the orphaned delete event
+    // Note: For orphaned deletes, we don't mark for deletion from DBSync since the item is already deleted
+    char item_desc[PATH_MAX + 32];
+    snprintf(item_desc, sizeof(item_desc), "file %s", path);
+    validate_and_persist_fim_event(stateful_event, file_path_sha1, OPERATION_DELETE,
+                                    FIM_FILES_SYNC_INDEX, document_version,
+                                    item_desc, false, NULL, NULL);
 
     cJSON_Delete(stateful_event);
 }
@@ -408,7 +413,25 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         goto end; // LCOV_EXCL_LINE
     }
 
-    persist_syscheck_msg(file_path_sha1, sync_operation, FIM_FILES_SYNC_INDEX, stateful_event, document_version);
+    // Validate and persist the event
+    // For INSERT/MODIFY operations that fail validation, mark for deletion from DBSync
+    char item_desc[PATH_MAX + 32];
+    snprintf(item_desc, sizeof(item_desc), "file %s", path);
+
+    char* path_copy = (resultType == INSERTED || resultType == MODIFIED) ? strdup(path) : NULL;
+    bool mark_for_deletion = (resultType == INSERTED || resultType == MODIFIED) && path_copy != NULL;
+
+    bool validation_passed = validate_and_persist_fim_event(stateful_event, file_path_sha1, sync_operation,
+                                                             FIM_FILES_SYNC_INDEX, document_version,
+                                                             item_desc, mark_for_deletion,
+                                                             txn_context->failed_paths, path_copy);
+
+    // If validation passed, we need to free path_copy (it wasn't added to the list)
+    // If validation failed, path_copy was added to the list and will be freed later
+    if (validation_passed && path_copy) {
+        os_free(path_copy);
+    }
+
     cJSON_Delete(stateful_event);
 
 end:
@@ -1002,10 +1025,18 @@ void fim_file(const char *path,
         txn_context->entry = NULL;
         txn_context->config = NULL;
     } else {
+        OSList* failed_paths = OSList_Create();
+        if (!failed_paths) {
+            free_file_data(new_entry.file_entry.data);
+            return;
+        }
+        OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+
         callback_ctx ctx = {
             .event = evt_data,
             .config = configuration,
-            .entry = &new_entry
+            .entry = &new_entry,
+            .failed_paths = failed_paths
         };
 
         callback_context_t callback_data;
@@ -1014,6 +1045,9 @@ void fim_file(const char *path,
 
         fim_db_file_update(&new_entry, callback_data);
 
+        // Delete files that failed schema validation (outside transaction)
+        cleanup_failed_fim_files(failed_paths);
+        OSList_Destroy(failed_paths);
         free_file_data(new_entry.file_entry.data);
     }
 
@@ -1060,6 +1094,8 @@ void fim_link_delete_range(directory_t *config) {
     callback_ctx ctx = {
         .event = (event_data_t *)&evt_data,
         .config = config,
+        .entry = NULL,
+        .failed_paths = NULL
     };
 
     // Create the sqlite LIKE pattern.
@@ -1089,7 +1125,8 @@ void fim_handle_delete_by_path(const char *path,
     callback_ctx ctx = {
         .event = (event_data_t *)evt_data,
         .config = config,
-        .entry = NULL
+        .entry = NULL,
+        .failed_paths = NULL
     };
 
     callback_context_t cb = {
@@ -1151,12 +1188,20 @@ void fim_file_scan() {
         return;
     }
 
+    OSList* failed_paths = OSList_Create();
+    if (!failed_paths) {
+        merror("Failed to create failed_paths list for schema validation cleanup");
+        return;
+    }
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+
     event_data_t evt_data = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
-    callback_ctx txn_ctx = { .event = &evt_data, .entry = NULL, .config = NULL };
+    callback_ctx txn_ctx = { .event = &evt_data, .entry = NULL, .config = NULL, .failed_paths = failed_paths };
 
     TXN_HANDLE db_transaction_handle = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
     if (db_transaction_handle == NULL) {
         merror(FIM_ERROR_TRANSACTION, FIMDB_FILE_TXN_TABLE);
+        OSList_Destroy(failed_paths);
         return;
     }
 
@@ -1183,4 +1228,8 @@ void fim_file_scan() {
     w_mutex_unlock(&syscheck.fim_scan_mutex);
 
     fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
+
+    // Delete files that failed schema validation (outside transaction)
+    cleanup_failed_fim_files(failed_paths);
+    OSList_Destroy(failed_paths);
 }

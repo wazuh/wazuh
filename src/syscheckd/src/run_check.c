@@ -27,6 +27,10 @@
 #include "db/include/db.h"
 #include "ebpf/include/ebpf_whodata.h"
 #include "agent_sync_protocol_c_interface.h"
+#include "schemaValidator_c.h"
+#ifdef WIN32
+#include "registry/registry.h"
+#endif
 
 #ifdef WAZUH_UNIT_TESTING
 unsigned int files_read = 0;
@@ -338,12 +342,125 @@ void persist_syscheck_msg(const char *id, Operation_t operation, const char *ind
 
         mdebug2(FIM_PERSIST, msg);
 
+        // Validation is now done before DBSync insertion in the callbacks
+        // This function just persists the already-validated data
         asp_persist_diff(syscheck.sync_handle, id, operation, index, msg, version);
 
         os_free(msg);
     } else {
         mdebug2("FIM synchronization is disabled");
     }
+}
+
+// Validate and persist a FIM event with schema validation
+bool validate_and_persist_fim_event(
+    const cJSON* stateful_event,
+    const char* id,
+    Operation_t operation,
+    const char* index,
+    uint64_t document_version,
+    const char* item_description,
+    bool mark_for_deletion,
+    OSList* failed_list,
+    void* failed_item_data
+) {
+    bool validation_passed = true;
+
+    // Only validate if synchronization is enabled and schema validator is initialized
+    if (syscheck.enable_synchronization && schema_validator_is_initialized()) {
+        char* msg = cJSON_PrintUnformatted(stateful_event);
+        char* errorMessage = NULL;
+
+        if (!schema_validator_validate(index, msg, &errorMessage)) {
+            // Validation failed - log errors
+            if (errorMessage) {
+                merror("Schema validation failed for %s (index: %s). Errors: %s",
+                       item_description, index, errorMessage);
+                os_free(errorMessage);
+            }
+
+            merror("Raw event that failed validation: %s", msg);
+            mdebug1("Skipping persistence of invalid event for %s", item_description);
+            validation_passed = false;
+
+            // Mark for deletion from DBSync if requested and this is an INSERT or MODIFY operation
+            if (mark_for_deletion && failed_list && failed_item_data) {
+                mdebug1("Marking %s for deletion from DBSync due to validation failure", item_description);
+                OSList_AddData(failed_list, failed_item_data);
+            }
+        }
+
+        os_free(msg);
+    }
+
+    // Persist stateful event only if validation passed (or validation is disabled)
+    if (validation_passed) {
+        persist_syscheck_msg(id, operation, index, stateful_event, document_version);
+    }
+
+    return validation_passed;
+}
+
+// Clean up files that failed schema validation
+void cleanup_failed_fim_files(OSList* failed_paths) {
+    if (!failed_paths) {
+        return;
+    }
+
+    OSListNode* node;
+    OSList_foreach(node, failed_paths) {
+        const char* failed_path = (const char*)node->data;
+        mdebug1("Deleting %s from DBSync due to validation failure", failed_path);
+        fim_db_file_delete(failed_path);
+    }
+}
+
+// Clean up registry keys that failed schema validation
+void cleanup_failed_registry_keys(OSList* failed_keys) {
+#ifdef WIN32
+    if (!failed_keys) {
+        return;
+    }
+
+    OSListNode* node;
+    OSList_foreach(node, failed_keys) {
+        failed_registry_key_t* failed_key = (failed_registry_key_t*)node->data;
+        if (failed_key && failed_key->path) {
+            mdebug1("Deleting registry key %s from DBSync due to validation failure", failed_key->path);
+            fim_db_registry_key_delete(failed_key->path, failed_key->arch);
+            // Free the structure members manually since OSList free won't do it
+            os_free(failed_key->path);
+            // failed_key itself will be freed by OSList_Destroy
+        }
+    }
+#else
+    (void)failed_keys; // Unused parameter in non-Windows builds
+#endif
+}
+
+// Clean up registry values that failed schema validation
+void cleanup_failed_registry_values(OSList* failed_values) {
+#ifdef WIN32
+    if (!failed_values) {
+        return;
+    }
+
+    OSListNode* node;
+    OSList_foreach(node, failed_values) {
+        failed_registry_value_t* failed_value = (failed_registry_value_t*)node->data;
+        if (failed_value && failed_value->path && failed_value->value) {
+            mdebug1("Deleting registry value %s:%s from DBSync due to validation failure",
+                    failed_value->path, failed_value->value);
+            fim_db_registry_value_delete(failed_value->path, failed_value->value, failed_value->arch);
+            // Free the structure members manually since OSList free won't do it
+            os_free(failed_value->path);
+            os_free(failed_value->value);
+            // failed_value itself will be freed by OSList_Destroy
+        }
+    }
+#else
+    (void)failed_values; // Unused parameter in non-Windows builds
+#endif
 }
 
 
@@ -764,21 +881,6 @@ DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args) {
 #else
 void * fim_run_integrity(__attribute__((unused)) void * args) {
 #endif
-
-    // Initial wait until FIM is started
-    for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
-        // Check for pause request during initial wait (atomic read, no mutex needed)
-        int pause_requested = atomic_int_get(&syscheck.fim_pause_requested);
-
-        if (pause_requested) {
-            // Acknowledge pause immediately (atomic write, no mutex needed)
-            atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
-            mdebug2("Pause request detected during initial wait");
-            break;
-        }
-
-        sleep(1);
-    }
 
 #ifdef WIN32
     int table_count = 3;

@@ -1026,6 +1026,8 @@ void test_get_UTC_modification_time_fail_get_handle(void **state) {
     char buffer[OS_SIZE_128];
     char *path = "C:\\a\\path";
 
+    SetLastError(2);
+
     expect_string(__wrap_utf8_CreateFile, utf8_path, path);
     will_return(__wrap_utf8_CreateFile, INVALID_HANDLE_VALUE);
 
@@ -1047,6 +1049,8 @@ void test_get_UTC_modification_time_fail_get_filetime(void **state) {
 
     expect_string(__wrap_utf8_CreateFile, utf8_path, path);
     will_return(__wrap_utf8_CreateFile, (HANDLE)1234);
+
+    SetLastError(2);
 
     expect_value(wrap_GetFileTime, hFile, (HANDLE)1234);
     will_return(wrap_GetFileTime, &modification_date);
@@ -1204,6 +1208,24 @@ void test_is_network_path_local(void **state) {
     char *path = "C:\\file.txt";
     int ret = is_network_path(path);
     assert_int_equal(ret, 0);
+}
+
+void test_is_network_path_extended_length_unc(void **state) {
+    char *path = "\\\\?\\UNC\\server\\share";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 1);
+}
+
+void test_is_network_path_device(void **state) {
+    char *path = "\\\\.\\device";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 1);
+}
+
+void test_is_network_path_extended_length_local(void **state) {
+    char *path = "\\\\?\\C:\\file.txt";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 1);
 }
 
 void test_wfopen_local_path(void **state) {
@@ -1813,6 +1835,9 @@ int main(void) {
         cmocka_unit_test(test_is_network_path_unc),
         cmocka_unit_test(test_is_network_path_network),
         cmocka_unit_test(test_is_network_path_local),
+        cmocka_unit_test(test_is_network_path_extended_length_unc),
+        cmocka_unit_test(test_is_network_path_device),
+        cmocka_unit_test(test_is_network_path_extended_length_local),
         cmocka_unit_test(test_wfopen_local_path),
         cmocka_unit_test(test_wfopen_network_path),
         cmocka_unit_test(test_waccess_local_path),

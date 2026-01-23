@@ -304,6 +304,30 @@ FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback)
     return retVal;
 }
 
+FIMDBErrorCode fim_db_file_delete(const char* file_path)
+{
+    auto retVal {FIMDB_ERR};
+
+    if (!file_path)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+    }
+    else
+    {
+        try
+        {
+            DB::instance().removeFile(file_path);
+            retVal = FIMDB_OK;
+        }
+        catch (const std::exception& err)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        }
+    }
+
+    return retVal;
+}
+
 FIMDBErrorCode fim_db_file_inode_search(const unsigned long long int inode,
                                         const unsigned long device,
                                         callback_context_t callback)

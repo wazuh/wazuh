@@ -727,6 +727,11 @@ InstallCommon()
             ${INSTALL} -m 0750 -o root -g 0 shared_modules/sync_protocol/build/lib/libagent_sync_protocol.dylib ${INSTALLDIR}/lib
             install_name_tool -id @rpath/../lib/libagent_sync_protocol.dylib ${INSTALLDIR}/lib/libagent_sync_protocol.dylib
         fi
+        if [ -f shared_modules/agent_metadata/build/lib/libagent_metadata.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 shared_modules/agent_metadata/build/lib/libagent_metadata.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libagent_metadata.dylib ${INSTALLDIR}/lib/libagent_metadata.dylib
+        fi
     elif [ -f shared_modules/dbsync/build/lib/libdbsync.so ]
     then
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} shared_modules/dbsync/build/lib/libdbsync.so ${INSTALLDIR}/lib
@@ -741,6 +746,30 @@ InstallCommon()
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libagent_sync_protocol.so
+        fi
+    fi
+    if [ -f shared_modules/agent_metadata/build/lib/libagent_metadata.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} shared_modules/agent_metadata/build/lib/libagent_metadata.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libagent_metadata.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f shared_modules/schema_validator/build/lib/libschema_validator.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 shared_modules/schema_validator/build/lib/libschema_validator.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libschema_validator.dylib ${INSTALLDIR}/lib/libschema_validator.dylib
+        fi
+    elif [ -f shared_modules/schema_validator/build/lib/libschema_validator.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} shared_modules/schema_validator/build/lib/libschema_validator.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libschema_validator.so
         fi
     fi
 
@@ -999,8 +1028,7 @@ InstallCommon()
 generateSchemaFiles()
 {
     echo "Generating schema files..."
-    ${INSTALLDIR}/framework/python/bin/python3 engine/tools/engine-schema/engine_schema.py generate --allowed-fields-path engine/ruleset/schemas/allowed-fields.json \
-      --output-dir engine/ruleset/schemas/  --wcs-path external/wcs-flat-files/
+    ${INSTALLDIR}/framework/python/bin/python3 engine/tools/engine-schema/engine_schema.py generate --output-dir engine/ruleset/schemas/ --wcs-path external/wcs-flat-files/ --decoder-template engine/ruleset/schemas/wazuh-decoders.template.json
     if [ $? != 0 ]; then
         echo "Error: Failed to generate schema files."
         exit 1

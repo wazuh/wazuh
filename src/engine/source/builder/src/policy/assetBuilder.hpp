@@ -59,7 +59,7 @@ public:
     /**
      * @brief Get the build context.
      *
-     * @return const std::shared_ptr<builders::BuildCtx>&
+     * @return builder::builders::Context&
      */
     builder::builders::Context& getContext() const;
 
@@ -82,6 +82,19 @@ public:
      * @copydoc IAssetBuilder::operator()
      */
     Asset operator()(const json::Json& document) const override;
+
+    /**
+     * @copydoc IAssetBuilder::setAvailableKvdbs
+     */
+    void setAvailableKvdbs(std::unordered_map<std::string, bool>&& kvdbs) override
+    {
+        m_buildCtx->context().availableKvdbs = std::move(kvdbs);
+    }
+
+    /**
+     * @copydoc IAssetBuilder::clearAvailableKvdbs
+     */
+    void clearAvailableKvdbs() override { m_buildCtx->context().availableKvdbs = std::nullopt; }
 };
 
 } // namespace builder::policy

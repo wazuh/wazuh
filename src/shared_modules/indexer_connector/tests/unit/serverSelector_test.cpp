@@ -20,12 +20,6 @@ constexpr auto SERVER_SELECTOR_HEALTH_CHECK_INTERVAL = 1u;
 constexpr auto SERVER_SELECTOR_HEALTH_CHECK_INTERVAL_ZERO = 0u;
 constexpr auto SERVER_SELECTOR_HEALTH_CHECK_INTERVAL_INFINITE = std::numeric_limits<uint32_t>::max();
 
-namespace Log
-{
-    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
-        GLOBAL_LOG_FUNCTION;
-}; // namespace Log
-
 /**
  * @brief Test instantiation with valid servers.
  */
@@ -190,7 +184,8 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Server not found", 404, "");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Server not found", 404, "");
                     }
                 }
             }));
