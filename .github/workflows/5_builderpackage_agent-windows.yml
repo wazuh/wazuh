@@ -3,6 +3,7 @@ name: 5.X - Build Wazuh agent Windows (MSI)
 
 on:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - "src/**"
       - "packages/**"
