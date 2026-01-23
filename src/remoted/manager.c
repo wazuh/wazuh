@@ -248,11 +248,13 @@ void free_file_time(void *data) {
 /**
  * @brief Build JSON payload for handshake ACK response
  * @param limits Pointer to module limits structure
+ * @param agent_id Agent ID string for fetching groups (can be NULL)
  * @return Allocated JSON string (caller must free) or NULL on error
  */
-STATIC char* build_handshake_json(const module_limits_t *limits) {
+STATIC char* build_handshake_json(const module_limits_t *limits, const char *agent_id) {
     char *json_str = NULL;
     char *cluster_name = NULL;
+    char *agent_groups_csv = NULL;
 
     if (!limits) {
         return NULL;
@@ -314,6 +316,28 @@ STATIC char* build_handshake_json(const module_limits_t *limits) {
         os_free(cluster_name);
     } else {
         cJSON_AddStringToObject(root, "cluster_name", DEFAULT_CLUSTER_NAME);
+    }
+
+    /* Add agent_groups - always include field, agent can fallback to merge.mg if empty */
+    cJSON *groups_array = cJSON_CreateArray();
+    if (groups_array) {
+        if (agent_id) {
+            agent_groups_csv = wdb_get_agent_group(atoi(agent_id), NULL);
+            if (agent_groups_csv && agent_groups_csv[0] != '\0') {
+                char *groups_copy = strdup(agent_groups_csv);
+                if (groups_copy) {
+                    char *saveptr = NULL;
+                    char *group = strtok_r(groups_copy, ",", &saveptr);
+                    while (group) {
+                        cJSON_AddItemToArray(groups_array, cJSON_CreateString(group));
+                        group = strtok_r(NULL, ",", &saveptr);
+                    }
+                    os_free(groups_copy);
+                }
+            }
+            os_free(agent_groups_csv);
+        }
+        cJSON_AddItemToObject(root, "agent_groups", groups_array);
     }
 
     json_str = cJSON_PrintUnformatted(root);
@@ -455,7 +479,7 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
             agent_version[0] != '\0' &&
             compare_wazuh_versions(agent_version, MIN_VERSION_MODULE_LIMITS, true) >= 0) {
 
-            char *handshake_json = build_handshake_json(&manager_module_limits);
+            char *handshake_json = build_handshake_json(&manager_module_limits, key->id);
             if (handshake_json) {
                 snprintf(msg_ack, OS_SIZE_1024, "%s%s%s", CONTROL_HEADER, HC_ACK, handshake_json);
                 os_free(handshake_json);
