@@ -64,6 +64,7 @@ agent_info_set_log_function_func agent_info_set_log_function_ptr = NULL;
 agent_info_set_report_function_func agent_info_set_report_function_ptr = NULL;
 agent_info_init_sync_protocol_func agent_info_init_sync_protocol_ptr = NULL;
 agent_info_set_query_module_function_func agent_info_set_query_module_function_ptr = NULL;
+agent_info_set_cluster_name_func agent_info_set_cluster_name_ptr = NULL;
 
 // Sync protocol function pointers
 static agent_info_parse_response_func agent_info_parse_response_ptr = NULL;
@@ -259,6 +260,65 @@ static int wm_agent_info_query_module_wrapper(const char* module_name, const cha
     }
 
     return -1;
+}
+
+// Query agentd for handshake data via agcom socket
+static bool wm_agent_info_query_agentd_handshake(char* cluster_name, size_t cluster_name_size)
+{
+    if (!cluster_name || cluster_name_size == 0)
+    {
+        return false;
+    }
+
+    cluster_name[0] = '\0';
+
+    // Connect to agcom socket
+    int sock = OS_ConnectUnixDomain(COM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
+    if (sock < 0)
+    {
+        mdebug1("Cannot connect to agcom socket, agentd may not be ready yet");
+        return false;
+    }
+
+    // Send query
+    const char* query = "gethandshake";
+    if (OS_SendSecureTCP(sock, strlen(query), query) != 0)
+    {
+        mdebug1("Failed to send gethandshake query to agentd");
+        close(sock);
+        return false;
+    }
+
+    // Receive response
+    char buffer[OS_MAXSTR + 1] = {0};
+    ssize_t len = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR);
+    close(sock);
+
+    if (len <= 0)
+    {
+        mdebug1("No response from agentd for gethandshake");
+        return false;
+    }
+
+    // Parse JSON response
+    cJSON* root = cJSON_Parse(buffer);
+    if (!root)
+    {
+        mdebug1("Failed to parse gethandshake response");
+        return false;
+    }
+
+    cJSON* cluster = cJSON_GetObjectItem(root, "cluster_name");
+    if (cluster && cJSON_IsString(cluster) && cluster->valuestring)
+    {
+        strncpy(cluster_name, cluster->valuestring, cluster_name_size - 1);
+        cluster_name[cluster_name_size - 1] = '\0';
+    }
+
+    cJSON_Delete(root);
+
+    mdebug1("Received handshake data from agentd: cluster_name=%s", cluster_name);
+    return true;
 }
 
 // Callback to send stateless messages
@@ -483,6 +543,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_set_report_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_report_function");
         agent_info_init_sync_protocol_ptr = so_get_function_sym(agent_info_module, "agent_info_init_sync_protocol");
         agent_info_set_query_module_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_query_module_function");
+        agent_info_set_cluster_name_ptr = so_get_function_sym(agent_info_module, "agent_info_set_cluster_name");
 
         // Get sync protocol function pointers
         agent_info_parse_response_ptr = so_get_function_sym(agent_info_module, "agent_info_parse_response");
@@ -515,6 +576,37 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     {
         MQ_Functions mq_funcs = {.start = wm_agent_info_startmq, .send_binary = wm_agent_info_send_binary_msg};
         agent_info_init_sync_protocol_ptr(AGENT_INFO_WM_NAME, &mq_funcs);
+    }
+
+    // Query agentd for handshake data (cluster_name) via agcom - only on agents
+    if (agent_info->is_agent && agent_info_set_cluster_name_ptr)
+    {
+        char cluster_name[256] = {0};
+        bool handshake_success = false;
+
+        while (!handshake_success && !g_shutting_down)
+        {
+            if (wm_agent_info_query_agentd_handshake(cluster_name, sizeof(cluster_name)))
+            {
+                handshake_success = true;
+                if (cluster_name[0] != '\0')
+                {
+                    agent_info_set_cluster_name_ptr(cluster_name);
+                    minfo("Cluster name received from agentd: %s", cluster_name);
+                }
+            }
+            else
+            {
+                mdebug1("Handshake data not available yet, retrying in 1 second...");
+                sleep(1);
+            }
+        }
+
+        if (g_shutting_down)
+        {
+            minfo("Shutdown requested during handshake data query wait, exiting.");
+            return NULL;
+        }
     }
 
     // Initialize the C++ implementation (this will create the AgentInfoImpl with the callbacks)

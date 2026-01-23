@@ -34,6 +34,7 @@ typedef struct
     char os_type[256];            ///< Operating system type (e.g., "linux", "windows", "darwin")
     char os_platform[256];        ///< Operating system platform/distribution (e.g., "ubuntu", "centos", "windows")
     char os_version[256];         ///< Operating system version
+    char cluster_name[256];       ///< Cluster name from manager (received during handshake)
     char** groups;                ///< Array of group names (NULL-terminated strings)
     size_t groups_count;          ///< Number of groups in the array
 } agent_metadata_t;

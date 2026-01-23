@@ -28,6 +28,9 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     fd_set fdset;
     struct timeval fdtimeout;
 
+    /* Initialize module limits with default values */
+    module_limits_init(&agent_module_limits);
+
     available_server = 0;
 
     /* Initial random numbers must happen before chroot */
