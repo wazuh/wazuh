@@ -106,7 +106,7 @@ def test_custom_logging(path, hash_auth_context, body, loggerlevel):
     }
 
     log_info = f'{user} ({hash_auth_context}) {remote} "{method} {path}" ' if hash_auth_context \
-                else f'{user} ({hash_auth_context}) {remote} "{method} {path}" '
+                else f'{user} {remote} "{method} {path}" '
     json_info.update({'hash_auth_context' : hash_auth_context} if hash_auth_context else {})
     with patch('api.alogging.logger') as log_info_mock:
         log_info_mock.info = MagicMock()
@@ -123,6 +123,7 @@ def test_custom_logging(path, hash_auth_context, body, loggerlevel):
                 json_info['body'] = body
         log_info += f'with parameters {json.dumps(query)} and body'\
                     f' {json.dumps(body)} done in {elapsed_time:.3f}s: {status}'
-        log_info_mock.info.has_calls([call(log_info, {'log_type': 'log'}),
-                                      call(json_info, {'log_type': 'json'})])
+        log_info_mock.info.assert_has_calls([call(log_info, extra={'log_type': 'log'}),
+                                      call(json_info, extra={'log_type': 'json'})])
+
         log_info_mock.debug2.assert_called_with(f'Receiving headers {headers}')
