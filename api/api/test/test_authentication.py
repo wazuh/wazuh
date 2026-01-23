@@ -20,9 +20,11 @@ import pytest
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
-        from api import authentication
-
+        from api.authentication import (generate_keypair, check_user_master, check_user, change_keypair,
+                                        _private_key_path, _public_key_path, wazuh_uid, wazuh_gid, get_security_conf,
+                                        generate_token, check_token, decode_token)
         del sys.modules['wazuh.rbac.orm']
+
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
@@ -55,10 +57,10 @@ original_payload = {
 
 @pytest.fixture(autouse=True)
 def clear_generate_keypair_cache():
-    authentication.generate_keypair.cache_clear()
+    generate_keypair.cache_clear()
 
 def test_check_user_master():
-    result = authentication.check_user_master('test_user', 'test_pass')
+    result = check_user_master('test_user', 'test_pass')
     assert result == {'result': True}
 
 
@@ -68,7 +70,7 @@ def test_check_user_master():
 @patch('api.authentication.raise_if_exc', side_effect=None)
 async def test_check_user(mock_raise_if_exc, mock_distribute_function, mock_dapi):
     """Verify if result is as expected"""
-    result = authentication.check_user('test_user', 'test_pass')
+    result = check_user('test_user', 'test_pass')
 
     assert result == {'sub': 'test_user', 'active': True}, 'Result is not as expected'
     mock_dapi.assert_called_once_with(f=ANY, f_kwargs={'user': 'test_user', 'password': 'test_pass'},
@@ -84,23 +86,23 @@ async def test_check_user(mock_raise_if_exc, mock_distribute_function, mock_dapi
 @patch('builtins.open')
 def test_generate_keypair(mock_open, mock_chown, mock_chmod, mock_change_keypair):
     """Verify correct params when calling open method inside generate_keypair"""
-    result = authentication.generate_keypair()
+    result = generate_keypair()
     assert result == ('-----BEGIN PRIVATE KEY-----',
                       '-----BEGIN PUBLIC KEY-----')
 
-    calls = [call(authentication._private_key_path, authentication.wazuh_uid(), authentication.wazuh_gid()),
-             call(authentication._public_key_path, authentication.wazuh_uid(), authentication.wazuh_gid())]
+    calls = [call(_private_key_path, wazuh_uid(), wazuh_gid()),
+             call(_public_key_path, wazuh_uid(), wazuh_gid())]
     mock_chown.assert_has_calls(calls)
-    calls = [call(authentication._private_key_path, 0o640),
-             call(authentication._public_key_path, 0o640)]
+    calls = [call(_private_key_path, 0o640),
+             call(_public_key_path, 0o640)]
     mock_chmod.assert_has_calls(calls)
 
-    authentication.generate_keypair.cache_clear()
+    generate_keypair.cache_clear()
 
     with patch('os.path.exists', return_value=True):
-        authentication.generate_keypair()
-        calls = [call(authentication._private_key_path, mode='r'),
-                 call(authentication._public_key_path, mode='r')]
+        generate_keypair()
+        calls = [call(_private_key_path, mode='r'),
+                 call(_public_key_path, mode='r')]
         mock_open.assert_has_calls(calls, any_order=True)
 
 
@@ -109,7 +111,7 @@ def test_generate_keypair_ko():
     with patch('builtins.open'):
         with patch('os.chmod'):
             with patch('os.chown', side_effect=PermissionError):
-                assert authentication.generate_keypair()
+                assert generate_keypair()
 
 @patch("os.chmod")
 @patch("os.chown")
@@ -117,8 +119,8 @@ def test_generate_keypair_ko():
 @patch("os.path.exists", return_value=False)
 def test_generate_keypair_cache_no_keys(mock_exists, mock_change_keypair, mock_chown, mock_chmod):
 
-    first = authentication.generate_keypair()
-    cached = authentication.generate_keypair()
+    first = generate_keypair()
+    cached = generate_keypair()
 
     assert first == ("priv", "pub")
     assert first is cached
@@ -137,8 +139,8 @@ def test_generate_keypair_cache(mock_exists, mock_open,
     file_mock.read.side_effect = ["priv", "pub"]
     mock_open.return_value.__enter__.return_value = file_mock
 
-    first = authentication.generate_keypair()
-    cached = authentication.generate_keypair()
+    first = generate_keypair()
+    cached = generate_keypair()
 
     assert first == ("priv", "pub")
     assert first is cached
@@ -149,17 +151,17 @@ def test_generate_keypair_cache(mock_exists, mock_open,
 @patch('builtins.open')
 def test_change_keypair(mock_open):
     """Verify correct params when calling open method inside change_keypair"""
-    result = authentication.change_keypair()
+    result = change_keypair()
     assert isinstance(result[0], str)
     assert isinstance(result[1], str)
-    calls = [call(authentication._private_key_path, mode='w'),
-             call(authentication._public_key_path, mode='w')]
+    calls = [call(_private_key_path, mode='w'),
+             call(_public_key_path, mode='w')]
     mock_open.assert_has_calls(calls, any_order=True)
 
 
 def test_get_security_conf():
     """Check that returned object is as expected"""
-    result = authentication.get_security_conf()
+    result = get_security_conf()
     assert isinstance(result, dict)
     assert all(x in result.keys() for x in ('auth_token_exp_timeout', 'rbac_mode'))
 
@@ -182,7 +184,7 @@ async def test_generate_token(mock_raise_if_exc, mock_distribute_function, mock_
 
     mock_raise_if_exc.return_value = security_conf
     with patch('api.authentication.core_utils.get_utc_now', return_value=NewDatetime()):
-        result = authentication.generate_token(user_id='001', data={'roles': [1]}, auth_context=auth_context)
+        result = generate_token(user_id='001', data={'roles': [1]}, auth_context=auth_context)
     assert result == 'test_token', 'Result is not as expected'
 
     # Check all functions are called with expected params
@@ -199,7 +201,7 @@ async def test_generate_token(mock_raise_if_exc, mock_distribute_function, mock_
 
 @patch('api.authentication.TokenManager')
 def test_check_token(mock_tokenmanager):
-    result = authentication.check_token(username='wazuh_user', roles=tuple([1]), token_nbf_time=3600, run_as=False,
+    result = check_token(username='wazuh_user', roles=tuple([1]), token_nbf_time=3600, run_as=False,
                                         origin_node_type='master')
     assert result == {'valid': ANY, 'policies': ANY}
 
@@ -218,7 +220,7 @@ async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_da
     mock_raise_if_exc.side_effect = [WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
                                      WazuhResult(security_conf)]
 
-    result = authentication.decode_token('test_token')
+    result = decode_token('test_token')
     assert result == decoded_payload
 
     # Check all functions are called with expected params
@@ -244,7 +246,7 @@ async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_da
 async def test_decode_token_ko(mock_generate_keypair, mock_raise_if_exc, mock_distribute_function):
     """Assert exceptions are handled as expected inside decode_token()"""
     with pytest.raises(Unauthorized):
-        authentication.decode_token(token='test_token')
+        decode_token(token='test_token')
 
     with patch('api.authentication.jwt.decode') as mock_decode:
         with patch('api.authentication.generate_keypair',
@@ -257,11 +259,11 @@ async def test_decode_token_ko(mock_generate_keypair, mock_raise_if_exc, mock_di
 
                         with pytest.raises(Unauthorized):
                             mock_raise_if_exc.side_effect = [WazuhResult({'valid': False})]
-                            authentication.decode_token(token='test_token')
+                            decode_token(token='test_token')
 
                         with pytest.raises(Unauthorized):
                             mock_raise_if_exc.side_effect = [
                                 WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
                                 WazuhResult({'auth_token_exp_timeout': 900,
                                              'rbac_mode': 'white'})]
-                            authentication.decode_token(token='test_token')
+                            decode_token(token='test_token')

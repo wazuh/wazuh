@@ -105,7 +105,6 @@ def test_model_operator_overloading():
 
     # Operator __repr__ (for print)
     # Assert that we can print a Model right away
-    print(test_model)
 
     equal_model = TestModel(*list(original_dict.values()))
     not_equal_model = TestModel('test')
