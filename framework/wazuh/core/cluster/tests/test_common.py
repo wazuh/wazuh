@@ -1794,6 +1794,23 @@ def test_as_wazuh_object_ok(mock_chmod, mock_chown, mock_gid, mock_uid):
                                                         "__module__": "itertools"}})
     assert "Decoding callable from module" in str(err.value)
 
+    # Test the first condition - allowed callable packages must be processed
+    func =  cluster_common.as_wazuh_object({"__callable__": {"__name__": "check_user_master",
+                                                             "__module__": "api.authentication",
+                                                             "__qualname__": "check_user_master",
+                                                             "__type__": "function"}})
+    assert callable(func)
+    assert func.__module__ == "api.authentication"
+    assert func.__name__ == "check_user_master"
+
+    func =  cluster_common.as_wazuh_object({"__callable__": {"__name__": "get_node",
+                                                             "__module__": "wazuh.core.cluster.cluster",
+                                                             "__qualname__": "get_node",
+                                                             "__type__": "function"}})
+    assert callable(func)
+    assert func.__module__ == "wazuh.core.cluster.cluster"
+    assert func.__name__ == "get_node"
+
     # Test the second condition
     assert isinstance(cluster_common.as_wazuh_object(
         {"__wazuh_exception__": {"__class__": "WazuhException", "__object__": {"code": 1001}}}),
