@@ -14,6 +14,7 @@
 #include "os_net/os_net.h"
 #include "remoted.h"
 #include "config/config.h"
+#include "module_limits.h"
 
 /* Global variables */
 int pass_empty_keyfile;
@@ -47,10 +48,41 @@ size_t batch_events_capacity;
 size_t batch_events_per_agent_capacity;
 int enrich_cache_expire_time;
 
+/* Manager's module limits instance */
+module_limits_t manager_module_limits;
+bool manager_module_limits_enabled = true;
+
 /* Read the config file (the remote access) */
 int RemotedConfig(const char *cfgfile, remoted *cfg)
 {
     int modules = 0;
+
+    /* Initialize module limits with default values */
+    module_limits_init(&manager_module_limits);
+
+    /* Read module limits from internal_options.conf */
+    /* FIM limits */
+    manager_module_limits.fim.file = getDefine_Int("fim", "file_limit", 0, INT_MAX);
+    manager_module_limits.fim.registry_key = getDefine_Int("fim", "registry_key_limit", 0, INT_MAX);
+    manager_module_limits.fim.registry_value = getDefine_Int("fim", "registry_value_limit", 0, INT_MAX);
+
+    /* Syscollector limits */
+    manager_module_limits.syscollector.hotfixes = getDefine_Int("syscollector", "hotfixes_limit", 0, INT_MAX);
+    manager_module_limits.syscollector.packages = getDefine_Int("syscollector", "packages_limit", 0, INT_MAX);
+    manager_module_limits.syscollector.processes = getDefine_Int("syscollector", "processes_limit", 0, INT_MAX);
+    manager_module_limits.syscollector.ports = getDefine_Int("syscollector", "ports_limit", 0, INT_MAX);
+    manager_module_limits.syscollector.network_iface = getDefine_Int("syscollector", "network_iface_limit", 0, INT_MAX);
+    manager_module_limits.syscollector.network_protocol = getDefine_Int("syscollector", "network_protocol_limit", 0, INT_MAX);
+    manager_module_limits.syscollector.network_address = getDefine_Int("syscollector", "network_address_limit", 0, INT_MAX);
+    manager_module_limits.syscollector.hardware = getDefine_Int("syscollector", "hardware_limit", 0, INT_MAX);
+    manager_module_limits.syscollector.os_info = getDefine_Int("syscollector", "os_info_limit", 0, INT_MAX);
+    manager_module_limits.syscollector.users = getDefine_Int("syscollector", "users_limit", 0, INT_MAX);
+    manager_module_limits.syscollector.groups = getDefine_Int("syscollector", "groups_limit", 0, INT_MAX);
+    manager_module_limits.syscollector.services = getDefine_Int("syscollector", "services_limit", 0, INT_MAX);
+    manager_module_limits.syscollector.browser_extensions = getDefine_Int("syscollector", "browser_extensions_limit", 0, INT_MAX);
+
+    /* SCA limits */
+    manager_module_limits.sca.checks = getDefine_Int("sca", "checks_limit", 0, INT_MAX);
 
     modules |= CREMOTE;
 
