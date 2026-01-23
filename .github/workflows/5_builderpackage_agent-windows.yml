@@ -59,7 +59,7 @@ jobs:
           SHORT_COMMIT=$(git rev-parse --short=7 HEAD)
           if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
           echo "Found commit: $SHORT_COMMIT"
-          sed -i '/"stage":/s/$$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
+          sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
           cat VERSION.json
 
       - name: Build Windows dependencies (cross-compile)
@@ -266,6 +266,12 @@ jobs:
           component: agent
           os: windows
           version: ${{ steps.last-stable-version.outputs.latest_stable_version }}
+
+      - name: Prepare package for upgrade test
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path C:\win-agent-base
+          Copy-Item "src/win32/${{ env.PACKAGE_NAME }}" -Destination "C:\win-agent-base\" -Force
 
       - name: Test uninstall and upgrade from ${{ steps.last-stable-version.outputs.latest_stable_version }} to ${{ env.VERSION }}
         uses: ./.github/actions/5_builderpackage_windows-smoke-upgrade-test

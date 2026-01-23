@@ -1,5 +1,5 @@
 name: 'Test upgrade Wazuh agent package (Windows)'
-description: 'Test upgrade Wazuh agent package (Windows) using remote SSH and Python script'
+description: 'Test upgrade Wazuh agent package (Windows) locally using Python script'
 
 inputs:
   old_package_url:
@@ -12,13 +12,7 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Copy Python script to remote Windows host
-      shell: bash
-      run: |
-        ${{ env.SCP_COMMAND }} ${{ github.action_path }}/smoke_upgrade_test.py \
-        ${{ env.ansible_user }}@${{ env.ansible_host }}:C:/win-agent-base/
-
     - name: Run test upgrade Wazuh agent package (Windows)
-      shell: bash
+      shell: pwsh
       run: |
-        ${{ env.SSH_COMMAND }} "python -u C:/win-agent-base/smoke_upgrade_test.py ${{ inputs.old_package_url }} ${{ inputs.expected_upgrade_version }}"
+        python -u "${{ github.action_path }}\smoke_upgrade_test.py" "${{ inputs.old_package_url }}" "${{ inputs.expected_upgrade_version }}"
