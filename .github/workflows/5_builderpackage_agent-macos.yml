@@ -41,7 +41,7 @@ on:
 jobs:
   build-macos-intel64:
     if: github.event_name == 'pull_request' || inputs.architecture == 'intel64'
-    runs-on: macos-14
+    runs-on: macos-14-large
     timeout-minutes: 90
     name: Build PKG package (intel64)
     outputs:
@@ -116,7 +116,7 @@ jobs:
 
   test-macos-intel64:
     needs: build-macos-intel64
-    runs-on: macos-14
+    runs-on: macos-14-large
     timeout-minutes: 30
     name: Test PKG package (intel64)
 
