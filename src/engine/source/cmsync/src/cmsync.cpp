@@ -84,6 +84,8 @@ json::Json createAllowAllFilter()
     json::Json filter {};
     filter.setString(ALLOW_ALL_FILTER_NAME.toStr(), "/name");
     filter.setString(base::utils::generators::generateUUIDv4(), "/id");
+    filter.setString("pre-filter", "/type");
+    filter.setBool(true, "/enabled");
     return filter;
 }
 

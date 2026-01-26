@@ -15,13 +15,10 @@
 namespace cm::store
 {
 
-const auto CTI_NAMESPACE_ID = NamespaceId("cti");
-
 const std::vector<NamespaceId> FORBIDDEN_NAMESPACES = {
     NamespaceId("output"),
     NamespaceId("system"),
-    NamespaceId("default"),
-    CTI_NAMESPACE_ID,
+    NamespaceId("default")
 };
 
 CMStore::~CMStore() = default;
