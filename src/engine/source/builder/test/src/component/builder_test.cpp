@@ -44,7 +44,6 @@ TEST_P(BuildPolicy, Doc)
             auto policy = m_spBuilder->buildPolicy(nsId, false, true);
             ASSERT_NE(policy, nullptr);
             EXPECT_EQ(policy->name().toStr(), nsId.toStr());
-            EXPECT_FALSE(policy->hash().empty());
         });
     }
     else
@@ -411,7 +410,6 @@ TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
     // Verify results - policy should be created without error
     ASSERT_NE(builtPolicy, nullptr);
     EXPECT_EQ(builtPolicy->name().toStr(), namespaceId.toStr());
-    EXPECT_FALSE(builtPolicy->hash().empty());
     // Note: assets may be empty in this simplified mock setup - that's OK for a component test
 }
 
@@ -764,7 +762,6 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithMultipleIntegrations)
     // Verify results
     ASSERT_NE(builtPolicy, nullptr);
     EXPECT_EQ(builtPolicy->name().toStr(), namespaceId.toStr());
-    EXPECT_FALSE(builtPolicy->hash().empty());
 }
 
 TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithKVDB)

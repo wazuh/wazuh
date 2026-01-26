@@ -155,33 +155,6 @@ inline bool State_Parse(
   return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<State>(
     State_descriptor(), name, value);
 }
-enum Sync : int {
-  SYNC_UNKNOWN = 0,
-  UPDATED = 1,
-  OUTDATED = 2,
-  ERROR = 3,
-  Sync_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
-  Sync_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
-};
-bool Sync_IsValid(int value);
-constexpr Sync Sync_MIN = SYNC_UNKNOWN;
-constexpr Sync Sync_MAX = ERROR;
-constexpr int Sync_ARRAYSIZE = Sync_MAX + 1;
-
-const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* Sync_descriptor();
-template<typename T>
-inline const std::string& Sync_Name(T enum_t_value) {
-  static_assert(::std::is_same<T, Sync>::value ||
-    ::std::is_integral<T>::value,
-    "Incorrect type passed to function Sync_Name.");
-  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
-    Sync_descriptor(), enum_t_value);
-}
-inline bool Sync_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, Sync* value) {
-  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<Sync>(
-    Sync_descriptor(), name, value);
-}
 // ===================================================================
 
 class EntryPost final :
@@ -527,9 +500,8 @@ class Entry final :
     kFilterFieldNumber = 3,
     kDescriptionFieldNumber = 5,
     kPriorityFieldNumber = 4,
-    kNamespaceSyncFieldNumber = 6,
-    kEntryStatusFieldNumber = 7,
-    kUptimeFieldNumber = 8,
+    kEntryStatusFieldNumber = 6,
+    kUptimeFieldNumber = 7,
   };
   // string name = 1;
   void clear_name();
@@ -600,16 +572,7 @@ class Entry final :
   void _internal_set_priority(uint32_t value);
   public:
 
-  // .com.wazuh.api.engine.router.Sync namespace_sync = 6;
-  void clear_namespace_sync();
-  ::com::wazuh::api::engine::router::Sync namespace_sync() const;
-  void set_namespace_sync(::com::wazuh::api::engine::router::Sync value);
-  private:
-  ::com::wazuh::api::engine::router::Sync _internal_namespace_sync() const;
-  void _internal_set_namespace_sync(::com::wazuh::api::engine::router::Sync value);
-  public:
-
-  // .com.wazuh.api.engine.router.State entry_status = 7;
+  // .com.wazuh.api.engine.router.State entry_status = 6;
   void clear_entry_status();
   ::com::wazuh::api::engine::router::State entry_status() const;
   void set_entry_status(::com::wazuh::api::engine::router::State value);
@@ -618,7 +581,7 @@ class Entry final :
   void _internal_set_entry_status(::com::wazuh::api::engine::router::State value);
   public:
 
-  // uint32 uptime = 8;
+  // uint32 uptime = 7;
   void clear_uptime();
   uint32_t uptime() const;
   void set_uptime(uint32_t value);
@@ -642,7 +605,6 @@ class Entry final :
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr filter_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr description_;
     uint32_t priority_;
-    int namespace_sync_;
     int entry_status_;
     uint32_t uptime_;
   };
@@ -3285,27 +3247,7 @@ inline void Entry::set_allocated_description(std::string* description) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.Entry.description)
 }
 
-// .com.wazuh.api.engine.router.Sync namespace_sync = 6;
-inline void Entry::clear_namespace_sync() {
-  _impl_.namespace_sync_ = 0;
-}
-inline ::com::wazuh::api::engine::router::Sync Entry::_internal_namespace_sync() const {
-  return static_cast< ::com::wazuh::api::engine::router::Sync >(_impl_.namespace_sync_);
-}
-inline ::com::wazuh::api::engine::router::Sync Entry::namespace_sync() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.Entry.namespace_sync)
-  return _internal_namespace_sync();
-}
-inline void Entry::_internal_set_namespace_sync(::com::wazuh::api::engine::router::Sync value) {
-  
-  _impl_.namespace_sync_ = value;
-}
-inline void Entry::set_namespace_sync(::com::wazuh::api::engine::router::Sync value) {
-  _internal_set_namespace_sync(value);
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.namespace_sync)
-}
-
-// .com.wazuh.api.engine.router.State entry_status = 7;
+// .com.wazuh.api.engine.router.State entry_status = 6;
 inline void Entry::clear_entry_status() {
   _impl_.entry_status_ = 0;
 }
@@ -3325,7 +3267,7 @@ inline void Entry::set_entry_status(::com::wazuh::api::engine::router::State val
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.entry_status)
 }
 
-// uint32 uptime = 8;
+// uint32 uptime = 7;
 inline void Entry::clear_uptime() {
   _impl_.uptime_ = 0u;
 }
@@ -4303,11 +4245,6 @@ template <> struct is_proto_enum< ::com::wazuh::api::engine::router::State> : ::
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::com::wazuh::api::engine::router::State>() {
   return ::com::wazuh::api::engine::router::State_descriptor();
-}
-template <> struct is_proto_enum< ::com::wazuh::api::engine::router::Sync> : ::std::true_type {};
-template <>
-inline const EnumDescriptor* GetEnumDescriptor< ::com::wazuh::api::engine::router::Sync>() {
-  return ::com::wazuh::api::engine::router::Sync_descriptor();
 }
 
 PROTOBUF_NAMESPACE_CLOSE

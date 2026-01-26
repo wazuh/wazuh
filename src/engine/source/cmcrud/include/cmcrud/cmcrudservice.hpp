@@ -2,6 +2,7 @@
 #define _CMCRUD_CMCRUDSERVICE_HPP
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -40,7 +41,8 @@ public:
                          const std::vector<json::Json>& decoders,
                          const std::vector<json::Json>& integrations,
                          const json::Json& policy,
-                         bool softValidation) override;
+                         bool softValidation,
+                         std::optional<std::string> externalPolicyHash = std::nullopt) override;
 
     /********************************* Policy *********************************/
     void upsertPolicy(const cm::store::NamespaceId& nsId, std::string_view policyDocument) override;

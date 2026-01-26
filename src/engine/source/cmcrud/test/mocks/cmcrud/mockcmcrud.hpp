@@ -1,6 +1,7 @@
 #ifndef _MOCKS_CMCRUD_CRUD_SERVICE_HPP
 #define _MOCKS_CMCRUD_CRUD_SERVICE_HPP
 #include <gmock/gmock.h>
+#include <optional>
 
 #include <cmcrud/icmcrudservice.hpp>
 namespace cm::crud
@@ -25,7 +26,8 @@ public:
                  const std::vector<json::Json>& decoders,
                  const std::vector<json::Json>& integrations,
                  const json::Json& policy,
-                 bool softValidation),
+                 bool softValidation,
+                 std::optional<std::string> externalPolicyHash),
                 (override));
 
     MOCK_METHOD(void, upsertPolicy, (const cm::store::NamespaceId& nsId, std::string_view document), (override));

@@ -12,14 +12,6 @@ enum State
     ENABLED = 2;       ///< Entry is active, it's being used
 }
 
-enum Sync
-{
-    SYNC_UNKNOWN = 0; ///< Unset state
-    UPDATED = 1;      ///< Namespace is updated
-    OUTDATED = 2;     ///< Namespace is outdated respect to the store
-    ERROR = 3;        ///< Error, can't get the namespace status
-}
-
 message SessionPost
 {
     string name = 1;                 // Name of the session
@@ -35,9 +27,8 @@ message Session
     uint32 lifetime = 3;             // Lifetime of the session
     optional string description = 4; // Optional description of the session
 
-    Sync namespace_sync = 6; // Status of the namespace [updated|updated|error]
-    State entry_status = 7;  // Status of the session [INACTIVE|ACTIVE]
-    uint32 last_use = 8;     // Last use of the session
+    State entry_status = 6; // Status of the session [INACTIVE|ACTIVE]
+    uint32 last_use = 7;    // Last use of the session
 }
 
 /***************************************************

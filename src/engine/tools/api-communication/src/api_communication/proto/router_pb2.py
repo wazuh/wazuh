@@ -14,47 +14,45 @@ _sym_db = _symbol_database.Default()
 import api_communication.proto.engine_pb2 as _engine_pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0crouter.proto\x12\x1b\x63om.wazuh.api.engine.router\x1a\x0c\x65ngine.proto\"z\n\tEntryPost\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0bnamespaceId\x18\x02 \x01(\t\x12\x0e\n\x06\x66ilter\x18\x03 \x01(\t\x12\x10\n\x08priority\x18\x04 \x01(\r\x12\x18\n\x0b\x64\x65scription\x18\x05 \x01(\tH\x00\x88\x01\x01\x42\x0e\n\x0c_description\"\xfb\x01\n\x05\x45ntry\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0bnamespaceId\x18\x02 \x01(\t\x12\x0e\n\x06\x66ilter\x18\x03 \x01(\t\x12\x10\n\x08priority\x18\x04 \x01(\r\x12\x18\n\x0b\x64\x65scription\x18\x05 \x01(\tH\x00\x88\x01\x01\x12\x39\n\x0enamespace_sync\x18\x06 \x01(\x0e\x32!.com.wazuh.api.engine.router.Sync\x12\x38\n\x0c\x65ntry_status\x18\x07 \x01(\x0e\x32\".com.wazuh.api.engine.router.State\x12\x0e\n\x06uptime\x18\x08 \x01(\rB\x0e\n\x0c_description\"Y\n\x11RoutePost_Request\x12:\n\x05route\x18\x01 \x01(\x0b\x32&.com.wazuh.api.engine.router.EntryPostH\x00\x88\x01\x01\x42\x08\n\x06_route\"#\n\x13RouteDelete_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\" \n\x10RouteGet_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\"\xa7\x01\n\x11RouteGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x36\n\x05route\x18\x03 \x01(\x0b\x32\".com.wazuh.api.engine.router.EntryH\x01\x88\x01\x01\x42\x08\n\x06_errorB\x08\n\x06_route\"#\n\x13RouteReload_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\"<\n\x1aRoutePatchPriority_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08priority\x18\x02 \x01(\r\"\x12\n\x10TableGet_Request\"\x98\x01\n\x11TableGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x31\n\x05table\x18\x03 \x03(\x0b\x32\".com.wazuh.api.engine.router.EntryB\x08\n\x06_error\"5\n\x11QueuePost_Request\x12\x13\n\x0bwazuh_event\x18\x01 \x01(\tJ\x04\x08\x02\x10\x03R\x05\x65vent\":\n\x11\x45psUpdate_Request\x12\x0b\n\x03\x65ps\x18\x01 \x01(\r\x12\x18\n\x10refresh_interval\x18\x02 \x01(\r\"\x10\n\x0e\x45psGet_Request\"\x9b\x01\n\x0f\x45psGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x0b\n\x03\x65ps\x18\x03 \x01(\r\x12\x18\n\x10refresh_interval\x18\x04 \x01(\r\x12\x0f\n\x07\x65nabled\x18\x05 \x01(\x08\x42\x08\n\x06_error\"\x13\n\x11\x45psEnable_Request\"\x14\n\x12\x45psDisable_Request*5\n\x05State\x12\x11\n\rSTATE_UNKNOWN\x10\x00\x12\x0c\n\x08\x44ISABLED\x10\x01\x12\x0b\n\x07\x45NABLED\x10\x02*>\n\x04Sync\x12\x10\n\x0cSYNC_UNKNOWN\x10\x00\x12\x0b\n\x07UPDATED\x10\x01\x12\x0c\n\x08OUTDATED\x10\x02\x12\t\n\x05\x45RROR\x10\x03\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0crouter.proto\x12\x1b\x63om.wazuh.api.engine.router\x1a\x0c\x65ngine.proto\"z\n\tEntryPost\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0bnamespaceId\x18\x02 \x01(\t\x12\x0e\n\x06\x66ilter\x18\x03 \x01(\t\x12\x10\n\x08priority\x18\x04 \x01(\r\x12\x18\n\x0b\x64\x65scription\x18\x05 \x01(\tH\x00\x88\x01\x01\x42\x0e\n\x0c_description\"\xc0\x01\n\x05\x45ntry\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0bnamespaceId\x18\x02 \x01(\t\x12\x0e\n\x06\x66ilter\x18\x03 \x01(\t\x12\x10\n\x08priority\x18\x04 \x01(\r\x12\x18\n\x0b\x64\x65scription\x18\x05 \x01(\tH\x00\x88\x01\x01\x12\x38\n\x0c\x65ntry_status\x18\x06 \x01(\x0e\x32\".com.wazuh.api.engine.router.State\x12\x0e\n\x06uptime\x18\x07 \x01(\rB\x0e\n\x0c_description\"Y\n\x11RoutePost_Request\x12:\n\x05route\x18\x01 \x01(\x0b\x32&.com.wazuh.api.engine.router.EntryPostH\x00\x88\x01\x01\x42\x08\n\x06_route\"#\n\x13RouteDelete_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\" \n\x10RouteGet_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\"\xa7\x01\n\x11RouteGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x36\n\x05route\x18\x03 \x01(\x0b\x32\".com.wazuh.api.engine.router.EntryH\x01\x88\x01\x01\x42\x08\n\x06_errorB\x08\n\x06_route\"#\n\x13RouteReload_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\"<\n\x1aRoutePatchPriority_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08priority\x18\x02 \x01(\r\"\x12\n\x10TableGet_Request\"\x98\x01\n\x11TableGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x31\n\x05table\x18\x03 \x03(\x0b\x32\".com.wazuh.api.engine.router.EntryB\x08\n\x06_error\"5\n\x11QueuePost_Request\x12\x13\n\x0bwazuh_event\x18\x01 \x01(\tJ\x04\x08\x02\x10\x03R\x05\x65vent\":\n\x11\x45psUpdate_Request\x12\x0b\n\x03\x65ps\x18\x01 \x01(\r\x12\x18\n\x10refresh_interval\x18\x02 \x01(\r\"\x10\n\x0e\x45psGet_Request\"\x9b\x01\n\x0f\x45psGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x0b\n\x03\x65ps\x18\x03 \x01(\r\x12\x18\n\x10refresh_interval\x18\x04 \x01(\r\x12\x0f\n\x07\x65nabled\x18\x05 \x01(\x08\x42\x08\n\x06_error\"\x13\n\x11\x45psEnable_Request\"\x14\n\x12\x45psDisable_Request*5\n\x05State\x12\x11\n\rSTATE_UNKNOWN\x10\x00\x12\x0c\n\x08\x44ISABLED\x10\x01\x12\x0b\n\x07\x45NABLED\x10\x02\x62\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'router_pb2', globals())
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _STATE._serialized_start=1377
-  _STATE._serialized_end=1430
-  _SYNC._serialized_start=1432
-  _SYNC._serialized_end=1494
+  _STATE._serialized_start=1318
+  _STATE._serialized_end=1371
   _ENTRYPOST._serialized_start=59
   _ENTRYPOST._serialized_end=181
   _ENTRY._serialized_start=184
-  _ENTRY._serialized_end=435
-  _ROUTEPOST_REQUEST._serialized_start=437
-  _ROUTEPOST_REQUEST._serialized_end=526
-  _ROUTEDELETE_REQUEST._serialized_start=528
-  _ROUTEDELETE_REQUEST._serialized_end=563
-  _ROUTEGET_REQUEST._serialized_start=565
-  _ROUTEGET_REQUEST._serialized_end=597
-  _ROUTEGET_RESPONSE._serialized_start=600
-  _ROUTEGET_RESPONSE._serialized_end=767
-  _ROUTERELOAD_REQUEST._serialized_start=769
-  _ROUTERELOAD_REQUEST._serialized_end=804
-  _ROUTEPATCHPRIORITY_REQUEST._serialized_start=806
-  _ROUTEPATCHPRIORITY_REQUEST._serialized_end=866
-  _TABLEGET_REQUEST._serialized_start=868
-  _TABLEGET_REQUEST._serialized_end=886
-  _TABLEGET_RESPONSE._serialized_start=889
-  _TABLEGET_RESPONSE._serialized_end=1041
-  _QUEUEPOST_REQUEST._serialized_start=1043
-  _QUEUEPOST_REQUEST._serialized_end=1096
-  _EPSUPDATE_REQUEST._serialized_start=1098
-  _EPSUPDATE_REQUEST._serialized_end=1156
-  _EPSGET_REQUEST._serialized_start=1158
-  _EPSGET_REQUEST._serialized_end=1174
-  _EPSGET_RESPONSE._serialized_start=1177
-  _EPSGET_RESPONSE._serialized_end=1332
-  _EPSENABLE_REQUEST._serialized_start=1334
-  _EPSENABLE_REQUEST._serialized_end=1353
-  _EPSDISABLE_REQUEST._serialized_start=1355
-  _EPSDISABLE_REQUEST._serialized_end=1375
+  _ENTRY._serialized_end=376
+  _ROUTEPOST_REQUEST._serialized_start=378
+  _ROUTEPOST_REQUEST._serialized_end=467
+  _ROUTEDELETE_REQUEST._serialized_start=469
+  _ROUTEDELETE_REQUEST._serialized_end=504
+  _ROUTEGET_REQUEST._serialized_start=506
+  _ROUTEGET_REQUEST._serialized_end=538
+  _ROUTEGET_RESPONSE._serialized_start=541
+  _ROUTEGET_RESPONSE._serialized_end=708
+  _ROUTERELOAD_REQUEST._serialized_start=710
+  _ROUTERELOAD_REQUEST._serialized_end=745
+  _ROUTEPATCHPRIORITY_REQUEST._serialized_start=747
+  _ROUTEPATCHPRIORITY_REQUEST._serialized_end=807
+  _TABLEGET_REQUEST._serialized_start=809
+  _TABLEGET_REQUEST._serialized_end=827
+  _TABLEGET_RESPONSE._serialized_start=830
+  _TABLEGET_RESPONSE._serialized_end=982
+  _QUEUEPOST_REQUEST._serialized_start=984
+  _QUEUEPOST_REQUEST._serialized_end=1037
+  _EPSUPDATE_REQUEST._serialized_start=1039
+  _EPSUPDATE_REQUEST._serialized_end=1097
+  _EPSGET_REQUEST._serialized_start=1099
+  _EPSGET_REQUEST._serialized_end=1115
+  _EPSGET_RESPONSE._serialized_start=1118
+  _EPSGET_RESPONSE._serialized_end=1273
+  _EPSENABLE_REQUEST._serialized_start=1275
+  _EPSENABLE_REQUEST._serialized_end=1294
+  _EPSDISABLE_REQUEST._serialized_start=1296
+  _EPSDISABLE_REQUEST._serialized_end=1316
 # @@protoc_insertion_point(module_scope)

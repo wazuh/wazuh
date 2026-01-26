@@ -3,7 +3,6 @@
 constexpr std::string_view KEY_PATH_UUID = "/uuid";
 constexpr std::string_view KEY_PATH_NAME = "/name";
 constexpr std::string_view KEY_PATH_TYPE = "/type";
-constexpr std::string_view KEY_PATH_HASH = "/hash";
 
 namespace cm::store
 {
@@ -21,7 +20,6 @@ json::Json CacheNS::serialize() const
         entry.setString(uuid, KEY_PATH_UUID);
         entry.setString(entryData.name, KEY_PATH_NAME);
         entry.setString(std::string(resourceTypeToString(entryData.type)), KEY_PATH_TYPE);
-        entry.setString(entryData.hash, KEY_PATH_HASH);
         j.appendJson(entry);
     }
     return j;
@@ -43,16 +41,14 @@ void CacheNS::deserialize(const json::Json& j)
 
     for (const auto& entry : value)
     {
-        if (!entry.isString(KEY_PATH_UUID) || !entry.isString(KEY_PATH_NAME) || !entry.isString(KEY_PATH_TYPE)
-            || !entry.isString(KEY_PATH_HASH))
+        if (!entry.isString(KEY_PATH_UUID) || !entry.isString(KEY_PATH_NAME) || !entry.isString(KEY_PATH_TYPE))
         {
             throw std::runtime_error("Invalid JSON format for CacheNS deserialization: missing required fields");
         }
+
         std::string uuid = entry.getString(KEY_PATH_UUID).value();
         std::string name = entry.getString(KEY_PATH_NAME).value();
         ResourceType type = resourceTypeFromString(entry.getString(KEY_PATH_TYPE).value());
-        std::string hash = entry.getString(KEY_PATH_HASH).value();
-
         // Add entry directly without acquiring lock
         NameType nameType = std::make_tuple(name, type);
         if (m_uuidToEntryMap.find(uuid) != m_uuidToEntryMap.end())
@@ -65,7 +61,7 @@ void CacheNS::deserialize(const json::Json& j)
                                      + std::string(resourceTypeToString(type)));
         }
 
-        EntryData entryData {name, type, hash};
+        EntryData entryData {name, type};
         m_uuidToEntryMap[uuid] = entryData;
         m_nameTypeToUUIDMap[nameType] = uuid;
     }
@@ -77,7 +73,7 @@ void CacheNS::reset()
     m_nameTypeToUUIDMap.clear();
 }
 
-void CacheNS::addEntry(const std::string& uuid, const std::string& name, ResourceType type, const std::string& hash)
+void CacheNS::addEntry(const std::string& uuid, const std::string& name, ResourceType type)
 {
     NameType nameType = std::make_tuple(name, type);
     if (m_uuidToEntryMap.find(uuid) != m_uuidToEntryMap.end())
@@ -90,7 +86,7 @@ void CacheNS::addEntry(const std::string& uuid, const std::string& name, Resourc
                                  + std::string(resourceTypeToString(type)));
     }
 
-    EntryData entryData {name, type, hash};
+    EntryData entryData {name, type};
     m_uuidToEntryMap[uuid] = entryData;
     m_nameTypeToUUIDMap[nameType] = uuid;
 }
@@ -152,29 +148,6 @@ std::optional<NameType> CacheNS::getNameTypeByUUID(const std::string& uuid) cons
         return std::make_tuple(it->second.name, it->second.type);
     }
     return std::nullopt;
-}
-
-std::optional<std::string> CacheNS::getHashByUUID(const std::string& uuid) const
-{
-    auto it = m_uuidToEntryMap.find(uuid);
-    if (it != m_uuidToEntryMap.end())
-    {
-        return it->second.hash;
-    }
-    return std::nullopt;
-}
-
-void CacheNS::updateHashByUUID(const std::string& uuid, const std::string& newHash)
-{
-    auto it = m_uuidToEntryMap.find(uuid);
-    if (it != m_uuidToEntryMap.end())
-    {
-        it->second.hash = newHash;
-    }
-    else
-    {
-        throw std::runtime_error("UUID does not exist in cache: " + uuid);
-    }
 }
 
 std::optional<std::string> CacheNS::getUUIDByNameType(const std::string& name, ResourceType type) const

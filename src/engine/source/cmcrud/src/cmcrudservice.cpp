@@ -367,7 +367,8 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
                                   const std::vector<json::Json>& decoders,
                                   const std::vector<json::Json>& integrations,
                                   const json::Json& policy,
-                                  bool softValidation)
+                                  bool softValidation,
+                                  std::optional<std::string> externalPolicyHash)
 {
     const auto store = getStore();
     const auto validator = getValidator();
@@ -418,6 +419,12 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
     }
 
     auto pol = cm::store::dataType::Policy::fromJson(policy);
+
+    if (externalPolicyHash.has_value() && !externalPolicyHash->empty())
+    {
+        pol.setExternalHash(*externalPolicyHash);
+    }
+
     if (!softValidation)
     {
         validatePolicy(nsReader, pol);
@@ -475,8 +482,6 @@ std::vector<ResourceSummary> CrudService::listResources(const cm::store::Namespa
             ResourceSummary summary;
             summary.uuid = uuid;
             summary.name = name;
-            summary.hash = nsReader->resolveHashFromUUID(uuid);
-
             result.emplace_back(std::move(summary));
         }
         return result;

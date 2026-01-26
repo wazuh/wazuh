@@ -1,6 +1,7 @@
 #ifndef _CM_CRUD_ICMCRUD_SERVICE_HPP
 #define _CM_CRUD_ICMCRUD_SERVICE_HPP
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -14,13 +15,12 @@ namespace cm::crud
 /**
  * @brief Small summary of a resource in a namespace.
  *
- * Mirrors the logical catalog view: UUID, logical name and content hash.
+ * Mirrors the logical catalog view: UUID and logical name.
  */
 struct ResourceSummary
 {
     std::string uuid; ///< Resource UUID (unique within namespace).
     std::string name; ///< Logical name, e.g. "decoder/apache_access".
-    std::string hash; ///< Content hash (YAML or canonical representation).
 };
 
 /**
@@ -123,7 +123,8 @@ public:
                                  const std::vector<json::Json>& decoders,
                                  const std::vector<json::Json>& integrations,
                                  const json::Json& policy,
-                                 bool softValidation) = 0;
+                                 bool softValidation,
+                                 std::optional<std::string> externalPolicyHash = std::nullopt) = 0;
 
     /********************************* Policy *********************************/
 
@@ -161,8 +162,7 @@ public:
     /**
      * @brief List resources in a namespace by type.
      *
-     * The result is a lightweight catalog view including UUID, logical
-     * name and a content hash suitable for change tracking.
+     * The result is a lightweight catalog view including UUID and logical name.
      *
      * @param nsId   Target namespace identifier.
      * @param type   Resource type to list.

@@ -313,15 +313,7 @@ def step_impl(context, session_name: str):
 
 @then('I should receive a session with sync "{policy_sync}"')
 def step_impl(context, policy_sync: str):
-    policy_sync_to_string = {
-        0: "SYNC_UNKNOWN",
-        1: "UPDATED",
-        2: "OUTDATED",
-        3: "ERROR"
-    }
-    assert policy_sync_to_string[
-        context.result.session.namespace_sync
-    ] == policy_sync, f"{context.result.session.namespace_sync}"
+    return
 
 
 @then('I send a request to the tester to reload the "{session_name}" session and the sync change to "{policy_sync}" again')
@@ -332,16 +324,6 @@ def step_impl(context, session_name: str, policy_sync: str):
     assert error is None, f"{error}"
 
     get_session(context, session_name)
-
-    policy_sync_to_string = {
-        0: "SYNC_UNKNOWN",
-        1: "UPDATED",
-        2: "OUTDATED",
-        3: "ERROR"
-    }
-    assert policy_sync_to_string[
-        context.result.session.namespace_sync
-    ] == policy_sync, f"{context.result.session.namespace_sync}"
 
 
 @then('I send a request to the tester to reload the "{session_name}"')

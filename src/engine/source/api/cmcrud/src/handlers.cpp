@@ -574,7 +574,6 @@ adapter::RouteHandler resourceList(std::shared_ptr<cm::crud::ICrudService> crud)
                 auto* item = out->Add();
                 item->set_uuid(r.uuid);
                 item->set_name(r.name);
-                item->set_hash(r.hash);
             }
 
             eResponse.set_status(eEngine::ReturnStatus::OK);

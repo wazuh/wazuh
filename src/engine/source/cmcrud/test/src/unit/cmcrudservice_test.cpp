@@ -314,19 +314,13 @@ TEST(CrudService_Unit, ListResources_Success)
 
     EXPECT_CALL(*nsReader, getCollection(ResourceType::DECODER)).Times(1).WillOnce(Return(collection));
 
-    EXPECT_CALL(*nsReader, resolveHashFromUUID("uuid-1")).Times(1).WillOnce(Return("hash-1"));
-    EXPECT_CALL(*nsReader, resolveHashFromUUID("uuid-2")).Times(1).WillOnce(Return("hash-2"));
-
     auto result = service.listResources(nsId, ResourceType::DECODER);
     ASSERT_EQ(result.size(), 2u);
 
     EXPECT_EQ(result[0].uuid, "uuid-1");
     EXPECT_EQ(result[0].name, "decoder/syslog/0");
-    EXPECT_EQ(result[0].hash, "hash-1");
-
     EXPECT_EQ(result[1].uuid, "uuid-2");
     EXPECT_EQ(result[1].name, "decoder/other/0");
-    EXPECT_EQ(result[1].hash, "hash-2");
 }
 
 TEST(CrudService_Unit, ListResources_MissingNamespaceThrows)

@@ -21,7 +21,6 @@ namespace wiconnector
  *
  * This structure encapsulates the various components of a policy,
  * including KVDBs, decoders, integration decoders, and the policy itself.
- * All resources are stored as strings.
  */
 struct PolicyResources
 {
@@ -29,6 +28,7 @@ struct PolicyResources
     std::vector<json::Json> decoders {};    ///< List of decoder
     std::vector<json::Json> integration {}; ///< List of integration decoder
     json::Json policy {};                   ///< The policy
+    std::string policyHash {};              ///< The policy hash from indexer
 };
 
 class IWIndexerConnector
