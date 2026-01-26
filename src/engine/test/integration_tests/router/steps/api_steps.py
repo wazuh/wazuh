@@ -125,7 +125,7 @@ def create_filter(filter_name: str):
     assert filter_name == FILTER_ALLOW_ALL_NAME, (
         f"Router steps only support '{FILTER_ALLOW_ALL_NAME}' for now"
     )
-    filter_yaml = f"name: {FILTER_ALLOW_ALL_NAME}\n"
+    filter_yaml = f"name: {FILTER_ALLOW_ALL_NAME}\ntype: pre-filter\nenabled: true\n"
 
     req = api_crud.resourcePost_Request()
     req.space = POLICY_NS

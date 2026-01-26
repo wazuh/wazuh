@@ -120,7 +120,7 @@ def build_good_decoder_yaml(name: str) -> str:
     """
     return f"""\
 name: {name}
-
+enabled: true
 check: contains($event.original, "test-pattern")
 
 parse|event.original:
@@ -149,7 +149,7 @@ def build_decoder_yaml_without_name() -> str:
     """
     return """\
 check: contains($event.original, "test-pattern")
-
+enabled: true
 parse|event.original:
   - |-
     <_tmp_value.metric> <test.metric.value/long>
@@ -166,7 +166,7 @@ def build_decoder_yaml_with_invalid_name(bad_name: str) -> str:
     """
     return f"""\
 name: {bad_name}
-
+enabled: true
 check: contains($event.original, "test-pattern")
 
 parse|event.original:
@@ -187,7 +187,7 @@ def build_decoder_yaml_with_id(name: str, uuid: str, updated: bool = False) -> s
         return f"""\
 name: {name}
 id: {uuid}
-
+enabled: true
 check: contains($event.original, "test-pattern")
 
 parse|event.original:
@@ -203,6 +203,7 @@ normalize:
     else:
         return f"""\
 name: {name}
+enabled: true
 id: {uuid}
 
 check: contains($event.original, "test-pattern")
@@ -246,6 +247,8 @@ def build_valid_policy_yaml() -> str:
     handler/namespace errors (focus on 'integrations' array).
     """
     return """\
+title: bar
+root_decoder: "00000000-0000-0000-0000-000000000001"
 integrations:
   - "dummy-integration-uuid"
 """
@@ -256,7 +259,8 @@ def build_policy_yaml_missing_integrations() -> str:
     Policy YAML without 'integrations' key.
     """
     return """\
-tittle: bar
+title: bar
+root_decoder: "00000000-0000-0000-0000-000000000001"
 """
 
 
@@ -265,7 +269,8 @@ def build_policy_yaml_with_empty_integrations() -> str:
     Policy YAML with an empty 'integrations' array.
     """
     return """\
-tittle: bar
+title: bar
+root_decoder: "00000000-0000-0000-0000-000000000001"
 integrations: []
 """
 

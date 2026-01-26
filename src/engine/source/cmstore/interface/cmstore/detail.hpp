@@ -220,7 +220,7 @@ inline json::Json adaptFilter(const json::Json& document)
         }
         else
         {
-            throw std::runtime_error("Decoder document /name is not a string");
+            throw std::runtime_error("Filter document /name is not a string");
         }
     }
 
@@ -246,7 +246,7 @@ inline json::Json adaptFilter(const json::Json& document)
     auto enabledOpt = document.getBool("/enabled");
     if (!enabledOpt.has_value())
     {
-        throw std::runtime_error("Decoder document /enabled is not a boolean or does not exist");
+        throw std::runtime_error("Filter document /enabled is not a boolean or does not exist");
     }
     result.setBool(*enabledOpt, "/enabled");
 
@@ -256,7 +256,7 @@ inline json::Json adaptFilter(const json::Json& document)
         auto idOpt = document.getString("/id");
         if (!idOpt.has_value())
         {
-            throw std::runtime_error("Decoder document /id is not a string");
+            throw std::runtime_error("Filter document /id is not a string");
         }
         result.setString(*idOpt, "/id");
     }
