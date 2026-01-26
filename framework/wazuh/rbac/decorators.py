@@ -14,6 +14,10 @@ from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.utils import expand_rules, expand_lists, expand_decoders
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
 
+SENSITIVE_FIELD_PATHS = ("authd.pass",)
+
+MASK_DEFAULT = "*****"
+
 integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
 
 
@@ -500,6 +504,102 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
             else:
                 return post_proc_func(result, original=original_kwargs, allowed=allow, target=target_params,
                                       add_denied=add_denied, **post_proc_kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def _has_update_permissions() -> bool:
+    """Check if current user holds update-config permissions.
+    Returns
+    -------
+    bool
+        True if user has 'manager:update_config' or 'cluster:update_config', False otherwise.
+    """
+    perms = rbac.get() or {}
+    for action in ("manager:update_config", "cluster:update_config"):
+        action_map = perms.get(action)
+        if isinstance(action_map, dict) and len(action_map) > 0:
+            return True
+    return False
+
+
+def _mask_paths_in_object(obj, dotted_path: str, mask_text: str):
+    """Mask a value at a dotted path inside dict/list.
+    Parameters
+    ----------
+    obj : dict | list
+        Object to process.
+    dotted_path : str
+        Path in dotted notation (e.g. "authd.pass").
+    mask_text : str
+        Replacement text.
+    """
+    if isinstance(obj, dict) and dotted_path in obj:
+        obj[dotted_path] = mask_text
+        return
+    elif isinstance(obj, list):
+        for el in obj:
+            _mask_paths_in_object(el, dotted_path, mask_text)
+        return
+    elif not isinstance(obj, dict):
+        return
+
+    head, *tail = dotted_path.split('.', 1)
+    if head not in obj:
+        return
+    elif not tail:
+        obj[head] = mask_text
+    else:
+        _mask_paths_in_object(obj[head], tail[0], mask_text)
+
+
+def _mask_payload(payload, mask_text: str = MASK_DEFAULT) -> None:
+    """Apply masking to any supported payload shape (in place).
+    Parameters
+    ----------
+    payload :
+        One of: dict, list, or AffectedItemsWazuhResult. Other types are ignored.
+    mask_text : str
+        Replacement text used for masked values.
+    """
+    if isinstance(payload, AffectedItemsWazuhResult):
+        for item in payload.affected_items:
+            _mask_payload(item, mask_text)
+        return
+
+    if isinstance(payload, dict):
+        for path in SENSITIVE_FIELD_PATHS:
+            _mask_paths_in_object(payload, path, mask_text)
+    elif isinstance(payload, list):
+        for el in payload:
+            _mask_payload(el, mask_text)
+
+
+def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
+    """Decorator to mask sensitive fields in config responses for users without update permissions.
+    Parameters
+    ----------
+    mask_text : str
+        Replacement text for sensitive values. Default: '*****'.
+    Returns
+    -------
+    callable
+        Decorator that post-processes the target function's return value in place.
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            result = func(*args, **kwargs)
+            try:
+                # Only mask if user LACKS update-config permissions
+                if not _has_update_permissions():
+                    _mask_payload(result, mask_text=mask_text)
+            except Exception:
+                # Never break the endpoint if masking fails for any reason
+                pass
+            return result
 
         return wrapper
 
