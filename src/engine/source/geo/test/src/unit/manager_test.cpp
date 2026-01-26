@@ -125,7 +125,7 @@ protected:
 
     auto getEmptyManager()
     {
-        EXPECT_CALL(*mockStore, readInternalCol(base::Name(INTERNAL_NAME)))
+        EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
             .WillOnce(testing::Return(storeReadColResp({})));
 
         return Manager(mockStore, mockDownloader);
@@ -134,7 +134,7 @@ protected:
     auto getManagerWithDb(const std::string& path, Type type)
     {
         auto docName = base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(path).filename().string()));
-        EXPECT_CALL(*mockStore, readInternalCol(base::Name(INTERNAL_NAME)))
+        EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
             .WillOnce(testing::Return(storeReadColResp(docName)));
 
         json::Json docJson;
@@ -143,7 +143,7 @@ protected:
         docJson.setString("hash", HASH_PATH);
         auto internalName =
             base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(path).filename().string()));
-        EXPECT_CALL(*mockStore, readInternalDoc(internalName)).WillOnce(testing::Return(storeReadDocResp(docJson)));
+        EXPECT_CALL(*mockStore, readDoc(internalName)).WillOnce(testing::Return(storeReadDocResp(docJson)));
 
         return Manager(mockStore, mockDownloader);
     }
@@ -151,7 +151,7 @@ protected:
 
 TEST_F(GeoManagerTest, Initialize)
 {
-    EXPECT_CALL(*mockStore, readInternalCol(base::Name(INTERNAL_NAME)))
+    EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
         .WillOnce(testing::Return(store::mocks::storeReadError<store::Col>()));
     EXPECT_NO_THROW(Manager(mockStore, mockDownloader));
     EXPECT_THROW(Manager(nullptr, mockDownloader), std::runtime_error);
@@ -160,7 +160,7 @@ TEST_F(GeoManagerTest, Initialize)
 
 TEST_F(GeoManagerTest, InitializeAddingDbs)
 {
-    EXPECT_CALL(*mockStore, readInternalCol(base::Name(INTERNAL_NAME)))
+    EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
         .WillOnce(testing::Return(storeReadColResp({"geo/db1", "geo/db2"})));
 
     auto doc1File = getTmpDb();
@@ -169,7 +169,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbs)
     doc1.setString("asn", TYPE_PATH);
     doc1.setString("hash1", HASH_PATH);
     base::Name doc1Name("geo/db1");
-    EXPECT_CALL(*mockStore, readInternalDoc(base::Name(doc1Name))).WillOnce(testing::Return(storeReadDocResp(doc1)));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(doc1Name))).WillOnce(testing::Return(storeReadDocResp(doc1)));
 
     auto doc2File = getTmpDb();
     json::Json doc2;
@@ -177,7 +177,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbs)
     doc2.setString("city", TYPE_PATH);
     doc2.setString("hash2", HASH_PATH);
     base::Name doc2Name("geo/db2");
-    EXPECT_CALL(*mockStore, readInternalDoc(base::Name(doc2Name))).WillOnce(testing::Return(storeReadDocResp(doc2)));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(doc2Name))).WillOnce(testing::Return(storeReadDocResp(doc2)));
 
     std::shared_ptr<Manager> manager;
     ASSERT_NO_THROW(manager = std::make_shared<Manager>(mockStore, mockDownloader));
@@ -201,7 +201,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbs)
 TEST_F(GeoManagerTest, InitializeAddingDbsStoreError)
 {
     // Failure doc
-    EXPECT_CALL(*mockStore, readInternalCol(base::Name(INTERNAL_NAME)))
+    EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
         .WillOnce(testing::Return(storeReadColResp({"geo/db1", "geo/db2"})));
 
     auto doc1File = getTmpDb();
@@ -210,9 +210,9 @@ TEST_F(GeoManagerTest, InitializeAddingDbsStoreError)
     doc1.setString("asn", TYPE_PATH);
     doc1.setString("hash1", HASH_PATH);
     base::Name doc1Name("geo/db1");
-    EXPECT_CALL(*mockStore, readInternalDoc(base::Name(doc1Name))).WillOnce(testing::Return(storeReadDocResp(doc1)));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(doc1Name))).WillOnce(testing::Return(storeReadDocResp(doc1)));
 
-    EXPECT_CALL(*mockStore, readInternalDoc(base::Name("geo/db2")))
+    EXPECT_CALL(*mockStore, readDoc(base::Name("geo/db2")))
         .WillOnce(testing::Return(storeReadError<store::Doc>()));
 
     std::shared_ptr<Manager> manager;
@@ -221,7 +221,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbsStoreError)
     EXPECT_EQ(manager->listDbs().size(), 1);
 
     // Failure columns
-    EXPECT_CALL(*mockStore, readInternalCol(base::Name(INTERNAL_NAME)))
+    EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
         .WillOnce(testing::Return(storeReadError<store::Col>()));
     ASSERT_NO_THROW(manager = std::make_shared<Manager>(mockStore, mockDownloader));
     ASSERT_NE(manager, nullptr);
@@ -230,7 +230,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbsStoreError)
 
 TEST_F(GeoManagerTest, InitializeAddingDbsAddError)
 {
-    EXPECT_CALL(*mockStore, readInternalCol(base::Name(INTERNAL_NAME)))
+    EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
         .WillOnce(testing::Return(storeReadColResp({"geo/db1", "geo/db2"})));
 
     auto doc1File = getTmpDb();
@@ -239,7 +239,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbsAddError)
     doc1.setString("asn", TYPE_PATH);
     doc1.setString("hash1", HASH_PATH);
     base::Name doc1Name("geo/db1");
-    EXPECT_CALL(*mockStore, readInternalDoc(base::Name(doc1Name))).WillOnce(testing::Return(storeReadDocResp(doc1)));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(doc1Name))).WillOnce(testing::Return(storeReadDocResp(doc1)));
 
     auto doc2File = "non_existent_file";
     json::Json doc2;
@@ -247,9 +247,9 @@ TEST_F(GeoManagerTest, InitializeAddingDbsAddError)
     doc2.setString("city", TYPE_PATH);
     doc2.setString("hash2", HASH_PATH);
     base::Name doc2Name("geo/db2");
-    EXPECT_CALL(*mockStore, readInternalDoc(base::Name(doc2Name))).WillOnce(testing::Return(storeReadDocResp(doc2)));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(doc2Name))).WillOnce(testing::Return(storeReadDocResp(doc2)));
 
-    EXPECT_CALL(*mockStore, deleteInternalDoc(base::Name(doc2Name))).WillOnce(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, deleteDoc(base::Name(doc2Name))).WillOnce(testing::Return(storeOk()));
 
     std::shared_ptr<Manager> manager;
     ASSERT_NO_THROW(manager = std::make_shared<Manager>(mockStore, mockDownloader));
@@ -272,7 +272,7 @@ TEST_F(GeoManagerTest, AddDb)
     auto internalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(dbFile).filename().string());
 
     EXPECT_CALL(*mockDownloader, computeMD5(testing::_)).WillOnce(testing::Return(hash));
-    EXPECT_CALL(*mockStore, upsertInternalDoc(internalName, testing::_)).WillOnce(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, upsertDoc(internalName, testing::_)).WillOnce(testing::Return(storeOk()));
 
     base::OptError error;
     ASSERT_NO_THROW(error = manager.addDb(dbPath, dbType));
@@ -341,7 +341,7 @@ TEST_F(GeoManagerTest, AddDbErrorUpsert)
     auto internalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(dbFile).filename().string());
 
     EXPECT_CALL(*mockDownloader, computeMD5(testing::_)).WillOnce(testing::Return(hash));
-    EXPECT_CALL(*mockStore, upsertInternalDoc(internalName, testing::_)).WillOnce(testing::Return(storeError()));
+    EXPECT_CALL(*mockStore, upsertDoc(internalName, testing::_)).WillOnce(testing::Return(storeError()));
 
     base::OptError error;
     ASSERT_NO_THROW(error = manager.addDb(dbPath, dbType));
@@ -362,7 +362,7 @@ TEST_F(GeoManagerTest, RemoveDb)
     auto internalName = base::Name(fmt::format("{}/{}", INTERNAL_NAME, dbName));
     auto manager = getManagerWithDb(dbPath, dbType);
 
-    EXPECT_CALL(*mockStore, deleteInternalDoc(internalName)).WillOnce(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, deleteDoc(internalName)).WillOnce(testing::Return(storeOk()));
 
     base::OptError error;
     ASSERT_NO_THROW(error = manager.removeDb(dbName));
@@ -419,7 +419,7 @@ TEST_F(GeoManagerTest, RemoteUpsertDb)
     EXPECT_CALL(*mockDownloader, downloadHTTPS(dbUrl))
         .WillOnce(testing::Return(base::RespOrError<std::string>(content)));
     EXPECT_CALL(*mockDownloader, computeMD5(content)).WillOnce(testing::Return(hash)).WillOnce(testing::Return(hash));
-    EXPECT_CALL(*mockStore, upsertInternalDoc(internalName, testing::_)).WillOnce(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, upsertDoc(internalName, testing::_)).WillOnce(testing::Return(storeOk()));
 
     base::OptError error;
     ASSERT_NO_THROW(error = manager.remoteUpsertDb(dbPath, dbType, dbUrl, hashUrl));
@@ -446,7 +446,7 @@ TEST_F(GeoManagerTest, RemoteUpsertDbAlreadeyUpdated)
 
     EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl))
         .WillOnce(testing::Return(base::RespOrError<std::string>(dbHash)));
-    EXPECT_CALL(*mockStore, readInternalDoc(internalName)).WillOnce(testing::Return(storeReadDocResp(dbDoc)));
+    EXPECT_CALL(*mockStore, readDoc(internalName)).WillOnce(testing::Return(storeReadDocResp(dbDoc)));
 
     base::OptError error;
     ASSERT_NO_THROW(error = manager.remoteUpsertDb(dbPath, dbType, "dbUrl", hashUrl));
@@ -499,7 +499,7 @@ TEST_F(GeoManagerTest, RemoteUpsertDbFailOneDownload)
         .WillOnce(testing::Return(base::Error {"error"}))
         .WillOnce(testing::Return(base::RespOrError<std::string>(content)));
     EXPECT_CALL(*mockDownloader, computeMD5(content)).WillOnce(testing::Return(hash)).WillOnce(testing::Return(hash));
-    EXPECT_CALL(*mockStore, upsertInternalDoc(internalName, testing::_)).WillOnce(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, upsertDoc(internalName, testing::_)).WillOnce(testing::Return(storeOk()));
 
     base::OptError error;
     ASSERT_NO_THROW(error = manager.remoteUpsertDb(dbPath, dbType, dbUrl, hashUrl));
@@ -530,7 +530,7 @@ TEST_F(GeoManagerTest, RemoteUpsertDbFailOneHash)
         .WillOnce(testing::Return("other_hash"))
         .WillOnce(testing::Return(hash))
         .WillOnce(testing::Return(hash));
-    EXPECT_CALL(*mockStore, upsertInternalDoc(internalName, testing::_)).WillOnce(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, upsertDoc(internalName, testing::_)).WillOnce(testing::Return(storeOk()));
 
     base::OptError error;
     ASSERT_NO_THROW(error = manager.remoteUpsertDb(dbPath, dbType, dbUrl, hashUrl));
@@ -581,7 +581,7 @@ TEST_F(GeoManagerTest, RemoteUpsertDbFailInternalStore)
     EXPECT_CALL(*mockDownloader, downloadHTTPS(dbUrl))
         .WillOnce(testing::Return(base::RespOrError<std::string>(content)));
     EXPECT_CALL(*mockDownloader, computeMD5(content)).WillOnce(testing::Return(hash)).WillOnce(testing::Return(hash));
-    EXPECT_CALL(*mockStore, upsertInternalDoc(internalName, testing::_)).WillOnce(testing::Return(storeError()));
+    EXPECT_CALL(*mockStore, upsertDoc(internalName, testing::_)).WillOnce(testing::Return(storeError()));
 
     base::OptError error;
     ASSERT_NO_THROW(error = manager.remoteUpsertDb(dbPath, dbType, dbUrl, hashUrl));

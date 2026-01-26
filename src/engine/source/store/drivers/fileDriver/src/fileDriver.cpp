@@ -5,6 +5,7 @@
 
 namespace store::drivers
 {
+
 FileDriver::FileDriver(const std::filesystem::path& path, bool create)
 {
     LOG_DEBUG("Engine file driver init with path '{}' and create '{}'.", path.string(), create);
@@ -78,7 +79,7 @@ base::OptError FileDriver::createDoc(const base::Name& name, const Doc& content)
             }
             else
             {
-                file << content.str();
+                file << content.prettyStr();
             }
         }
     }
@@ -152,7 +153,7 @@ base::OptError FileDriver::updateDoc(const base::Name& name, const Doc& content)
         }
         else
         {
-            file << content.str();
+            file << content.prettyStr();
         }
     }
 
@@ -238,7 +239,6 @@ base::RespOrError<Col> FileDriver::readCol(const base::Name& name) const
         }
         else
         {
-
             std::vector<base::Name> names;
 
             for (const auto& entry : std::filesystem::directory_iterator(path))
@@ -257,90 +257,11 @@ base::RespOrError<Col> FileDriver::readCol(const base::Name& name) const
     return result;
 }
 
-base::RespOrError<Col> FileDriver::readRoot() const
-{
-    base::RespOrError<Col> result;
-    const auto& path = m_path;
-
-    LOG_DEBUG("FileDriver readRoot.");
-
-    if (std::filesystem::exists(path))
-    {
-        if (!std::filesystem::is_directory(path))
-        {
-            result = base::Error {fmt::format("File '{}' is not a directory", path.string())};
-        }
-        else
-        {
-
-            std::vector<base::Name> names;
-
-            for (const auto& entry : std::filesystem::directory_iterator(path))
-            {
-                names.emplace_back(entry.path().filename().string());
-            }
-
-            result = std::move(names);
-        }
-    }
-    else
-    {
-        result = base::Error {fmt::format("File '{}' does not exist", path.string())};
-    }
-
-    return result;
-}
-
-base::OptError FileDriver::deleteCol(const base::Name& name)
-{
-    base::OptError error = base::noError();
-    auto path = nameToPath(name);
-
-    LOG_DEBUG("FileDriver deleteCol name: '{}'.", name.fullName());
-
-    if (!std::filesystem::exists(path))
-    {
-        error = base::Error {fmt::format("File '{}' does not exist", path.string())};
-    }
-    else if (!std::filesystem::is_directory(path))
-    {
-        error = base::Error {fmt::format("File '{}' is not a directory", path.string())};
-    }
-    else
-    {
-        std::error_code ec;
-        if (!std::filesystem::remove_all(path, ec))
-        {
-            error = base::Error {
-                fmt::format("File '{}' could not be removed: ({}) {}", path.string(), ec.value(), ec.message())};
-        }
-
-        // Remove empty parent directories
-        error = removeEmptyParentDirs(path, name);
-    }
-
-    return error;
-}
-
-bool FileDriver::exists(const base::Name& name) const
-{
-    auto path = nameToPath(name);
-
-    return std::filesystem::exists(path);
-}
-
 bool FileDriver::existsDoc(const base::Name& name) const
 {
     auto path = nameToPath(name);
 
     return std::filesystem::exists(path) && std::filesystem::is_regular_file(path);
-}
-
-bool FileDriver::existsCol(const base::Name& name) const
-{
-    auto path = nameToPath(name);
-
-    return std::filesystem::exists(path) && std::filesystem::is_directory(path);
 }
 
 } // namespace store::drivers

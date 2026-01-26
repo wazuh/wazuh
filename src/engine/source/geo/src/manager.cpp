@@ -15,7 +15,7 @@
 
 namespace geo
 {
-Manager::Manager(const std::shared_ptr<store::IStoreInternal>& store, const std::shared_ptr<IDownloader>& downloader)
+Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_ptr<IDownloader>& downloader)
     : m_store(store)
     , m_downloader(downloader)
 {
@@ -30,7 +30,7 @@ Manager::Manager(const std::shared_ptr<store::IStoreInternal>& store, const std:
     }
 
     // Load dbs from the internal store
-    auto dbsResp = m_store->readInternalCol(INTERNAL_NAME);
+    auto dbsResp = m_store->readCol(INTERNAL_NAME);
     if (base::isError(dbsResp))
     {
         LOG_DEBUG("Geo module do not have dbs in the store: {}", base::getError(dbsResp).message);
@@ -40,7 +40,7 @@ Manager::Manager(const std::shared_ptr<store::IStoreInternal>& store, const std:
     auto dbs = base::getResponse(dbsResp);
     for (const auto& db : dbs)
     {
-        auto dbResp = m_store->readInternalDoc(db);
+        auto dbResp = m_store->readDoc(db);
         if (base::isError(dbResp))
         {
             LOG_ERROR("Geo cannot read internal document '{}': {}", db, base::getError(dbResp).message);
@@ -55,7 +55,7 @@ Manager::Manager(const std::shared_ptr<store::IStoreInternal>& store, const std:
         if (base::isError(addResp))
         {
             LOG_ERROR("Geo cannot add db '{}': {}", path, base::getError(addResp).message);
-            m_store->deleteInternalDoc(db);
+            m_store->deleteDoc(db);
             LOG_TRACE("Geo deleted internal document '{}'", db);
         }
     }
@@ -85,7 +85,7 @@ base::OptError Manager::upsertStoreEntry(const std::string& path)
     doc.setString(hash, HASH_PATH);
     doc.setString(typeName(m_dbs.at(dbPath.filename().string())->type), TYPE_PATH);
 
-    return m_store->upsertInternalDoc(internalName, doc);
+    return m_store->upsertDoc(internalName, doc);
 }
 
 base::OptError Manager::removeInternalEntry(const std::string& path)
@@ -93,7 +93,7 @@ base::OptError Manager::removeInternalEntry(const std::string& path)
     auto internalName = base::Name(
         fmt::format("{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, std::filesystem::path(path).filename().string()));
 
-    return m_store->deleteInternalDoc(internalName);
+    return m_store->deleteDoc(internalName);
 }
 
 base::OptError Manager::addDbUnsafe(const std::string& path, Type type, bool upsertStore)
@@ -259,7 +259,7 @@ Manager::remoteUpsertDb(const std::string& path, Type type, const std::string& d
     if (entry != m_dbs.end())
     {
         auto internalResp =
-            m_store->readInternalDoc(base::Name(fmt::format("{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, name)));
+            m_store->readDoc(base::Name(fmt::format("{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, name)));
         if (!base::isError(internalResp))
         {
             auto storedHash = base::getResponse(internalResp).getString(HASH_PATH).value();

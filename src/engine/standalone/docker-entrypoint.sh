@@ -26,7 +26,7 @@ fi
 
 if [ -d "/opt/gcc-14/lib64" ]; then
     mkdir -p /workspace/wazuh/gcc-libs
-    find /opt/gcc-14/lib64 -name "libstdc++.so.6*" ! -name "*.py*" -exec cp {} /workspace/wazuh/gcc-libs/ \; 2>/dev/null || true
+    cp /opt/gcc-14/lib64/libstdc++.so.6 /workspace/wazuh/gcc-libs/ 2>/dev/null || true
 else
     echo "ERROR: /opt/gcc-14/lib64 not found. Cannot copy libstdc++.so.6"
     exit 1

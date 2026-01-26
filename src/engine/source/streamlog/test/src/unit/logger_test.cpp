@@ -85,11 +85,11 @@ protected:
 
         // Default store expectations - return error for read operations (no previous state)
         // Use EXPECT_CALL with AnyNumber() to suppress GMock warnings
-        EXPECT_CALL(*mockStore, readInternalDoc(_))
+        EXPECT_CALL(*mockStore, readDoc(_))
             .Times(AnyNumber())
             .WillRepeatedly(Return(store::mocks::storeReadError<store::Doc>()));
 
-        EXPECT_CALL(*mockStore, upsertInternalDoc(_, _))
+        EXPECT_CALL(*mockStore, upsertDoc(_, _))
             .Times(AnyNumber())
             .WillRepeatedly(Return(store::mocks::storeOk()));
     }

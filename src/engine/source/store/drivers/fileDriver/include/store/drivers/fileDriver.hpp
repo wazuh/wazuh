@@ -16,9 +16,8 @@ namespace store::drivers
 /**
  * @brief File driver.
  *
- * This driver stores the jsons in the filesystem. Starting from the base path,
- * it organizes the jsons based on the store::base::Name, creating a directory hierarchy
- * following basePath/base::Name::m_type/base::Name::m_name/base::Name::m_version.json
+ * This driver stores the jsons in the filesystem using a directory hierarchy based on base::Name.
+ * Starting from the base path, each part of the name becomes a directory/file segment.
  *
  */
 class FileDriver : public IDriver
@@ -27,7 +26,6 @@ private:
     std::filesystem::path m_path;
 
     std::filesystem::path nameToPath(const base::Name& name) const;
-
     base::OptError removeEmptyParentDirs(const std::filesystem::path& path, const base::Name& name);
 
 public:
@@ -74,29 +72,9 @@ public:
     base::RespOrError<Col> readCol(const base::Name& name) const override;
 
     /**
-     * @copydoc IDriver::readCol
-     */
-    base::RespOrError<Col> readRoot() const override;
-
-    /**
-     * @copydoc IDriver::deleteCol
-     */
-    base::OptError deleteCol(const base::Name& name) override;
-
-    /**
-     * @copydoc IDriver::exists
-     */
-    bool exists(const base::Name& name) const override;
-
-    /**
      * @copydoc IDriver::existsDoc
      */
     bool existsDoc(const base::Name& name) const override;
-
-    /**
-     * @copydoc IDriver::existsCol
-     */
-    bool existsCol(const base::Name& name) const override;
 };
 } // namespace store::drivers
 

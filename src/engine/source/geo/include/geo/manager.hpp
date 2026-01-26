@@ -31,7 +31,7 @@ private:
     std::map<Type, std::string> m_dbTypes;  ///< Map by Types for quick access to the db name. (only one db per type)
     mutable std::shared_mutex m_rwMapMutex; ///< Mutex to avoid simultaneous updates on the db map
 
-    std::shared_ptr<store::IStoreInternal> m_store; ///< The store used to store the MMDB hash.
+    std::shared_ptr<store::IStore> m_store; ///< The store used to store the MMDB hash.
     std::shared_ptr<IDownloader> m_downloader;      ///< The downloader used to download the MMDB database.
 
     /**
@@ -81,7 +81,7 @@ public:
     virtual ~Manager() = default;
 
     Manager() = delete;
-    Manager(const std::shared_ptr<store::IStoreInternal>& store, const std::shared_ptr<IDownloader>& downloader);
+    Manager(const std::shared_ptr<store::IStore>& store, const std::shared_ptr<IDownloader>& downloader);
 
     /**
      * @copydoc IManager::listDbs

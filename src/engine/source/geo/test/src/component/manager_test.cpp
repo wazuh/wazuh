@@ -46,7 +46,7 @@ protected:
         auto cityName = base::Name(fmt::format(
             "{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, std::filesystem::path(cityPath).filename().string()));
 
-        EXPECT_CALL(*mockStore, readInternalCol(base::Name(INTERNAL_NAME)))
+        EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
             .WillOnce(testing::Return(storeReadColResp({asnName, cityName})));
         json::Json asnJson;
         asnJson.setString(asnPath, PATH_PATH);
@@ -58,8 +58,8 @@ protected:
         cityJson.setString(typeName(Type::CITY), TYPE_PATH);
         cityJson.setString("cityHash", HASH_PATH);
 
-        EXPECT_CALL(*mockStore, readInternalDoc(asnName)).WillOnce(testing::Return(storeReadDocResp(asnJson)));
-        EXPECT_CALL(*mockStore, readInternalDoc(cityName)).WillOnce(testing::Return(storeReadDocResp(cityJson)));
+        EXPECT_CALL(*mockStore, readDoc(asnName)).WillOnce(testing::Return(storeReadDocResp(asnJson)));
+        EXPECT_CALL(*mockStore, readDoc(cityName)).WillOnce(testing::Return(storeReadDocResp(cityJson)));
 
         manager = std::make_shared<geo::Manager>(mockStore, downloader);
     }
@@ -197,8 +197,8 @@ TEST_F(GeoManagerTest, MultithreadDeleteAddLookup)
         [&error, &errorMsg, times, type, dbPath, internalName](std::shared_ptr<IManager> manager,
                                                                std::shared_ptr<store::mocks::MockStore> mockStore)
         {
-            EXPECT_CALL(*mockStore, deleteInternalDoc(internalName)).WillRepeatedly(testing::Return(storeOk()));
-            EXPECT_CALL(*mockStore, upsertInternalDoc(internalName, testing::_))
+            EXPECT_CALL(*mockStore, deleteDoc(internalName)).WillRepeatedly(testing::Return(storeOk()));
+            EXPECT_CALL(*mockStore, upsertDoc(internalName, testing::_))
                 .WillRepeatedly(testing::Return(storeOk()));
 
             bool action = true;
@@ -367,8 +367,8 @@ TEST_F(GeoManagerTest, MultithreadDeleteAddGetLocator)
         [&error, &errorMsg, times, type, dbPath, internalName](std::shared_ptr<IManager> manager,
                                                                std::shared_ptr<store::mocks::MockStore> mockStore)
         {
-            EXPECT_CALL(*mockStore, deleteInternalDoc(internalName)).WillRepeatedly(testing::Return(storeOk()));
-            EXPECT_CALL(*mockStore, upsertInternalDoc(internalName, testing::_))
+            EXPECT_CALL(*mockStore, deleteDoc(internalName)).WillRepeatedly(testing::Return(storeOk()));
+            EXPECT_CALL(*mockStore, upsertDoc(internalName, testing::_))
                 .WillRepeatedly(testing::Return(storeOk()));
 
             bool action = true;
@@ -488,10 +488,10 @@ TEST_F(GeoManagerTest, ComplexUseCase)
     }
 
     // Expectations by the manager threads
-    EXPECT_CALL(*mockStore, deleteInternalDoc(internalName0)).WillRepeatedly(testing::Return(storeOk()));
-    EXPECT_CALL(*mockStore, upsertInternalDoc(internalName0, testing::_)).WillRepeatedly(testing::Return(storeOk()));
-    EXPECT_CALL(*mockStore, deleteInternalDoc(internalName1)).WillRepeatedly(testing::Return(storeOk()));
-    EXPECT_CALL(*mockStore, upsertInternalDoc(internalName1, testing::_)).WillRepeatedly(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, deleteDoc(internalName0)).WillRepeatedly(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, upsertDoc(internalName0, testing::_)).WillRepeatedly(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, deleteDoc(internalName1)).WillRepeatedly(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, upsertDoc(internalName1, testing::_)).WillRepeatedly(testing::Return(storeOk()));
 
     // Add a thread to remove the db0
     threads.emplace_back(

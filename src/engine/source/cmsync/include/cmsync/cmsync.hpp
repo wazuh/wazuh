@@ -24,7 +24,7 @@ class CMSync : public ICMSync
 private:
     std::weak_ptr<wiconnector::IWIndexerConnector> m_indexerPtr; ///< Indexer connector resource
     std::weak_ptr<cm::crud::ICrudService> m_cmcrudPtr;           ///< Resource namespace handler
-    std::weak_ptr<::store::IStoreInternal> m_store;              ///< Internal config store
+    std::weak_ptr<::store::IStore> m_store;              ///< Internal config store
     std::weak_ptr<router::IRouterAPI> m_router;                  ///< Router API for event injection
 
     std::size_t m_attemps;     ///< Number of attempts to connect or retry operations before failing
@@ -102,7 +102,7 @@ public:
     CMSync() = delete;
     CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
            const std::shared_ptr<cm::crud::ICrudService>& cmcrudPtr,
-           const std::shared_ptr<::store::IStoreInternal>& storePtr,
+           const std::shared_ptr<::store::IStore>& storePtr,
            const std::shared_ptr<router::IRouterAPI>& routerPtr);
     ~CMSync() override;
 

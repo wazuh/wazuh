@@ -98,7 +98,7 @@ base::OptError loadRouterOnWoker(const std::vector<EntryConverter>& entries,
     return std::nullopt;
 }
 
-void saveConfig(const std::weak_ptr<store::IStoreInternal>& wStore, const base::Name& storeName, const json::Json& dump)
+void saveConfig(const std::weak_ptr<store::IStore>& wStore, const base::Name& storeName, const json::Json& dump)
 {
     auto store = wStore.lock();
     if (!store)
@@ -107,7 +107,7 @@ void saveConfig(const std::weak_ptr<store::IStoreInternal>& wStore, const base::
     }
     else
     {
-        store->upsertInternalDoc(storeName, dump);
+        store->upsertDoc(storeName, dump);
     }
 }
 
@@ -156,7 +156,7 @@ void Orchestrator::dumpEps() const
     dumpEpsInternal();
 }
 
-void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStoreInternal>& wStore)
+void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStore>& wStore)
 {
     auto store = wStore.lock();
     if (!store)
@@ -166,7 +166,7 @@ void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStoreInternal>& wS
         return;
     }
 
-    auto epsResp = store->readInternalDoc(STORE_PATH_ROUTER_EPS);
+    auto epsResp = store->readDoc(STORE_PATH_ROUTER_EPS);
     if (base::isError(epsResp))
     {
         LOG_WARNING("Router: EPS settings could not be loaded from the store due to '{}'. Using default settings",
@@ -202,16 +202,16 @@ void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStoreInternal>& wS
 /**************************************************************************
  * Manage configuration - Loader
  *************************************************************************/
-std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::IStoreInternal>& store,
+std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::IStore>& store,
                                                 const base::Name& tableName)
 {
-    const auto jsonEntry = store->readInternalDoc(tableName);
+    const auto jsonEntry = store->readDoc(tableName);
     if (base::isError(jsonEntry))
     {
         LOG_INFO("Router: {} table not found in store. Creating new table: {}",
                  tableName.toStr(),
                  base::getError(jsonEntry).message);
-        store->createInternalDoc(tableName, json::Json {"[]"});
+        store->createDoc(tableName, json::Json {"[]"});
         return {};
     }
 

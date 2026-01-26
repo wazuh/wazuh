@@ -204,7 +204,7 @@ public:
 
 CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
                const std::shared_ptr<cm::crud::ICrudService>& cmcrudPt,
-               const std::shared_ptr<::store::IStoreInternal>& storePtr,
+               const std::shared_ptr<::store::IStore>& storePtr,
                const std::shared_ptr<router::IRouterAPI>& routerPtr)
     : m_indexerPtr(indexerPtr)
     , m_cmcrudPtr(cmcrudPt)
@@ -217,7 +217,7 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
 
 {
     // Check if is the first setup
-    if (storePtr->existsInternalDoc(STORE_NAME_CMSYNC))
+    if (storePtr->existsDoc(STORE_NAME_CMSYNC))
     {
         loadStateFromStore();
         return;
@@ -431,9 +431,9 @@ void CMSync::removeSpaceFromSync(std::string_view space)
 void CMSync::loadStateFromStore()
 {
 
-    auto storePtr = lockWeakPtr(m_store, "StoreInternal");
+    auto storePtr = lockWeakPtr(m_store, "Store");
 
-    auto optDoc = storePtr->readInternalDoc(STORE_NAME_CMSYNC);
+    auto optDoc = storePtr->readDoc(STORE_NAME_CMSYNC);
     if (base::isError(optDoc))
     {
         throw std::runtime_error(
@@ -467,7 +467,7 @@ void CMSync::dumpStateToStore()
         j.appendJson(syncedNs.toJson());
     }
 
-    if (auto optErr = storePtr->upsertInternalDoc(STORE_NAME_CMSYNC, j); base::isError(optErr))
+    if (auto optErr = storePtr->upsertDoc(STORE_NAME_CMSYNC, j); base::isError(optErr))
     {
         throw std::runtime_error(
             fmt::format("Failed to dump cmsync state to store: {}", base::getError(optErr).message));

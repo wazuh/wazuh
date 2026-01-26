@@ -38,7 +38,6 @@ if(ENGINE_BUILD_TEST)
 set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
 set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
 set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
-set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 
 ## Mocks
 add_library(store_mocks INTERFACE)
@@ -52,14 +51,6 @@ add_executable(store_fileDriver_unit_test
 )
 target_link_libraries(store_fileDriver_unit_test GTest::gtest_main store::fileDriver)
 gtest_discover_tests(store_fileDriver_unit_test)
-
-# TODO FIX THIS CMAKE (Separe unit tests from component tests)
-## Store component test
-add_executable(store_ctest
-    ${COMPONENT_SRC_DIR}/store_test.cpp
-)
-target_link_libraries(store_ctest GTest::gtest_main store::fileDriver store)
-gtest_discover_tests(store_ctest)
 
 add_executable(store_utest
     ${UNIT_SRC_DIR}/store_test.cpp

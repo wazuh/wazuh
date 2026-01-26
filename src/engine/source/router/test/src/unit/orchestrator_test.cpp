@@ -89,7 +89,7 @@ public:
 
         EXPECT_CALL(*testerMock, getEntries()).WillOnce(testing::Return(std::list<test::Entry> {}));
 
-        EXPECT_CALL(*(m_mockstore), upsertInternalDoc(testing::_, testing::_))
+        EXPECT_CALL(*(m_mockstore), upsertDoc(testing::_, testing::_))
             .WillOnce(::testing::Return(store::mocks::storeOk()));
     }
 
@@ -144,7 +144,7 @@ public:
             EXPECT_CALL(*testerMock, getEntries()).WillRepeatedly(testing::Return(std::list<test::Entry> {}));
         }
 
-        EXPECT_CALL(*(m_mockstore), upsertInternalDoc(testing::_, testing::_))
+        EXPECT_CALL(*(m_mockstore), upsertDoc(testing::_, testing::_))
             .WillOnce(::testing::Return(store::mocks::storeOk()));
     }
 
@@ -179,7 +179,7 @@ public:
             EXPECT_CALL(*testerMock, getEntries()).WillRepeatedly(testing::Return(std::list<test::Entry> {}));
         }
 
-        EXPECT_CALL(*(m_mockstore), upsertInternalDoc(testing::_, testing::_))
+        EXPECT_CALL(*(m_mockstore), upsertDoc(testing::_, testing::_))
             .WillOnce(::testing::Return(store::mocks::storeOk()));
     }
 
@@ -387,7 +387,7 @@ public:
             EXPECT_CALL(*routerMock, getEntries()).WillRepeatedly(testing::Return(std::list<prod::Entry> {}));
         }
 
-        EXPECT_CALL(*(m_mockstore), upsertInternalDoc(testing::_, testing::_))
+        EXPECT_CALL(*(m_mockstore), upsertDoc(testing::_, testing::_))
             .WillOnce(::testing::Return(store::mocks::storeOk()));
     }
 
@@ -422,7 +422,7 @@ public:
             EXPECT_CALL(*routerMock, getEntries()).WillRepeatedly(testing::Return(std::list<prod::Entry> {}));
         }
 
-        EXPECT_CALL(*(m_mockstore), upsertInternalDoc(testing::_, testing::_))
+        EXPECT_CALL(*(m_mockstore), upsertDoc(testing::_, testing::_))
             .WillOnce(::testing::Return(store::mocks::storeOk()));
     }
 
@@ -543,7 +543,7 @@ public:
             EXPECT_CALL(*routerMock, getEntries()).WillRepeatedly(testing::Return(std::list<prod::Entry> {}));
         }
 
-        EXPECT_CALL(*(m_mockstore), upsertInternalDoc(testing::_, testing::_))
+        EXPECT_CALL(*(m_mockstore), upsertDoc(testing::_, testing::_))
             .WillOnce(::testing::Return(store::mocks::storeOk()));
     }
 
