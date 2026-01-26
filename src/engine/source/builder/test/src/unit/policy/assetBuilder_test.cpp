@@ -301,7 +301,7 @@ INSTANTIATE_TEST_SUITE_P(
                     return None {};
                 })),
         BuildExprT(
-            "decoder/name",
+            "decoder/name/0",
             AV {"parse|field"},
             SUCCESS(
                 [](Mocks mocks)
@@ -318,10 +318,10 @@ INSTANTIATE_TEST_SUITE_P(
 
                     auto condition = base::And::create(base::Name("condition"), {parseExpr, traceExpr});
                     auto consequence = base::And::create(base::Name("stages"), {automappingExpr, delVarExpr});
-                    return base::Implication::create(base::Name("decoder/name"), condition, consequence);
+                    return base::Implication::create(base::Name("decoder/name/0"), condition, consequence);
                 })),
         BuildExprT(
-            "decoder/name",
+            "decoder/name/0",
             AV {"parse|field"}, // Throws
             FAILURE(
                 [](Mocks mocks)
@@ -333,7 +333,7 @@ INSTANTIATE_TEST_SUITE_P(
                             { throw std::runtime_error(""); }));
                     return None {};
                 })),
-        BuildExprT("decoder/name",
+        BuildExprT("decoder/name/0",
                    AV {"parse"}, // Throws
                    FAILURE(
                        [](Mocks mocks)
@@ -343,7 +343,7 @@ INSTANTIATE_TEST_SUITE_P(
                            return None {};
                        })),
         BuildExprT(
-            "decoder/name",
+            "decoder/name/0",
             AV {"parse|"}, // Not throws, parse root event
             SUCCESS(
                 [](Mocks mocks)
@@ -359,10 +359,10 @@ INSTANTIATE_TEST_SUITE_P(
 
                     auto condition = base::And::create(base::Name("condition"), {parseExpr, traceExpr});
                     auto consequence = base::And::create(base::Name("stages"), {automappingExpr, delVarExpr});
-                    return base::Implication::create(base::Name("decoder/name"), condition, consequence);
+                    return base::Implication::create(base::Name("decoder/name/0"), condition, consequence);
                 })),
         BuildExprT(
-            "decoder/name",
+            "decoder/name/0",
             AV {"check", "parse|field"},
             SUCCESS(
                 [](Mocks mocks)
@@ -387,10 +387,10 @@ INSTANTIATE_TEST_SUITE_P(
 
                     auto condition = base::And::create(base::Name("condition"), {checkExpr, parseExpr, traceExpr});
                     auto consequence = base::And::create(base::Name("stages"), {automappingExpr, delVarExpr});
-                    return base::Implication::create(base::Name("decoder/name"), condition, consequence);
+                    return base::Implication::create(base::Name("decoder/name/0"), condition, consequence);
                 })),
         BuildExprT(
-            "decoder/name",
+            "decoder/name/0",
             AV {"check", "parse|field"}, // Throws check
             FAILURE(
                 [](Mocks mocks)
@@ -403,7 +403,7 @@ INSTANTIATE_TEST_SUITE_P(
                     return None {};
                 })),
         BuildExprT(
-            "decoder/name",
+            "decoder/name/0",
             AV {"check", "parse|field"}, // Throws parse
             FAILURE(
                 [](Mocks mocks)
@@ -425,7 +425,7 @@ INSTANTIATE_TEST_SUITE_P(
                     return None {};
                 })),
         BuildExprT(
-            "decoder/name",
+            "decoder/name/0",
             AV {"check", "parse|field", "stageWithBuilder"},
             SUCCESS(
                 [](Mocks mocks)
@@ -459,10 +459,10 @@ INSTANTIATE_TEST_SUITE_P(
                     auto condition = base::And::create(base::Name("condition"), {checkExpr, parseExpr, traceExpr});
                     auto consequence =
                         base::And::create(base::Name("stages"), {stageExpr, automappingExpr, delVarExpr});
-                    return base::Implication::create(base::Name("decoder/name"), condition, consequence);
+                    return base::Implication::create(base::Name("decoder/name/0"), condition, consequence);
                 })),
         BuildExprT(
-            "decoder/name",
+            "decoder/name/0",
             AV {"check", "parse|field", "stageWithBuilderThrows"},
             FAILURE(
                 [](Mocks mocks)
@@ -492,7 +492,7 @@ INSTANTIATE_TEST_SUITE_P(
                     return None {};
                 })),
         BuildExprT(
-            "decoder/name",
+            "decoder/name/0",
             AV {"check", "parse|field", "stageWithoutBuilder"},
             FAILURE(
                 [](Mocks mocks)
