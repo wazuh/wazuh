@@ -109,7 +109,7 @@ def get_release_package_url(component: str, os: str, system: str,
 def main():
     """Main function."""
     script_description = (
-        "Get tha package url for the received arguments."
+        "Get the package url for the received arguments."
     )
 
     parser = argparse.ArgumentParser(description=script_description)

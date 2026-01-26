@@ -317,7 +317,7 @@ jobs:
         run: |
           PACKAGE_NAME="${{ needs.package-windows-i686.outputs.package-name }}"
           S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
-          if bash -c "[ -s \"/tmp/$PACKAGE_NAME\" ]"; then
+              if [ -s "/tmp/$PACKAGE_NAME" ]; then
             aws s3 cp /tmp/$PACKAGE_NAME $S3_URI/
             echo "S3 URI: $S3_URI/$PACKAGE_NAME"
           else
@@ -330,7 +330,7 @@ jobs:
         run: |
           PACKAGE_NAME="${{ needs.package-windows-i686.outputs.package-name }}"
           S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
-          if bash -c "[ -s \"/tmp/$PACKAGE_NAME.sha512\" ]"; then
+          if [ -s "/tmp/$PACKAGE_NAME.sha512" ]; then
             aws s3 cp /tmp/$PACKAGE_NAME.sha512 $S3_URI/
           else
             echo "Warning: Checksum file not found, skipping"
@@ -341,7 +341,7 @@ jobs:
         run: |
           SYMBOLS_NAME="${{ needs.package-windows-i686.outputs.package-symbols-name }}"
           S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
-          if bash -c "[ -s \"/tmp/$SYMBOLS_NAME\" ]"; then
+          if [ -s "/tmp/$SYMBOLS_NAME" ]; then
             aws s3 cp /tmp/$SYMBOLS_NAME $S3_URI/
           else
             echo "Warning: Debug symbols file not found, skipping"
@@ -352,7 +352,7 @@ jobs:
         run: |
           SYMBOLS_NAME="${{ needs.package-windows-i686.outputs.package-symbols-name }}"
           S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
-          if bash -c "[ -s \"/tmp/$SYMBOLS_NAME.sha512\" ]"; then
+          if [ -s "/tmp/$SYMBOLS_NAME.sha512" ]; then
             aws s3 cp /tmp/$SYMBOLS_NAME.sha512 $S3_URI/
           else
             echo "Warning: Debug symbols checksum file not found, skipping"

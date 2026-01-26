@@ -7,7 +7,6 @@ import requests
 import glob
 import re
 import json
-import sys
 
 upgrade_log = r"C:\win-agent-base\upgraded_version.log"
 
@@ -27,7 +26,6 @@ def check_and_uninstall_wazuh():
             'wmic product where "Name like \'%Wazuh%\'" call uninstall /nointeractive'
         )
         # Attempt to uninstall
-        subprocess.run(uninstall_cmd, shell=True)
         uninstall_result = subprocess.run(uninstall_cmd, capture_output=True, text=True, shell=True)
 
         print(uninstall_result.stdout)

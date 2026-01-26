@@ -80,13 +80,13 @@ start_agent(){
 check_test_results(){
     local expected_upgrade_version=$1
     if grep -iq $expected_upgrade_version /packages/package_manager_upgraded_version.log ; then
-        echo "Updated package version succesfully reported by package manager."
+        echo "Updated package version successfully reported by package manager."
     else
         log_error "Package manager does not report expected version."
     fi
 
     if grep -iq $expected_upgrade_version /packages/agent_reported_version.log ; then
-        echo "Updated package version succesfully reported by agent."
+        echo "Updated package version successfully reported by agent."
     else
         log_error "Agent does not report expected version."
     fi
