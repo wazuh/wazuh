@@ -38,7 +38,7 @@ else()
                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=CreateProcessW \
                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap=getpid \
                                     -Wl,--wrap=access -Wl,--wrap=CreateFile -Wl,--wrap=opendir -Wl,--wrap=stat \
-                                    -Wl,--wrap=utf8_CreateFile -Wl,--wrap=utf8_stat64 ${DEBUG_OP_WRAPPERS}")
+                                    -Wl,--wrap=utf8_CreateFile -Wl,--wrap=utf8_stat64 -Wl,--wrap=QueryDosDeviceA ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_integrity_op")
@@ -267,7 +267,8 @@ if(${TARGET} STREQUAL "winagent")
     # More info at: (https://devblogs.microsoft.com/oldnewthing/20040108-00/?p=41163)
     list(APPEND shared_tests_flags "${SYSCHECK_OP_BASE_FLAGS} -Wl,--wrap=syscom_dispatch -Wl,--wrap=is_fim_shutdown \
                                     -Wl,--wrap,cJSON_CreateArray@0 -Wl,--wrap,cJSON_CreateObject@0 -Wl,--wrap=Start_win32_Syscheck \
-                                    -Wl,--wrap,utf8_CreateFile -Wl,--wrap,utf8_GetFileSecurity -Wl,--wrap,utf8_GetFileAttributes")
+                                    -Wl,--wrap,utf8_CreateFile -Wl,--wrap,utf8_GetFileSecurity -Wl,--wrap,utf8_GetFileAttributes \
+                                    -Wl,--wrap=QueryDosDeviceA")
 else()
     list(APPEND shared_tests_flags "${SYSCHECK_OP_BASE_FLAGS} -Wl,--wrap=cJSON_CreateArray,--wrap=cJSON_CreateObject -Wl,--wrap,getpid")
 endif()
