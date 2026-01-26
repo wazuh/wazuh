@@ -256,7 +256,7 @@ def build_policy_yaml_missing_integrations() -> str:
     Policy YAML without 'integrations' key.
     """
     return """\
-foo: bar
+tittle: bar
 """
 
 
@@ -265,6 +265,7 @@ def build_policy_yaml_with_empty_integrations() -> str:
     Policy YAML with an empty 'integrations' array.
     """
     return """\
+tittle: bar
 integrations: []
 """
 

@@ -201,6 +201,183 @@ inline json::Json adaptDecoder(const json::Json& document)
     }
     return result;
 }
+
+inline json::Json adaptFilter(const json::Json& document)
+{
+    json::Json result;
+    result.setObject();
+
+    // Order: name, check, type
+
+    // 1. name (from /payload/document/name)
+    // TODO: In the future this will be from /payload/document/metadata/title
+    if (document.exists("/name"))
+    {
+        auto nameOpt = document.getString("/name");
+        if (nameOpt.has_value())
+        {
+            result.setString(*nameOpt, "/name");
+        }
+        else
+        {
+            throw std::runtime_error("Decoder document /name is not a string");
+        }
+    }
+
+    // 2. type
+    auto typeOpt = document.getString("/type");
+    if (!typeOpt.has_value())
+    {
+        throw std::runtime_error("Filter document /type is not a string or does not exist");
+    }
+    result.setString(*typeOpt, "/type");
+
+    // 3. Copy /check
+    if (document.exists("/check"))
+    {
+        auto checkOpt = document.getJson("/check");
+        if (checkOpt.has_value())
+        {
+            result.set("/check", *checkOpt);
+        }
+    }
+
+    // 4. enabled
+    auto enabledOpt = document.getBool("/enabled");
+    if (!enabledOpt.has_value())
+    {
+        throw std::runtime_error("Decoder document /enabled is not a boolean or does not exist");
+    }
+    result.setBool(*enabledOpt, "/enabled");
+
+    // 5. id
+    if (document.exists("/id"))
+    {
+        auto idOpt = document.getString("/id");
+        if (!idOpt.has_value())
+        {
+            throw std::runtime_error("Decoder document /id is not a string");
+        }
+        result.setString(*idOpt, "/id");
+    }
+    return result;
+}
+
+inline json::Json adaptOutput(const json::Json& document)
+{
+    json::Json result;
+    result.setObject();
+
+    // Order: name, outputs (with first_of, check, then)
+
+    // 1. name (from /name)
+    if (document.exists("/name"))
+    {
+        auto nameOpt = document.getString("/name");
+        if (nameOpt.has_value())
+        {
+            result.setString(*nameOpt, "/name");
+        }
+        else
+        {
+            throw std::runtime_error("Output document /name is not a string");
+        }
+    }
+
+    // 2. outputs array (contains the first_of logic with check and then blocks)
+    if (const auto outputsArrayOpt = document.getArray("/outputs"); outputsArrayOpt.has_value())
+    {
+        result.setArray("/outputs");
+        const auto& outputsArray = *outputsArrayOpt;
+
+        for (const auto& outputElement : outputsArray)
+        {
+            if (outputElement.isObject())
+            {
+                // Check if it has first_of array
+                if (outputElement.exists("/first_of"))
+                {
+                    const auto firstOfArrayOpt = outputElement.getArray("/first_of");
+                    if (firstOfArrayOpt.has_value())
+                    {
+                        json::Json orderedOutput;
+                        orderedOutput.setObject();
+                        orderedOutput.setArray("/first_of");
+                        const auto& firstOfArray = *firstOfArrayOpt;
+
+                        for (const auto& firstOfElement : firstOfArray)
+                        {
+                            if (firstOfElement.isObject())
+                            {
+                                json::Json orderedFirstOf;
+                                orderedFirstOf.setObject();
+
+                                // Order: check, then
+                                if (firstOfElement.exists("/check"))
+                                {
+                                    auto checkOpt = firstOfElement.getJson("/check");
+                                    if (checkOpt.has_value())
+                                    {
+                                        orderedFirstOf.set("/check", *checkOpt);
+                                    }
+                                }
+
+                                if (firstOfElement.exists("/then"))
+                                {
+                                    auto thenOpt = firstOfElement.getJson("/then");
+                                    if (thenOpt.has_value())
+                                    {
+                                        orderedFirstOf.set("/then", *thenOpt);
+                                    }
+                                }
+
+                                orderedOutput.appendJson(orderedFirstOf, "/first_of");
+                            }
+                            else
+                            {
+                                throw std::runtime_error(
+                                    "Output first_of array contains invalid element type, expected object");
+                            }
+                        }
+
+                        result.appendJson(orderedOutput, "/outputs");
+                    }
+                }
+                else
+                {
+                    // If no first_of, copy the element as-is
+                    result.appendJson(outputElement, "/outputs");
+                }
+            }
+            else
+            {
+                throw std::runtime_error("Output outputs array contains invalid element type, expected object");
+            }
+        }
+    }
+
+    // 3. enabled
+    auto enabledOpt = document.getBool("/enabled");
+    if (!enabledOpt.has_value())
+    {
+        throw std::runtime_error("Output document /enabled is not a boolean or does not exist");
+    }
+    result.setBool(*enabledOpt, "/enabled");
+
+    // 5. id (optional)
+    if (document.exists("/id"))
+    {
+        auto idOpt = document.getString("/id");
+        if (!idOpt.has_value())
+        {
+            throw std::runtime_error("Output document /id is not a string");
+        }
+        result.setString(*idOpt, "/id");
+    }
+
+    return result;
+}
+
 } // namespace cm::store::detail
 
 #endif // _CMSTORE_ICMSTORE_DETAIL

@@ -279,48 +279,25 @@ Asset AssetBuilder::operator()(const json::Json& document) const
         objDoc.erase(objDoc.begin());
     }
 
-    // Get metadata (optional)
-    json::Json metadata;
+    // Helper to find and remove optional keys from the document
+    auto eraseIfExists = [&objDoc](const std::string& key)
     {
-        const auto& [key, value] = *objDoc.begin();
-        if (key == syntax::asset::METADATA_KEY)
+        auto it = std::find_if(objDoc.begin(),
+                               objDoc.end(),
+                               [&key](const auto& elem) { return std::get<0>(elem) == key; });
+        if (it != objDoc.end())
         {
-            // TODO: Implement
-            objDoc.erase(objDoc.begin());
+            objDoc.erase(it);
         }
-    }
+    };
 
-    // Get UUID
-    const auto uuidIt =
-        std::find_if(objDoc.begin(),
-                     objDoc.end(),
-                     [target = syntax::asset::ID_KEY](const auto& elem) { return std::get<0>(elem) == target; });
-    if (uuidIt != objDoc.end())
-    {
-        objDoc.erase(uuidIt);
-    }
-
-    // Get enabled
-    const auto enabledIt =
-        std::find_if(objDoc.begin(),
-                     objDoc.end(),
-                     [target = syntax::asset::ENABLED_KEY](const auto& elem) { return std::get<0>(elem) == target; });
-    if (enabledIt != objDoc.end())
-    {
-        objDoc.erase(enabledIt);
-    }
-
-    // If is a filter, get type
+    // Remove optional/ignored fields
+    eraseIfExists(syntax::asset::METADATA_KEY); // TODO: Implement metadata handling
+    eraseIfExists(syntax::asset::ID_KEY);
+    eraseIfExists(syntax::asset::ENABLED_KEY);
     if (syntax::name::isFilter(name))
     {
-        const auto typeIt =
-            std::find_if(objDoc.begin(),
-                         objDoc.end(),
-                         [target = syntax::asset::TYPE_KEY](const auto& elem) { return std::get<0>(elem) == target; });
-        if (typeIt != objDoc.end())
-        {
-            objDoc.erase(typeIt);
-        }
+        eraseIfExists(syntax::asset::TYPE_KEY);
     }
 
     // Get parents (optional)
