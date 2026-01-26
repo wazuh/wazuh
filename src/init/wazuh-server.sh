@@ -370,7 +370,7 @@ start_service()
             rm -f ${DIR}/var/run/${i}.failed
             touch ${DIR}/var/run/${i}.start
 
-            if [ ! -z "$LEGACY_RELOAD" ]; then
+            if [ ! -z "$LEGACY_SYSTEMD_VERSION" ]; then
                 if command -v systemd-run >/dev/null 2>&1; then
                     # safe to use systemd-run
                     if [ $USE_JSON = true ]; then
@@ -441,7 +441,7 @@ start_service()
     sleep 2;
 
     # Add daemons to execd cgroup if systemd is used
-    if [ ! -z "$LEGACY_RELOAD" ]; then
+    if [ ! -z "$LEGACY_SYSTEMD_VERSION" ]; then
         add_to_cgroup
     fi
 
@@ -649,7 +649,7 @@ reload)
     if is_systemd; then
         SYSTEMD_VERSION=$(systemctl --version | awk 'NR==1 {print $2}')
         if [ "$SYSTEMD_VERSION" -le 237 ]; then
-            LEGACY_RELOAD=1
+            LEGACY_SYSTEMD_VERSION=1
         fi
     fi
     restart_service
