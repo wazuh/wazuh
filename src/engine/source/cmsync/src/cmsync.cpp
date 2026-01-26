@@ -195,12 +195,9 @@ public:
         }
 
         auto optLastHash = j.getString(JPATH_LAST_POLICY_HASH);
-        if (!optLastHash.has_value())
-        {
-            throw std::runtime_error("NsSyncState::fromJson: Missing last_policy_hash field");
-        }
+        std::string lastHash = optLastHash.value_or("");
 
-        return {*optOrigin, *optLastHash, cm::store::NamespaceId(*optNsId)};
+        return {*optOrigin, lastHash, cm::store::NamespaceId(*optNsId)};
     }
 };
 
@@ -246,7 +243,6 @@ bool CMSync::existSpaceInRemote(std::string_view space)
 
 void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::NamespaceId& dstNamespace)
 {
-
     auto indexerPtr = lockWeakPtr(m_indexerPtr, "IndexerConnector");
     auto cmcrudPtr = lockWeakPtr(m_cmcrudPtr, "CMCrudService");
 
@@ -264,7 +260,8 @@ void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::Na
                                    policyResource.decoders,
                                    policyResource.integration,
                                    policyResource.policy,
-                                   /*softValidation=*/true);
+                                   /*softValidation=*/true,
+                                   policyResource.policyHash);
     }
     catch (const std::exception& e)
     {

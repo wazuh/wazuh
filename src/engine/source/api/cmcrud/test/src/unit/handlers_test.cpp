@@ -249,7 +249,6 @@ INSTANTIATE_TEST_SUITE_P(
                 auto* item = resources->Add();
                 item->set_uuid("uuid-1");
                 item->set_name("decoder/apache_access");
-                item->set_hash("hash-1");
 
                 return userResponse<eContent::resourceList_Response>(protoRes);
             },
@@ -259,7 +258,6 @@ INSTANTIATE_TEST_SUITE_P(
                 cm::crud::ResourceSummary r;
                 r.uuid = "uuid-1";
                 r.name = "decoder/apache_access";
-                r.hash = "hash-1";
                 list.emplace_back(std::move(r));
 
                 EXPECT_CALL(mock,

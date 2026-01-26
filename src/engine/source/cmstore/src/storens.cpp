@@ -93,8 +93,8 @@ void CMStoreNS::rebuildCacheFromStorage()
                 // Read file content
                 auto fileContent = fileutils::readFileAsString(fileEntry.path());
 
-                // Extract UUID and hash
-                auto [uuid, hash] = upsertUUIDAndComputeHash(fileContent);
+                // Extract UUID
+                auto uuid = upsertUUID(fileContent);
 
                 // Extract resource name from file name
                 std::string fileName = fileEntry.path().filename().string();
@@ -124,7 +124,7 @@ void CMStoreNS::rebuildCacheFromStorage()
                 }
 
                 // Add entry to cache
-                m_cache.addEntry(uuid, resourceName, rType, hash);
+                m_cache.addEntry(uuid, resourceName, rType);
             }
             catch (const std::exception& e)
             {
@@ -139,7 +139,7 @@ void CMStoreNS::rebuildCacheFromStorage()
     flushCacheToDisk();
 }
 
-std::pair<std::string, std::string> CMStoreNS::upsertUUIDAndComputeHash(std::string& ymlContent)
+std::string CMStoreNS::upsertUUID(std::string& ymlContent)
 {
     json::Json jsonContent;
     bool isJson = false;
@@ -180,7 +180,7 @@ std::pair<std::string, std::string> CMStoreNS::upsertUUIDAndComputeHash(std::str
         {
             throw std::runtime_error("Existing UUIDv4 is not valid: " + uuid);
         }
-        return {uuid, base::utils::hash::md5(jsonContent.str())};
+        return uuid;
     }
 
     // Generate new UUID and add it to content
@@ -213,7 +213,7 @@ std::pair<std::string, std::string> CMStoreNS::upsertUUIDAndComputeHash(std::str
         }
     }
 
-    return {uuid, base::utils::hash::md5(jsonContent.str())};
+    return uuid;
 }
 
 std::filesystem::path CMStoreNS::getResourcePaths(const std::string& name, ResourceType type) const
@@ -269,20 +269,6 @@ std::tuple<std::string, ResourceType> CMStoreNS::resolveNameFromUUID(const std::
     // Search in cache the name-type pair for the given UUID
     std::shared_lock lock(m_mutex);
     return resolveNameFromUUIDUnlocked(uuid);
-}
-
-std::string CMStoreNS::resolveHashFromUUID(const std::string& uuid) const
-{
-    // Search in cache the hash for the given UUID
-    std::shared_lock lock(m_mutex);
-    auto opt = m_cache.getHashByUUID(uuid);
-
-    if (!opt.has_value())
-    {
-        throw std::runtime_error(fmt::format("Resource with UUID '{}' does not exist", uuid));
-    }
-
-    return opt.value();
 }
 
 std::string CMStoreNS::resolveUUIDFromName(const std::string& name, ResourceType type) const
@@ -345,7 +331,7 @@ std::string CMStoreNS::createResource(const std::string& name, ResourceType type
     // Get the UUID from content, adding it if missing
     // Will throw if YML/Resource is invalid
     std::string modifiableYml = ymlContent;
-    auto [uuid, hash] = upsertUUIDAndComputeHash(modifiableYml);
+    auto uuid = upsertUUID(modifiableYml);
 
     std::unique_lock lock(m_mutex); // Acquire write cache and file lock
 
@@ -373,7 +359,7 @@ std::string CMStoreNS::createResource(const std::string& name, ResourceType type
     }
 
     // Update cache
-    m_cache.addEntry(uuid, name, type, hash);
+    m_cache.addEntry(uuid, name, type);
     flushCacheToDisk();
 
     return uuid;
@@ -409,9 +395,6 @@ void CMStoreNS::updateResourceByName(const std::string& name, ResourceType type,
                         resourceTypeToString(type)));
     }
 
-    // Compute new hash for the updated content
-    auto hash = base::utils::hash::md5(jsonContent.str());
-
     // Store updated resource to disk
     auto error = fileutils::upsertFile(resourcePath, ymlContent);
     if (error.has_value())
@@ -422,8 +405,6 @@ void CMStoreNS::updateResourceByName(const std::string& name, ResourceType type,
                                              error.value()));
     }
 
-    // Update cache with new hash
-    m_cache.updateHashByUUID(uuid, hash);
     flushCacheToDisk();
 }
 
@@ -449,9 +430,6 @@ void CMStoreNS::updateResourceByUUID(const std::string& uuid, const std::string&
     auto [name, type] = resolveNameFromUUIDUnlocked(uuid);
     // Generate the file path
     auto resourcePath = getResourcePaths(name, type);
-    // Compute new hash for the updated content
-    auto hash = base::utils::hash::md5(jsonContent.str());
-
     // Store updated resource to disk
     auto error = fileutils::upsertFile(resourcePath, ymlContent);
     if (error.has_value())
@@ -462,8 +440,6 @@ void CMStoreNS::updateResourceByUUID(const std::string& uuid, const std::string&
                                              error.value()));
     }
 
-    // Update cache with new hash
-    m_cache.updateHashByUUID(uuid, hash);
     flushCacheToDisk();
 }
 

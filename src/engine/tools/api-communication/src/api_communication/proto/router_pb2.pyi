@@ -8,19 +8,14 @@ from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Map
 DESCRIPTOR: _descriptor.FileDescriptor
 DISABLED: State
 ENABLED: State
-ERROR: Sync
-OUTDATED: Sync
 STATE_UNKNOWN: State
-SYNC_UNKNOWN: Sync
-UPDATED: Sync
 
 class Entry(_message.Message):
-    __slots__ = ["description", "entry_status", "filter", "name", "namespaceId", "namespace_sync", "priority", "uptime"]
+    __slots__ = ["description", "entry_status", "filter", "name", "namespaceId", "priority", "uptime"]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
     ENTRY_STATUS_FIELD_NUMBER: _ClassVar[int]
     FILTER_FIELD_NUMBER: _ClassVar[int]
     NAMESPACEID_FIELD_NUMBER: _ClassVar[int]
-    NAMESPACE_SYNC_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     PRIORITY_FIELD_NUMBER: _ClassVar[int]
     UPTIME_FIELD_NUMBER: _ClassVar[int]
@@ -29,10 +24,9 @@ class Entry(_message.Message):
     filter: str
     name: str
     namespaceId: str
-    namespace_sync: Sync
     priority: int
     uptime: int
-    def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., filter: _Optional[str] = ..., priority: _Optional[int] = ..., description: _Optional[str] = ..., namespace_sync: _Optional[_Union[Sync, str]] = ..., entry_status: _Optional[_Union[State, str]] = ..., uptime: _Optional[int] = ...) -> None: ...
+    def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., filter: _Optional[str] = ..., priority: _Optional[int] = ..., description: _Optional[str] = ..., entry_status: _Optional[_Union[State, str]] = ..., uptime: _Optional[int] = ...) -> None: ...
 
 class EntryPost(_message.Message):
     __slots__ = ["description", "filter", "name", "namespaceId", "priority"]
@@ -145,7 +139,4 @@ class TableGet_Response(_message.Message):
     def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., table: _Optional[_Iterable[_Union[Entry, _Mapping]]] = ...) -> None: ...
 
 class State(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
-    __slots__ = []
-
-class Sync(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = []

@@ -8,14 +8,12 @@ from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Map
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class ResourceSummary(_message.Message):
-    __slots__ = ["hash", "name", "uuid"]
-    HASH_FIELD_NUMBER: _ClassVar[int]
+    __slots__ = ["name", "uuid"]
     NAME_FIELD_NUMBER: _ClassVar[int]
     UUID_FIELD_NUMBER: _ClassVar[int]
-    hash: str
     name: str
     uuid: str
-    def __init__(self, uuid: _Optional[str] = ..., name: _Optional[str] = ..., hash: _Optional[str] = ...) -> None: ...
+    def __init__(self, uuid: _Optional[str] = ..., name: _Optional[str] = ...) -> None: ...
 
 class namespaceDelete_Request(_message.Message):
     __slots__ = ["space"]
