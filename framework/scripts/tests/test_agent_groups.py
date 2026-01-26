@@ -34,11 +34,11 @@ async def test_show_groups(print_mock: MagicMock):
             self.affected_items = affected_items
             self.total_affected_items = len(affected_items)
 
-    with patch('scripts.agent_groups.cluster_utils.forward_function', 
+    with patch('scripts.agent_groups.cluster_utils.forward_function',
                return_value=AffectedItems([{'name': 'a', 'count': 1}, {'name': 'b', 'count': 2}])) as forward_mock:
         await agent_groups.show_groups()
         forward_mock.assert_has_calls([call(func=agent.get_agent_groups, f_kwargs={}),
-                                call(func=agent.get_agents, f_kwargs={'q': 'id!=000;group=null'})])
+                                call(func=agent.get_agents, f_kwargs={'q': 'group=null'})])
         print_mock.assert_has_calls([call('Groups (2):'), call('  a (1)'),
                                      call('  b (2)'), call('Unassigned agents: 2.')])
 
@@ -120,7 +120,7 @@ async def test_show_agents_with_group(print_mock):
 
     with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
         await agent_groups.show_agents_with_group(group_id='testing')
-        forward_mock.assert_called_once_with(func=agent.get_agents_in_group, 
+        forward_mock.assert_called_once_with(func=agent.get_agents_in_group,
                                              f_kwargs={'group_list': ['testing'], 'select': ['name'],
                                                             'limit': None})
         print_mock.assert_has_calls([call("2 agent(s) in group 'testing':"),
