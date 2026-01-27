@@ -195,7 +195,7 @@ public:
      * @brief Upsert a resource (asset, integration or KVDB) from a document.
      *
      * The behavior depends on @p type:
-     *  - For assets (DECODER, RULE, FILTER, OUTPUT):
+     *  - For assets (DECODER, FILTER, OUTPUT):
      *      - The document is parsed into an internal asset representation.
      *  - For integrations:
      *      - The document is parsed into cm::store::dataType::Integration.

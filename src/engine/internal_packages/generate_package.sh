@@ -67,23 +67,21 @@ REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || echo 
 
 ARCH_PATH="$(norm_arch_path "$ARCH_INPUT")"
 
-# Expected layout: packages/<system>s/<...>/Dockerfile
+# Expected layout: internal_packages/<system>s/Dockerfile (shared for all architectures)
 DOCKERFILE_PATH="${SCRIPT_DIR}/${SYSTEM}s"
 CONTAINER_NAME="pkg_${SYSTEM}_internal-tools_builder_${ARCH_PATH}"
 
 mkdir -p "$OUTDIR"
 
-# Ensure build helper scripts exist in Docker build context (your Dockerfile ADDs these)
-for f in build.sh helper_function.sh gen_permissions.sh; do
-  if [ -f "${SCRIPT_DIR}/${f}" ]; then
-    cp -f "${SCRIPT_DIR}/${f}" "${DOCKERFILE_PATH}/" || true
-  elif [ -f "${REPO_ROOT}/packages/${f}" ]; then
-    cp -f "${REPO_ROOT}/packages/${f}" "${DOCKERFILE_PATH}/" || true
-  fi
-done
-
 # Build the image for the selected system context
-docker build -t "${CONTAINER_NAME}:${DOCKER_TAG}" "${DOCKERFILE_PATH}"
+# Use internal_packages as context so build.sh is accessible
+PLATFORM_FLAG=""
+case "$ARCH_PATH" in
+  arm64) PLATFORM_FLAG="--platform linux/arm64" ;;
+  amd64) PLATFORM_FLAG="--platform linux/amd64" ;;
+esac
+
+docker build ${PLATFORM_FLAG} -f "${DOCKERFILE_PATH}/Dockerfile" -t "${CONTAINER_NAME}:${DOCKER_TAG}" "${SCRIPT_DIR}"
 
 # If neither --branch nor --sources were provided, mount repo sources by default
 if [ -z "$CUSTOM_CODE_VOL" ]; then
@@ -107,7 +105,7 @@ ENV_VARS=(
 echo "[i] Running build in container: ${CONTAINER_NAME}:${DOCKER_TAG}"
 echo "[i] System: $SYSTEM | Arch: $ARCH_PATH | Out: $OUTDIR"
 
-docker run --rm -t \
+docker run --rm -t ${PLATFORM_FLAG} \
   -v "${OUTDIR}:/var/local/wazuh" \
   ${CUSTOM_CODE_VOL} \
   "${ENV_VARS[@]}" \

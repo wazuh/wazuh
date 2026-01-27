@@ -319,7 +319,7 @@ public:
      * Performs a depth-first search to detect cycles in the graph. If a cycle is found,
      * throws an exception with the cycle path in the error message.
      *
-     * @param label Optional label for error messages to identify the graph type (e.g., "decoder", "rule").
+     * @param label Optional label for error messages to identify the graph type (e.g., "decoder").
      *
      * @throw std::runtime_error If a cycle is detected, with message format:
      *        "Circular {label} reference detected: node1 -> node2 -> ... -> node1"

@@ -16,7 +16,6 @@ TEST(AllowedFieldsTest, Constructor)
         "name": "schema/allowed-fields/0",
         "allowed_fields": {
             "decoder": ["field1", "field2"],
-            "rule": ["field1", "field2"],
             "filter": ["field1", "field2"],
             "output": ["field1", "field2"]
         }
@@ -137,7 +136,6 @@ TEST(AllowedFieldsTest, Check)
             "name": "schema/allowed-fields/0",
             "allowed_fields": {
                 "decoder": ["field1", "field2"],
-                "rule": ["field1", "field2"],
                 "filter": ["field1", "field2"],
                 "output": ["field1", "field2"]
             }
@@ -149,7 +147,6 @@ TEST(AllowedFieldsTest, Check)
     for (const auto& field : fields)
     {
         ASSERT_TRUE(allowedFields.check("decoder", field));
-        ASSERT_TRUE(allowedFields.check("rule", field));
         ASSERT_TRUE(allowedFields.check("filter", field));
         ASSERT_TRUE(allowedFields.check("output", field));
     }
@@ -162,7 +159,6 @@ TEST(AllowedFieldsTest, CheckUnknownAsset)
             "name": "schema/allowed-fields/0",
             "allowed_fields": {
                 "decoder": ["field1", "field2"],
-                "rule": ["field1", "field2"],
                 "filter": ["field1", "field2"],
                 "output": ["field1", "field2"]
             }
@@ -180,7 +176,6 @@ TEST(AllowedFieldsTest, CheckNotAllowed)
             "name": "schema/allowed-fields/0",
             "allowed_fields": {
                 "decoder": ["field1", "field2"],
-                "rule": ["field1", "field2"],
                 "filter": ["field1", "field2"],
                 "output": ["field1", "field2"]
             }
@@ -189,7 +184,6 @@ TEST(AllowedFieldsTest, CheckNotAllowed)
     AllowedFields allowedFields {definition};
 
     ASSERT_FALSE(allowedFields.check("decoder", "field3"));
-    ASSERT_FALSE(allowedFields.check("rule", "field3"));
     ASSERT_FALSE(allowedFields.check("filter", "field3"));
     ASSERT_FALSE(allowedFields.check("output", "field3"));
 }
@@ -202,7 +196,6 @@ TEST(AllowedFieldsTest, CheckRootField)
             "name": "schema/allowed-fields/0",
             "allowed_fields": {
                 "decoder": ["field1", "field2"],
-                "rule": ["field1", "field2"],
                 "filter": ["field1", "field2"],
                 "output": ["field1", "field2"]
             }
@@ -211,17 +204,14 @@ TEST(AllowedFieldsTest, CheckRootField)
     AllowedFields allowedFields {definition};
 
     ASSERT_TRUE(allowedFields.check("decoder", rootPath));
-    ASSERT_TRUE(allowedFields.check("rule", rootPath));
     ASSERT_TRUE(allowedFields.check("filter", rootPath));
     ASSERT_TRUE(allowedFields.check("output", rootPath));
 
     ASSERT_TRUE(allowedFields.check("decoder", DotPath::append(rootPath, "field1")));
-    ASSERT_TRUE(allowedFields.check("rule", DotPath::append(rootPath, "field1")));
     ASSERT_TRUE(allowedFields.check("filter", DotPath::append(rootPath, "field1")));
     ASSERT_TRUE(allowedFields.check("output", DotPath::append(rootPath, "field1")));
 
     ASSERT_FALSE(allowedFields.check("decoder", DotPath::append(rootPath, "field3")));
-    ASSERT_FALSE(allowedFields.check("rule", DotPath::append(rootPath, "field3")));
     ASSERT_FALSE(allowedFields.check("filter", DotPath::append(rootPath, "field3")));
     ASSERT_FALSE(allowedFields.check("output", DotPath::append(rootPath, "field3")));
 }

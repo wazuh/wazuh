@@ -56,6 +56,7 @@ Builder::Builder(const std::shared_ptr<cm::store::ICMStore>& cmStore,
     detail::registerOpBuilders<Registry>(m_registry, builderDeps);
 }
 
+// TODO: Remove default argument on interface
 std::shared_ptr<IPolicy> Builder::buildPolicy(const cm::store::NamespaceId& namespaceId, bool trace, bool sandbox) const
 {
     auto policy = std::make_shared<policy::Policy>(
@@ -222,20 +223,11 @@ base::OptError Builder::softPolicyValidate(const std::shared_ptr<cm::store::ICMS
     const auto policyName = nsReader->getNamespaceId().toStr();
 
     // Root decoder
-    const auto& defaultParent = policy.getRootDecoder();
+    const auto& defaultParent = policy.getRootDecoderUUID();
     if (!nsReader->assetExistsByUUID(defaultParent))
     {
         return base::Error {fmt::format("Root decoder '{}' does not exist as asset in policy '{}.'.",
                                         std::get<0>(nsReader->resolveNameFromUUID(defaultParent)),
-                                        policyName)};
-    }
-
-    // Root decoder optional
-    const auto& defaultDecoder = policy.getRootDecoder();
-    if (!nsReader->assetExistsByUUID(defaultDecoder))
-    {
-        return base::Error {fmt::format("Root decoder '{}' does not exist as asset in policy '{}'.",
-                                        std::get<0>(nsReader->resolveNameFromUUID(defaultDecoder)),
                                         policyName)};
     }
 
@@ -257,6 +249,43 @@ base::OptError Builder::softPolicyValidate(const std::shared_ptr<cm::store::ICMS
                             e.what())};
         }
     }
+
+    // Filters
+    for (const auto& filterUUID : policy.getFiltersUUIDs())
+    {
+        std::string filterName;
+        try
+        {
+            std::tie(filterName, std::ignore) = nsReader->resolveNameFromUUID(filterUUID);
+        }
+        catch (const std::exception& e)
+        {
+            return base::Error {
+                fmt::format("Failed to resolve filter with uuid='{}' referenced by policy '{}': {}",
+                            filterUUID,
+                            policyName,
+                            e.what())};
+        }
+    }
+
+    // outputs
+    for (const auto& outputUUID : policy.getOutputsUUIDs())
+    {
+        std::string outputName;
+        try
+        {
+            std::tie(outputName, std::ignore) = nsReader->resolveNameFromUUID(outputUUID);
+        }
+        catch (const std::exception& e)
+        {
+            return base::Error {
+                fmt::format("Failed to resolve output with uuid='{}' referenced by policy '{}': {}",
+                            outputUUID,
+                            policyName,
+                            e.what())};
+        }
+    }
+
 
     return base::noError();
 }

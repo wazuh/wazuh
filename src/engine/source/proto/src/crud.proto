@@ -130,7 +130,7 @@ message policyValidate_Request
 message resourceList_Request
 {
     string space = 1; // Namespace name (draft, testing, custom, wazuh)
-    string type = 2;  // "decoder" | "output" | "rule" | "filter" | "integration" | "kvdb"
+    string type = 2;  // "decoder" | "output" | "filter" | "integration" | "kvdb"
 }
 
 message resourceList_Response
@@ -171,7 +171,7 @@ message resourceGet_Response
 message resourcePost_Request
 {
     string space = 1;      // Namespace name (must be writable, e.g. draft)
-    string type = 2;       // "decoder" | "output" | "rule" | "filter" | "integration" | "kvdb"
+    string type = 2;       // "decoder" | "output" | "filter" | "integration" | "kvdb"
     string ymlContent = 3; // Raw YAML payload of the resource
 }
 // message resourcePost_Response -> Return a GenericStatus_Response

@@ -794,9 +794,6 @@ rm -fr %{buildroot}
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/sca
 %dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/draft
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/testing
-%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/custom
 %dir %attr(770, root, wazuh) %{_localstatedir}/.ssh
 %dir %attr(1770, root, wazuh) %{_localstatedir}/tmp
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp

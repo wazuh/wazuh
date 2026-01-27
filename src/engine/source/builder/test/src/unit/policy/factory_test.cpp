@@ -61,15 +61,11 @@ INSTANTIATE_TEST_SUITE_P(
         BuildT(SUCCESS(AD())),
         // Single decoder
         BuildT(SUCCESS(AD()(RT::DECODER, "decoder/asset/0", "decoder/Input"))),
-        // Single rule
-        BuildT(SUCCESS(AD()(RT::RULE, "rule/asset/0", "rule/Input"))),
         // Single output
         BuildT(SUCCESS(AD()(RT::OUTPUT, "output/asset/0", "output/Input"))),
         // Decoder with children
         BuildT(SUCCESS(AD()(RT::DECODER, "decoder/parent/0", "decoder/Input")(
             RT::DECODER, "decoder/child/0", "decoder/parent/0"))),
-        // Rule with children
-        BuildT(SUCCESS(AD()(RT::RULE, "rule/parent/0", "rule/Input")(RT::RULE, "rule/child/0", "rule/parent/0"))),
         // Output with children
         BuildT(SUCCESS(
             AD()(RT::OUTPUT, "output/parent/0", "output/Input")(RT::OUTPUT, "output/child/0", "output/parent/0"))),
@@ -85,11 +81,6 @@ INSTANTIATE_TEST_SUITE_P(
             RT::DECODER, "decoder/child2/0", "decoder/parent1/0", "decoder/parent2/0")(
             RT::DECODER, "decoder/child3/0", "decoder/child1/0")(RT::DECODER, "decoder/parent1/0", "decoder/Input")(
             RT::DECODER, "decoder/parent2/0", "decoder/Input")(RT::DECODER, "decoder/child4/0", "decoder/Input"))),
-        // Complex rule graph
-        BuildT(SUCCESS(AD()(RT::RULE, "rule/child1/0", "rule/parent1/0")(
-            RT::RULE, "rule/child2/0", "rule/parent1/0", "rule/parent2/0")(RT::RULE, "rule/child3/0", "rule/child1/0")(
-            RT::RULE, "rule/parent1/0", "rule/Input")(RT::RULE, "rule/parent2/0", "rule/Input")(
-            RT::RULE, "rule/child4/0", "rule/Input"))),
         // Complex output graph
         BuildT(SUCCESS(AD()(RT::OUTPUT, "output/child1/0", "output/parent1/0")(
             RT::OUTPUT, "output/child2/0", "output/parent1/0", "output/parent2/0")(
@@ -100,17 +91,12 @@ INSTANTIATE_TEST_SUITE_P(
             RT::DECODER, "decoder/child2/0", "decoder/parent1/0", "decoder/parent2/0")(
             RT::DECODER, "decoder/child3/0", "decoder/child1/0")(RT::DECODER, "decoder/parent1/0", "decoder/Input")(
             RT::DECODER, "decoder/parent2/0", "decoder/Input")(RT::DECODER, "decoder/child4/0", "decoder/Input")(
-            RT::RULE, "rule/child1/0", "rule/parent1/0")(RT::RULE, "rule/child2/0", "rule/parent1/0", "rule/parent2/0")(
-            RT::RULE, "rule/child3/0", "rule/child1/0")(RT::RULE, "rule/parent1/0", "rule/Input")(
-            RT::RULE, "rule/parent2/0", "rule/Input")(RT::RULE, "rule/child4/0", "rule/Input")(
             RT::OUTPUT, "output/child1/0", "output/parent1/0")(
             RT::OUTPUT, "output/child2/0", "output/parent1/0", "output/parent2/0")(
             RT::OUTPUT, "output/child3/0", "output/child1/0")(RT::OUTPUT, "output/parent1/0", "output/Input")(
             RT::OUTPUT, "output/parent2/0", "output/Input")(RT::OUTPUT, "output/child4/0", "output/Input"))),
         // Parent does not exist
         BuildT(FAILURE(AD()(RT::DECODER, "decoder/child/0", "decoder/nonexistent/0"))),
-        // Parent does not exist (rule)
-        BuildT(FAILURE(AD()(RT::RULE, "rule/child/0", "rule/nonexistent/0"))),
         // Parent does not exist (output)
         BuildT(FAILURE(AD()(RT::OUTPUT, "output/child/0", "output/nonexistent/0"))),
         // Filters are completely ignored - not injected into any subgraph
@@ -163,115 +149,92 @@ INSTANTIATE_TEST_SUITE_P(
     PolicyFactory,
     BuildExpression,
     ::testing::Values(
-        // Empty policy
-        BuildT(AD(), SUCCESS([](None) { return Chain::create("test", {}); })),
         // Single decoder
-        BuildT(AD()(RT::DECODER, "decoder/asset/0", "decoder/Input"),
+        BuildT(AD()(RT::DECODER, "decoder/asset/0", "DecodersTree/Input"),
                SUCCESS(
                    [](None)
                    {
-                       auto decoder = Or::create("decoder/Input", {assetExpr("decoder/asset/0")});
-                       return Chain::create("test", {decoder});
+                       auto decoder = Or::create("DecodersTree/Input", {assetExpr("decoder/asset/0")});
+                       return Chain::create("Phase1_Decoders", {decoder});
                    })),
-        // Single rule
-        BuildT(AD()(RT::RULE, "rule/asset/0", "rule/Input"),
+        // Single output - outputs alone are not valid (need decoders)
+        BuildT(AD()(RT::DECODER, "decoder/root/0", "DecodersTree/Input")(
+                   RT::OUTPUT, "output/asset/0", "OutputsTree/Input"),
                SUCCESS(
                    [](None)
                    {
-                       auto rule = Broadcast::create("rule/Input", {assetExpr("rule/asset/0")});
-                       return Chain::create("test", {rule});
-                   })),
-        // Single output
-        BuildT(AD()(RT::OUTPUT, "output/asset/0", "output/Input"),
-               SUCCESS(
-                   [](None)
-                   {
-                       auto output = Broadcast::create("output/Input", {assetExpr("output/asset/0")});
-                       return Chain::create("test", {output});
+                       auto decoder = Or::create("DecodersTree/Input", {assetExpr("decoder/root/0")});
+                       auto phase1 = Chain::create("Phase1_Decoders", {decoder});
+                       auto output = Broadcast::create("OutputsTree/Input", {assetExpr("output/asset/0")});
+                       return And::create("test", {phase1, output});
                    })),
         // Decoder with child
-        BuildT(
-            AD()(RT::DECODER, "decoder/parent/0", "decoder/Input")(RT::DECODER, "decoder/child/0", "decoder/parent/0"),
-            SUCCESS(
-                [](None)
-                {
-                    auto childExpr = assetExpr("decoder/child/0");
-                    auto childrenOp = Or::create("decoder/parent/0/Children", {childExpr});
-                    auto parentExpr =
-                        Implication::create("decoder/parent/0/Node", assetExpr("decoder/parent/0"), childrenOp);
-                    auto decoder = Or::create("decoder/Input", {parentExpr});
-                    return Chain::create("test", {decoder});
-                })),
-        // Rule with child
-        BuildT(AD()(RT::RULE, "rule/parent/0", "rule/Input")(RT::RULE, "rule/child/0", "rule/parent/0"),
+        BuildT(AD()(RT::DECODER, "decoder/parent/0", "DecodersTree/Input")(
+                   RT::DECODER, "decoder/child/0", "decoder/parent/0"),
                SUCCESS(
                    [](None)
                    {
-                       auto childExpr = assetExpr("rule/child/0");
-                       auto childrenOp = Broadcast::create("rule/parent/0/Children", {childExpr});
+                       auto childExpr = assetExpr("decoder/child/0");
+                       auto childrenOp = Or::create("decoder/parent/0/Children", {childExpr});
                        auto parentExpr =
-                           Implication::create("rule/parent/0/Node", assetExpr("rule/parent/0"), childrenOp);
-                       auto rule = Broadcast::create("rule/Input", {parentExpr});
-                       return Chain::create("test", {rule});
+                           Implication::create("decoder/parent/0/Node", assetExpr("decoder/parent/0"), childrenOp);
+                       auto decoder = Or::create("DecodersTree/Input", {parentExpr});
+                       return Chain::create("Phase1_Decoders", {decoder});
                    })),
-        // Output with child
-        BuildT(AD()(RT::OUTPUT, "output/parent/0", "output/Input")(RT::OUTPUT, "output/child/0", "output/parent/0"),
+        // Output with child (need decoder too)
+        BuildT(AD()(RT::DECODER, "decoder/root/0", "DecodersTree/Input")(
+                   RT::OUTPUT, "output/parent/0", "OutputsTree/Input")(RT::OUTPUT, "output/child/0", "output/parent/0"),
                SUCCESS(
                    [](None)
                    {
+                       auto decoder = Or::create("DecodersTree/Input", {assetExpr("decoder/root/0")});
+                       auto phase1 = Chain::create("Phase1_Decoders", {decoder});
                        auto childExpr = assetExpr("output/child/0");
                        auto childrenOp = Broadcast::create("output/parent/0/Children", {childExpr});
                        auto parentExpr =
                            Implication::create("output/parent/0/Node", assetExpr("output/parent/0"), childrenOp);
-                       auto output = Broadcast::create("output/Input", {parentExpr});
-                       return Chain::create("test", {output});
+                       auto output = Broadcast::create("OutputsTree/Input", {parentExpr});
+                       return And::create("test", {phase1, output});
                    })),
         // Multiple children
-        BuildT(
-            AD()(RT::DECODER, "decoder/parent/0", "decoder/Input")(RT::DECODER, "decoder/child1/0", "decoder/parent/0")(
-                RT::DECODER, "decoder/child2/0", "decoder/parent/0"),
-            SUCCESS(
-                [](None)
-                {
-                    auto child1 = assetExpr("decoder/child1/0");
-                    auto child2 = assetExpr("decoder/child2/0");
-                    auto childrenOp = Or::create("decoder/parent/0/Children", {child1, child2});
-                    auto parentExpr =
-                        Implication::create("decoder/parent/0/Node", assetExpr("decoder/parent/0"), childrenOp);
-                    auto decoder = Or::create("decoder/Input", {parentExpr});
-                    return Chain::create("test", {decoder});
-                })),
+        BuildT(AD()(RT::DECODER, "decoder/parent/0", "DecodersTree/Input")(
+                   RT::DECODER, "decoder/child1/0", "decoder/parent/0")(
+                   RT::DECODER, "decoder/child2/0", "decoder/parent/0"),
+               SUCCESS(
+                   [](None)
+                   {
+                       auto child1 = assetExpr("decoder/child1/0");
+                       auto child2 = assetExpr("decoder/child2/0");
+                       auto childrenOp = Or::create("decoder/parent/0/Children", {child1, child2});
+                       auto parentExpr =
+                           Implication::create("decoder/parent/0/Node", assetExpr("decoder/parent/0"), childrenOp);
+                       auto decoder = Or::create("DecodersTree/Input", {parentExpr});
+                       return Chain::create("Phase1_Decoders", {decoder});
+                   })),
         // All types
-        BuildT(
-            AD()(RT::DECODER, "decoder/parent/0", "decoder/Input")(RT::DECODER, "decoder/child/0", "decoder/parent/0")(
-                RT::RULE, "rule/parent/0", "rule/Input")(RT::RULE, "rule/child/0", "rule/parent/0")(
-                RT::OUTPUT, "output/parent/0", "output/Input")(RT::OUTPUT, "output/child/0", "output/parent/0"),
-            SUCCESS(
-                [](None)
-                {
-                    // Decoder
-                    auto decoderChild = assetExpr("decoder/child/0");
-                    auto decoderChildren = Or::create("decoder/parent/0/Children", {decoderChild});
-                    auto decoderParent =
-                        Implication::create("decoder/parent/0/Node", assetExpr("decoder/parent/0"), decoderChildren);
-                    auto decoder = Or::create("decoder/Input", {decoderParent});
+        BuildT(AD()(RT::DECODER, "decoder/parent/0", "DecodersTree/Input")(
+                   RT::DECODER, "decoder/child/0", "decoder/parent/0")(
+                   RT::OUTPUT, "output/parent/0", "OutputsTree/Input")(RT::OUTPUT, "output/child/0", "output/parent/0"),
+               SUCCESS(
+                   [](None)
+                   {
+                       // Phase 1: Decoders
+                       auto decoderChild = assetExpr("decoder/child/0");
+                       auto decoderChildren = Or::create("decoder/parent/0/Children", {decoderChild});
+                       auto decoderParent =
+                           Implication::create("decoder/parent/0/Node", assetExpr("decoder/parent/0"), decoderChildren);
+                       auto decoder = Or::create("DecodersTree/Input", {decoderParent});
+                       auto phase1 = Chain::create("Phase1_Decoders", {decoder});
 
-                    // Output (comes before Rule due to enum ordering)
-                    auto outputChild = assetExpr("output/child/0");
-                    auto outputChildren = Broadcast::create("output/parent/0/Children", {outputChild});
-                    auto outputParent =
-                        Implication::create("output/parent/0/Node", assetExpr("output/parent/0"), outputChildren);
-                    auto output = Broadcast::create("output/Input", {outputParent});
+                       // Phase 3: Outputs
+                       auto outputChild = assetExpr("output/child/0");
+                       auto outputChildren = Broadcast::create("output/parent/0/Children", {outputChild});
+                       auto outputParent =
+                           Implication::create("output/parent/0/Node", assetExpr("output/parent/0"), outputChildren);
+                       auto output = Broadcast::create("OutputsTree/Input", {outputParent});
 
-                    // Rule
-                    auto ruleChild = assetExpr("rule/child/0");
-                    auto ruleChildren = Broadcast::create("rule/parent/0/Children", {ruleChild});
-                    auto ruleParent =
-                        Implication::create("rule/parent/0/Node", assetExpr("rule/parent/0"), ruleChildren);
-                    auto rule = Broadcast::create("rule/Input", {ruleParent});
-
-                    return Chain::create("test", {decoder, output, rule});
-                }))));
+                       return And::create("test", {phase1, output});
+                   }))));
 
 } // namespace buildexpressiontest
 
@@ -539,7 +502,7 @@ TEST(CycleDetection, NoCycle)
         AD()(RT::DECODER, "decoder/asset1/0", "decoder/Input")(RT::DECODER, "decoder/asset2/0", "decoder/asset1/0")(
             RT::DECODER, "decoder/asset3/0", "decoder/asset2/0")(RT::DECODER, "decoder/asset4/0", "decoder/asset3/0");
     auto graph = factory::buildGraph(data.builtAssets);
-    EXPECT_NO_THROW(graph.subgraphs.at(RT::DECODER).validateAcyclic("decoder"));
+    EXPECT_NO_THROW(graph.subgraphs.at(buildgraphtest::toStage(RT::DECODER)).validateAcyclic("decoder"));
 }
 
 TEST(CycleDetection, ComplexNoCycle)
@@ -549,7 +512,7 @@ TEST(CycleDetection, ComplexNoCycle)
             RT::DECODER, "decoder/asset3/0", "decoder/asset2/0", "decoder/asset1/0")(
             RT::DECODER, "decoder/asset4/0", "decoder/asset3/0", "decoder/asset2/0");
     auto graph = factory::buildGraph(data.builtAssets);
-    EXPECT_NO_THROW(graph.subgraphs.at(RT::DECODER).validateAcyclic("decoder"));
+    EXPECT_NO_THROW(graph.subgraphs.at(buildgraphtest::toStage(RT::DECODER)).validateAcyclic("decoder"));
 }
 
 TEST(CycleDetection, DetectsReachableCycleWithExtraParents)
@@ -802,7 +765,12 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
         // Test: KVDB availability map is correctly built
         BuildAssetsT(
-            dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"}, "550e8400-e29b-41d4-a716-446655440003"),
+            dataType::Policy("test_policy",
+                             "550e8400-e29b-41d4-a716-446655440003",
+                             {"550e8400-e29b-41d4-a716-446655440001"},
+                             {},
+                             {},
+                             {}),
             SUCCESS(SuccessExpected::Behaviour {
                 [](const auto& reader, const auto& buildCtx)
                 {
@@ -813,7 +781,6 @@ INSTANTIATE_TEST_SUITE_P(
                         "system-activity",
                         std::nullopt,
                         {"550e8400-e29b-41d4-a716-446655440011", "550e8400-e29b-41d4-a716-446655440012"},
-                        {},
                         {},
                         false);
 
@@ -835,7 +802,12 @@ INSTANTIATE_TEST_SUITE_P(
                 }})),
         // Test: Duplicate KVDB names throw error
         BuildAssetsT(
-            dataType::Policy({"550e8400-e29b-41d4-a716-446655440002"}, "550e8400-e29b-41d4-a716-446655440003"),
+            dataType::Policy("test_policy",
+                             "550e8400-e29b-41d4-a716-446655440003",
+                             {"550e8400-e29b-41d4-a716-446655440002"},
+                             {},
+                             {},
+                             {}),
             FAILURE(FailureExpected::Behaviour {
                 [](const auto& reader, const auto& buildCtx)
                 {
@@ -846,7 +818,6 @@ INSTANTIATE_TEST_SUITE_P(
                         "system-activity",
                         std::nullopt,
                         {"550e8400-e29b-41d4-a716-446655440021", "550e8400-e29b-41d4-a716-446655440022"},
-                        {},
                         {},
                         false);
 
@@ -867,7 +838,12 @@ INSTANTIATE_TEST_SUITE_P(
                     return std::string("Duplicate KVDB title");
                 }})),
         // Test: Disabled integration skips KVDB processing
-        BuildAssetsT(dataType::Policy({"550e8400-e29b-41d4-a716-446655440003"}, "550e8400-e29b-41d4-a716-446655440003"),
+        BuildAssetsT(dataType::Policy("test_policy",
+                                      "550e8400-e29b-41d4-a716-446655440003",
+                                      {"550e8400-e29b-41d4-a716-446655440003"},
+                                      {},
+                                      {},
+                                      {}),
                      SUCCESS(SuccessExpected::Behaviour {
                          [](const auto& reader, const auto& buildCtx)
                          {
@@ -877,7 +853,6 @@ INSTANTIATE_TEST_SUITE_P(
                                                                "system-activity",
                                                                std::nullopt,
                                                                {"550e8400-e29b-41d4-a716-446655440031"},
-                                                               {},
                                                                {},
                                                                false);
 
@@ -891,7 +866,12 @@ INSTANTIATE_TEST_SUITE_P(
                              return None {};
                          }})),
         // Test: KVDB loading error throws with message
-        BuildAssetsT(dataType::Policy({"550e8400-e29b-41d4-a716-446655440004"}, "550e8400-e29b-41d4-a716-446655440005"),
+        BuildAssetsT(dataType::Policy("test_policy",
+                                      "550e8400-e29b-41d4-a716-446655440005",
+                                      {"550e8400-e29b-41d4-a716-446655440004"},
+                                      {},
+                                      {},
+                                      {}),
                      FAILURE(FailureExpected::Behaviour {
                          [](const auto& reader, const auto& buildCtx)
                          {
@@ -901,7 +881,6 @@ INSTANTIATE_TEST_SUITE_P(
                                                                "system-activity",
                                                                std::nullopt,
                                                                {"550e8400-e29b-41d4-a716-446655440041"},
-                                                               {},
                                                                {},
                                                                false);
 
@@ -947,7 +926,7 @@ TEST(OrderPreservation, MultipleChildrenPreserveOrder)
     }
 
     // Build subgraph
-    auto subgraph = factory::buildSubgraph("decoder/Input", subgraphData);
+    auto subgraph = factory::buildSubgraph("DecodersTree/Input", subgraphData);
 
     // Verify graph preserves order
     ASSERT_TRUE(subgraph.hasChildren(parentName));
@@ -1020,7 +999,7 @@ TEST(OrderPreservation, ComplexHierarchyPreservesOrder)
         subgraphData.assets.emplace(grandchildName, grandchild);
     }
 
-    auto subgraph = factory::buildSubgraph("decoder/Input", subgraphData);
+    auto subgraph = factory::buildSubgraph("DecodersTree/Input", subgraphData);
 
     // Verify P1's children order in graph
     const auto& p1Children = subgraph.children(p1Name);
@@ -1080,10 +1059,10 @@ TEST(OrderPreservation, FullPolicyPreservesDecoderOrder)
         RT::DECODER, "decoder/Fifth", "decoder/Input");
 
     auto graph = factory::buildGraph(data.builtAssets);
-    ASSERT_TRUE(graph.subgraphs.find(RT::DECODER) != graph.subgraphs.end());
+    ASSERT_TRUE(graph.subgraphs.find(buildgraphtest::toStage(RT::DECODER)) != graph.subgraphs.end());
 
-    auto& decoderSubgraph = graph.subgraphs.at(RT::DECODER);
-    const auto& rootChildren = decoderSubgraph.children("decoder/Input");
+    auto& decoderSubgraph = graph.subgraphs.at(buildgraphtest::toStage(RT::DECODER));
+    const auto& rootChildren = decoderSubgraph.children("DecodersTree/Input");
 
     std::vector<std::string> expectedOrder = {
         "decoder/First", "decoder/Second", "decoder/Third", "decoder/Fourth", "decoder/Fifth"};
@@ -1152,7 +1131,7 @@ TEST(OrderPreservation, ParentChildOrderingIsConsistent)
     subgraphData.orderedAssets.push_back(gc2Name);
     subgraphData.assets.emplace(gc2Name, gc2);
 
-    auto subgraph = factory::buildSubgraph("decoder/Input", subgraphData);
+    auto subgraph = factory::buildSubgraph("DecodersTree/Input", subgraphData);
 
     // Verify P's children are C1, C2, C3 in that order
     const auto& pChildren = subgraph.children(pName);
@@ -1190,61 +1169,53 @@ TEST(OrderPreservation, ParentChildOrderingIsConsistent)
 TEST(OrderPreservation, DifferentResourceTypesPreserveIndependentOrder)
 {
     auto data = AD()(RT::DECODER, "decoder/D1", "decoder/Input")(RT::DECODER, "decoder/D2", "decoder/Input")(
-        RT::DECODER, "decoder/D3", "decoder/Input")(RT::RULE, "rule/R1", "rule/Input")(
-        RT::RULE, "rule/R2", "rule/Input")(RT::OUTPUT, "output/O1", "output/Input")(
+        RT::DECODER, "decoder/D3", "decoder/Input")(RT::OUTPUT, "output/O1", "output/Input")(
         RT::OUTPUT, "output/O2", "output/Input")(RT::OUTPUT, "output/O3", "output/Input");
 
     auto graph = factory::buildGraph(data.builtAssets);
 
     // Verify decoder order
-    auto& decoderSubgraph = graph.subgraphs.at(RT::DECODER);
-    const auto& decoderChildren = decoderSubgraph.children("decoder/Input");
+    auto& decoderSubgraph = graph.subgraphs.at(buildgraphtest::toStage(RT::DECODER));
+    const auto& decoderChildren = decoderSubgraph.children("DecodersTree/Input");
     ASSERT_EQ(decoderChildren.size(), 3);
     EXPECT_EQ(decoderChildren[0].toStr(), "decoder/D1");
     EXPECT_EQ(decoderChildren[1].toStr(), "decoder/D2");
     EXPECT_EQ(decoderChildren[2].toStr(), "decoder/D3");
 
-    // Verify rule order
-    auto& ruleSubgraph = graph.subgraphs.at(RT::RULE);
-    const auto& ruleChildren = ruleSubgraph.children("rule/Input");
-    ASSERT_EQ(ruleChildren.size(), 2);
-    EXPECT_EQ(ruleChildren[0].toStr(), "rule/R1");
-    EXPECT_EQ(ruleChildren[1].toStr(), "rule/R2");
-
     // Verify output order
-    auto& outputSubgraph = graph.subgraphs.at(RT::OUTPUT);
-    const auto& outputChildren = outputSubgraph.children("output/Input");
+    auto& outputSubgraph = graph.subgraphs.at(buildgraphtest::toStage(RT::OUTPUT));
+    const auto& outputChildren = outputSubgraph.children("OutputsTree/Input");
     ASSERT_EQ(outputChildren.size(), 3);
     EXPECT_EQ(outputChildren[0].toStr(), "output/O1");
     EXPECT_EQ(outputChildren[1].toStr(), "output/O2");
     EXPECT_EQ(outputChildren[2].toStr(), "output/O3");
 
     // Build full expression and verify each subgraph maintains its order
+    // New structure: And("test", {Phase1_Decoders, Phase3_Outputs})
     auto expr = factory::buildExpression(graph, "test");
-    auto chain = expr->getPtr<base::Chain>();
+    auto andExpr = expr->getPtr<base::And>();
 
-    // Chain order is: DECODER, OUTPUT, RULE (based on ResourceType enum order in std::map)
-    ASSERT_EQ(chain->getOperands().size(), 3);
+    // And has 2 operands: phase1 (decoders) and phase3 (outputs)
+    ASSERT_EQ(andExpr->getOperands().size(), 2);
 
-    // Verify decoder subgraph
-    auto decoderExpr = chain->getOperands()[0]->getPtr<base::Operation>();
-    ASSERT_EQ(decoderExpr->getOperands().size(), 3);
-    EXPECT_EQ(decoderExpr->getOperands()[0]->getName(), "decoder/D1");
-    EXPECT_EQ(decoderExpr->getOperands()[1]->getName(), "decoder/D2");
-    EXPECT_EQ(decoderExpr->getOperands()[2]->getName(), "decoder/D3");
+    // Phase1 is a Chain with decoders Or
+    auto phase1 = andExpr->getOperands()[0]->getPtr<base::Chain>();
+    EXPECT_EQ(phase1->getName(), "Phase1_Decoders");
+    ASSERT_EQ(phase1->getOperands().size(), 1);
+    auto decoderOr = phase1->getOperands()[0]->getPtr<base::Or>();
+    EXPECT_EQ(decoderOr->getName(), "DecodersTree/Input");
+    ASSERT_EQ(decoderOr->getOperands().size(), 3);
+    EXPECT_EQ(decoderOr->getOperands()[0]->getName(), "decoder/D1");
+    EXPECT_EQ(decoderOr->getOperands()[1]->getName(), "decoder/D2");
+    EXPECT_EQ(decoderOr->getOperands()[2]->getName(), "decoder/D3");
 
-    // Verify output subgraph
-    auto outputExpr = chain->getOperands()[1]->getPtr<base::Operation>();
-    ASSERT_EQ(outputExpr->getOperands().size(), 3);
-    EXPECT_EQ(outputExpr->getOperands()[0]->getName(), "output/O1");
-    EXPECT_EQ(outputExpr->getOperands()[1]->getName(), "output/O2");
-    EXPECT_EQ(outputExpr->getOperands()[2]->getName(), "output/O3");
-
-    // Verify rule subgraph
-    auto ruleExpr = chain->getOperands()[2]->getPtr<base::Operation>();
-    ASSERT_EQ(ruleExpr->getOperands().size(), 2);
-    EXPECT_EQ(ruleExpr->getOperands()[0]->getName(), "rule/R1");
-    EXPECT_EQ(ruleExpr->getOperands()[1]->getName(), "rule/R2");
+    // Phase3 is outputs Broadcast
+    auto outputBroadcast = andExpr->getOperands()[1]->getPtr<base::Broadcast>();
+    EXPECT_EQ(outputBroadcast->getName(), "OutputsTree/Input");
+    ASSERT_EQ(outputBroadcast->getOperands().size(), 3);
+    EXPECT_EQ(outputBroadcast->getOperands()[0]->getName(), "output/O1");
+    EXPECT_EQ(outputBroadcast->getOperands()[1]->getName(), "output/O2");
+    EXPECT_EQ(outputBroadcast->getOperands()[2]->getName(), "output/O3");
 }
 
 // Negative test: Verify that wrong order is detected
@@ -1267,7 +1238,7 @@ TEST(OrderPreservation, DetectsIncorrectChildOrder)
         subgraphData.assets.emplace(childName, child);
     }
 
-    auto subgraph = factory::buildSubgraph("decoder/Input", subgraphData);
+    auto subgraph = factory::buildSubgraph("DecodersTree/Input", subgraphData);
     const auto& graphChildren = subgraph.children(parentName);
 
     // Verify that the actual order is NOT in a different order
@@ -1314,7 +1285,7 @@ TEST(OrderPreservation, ExpressionDoesNotMatchWrongOrder)
         subgraphData.assets.emplace(childName, child);
     }
 
-    auto subgraph = factory::buildSubgraph("decoder/Input", subgraphData);
+    auto subgraph = factory::buildSubgraph("DecodersTree/Input", subgraphData);
     auto expr = factory::buildSubgraphExpression<base::Or>(subgraph);
 
     auto rootOp = expr->getPtr<base::Operation>();
@@ -1348,8 +1319,8 @@ TEST(OrderPreservation, ReversedOrderDoesNotMatch)
         RT::DECODER, "decoder/D3", "decoder/Input")(RT::DECODER, "decoder/D4", "decoder/Input");
 
     auto graph = factory::buildGraph(data.builtAssets);
-    auto& decoderSubgraph = graph.subgraphs.at(RT::DECODER);
-    const auto& children = decoderSubgraph.children("decoder/Input");
+    auto& decoderSubgraph = graph.subgraphs.at(buildgraphtest::toStage(RT::DECODER));
+    const auto& children = decoderSubgraph.children("DecodersTree/Input");
 
     std::vector<std::string> reversedOrder = {"decoder/D4", "decoder/D3", "decoder/D2", "decoder/D1"};
 
@@ -1395,7 +1366,7 @@ TEST(OrderPreservation, DetectsPartialOrderMismatch)
         subgraphData.assets.emplace(childName, child);
     }
 
-    auto subgraph = factory::buildSubgraph("decoder/Input", subgraphData);
+    auto subgraph = factory::buildSubgraph("DecodersTree/Input", subgraphData);
     const auto& children = subgraph.children(parentName);
 
     // First 3 elements correct, last 2 swapped
@@ -1462,10 +1433,10 @@ TEST(OrderPreservation, DetectsShuffledOrder)
 TEST(OrderPreservation, EmptySubgraphHasNoOrder)
 {
     factory::SubgraphData subgraphData;
-    auto subgraph = factory::buildSubgraph("decoder/Input", subgraphData);
+    auto subgraph = factory::buildSubgraph("DecodersTree/Input", subgraphData);
 
-    EXPECT_FALSE(subgraph.hasChildren("decoder/Input"));
-    EXPECT_THROW(subgraph.children("decoder/Input"), std::runtime_error);
+    EXPECT_FALSE(subgraph.hasChildren("DecodersTree/Input"));
+    EXPECT_THROW(subgraph.children("DecodersTree/Input"), std::runtime_error);
 }
 
 // Negative test: Single child cannot have wrong position
@@ -1483,7 +1454,7 @@ TEST(OrderPreservation, SingleChildHasOnlyOnePosition)
     subgraphData.orderedAssets.push_back(childName);
     subgraphData.assets.emplace(childName, child);
 
-    auto subgraph = factory::buildSubgraph("decoder/Input", subgraphData);
+    auto subgraph = factory::buildSubgraph("DecodersTree/Input", subgraphData);
     const auto& children = subgraph.children(parentName);
 
     ASSERT_EQ(children.size(), 1);
@@ -1606,7 +1577,7 @@ TEST_P(BuildAssetsOrder, DecoderOrderPreservedInGraph)
         factory::PolicyGraph graph;
         EXPECT_NO_THROW(graph = factory::buildGraph(built));
 
-        const auto& sg = graph.subgraphs.at(orderCheck.type);
+        const auto& sg = graph.subgraphs.at(buildgraphtest::toStage(orderCheck.type));
         const auto gotChildren = sg.children(base::Name {orderCheck.parent});
 
         ASSERT_EQ(gotChildren.size(), orderCheck.children.size());
@@ -1640,9 +1611,12 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
         // 1) Decoders order: decoders in the order defined in the integration
         BuildAssetsT(
-            cm::store::dataType::Policy({"550e8400-e29b-41d4-a716-446655440101"}, // integration UUID
-                                        "550e8400-e29b-41d4-a716-446655440199"    // root decoder UUID
-                                        ),
+            cm::store::dataType::Policy("test_policy",
+                                        "550e8400-e29b-41d4-a716-446655440199",   // root decoder UUID
+                                        {"550e8400-e29b-41d4-a716-446655440101"}, // integration UUID
+                                        {},
+                                        {},
+                                        {}),
             SUCCESS(SuccessExpected::Behaviour {
                 [](const auto& reader, const auto&)
                 {
@@ -1661,7 +1635,6 @@ INSTANTIATE_TEST_SUITE_P(
                                                                  std::nullopt,
                                                                  /* kvdb uuids */ {},
                                                                  /* decoders uuids */ {uC2, uR, uC1, uC3},
-                                                                 /* outputs uuids */ {},
                                                                  false);
 
                     // resolveNameFromUUID(rootUUID) is used:
@@ -1687,9 +1660,13 @@ INSTANTIATE_TEST_SUITE_P(
                 }})),
 
         // 2) Order BETWEEN integrations: first assets seen in integ1, then integ2
-        BuildAssetsT(cm::store::dataType::Policy({"550e8400-e29b-41d4-a716-446655440111",
+        BuildAssetsT(cm::store::dataType::Policy("test_policy",
+                                                 "550e8400-e29b-41d4-a716-446655440299",
+                                                 {"550e8400-e29b-41d4-a716-446655440111",
                                                   "550e8400-e29b-41d4-a716-446655440112"},
-                                                 "550e8400-e29b-41d4-a716-446655440299"),
+                                                 {},
+                                                 {},
+                                                 {}),
                      SUCCESS(SuccessExpected::Behaviour {
                          [](const auto& reader, const auto&)
                          {
@@ -1707,9 +1684,9 @@ INSTANTIATE_TEST_SUITE_P(
                              const std::string uD = "550e8400-e29b-41d4-a716-446655440304";
 
                              cm::store::dataType::Integration i1(
-                                 integ1, "i1", true, "system-activity", std::nullopt, {}, {uA, uR, uB}, {}, false);
+                                 integ1, "i1", true, "system-activity", std::nullopt, {}, {uA, uR, uB}, false);
                              cm::store::dataType::Integration i2(
-                                 integ2, "i2", true, "system-activity", std::nullopt, {}, {uC, uD}, {}, false);
+                                 integ2, "i2", true, "system-activity", std::nullopt, {}, {uC, uD}, false);
 
                              EXPECT_CALL(*reader, resolveNameFromUUID(rootUUID))
                                  .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", RT::DECODER)));
@@ -1736,39 +1713,43 @@ INSTANTIATE_TEST_SUITE_P(
                          }})),
 
         // 3) Disabled decoder is skipped and does not “break” the relative order of the others
-        BuildAssetsT(
-            cm::store::dataType::Policy({"550e8400-e29b-41d4-a716-446655440121"},
-                                        "550e8400-e29b-41d4-a716-446655440399"),
-            SUCCESS(SuccessExpected::Behaviour {
-                [](const auto& reader, const auto&)
-                {
-                    const std::string integUUID = "550e8400-e29b-41d4-a716-446655440121";
-                    const std::string rootUUID = "550e8400-e29b-41d4-a716-446655440399";
+        BuildAssetsT(cm::store::dataType::Policy("test_policy",
+                                                 "550e8400-e29b-41d4-a716-446655440399",
+                                                 {"550e8400-e29b-41d4-a716-446655440121"},
+                                                 {},
+                                                 {},
+                                                 {}),
+                     SUCCESS(SuccessExpected::Behaviour {
+                         [](const auto& reader, const auto&)
+                         {
+                             const std::string integUUID = "550e8400-e29b-41d4-a716-446655440121";
+                             const std::string rootUUID = "550e8400-e29b-41d4-a716-446655440399";
 
-                    const std::string uX = "550e8400-e29b-41d4-a716-446655440401"; // enabled
-                    const std::string uY = "550e8400-e29b-41d4-a716-446655440402"; // disabled
-                    const std::string uR = rootUUID;
-                    const std::string uZ = "550e8400-e29b-41d4-a716-446655440403"; // enabled
+                             const std::string uX = "550e8400-e29b-41d4-a716-446655440401"; // enabled
+                             const std::string uY = "550e8400-e29b-41d4-a716-446655440402"; // disabled
+                             const std::string uR = rootUUID;
+                             const std::string uZ = "550e8400-e29b-41d4-a716-446655440403"; // enabled
 
-                    cm::store::dataType::Integration integration(
-                        integUUID, "i", true, "system-activity", std::nullopt, {}, {uX, uY, uR, uZ}, {}, false);
+                             cm::store::dataType::Integration integration(
+                                 integUUID, "i", true, "system-activity", std::nullopt, {}, {uX, uY, uR, uZ}, false);
 
-                    EXPECT_CALL(*reader, resolveNameFromUUID(rootUUID))
-                        .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", RT::DECODER)));
+                             EXPECT_CALL(*reader, resolveNameFromUUID(rootUUID))
+                                 .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", RT::DECODER)));
 
-                    EXPECT_CALL(*reader, getIntegrationByUUID(integUUID)).WillOnce(testing::Return(integration));
+                             EXPECT_CALL(*reader, getIntegrationByUUID(integUUID))
+                                 .WillOnce(testing::Return(integration));
 
-                    EXPECT_CALL(*reader, getAssetByUUID(uX))
-                        .WillOnce(testing::Return(mkAssetJson("decoder/X/0", true)));
-                    EXPECT_CALL(*reader, getAssetByUUID(uY))
-                        .WillOnce(testing::Return(mkAssetJson("decoder/Y/0", false))); // disabled
-                    EXPECT_CALL(*reader, getAssetByUUID(uR))
-                        .WillOnce(testing::Return(mkAssetJson("decoder/root/0", true)));
-                    EXPECT_CALL(*reader, getAssetByUUID(uZ))
-                        .WillOnce(testing::Return(mkAssetJson("decoder/Z/0", true)));
+                             EXPECT_CALL(*reader, getAssetByUUID(uX))
+                                 .WillOnce(testing::Return(mkAssetJson("decoder/X/0", true)));
+                             EXPECT_CALL(*reader, getAssetByUUID(uY))
+                                 .WillOnce(testing::Return(mkAssetJson("decoder/Y/0", false))); // disabled
+                             EXPECT_CALL(*reader, getAssetByUUID(uR))
+                                 .WillOnce(testing::Return(mkAssetJson("decoder/root/0", true)));
+                             EXPECT_CALL(*reader, getAssetByUUID(uZ))
+                                 .WillOnce(testing::Return(mkAssetJson("decoder/Z/0", true)));
 
-                    // Y does not appear
-                    return OrderCheck {RT::DECODER, "decoder/root/0", {"decoder/X/0", "decoder/Z/0"}};
-                }}))));
+                             // Y does not appear
+                             return OrderCheck {RT::DECODER, "decoder/root/0", {"decoder/X/0", "decoder/Z/0"}};
+                         }}))));
 
 } // namespace buildassetsordertest

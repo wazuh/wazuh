@@ -123,8 +123,14 @@ build_deb() {
 build_rpm() {
   echo "[i] >>> RPM MODE"
   local RPMBUILD_TOP="${WORK}/rpmbuild"
-  local SPECS_DIR_DEFAULT="${WORK}/internal_packages/rpms/SPECS"
-  local SPECS_DIR="${SPECS_DIR:-${SPECS_DIR_DEFAULT}}"
+  # Map ARCH_RPM back to ARCH_PATH for directory structure (amd64|arm64)
+  local ARCH_PATH
+  case "${ARCH_RPM}" in
+    x86_64)  ARCH_PATH="amd64" ;;
+    aarch64) ARCH_PATH="arm64" ;;
+    *)       ARCH_PATH="amd64" ;;
+  esac
+  local SPECS_DIR="${SPECS_DIR:-${WORK}/internal_packages/rpms/SPECS}"
 
   mkdir -p "${RPMBUILD_TOP}"/{SPECS,SOURCES,BUILD,RPMS,SRPMS}
 

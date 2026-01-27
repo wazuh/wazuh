@@ -63,7 +63,7 @@ TEST_F(CacheNSTest, duplicateHashAllowed)
     std::string name1 = "resource-1";
     std::string name2 = "resource-2";
     cm::store::ResourceType type1 = cm::store::ResourceType::DECODER;
-    cm::store::ResourceType type2 = cm::store::ResourceType::RULE;
+    cm::store::ResourceType type2 = cm::store::ResourceType::FILTER;
     std::string sameHash = "duplicate-hash";
 
     // Add two entries with the same hash
@@ -122,7 +122,7 @@ TEST_F(CacheNSTest, serializeDeserialize)
 
     std::string uuid2 = "uuid-2";
     std::string name2 = "name-2";
-    cm::store::ResourceType type2 = cm::store::ResourceType::RULE;
+    cm::store::ResourceType type2 = cm::store::ResourceType::FILTER;
     std::string hash2 = "hash-2";
 
     // Add entries

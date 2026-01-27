@@ -84,6 +84,8 @@ json::Json createAllowAllFilter()
     json::Json filter {};
     filter.setString(ALLOW_ALL_FILTER_NAME.toStr(), "/name");
     filter.setString(base::utils::generators::generateUUIDv4(), "/id");
+    filter.setString("pre-filter", "/type");
+    filter.setBool(true, "/enabled");
     return filter;
 }
 
@@ -237,7 +239,7 @@ bool CMSync::existSpaceInRemote(std::string_view space)
     auto indexerPtr = lockWeakPtr(m_indexerPtr, "IndexerConnector");
 
     return executeWithRetry([&indexerPtr, space]() { return indexerPtr->existsPolicy(space); },
-                            fmt::format("existSpaceInRemote('{}')", space),
+                            fmt::format("exist '{}' space in wazuh-indexer", space),
                             m_attemps,
                             m_waitSeconds);
 }
@@ -477,9 +479,11 @@ void CMSync::dumpStateToStore()
 void CMSync::synchronize()
 {
 
-    LOG_INFO("[CM::Sync] Checking for namespace updates to synchronize");
+    LOG_DEBUG("[CM::Sync] Checking for namespace updates to synchronize");
 
+    const auto cmcrudPtr = lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
     std::unique_lock lock(m_mutex); // Lock the sync process, only 1 at a time
+
 
     for (auto& nsState : m_namespacesState)
     {
@@ -497,12 +501,30 @@ void CMSync::synchronize()
             // Get remote policy hash
             const auto remoteHash = getPolicyHashFromRemote(nsState.getOriginSpace());
 
-            // Check if the policy has changed
-            if (remoteHash == nsState.getLastPolicyHash())
+            // Check if has a valid route of cm_sync in the router
+            bool validRoute = [&]() -> bool
+            {
+                auto routerPtr = lockWeakPtr(m_router, "RouterAPI");
+                if (!routerPtr->existsEntry(nsState.getRouteName()))
+                {
+                    return false;
+                }
+                auto resp = routerPtr->getEntry(nsState.getRouteName());
+                if (base::isError(resp))
+                {
+                    return false;
+                }
+                const auto& entry = base::getResponse(resp);
+                return entry.namespaceId() == nsState.getNamespaceId() && entry.status() == ::router::env::State::ENABLED;
+            }();
+              // Check if the policy has changed
+            if (remoteHash == nsState.getLastPolicyHash() && cmcrudPtr->existsNamespace(nsState.getNamespaceId()) && validRoute)
             {
                 LOG_DEBUG("[CM::Sync] No changes detected for space '{}'", nsState.getOriginSpace());
                 continue;
             }
+
+            LOG_INFO("[CM::Sync] Changes detected for space '{}', updating...", nsState.getOriginSpace());
 
             // Download and enrich the namespace
             const auto newNsId = downloadAndEnrichNamespace(nsState.getOriginSpace());
@@ -515,7 +537,6 @@ void CMSync::synchronize()
             catch (const std::exception& e)
             {
                 // Rollback temporary namespace
-                auto cmcrudPtr = lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
                 try
                 {
                     cmcrudPtr->deleteNamespace(newNsId);
@@ -527,13 +548,24 @@ void CMSync::synchronize()
                                 newNsId.toStr(),
                                 ex.what());
                 }
-                throw; // Re-throw the original exception
+                LOG_ERROR("[CM::Sync] Failed to sync namespace in route for space '{}': {}",
+                          nsState.getOriginSpace(),
+                          e.what());
+                continue;
             }
 
-            // Update the sync state
+            // Update and dump the sync state
             auto oldNsId = nsState.getNamespaceId();
             nsState.setLastPolicyHash(remoteHash);
             nsState.setNamespaceId(newNsId);
+            try
+            {
+                dumpStateToStore();
+            }
+            catch (const std::exception& e)
+            {
+                LOG_WARNING("[CM::Sync] Failed to dump sync state to store after synchronization: {}", e.what());
+            }
 
             // Delete old namespace if it exists and is different from the new one
             if (oldNsId != DUMMY_NAMESPACE_ID && oldNsId != newNsId)
@@ -561,17 +593,7 @@ void CMSync::synchronize()
         }
     }
 
-    // Dump the updated state to the store
-    try
-    {
-        dumpStateToStore();
-    }
-    catch (const std::exception& e)
-    {
-        LOG_WARNING("[CM::Sync] Failed to dump sync state to store after synchronization: {}", e.what());
-    }
-
-    LOG_INFO("[CM::Sync] Finished synchronization of spaces");
+    LOG_DEBUG("[CM::Sync] Finished synchronization of spaces");
 }
 
 } // namespace cm::sync

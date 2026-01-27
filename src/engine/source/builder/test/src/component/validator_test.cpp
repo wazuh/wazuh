@@ -64,9 +64,13 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
         // Root decoder does not exist
         ValidatePol("policy_test_0",
-                    dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"},
-                                     "550e8400-e29b-41d4-a716-446655440003" // root decoder UUID
-                                     ),
+                    dataType::Policy("test-policy",
+                                     "550e8400-e29b-41d4-a716-446655440003", // root decoder UUID
+                                     {"550e8400-e29b-41d4-a716-446655440001"},
+                                     {},
+                                     {},
+                                     {}),
+                   
                     FAILURE(FailureExpected::Behaviour {
                         [](const auto& store, const auto& reader)
                         {
@@ -78,7 +82,8 @@ INSTANTIATE_TEST_SUITE_P(
                         }})),
         // Root decoder exists but integration UUID is invalid
         ValidatePol("policy_test_0",
-                    dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"}, "550e8400-e29b-41d4-a716-446655440003"),
+                    dataType::Policy("test-policy", "550e8400-e29b-41d4-a716-446655440003",
+                                     {"550e8400-e29b-41d4-a716-446655440001"}, {}, {}, {}),
                     FAILURE(FailureExpected::Behaviour {
                         [](const auto& store, const auto& reader)
                         {
@@ -95,7 +100,8 @@ INSTANTIATE_TEST_SUITE_P(
                         }})),
         // Valid policy with root decoder and integration
         ValidatePol("policy_test_0",
-                    dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"}, "550e8400-e29b-41d4-a716-446655440003"),
+                    dataType::Policy("test-policy", "550e8400-e29b-41d4-a716-446655440003",
+                                     {"550e8400-e29b-41d4-a716-446655440001"}, {}, {}, {}),
                     SUCCESS(SuccessExpected::Behaviour {
                         [](const auto& store, const auto& reader)
                         {
@@ -104,7 +110,6 @@ INSTANTIATE_TEST_SUITE_P(
                                                                      true,
                                                                      "system-activity",
                                                                      std::nullopt,
-                                                                     {},
                                                                      {},
                                                                      {},
                                                                      false);
@@ -273,7 +278,7 @@ INSTANTIATE_TEST_SUITE_P(
                                         std::nullopt,
                                         {},
                                         {},
-                                        {},
+
                                         false),
                   SUCCESS()),
         // Missing decoder
@@ -284,7 +289,6 @@ INSTANTIATE_TEST_SUITE_P(
                                         std::nullopt,
                                         {},
                                         {"550e8400-e29b-41d4-a716-446655440004"}, // decoder UUID
-                                        {},
                                         false),
                   FAILURE(FailureExpected::Behaviour {
                       [](const auto& store, const auto& reader)
@@ -304,7 +308,7 @@ INSTANTIATE_TEST_SUITE_P(
                                         std::nullopt,
                                         {}, // no KVDBs declared
                                         {"550e8400-e29b-41d4-a716-446655440004"},
-                                        {},
+
                                         false),
                   SUCCESS(SuccessExpected::Behaviour {
                       [](const auto& store, const auto& reader)
@@ -324,7 +328,6 @@ INSTANTIATE_TEST_SUITE_P(
                                         std::nullopt,
                                         {"550e8400-e29b-41d4-a716-446655440007"}, // KVDB UUID
                                         {"550e8400-e29b-41d4-a716-446655440004"},
-                                        {},
                                         false),
                   SUCCESS(SuccessExpected::Behaviour {
                       [](const auto& store, const auto& reader)
@@ -354,7 +357,6 @@ INSTANTIATE_TEST_SUITE_P(
                                         std::nullopt,
                                         {"550e8400-e29b-41d4-a716-446655440007"},
                                         {"550e8400-e29b-41d4-a716-446655440004"},
-                                        {},
                                         false),
                   SUCCESS(SuccessExpected::Behaviour {
                       [](const auto& store, const auto& reader)

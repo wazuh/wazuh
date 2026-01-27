@@ -50,6 +50,13 @@ def parse_args():
     configure_policy_validate(cm_subparsers)
     configure_validate(cm_subparsers)
 
+    try:
+        import argcomplete
+        argcomplete.autocomplete(parser, always_complete_options=False)
+    except ImportError:
+        pass
+
+
     return parser.parse_args()
 
 

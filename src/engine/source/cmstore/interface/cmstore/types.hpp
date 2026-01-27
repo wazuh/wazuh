@@ -21,16 +21,14 @@ enum class ResourceType : uint8_t
     UNDEFINED = 0,
     DECODER = 1,
     OUTPUT = 2,
-    RULE = 3,
-    FILTER = 4,
-    INTEGRATION = 5,
-    KVDB = 6
+    FILTER = 3,
+    INTEGRATION = 4,
+    KVDB = 5
 };
 
 constexpr std::string_view RESOURCE_TYPE_UNDEFINED_STR = "undefined";
 constexpr std::string_view RESOURCE_TYPE_DECODER_STR = "decoder";
 constexpr std::string_view RESOURCE_TYPE_OUTPUT_STR = "output";
-constexpr std::string_view RESOURCE_TYPE_RULE_STR = "rule";
 constexpr std::string_view RESOURCE_TYPE_FILTER_STR = "filter";
 constexpr std::string_view RESOURCE_TYPE_INTEGRATION_STR = "integration";
 constexpr std::string_view RESOURCE_TYPE_KVDB_STR = "kvdb";
@@ -45,11 +43,6 @@ constexpr ResourceType resourceTypeFromString(std::string_view typeStr)
     if (typeStr == RESOURCE_TYPE_OUTPUT_STR)
     {
         return ResourceType::OUTPUT;
-    }
-
-    if (typeStr == RESOURCE_TYPE_RULE_STR)
-    {
-        return ResourceType::RULE;
     }
 
     if (typeStr == RESOURCE_TYPE_FILTER_STR)
@@ -76,7 +69,6 @@ constexpr std::string_view resourceTypeToString(ResourceType type)
     {
         case ResourceType::DECODER: return RESOURCE_TYPE_DECODER_STR;
         case ResourceType::OUTPUT: return RESOURCE_TYPE_OUTPUT_STR;
-        case ResourceType::RULE: return RESOURCE_TYPE_RULE_STR;
         case ResourceType::FILTER: return RESOURCE_TYPE_FILTER_STR;
         case ResourceType::KVDB: return RESOURCE_TYPE_KVDB_STR;
         case ResourceType::INTEGRATION: return RESOURCE_TYPE_INTEGRATION_STR;
@@ -87,7 +79,7 @@ constexpr std::string_view resourceTypeToString(ResourceType type)
 /**
  * @brief Get ResourceType from an asset Name
  *
- * Only DECODER, OUTPUT, RULE and FILTER are considered assets.
+ * Only DECODER, OUTPUT and FILTER are considered assets.
  * @param name Asset name
  * @return ResourceType Resource type of the asset, or UNDEFINED if it could not be determined
  */
@@ -106,7 +98,6 @@ inline ResourceType getResourceTypeFromAssetName(const base::Name& name)
         case ResourceType::DECODER:
         case ResourceType::INTEGRATION:
         case ResourceType::OUTPUT:
-        case ResourceType::RULE:
         case ResourceType::FILTER: return rType;
         default: return ResourceType::UNDEFINED;
     }

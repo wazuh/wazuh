@@ -239,9 +239,23 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId, std::strin
                             break;
                         }
 
+                        case cm::store::ResourceType::FILTER:
+                        case cm::store::ResourceType::OUTPUT:
                         case cm::store::ResourceType::DECODER:
                         {
-                            auto assetJson = cm::store::detail::adaptDecoder(item);
+                            auto assetJson = [&item, type]() -> json::Json {
+                                switch (type)
+                                {
+                                    case cm::store::ResourceType::DECODER:
+                                        return cm::store::detail::adaptDecoder(item);
+                                    case cm::store::ResourceType::FILTER:
+                                        return cm::store::detail::adaptFilter(item);
+                                    case cm::store::ResourceType::OUTPUT:
+                                        return cm::store::detail::adaptOutput(item);
+                                }
+                                __builtin_unreachable();
+                            }();
+
                             auto name = assetNameFromJson(assetJson);
 
                             (void)assetUuidFromJson(assetJson, name);
@@ -273,6 +287,8 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId, std::strin
             // Required order
             importResources(cm::store::ResourceType::KVDB, "kvdbs");
             importResources(cm::store::ResourceType::DECODER, "decoders");
+            importResources(cm::store::ResourceType::FILTER, "filters");
+            importResources(cm::store::ResourceType::OUTPUT, "outputs");
             importResources(cm::store::ResourceType::INTEGRATION, "integrations");
 
             // Policy
@@ -459,7 +475,6 @@ CrudService::getResourceByUUID(const cm::store::NamespaceId& nsId, const std::st
 
             case cm::store::ResourceType::DECODER:
             case cm::store::ResourceType::OUTPUT:
-            case cm::store::ResourceType::RULE:
             case cm::store::ResourceType::FILTER:
             {
                 auto assetJson = nsView->getAssetByUUID(uuid);
@@ -532,11 +547,23 @@ void CrudService::upsertResource(const cm::store::NamespaceId& nsId,
 
             case cm::store::ResourceType::DECODER:
             case cm::store::ResourceType::OUTPUT:
-            case cm::store::ResourceType::RULE:
             case cm::store::ResourceType::FILTER:
             {
                 json::Json assetJson = yamlToJson(document);
-                auto name = assetNameFromJson(assetJson);
+                auto adaptedPayload = [&assetJson, type]() -> json::Json {
+                    switch (type)
+                    {
+                        case cm::store::ResourceType::DECODER:
+                            return cm::store::detail::adaptDecoder(assetJson);
+                        case cm::store::ResourceType::FILTER:
+                            return cm::store::detail::adaptFilter(assetJson);
+                        case cm::store::ResourceType::OUTPUT:
+                            return cm::store::detail::adaptOutput(assetJson);
+                    }
+                    __builtin_unreachable();
+                }();
+
+                auto name = assetNameFromJson(adaptedPayload);
                 const auto resource = resourceTypeToString(type);
 
                 if (resource != name.parts().front())
@@ -545,7 +572,7 @@ void CrudService::upsertResource(const cm::store::NamespaceId& nsId,
                         "Asset name '{}' does not match resource type '{}'", name, resourceTypeToString(type)));
                 }
 
-                validateAsset(nsReader, assetJson);
+                validateAsset(nsReader, adaptedPayload);
 
                 const std::string nameStr = name.toStr();
 
@@ -596,7 +623,16 @@ void CrudService::validateResource(cm::store::ResourceType type, const json::Jso
             case cm::store::ResourceType::DECODER:
             case cm::store::ResourceType::FILTER:
             {
-                auto adaptedPayload = cm::store::detail::adaptDecoder(payload);
+                json::Json adaptedPayload;
+                if (type == cm::store::ResourceType::DECODER)
+                {
+                    adaptedPayload = cm::store::detail::adaptDecoder(payload);
+                }
+                else
+                {
+                    adaptedPayload = cm::store::detail::adaptFilter(payload);
+                }
+
                 auto name = assetNameFromJson(adaptedPayload);
 
                 (void)assetUuidFromJson(adaptedPayload, name);

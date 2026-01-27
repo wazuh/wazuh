@@ -17,6 +17,46 @@ namespace builder::policy::factory
 {
 
 /**
+ * @brief Stages for an asset in the pipeline
+ *
+ * Assets can only be in one tree, and each tree will have its own properties and locations in the pipeline.
+ */
+enum class AssetPipelineStage
+{
+    PRE_FILTERS_TREE = 0, ///< Pre-filters tree, before IOCs (AND|OR between siblings).
+    DECODERS_TREE = 1, ///< Decoders tree, the first stage in the pipeline (OR between siblings).
+    POST_FILTERS_TREE = 2, ///< Post-filters tree, after IOCs (AND|OR between siblings).
+    OUTPUTS_TREE = 3,  ///< Outputs tree, after filters (Brodcast between siblings and childs).
+    // End of valid values
+    END_VALUES = 4     ///< Sentinel value for the end of the enum. (MAX VALUE)
+};
+
+/**
+ * @brief String representations of AssetPipelineStage values.
+ */
+constexpr const std::string_view AssetPipelineStageStrs[] = {
+    "PreFiltersTree",
+    "DecodersTree",
+    "PostFiltersTree",
+    "OutputsTree"
+};
+
+/**
+ * @brief Convert AssetPipelineStage to string.
+ * @param stage AssetPipelineStage value.
+ * @return constexpr std::string_view String representation.
+ * @throw std::runtime_error If the stage value is invalid.
+ */
+constexpr std::string_view AssetPipelineStageToStr(const AssetPipelineStage stage)
+{
+    if (static_cast<std::size_t>(stage) >= static_cast<std::size_t>(AssetPipelineStage::END_VALUES))
+    {
+        throw std::runtime_error("Invalid AssetPipelineStage value");
+    }
+    return AssetPipelineStageStrs[static_cast<std::size_t>(stage)];
+}
+
+/**
  * @brief This struct contains the built assets of the policy by type.
  *
  */
@@ -28,7 +68,7 @@ struct SubgraphData
     std::unordered_map<base::Name, Asset> assets;
 };
 
-using BuiltAssets = std::map<cm::store::ResourceType, SubgraphData>;
+using BuiltAssets = std::unordered_map<AssetPipelineStage, SubgraphData>;
 
 /**
  * @brief Build the assets of the policy.
@@ -53,7 +93,8 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policyData,
  */
 struct PolicyGraph
 {
-    std::map<cm::store::ResourceType, Graph<base::Name, Asset>> subgraphs; ///< Subgraphs by type
+    // TODO Rename to policy tree or similar, now is not full policy graph, only the subgraphs
+    std::unordered_map<AssetPipelineStage, Graph<base::Name, Asset>> subgraphs; ///< Subgraphs by type
 
     // TODO: Implement
     /**
@@ -170,7 +211,38 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
 }
 
 /**
- * @brief Generates the expression of the policy from the policy graph and the policy data.
+ * @brief Generates the expression of the policy from the policy graph and the IOCs
+ *
+ * The event is processed through a sequence of optional and mandatory stages
+ * that together form the processing pipeline.
+ *
+ * 1. Pre-Filter Tree (optional):
+ *    - If present, the event is evaluated against the pre-filter tree.
+ *    - If the pre-filter fails, the event is immediately discarded.
+ *    - If the pre-filter succeeds, or if this stage is not configured,
+ *      the event continues to the Decoder Tree.
+ *
+ * 2. Decoder Tree:
+ *    - The event is evaluated by the decoder tree.
+ *    - Regardless of whether decoding succeeds or fails, the event
+ *      always continues to the next stage.
+ *
+ * 3. IOCs (optional, TODO):
+ *    - Indicators of Compromise (IOCs) are evaluated if this stage is enabled.
+ *    - The result of this stage does not affect pipeline continuity.
+ *      The event always proceeds to the next stage.
+ *
+ * 4. Post-Filter Tree (optional):
+ *    - If present, the event is evaluated against the post-filter tree.
+ *    - If no post-filter is configured, the event proceeds directly
+ *      to the output stage.
+ *    - If this stage is the last configured one, the final event result
+ *      is determined by the post-filter evaluation.
+ *
+ * 5. Output Tree (optional):
+ *    - If present, the event is forwarded to the configured outputs.
+ *    - The output stage always succeeds and never blocks or discards events.
+ *    - If no outputs are configured, the pipeline ends after the last filter.
  *
  * @param graph Policy graph.
  * @param data Policy data.

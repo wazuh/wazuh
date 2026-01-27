@@ -70,8 +70,12 @@ INSTANTIATE_TEST_SUITE_P(
               SUCCESS(SuccessExpected::Behaviour {
                   [](const auto& store, const auto& reader, const auto& schemf)
                   {
-                      auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"},
-                                                     "550e8400-e29b-41d4-a716-446655440003");
+                      auto policy = dataType::Policy("test-policy",
+                                                     "550e8400-e29b-41d4-a716-446655440003",
+                                                     {"550e8400-e29b-41d4-a716-446655440001"},
+                                                     {},
+                                                     {},
+                                                     {});
                       auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
                                                                "test-integration",
                                                                true,
@@ -79,7 +83,6 @@ INSTANTIATE_TEST_SUITE_P(
                                                                std::nullopt,
                                                                {},
                                                                {"550e8400-e29b-41d4-a716-446655440004"},
-                                                               {},
                                                                false);
 
                       EXPECT_CALL(*store, getNSReader(testing::_)).WillRepeatedly(testing::Return(reader));
@@ -93,8 +96,17 @@ INSTANTIATE_TEST_SUITE_P(
                           .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
                       EXPECT_CALL(*reader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440004"))
                           .WillRepeatedly(testing::Return(std::make_tuple("decoder/test/0", ResourceType::DECODER)));
-                      EXPECT_CALL(*reader, getAssetByUUID(testing::_))
-                          .WillRepeatedly(testing::Return(json::Json(R"({"name": "test"})")));
+
+                      // Create specific assets for each UUID
+                      auto rootDecoder = json::Json(R"({"name": "decoder/root/0", "enabled": true})");
+                      auto testDecoder = json::Json(
+                          R"({"name": "decoder/test/0", "enabled": true, "parents": ["DecodersTree/Input"]})");
+
+                      EXPECT_CALL(*reader, getAssetByUUID("550e8400-e29b-41d4-a716-446655440003"))
+                          .WillRepeatedly(testing::Return(rootDecoder));
+                      EXPECT_CALL(*reader, getAssetByUUID("550e8400-e29b-41d4-a716-446655440004"))
+                          .WillRepeatedly(testing::Return(testDecoder));
+
                       EXPECT_CALL(*reader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
                       EXPECT_CALL(*reader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
                       EXPECT_CALL(*reader, getDefaultOutputs())
@@ -106,8 +118,13 @@ INSTANTIATE_TEST_SUITE_P(
               SUCCESS(SuccessExpected::Behaviour {
                   [](const auto& store, const auto& reader, const auto& schemf)
                   {
-                      auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"},
-                                                     "550e8400-e29b-41d4-a716-446655440003");
+                      auto policy = dataType::Policy("test-policy-disabled",
+                                                     "550e8400-e29b-41d4-a716-446655440003",
+                                                     {"550e8400-e29b-41d4-a716-446655440001",  // disabled
+                                                      "550e8400-e29b-41d4-a716-446655440005"}, // enabled
+                                                     {},
+                                                     {},
+                                                     {});
                       auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
                                                                "disabled-integration",
                                                                false,
@@ -115,8 +132,15 @@ INSTANTIATE_TEST_SUITE_P(
                                                                std::nullopt,
                                                                {},
                                                                {},
-                                                               {},
                                                                false);
+                      auto integration2 = dataType::Integration("550e8400-e29b-41d4-a716-446655440005",
+                                                                "enabled-integration",
+                                                                true,
+                                                                "system-activity",
+                                                                std::nullopt,
+                                                                {},
+                                                                {"550e8400-e29b-41d4-a716-446655440003"},
+                                                                false);
 
                       EXPECT_CALL(*store, getNSReader(testing::_)).WillRepeatedly(testing::Return(reader));
                       EXPECT_CALL(*reader, getPolicy()).WillRepeatedly(testing::Return(policy));
@@ -125,10 +149,14 @@ INSTANTIATE_TEST_SUITE_P(
                       EXPECT_CALL(*reader, getNamespaceId()).WillRepeatedly(testing::ReturnRef(nsId));
                       EXPECT_CALL(*reader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440001"))
                           .WillRepeatedly(testing::Return(integration));
+                      EXPECT_CALL(*reader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440005"))
+                          .WillRepeatedly(testing::Return(integration2));
                       EXPECT_CALL(*reader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
                           .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
-                      EXPECT_CALL(*reader, getAssetByUUID(testing::_))
-                          .WillRepeatedly(testing::Return(json::Json(R"({"name": "test"})")));
+
+                      auto rootDecoder = json::Json(R"({"name": "decoder/root/0", "enabled": true})");
+                      EXPECT_CALL(*reader, getAssetByUUID("550e8400-e29b-41d4-a716-446655440003"))
+                          .WillRepeatedly(testing::Return(rootDecoder));
                       EXPECT_CALL(*reader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
                       EXPECT_CALL(*reader, getDefaultOutputs())
                           .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
@@ -140,23 +168,26 @@ INSTANTIATE_TEST_SUITE_P(
                   [](const auto& store, const auto& reader, const auto& schemf)
                   {
                       auto policy = dataType::Policy(
+                          "test-policy-multi",
+                          "550e8400-e29b-41d4-a716-446655440003",
                           {"550e8400-e29b-41d4-a716-446655440001", "550e8400-e29b-41d4-a716-446655440005"},
-                          "550e8400-e29b-41d4-a716-446655440003");
-                      auto integration1 = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
-                                                                "integration-one",
-                                                                true,
-                                                                "security",
-                                                                std::nullopt,
-                                                                {},
-                                                                {},
-                                                                {},
-                                                                false);
+                          {},
+                          {},
+                          {});
+                      auto integration1 =
+                          dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
+                                                "integration-one",
+                                                true,
+                                                "security",
+                                                std::nullopt,
+                                                {},
+                                                {"550e8400-e29b-41d4-a716-446655440003"}, // root decoder
+                                                false);
                       auto integration2 = dataType::Integration("550e8400-e29b-41d4-a716-446655440005",
                                                                 "integration-two",
                                                                 true,
                                                                 "cloud-services",
                                                                 std::nullopt,
-                                                                {},
                                                                 {},
                                                                 {},
                                                                 false);
@@ -172,8 +203,11 @@ INSTANTIATE_TEST_SUITE_P(
                           .WillRepeatedly(testing::Return(integration2));
                       EXPECT_CALL(*reader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
                           .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
-                      EXPECT_CALL(*reader, getAssetByUUID(testing::_))
-                          .WillRepeatedly(testing::Return(json::Json(R"({"name": "test"})")));
+
+                      auto rootDecoder = json::Json(R"({"name": "decoder/root/0", "enabled": true})");
+                      EXPECT_CALL(*reader, getAssetByUUID("550e8400-e29b-41d4-a716-446655440003"))
+                          .WillRepeatedly(testing::Return(rootDecoder));
+
                       EXPECT_CALL(*reader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
                       EXPECT_CALL(*reader, getDefaultOutputs())
                           .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
@@ -222,7 +256,7 @@ INSTANTIATE_TEST_SUITE_P(Asset,
                                     "policy_test_0",
                                     json::Json(R"({
                    "name": "decoder/test/0",
-                   "parents": ["decoder/Input"],
+                   "parents": ["DecodersTree/Input"],
                    "check": [{"event.code": 2}]
                })"),
                                     std::vector<std::string> {"event.code"},
@@ -297,8 +331,12 @@ TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
     NamespaceId namespaceId("policy_test_0");
 
     // Create a simple policy with one integration
-    auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"}, // integrations (valid UUIDv4)
-                                   "550e8400-e29b-41d4-a716-446655440003"    // root decoder
+    auto policy = dataType::Policy("test-policy",                            // title
+                                   "550e8400-e29b-41d4-a716-446655440003",   // root decoder
+                                   {"550e8400-e29b-41d4-a716-446655440001"}, // integrations (valid UUIDv4)
+                                   {},                                       // filters
+                                   {},                                       // enrichments
+                                   {}                                        // outputs
     );
 
     // Create a simple integration
@@ -309,14 +347,14 @@ TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
                                              std::nullopt,                             // default parent
                                              {},                                       // kvdbs
                                              {"550e8400-e29b-41d4-a716-446655440004"}, // decoders
-                                             {},                                       // outputs
                                              false                                     // requireUUID
     );
 
     // Create decoder asset
     auto decoder = json::Json(R"({
         "name": "decoder/test/0",
-        "parents": ["decoder/Input"],
+        "enabled": true,
+        "parents": ["DecodersTree/Input"],
         "check": [{
             "event.code": 2
         }]
@@ -324,13 +362,15 @@ TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
 
     // Create default parent asset
     auto defaultParent = json::Json(R"({
-        "name": "decoder/default-parent/0"
+        "name": "decoder/default-parent/0",
+        "enabled": true
     })");
 
     // Create root decoder asset
     auto rootDecoder = json::Json(R"({
         "name": "decoder/root/0",
-        "parents": ["decoder/Input"]
+        "enabled": true,
+        "parents": ["DecodersTree/Input"]
     })");
 
     // Setup mock expectations
@@ -380,21 +420,36 @@ TEST_F(BuildPolicyTest, BuildPolicyWithDisabledIntegration)
     // Setup namespace and policy data
     NamespaceId namespaceId("policy_test_0");
 
-    auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"}, "550e8400-e29b-41d4-a716-446655440003");
+    auto policy = dataType::Policy("test-policy-disabled",
+                                   "550e8400-e29b-41d4-a716-446655440003",   // root decoder
+                                   {"550e8400-e29b-41d4-a716-446655440001",  // disabled integration
+                                    "550e8400-e29b-41d4-a716-446655440005"}, // enabled integration
+                                   {},
+                                   {},
+                                   {});
 
     // Create a disabled integration
     auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
-                                             "test-integration",
+                                             "test-integration-disabled",
                                              false,             // disabled
                                              "system-activity", // valid category
                                              std::nullopt,
                                              {},
                                              {"550e8400-e29b-41d4-a716-446655440004"},
-                                             {},
                                              false);
 
-    auto defaultParent = json::Json(R"({"name": "decoder/default-parent/0"})");
-    auto rootDecoder = json::Json(R"({"name": "decoder/root/0", "parents": ["decoder/Input"]})");
+    // Create an enabled integration with the root decoder
+    auto integration2 = dataType::Integration("550e8400-e29b-41d4-a716-446655440005",
+                                              "test-integration-enabled",
+                                              true, // enabled
+                                              "network-activity",
+                                              std::nullopt,
+                                              {},
+                                              {"550e8400-e29b-41d4-a716-446655440003"}, // root decoder
+                                              false);
+
+    auto defaultParent = json::Json(R"({"name": "decoder/default-parent/0", "enabled": true})");
+    auto rootDecoder = json::Json(R"({"name": "decoder/root/0", "enabled": true})");
 
     // Setup mock expectations
     EXPECT_CALL(*m_mocks->m_spStore, getNSReader(testing::_)).WillRepeatedly(testing::Return(m_mocks->m_spNSReader));
@@ -405,6 +460,9 @@ TEST_F(BuildPolicyTest, BuildPolicyWithDisabledIntegration)
 
     EXPECT_CALL(*m_mocks->m_spNSReader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440001"))
         .WillRepeatedly(testing::Return(integration));
+
+    EXPECT_CALL(*m_mocks->m_spNSReader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440005"))
+        .WillRepeatedly(testing::Return(integration2));
 
     EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
         .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
@@ -422,7 +480,7 @@ TEST_F(BuildPolicyTest, BuildPolicyWithDisabledIntegration)
     EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
         .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
 
-    // Build policy - should succeed even with disabled integration (it just won't include its assets)
+    // Build policy - should succeed: disabled integration is skipped, enabled integration provides root decoder
     auto builtPolicy = m_builder->buildPolicy(namespaceId, false, true);
 
     ASSERT_NE(builtPolicy, nullptr);
@@ -470,7 +528,7 @@ TEST_F(BuildAssetTest, BuildDecoderSuccessfully)
 
     auto decoder = json::Json(R"({
         "name": "decoder/test/0",
-        "parents": ["decoder/Input"],
+        "parents": ["DecodersTree/Input"],
         "check": [{
             "event.code": 2
         }]
@@ -624,8 +682,12 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithMultipleIntegrations)
     NamespaceId namespaceId("policy_multi_0");
 
     // Create a policy with two integrations
-    auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001", "550e8400-e29b-41d4-a716-446655440005"},
-                                   "550e8400-e29b-41d4-a716-446655440003");
+    auto policy = dataType::Policy("test-policy-multi",
+                                   "550e8400-e29b-41d4-a716-446655440003",
+                                   {"550e8400-e29b-41d4-a716-446655440001", "550e8400-e29b-41d4-a716-446655440005"},
+                                   {},
+                                   {},
+                                   {});
 
     // First integration
     auto integration1 = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
@@ -635,7 +697,6 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithMultipleIntegrations)
                                               std::nullopt,
                                               {},
                                               {"550e8400-e29b-41d4-a716-446655440004"},
-                                              {},
                                               false);
 
     // Second integration
@@ -646,13 +707,12 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithMultipleIntegrations)
                                               std::nullopt,
                                               {},
                                               {"550e8400-e29b-41d4-a716-446655440006"},
-                                              {},
                                               false);
 
-    auto decoder1 = json::Json(R"({"name": "decoder/one/0", "parents": ["decoder/Input"]})");
-    auto decoder2 = json::Json(R"({"name": "decoder/two/0", "parents": ["decoder/Input"]})");
-    auto defaultParent = json::Json(R"({"name": "decoder/default-parent/0"})");
-    auto rootDecoder = json::Json(R"({"name": "decoder/root/0", "parents": ["decoder/Input"]})");
+    auto decoder1 = json::Json(R"({"name": "decoder/one/0", "enabled": true, "parents": ["DecodersTree/Input"]})");
+    auto decoder2 = json::Json(R"({"name": "decoder/two/0", "enabled": true, "parents": ["DecodersTree/Input"]})");
+    auto defaultParent = json::Json(R"({"name": "decoder/default-parent/0", "enabled": true})");
+    auto rootDecoder = json::Json(R"({"name": "decoder/root/0", "enabled": true})");
 
     // Setup mock expectations
     EXPECT_CALL(*m_mocks->m_spStore, getNSReader(testing::_)).WillRepeatedly(testing::Return(m_mocks->m_spNSReader));
@@ -712,7 +772,12 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithKVDB)
     // Setup namespace and policy data
     NamespaceId namespaceId("policy_kvdb_0");
 
-    auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"}, "550e8400-e29b-41d4-a716-446655440003");
+    auto policy = dataType::Policy("test-policy-kvdb",
+                                   "550e8400-e29b-41d4-a716-446655440003",
+                                   {"550e8400-e29b-41d4-a716-446655440001"},
+                                   {},
+                                   {},
+                                   {});
 
     // Integration with KVDB
     auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
@@ -722,7 +787,6 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithKVDB)
                                              std::nullopt,
                                              {"550e8400-e29b-41d4-a716-446655440007"}, // kvdbs
                                              {"550e8400-e29b-41d4-a716-446655440004"},
-                                             {},
                                              false);
 
     auto kvdb = dataType::KVDB("550e8400-e29b-41d4-a716-446655440007",
@@ -731,9 +795,9 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithKVDB)
                                true,
                                false);
 
-    auto decoder = json::Json(R"({"name": "decoder/test/0", "parents": ["decoder/Input"]})");
-    auto defaultParent = json::Json(R"({"name": "decoder/default-parent/0"})");
-    auto rootDecoder = json::Json(R"({"name": "decoder/root/0", "parents": ["decoder/Input"]})");
+    auto decoder = json::Json(R"({"name": "decoder/test/0", "enabled": true, "parents": ["DecodersTree/Input"]})");
+    auto defaultParent = json::Json(R"({"name": "decoder/default-parent/0", "enabled": true})");
+    auto rootDecoder = json::Json(R"({"name": "decoder/root/0", "enabled": true})");
 
     // Setup mock expectations
     EXPECT_CALL(*m_mocks->m_spStore, getNSReader(testing::_)).WillRepeatedly(testing::Return(m_mocks->m_spNSReader));
@@ -787,7 +851,12 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithOutputs)
     // Setup namespace and policy data
     NamespaceId namespaceId("policy_output_0");
 
-    auto policy = dataType::Policy({"550e8400-e29b-41d4-a716-446655440001"}, "550e8400-e29b-41d4-a716-446655440003");
+    auto policy = dataType::Policy("test-policy-outputs",
+                                   "550e8400-e29b-41d4-a716-446655440003",
+                                   {"550e8400-e29b-41d4-a716-446655440001"},
+                                   {},
+                                   {},
+                                   {});
 
     // Integration with outputs
     auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
@@ -797,13 +866,12 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithOutputs)
                                              std::nullopt,
                                              {},
                                              {"550e8400-e29b-41d4-a716-446655440004"},
-                                             {"550e8400-e29b-41d4-a716-446655440008"}, // outputs
                                              false);
 
-    auto decoder = json::Json(R"({"name": "decoder/test/0", "parents": ["decoder/Input"]})");
-    auto output = json::Json(R"({"name": "output/test/0", "check": [{"event.module": "test"}]})");
-    auto defaultParent = json::Json(R"({"name": "decoder/default-parent/0"})");
-    auto rootDecoder = json::Json(R"({"name": "decoder/root/0", "parents": ["decoder/Input"]})");
+    auto decoder = json::Json(R"({"name": "decoder/test/0", "enabled": true, "parents": ["DecodersTree/Input"]})");
+    auto output = json::Json(R"({"name": "output/test/0", "enabled": true, "check": [{"event.module": "test"}]})");
+    auto defaultParent = json::Json(R"({"name": "decoder/default-parent/0", "enabled": true})");
+    auto rootDecoder = json::Json(R"({"name": "decoder/root/0", "enabled": true})");
 
     // Setup mock expectations
     EXPECT_CALL(*m_mocks->m_spStore, getNSReader(testing::_)).WillRepeatedly(testing::Return(m_mocks->m_spNSReader));

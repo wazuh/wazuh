@@ -63,6 +63,7 @@ add_library(bk::mocks ALIAS bk_mocks)
 add_executable(bk_ctest
     ${COMPONENT_SRC_DIR}/bk_test.cpp
 )
+target_include_directories(bk_ctest PRIVATE ${SRC_DIR})
 target_link_libraries(bk_ctest GTest::gtest_main bk::taskf bk::rx bk::mocks)
 gtest_discover_tests(bk_ctest)
 

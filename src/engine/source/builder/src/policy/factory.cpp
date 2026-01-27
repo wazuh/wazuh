@@ -16,6 +16,15 @@ namespace
 {
 auto constexpr GRAPH_INPUT_SUFFIX = "/Input";
 
+/**
+ * @brief Build a map of KVDB names to their enabled status for the given integration.
+ *
+ * @param integration Integration where the aviable KVDBs are defined
+ * @param cmStoreNsReader CMStore namespace reader to load the KVDBs status and ensure they exist
+ * @param integUUID Integration UUID (for error messages)
+ * @return std::unordered_map<std::string, bool> Map of KVDB names to their enabled status
+ * @throw std::runtime_error if any KVDB UUID does not exist or if there are duplicate KVDB names
+ */
 std::unordered_map<std::string, bool> buildKvdbsMap(const cm::store::dataType::Integration& integration,
                                                     const std::shared_ptr<cm::store::ICMStoreNSReader>& cmStoreNsReader,
                                                     const std::string& integUUID)
@@ -68,8 +77,57 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
 {
     BuiltAssets builtAssets;
 
-    const auto rootDecoderName =
-        base::Name {std::get<0>(cmStoreNsReader->resolveNameFromUUID(policy.getRootDecoder()))};
+    // Helper to check if an asset is already built in that graph
+    const auto isAlreadyBuilt = [&](const std::string& name, AssetPipelineStage stage) -> bool
+    {
+        const auto& subgraphData = builtAssets.find(stage);
+        if (subgraphData == builtAssets.end())
+        {
+            return false;
+        }
+        return subgraphData->second.assets.find(base::Name(name)) != subgraphData->second.assets.end();
+    };
+
+    // Helper to build and store an asset in the pipeline
+    const auto buildAndStoreAsset = [&](const auto& assetData,
+                                        const std::string& assetUUID,
+                                        AssetPipelineStage stage,
+                                        const std::string& assetType,
+                                        const std::string& contextInfo = "") -> void
+    {
+        auto assetName = syntax::asset::getAssetName(assetData);
+
+        if (!syntax::asset::isEnabledResource(assetData))
+        {
+            return;
+        }
+
+        // Check for duplicates
+        if (isAlreadyBuilt(assetName, stage))
+        {
+            throw std::runtime_error(
+                fmt::format("{} '{}' [id: '{}'] is duplicated{}", assetType, assetName, assetUUID, contextInfo));
+        }
+
+        // Build asset
+        Asset asset;
+        try
+        {
+            asset = (*assetBuilder)(assetData);
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(
+                fmt::format("Error building {} {}{}: {}", assetType, assetName, contextInfo, e.what()));
+        }
+
+        // Store asset
+        auto& stageData = builtAssets[stage];
+        stageData.orderedAssets.push_back(asset.name());
+        stageData.assets.emplace(asset.name(), std::move(asset));
+    };
+
+    const base::Name rootDecoderName {std::get<0>(cmStoreNsReader->resolveNameFromUUID(policy.getRootDecoderUUID()))};
 
     // NOTE: The order of integrations and their decoders defines the final evaluation order for
     // sibling decoders in the expression. We preserve insertion order via orderedAssets.
@@ -81,10 +139,11 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
             continue;
         }
 
-        // Set partial context for the asset builder
+        // TODO: Only decoder should have the integration context
+        // TODO: The context integration should has the aviable KVDBs for validation
+        // Configure partial build context for the integration.
         assetBuilder->getContext().integrationName = integration.getName();
         assetBuilder->getContext().integrationCategory = integration.getCategory();
-
         // Set availability map in the build context (integration-scoped).
         assetBuilder->setAvailableKvdbs(buildKvdbsMap(integration, cmStoreNsReader, integUUID));
 
@@ -92,10 +151,22 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         for (const auto& decUUID : integration.getDecodersByUUID())
         {
             const auto decoder = cmStoreNsReader->getAssetByUUID(decUUID);
-            auto assetName = decoder.getString(json::Json::formatJsonPath(builder::syntax::asset::NAME_KEY));
-            if (!decoder.getBool(json::Json::formatJsonPath(builder::syntax::asset::ENABLED_KEY)).value_or(false))
+            auto assetName = syntax::asset::getAssetName(decoder);
+
+            if (!syntax::asset::isEnabledResource(decoder))
             {
                 continue;
+            }
+
+            // Check if asset was already built (by previous integration)
+            if (isAlreadyBuilt(assetName, AssetPipelineStage::DECODERS_TREE))
+            {
+                throw std::runtime_error(fmt::format("Decoder '{}' [id: '{}'] from integration '{}' [id: '{}'] was "
+                                                     "already defined by another integration",
+                                                     assetName,
+                                                     decUUID,
+                                                     integration.getName(),
+                                                     integUUID));
             }
 
             Asset asset;
@@ -105,10 +176,8 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
             }
             catch (const std::exception& e)
             {
-                throw std::runtime_error(fmt::format("Error building decoder {} from integration '{}': {}",
-                                                     assetName.value(),
-                                                     integration.getName(),
-                                                     e.what()));
+                throw std::runtime_error(fmt::format(
+                    "Error building decoder {} from integration '{}': {}", assetName, integration.getName(), e.what()));
             }
 
             // The root decoder cannot have parents (Avoid cycles)
@@ -128,12 +197,10 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
                 auto defaultParentUUID = [&]() -> std::string
                 {
                     if (integration.hasDefaultParent())
-
                     {
                         return integration.getDefaultParent().value_or("Error getting default parent");
                     }
-
-                    return policy.getRootDecoder();
+                    return policy.getRootDecoderUUID();
                 }();
 
                 asset.parents().emplace_back(
@@ -141,67 +208,48 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
             }
 
             // Store built asset
-            auto& decodersData = builtAssets[cm::store::ResourceType::DECODER];
-            if (decodersData.assets.find(asset.name()) == decodersData.assets.end())
-            {
-                // orderedAssets preserves the first-seen order across integrations.
-                decodersData.orderedAssets.push_back(asset.name());
-            }
-
+            auto& decodersData = builtAssets[AssetPipelineStage::DECODERS_TREE];
+            decodersData.orderedAssets.push_back(asset.name());
             decodersData.assets.emplace(asset.name(), std::move(asset));
-        }
-
-        for (const auto& outUUID : integration.getOutputsByUUID())
-        {
-            const auto output = cmStoreNsReader->getAssetByUUID(outUUID);
-            auto assetName = output.getString(json::Json::formatJsonPath(builder::syntax::asset::NAME_KEY));
-            if (!output.getBool(json::Json::formatJsonPath(builder::syntax::asset::ENABLED_KEY)).value_or(false))
-            {
-                continue;
-            }
-
-            Asset asset;
-            try
-            {
-                asset = (*assetBuilder)(output);
-            }
-            catch (const std::exception& e)
-            {
-                throw std::runtime_error(fmt::format("Error building output {} from integration '{}': {}",
-                                                     assetName.value(),
-                                                     integration.getName(),
-                                                     e.what()));
-            }
-
-            auto& outputsData = builtAssets[cm::store::ResourceType::OUTPUT];
-            if (outputsData.assets.find(asset.name()) == outputsData.assets.end())
-            {
-                outputsData.orderedAssets.push_back(asset.name());
-            }
-
-            outputsData.assets.emplace(asset.name(), std::move(asset));
         }
     }
 
-    // Only available for production
+    // TODO: Should clear all integration related context
+    assetBuilder->clearAvailableKvdbs();
+
+    // Filters
+    for (const auto& filterUUID : policy.getFiltersUUIDs())
+    {
+        const auto filter = cmStoreNsReader->getAssetByUUID(filterUUID);
+
+        const auto pipelineStage = [&]() -> AssetPipelineStage
+        {
+            auto filterType = syntax::asset::filter::getFilterType(filter);
+            return (filterType == syntax::asset::filter::FilterType::PRE_FILTER)
+                       ? AssetPipelineStage::PRE_FILTERS_TREE
+                       : AssetPipelineStage::POST_FILTERS_TREE;
+        }();
+
+        buildAndStoreAsset(filter, filterUUID, pipelineStage, "Filter");
+    }
+
+    // Outputs
+    for (const auto& outUUID : policy.getOutputsUUIDs())
+    {
+        const auto output = cmStoreNsReader->getAssetByUUID(outUUID);
+        buildAndStoreAsset(output, outUUID, AssetPipelineStage::OUTPUTS_TREE, "Output");
+    }
+
+    // TODO: Only available for production -->> Remove this, outputs should always be associated with a policy
     if (!sandbox)
     {
         // Default outputs are not associated with an integration; clear KVDB validation.
         assetBuilder->clearAvailableKvdbs();
 
         const auto defaultOutputs = cmStoreNsReader->getDefaultOutputs();
-        auto& outputsData = builtAssets[cm::store::ResourceType::OUTPUT];
-
         for (const auto& output : defaultOutputs)
         {
-            Asset asset = (*assetBuilder)(output);
-
-            if (outputsData.assets.find(asset.name()) == outputsData.assets.end())
-            {
-                outputsData.orderedAssets.push_back(asset.name());
-            }
-
-            outputsData.assets.emplace(asset.name(), std::move(asset));
+            buildAndStoreAsset(output, "", AssetPipelineStage::OUTPUTS_TREE, "Output");
         }
     }
 
@@ -271,18 +319,19 @@ Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName, const Su
 PolicyGraph buildGraph(const BuiltAssets& assets)
 {
     PolicyGraph graph;
+    graph.subgraphs.reserve(assets.size());
 
     // Build subgraphs for each type (except Filter)
     for (const auto& [rtype, data] : assets)
     {
-        if ((rtype == cm::store::ResourceType::FILTER) || data.assets.empty())
+        if (data.assets.empty())
         {
             continue;
         }
 
-        const auto subgraphName = std::string(resourceTypeToString(rtype)) + GRAPH_INPUT_SUFFIX;
+        const auto subgraphName = std::string(AssetPipelineStageToStr(rtype)) + GRAPH_INPUT_SUFFIX;
         auto subgraph = buildSubgraph(subgraphName, data);
-        subgraph.validateAcyclic(std::string(resourceTypeToString(rtype)));
+        subgraph.validateAcyclic(std::string(AssetPipelineStageToStr(rtype)));
         graph.subgraphs.emplace(rtype, std::move(subgraph));
     }
 
@@ -291,34 +340,97 @@ PolicyGraph buildGraph(const BuiltAssets& assets)
 
 base::Expression buildExpression(const PolicyGraph& graph, const std::string& name)
 {
-    // Expression of the policy, expression to be returned.
-    // All subgraphs are added to this expression.
-    std::shared_ptr<base::Operation> policy = base::Chain::create(name, {});
 
-    // Generate the graph in the specified order
-    for (const auto& [assetType, subgraph] : graph.subgraphs)
+    // Phase 1: Pre filters implies Decoders tree
+    // This phase only fails on runtime if there are filter stage and this phase fails.
+    // If not, decodes are executed successfully and passed to the next phase.
+    auto phase1 = [&]() -> std::shared_ptr<base::Operation>
     {
-        // Create subgraph expression
-        base::Expression subgraphExpr;
-
-        // Child operator depends on the asset type
-        switch (assetType)
+        auto decodersExpr = [&]() -> base::Expression
         {
-            case cm::store::ResourceType::DECODER: subgraphExpr = buildSubgraphExpression<base::Or>(subgraph); break;
-            case cm::store::ResourceType::RULE:
-            case cm::store::ResourceType::OUTPUT:
-                subgraphExpr = buildSubgraphExpression<base::Broadcast>(subgraph);
-                break;
-            default:
-                // TODO: QoL
-                throw std::runtime_error("Invalid asset type");
+            // Build decoders stage first
+            if (graph.subgraphs.find(AssetPipelineStage::DECODERS_TREE) == graph.subgraphs.end())
+            {
+                throw std::runtime_error("Policy must have at least a decoders");
+            }
+            const auto& decodersTree = graph.subgraphs.at(AssetPipelineStage::DECODERS_TREE);
+            // The decoders are 'OR' between siblings
+            return buildSubgraphExpression<base::Or>(decodersTree);
+        }();
+
+        auto preFiltersExpr = [&]() -> std::optional<base::Expression>
+        {
+            // If pre-filters are present, build them
+            if (graph.subgraphs.find(AssetPipelineStage::PRE_FILTERS_TREE) != graph.subgraphs.end())
+            {
+                const auto& preFiltersTree = graph.subgraphs.at(AssetPipelineStage::PRE_FILTERS_TREE);
+                // The pre-filters are 'OR' between siblings
+                return buildSubgraphExpression<base::Or>(preFiltersTree);
+            }
+            return std::nullopt;
+        }();
+
+        // If pre-filters are present, they imply decoders, if not, just decoders
+        if (preFiltersExpr.has_value())
+        {
+            return base::Implication::create("Phase1_PreFilters", preFiltersExpr.value(), decodersExpr);
         }
+        return base::Chain::create("Phase1_Decoders", {decodersExpr});
+    }();
 
-        // Add subgraph expression to the policy expression
-        policy->getOperands().emplace_back(subgraphExpr);
+    // TODO: Inyect IOCs here, is a and with phase 1. IOCs always should be successful to pass to filters.
+
+    // Phase 3: Post filters implies Outputs tree (Outpus and filters and optionals)
+    auto phase3 = [&]() -> std::optional<base::Expression>
+    {
+        auto outputsExpr = [&]() -> std::optional<base::Expression>
+        {
+            // If no outputs, skip phase 3
+            if (graph.subgraphs.find(AssetPipelineStage::OUTPUTS_TREE) == graph.subgraphs.end())
+            {
+                return std::nullopt;
+            }
+            // Build outputs stage
+            const auto& outputsTree = graph.subgraphs.at(AssetPipelineStage::OUTPUTS_TREE);
+            // The outputs are 'Broadcast' between siblings
+            return buildSubgraphExpression<base::Broadcast>(outputsTree);
+        }();
+
+        auto postFiltersExpr = [&]() -> std::optional<base::Expression>
+        {
+            // If post-filters are present, build them
+            if (graph.subgraphs.find(AssetPipelineStage::POST_FILTERS_TREE) != graph.subgraphs.end())
+            {
+                const auto& postFiltersTree = graph.subgraphs.at(AssetPipelineStage::POST_FILTERS_TREE);
+                // The post-filters are 'OR' between siblings
+                return buildSubgraphExpression<base::Or>(postFiltersTree);
+            }
+            return std::nullopt;
+        }();
+
+        // If post-filters are present, they imply outputs, if not, just outputs
+        if (postFiltersExpr.has_value() && outputsExpr.has_value())
+        {
+            return base::Implication::create("Phase3_PostFilters", postFiltersExpr.value(), outputsExpr.value());
+        }
+        else if (outputsExpr.has_value())
+        {
+            return outputsExpr;
+        }
+        else if (postFiltersExpr.has_value())
+        {
+            // Only for checking trace in Tester module (logetst)
+            return postFiltersExpr;
+        }
+        return std::nullopt;
+    }();
+
+    // Phase 1 only fails if pre-filters fail, phase 3 only fails if post-filters fail.
+    if (phase3.has_value())
+    {
+        return base::And::create(name, {phase1, phase3.value()});
     }
-
-    return policy;
+    return phase1;
 }
 
 } // namespace builder::policy::factory

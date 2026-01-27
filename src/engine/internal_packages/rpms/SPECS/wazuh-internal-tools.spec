@@ -5,7 +5,6 @@ Summary:        Wazuh Internal Engine Tools (runtime venv + offline wheels)
 License:        GPL-2.0-only
 URL:            https://wazuh.com
 Source0:        %{name}-%{version}.tar.gz
-BuildArch:      x86_64
 
 # ------------------------------
 # Debug subpackages disabled
@@ -33,6 +32,7 @@ BuildRequires:  rsync
 # Runtime dependencies
 # ------------------------------
 Requires:       python3
+Requires:       bash-completion
 
 # ------------------------------
 # Installation paths
@@ -147,6 +147,7 @@ graphviz
 behave
 websocket-client>=1.6,<2
 packaging>=23
+argcomplete
 EOF
 
 $PY -m pip download --only-binary=:all: --dest dist/wheels -r "$REQS"
@@ -188,11 +189,29 @@ ensure_charset_normalizer_universal_no_sdist
 # Download PyYAML/lxml manylinux builds for multiple Python ABIs
 download_manylinux() {
   local spec="$1"
+  local platform
+
+  # Detect architecture for manylinux platform
+  case "$(uname -m)" in
+    x86_64)
+      platform="manylinux2014_x86_64"
+      ;;
+    aarch64)
+      platform="manylinux2014_aarch64"
+      ;;
+    *)
+      echo "[build][ERROR] Unsupported architecture: $(uname -m)" >&2
+      exit 1
+      ;;
+  esac
+
+  echo "[build] Downloading $spec for platform: $platform"
+
   for ver in 38 39 310 311 312; do
     $PY -m pip download "$spec" \
       --only-binary=:all: \
       --dest dist/wheels \
-      --platform manylinux2014_x86_64 \
+      --platform "$platform" \
       --implementation cp \
       --python-version "$ver" \
       --abi "cp${ver}"
@@ -348,6 +367,14 @@ echo "[post] pip list (summary):"
 
 # Create python3 alias inside venv
 [ -x "$VENV/bin/python3" ] || ln -sf python "$VENV/bin/python3" 2>/dev/null || true
+
+# Enable argcomplete for each tool in bash
+if [ -x "$VENV/bin/register-python-argcomplete" ]; then
+  echo "[post] Registering bash completion for engine tools..."
+  for tool in engine-private engine-public engine-archiver engine-geo engine-test engine-helper-test engine-it engine-router; do
+    "$VENV/bin/register-python-argcomplete" "$tool" > "/etc/bash_completion.d/$tool" 2>/dev/null || true
+  done
+fi
 
 # Smoke test (non-fatal)
 "$PY" - <<'PY' >/dev/null 2>&1 || echo "[post] WARNING: engine_public import failed."

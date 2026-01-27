@@ -206,6 +206,7 @@ base::OptError Router::hotSwapNamespace(const std::string& name, const cm::store
 
         // Swap the environment and enable it
         entry.environment() = std::move(newEnv);
+        entry.namespaceId(newNamespace);
         entry.lastUpdate(getStartTime());
         entry.hash(entry.environment()->hash());
         entry.status(env::State::ENABLED); // Always enable after successful hot swap

@@ -28,8 +28,8 @@ AllowedFields::AllowedFields(const json::Json& definition)
     auto asObj = allowedFields.value();
     for (const auto& [key, value] : asObj)
     {
-        if (!syntax::name::isDecoder(base::Name {key}, false) && !syntax::name::isRule(base::Name {key}, false)
-            && !syntax::name::isOutput(base::Name {key}, false) && !syntax::name::isFilter(base::Name {key}, false))
+        if (!syntax::name::isDecoder(base::Name {key}, false) && !syntax::name::isOutput(base::Name {key}, false)
+            && !syntax::name::isFilter(base::Name {key}, false))
         {
             throw std::runtime_error {fmt::format("Unknown asset name '{}' in allowed fields definition", key)};
         }

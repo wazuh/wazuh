@@ -1082,9 +1082,6 @@ installEngineStore()
 
     # Create /var/ossec/etc/ruleset
     install -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/ruleset
-    install -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/ruleset/draft
-    install -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/ruleset/testing
-    install -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/ruleset/custom
 
     echo "Engine output configuration files installed successfully."
 }

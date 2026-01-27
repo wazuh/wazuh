@@ -133,7 +133,7 @@ def build_allow_all_filter_yaml() -> str:
     """
     Minimal filter for router tests, same as before.
     """
-    return f"name: {FILTER_ALLOW_ALL_NAME}\n"
+    return f"name: {FILTER_ALLOW_ALL_NAME}\ntype: pre-filter\nenabled: true\n"
 
 
 # ===================================================================

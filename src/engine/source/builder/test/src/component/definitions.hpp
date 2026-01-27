@@ -50,22 +50,6 @@ auto constexpr FILTER_JSON = R"({
     ]
 })";
 
-auto constexpr RULE_JSON = R"({
-    "name": "rule/test/0",
-    "check": [{
-        "process.name": "test"
-    }
-    ],
-    "normalize": [
-      {
-        "map": [
-          {
-            "event.risk_score": 21
-          }
-        ]
-      }
-    ]
-})";
 
 auto constexpr DECODER_KEY_DEFECTIVE_JSON = R"({
     "id": "decoder/test/0"

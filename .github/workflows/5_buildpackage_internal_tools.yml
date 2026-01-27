@@ -7,6 +7,7 @@ on:
       - 'src/engine/test/**'
       - 'src/engine/tools/**'
       - 'src/engine/internal_packages/**'
+      - '.github/workflows/5_buildpackage_internal_tools.yml'
   workflow_dispatch:
     inputs:
       branch:
@@ -30,12 +31,17 @@ env:
 jobs:
   build:
     name: Build ${{ matrix.system }} / ${{ matrix.arch }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         system: [deb, rpm]
-        arch: [amd64]
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
 
     steps:
       - name: Checkout
@@ -158,3 +164,65 @@ jobs:
           path: ${{ steps.prep.outputs.checksum_upload_path }}
           if-no-files-found: error
           overwrite: true
+
+      - name: Install package for testing
+        shell: bash
+        run: |
+          PKG="${{ steps.stage.outputs.pkg_path }}"
+          if [[ "${{ matrix.system }}" == "rpm" ]]; then
+            PLATFORM="linux/${{ matrix.arch == 'amd64' && 'amd64' || 'arm64' }}"
+            echo "Installing RPM package in Rocky Linux 9 container (${PLATFORM})"
+            docker run --rm --platform "${PLATFORM}" \
+              -v "${PKG}:/tmp/package.rpm:ro" \
+              rockylinux:9 bash -c "
+                set -euo pipefail
+                echo '==> Installing package'
+                yum install -y /tmp/package.rpm
+              "
+          else
+            echo "Installing DEB package: $PKG"
+            sudo dpkg -i "$PKG" || sudo apt-get install -f -y
+          fi
+
+      - name: Test installed tools
+        working-directory: ${{ env.PKG_TARGET_DIR }}
+        shell: bash
+        run: |
+          PKG="${{ steps.stage.outputs.pkg_path }}"
+          if [[ "${{ matrix.system }}" == "rpm" ]]; then
+            PLATFORM="linux/${{ matrix.arch == 'amd64' && 'amd64' || 'arm64' }}"
+            echo "Testing installed tools in Rocky Linux 9 container (${PLATFORM})"
+            docker run --rm --platform "${PLATFORM}" \
+              -v "${PKG}:/tmp/package.rpm:ro" \
+              -v "$PWD/test_package.sh:/host/test_package.sh:ro" \
+              rockylinux:9 bash -c "
+                set -euo pipefail
+                yum install -y /tmp/package.rpm > /dev/null
+                cp /host/test_package.sh /tmp/test_package.sh
+                chmod +x /tmp/test_package.sh
+                /tmp/test_package.sh
+              "
+          else
+            echo "Testing installed tools natively"
+            chmod +x ./test_package.sh
+            ./test_package.sh
+          fi
+
+      - name: Uninstall package
+        if: always()
+        shell: bash
+        run: |
+          PKG="${{ steps.stage.outputs.pkg_path }}"
+          if [[ "${{ matrix.system }}" == "rpm" ]]; then
+            PLATFORM="linux/${{ matrix.arch == 'amd64' && 'amd64' || 'arm64' }}"
+            echo "Uninstalling RPM package from Rocky Linux 9 container (${PLATFORM})"
+            docker run --rm --platform "${PLATFORM}" \
+              -v "${PKG}:/tmp/package.rpm:ro" \
+              rockylinux:9 bash -c "
+                yum install -y /tmp/package.rpm > /dev/null 2>&1 || true
+                yum remove -y wazuh-internal-tools || true
+              " || true
+          else
+            echo "Uninstalling DEB package"
+            sudo dpkg -r wazuh-internal-tools || true
+          fi

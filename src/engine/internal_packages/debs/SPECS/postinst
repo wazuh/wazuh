@@ -167,6 +167,14 @@ case "${1:-configure}" in
 
     # Ensure C-extension ABIs match (lxml / PyYAML)
     ensure_c_ext_abi
+
+    # Enable argcomplete for each tool in bash
+    if [ -x "$BIN/register-python-argcomplete" ]; then
+      echo "[postinst] Registering bash completion for engine tools..."
+      for tool in engine-private engine-public engine-archiver engine-geo engine-test engine-helper-test engine-it engine-router; do
+        "$BIN/register-python-argcomplete" "$tool" > "/etc/bash_completion.d/$tool" 2>/dev/null || true
+      done
+    fi
     ;;
 esac
 

@@ -4,6 +4,9 @@
 #include <bk/rx/controller.hpp>
 #include <bk/taskf/controller.hpp>
 
+#include <rx/exprBuilder.hpp>
+#include <rx/tracer.hpp>
+
 #include "bk_test.hpp"
 
 using namespace bk::test;
@@ -999,4 +1002,39 @@ TEST(BKTraceTest, UnsubscribeNotExists)
 {
     unsubscribeNotExistsTest<bk::taskf::Controller>();
     unsubscribeNotExistsTest<bk::rx::Controller>();
+}
+
+TEST(BKTraceTest, ChainForcesSuccessTrue)
+{
+    using RxEvent = std::shared_ptr<base::result::Result<base::Event>>;
+    using Observable = rxcpp::observable<RxEvent>;
+
+    // Term that force failure
+    auto tFail =
+        base::Term<base::EngineOp>::create("tFail", [](const auto& e) { return base::result::makeFailure(e, "fail"); });
+
+    auto chain = base::Chain::create("chain", {tFail});
+
+    rxcpp::subjects::subject<RxEvent> subj;
+    Observable input = subj.get_observable();
+
+    bk::rx::detail::ExprBuilder builder;
+    std::unordered_map<std::string, std::shared_ptr<bk::rx::detail::Tracer>> traces;
+    std::unordered_set<std::string> traceables;
+
+    auto output = builder.build(chain, traces, traceables, input);
+
+    RxEvent outEv;
+    auto subscription = output.subscribe([&](const RxEvent& ev) { outEv = ev; });
+
+    auto event = std::make_shared<json::Json>();
+    auto rxEv = std::make_shared<base::result::Result<base::Event>>(base::result::makeSuccess(event));
+
+    subj.get_subscriber().on_next(rxEv);
+    subj.get_subscriber().on_completed();
+
+    ASSERT_TRUE(outEv != nullptr);
+    ASSERT_TRUE(outEv->success()) << "Chain should force success=true even if the operand fails";
+
+    subscription.unsubscribe();
 }

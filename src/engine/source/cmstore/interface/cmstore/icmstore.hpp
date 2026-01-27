@@ -124,7 +124,7 @@ public:
     /**************************************** ASSETS ****************************************/
 
     /**
-     * @brief Get Asset by its name (decoder, rule, filter, output.)
+     * @brief Get Asset by its name (decoder, filter, output.)
      * @param name Name of the asset
      * @return json::Json The asset in JSON format
      * @throw std::runtime_error if the asset does not exist or failed to be retrieved
@@ -132,7 +132,7 @@ public:
     virtual json::Json getAssetByName(const base::Name& name) const = 0;
 
     /**
-     * @brief Get Asset by its UUID (decoder, rule, filter, output.)
+     * @brief Get Asset by its UUID (decoder, filter, output.)
      * @param uuid UUID of the asset
      * @return json::Json The asset in JSON format
      * @throw std::runtime_error if the asset does not exist or failed to be retrieved
