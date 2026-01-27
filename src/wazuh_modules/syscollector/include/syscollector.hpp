@@ -10,6 +10,7 @@
  */
 #ifndef _SYSCOLLECTOR_HPP
 #define _SYSCOLLECTOR_HPP
+#include <atomic>
 #include <chrono>
 #include <thread>
 #include <condition_variable>
@@ -69,6 +70,20 @@ class EXPORTED Syscollector final
 
         void destroy();
         void push(const std::string& data);
+
+#ifdef WAZUH_UNIT_TESTING
+        /**
+         * @brief Reset the stopping flag to allow re-initialization after destroy()
+         *
+         * This method is only available in unit test builds and allows tests to
+         * reuse the singleton after calling destroy(). It waits for syncLoop to
+         * complete cleanup before resetting the state.
+         *
+         * @note This method should NOT be used in production code.
+         */
+        void reset();
+#endif
+
     private:
         Syscollector();
         ~Syscollector() = default;
@@ -130,7 +145,7 @@ class EXPORTED Syscollector final
         bool                                                                    m_portsAll;
         bool                                                                    m_processes;
         bool                                                                    m_hotfixes;
-        bool                                                                    m_stopping;
+        std::atomic<bool>                                                       m_stopping;
         bool                                                                    m_syncLoopFinished;
         bool                                                                    m_notify;
         bool                                                                    m_groups;
