@@ -445,13 +445,10 @@ BOOL wCreateProcessW(LPCWSTR               lpApplicationName,
     	             LPSTARTUPINFOW        lpStartupInfo,
     	             LPPROCESS_INFORMATION lpProcessInformation) {
 
-    // Convert wide string to narrow string for network path validation
-    char narrow_path[MAX_PATH];
-    WideCharToMultiByte(CP_UTF8, 0, lpCommandLine, -1, narrow_path, MAX_PATH, NULL, NULL);
 
-    if (is_network_path(narrow_path)) {
+    if (is_network_path(lpCommandLine)) {
         errno = EACCES;
-        mwarn(NETWORK_PATH_EXECUTED, narrow_path);
+        mwarn(NETWORK_PATH_EXECUTED, lpCommandLine);
         return (false);
     }
     return CreateProcessW(lpApplicationName,
