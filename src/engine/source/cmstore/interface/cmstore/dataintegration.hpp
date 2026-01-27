@@ -60,7 +60,6 @@ private:
     std::vector<std::string> m_kvdbsByUUID;
     std::vector<std::string> m_decodersByUUID;
 
-
 public:
     ~Integration() = default;
     Integration() = delete;
@@ -119,9 +118,6 @@ public:
         cm::store::detail::findDuplicateOrInvalidUUID(m_decodersByUUID, "Decoder");
 
         cm::store::detail::findDuplicateOrInvalidUUID(m_kvdbsByUUID, "KVDB");
-
-        cm::store::detail::findDuplicateOrInvalidUUID(m_outputsByUUID, "Output");
-
     }
 
     static Integration fromJson(const json::Json& integrationJson, bool requireUUID)
@@ -257,7 +253,6 @@ public:
     const bool hasDefaultParent() const { return m_defaultParent.has_value(); }
     const std::vector<std::string>& getKVDBsByUUID() const { return m_kvdbsByUUID; }
     const std::vector<std::string>& getDecodersByUUID() const { return m_decodersByUUID; }
-    const std::vector<std::string>& getOutputsByUUID() const { return m_outputsByUUID; }
     const std::string& getName() const { return m_name; }
     const std::string& getUUID() const { return m_uuid; }
     bool isEnabled() const { return m_enabled; }
