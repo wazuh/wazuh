@@ -2214,7 +2214,7 @@ build_python: $(WAZUHEXT_LIB)
 
 install_python:
 ifneq (,$(wildcard ${EXTERNAL_CPYTHON}))
-	cd ${EXTERNAL_CPYTHON} && ${MAKE} install
+	cd ${EXTERNAL_CPYTHON} && ${MAKE} install TEST_MODULES=no
 else
 	mkdir -p ${WPYTHON_DIR}
 	cp external/${WPYTHON_TAR} ${WPYTHON_DIR}/${WPYTHON_TAR} && ${TAR} ${WPYTHON_DIR}/${WPYTHON_TAR} -C ${WPYTHON_DIR} && rm -rf ${WPYTHON_DIR}/${WPYTHON_TAR}
