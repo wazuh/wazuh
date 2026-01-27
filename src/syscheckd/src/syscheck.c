@@ -111,6 +111,10 @@ void fim_initialize() {
         syscheck.disabled = 1;
         return;
     }
+    
+    // j: go thorugh all the entries and count the synched files
+    synced_docs = fim_db_count_synced_docs(FIMDB_FILE_TABLE_NAME);
+
 
     w_rwlock_init(&syscheck.directories_lock, NULL);
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);

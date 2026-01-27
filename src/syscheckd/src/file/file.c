@@ -296,6 +296,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
             // Add to deferred list if sync_flag should be 1
             if (sync_flag == 1 && txn_context->deferred_paths != NULL) {
                 synced_docs++;
+                //txn_context->entry->file_entry.data->sync = 1; // Doesnt work, part of the old solution
                 OSList_AddData(txn_context->deferred_paths, strdup(path));
                 mdebug2("Added path to deferred sync list: %s", path);
             }
@@ -304,11 +305,25 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         case MODIFIED:
             txn_context->event->type = FIM_MODIFICATION;
             sync_operation = OPERATION_MODIFY;
-            // For MODIFY events: sync field is not included in update, so DB preserves current value
+
+            // j: Alt solution
+            // old_data = cJSON_GetObjectItem(result_json, "old"); // NOTE: this solution seems to prevent the INSERTS from adding 1's into the sync values
+            // NOTE: also doenst make sense for FIM scans to 
+            // cJSON *sync_json = cJSON_GetObjectItem(result_json, "sync");
+            // if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+            //     sync_flag = sync_json->valueint;
+            // }
+
             // Query the current sync flag to determine if event should be persisted
-            {
-                int current_sync = fim_db_get_sync_flag(path);
-                sync_flag = (current_sync >= 0) ? current_sync : 1;
+            int current_sync = fim_db_get_sync_flag(path);
+            sync_flag = (current_sync >= 0) ? current_sync : 1;
+            if (sync_flag == 0 && syscheck.sync_limit > 0) { // Promote
+                if(synced_docs < syscheck.sync_limit){
+                    synced_docs++;
+                    OSList_AddData(txn_context->deferred_paths, strdup(path));
+                    mdebug2("Added path to deferred sync list: %s", path);
+                    sync_flag = 1;
+                }
             }
             break;
 
@@ -321,13 +336,18 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
             minfo("files in db: %d",  synced_docs);
             // For DELETE events: entry is NULL, read sync flag from DB result
             {
-                cJSON *sync_json = cJSON_GetObjectItem(result_json, "sync");
-                if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
-                    sync_flag = sync_json->valueint;
-                    if (sync_flag == 1) {
-                        synced_docs--;
-                    }
+                sync_flag = fim_db_get_sync_flag(path);
+                if (sync_flag == 1) {
+                    synced_docs--;
                 }
+                // j: old solution
+                // cJSON *sync_json = cJSON_GetObjectItem(result_json, "sync");
+                // if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+                //     sync_flag = sync_json->valueint;
+                //     if (sync_flag == 1) {
+                //         synced_docs--;
+                //     }
+                // }
             }
             break;
 
@@ -1051,8 +1071,9 @@ void fim_file(const char *path,
         return;
     }
 
+    // j: I don't think sync should be part of the data, since it's not sth determiend by the scan
     // Start with sync=false - deferred mechanism will update to 1 for files within limit
-    new_entry.file_entry.data->sync = false;
+    //new_entry.file_entry.data->sync = false;
 
     if (txn_handle != NULL) {
         txn_context->entry = &new_entry;

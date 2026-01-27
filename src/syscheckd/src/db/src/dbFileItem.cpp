@@ -90,10 +90,10 @@ void FileItem::createJSON()
 
     // Only include sync field during INSERT operations (when m_oldData is NULL)
     // For MODIFIED operations, sync is managed separately by the deferred update mechanism
-    if (!m_oldData)
-    {
-        data["sync"] = m_sync ? 1 : 0;
-    }
+    // if (!m_oldData)
+    // {
+    //data["sync"] = m_sync ? 1 : 0;
+    // }
 
     conf["data"] = nlohmann::json::array({data});
 

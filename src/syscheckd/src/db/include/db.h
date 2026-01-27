@@ -264,6 +264,8 @@ EXPORTED int fim_db_get_sync_flag(const char* file_path);
  */
 EXPORTED int fim_db_set_sync_flag(const char* file_path, int sync_value);
 
+EXPORTED int fim_db_count_synced_docs(const char* table_name);
+
 #ifdef WIN32
 
 // Registry functions.

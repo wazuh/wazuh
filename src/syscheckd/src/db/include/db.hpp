@@ -173,6 +173,8 @@ class EXPORTED DB final
          * @return int64_t The last sync timestamp (UNIX format), or 0 if not found.
          */
         int64_t getLastSyncTime(const std::string& tableName);
+
+        int countSyncedDocs(const std::string& tableName);
     private:
         DB() = default;
         ~DB() = default;
