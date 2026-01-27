@@ -117,13 +117,13 @@ jobs:
       - name: Upload Wazuh server embedded Python sources to GitHub
         uses: actions/upload-artifact@v4
         with:
-          name: cpython_${{ env.PACKAGE_ARCH }}.tar.gz
+          name: ${{ env.ARCH }}-sources
           path: /tmp/cpython_${{ env.PACKAGE_ARCH }}.tar.gz
           if-no-files-found: error
 
       - name: Upload Wazuh server out-of-the-box embedded Python to GitHub
         uses: actions/upload-artifact@v4
         with:
-          name: cpython.tar.gz
+          name: ${{ env.ARCH }}-compiled
           path: /tmp/cpython.tar.gz
           if-no-files-found: error
