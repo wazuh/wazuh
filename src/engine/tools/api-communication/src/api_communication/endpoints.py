@@ -21,14 +21,10 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str]:
     """
 
     # Geo
-    if isinstance(message, geo.DbPost_Request):
-        return None, 'geo/db/add'
+    if isinstance(message, geo.DbGet_Request):
+        return None, 'geo/db/get'
     if isinstance(message, geo.DbList_Request):
         return None, 'geo/db/list'
-    if isinstance(message, geo.DbDelete_Request):
-        return None, 'geo/db/del'
-    if isinstance(message, geo.DbRemoteUpsert_Request):
-        return None, 'geo/db/remoteUpsert'
 
     # CRUD NS
     if isinstance(message, crud.namespacePost_Request):

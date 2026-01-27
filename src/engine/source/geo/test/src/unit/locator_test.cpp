@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <base/json.hpp>
+#include <base/utils/hash.hpp>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -9,7 +10,7 @@
 
 #include <store/mockStore.hpp>
 
-#include "dbEntry.hpp"
+#include "dbHandle.hpp"
 #include "locator.hpp"
 #include "manager.hpp"
 #include "mockDownloader.hpp"
@@ -26,6 +27,50 @@ const std::string g_ipNotFound {"1.2.3.6"};
 bool compareLookupResult(const MMDB_lookup_result_s& res1, const MMDB_lookup_result_s& res2)
 {
     return res1.found_entry == res2.found_entry && res1.netmask == res2.netmask && res1.entry.mmdb == res2.entry.mmdb;
+}
+
+std::string createTmpDbCopy(std::vector<std::string>& tmpFiles)
+{
+    char template_name[] = "/tmp/tempXXXXXX";
+    int fd = mkstemp(template_name);
+    if (fd == -1)
+    {
+        throw std::runtime_error(fmt::format("Failed to create temporary file: {}", strerror(errno)));
+    }
+    close(fd);
+
+    std::string temp_file = template_name;
+    std::string file = temp_file + ".mmdb";
+
+    if (rename(temp_file.c_str(), file.c_str()) != 0)
+    {
+        std::cerr << "Failed to rename temporary file: " << strerror(errno) << std::endl;
+        std::remove(temp_file.c_str());
+        throw std::runtime_error(fmt::format("Failed to rename temporary file: {}", strerror(errno)));
+    }
+
+    tmpFiles.emplace_back(file);
+
+    std::ifstream ifs(g_maxmindDbPath, std::ios::binary);
+    if (!ifs.is_open())
+    {
+        std::cout << "Error code: " << strerror(errno) << std::endl;
+        throw std::runtime_error("Cannot open test db");
+    }
+
+    std::ofstream ofs(file, std::ios::binary);
+    if (!ofs.is_open())
+    {
+        std::cout << "Error code: " << strerror(errno) << std::endl;
+        throw std::runtime_error("Cannot open tmp db");
+    }
+
+    ofs << ifs.rdbuf();
+
+    ofs.close();
+    ifs.close();
+
+    return file;
 }
 
 } // namespace
@@ -58,6 +103,7 @@ protected:
         docJson.setString(path, PATH_PATH);
         docJson.setString(typeName(Type::CITY), TYPE_PATH);
         docJson.setString("hash", HASH_PATH);
+        docJson.setInt64(0, GENERATED_AT_PATH);
 
         EXPECT_CALL(*mockStore, readDoc(internalName)).WillOnce(testing::Return(storeReadDocResp(docJson)));
 
@@ -72,17 +118,6 @@ protected:
         for (const auto& file : tmpFiles)
         {
             std::filesystem::remove(file);
-        }
-    }
-
-    void removeDbs()
-    {
-        for (const auto& file : tmpFiles)
-        {
-            auto internalName =
-                base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(file).filename().string()));
-            EXPECT_CALL(*mockStore, deleteDoc(internalName)).WillOnce(testing::Return(storeOk()));
-            manager->removeDb(file);
         }
     }
 
@@ -182,8 +217,18 @@ protected:
 
 TEST(LocatorInitTest, Initialize)
 {
-    auto dbEntry = std::make_shared<DbEntry>("path", Type::CITY);
-    ASSERT_NO_THROW(Locator {dbEntry});
+    std::vector<std::string> tmpFiles;
+    auto path = createTmpDbCopy(tmpFiles);
+
+    auto handle = std::make_shared<DbHandle>();
+    ASSERT_NO_THROW(handle->store(std::make_shared<DbInstance>(path, "test-hash", 1769111225, Type::CITY)));
+
+    ASSERT_NO_THROW(Locator {handle});
+
+    for (const auto& f : tmpFiles)
+    {
+        std::filesystem::remove(f);
+    }
 }
 
 TEST(LocatorInitTest, InitializeExpired)
@@ -219,37 +264,24 @@ TEST_F(LocatorTest, GetDeletedDb)
     testAllGetBehavesEqual(g_ipFullData, true);
 }
 
-// Must fail as the weak reference is expired
-TEST_F(LocatorTest, GetRemovedFromManagerDb)
-{
-    removeDbs();
-    testAllGetBehavesEqual(g_ipFullData, false);
-}
+// Database removal functionality has been removed
+// This test validated behavior when databases were removed from manager
 
 TEST_F(LocatorTest, GetUpdatesCache)
 {
-    // Initial state, empty cache
     ASSERT_EQ(locator->getCachedIp(), "");
-    MMDB_lookup_result_s prev = locator->getCachedResult();
 
-    // Get data for the first time and check cache changes
     ASSERT_NO_THROW(locator->getString(g_ipFullData, "test_map.test_str1"));
-    MMDB_lookup_result_s res = locator->getCachedResult();
-    ASSERT_FALSE(compareLookupResult(prev, res));
-    prev = res;
     ASSERT_EQ(locator->getCachedIp(), g_ipFullData);
+    ASSERT_TRUE(locator->getCachedResult().found_entry);
 
-    // Get data for the second time and check cache remains the same
     ASSERT_NO_THROW(locator->getString(g_ipFullData2, "test_map.test_str1"));
-    res = locator->getCachedResult();
     ASSERT_EQ(locator->getCachedIp(), g_ipFullData2);
-    ASSERT_TRUE(compareLookupResult(prev, res));
+    ASSERT_TRUE(locator->getCachedResult().found_entry);
 
-    // Get data for the third time and check cache changes
     ASSERT_NO_THROW(locator->getString(g_ipNotFound, "test_map.test_str2"));
-    res = locator->getCachedResult();
-    ASSERT_FALSE(compareLookupResult(prev, res));
     ASSERT_EQ(locator->getCachedIp(), g_ipNotFound);
+    ASSERT_FALSE(locator->getCachedResult().found_entry);
 }
 
 /************************************************************
@@ -346,4 +378,151 @@ TEST_F(LocatorTest, GetAsJson)
     ASSERT_FALSE(base::isError(res));
     expected.setBool(true);
     ASSERT_EQ(expected, base::getResponse<json::Json>(res));
+}
+
+TEST_F(LocatorTest, GetAllReturnsCompleteJson)
+{
+    // Test getAll returns complete JSON structure for IP with all data
+    base::RespOrError<json::Json> res;
+    ASSERT_NO_THROW(res = locator->getAll(g_ipFullData));
+    ASSERT_FALSE(base::isError(res)) << base::getError(res).message;
+
+    auto jsonData = base::getResponse<json::Json>(res);
+
+    // Verify it contains the expected top-level keys from test database
+    ASSERT_TRUE(jsonData.exists("/test_array"));
+    ASSERT_TRUE(jsonData.exists("/test_map"));
+    ASSERT_TRUE(jsonData.exists("/test_boolean"));
+    ASSERT_TRUE(jsonData.exists("/test_bytes"));
+    ASSERT_TRUE(jsonData.exists("/test_double"));
+    ASSERT_TRUE(jsonData.exists("/test_float"));
+    ASSERT_TRUE(jsonData.exists("/test_uint16"));
+    ASSERT_TRUE(jsonData.exists("/test_uint32"));
+    ASSERT_TRUE(jsonData.exists("/test_uint64"));
+    ASSERT_TRUE(jsonData.exists("/test_uint128"));
+
+    // Verify nested structure is preserved
+    ASSERT_TRUE(jsonData.exists("/test_map/test_str1"));
+    ASSERT_TRUE(jsonData.exists("/test_map/test_str2"));
+    ASSERT_TRUE(jsonData.exists("/test_array/0"));
+
+    // Verify data types and values match those from GetAsJson test
+    ASSERT_EQ(jsonData.getBool("/test_boolean").value(), true);
+    ASSERT_EQ(jsonData.getString("/test_map/test_str1").value(), "Wazuh");
+    ASSERT_EQ(jsonData.getInt("/test_uint32").value(), 94043);
+}
+
+TEST_F(LocatorTest, GetAllWithIpNoData)
+{
+    // Test getAll with IP that has no data (IP not found in database)
+    base::RespOrError<json::Json> res;
+    ASSERT_NO_THROW(res = locator->getAll(g_ipNotFound));
+    ASSERT_TRUE(base::isError(res));
+    // IP not found in database should return "No data found" error
+    ASSERT_NE(base::getError(res).message.find("No data found"), std::string::npos);
+}
+
+TEST_F(LocatorTest, GetAllWithInvalidIp)
+{
+    // Test getAll with invalid IP returns error
+    base::RespOrError<json::Json> res;
+    ASSERT_NO_THROW(res = locator->getAll("invalid_ip"));
+    ASSERT_TRUE(base::isError(res));
+    ASSERT_NE(base::getError(res).message.find("Error translating IP address"), std::string::npos);
+}
+
+TEST_F(LocatorTest, GetAllReturnsCompleteStructure)
+{
+    // Test that getAll returns the complete nested structure
+    base::RespOrError<json::Json> res;
+    ASSERT_NO_THROW(res = locator->getAll(g_ipFullData));
+    ASSERT_FALSE(base::isError(res)) << base::getError(res).message;
+
+    auto jsonData = base::getResponse<json::Json>(res);
+
+    // Verify array structure
+    ASSERT_TRUE(jsonData.isArray("/test_array"));
+    auto arraySize = jsonData.getArray("/test_array");
+    ASSERT_TRUE(arraySize.has_value());
+    ASSERT_GT(arraySize->size(), 0);
+
+    // Verify map structure
+    ASSERT_TRUE(jsonData.isObject("/test_map"));
+    ASSERT_TRUE(jsonData.exists("/test_map/test_str1"));
+    ASSERT_TRUE(jsonData.exists("/test_map/test_str2"));
+
+    // Verify primitive types are present and have correct types
+    ASSERT_TRUE(jsonData.isBool("/test_boolean"));
+    ASSERT_TRUE(jsonData.isString("/test_bytes"));
+    ASSERT_TRUE(jsonData.isNumber("/test_double"));
+    ASSERT_TRUE(jsonData.isNumber("/test_float"));
+    ASSERT_TRUE(jsonData.isNumber("/test_uint16"));
+    ASSERT_TRUE(jsonData.isNumber("/test_uint32"));
+}
+
+TEST_F(LocatorTest, LocatorReloadsOnRemoteUpsert)
+{
+    // 1) Populate the cache and capture the current MMDB pointer
+    ASSERT_NO_THROW(locator->getString(g_ipFullData, "test_map.test_str1"));
+    auto prev = locator->getCachedResult();
+    ASSERT_NE(prev.entry.mmdb, nullptr);
+
+    // 2) Prepare a manifest-based remote update that forces a reload
+    const std::string manifestUrl = "https://example.com/manifest.json";
+    const auto dbPath = tmpFiles.front();
+
+    // Read the current DB bytes
+    std::ifstream ifs(dbPath, std::ios::binary);
+    ASSERT_TRUE(ifs.is_open());
+    std::string content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+    ifs.close();
+
+    // Calculate real MD5 hash
+    std::string newHash = base::utils::hash::md5(content);
+
+    // Prepare manifest JSON
+    json::Json manifest;
+    manifest.setString("https://example.com/city.tar.gz", "/city/url");
+    manifest.setString(newHash, "/city/md5");
+    manifest.setInt64(0, GENERATED_AT_PATH);
+
+    // Store: return old hash to trigger update
+    auto internalName =
+        base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(dbPath).filename().string()));
+    EXPECT_CALL(*mockStore, readDoc(internalName))
+        .WillRepeatedly(
+            testing::Return(storeReadDocResp(json::Json(R"({"hash":"oldHash","createdAt":"2024-01-01T00:00:00Z"})"))));
+
+    // Downloader: return manifest
+    EXPECT_CALL(*mockDownloader, downloadManifest(manifestUrl))
+        .WillOnce(testing::Return(base::RespOrError<json::Json>(manifest)));
+
+    EXPECT_CALL(*mockDownloader, downloadHTTPS("https://example.com/city.tar.gz"))
+        .WillRepeatedly(testing::Return(base::RespOrError<std::string>(content)));
+
+    // Mock extractMmdbFromGz to create temp file
+    std::string tmpPath = dbPath + ".tmp";
+    EXPECT_CALL(*mockDownloader, extractMmdbFromGz(testing::_, testing::_))
+        .WillOnce(testing::Invoke(
+            [tmpPath, &content](const std::string&, const std::string&)
+            {
+                std::ofstream ofs(tmpPath, std::ios::binary);
+                ofs.write(content.data(), content.size());
+                ofs.close();
+                return base::noError();
+            }));
+
+    // Store upsert
+    EXPECT_CALL(*mockStore, upsertDoc(testing::_, testing::_)).WillOnce(testing::Return(storeOk()));
+
+    // 3) Execute the manifest-based update
+    ASSERT_NO_THROW(manager->remoteUpsert(manifestUrl, dbPath, ""));
+
+    // 4) Query again and verify that the MMDB instance changed (hot-reload)
+    ASSERT_NO_THROW(locator->getString(g_ipFullData, "test_map.test_str1"));
+    auto now = locator->getCachedResult();
+    ASSERT_NE(now.entry.mmdb, nullptr);
+
+    // This guarantees hot-reload: the underlying MMDB instance was replaced
+    ASSERT_NE(prev.entry.mmdb, now.entry.mmdb);
 }

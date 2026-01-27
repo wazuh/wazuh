@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include <base/logging.hpp>
+#include <base/utils/hash.hpp>
 #include <store/mockStore.hpp>
 
 #include "manager.hpp"
@@ -141,6 +142,7 @@ protected:
         docJson.setString(path, PATH_PATH);
         docJson.setString(typeName(type), TYPE_PATH);
         docJson.setString("hash", HASH_PATH);
+        docJson.setInt64(1769111225, GENERATED_AT_PATH);
         auto internalName =
             base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(path).filename().string()));
         EXPECT_CALL(*mockStore, readDoc(internalName)).WillOnce(testing::Return(storeReadDocResp(docJson)));
@@ -168,6 +170,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbs)
     doc1.setString(doc1File, PATH_PATH);
     doc1.setString("asn", TYPE_PATH);
     doc1.setString("hash1", HASH_PATH);
+    doc1.setInt64(1769111225, GENERATED_AT_PATH);
     base::Name doc1Name("geo/db1");
     EXPECT_CALL(*mockStore, readDoc(base::Name(doc1Name))).WillOnce(testing::Return(storeReadDocResp(doc1)));
 
@@ -176,6 +179,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbs)
     doc2.setString(doc2File, PATH_PATH);
     doc2.setString("city", TYPE_PATH);
     doc2.setString("hash2", HASH_PATH);
+    doc2.setInt64(1769111225, GENERATED_AT_PATH);
     base::Name doc2Name("geo/db2");
     EXPECT_CALL(*mockStore, readDoc(base::Name(doc2Name))).WillOnce(testing::Return(storeReadDocResp(doc2)));
 
@@ -209,6 +213,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbsStoreError)
     doc1.setString(doc1File, PATH_PATH);
     doc1.setString("asn", TYPE_PATH);
     doc1.setString("hash1", HASH_PATH);
+    doc1.setInt64(1769111225, GENERATED_AT_PATH);
     base::Name doc1Name("geo/db1");
     EXPECT_CALL(*mockStore, readDoc(base::Name(doc1Name))).WillOnce(testing::Return(storeReadDocResp(doc1)));
 
@@ -238,6 +243,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbsAddError)
     doc1.setString(doc1File, PATH_PATH);
     doc1.setString("asn", TYPE_PATH);
     doc1.setString("hash1", HASH_PATH);
+    doc1.setInt64(1769111225, GENERATED_AT_PATH);
     base::Name doc1Name("geo/db1");
     EXPECT_CALL(*mockStore, readDoc(base::Name(doc1Name))).WillOnce(testing::Return(storeReadDocResp(doc1)));
 
@@ -246,6 +252,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbsAddError)
     doc2.setString(doc2File, PATH_PATH);
     doc2.setString("city", TYPE_PATH);
     doc2.setString("hash2", HASH_PATH);
+    doc2.setInt64(1769111225, GENERATED_AT_PATH);
     base::Name doc2Name("geo/db2");
     EXPECT_CALL(*mockStore, readDoc(base::Name(doc2Name))).WillOnce(testing::Return(storeReadDocResp(doc2)));
 
@@ -259,124 +266,6 @@ TEST_F(GeoManagerTest, InitializeAddingDbsAddError)
     ASSERT_EQ(dbs.size(), 1);
     ASSERT_EQ(dbs[0].name, db1Name);
     ASSERT_EQ(dbs[0].type, Type::ASN);
-}
-
-TEST_F(GeoManagerTest, AddDb)
-{
-    auto manager = getEmptyManager();
-
-    auto dbFile = getTmpDb();
-    auto dbType = Type::ASN;
-    auto dbPath = std::filesystem::path(dbFile).string();
-    auto hash = "hash";
-    auto internalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(dbFile).filename().string());
-
-    EXPECT_CALL(*mockDownloader, computeMD5(testing::_)).WillOnce(testing::Return(hash));
-    EXPECT_CALL(*mockStore, upsertDoc(internalName, testing::_)).WillOnce(testing::Return(storeOk()));
-
-    base::OptError error;
-    ASSERT_NO_THROW(error = manager.addDb(dbPath, dbType));
-    ASSERT_FALSE(base::isError(error));
-    ASSERT_EQ(manager.listDbs().size(), 1);
-}
-
-TEST_F(GeoManagerTest, AddDbErrorTypeUsed)
-{
-    auto dbFile = getTmpDb();
-    auto manager = getManagerWithDb(dbFile, Type::ASN);
-    auto dbPath = std::filesystem::path(dbFile).string();
-
-    auto dbFile2 = getTmpDb();
-    auto dbPath2 = std::filesystem::path(dbFile2).string();
-
-    base::OptError error;
-    ASSERT_NO_THROW(error = manager.addDb(dbPath2, Type::ASN));
-    ASSERT_TRUE(base::isError(error));
-
-    auto dbs = manager.listDbs();
-    ASSERT_EQ(dbs.size(), 1);
-    ASSERT_EQ(dbs[0].name, std::filesystem::path(dbFile).filename().string());
-    ASSERT_EQ(dbs[0].type, Type::ASN);
-}
-
-TEST_F(GeoManagerTest, AddDbErrorDbAlreadyAdded)
-{
-    auto dbFile = getTmpDb();
-    auto dbPath = std::filesystem::path(dbFile).string();
-
-    auto manager = getManagerWithDb(dbPath, Type::ASN);
-
-    base::OptError error;
-
-    ASSERT_NO_THROW(error = manager.addDb(dbPath, Type::CITY));
-    ASSERT_TRUE(base::isError(error));
-
-    auto dbs = manager.listDbs();
-    ASSERT_EQ(dbs.size(), 1);
-    ASSERT_EQ(dbs[0].name, std::filesystem::path(dbFile).filename().string());
-    ASSERT_EQ(dbs[0].type, Type::ASN);
-}
-
-TEST_F(GeoManagerTest, AddDbErrorMmdb)
-{
-    auto manager = getEmptyManager();
-
-    auto dbFile = "non_existent_file";
-    auto dbType = Type::ASN;
-
-    base::OptError error;
-    ASSERT_NO_THROW(error = manager.addDb(dbFile, dbType));
-    ASSERT_TRUE(base::isError(error));
-    ASSERT_EQ(manager.listDbs().size(), 0);
-}
-
-TEST_F(GeoManagerTest, AddDbErrorUpsert)
-{
-    auto manager = getEmptyManager();
-
-    auto dbFile = getTmpDb();
-    auto dbType = Type::ASN;
-    auto dbPath = std::filesystem::path(dbFile).string();
-    auto hash = "hash";
-    auto internalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(dbFile).filename().string());
-
-    EXPECT_CALL(*mockDownloader, computeMD5(testing::_)).WillOnce(testing::Return(hash));
-    EXPECT_CALL(*mockStore, upsertDoc(internalName, testing::_)).WillOnce(testing::Return(storeError()));
-
-    base::OptError error;
-    ASSERT_NO_THROW(error = manager.addDb(dbPath, dbType));
-    ASSERT_FALSE(base::isError(error));
-
-    // When failure to upsert internal doc, the db should be added anyway
-    ASSERT_EQ(manager.listDbs().size(), 1);
-    ASSERT_EQ(manager.listDbs()[0].name, std::filesystem::path(dbFile).filename().string());
-    ASSERT_EQ(manager.listDbs()[0].type, dbType);
-}
-
-TEST_F(GeoManagerTest, RemoveDb)
-{
-    auto dbFile = getTmpDb();
-    auto dbPath = std::filesystem::path(dbFile).string();
-    auto dbName = std::filesystem::path(dbFile).filename().string();
-    auto dbType = Type::ASN;
-    auto internalName = base::Name(fmt::format("{}/{}", INTERNAL_NAME, dbName));
-    auto manager = getManagerWithDb(dbPath, dbType);
-
-    EXPECT_CALL(*mockStore, deleteDoc(internalName)).WillOnce(testing::Return(storeOk()));
-
-    base::OptError error;
-    ASSERT_NO_THROW(error = manager.removeDb(dbName));
-    ASSERT_FALSE(base::isError(error));
-    ASSERT_EQ(manager.listDbs().size(), 0);
-}
-
-TEST_F(GeoManagerTest, RemoveDbNonExists)
-{
-    auto manager = getEmptyManager();
-
-    base::OptError error;
-    ASSERT_NO_THROW(error = manager.removeDb("non_existent"));
-    ASSERT_TRUE(base::isError(error));
 }
 
 TEST_F(GeoManagerTest, GetLocator)
@@ -402,191 +291,137 @@ TEST_F(GeoManagerTest, GetLocatorNonExists)
     ASSERT_TRUE(base::isError(locatorResp));
 }
 
-TEST_F(GeoManagerTest, RemoteUpsertDb)
+TEST_F(GeoManagerTest, RemoteUpsert)
 {
     auto manager = getEmptyManager();
 
-    auto dbFile = getTmpDb();
-    auto dbType = Type::ASN;
-    auto dbPath = std::filesystem::path(dbFile).string();
-    auto hash = "hash";
-    auto dbUrl = "dbUrl";
-    auto hashUrl = "hashUrl";
-    auto content = getContentDb(dbFile);
-    auto internalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(dbFile).filename().string());
+    auto cityFile = getTmpDb();
+    auto asnFile = getTmpDb();
+    auto cityPath = std::filesystem::path(cityFile).string();
+    auto asnPath = std::filesystem::path(asnFile).string();
 
-    EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl)).WillOnce(testing::Return(base::RespOrError<std::string>(hash)));
-    EXPECT_CALL(*mockDownloader, downloadHTTPS(dbUrl))
-        .WillOnce(testing::Return(base::RespOrError<std::string>(content)));
-    EXPECT_CALL(*mockDownloader, computeMD5(content)).WillOnce(testing::Return(hash)).WillOnce(testing::Return(hash));
-    EXPECT_CALL(*mockStore, upsertDoc(internalName, testing::_)).WillOnce(testing::Return(storeOk()));
+    auto cityContent = getContentDb(cityFile);
+    auto asnContent = getContentDb(asnFile);
 
-    base::OptError error;
-    ASSERT_NO_THROW(error = manager.remoteUpsertDb(dbPath, dbType, dbUrl, hashUrl));
-    ASSERT_FALSE(base::isError(error));
-    ASSERT_EQ(manager.listDbs().size(), 1);
-    ASSERT_EQ(manager.listDbs()[0].name, std::filesystem::path(dbFile).filename().string());
-    ASSERT_EQ(manager.listDbs()[0].type, dbType);
+    // Calculate real MD5 hashes of the content
+    auto cityHash = base::utils::hash::md5(cityContent);
+    auto asnHash = base::utils::hash::md5(asnContent);
+    auto manifestUrl = "https://example.com/manifest.json";
+
+    // Prepare manifest
+    json::Json manifest;
+    manifest.setInt64(1769111225, "/generated_at");
+    manifest.setString("https://example.com/city.tar.gz", "/city/url");
+    manifest.setString(cityHash, "/city/md5");
+    manifest.setString("https://example.com/asn.tar.gz", "/asn/url");
+    manifest.setString(asnHash, "/asn/md5");
+
+    auto cityInternalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(cityPath).filename().string());
+    auto asnInternalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(asnPath).filename().string());
+
+    EXPECT_CALL(*mockDownloader, downloadManifest(manifestUrl))
+        .WillOnce(testing::Return(base::RespOrError<json::Json>(manifest)));
+    EXPECT_CALL(*mockDownloader, downloadHTTPS("https://example.com/city.tar.gz"))
+        .WillRepeatedly(testing::Return(base::RespOrError<std::string>(cityContent)));
+    EXPECT_CALL(*mockDownloader, downloadHTTPS("https://example.com/asn.tar.gz"))
+        .WillRepeatedly(testing::Return(base::RespOrError<std::string>(asnContent)));
+    EXPECT_CALL(*mockDownloader, extractMmdbFromGz(cityContent, cityPath + ".tmp"))
+        .WillOnce(testing::Invoke(
+            [cityContent, cityPath](const std::string&, const std::string&) -> base::OptError
+            {
+                // Create the .tmp file with the content
+                std::ofstream ofs(cityPath + ".tmp", std::ios::binary);
+                ofs.write(cityContent.c_str(), cityContent.size());
+                ofs.close();
+                return base::noError();
+            }));
+    EXPECT_CALL(*mockDownloader, extractMmdbFromGz(asnContent, asnPath + ".tmp"))
+        .WillOnce(testing::Invoke(
+            [asnContent, asnPath](const std::string&, const std::string&) -> base::OptError
+            {
+                // Create the .tmp file with the content
+                std::ofstream ofs(asnPath + ".tmp", std::ios::binary);
+                ofs.write(asnContent.c_str(), asnContent.size());
+                ofs.close();
+                return base::noError();
+            }));
+    EXPECT_CALL(*mockStore, readDoc(cityInternalName))
+        .WillRepeatedly(testing::Return(storeReadError<store::Doc>()));
+    EXPECT_CALL(*mockStore, readDoc(asnInternalName))
+        .WillRepeatedly(testing::Return(storeReadError<store::Doc>()));
+    EXPECT_CALL(*mockStore, upsertDoc(cityInternalName, testing::_)).WillOnce(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, upsertDoc(asnInternalName, testing::_)).WillOnce(testing::Return(storeOk()));
+
+    ASSERT_NO_THROW(manager.remoteUpsert(manifestUrl, cityPath, asnPath));
+
+    auto dbs = manager.listDbs();
+    ASSERT_EQ(dbs.size(), 2);
 }
 
-TEST_F(GeoManagerTest, RemoteUpsertDbAlreadeyUpdated)
-{
-    auto dbFile = getTmpDb();
-    auto dbPath = std::filesystem::path(dbFile).string();
-    auto dbType = Type::ASN;
-    auto dbHash = "hash";
-    auto hashUrl = "hashUrl";
-    auto dbDoc = json::Json();
-    dbDoc.setString(dbPath, PATH_PATH);
-    dbDoc.setString(typeName(dbType), TYPE_PATH);
-    dbDoc.setString(dbHash, HASH_PATH);
-    auto internalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(dbFile).filename().string());
-
-    auto manager = getManagerWithDb(dbPath, dbType);
-
-    EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl))
-        .WillOnce(testing::Return(base::RespOrError<std::string>(dbHash)));
-    EXPECT_CALL(*mockStore, readDoc(internalName)).WillOnce(testing::Return(storeReadDocResp(dbDoc)));
-
-    base::OptError error;
-    ASSERT_NO_THROW(error = manager.remoteUpsertDb(dbPath, dbType, "dbUrl", hashUrl));
-    ASSERT_FALSE(base::isError(error));
-    ASSERT_EQ(manager.listDbs().size(), 1);
-    ASSERT_EQ(manager.listDbs()[0].name, std::filesystem::path(dbFile).filename().string());
-    ASSERT_EQ(manager.listDbs()[0].type, dbType);
-}
-
-TEST_F(GeoManagerTest, RemoteUpsertDbErrorTypeUsed)
-{
-    auto dbFile = getTmpDb();
-    auto manager = getManagerWithDb(dbFile, Type::ASN);
-
-    base::OptError error;
-    ASSERT_NO_THROW(error = manager.remoteUpsertDb("any", Type::ASN, "dbUrl", "hashUrl"));
-    ASSERT_TRUE(base::isError(error));
-    ASSERT_EQ(manager.listDbs().size(), 1);
-    ASSERT_EQ(manager.listDbs()[0].name, std::filesystem::path(dbFile).filename().string());
-    ASSERT_EQ(manager.listDbs()[0].type, Type::ASN);
-}
-
-TEST_F(GeoManagerTest, RemoteUpsertDbErrorDownloadingHash)
-{
-    auto manager = getEmptyManager();
-
-    EXPECT_CALL(*mockDownloader, downloadMD5(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
-
-    base::OptError error;
-    ASSERT_NO_THROW(error = manager.remoteUpsertDb("any", Type::ASN, "dbUrl", "hashUrl"));
-    ASSERT_TRUE(base::isError(error));
-    ASSERT_EQ(manager.listDbs().size(), 0);
-}
-
-TEST_F(GeoManagerTest, RemoteUpsertDbFailOneDownload)
+TEST_F(GeoManagerTest, RemoteUpsertManifestError)
 {
     auto manager = getEmptyManager();
 
-    auto dbFile = getTmpDb();
-    auto dbType = Type::ASN;
-    auto dbPath = std::filesystem::path(dbFile).string();
-    auto hash = "hash";
-    auto dbUrl = "dbUrl";
-    auto hashUrl = "hashUrl";
-    auto content = getContentDb(dbFile);
-    auto internalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(dbFile).filename().string());
+    EXPECT_CALL(*mockDownloader, downloadManifest(testing::_))
+        .WillOnce(testing::Return(base::Error {"Download failed"}));
 
-    EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl)).WillOnce(testing::Return(base::RespOrError<std::string>(hash)));
-    EXPECT_CALL(*mockDownloader, downloadHTTPS(dbUrl))
-        .WillOnce(testing::Return(base::Error {"error"}))
-        .WillOnce(testing::Return(base::RespOrError<std::string>(content)));
-    EXPECT_CALL(*mockDownloader, computeMD5(content)).WillOnce(testing::Return(hash)).WillOnce(testing::Return(hash));
-    EXPECT_CALL(*mockStore, upsertDoc(internalName, testing::_)).WillOnce(testing::Return(storeOk()));
-
-    base::OptError error;
-    ASSERT_NO_THROW(error = manager.remoteUpsertDb(dbPath, dbType, dbUrl, hashUrl));
-    ASSERT_FALSE(base::isError(error));
-    ASSERT_EQ(manager.listDbs().size(), 1);
-    ASSERT_EQ(manager.listDbs()[0].name, std::filesystem::path(dbFile).filename().string());
-    ASSERT_EQ(manager.listDbs()[0].type, dbType);
+    // remoteUpsert should not throw even when download fails, it just logs the error
+    ASSERT_NO_THROW(manager.remoteUpsert("https://example.com/manifest.json", "/tmp/city.mmdb", "/tmp/asn.mmdb"));
 }
 
-TEST_F(GeoManagerTest, RemoteUpsertDbFailOneHash)
+TEST_F(GeoManagerTest, RemoteUpsertAlreadyUpdated)
 {
-    auto manager = getEmptyManager();
+    auto cityFile = getTmpDb();
+    auto asnFile = getTmpDb();
+    auto cityPath = std::filesystem::path(cityFile).string();
+    auto asnPath = std::filesystem::path(asnFile).string();
 
-    auto dbFile = getTmpDb();
-    auto dbType = Type::ASN;
-    auto dbPath = std::filesystem::path(dbFile).string();
-    auto hash = "hash";
-    auto dbUrl = "dbUrl";
-    auto hashUrl = "hashUrl";
-    auto content = getContentDb(dbFile);
-    auto internalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(dbFile).filename().string());
+    auto cityHash = "cityHash123";
+    auto asnHash = "asnHash456";
+    auto manifestUrl = "https://example.com/manifest.json";
 
-    EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl)).WillOnce(testing::Return(base::RespOrError<std::string>(hash)));
-    EXPECT_CALL(*mockDownloader, downloadHTTPS(dbUrl))
-        .WillOnce(testing::Return(base::RespOrError<std::string>(content)))
-        .WillOnce(testing::Return(base::RespOrError<std::string>(content)));
-    EXPECT_CALL(*mockDownloader, computeMD5(content))
-        .WillOnce(testing::Return("other_hash"))
-        .WillOnce(testing::Return(hash))
-        .WillOnce(testing::Return(hash));
-    EXPECT_CALL(*mockStore, upsertDoc(internalName, testing::_)).WillOnce(testing::Return(storeOk()));
+    // Setup manager with existing databases
+    auto cityInternalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(cityPath).filename().string());
+    auto asnInternalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(asnPath).filename().string());
 
-    base::OptError error;
-    ASSERT_NO_THROW(error = manager.remoteUpsertDb(dbPath, dbType, dbUrl, hashUrl));
-    ASSERT_FALSE(base::isError(error));
-    ASSERT_EQ(manager.listDbs().size(), 1);
-    ASSERT_EQ(manager.listDbs()[0].name, std::filesystem::path(dbFile).filename().string());
-    ASSERT_EQ(manager.listDbs()[0].type, dbType);
-}
+    EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
+        .WillOnce(testing::Return(storeReadColResp({cityInternalName, asnInternalName})));
 
-TEST_F(GeoManagerTest, RemoteUpsertDbErrorWriting)
-{
-    auto manager = getEmptyManager();
+    json::Json cityDoc;
+    cityDoc.setString(cityPath, PATH_PATH);
+    cityDoc.setString(typeName(Type::CITY), TYPE_PATH);
+    cityDoc.setString(cityHash, HASH_PATH);
+    cityDoc.setInt64(1769111225, GENERATED_AT_PATH);
 
-    auto dbFile = getTmpDb();
-    auto dbType = Type::ASN;
-    auto dbPath = "non_existent_file";
-    auto hash = "hash";
-    auto dbUrl = "dbUrl";
-    auto hashUrl = "hashUrl";
-    auto content = getContentDb(dbFile);
-    auto internalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(dbFile).filename().string());
+    json::Json asnDoc;
+    asnDoc.setString(asnPath, PATH_PATH);
+    asnDoc.setString(typeName(Type::ASN), TYPE_PATH);
+    asnDoc.setString(asnHash, HASH_PATH);
+    asnDoc.setInt64(1769111225, GENERATED_AT_PATH);
 
-    EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl)).WillOnce(testing::Return(base::RespOrError<std::string>(hash)));
-    EXPECT_CALL(*mockDownloader, downloadHTTPS(dbUrl))
-        .WillOnce(testing::Return(base::RespOrError<std::string>(content)));
-    EXPECT_CALL(*mockDownloader, computeMD5(content)).WillOnce(testing::Return(hash));
+    EXPECT_CALL(*mockStore, readDoc(cityInternalName))
+        .WillOnce(testing::Return(storeReadDocResp(cityDoc)))
+        .WillOnce(testing::Return(storeReadDocResp(cityDoc)));
+    EXPECT_CALL(*mockStore, readDoc(asnInternalName))
+        .WillOnce(testing::Return(storeReadDocResp(asnDoc)))
+        .WillOnce(testing::Return(storeReadDocResp(asnDoc)));
 
-    base::OptError error;
-    ASSERT_NO_THROW(error = manager.remoteUpsertDb(dbPath, dbType, dbUrl, hashUrl));
-    ASSERT_TRUE(base::isError(error));
-    ASSERT_EQ(manager.listDbs().size(), 0);
-}
+    auto manager = Manager(mockStore, mockDownloader);
 
-TEST_F(GeoManagerTest, RemoteUpsertDbFailInternalStore)
-{
-    auto manager = getEmptyManager();
+    // Prepare manifest with same hashes
+    json::Json manifest;
+    manifest.setInt64(1769111225, "/generated_at");
+    manifest.setString("https://example.com/city.tar.gz", "/city/url");
+    manifest.setString(cityHash, "/city/md5");
+    manifest.setString("https://example.com/asn.tar.gz", "/asn/url");
+    manifest.setString(asnHash, "/asn/md5");
 
-    auto dbFile = getTmpDb();
-    auto dbType = Type::ASN;
-    auto dbPath = std::filesystem::path(dbFile).string();
-    auto hash = "hash";
-    auto dbUrl = "dbUrl";
-    auto hashUrl = "hashUrl";
-    auto content = getContentDb(dbFile);
-    auto internalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(dbFile).filename().string());
+    EXPECT_CALL(*mockDownloader, downloadManifest(manifestUrl))
+        .WillOnce(testing::Return(base::RespOrError<json::Json>(manifest)));
 
-    EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl)).WillOnce(testing::Return(base::RespOrError<std::string>(hash)));
-    EXPECT_CALL(*mockDownloader, downloadHTTPS(dbUrl))
-        .WillOnce(testing::Return(base::RespOrError<std::string>(content)));
-    EXPECT_CALL(*mockDownloader, computeMD5(content)).WillOnce(testing::Return(hash)).WillOnce(testing::Return(hash));
-    EXPECT_CALL(*mockStore, upsertDoc(internalName, testing::_)).WillOnce(testing::Return(storeError()));
+    ASSERT_NO_THROW(manager.remoteUpsert(manifestUrl, cityPath, asnPath));
 
-    base::OptError error;
-    ASSERT_NO_THROW(error = manager.remoteUpsertDb(dbPath, dbType, dbUrl, hashUrl));
-    ASSERT_FALSE(base::isError(error));
-    ASSERT_EQ(manager.listDbs().size(), 1);
-    ASSERT_EQ(manager.listDbs()[0].name, std::filesystem::path(dbFile).filename().string());
-    ASSERT_EQ(manager.listDbs()[0].type, dbType);
+    // Databases should remain unchanged
+    auto dbs = manager.listDbs();
+    ASSERT_EQ(dbs.size(), 2);
 }

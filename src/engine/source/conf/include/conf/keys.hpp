@@ -18,6 +18,10 @@ constexpr std::string_view OUTPUTS_PATH = "analysisd.output_path";
 constexpr std::string_view CM_RULESET_PATH = "analysisd.cm_ruleset_path";
 constexpr std::string_view CM_SYNC_INTERVAL = "analysisd.cm_sync_interval";
 
+constexpr std::string_view GEO_SYNC_INTERVAL = "analysisd.geo_sync_interval";
+constexpr std::string_view GEO_DB_PATH = "analysisd.geo_db_path";
+constexpr std::string_view GEO_MANIFEST_URL = "analysisd.geo_manifest_url";
+
 constexpr std::string_view INDEXER_HOST = "analysisd.indexer_hosts";
 constexpr std::string_view INDEXER_USER = "analysisd.indexer_username";
 constexpr std::string_view INDEXER_PASSWORD = "analysisd.indexer_password";

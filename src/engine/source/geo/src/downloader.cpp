@@ -1,14 +1,14 @@
 #include "downloader.hpp"
 
 #include <algorithm>
-#include <iomanip>
-#include <openssl/evp.h>
-#include <sstream>
+#include <filesystem>
+#include <fstream>
 
 #include <fmt/format.h>
 
 #include <HTTPRequest.hpp>
-
+#include <base/json.hpp>
+#include <zlibHelper.hpp>
 namespace
 {
 // This write callback function will be called by libcurl as soon as there is data received that needs to be saved.
@@ -47,52 +47,7 @@ base::RespOrError<std::string> Downloader::downloadHTTPS(const std::string& url)
     return readBuffer;
 }
 
-// Function to compute the MD5 hash of input data
-std::string Downloader::computeMD5(const std::string& data) const
-{
-    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-    if (!ctx)
-    {
-        // Handle error
-        return "";
-    }
-
-    if (EVP_DigestInit_ex(ctx, EVP_md5(), nullptr) != 1)
-    {
-        // Handle error
-        EVP_MD_CTX_free(ctx);
-        return "";
-    }
-
-    if (EVP_DigestUpdate(ctx, data.c_str(), data.size()) != 1)
-    {
-        // Handle error
-        EVP_MD_CTX_free(ctx);
-        return "";
-    }
-
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digest_len;
-
-    if (EVP_DigestFinal_ex(ctx, digest, &digest_len) != 1)
-    {
-        // Handle error
-        EVP_MD_CTX_free(ctx);
-        return "";
-    }
-
-    EVP_MD_CTX_free(ctx);
-
-    std::stringstream ss;
-    for (unsigned int i = 0; i < digest_len; ++i)
-    {
-        ss << std::hex << std::setw(2) << std::setfill('0') << (int)digest[i];
-    }
-
-    return ss.str();
-}
-
-base::RespOrError<std::string> Downloader::downloadMD5(const std::string& url) const
+base::RespOrError<json::Json> Downloader::downloadManifest(const std::string& url) const
 {
     auto response = downloadHTTPS(url);
     if (base::isError(response))
@@ -100,19 +55,51 @@ base::RespOrError<std::string> Downloader::downloadMD5(const std::string& url) c
         return base::getError(response);
     }
 
-    auto hash = base::getResponse(response);
+    auto content = base::getResponse(response);
 
-    // Remove trailing newline character
-    if (!hash.empty() && hash[hash.size() - 1] == '\n')
+    try
     {
-        hash.pop_back();
+        auto manifest = json::Json(content.c_str());
+        return manifest;
     }
-
-    if (!isMD5Hash(hash))
+    catch (const std::exception& e)
     {
-        return base::Error {fmt::format("Invalid MD5 hash: '{}'", hash)};
+        return base::Error {fmt::format("Failed to parse manifest JSON: {}", e.what())};
     }
+}
 
-    return hash;
+base::OptError Downloader::extractMmdbFromGz(const std::string& gzContent, const std::string& outputPath) const
+{
+    auto parentDir = std::filesystem::path(outputPath).parent_path();
+
+    try
+    {
+        // Create parent directory if it doesn't exist
+        std::filesystem::create_directories(parentDir);
+
+        // Create temporary .gz file
+        const auto tmpGzFile = parentDir / "tmp_download.mmdb.gz";
+
+        // Write compressed content to temporary file
+        std::ofstream outFile(tmpGzFile, std::ios::binary);
+        if (!outFile)
+        {
+            return base::Error {fmt::format("Failed to create temporary file: {}", tmpGzFile.string())};
+        }
+        outFile.write(gzContent.data(), gzContent.size());
+        outFile.close();
+
+        // Decompress using zlibHelper
+        Utils::ZlibHelper::gzipDecompress(tmpGzFile, outputPath);
+
+        // Clean up temporary file
+        std::filesystem::remove(tmpGzFile);
+
+        return base::noError();
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format("Failed to extract gz archive: {}", e.what())};
+    }
 }
 } // namespace geo

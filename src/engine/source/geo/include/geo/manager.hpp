@@ -16,18 +16,19 @@ namespace geo
 /**
  * @brief Class to hold the needed information for a database.
  */
-class DbEntry;
+class DbHandle;
 
 auto constexpr MAX_RETRIES = 3;
 static const std::string INTERNAL_NAME = "geo";
 static const std::string PATH_PATH = "/path";
 static const std::string HASH_PATH = "/hash";
 static const std::string TYPE_PATH = "/type";
+static const std::string GENERATED_AT_PATH = "/generated_at";
 
 class Manager final : public IManager
 {
 private:
-    std::map<std::string, std::shared_ptr<DbEntry>> m_dbs; ///< The databases that have been added.
+    std::map<std::string, std::shared_ptr<DbHandle>> m_dbs; ///< The databases that have been added.
     std::map<Type, std::string> m_dbTypes;  ///< Map by Types for quick access to the db name. (only one db per type)
     mutable std::shared_mutex m_rwMapMutex; ///< Mutex to avoid simultaneous updates on the db map
 
@@ -35,38 +36,37 @@ private:
     std::shared_ptr<IDownloader> m_downloader;      ///< The downloader used to download the MMDB database.
 
     /**
-     * @brief Upsert the internal store entry for a database.
+     * @brief Upsert the internal store entry for a local database (computes hash from file).
      *
      * @param path The path to the database.
+     * @param type The type of the database.
+     * @param hash The hash of the database.
+     * @param createdAt The creation timestamp of the database.
      * @return base::OptError An error if the store entry could not be upserted.
      */
-    base::OptError upsertStoreEntry(const std::string& path);
+    base::OptError
+    upsertStoreEntry(const std::string& path, Type type, const std::string& hash, const int64_t createdAt);
 
     /**
-     * @brief Remove the internal store entry for a database.
+     * @brief Check if a database needs to be updated by comparing stored hash with remote hash.
      *
-     * @param path The path to the database.
-     * @return base::OptError An error if the store entry could not be removed.
+     * @param name The name of the database.
+     * @param remoteHash The remote hash to compare against.
+     * @return bool True if the database needs to be updated, false otherwise.
      */
-    base::OptError removeInternalEntry(const std::string& path);
+    bool needsUpdate(const std::string& name, const std::string& remoteHash) const;
 
     /**
      * @brief Add a database to the manager without any thread safety checks.
      *
      * @param path Path to the database.
+     * @param hash Hash of the database.
+     * @param createdAt Creation timestamp of the database.
      * @param type Type of the database.
-     * @param upsertStore Whether to upsert the store entry.
      * @return base::OptError An error if the database could not be added.
      */
-    base::OptError addDbUnsafe(const std::string& path, Type type, bool upsertStore);
-
-    /**
-     * @brief Remove a database from the manager without any thread safety checks.
-     *
-     * @param path Path to the database.
-     * @return base::OptError An error if the database could not be removed.
-     */
-    base::OptError removeDbUnsafe(const std::string& path);
+    base::OptError
+    addDbUnsafe(const std::string& path, const std::string& hash, const int64_t createdAt, Type type);
 
     /**
      * @brief Write the MMDB database to the filesystem.
@@ -76,6 +76,22 @@ private:
      * @return base::OptError An error if the database could not be written.
      */
     base::OptError writeDb(const std::string& path, const std::string& content);
+
+    /**
+     * @brief Process a single database type from the manifest (download, validate, extract, load).
+     *
+     * @param path Path to store the database.
+     * @param type Type of the database.
+     * @param gzUrl URL to download the gz database.
+     * @param expectedMd5 Expected MD5 hash of the gz file.
+     * @param createdAt Creation timestamp from manifest.
+     * @return base::OptError An error if the database could not be processed.
+     */
+    base::OptError processDbEntry(const std::string& path,
+                                  Type type,
+                                  const std::string& gzUrl,
+                                  const std::string& expectedMd5,
+                                  const int64_t createdAt);
 
 public:
     virtual ~Manager() = default;
@@ -89,20 +105,9 @@ public:
     std::vector<DbInfo> listDbs() const override;
 
     /**
-     * @copydoc IManager::addDb
+     * @copydoc IManager::remoteUpsert
      */
-    base::OptError addDb(const std::string& path, Type type) override;
-
-    /**
-     * @copydoc IManager::removeDb
-     */
-    base::OptError removeDb(const std::string& path) override;
-
-    /**
-     * @copydoc IManager::remoteUpsertDb
-     */
-    base::OptError
-    remoteUpsertDb(const std::string& path, Type type, const std::string& dbUrl, const std::string& hashUrl) override;
+    void remoteUpsert(const std::string& manifestUrl, const std::string& cityPath, const std::string& asnPath) override;
 
     /**
      * @copydoc IManager::getLocator

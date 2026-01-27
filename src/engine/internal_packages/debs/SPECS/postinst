@@ -150,7 +150,7 @@ case "${1:-configure}" in
   configure)
     # Ensure CLI wrappers are executable
     for c in engine-public engine-private engine-archiver engine-decoder \
-             engine-geo engine-router engine-schema engine-test \
+             engine-router engine-schema engine-test \
              engine-it engine-helper-test engine-health-test; do
       [ -f "/usr/bin/$c" ] && chmod 0755 "/usr/bin/$c" || true
     done
@@ -171,7 +171,7 @@ case "${1:-configure}" in
     # Enable argcomplete for each tool in bash
     if [ -x "$BIN/register-python-argcomplete" ]; then
       echo "[postinst] Registering bash completion for engine tools..."
-      for tool in engine-private engine-public engine-archiver engine-geo engine-test engine-helper-test engine-it engine-router; do
+      for tool in engine-private engine-public engine-archiver engine-test engine-helper-test engine-it engine-router; do
         "$BIN/register-python-argcomplete" "$tool" > "/etc/bash_completion.d/$tool" 2>/dev/null || true
       done
     fi

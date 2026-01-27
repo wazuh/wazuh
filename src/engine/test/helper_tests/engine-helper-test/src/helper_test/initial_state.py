@@ -8,9 +8,11 @@ import grp
 from typing import Optional, Tuple
 from pathlib import Path
 from google.protobuf.json_format import ParseDict
+from datetime import datetime, timezone
+import json
+import hashlib
 
 from api_communication.proto import engine_pb2 as api_engine
-from api_communication.proto import geo_pb2 as api_geo
 from engine_handler.handler import EngineHandler
 from shared.default_settings import Constants
 from engine_handler.handler import EngineHandler
@@ -52,9 +54,9 @@ def cpy_conf(env_path: Path, conf_path: Path) -> Path:
 
 def cpy_mmdb(env_path: Path, health_test_path: Path) -> Tuple[Path, Path]:
     mmdb_asn_path = health_test_path / 'testdb-asn.mmdb'
-    dest_mmdb_asn_path = env_path / 'mmdbs' / 'testdb-asn.mmdb'
+    dest_mmdb_asn_path = env_path / 'geo' / 'testdb-asn.mmdb'
     mmdb_city_path = health_test_path / 'testdb-city.mmdb'
-    dest_mmdb_city_path = env_path / 'mmdbs' / 'testdb-city.mmdb'
+    dest_mmdb_city_path = env_path / 'geo' / 'testdb-city.mmdb'
 
     if not mmdb_asn_path.is_file():
         raise FileNotFoundError(f"Copy mmdb failed: File {mmdb_asn_path} does not exist")
@@ -69,26 +71,65 @@ def cpy_mmdb(env_path: Path, health_test_path: Path) -> Tuple[Path, Path]:
     return dest_mmdb_asn_path, dest_mmdb_city_path
 
 
+def md5_file(path: Path) -> str:
+    """Calculate MD5 hash of a file."""
+    h = hashlib.md5()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def init_geo_store(env_path: Path, city_mmdb: Path, asn_mmdb: Path):
+    """
+    Initialize geo store structure and JSON metadata for geo databases.
+
+    Args:
+        env_path: Environment root path
+        city_mmdb: Path to CITY mmdb file
+        asn_mmdb: Path to ASN mmdb file
+    """
+    geo_dest_path = env_path / "geo"
+    geo_store_path = env_path / "store" / "geo"
+
+    # Create directories
+    geo_dest_path.mkdir(parents=True, exist_ok=True)
+    geo_store_path.mkdir(parents=True, exist_ok=True)
+
+    # Current timestamp in ISO 8601 format
+    generated_at = int(datetime.now(timezone.utc).timestamp() * 1000)
+
+    for mmdb_file, db_type in (
+        (city_mmdb, "city"),
+        (asn_mmdb, "asn"),
+    ):
+        if not mmdb_file.exists():
+            raise FileNotFoundError(f"Geo DB not found: {mmdb_file}")
+
+        if mmdb_file.suffix != ".mmdb":
+            raise ValueError(f"Invalid Geo DB extension (expected .mmdb): {mmdb_file}")
+
+        db_hash = md5_file(mmdb_file)
+
+        metadata = {
+            "path": mmdb_file.resolve().as_posix(),
+            "type": db_type,
+            "hash": db_hash,
+            "generated_at": generated_at
+        }
+
+        store_json_path = geo_store_path / f"{mmdb_file.name}.json"
+        with open(store_json_path, "w") as f:
+            json.dump(metadata, f, indent=2)
+
+        print(f"  Initialized {mmdb_file.name} ({db_type}): hash={db_hash[:8]}...")
+
+
 def cpy_kvdb(env_path: Path):
     kvdb_path = env_path / "tmp" / "kvdb_test.json"
     kvdb_path.parent.mkdir(parents=True, exist_ok=True)
     kvdb_path.write_text(
         '{"test": {"key": "value"}, "test_bitmask": {"33": "some_data"}}')
-
-
-def load_mmdb(engine_handler: EngineHandler, mmdb_path: Path, mmdb_type: str) -> None:
-    request = api_geo.DbPost_Request()
-    request.path = mmdb_path.as_posix()
-    request.type = mmdb_type
-    print(f"Loading MMDB file...\n{request}")
-    error, response = engine_handler.api_client.send_recv(request)
-    if error:
-        raise Exception(error)
-
-    parsed_response = ParseDict(response, api_engine.GenericStatus_Response())
-    if parsed_response.status == api_engine.ERROR:
-        raise Exception(parsed_response.error)
-    print(f"MMDB file loaded.")
 
 
 def init(env_path: Path, conf_path: Path, mmdb_dir: Path):
@@ -100,6 +141,7 @@ def init(env_path: Path, conf_path: Path, mmdb_dir: Path):
 
     print("Copying MMDB test files...")
     asn_path, city_path = cpy_mmdb(env_path, mmdb_dir)
+    init_geo_store(env_path, city_path, asn_path)
     print("MMDB test files copied.")
 
     print("Creating KVDB...")
@@ -113,9 +155,6 @@ def init(env_path: Path, conf_path: Path, mmdb_dir: Path):
         engine_handler = EngineHandler(
             binary_path.as_posix(), config_path.as_posix())
         engine_handler.start()
-
-        load_mmdb(engine_handler, asn_path, "asn")
-        load_mmdb(engine_handler, city_path, "city")
 
         print("Stopping the engine...")
         engine_handler.stop()

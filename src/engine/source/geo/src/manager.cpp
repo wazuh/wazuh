@@ -8,9 +8,10 @@
 #include <maxminddb.h>
 
 #include <base/logging.hpp>
+#include <base/utils/hash.hpp>
 #include <store/istore.hpp>
 
-#include "dbEntry.hpp"
+#include "dbHandle.hpp"
 #include "locator.hpp"
 
 namespace geo
@@ -50,8 +51,10 @@ Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_
         auto doc = base::getResponse(dbResp);
         auto path = doc.getString(PATH_PATH).value();
         auto type = typeFromName(doc.getString(TYPE_PATH).value());
+        auto hash = doc.getString(HASH_PATH).value();
+        auto createdAt = doc.getInt64(GENERATED_AT_PATH).value();
 
-        auto addResp = addDbUnsafe(path, type, false);
+        auto addResp = addDbUnsafe(path, hash, createdAt, type);
         if (base::isError(addResp))
         {
             LOG_ERROR("Geo cannot add db '{}': {}", path, base::getError(addResp).message);
@@ -61,44 +64,62 @@ Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_
     }
 }
 
-base::OptError Manager::upsertStoreEntry(const std::string& path)
+base::OptError
+Manager::upsertStoreEntry(const std::string& path, Type type, const std::string& hash, const int64_t createdAt)
 {
-    std::filesystem::path dbPath(path);
-
-    // Open file and compute hash
-    auto file = std::ifstream(path, std::ios::binary);
-    if (!file.is_open())
-    {
-        return base::Error {fmt::format("Cannot open file '{}'", path)};
-    }
-
-    // Get content of the file to compute the hash
-    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
-    auto hash = m_downloader->computeMD5(content);
-    file.close();
-
     // Create and upsert the internal document
+    std::filesystem::path dbPath(path);
     auto internalName = base::Name(std::vector<std::string>({INTERNAL_NAME, dbPath.filename().string()}));
     auto doc = store::Doc();
     doc.setString(path, PATH_PATH);
     doc.setString(hash, HASH_PATH);
-    doc.setString(typeName(m_dbs.at(dbPath.filename().string())->type), TYPE_PATH);
+    doc.setString(typeName(type), TYPE_PATH);
+    doc.setInt64(createdAt, GENERATED_AT_PATH);
 
-    return m_store->upsertDoc(internalName, doc);
+    auto storeResp = m_store->upsertDoc(internalName, doc);
+    if (base::isError(storeResp))
+    {
+        base::Error {fmt::format("Cannot update internal store for '{}': {}", path, base::getError(storeResp).message)};
+    }
+
+    return base::noError();
 }
 
-base::OptError Manager::removeInternalEntry(const std::string& path)
+bool Manager::needsUpdate(const std::string& name, const std::string& remoteHash) const
 {
-    auto internalName = base::Name(
-        fmt::format("{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, std::filesystem::path(path).filename().string()));
+    auto internalResp =
+        m_store->readDoc(base::Name(fmt::format("{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, name)));
 
-    return m_store->deleteDoc(internalName);
+    if (base::isError(internalResp))
+    {
+        // If there's no stored hash, we need to update
+        return true;
+    }
+
+    auto storedHash = base::getResponse(internalResp).getString(HASH_PATH);
+    if (!storedHash.has_value())
+    {
+        return true;
+    }
+
+    // Check if file exists physically
+    auto storedPath = base::getResponse(internalResp).getString(PATH_PATH);
+    if (storedPath.has_value())
+    {
+        if (!std::filesystem::exists(storedPath.value()))
+        {
+            // File was deleted, needs update
+            return true;
+        }
+    }
+
+    return storedHash.value() != remoteHash;
 }
 
-base::OptError Manager::addDbUnsafe(const std::string& path, Type type, bool upsertStore)
+base::OptError
+Manager::addDbUnsafe(const std::string& path, const std::string& hash, const int64_t createdAt, Type type)
 {
-    auto name = std::filesystem::path(path).filename().string();
+    const auto name = std::filesystem::path(path).filename().string();
 
     // Check if the type has already a database
     if (m_dbTypes.find(type) != m_dbTypes.end())
@@ -112,67 +133,23 @@ base::OptError Manager::addDbUnsafe(const std::string& path, Type type, bool ups
         return base::Error {fmt::format("Database with name '{}' already exists", name)};
     }
 
-    // Add the database
-    auto entry = std::make_shared<DbEntry>(path, type);
-    int status = MMDB_open(path.c_str(), MMDB_MODE_MMAP, entry->mmdb.get());
-    if (MMDB_SUCCESS != status)
+    // Create stable handle + immutable instance (MMDB_open is done inside DbInstance)
+    auto handle = std::make_shared<DbHandle>();
+    try
     {
-        return base::Error {fmt::format("Cannot add database '{}': {}", path, MMDB_strerror(status))};
+        auto inst = std::make_shared<DbInstance>(path, hash, createdAt, type);
+        handle->store(std::move(inst));
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format("Cannot add database '{}': {}", path, e.what())};
     }
 
-    m_dbs.emplace(name, std::move(entry));
+    // Publish
+    m_dbs.emplace(name, handle);
     m_dbTypes.emplace(type, name);
 
-    if (upsertStore)
-    {
-        auto internalResp = upsertStoreEntry(path);
-        if (base::isError(internalResp))
-        {
-            LOG_WARNING("Cannot update internal store for '{}': {}", path, base::getError(internalResp).message);
-        }
-    }
-
     return base::noError();
-}
-
-base::OptError Manager::removeDbUnsafe(const std::string& path)
-{
-    auto name = std::filesystem::path(path).filename().string();
-
-    // Check if the database is already added
-    if (m_dbs.find(name) == m_dbs.end())
-    {
-        return base::Error {fmt::format("Database '{}' not found", name)};
-    }
-
-    {
-        // We need to hold the entry so the lock is not released after the entry is removed
-        auto entry = m_dbs.at(name);
-
-        // Lock the database entry internal mutex for write
-        std::unique_lock<std::shared_mutex> lockEntry(entry->rwMutex);
-
-        // Remove the database
-        m_dbs.erase(name);
-
-        // Unlock the entry mutex
-        lockEntry.unlock();
-
-        // Freed the entry
-        entry.reset();
-    }
-
-    // Remove the type from the map if it was the one in use
-    for (auto it = m_dbTypes.begin(); it != m_dbTypes.end(); ++it)
-    {
-        if (it->second == name)
-        {
-            m_dbTypes.erase(it);
-            break;
-        }
-    }
-
-    return removeInternalEntry(path);
 }
 
 base::OptError Manager::writeDb(const std::string& path, const std::string& content)
@@ -183,6 +160,10 @@ base::OptError Manager::writeDb(const std::string& path, const std::string& cont
     try
     {
         std::filesystem::create_directories(filePath.parent_path());
+        // Set permissions to 770 (rwxrwx---)
+        std::filesystem::permissions(filePath.parent_path(),
+                                    std::filesystem::perms::owner_all | std::filesystem::perms::group_all,
+                                    std::filesystem::perm_options::replace);
     }
     catch (const std::exception& e)
     {
@@ -209,33 +190,17 @@ base::OptError Manager::writeDb(const std::string& path, const std::string& cont
     return base::noError();
 }
 
-base::OptError Manager::addDb(const std::string& path, Type type)
+base::OptError Manager::processDbEntry(const std::string& path,
+                                       Type type,
+                                       const std::string& gzUrl,
+                                       const std::string& expectedMd5,
+                                       const int64_t createdAt)
 {
-    // Hold write lock on the map
+    const auto name = std::filesystem::path(path).filename().string();
+
+    // Lock map only for validating and obtaining/creating handle
     std::unique_lock lock(m_rwMapMutex);
 
-    auto resp = addDbUnsafe(path, type, true);
-    return resp;
-}
-
-base::OptError Manager::removeDb(const std::string& path)
-{
-    // Hold write lock on the map
-    std::unique_lock lock(m_rwMapMutex);
-
-    auto resp = removeDbUnsafe(path);
-    return resp;
-}
-
-base::OptError
-Manager::remoteUpsertDb(const std::string& path, Type type, const std::string& dbUrl, const std::string& hashUrl)
-{
-    auto name = std::filesystem::path(path).filename().string();
-
-    // Hold write lock on the map
-    std::unique_lock lock(m_rwMapMutex);
-
-    // If the type has a different database, fail
     if (m_dbTypes.find(type) != m_dbTypes.end() && m_dbTypes.at(type) != name)
     {
         return base::Error {fmt::format(
@@ -245,53 +210,55 @@ Manager::remoteUpsertDb(const std::string& path, Type type, const std::string& d
             typeName(type))};
     }
 
-    // Download the database hash
-    auto hashResp = m_downloader->downloadMD5(hashUrl);
-    if (base::isError(hashResp))
+    // Check if database needs update by comparing stored hash with manifest MD5
+    if (!needsUpdate(name, expectedMd5))
     {
-        return base::Error {
-            fmt::format("Cannot download hash from '{}': {}", hashUrl, base::getError(hashResp).message)};
-    }
-    auto hash = base::getResponse(hashResp);
-
-    // Check if it is already updated
-    auto entry = m_dbs.find(name);
-    if (entry != m_dbs.end())
-    {
-        auto internalResp =
-            m_store->readDoc(base::Name(fmt::format("{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, name)));
-        if (!base::isError(internalResp))
-        {
-            auto storedHash = base::getResponse(internalResp).getString(HASH_PATH).value();
-            if (storedHash == hash)
-            {
-                return base::noError();
-            }
-        }
+        return base::noError();
     }
 
-    // Download the database while MAX_RETRIES if failed
-    std::string content;
-    base::OptError error;
+    // Get/create stable handle
+    std::shared_ptr<DbHandle> handle;
+    auto it = m_dbs.find(name);
+    if (it != m_dbs.end())
+    {
+        handle = it->second;
+    }
+    else
+    {
+        handle = std::make_shared<DbHandle>();
+        m_dbs.emplace(name, handle);
+        m_dbTypes.emplace(type, name);
+    }
+
+    // Already have the handle; release the map lock so as not to block
+    lock.unlock();
+
+    // Download gz with retries and validate MD5
+    std::string gzContent;
+    base::OptError error = base::Error {fmt::format("Cannot download database from '{}'", gzUrl)};
+
     for (int i = 0; i < MAX_RETRIES; ++i)
     {
-        auto dbResp = m_downloader->downloadHTTPS(dbUrl);
-        if (base::isError(dbResp))
+        auto downloadResp = m_downloader->downloadHTTPS(gzUrl);
+        if (base::isError(downloadResp))
         {
             error = base::Error {
-                fmt::format("Cannot download database from '{}': {}", dbUrl, base::getError(dbResp).message)};
+                fmt::format("Cannot download database from '{}': {}", gzUrl, base::getError(downloadResp).message)};
             continue;
         }
 
-        content = base::getResponse(dbResp);
-        auto computedHash = m_downloader->computeMD5(content);
-        if (computedHash == hash)
+        gzContent = base::getResponse(downloadResp);
+
+        // Validate MD5 of the gz file
+        const auto computedMd5 = base::utils::hash::md5(gzContent);
+        if (computedMd5 == expectedMd5)
         {
             error = base::noError();
             break;
         }
 
-        error = base::Error {fmt::format("Hash mismatch for database '{}'", dbUrl)};
+        error = base::Error {
+            fmt::format("MD5 mismatch for database '{}'. Expected: {}, Got: {}", gzUrl, expectedMd5, computedMd5)};
     }
 
     if (base::isError(error))
@@ -299,52 +266,151 @@ Manager::remoteUpsertDb(const std::string& path, Type type, const std::string& d
         return error;
     }
 
-    // Write the database to the file
-    // If the database is already added, hold the internal mutex for write
-    if (entry != m_dbs.end())
+    // Extract .mmdb from gz to temporary path
+    const auto tmpPath = path + ".tmp";
+    auto extractResp = m_downloader->extractMmdbFromGz(gzContent, tmpPath);
+    if (base::isError(extractResp))
     {
-        std::unique_lock lockEntry(entry->second->rwMutex);
-        auto writeResp = writeDb(path, content);
-        if (base::isError(writeResp))
+        // Clean up temporary file if extraction failed
+        if (std::filesystem::exists(tmpPath))
         {
-            return base::getError(writeResp);
+            std::filesystem::remove(tmpPath);
         }
+        return base::getError(extractResp);
+    }
 
-        // Close the MMDB and reopen it
-        MMDB_close(entry->second->mmdb.get());
-        int status = MMDB_open(path.c_str(), MMDB_MODE_MMAP, entry->second->mmdb.get());
-        if (MMDB_SUCCESS != status)
+    // Atomic rename to final path
+    try
+    {
+        if (std::filesystem::exists(path))
         {
-            // Remove the database
-            lockEntry.unlock();
-            removeDbUnsafe(path);
+            std::filesystem::remove(path);
+        }
+        std::filesystem::rename(tmpPath, path);
 
-            return base::Error {fmt::format("Cannot add database '{}': {}", path, MMDB_strerror(status))};
+        // Set permissions to 640 (rw-r-----)
+        std::filesystem::permissions(path,
+                                    std::filesystem::perms::owner_read | std::filesystem::perms::owner_write |
+                                    std::filesystem::perms::group_read,
+                                    std::filesystem::perm_options::replace);
+    }
+    catch (const std::exception& e)
+    {
+        std::filesystem::remove(tmpPath);
+        return base::Error {fmt::format("Cannot replace db '{}': {}", path, e.what())};
+    }
+
+    // Open a new instance and perform an atomic swap (hot reload)
+    std::shared_ptr<const DbInstance> newInst;
+    try
+    {
+        newInst = std::make_shared<DbInstance>(path, expectedMd5, createdAt, type);
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format("Cannot open updated db '{}': {}", path, e.what())};
+    }
+
+    handle->store(std::move(newInst));
+
+    // Persist manifest MD5 hash and generated_at in store
+    auto res = upsertStoreEntry(path, type, expectedMd5, createdAt);
+    if (base::isError(res))
+    {
+        return base::getError(res);
+    }
+
+    return base::noError();
+}
+
+void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& cityPath, const std::string& asnPath)
+{
+    LOG_DEBUG("[Geo::Manager] Checking for geo database updates from manifest '{}'", manifestUrl);
+
+    // Download and parse manifest
+    auto manifestResp = m_downloader->downloadManifest(manifestUrl);
+    if (base::isError(manifestResp))
+    {
+        LOG_ERROR(
+            "[Geo::Manager] Cannot download manifest from '{}': {}", manifestUrl, base::getError(manifestResp).message);
+        return;
+    }
+
+    const auto manifest = base::getResponse(manifestResp);
+    LOG_DEBUG("[Geo::Manager] Manifest downloaded successfully");
+
+    // Extract manifest fields
+    auto createdAt = manifest.getInt64(GENERATED_AT_PATH);
+
+    // Process city database if present
+    auto cityUrl = manifest.getString("/city/url");
+    auto cityMd5 = manifest.getString("/city/md5");
+    if (cityUrl.has_value() && cityMd5.has_value() && !cityPath.empty())
+    {
+        const auto cityName = std::filesystem::path(cityPath).filename().string();
+
+        // Check if database needs update
+        if (!needsUpdate(cityName, cityMd5.value()))
+        {
+            LOG_DEBUG("[Geo::Manager] No changes detected for CITY database '{}'", cityName);
+        }
+        else
+        {
+            LOG_INFO("[Geo::Manager] Changes detected for CITY database '{}', updating...", cityName);
+            auto cityError = processDbEntry(cityPath, Type::CITY, cityUrl.value(), cityMd5.value(), createdAt.value());
+            if (base::isError(cityError))
+            {
+                LOG_ERROR("[Geo::Manager] Failed to process CITY database '{}': {}",
+                          cityName,
+                          base::getError(cityError).message);
+                // Continue with ASN even if city fails
+            }
+            else
+            {
+                LOG_INFO("[Geo::Manager] Successfully updated CITY database '{}'", cityName);
+            }
         }
     }
     else
     {
-        auto writeResp = writeDb(path, content);
-        if (base::isError(writeResp))
-        {
-            return base::getError(writeResp);
-        }
-
-        auto addResp = addDbUnsafe(path, type, false);
-        if (base::isError(addResp))
-        {
-            return base::getError(addResp);
-        }
+        LOG_DEBUG("[Geo::Manager] CITY database not present in manifest or path not provided");
     }
 
-    // Update the internal store
-    auto internalResp = upsertStoreEntry(path);
-    if (base::isError(internalResp))
+    // Process ASN database if present
+    auto asnUrl = manifest.getString("/asn/url");
+    auto asnMd5 = manifest.getString("/asn/md5");
+    if (asnUrl.has_value() && asnMd5.has_value() && !asnPath.empty())
     {
-        LOG_WARNING("Cannot update internal store for '{}': {}", path, base::getError(internalResp).message);
+        const auto asnName = std::filesystem::path(asnPath).filename().string();
+
+        // Check if database needs update
+        if (!needsUpdate(asnName, asnMd5.value()))
+        {
+            LOG_DEBUG("[Geo::Manager] No changes detected for ASN database '{}'", asnName);
+        }
+        else
+        {
+            LOG_INFO("[Geo::Manager] Changes detected for ASN database '{}', updating...", asnName);
+            auto asnError = processDbEntry(asnPath, Type::ASN, asnUrl.value(), asnMd5.value(), createdAt.value());
+            if (base::isError(asnError))
+            {
+                LOG_ERROR("[Geo::Manager] Failed to process ASN database '{}': {}",
+                          asnName,
+                          base::getError(asnError).message);
+                // Continue even if ASN fails
+            }
+            else
+            {
+                LOG_INFO("[Geo::Manager] Successfully updated ASN database '{}'", asnName);
+            }
+        }
+    }
+    else
+    {
+        LOG_DEBUG("[Geo::Manager] ASN database not present in manifest or path not provided");
     }
 
-    return base::noError();
+    LOG_DEBUG("[Geo::Manager] Finished synchronization of geo databases");
 }
 
 base::RespOrError<std::shared_ptr<ILocator>> Manager::getLocator(Type type) const
@@ -358,9 +424,9 @@ base::RespOrError<std::shared_ptr<ILocator>> Manager::getLocator(Type type) cons
         return base::Error {fmt::format("Type '{}' does not have a database", typeName(type))};
     }
 
-    // Get the database entry and return the locator
-    auto entry = m_dbs.at(m_dbTypes.at(type));
-    auto locator = std::make_shared<Locator>(entry);
+    // Get the database handle and return the locator
+    auto handle = m_dbs.at(m_dbTypes.at(type));
+    auto locator = std::make_shared<Locator>(handle);
 
     return locator;
 }
@@ -368,10 +434,17 @@ base::RespOrError<std::shared_ptr<ILocator>> Manager::getLocator(Type type) cons
 std::vector<DbInfo> Manager::listDbs() const
 {
     std::shared_lock lock(m_rwMapMutex);
+
     std::vector<DbInfo> dbs;
-    for (const auto& [name, entry] : m_dbs)
+    for (const auto& [name, handle] : m_dbs)
     {
-        dbs.emplace_back(DbInfo {name, entry->path, entry->type});
+        auto inst = handle->load();
+        if (!inst)
+        {
+            continue;
+        }
+
+        dbs.emplace_back(DbInfo {name, inst->path(), inst->hash(), inst->createdAt(), inst->type()});
     }
     return dbs;
 }

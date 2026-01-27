@@ -6,7 +6,6 @@ set -uo pipefail  # Removed -e to allow test failures without stopping script
 
 TOOLS=(
   engine-archiver
-  engine-geo
   engine-helper-test
   engine-test
   engine-public

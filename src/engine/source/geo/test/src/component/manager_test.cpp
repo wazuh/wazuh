@@ -52,11 +52,13 @@ protected:
         asnJson.setString(asnPath, PATH_PATH);
         asnJson.setString(typeName(Type::ASN), TYPE_PATH);
         asnJson.setString("asnHash", HASH_PATH);
+        asnJson.setInt64(1769111225, GENERATED_AT_PATH);
 
         json::Json cityJson;
         cityJson.setString(cityPath, PATH_PATH);
         cityJson.setString(typeName(Type::CITY), TYPE_PATH);
         cityJson.setString("cityHash", HASH_PATH);
+        cityJson.setInt64(1769111225, GENERATED_AT_PATH);
 
         EXPECT_CALL(*mockStore, readDoc(asnName)).WillOnce(testing::Return(storeReadDocResp(asnJson)));
         EXPECT_CALL(*mockStore, readDoc(cityName)).WillOnce(testing::Return(storeReadDocResp(cityJson)));
@@ -136,13 +138,10 @@ void setError(std::atomic_bool& error, std::string& errorMsg, const std::string&
     }
 }
 
-// Locator threads lookup while another thread deletes and add the db to the manager
-TEST_F(GeoManagerTest, MultithreadDeleteAddLookup)
+// Locator threads lookup concurrently
+TEST_F(GeoManagerTest, MultithreadLookup)
 {
     auto type = Type::ASN;
-    auto dbPath = asnPath;
-    auto internalName = base::Name(fmt::format(
-        "{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, std::filesystem::path(dbPath).filename().string()));
     auto nThreads = 10;
     auto times = 20000;
 
@@ -161,13 +160,7 @@ TEST_F(GeoManagerTest, MultithreadDeleteAddLookup)
             auto res = locator->getString(g_ipFullData, "test_map.test_str1");
             if (base::isError(res))
             {
-                if (base::getError(res).message != "Database is not available")
-                {
-                    setError(error,
-                             errorMsg,
-                             fmt::format("Locator thread got error '{}' which is not 'Database is not available'",
-                                         base::getError(res).message));
-                }
+                setError(error, errorMsg, base::getError(res).message);
             }
             else
             {
@@ -183,7 +176,7 @@ TEST_F(GeoManagerTest, MultithreadDeleteAddLookup)
     };
 
     std::vector<std::thread> threads;
-    for (int i = 0; i < nThreads - 1; i++)
+    for (int i = 0; i < nThreads; i++)
     {
         auto locatorResp = manager->getLocator(type);
         ASSERT_FALSE(base::isError(locatorResp));
@@ -191,47 +184,6 @@ TEST_F(GeoManagerTest, MultithreadDeleteAddLookup)
 
         threads.emplace_back(locatorFn, locator);
     }
-
-    // Add a thread to remove the db
-    threads.emplace_back(
-        [&error, &errorMsg, times, type, dbPath, internalName](std::shared_ptr<IManager> manager,
-                                                               std::shared_ptr<store::mocks::MockStore> mockStore)
-        {
-            EXPECT_CALL(*mockStore, deleteDoc(internalName)).WillRepeatedly(testing::Return(storeOk()));
-            EXPECT_CALL(*mockStore, upsertDoc(internalName, testing::_))
-                .WillRepeatedly(testing::Return(storeOk()));
-
-            bool action = true;
-            for (int i = 0; i < times; i++)
-            {
-                if (error.load())
-                {
-                    return;
-                }
-
-                base::OptError res;
-                if (action)
-                {
-                    res = manager->removeDb(dbPath);
-                    if (base::isError(res))
-                    {
-                        setError(error, errorMsg, base::getError(res).message);
-                    }
-                }
-                else
-                {
-                    res = manager->addDb(dbPath, type);
-                    if (base::isError(res))
-                    {
-                        setError(error, errorMsg, base::getError(res).message);
-                    }
-                }
-
-                action = !action;
-            }
-        },
-        manager,
-        mockStore);
 
     for (auto& t : threads)
     {
@@ -245,9 +197,6 @@ TEST_F(GeoManagerTest, MultithreadDeleteAddLookup)
 TEST_F(GeoManagerTest, MultithreadListLookup)
 {
     auto type = Type::ASN;
-    auto dbPath = asnPath;
-    auto internalName = base::Name(fmt::format(
-        "{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, std::filesystem::path(dbPath).filename().string()));
     auto nThreads = 10;
     auto times = 15000;
 
@@ -291,9 +240,9 @@ TEST_F(GeoManagerTest, MultithreadListLookup)
         threads.emplace_back(locatorFn, locator);
     }
 
-    // Add a thread to query the db
+    // Add a thread to list the dbs
     threads.emplace_back(
-        [&error, &errorMsg, times, type, dbPath](std::shared_ptr<IManager> manager)
+        [&error, &errorMsg, times](std::shared_ptr<IManager> manager)
         {
             for (int i = 0; i < times; i++)
             {
@@ -305,7 +254,7 @@ TEST_F(GeoManagerTest, MultithreadListLookup)
                 auto dbs = manager->listDbs();
                 if (dbs.size() != 2)
                 {
-                    setError(error, errorMsg, "Manager thread got more than two dbs");
+                    setError(error, errorMsg, fmt::format("Manager thread got {} dbs instead of 2", dbs.size()));
                 }
             }
         },
@@ -319,13 +268,10 @@ TEST_F(GeoManagerTest, MultithreadListLookup)
     ASSERT_FALSE(error.load()) << errorMsg;
 }
 
-// Get locator from threads while another thread deletes and add the db to the manager
-TEST_F(GeoManagerTest, MultithreadDeleteAddGetLocator)
+// Get locator from threads concurrently
+TEST_F(GeoManagerTest, MultithreadGetLocator)
 {
     auto type = Type::ASN;
-    auto dbPath = asnPath;
-    auto internalName = base::Name(fmt::format(
-        "{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, std::filesystem::path(dbPath).filename().string()));
     auto nThreads = 10;
     auto times = 20000;
 
@@ -344,64 +290,17 @@ TEST_F(GeoManagerTest, MultithreadDeleteAddGetLocator)
             auto locatorResp = manager->getLocator(type);
             if (base::isError(locatorResp))
             {
-                if (base::getError(locatorResp).message != "Type 'asn' does not have a database")
-                {
-                    setError(
-                        error,
-                        errorMsg,
-                        fmt::format("Locator thread got error '{}' which is not 'Type 'asn' does not have a database'",
-                                    base::getError(locatorResp).message));
-                }
+                setError(
+                    error, errorMsg, fmt::format("Error getting locator: {}", base::getError(locatorResp).message));
             }
         }
     };
 
     std::vector<std::thread> threads;
-    for (int i = 0; i < nThreads - 1; i++)
+    for (int i = 0; i < nThreads; i++)
     {
         threads.emplace_back(locatorFn, manager);
     }
-
-    // Add a thread to remove the db
-    threads.emplace_back(
-        [&error, &errorMsg, times, type, dbPath, internalName](std::shared_ptr<IManager> manager,
-                                                               std::shared_ptr<store::mocks::MockStore> mockStore)
-        {
-            EXPECT_CALL(*mockStore, deleteDoc(internalName)).WillRepeatedly(testing::Return(storeOk()));
-            EXPECT_CALL(*mockStore, upsertDoc(internalName, testing::_))
-                .WillRepeatedly(testing::Return(storeOk()));
-
-            bool action = true;
-            for (int i = 0; i < times; i++)
-            {
-                if (error.load())
-                {
-                    return;
-                }
-
-                base::OptError res;
-                if (action)
-                {
-                    res = manager->removeDb(dbPath);
-                    if (base::isError(res))
-                    {
-                        setError(error, errorMsg, base::getError(res).message);
-                    }
-                }
-                else
-                {
-                    res = manager->addDb(dbPath, type);
-                    if (base::isError(res))
-                    {
-                        setError(error, errorMsg, base::getError(res).message);
-                    }
-                }
-
-                action = !action;
-            }
-        },
-        manager,
-        mockStore);
 
     for (auto& t : threads)
     {
@@ -411,19 +310,11 @@ TEST_F(GeoManagerTest, MultithreadDeleteAddGetLocator)
     ASSERT_FALSE(error.load()) << errorMsg;
 }
 
-// One thread for each type adds/deletes the db for same type
-// Several threads for each type, gets the locator and queries the db
+// Multiple threads get locators and query different types concurrently
 TEST_F(GeoManagerTest, ComplexUseCase)
 {
     auto type0 = Type::ASN;
-    auto dbPath0 = asnPath;
-    auto internalName0 = base::Name(fmt::format(
-        "{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, std::filesystem::path(dbPath0).filename().string()));
-
     auto type1 = Type::CITY;
-    auto dbPath1 = cityPath;
-    auto internalName1 = base::Name(fmt::format(
-        "{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, std::filesystem::path(dbPath1).filename().string()));
 
     auto nThreads0 = 5;
     auto nThreads1 = 5;
@@ -434,20 +325,13 @@ TEST_F(GeoManagerTest, ComplexUseCase)
 
     auto locatorFn = [times, &error, &errorMsg](std::shared_ptr<IManager> manager, Type type)
     {
-        std::string noDbError = fmt::format("Type '{}' does not have a database", typeName(type));
         for (auto i = 0; i < times; i++)
         {
             auto locatorResp = manager->getLocator(type);
             if (base::isError(locatorResp))
             {
-                if (base::getError(locatorResp).message != noDbError)
-                {
-                    setError(error,
-                             errorMsg,
-                             fmt::format("Locator thread got error '{}' which is not '{}'",
-                                         base::getError(locatorResp).message,
-                                         noDbError));
-                }
+                setError(
+                    error, errorMsg, fmt::format("Error getting locator: {}", base::getError(locatorResp).message));
             }
             else
             {
@@ -455,13 +339,7 @@ TEST_F(GeoManagerTest, ComplexUseCase)
                 auto res = locator->getString(g_ipFullData, "test_map.test_str1");
                 if (base::isError(res))
                 {
-                    if (base::getError(res).message != "Database is not available")
-                    {
-                        setError(error,
-                                 errorMsg,
-                                 fmt::format("Locator thread got error '{}' which is not 'Database is not available'",
-                                             base::getError(res).message));
-                    }
+                    setError(error, errorMsg, base::getError(res).message);
                 }
                 else
                 {
@@ -486,86 +364,6 @@ TEST_F(GeoManagerTest, ComplexUseCase)
     {
         threads.emplace_back(locatorFn, manager, type1);
     }
-
-    // Expectations by the manager threads
-    EXPECT_CALL(*mockStore, deleteDoc(internalName0)).WillRepeatedly(testing::Return(storeOk()));
-    EXPECT_CALL(*mockStore, upsertDoc(internalName0, testing::_)).WillRepeatedly(testing::Return(storeOk()));
-    EXPECT_CALL(*mockStore, deleteDoc(internalName1)).WillRepeatedly(testing::Return(storeOk()));
-    EXPECT_CALL(*mockStore, upsertDoc(internalName1, testing::_)).WillRepeatedly(testing::Return(storeOk()));
-
-    // Add a thread to remove the db0
-    threads.emplace_back(
-        [&error, &errorMsg, times, type0, dbPath0](std::shared_ptr<IManager> manager,
-                                                   std::shared_ptr<MockStore> mockStore)
-        {
-            bool action = true;
-            for (int i = 0; i < times; i++)
-            {
-                if (error.load())
-                {
-                    return;
-                }
-
-                base::OptError res;
-                if (action)
-                {
-                    res = manager->removeDb(dbPath0);
-                    if (base::isError(res))
-                    {
-                        setError(error, errorMsg, base::getError(res).message);
-                    }
-                }
-                else
-                {
-                    res = manager->addDb(dbPath0, type0);
-                    if (base::isError(res))
-                    {
-                        setError(error, errorMsg, base::getError(res).message);
-                    }
-                }
-
-                action = !action;
-            }
-        },
-        manager,
-        mockStore);
-
-    // Add a thread to remove the db1
-    threads.emplace_back(
-        [&error, &errorMsg, times, type1, dbPath1](std::shared_ptr<IManager> manager,
-                                                   std::shared_ptr<store::mocks::MockStore> mockStore)
-        {
-            bool action = true;
-            for (int i = 0; i < times; i++)
-            {
-                if (error.load())
-                {
-                    return;
-                }
-
-                base::OptError res;
-                if (action)
-                {
-                    res = manager->removeDb(dbPath1);
-                    if (base::isError(res))
-                    {
-                        setError(error, errorMsg, base::getError(res).message);
-                    }
-                }
-                else
-                {
-                    res = manager->addDb(dbPath1, type1);
-                    if (base::isError(res))
-                    {
-                        setError(error, errorMsg, base::getError(res).message);
-                    }
-                }
-
-                action = !action;
-            }
-        },
-        manager,
-        mockStore);
 
     for (auto& t : threads)
     {

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
-  title: Wazuh-Engine Events API
-  description: API for processing security events using the Wazuh-Engine security policy.
+  title: Wazuh-Engine Analysis API
+  description: API for managing security policies, testing, geolocation, routing, and archiving using the Wazuh-Engine.
   version: 1.0.0
 
 servers:
@@ -9,8 +9,6 @@ servers:
     description: "Wazuh server using Unix socket over HTTP"
 
 tags:
-  - name: Events
-    description: Event ingestion endpoints
   - name: Router
     description: "Operations for managing environments and routing"
   - name: Tester
@@ -28,67 +26,6 @@ tags:
 # Paths
 #################################################################################
 paths:
-  ################################
-  # Events
-  ################################
-  /events/enriched:
-    post:
-      tags:
-        - Events
-      summary: Ingest enriched events (NDJSON)
-      description: |
-        Accepts a newline-delimited JSON (NDJSON) stream of enriched events over HTTP via Unix domain socket.
-        Socket path: /var/ossec/queue/sockets/queue-http.sock
-      requestBody:
-        required: true
-        content:
-          application/x-ndjson:
-            schema:
-              type: string
-              description: Newline-delimited JSON; one JSON object per line.
-            examples:
-              sample:
-                value: |-
-                  {"ts":"2025-09-01T10:00:00Z","rule_id":1001,"agent_id":"001","data":{"k":"v"}}
-                  {"ts":"2025-09-01T10:00:01Z","rule_id":1002,"agent_id":"001","data":{"k2":"v2"}}
-      responses:
-        "200":
-          description: Events accepted. (Empty body)
-        "400":
-          description: Invalid NDJSON payload.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  code:
-                    type: integer
-                required: [error, code]
-              examples:
-                emptyBatch:
-                  value: {"error":"NDJson parser error, empty batch","code":400}
-                emptyLine:
-                  value: {"error":"NDJson parser error, empty line","code":400}
-                invalidLine:
-                  value: {"error":"NDJson parser error, invalid ndjson line or event: '...'", "code":400}
-        "500":
-          description: Internal server error.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  code:
-                    type: integer
-                required: [error, code]
-              examples:
-                orchestratorUnavailable:
-                  value: {"error":"Internal server error","code":500}
-
   ################################
   # Validate Policy
   ################################
@@ -130,14 +67,18 @@ paths:
                   full_policy:
                     {
                       "policy": {
+                        "title": "<policy_name>",
                         "root_decoder": "<decoder_uuid>",
-                        "integrations": ["<integration_uuid>"]
+                        "integrations": ["<integration_uuid>"],
+                        "filters": ["<filter_uuid>"],
+                        "outputs": ["<output_uuid>"]
                       },
                       "resources": {
                         "decoders": [],
                         "integrations": [],
                         "kvdbs": [],
-                        "filters": []
+                        "filters": [],
+                        "outputs": []
                       }
                     }
               validate_and_load_testing:
@@ -147,8 +88,10 @@ paths:
                   full_policy:
                     {
                       "policy": {
+                        "title": "<policy_name>",
                         "root_decoder": "<decoder_uuid>",
-                        "integrations": ["<integration_uuid>"]
+                        "integrations": ["<integration_uuid>"],
+                        "filters": ["<filter_uuid>"],
                       },
                       "resources": {
                         "kvdbs": [
@@ -185,7 +128,23 @@ paths:
                             "kvdbs": ["<kvdb_uuid>"]
                           }
                         ],
-                        "filters": []
+                        "filters": [
+                          {
+                            "name": "filter/prefilter/0",
+                            "metadata": {
+                              "description": "Default filter to allow all events (for default ruleset)",
+                              "author": {
+                                "name": "Wazuh, Inc.",
+                                "url": "https://wazuh.com",
+                                "date": "2022/11/08"
+                              }
+                            },
+                            "check": "$host.os.platform == 'ubuntu'",
+                            "type": "pre-filter",
+                            "enabled": true,
+                            "id": "<filter_uuid>"
+                          },
+                        ]
                       }
                     }
       responses:
@@ -196,7 +155,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_jsoncontent:
                   summary: Missing jsonContent
@@ -358,7 +317,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 invalid_queue:
                   summary: Queue out of allowed range (1..255)
@@ -423,7 +382,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_route_field:
                   summary: Missing /route field
@@ -494,7 +453,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_name:
                   summary: Missing name field
@@ -546,7 +505,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_name:
                   summary: Name field is empty
@@ -582,7 +541,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_name:
                   summary: Name field is empty
@@ -623,7 +582,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_name:
                   summary: Name field is empty
@@ -727,7 +686,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_fields:
                   summary: Missing required fields
@@ -799,7 +758,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 eps_already_active:
                   summary: EPS already active
@@ -830,7 +789,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 eps_already_inactive:
                   summary: EPS already inactive
@@ -864,7 +823,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_session:
                   summary: Missing /session
@@ -915,7 +874,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_name:
                   summary: Name cannot be empty
@@ -955,7 +914,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_name:
                   summary: Name cannot be empty
@@ -986,7 +945,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_name:
                   summary: Missing name field
@@ -1031,7 +990,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
                 missing_fields:
                   summary: Empty request
@@ -1094,90 +1053,70 @@ paths:
   ################################
   # Geo
   ################################
-  /geo/db/add:
+  /geo/db/get:
     post:
       tags:
         - Geo
-      summary: Add a new MMDB database
+      summary: Query geolocation data for an IP address
       description: |
-        This endpoint allows adding a new MMDB (MaxMind Database) file to the geo manager.
+        This endpoint queries geolocation data for a given IP address from both CITY and ASN databases.
+        Returns WCS-compliant data with two objects: "geo" for city/location information and "as" for ASN information.
+        If a database is not available or the IP is not found, empty objects are returned for that database type.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/GeoDbPost_Request"
+              $ref: "#/components/schemas/GeoDbGet_Request"
       responses:
         "200":
-          $ref: "#/components/responses/GenericSuccess_200"
-        "400":
-          description: Bad Request. The request was malformed or failed validation.
+          description: Successfully retrieved geolocation data
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/GeoDbGet_Response"
               examples:
-                missingField:
-                  summary: Missing required field
+                withBothData:
+                  summary: IP with both CITY and ASN data
                   value:
-                    status: "ERROR"
-                    error: "Path cannot be empty"
-                invalidType:
-                  summary: Invalid type
+                    status: "OK"
+                    data:
+                      geo:
+                        city_name: "Mountain View"
+                        location:
+                          lat: 37.386
+                          lon: -122.0838
+                        country_code: "US"
+                      as:
+                        number: 15169
+                        organization_name: "Google LLC"
+                cityOnly:
+                  summary: IP with only CITY data
                   value:
-                    status: "ERROR"
-                    error: "Invalid geo::Type name string 'non-exist'"
-                duplicateName:
-                  summary: Database name already exists
+                    status: "OK"
+                    data:
+                      geo:
+                        city_name: "Mountain View"
+                      as: {}
+                noData:
+                  summary: IP not found in databases
                   value:
-                    status: "ERROR"
-                    error: "Database with name 'base.mmdb' already exists"
-                duplicateType:
-                  summary: Type already has an associated database
-                  value:
-                    status: "ERROR"
-                    error: "Type 'city' already has the database 'base.mmdb'"
-                invalidFile:
-                  summary: File is not a valid MMDB
-                  value:
-                    status: "ERROR"
-                    error: "Cannot add database '/tmp/base.mmdb': An attempt to read data from the MaxMind DB file failed"
-        "500":
-          $ref: "#/components/responses/InternalServerError_500"
-
-  /geo/db/del:
-    post:
-      tags:
-        - Geo
-      summary: Delete an MMDB database
-      description: |
-        This endpoint allows deleting an MMDB (MaxMind Database) file from the geo manager.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/GeoDbDelete_Request"
-      responses:
-        "200":
-          $ref: "#/components/responses/GenericSuccess_200"
+                    status: "OK"
+                    data:
+                      geo: {}
+                      as: {}
         "400":
-          description: Bad Request. The request was malformed or failed validation.
+          description: Bad Request. The request was malformed or validation failed.
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
               examples:
-                missingField:
-                  summary: Missing required field
+                emptyIp:
+                  summary: Empty IP address
                   value:
                     status: "ERROR"
-                    error: "Path cannot be empty"
-                notFound:
-                  summary: Database not found
-                  value:
-                    status: "ERROR"
-                    error: "Database 'base.mmdb' not found"
+                    error: "IP cannot be empty"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -1185,9 +1124,10 @@ paths:
     post:
       tags:
         - Geo
-      summary: List all MMDB databases
+      summary: List all geolocation databases
       description: |
-        This endpoint retrieves a list of all MMDB (MaxMind Database) files in the geo manager.
+        This endpoint retrieves information about all geolocation databases currently loaded in the geo manager.
+        Returns details including database name, path, MD5 hash, creation timestamp, and type (city or asn).
       requestBody:
         required: true
         content:
@@ -1196,64 +1136,34 @@ paths:
               $ref: "#/components/schemas/EmptyRequest"
       responses:
         "200":
-          description: Successfully retrieved MMDB databases
+          description: Successfully retrieved database list
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/GeoDbList_Response"
+              examples:
+                withDatabases:
+                  summary: Manager with loaded databases
+                  value:
+                    status: "OK"
+                    entries:
+                      - name: "GeoLite2-City.mmdb"
+                        path: "/var/ossec/geo/GeoLite2-City.mmdb"
+                        hash: "a1b2c3d4e5f6"
+                        createdAt: "2024-01-15T10:30:00Z"
+                        type: "city"
+                      - name: "GeoLite2-ASN.mmdb"
+                        path: "/var/ossec/geo/GeoLite2-ASN.mmdb"
+                        hash: "f6e5d4c3b2a1"
+                        createdAt: "2024-01-15T10:30:00Z"
+                        type: "asn"
+                empty:
+                  summary: No databases loaded
+                  value:
+                    status: "OK"
+                    entries: []
         "400":
           $ref: "#/components/responses/BadRequest_400"
-        "500":
-          $ref: "#/components/responses/InternalServerError_500"
-
-  /geo/db/remoteUpsert:
-    post:
-      tags:
-        - Geo
-      summary: Add or update an MMDB database from a remote location
-      description: |
-        This endpoint allows adding or updating an MMDB (MaxMind Database) file in the geo manager from a remote location.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/GeoDbRemoteUpsert_Request"
-      responses:
-        "200":
-          $ref: "#/components/responses/GenericSuccess_200"
-        "400":
-          description: Bad Request. The request was malformed or failed validation.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/responses/BadRequest_400"
-              examples:
-                missingPath:
-                  summary: Missing path
-                  value:
-                    status: "ERROR"
-                    error: "Path is mandatory"
-                invalidType:
-                  summary: Invalid geo type
-                  value:
-                    status: "ERROR"
-                    error: "Invalid geo::Type name string 'non-exist'"
-                typeMismatch:
-                  summary: Type does not match existing database
-                  value:
-                    status: "ERROR"
-                    error: "The name 'base.mmdb' does not correspond to any database for type 'city'. If you want it to correspond, please delete the existing database and recreate it with this name."
-                typeAlreadyExists:
-                  summary: Type already has a database
-                  value:
-                    status: "ERROR"
-                    error: "Type 'city' already has the database 'base.mmdb'"
-                downloadError:
-                  summary: Failed to download database
-                  value:
-                    status: "ERROR"
-                    error: "Cannot download database from 'https://raw.githubusercontent.com/wazuh/wazuh/blob/main/src/engine/test/integration_tests/geo/data/base.mmdb': Failed to download file from 'https://raw.githubusercontent.com/wazuh/wazuh/blob/main/src/engine/test/integration_tests/geo/data/base.mmdb', error: HTTP response code said error, status code: 404."
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   #################################
@@ -1280,7 +1190,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   /archiver/deactivate:
@@ -1304,7 +1214,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   /archiver/status:
@@ -1345,7 +1255,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                $ref: "#/components/schemas/Response"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   ################################
@@ -1603,7 +1513,6 @@ components:
           properties:
             route:
               $ref: "#/components/schemas/RouterEntry"
-              description: "Details of the route"
 
     RouteReload_Request:
       type: object
@@ -1676,7 +1585,7 @@ components:
       required: [full_policy]
       properties:
         load_in_tester:
-          type: bool
+          type: boolean
           description: "If true, load testing policies into the Tester environment."
         full_policy:
           type: object
@@ -1791,7 +1700,7 @@ components:
       required: [queue, location, agent_metadata, event, trace_level]
       properties:
         queue:
-          type: uint8
+          type: integer
           minimum: 1
           maximum: 255
           description: "Queue number where the event will be injected (engine/input queue)"
@@ -1844,7 +1753,6 @@ components:
           properties:
             session:
               $ref: "#/components/schemas/TesterSession"
-              description: "Details of the session"
 
     TesterSessionDelete_Request:
       type: object
@@ -1893,24 +1801,42 @@ components:
           type: string
           description: "MMDB database type [city|asn]"
 
-    GeoDbPost_Request:
+    GeoDbGet_Request:
       type: object
-      required: [path, type]
+      required: [ip]
       properties:
-        path:
+        ip:
           type: string
-          description: "Path of the MMDB database file to add"
-        type:
-          type: string
-          description: "MMDB database type [city|asn]"
+          description: "IP address to query for geolocation data"
+          example: "8.8.8.8"
 
-    GeoDbDelete_Request:
-      type: object
-      required: [path]
-      properties:
-        path:
-          type: string
-          description: "Path of the MMDB database file to delete"
+    GeoDbGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: object
+              description: "WCS-compliant geolocation data with 'geo' and 'as' objects"
+              properties:
+                geo:
+                  type: object
+                  description: "City and location data from CITY database. Empty object if not found or database not available."
+                  additionalProperties: true
+                as:
+                  type: object
+                  description: "ASN data from ASN database. Empty object if not found or database not available."
+                  additionalProperties: true
+              example:
+                geo:
+                  city_name: "Mountain View"
+                  location:
+                    lat: 37.386
+                    lon: -122.0838
+                  country_code: "US"
+                as:
+                  number: 15169
+                  organization_name: "Google LLC"
 
     GeoDbList_Response:
       allOf:
@@ -1921,24 +1847,19 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/GeoDbEntry"
-              description: "List of MMDB entries in the geo manager"
+              description: "List of MMDB database entries currently loaded in the geo manager"
 
-    GeoDbRemoteUpsert_Request:
-      type: object
-      required: [path, type, dbUrl, hashUrl]
-      properties:
-        path:
-          type: string
-          description: "Path of the MMDB database file to add"
-        type:
-          type: string
-          description: "MMDB database type [city|asn]"
-        dbUrl:
-          type: string
-          description: "URL of the remote database"
-        hashUrl:
-          type: string
-          description: "Hash URL for integrity verification"
+    #################################
+    # Archiver
+    #################################
+    ArchiverStatus_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            active:
+              type: boolean
+              description: "Indicates whether the archiver is active"
 
   #################################################################################
   # Responses
