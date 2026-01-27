@@ -209,46 +209,28 @@ class DisconnectedAgentGroupSyncTask:
         """
         try:
             with WazuhDBQueryAgents(
-                select=["id", "name", "status", "lastKeepAlive", "group"],
+                select=["id", "name", "status", "lastKeepAlive", "group", "dateAdd"],
                 query="status!=active",
             ) as db_query:
                 result = db_query.run()
 
-            def _normalize_to_utc(dt):
-                """
-                Convert a naive or aware datetime to UTC.
-
-                Parameters
-                ----------
-                dt : datetime or None
-                    The datetime object to normalize.
-
-                Returns
-                -------
-                datetime or None
-                    The UTC-aware datetime or None if input is None.
-                """
-                if dt is None:
-                    return None
-                if dt.tzinfo is None:
-                    return dt.replace(tzinfo=timezone.utc)
-                return dt.astimezone(timezone.utc)
-
             agents_not_active = result.get("items", [])
             agents = []
-            now_utc = core_utils.get_utc_now()
-
+            now_utc = core_utils.get_utc_now()  
             for agent in agents_not_active:
-
+                if agent["status"] in ('pending', 'never_connected'):
+                    disconnected_time = agent["dateAdd"]
+                else:
+                    disconnected_time = agent["lastKeepAlive"]
                 if (
-                    _normalize_to_utc(agent["lastKeepAlive"])
+                    disconnected_time
                     + timedelta(seconds=self.min_disconnection_time)
                     < now_utc
                 ):
                     agents.append(agent)
 
             self.logger.info(
-                f"Retrieved {len(agents)} non-connected agents from WazuhDB, "
+                f"Retrieved {len(agents)} non-active agents from WazuhDB "
                 f"meeting minimum disconnection time"
             )
 
