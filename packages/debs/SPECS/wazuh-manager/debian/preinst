@@ -20,6 +20,36 @@ fi
 case "$1" in
     install|upgrade)
 
+        # ============================================================
+        # HARD BLOCK: Prevent upgrade from 4.X to 5.X
+        # ============================================================
+        if [ "$1" = "upgrade" ] && [ -n "$2" ]; then
+            # $2 contains the old version in upgrade scenarios
+            OLD_VERSION="$2"
+            OLD_MAJOR=$(echo "$OLD_VERSION" | cut -d. -f1)
+
+            if [ "$OLD_MAJOR" = "4" ]; then
+                cat <<EOF
+==============================================================
+ERROR: Direct upgrade from Wazuh Manager 4.X to 5.X is not supported.
+
+Detected installed version: $OLD_VERSION
+
+To install Wazuh Manager 5.X, please:
+  1. Backup your configuration and data
+  2. Uninstall the current version:
+     apt remove wazuh-manager
+  3. Install the new version:
+     dpkg -i wazuh-manager_5.x.x.deb
+
+For migration instructions, visit:
+https://documentation.wazuh.com/current/upgrade-guide/
+==============================================================
+EOF
+                exit 1
+            fi
+        fi
+
         if [ "$1" = "upgrade" ]; then
             if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
                 systemctl stop wazuh-manager.service > /dev/null 2>&1
