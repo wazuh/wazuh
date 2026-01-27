@@ -42,6 +42,13 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         goDaemon();
     }
 
+#ifndef WIN32
+    /* Initialize agent local socket BEFORE dropping privileges */
+    if (agcom_init(uid, gid) < 0) {
+        mwarn("Failed to initialize agent local socket. Document limits queries will not work.");
+    }
+#endif
+
     /* Set group ID */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
@@ -140,6 +147,11 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     // Start request module
     req_init();
     w_create_thread(req_receiver, NULL);
+
+#ifndef WIN32
+    // Start agent local socket listener
+    w_create_thread(agcom_main, NULL);
+#endif
 
     /* Send agent stopped message at exit */
     atexit(send_agent_stopped_message);

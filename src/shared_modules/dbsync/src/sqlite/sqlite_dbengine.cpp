@@ -1485,6 +1485,13 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
                     updatedData["version"] = object["version"].get<int>() + 1;
                     oldData["version"] = object["version"];
                 }
+                else if (value.first == "synced" && object.contains("synced"))
+                {
+                    // Always include synced field if it exists in the database
+                    // This field is used by syscollector for document limit tracking
+                    updatedData["synced"] = object["synced"];
+                    oldData["synced"] = object["synced"];
+                }
             }
         }
     }

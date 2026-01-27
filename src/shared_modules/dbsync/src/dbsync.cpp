@@ -846,7 +846,7 @@ void DBSync::closeAndDeleteDatabase()
     DBSyncImplementation::instance().closeAndDeleteDatabase(m_dbsyncHandle, m_dbPath);
 }
 
-std::string DBSync::getConcatenatedChecksums(const std::string& tableName)
+std::string DBSync::getConcatenatedChecksums(const std::string& tableName, const std::string& rowFilter)
 {
     std::string concatenatedChecksums;
 
@@ -862,7 +862,7 @@ std::string DBSync::getConcatenatedChecksums(const std::string& tableName)
                       .table(tableName)
                       .columnList({"checksum"})
                       .orderByOpt({"checksum"})
-                      .rowFilter("")
+                      .rowFilter(rowFilter)
                       .distinctOpt(false)
                       .build()};
 
@@ -871,9 +871,9 @@ std::string DBSync::getConcatenatedChecksums(const std::string& tableName)
     return concatenatedChecksums;
 }
 
-std::string DBSync::calculateTableChecksum(const std::string& tableName)
+std::string DBSync::calculateTableChecksum(const std::string& tableName, const std::string& rowFilter)
 {
-    std::string concatenated_checksums = getConcatenatedChecksums(tableName);
+    std::string concatenated_checksums = getConcatenatedChecksums(tableName, rowFilter);
 
     // Build checksum-of-checksums
     Utils::HashData hash(Utils::HashType::Sha1);

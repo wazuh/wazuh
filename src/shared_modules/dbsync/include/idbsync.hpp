@@ -62,13 +62,16 @@ class IDBSync
         virtual void closeAndDeleteDatabase() = 0;
 
         /// @brief Gets the concatenated checksums from all the elements of a table
+        /// @param tableName Name of the table to query
+        /// @param rowFilter Optional SQL WHERE clause to filter rows (e.g., "WHERE synced=1")
         /// @return the concatenated checksum
-        virtual std::string getConcatenatedChecksums(const std::string& tableName) = 0;
+        virtual std::string getConcatenatedChecksums(const std::string& tableName, const std::string& rowFilter = "") = 0;
 
         /// @brief Calculate the checksum-of-checksums for a table
         /// @param tableName The table to calculate checksum for
+        /// @param rowFilter Optional SQL WHERE clause to filter rows (e.g., "WHERE synced=1")
         /// @return The SHA1 checksum-of-checksums as a hex string
-        virtual std::string calculateTableChecksum(const std::string& tableName) = 0;
+        virtual std::string calculateTableChecksum(const std::string& tableName, const std::string& rowFilter = "") = 0;
 
         /// @brief Increases the version of each entry in a table by 1
         /// @param tableName Name of the table to update

@@ -20,6 +20,12 @@
 #include "mq_op.h"
 #include "headers/logging_helper.h"
 #include "commonDefs.h"
+#ifndef WIN32
+#include "os_net/os_net.h"
+#include <unistd.h>
+#else
+#include "../client-agent/agentd.h"
+#endif
 
 #define SYS_SYNC_PROTOCOL_DB_PATH "queue/syscollector/db/syscollector_sync.db"
 #define SYS_SYNC_PROTOCOL_VD_DB_PATH "queue/syscollector/db/syscollector_vd_sync.db"
@@ -86,6 +92,16 @@ syscollector_unlock_scan_mutex_func syscollector_unlock_scan_mutex_ptr = NULL;
 
 typedef void (*syscollector_run_recovery_process_func)();
 syscollector_run_recovery_process_func syscollector_run_recovery_process_ptr = NULL;
+
+// Socket functions setter pointer
+typedef void (*syscollector_set_socket_funcs_func)(socket_connect_func_t, socket_send_func_t, socket_recv_func_t, socket_close_func_t);
+syscollector_set_socket_funcs_func syscollector_set_socket_funcs_ptr = NULL;
+
+#ifdef WIN32
+// Windows: agcom_dispatch setter pointer
+typedef void (*syscollector_set_agcom_dispatch_func)(agcom_dispatch_func_t);
+syscollector_set_agcom_dispatch_func syscollector_set_agcom_dispatch_ptr = NULL;
+#endif
 
 unsigned int enable_synchronization = 1;     // Database synchronization enabled (default value)
 uint32_t sync_interval = 300;                // Database synchronization interval (default value)
@@ -350,6 +366,14 @@ void* wm_sys_main(wm_sys_t* sys)
         syscollector_unlock_scan_mutex_ptr = so_get_function_sym(syscollector_module, "syscollector_unlock_scan_mutex");
 
         syscollector_run_recovery_process_ptr = so_get_function_sym(syscollector_module, "syscollector_run_recovery_process");
+
+        // Get socket functions setter pointer
+        syscollector_set_socket_funcs_ptr = so_get_function_sym(syscollector_module, "syscollector_set_socket_funcs");
+
+#ifdef WIN32
+        // Get agcom_dispatch setter pointer for Windows
+        syscollector_set_agcom_dispatch_ptr = so_get_function_sym(syscollector_module, "syscollector_set_agcom_dispatch");
+#endif
     } else {
         mterror(WM_SYS_LOGTAG, "Can't load syscollector.");
         pthread_exit(NULL);
@@ -402,6 +426,29 @@ void* wm_sys_main(wm_sys_t* sys)
                               sys->flags.services,
                               sys->flags.browser_extensions,
                               sys->flags.notify_first_scan);
+
+        // Set communication functions for agentd communication (AFTER init, BEFORE start)
+#ifdef WIN32
+        // Windows: Set agcom_dispatch function
+        if (syscollector_set_agcom_dispatch_ptr)
+        {
+            syscollector_set_agcom_dispatch_ptr(agcom_dispatch);
+        }
+        else
+        {
+            mtdebug1(WM_SYS_LOGTAG, "agcom_dispatch setter not available (older syscollector version?)");
+        }
+#else
+        // Unix/Linux: Set socket functions
+        if (syscollector_set_socket_funcs_ptr)
+        {
+            syscollector_set_socket_funcs_ptr(OS_ConnectUnixDomain, OS_SendSecureTCP, OS_RecvSecureTCP, close);
+        }
+        else
+        {
+            mtdebug1(WM_SYS_LOGTAG, "Socket communication functions setter not available (older syscollector version?)");
+        }
+#endif
 
         // Initialize sync protocol AFTER init (so logger is available)
         if (enable_synchronization && syscollector_init_sync_ptr && syscollector_sync_module_ptr)

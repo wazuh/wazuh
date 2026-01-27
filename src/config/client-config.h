@@ -26,6 +26,17 @@ typedef struct agent_server {
     int retry_interval; ///< Time interval between connection attempts.
 } agent_server;
 
+/**
+ * @brief Document limits configuration
+ *
+ * Stores document limits per module. Will be populated when the agent
+ * connects to the manager and receives the configuration.
+ */
+typedef struct _document_limits_config {
+    int configured;  ///< 0 = not configured yet, 1 = configured
+    cJSON *limits;   ///< JSON structure with limits per module
+} document_limits_config;
+
 /* Configuration structure */
 typedef struct _agent {
     agent_server * server;
@@ -45,6 +56,7 @@ typedef struct _agent {
     wlabel_t *labels; /* null-ended label set */
     agent_flags_t flags;
     w_enrollment_ctx *enrollment_cfg;
+    document_limits_config *doc_limits; ///< Document limits configuration from manager
 } agent;
 
 /* Anti tampering config */

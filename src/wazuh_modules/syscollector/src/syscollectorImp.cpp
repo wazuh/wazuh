@@ -29,6 +29,17 @@
 #include "defs.h"
 #include "schemaValidator.hpp"
 
+#ifndef WIN32
+#include <unistd.h>
+#include <cerrno>
+#include <cstring>
+#include <sys/socket.h>
+#endif
+
+// Constants for socket communication
+constexpr int SYSCOLLECTOR_OS_MAXSTR = 6144;
+constexpr int SYSCOLLECTOR_OS_SOCKTERR = -2;
+
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
 {                                                                       \
@@ -264,7 +275,22 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
 
         if (shouldQueue && m_persistDiffFunction)
         {
-            m_persistDiffFunction(calculateHashId(aux, table), OPERATION_STATES_MAP.at(result), indexIt->second, dataToQueue, version);
+            // Check document limit only for stateful events (events that will be persisted)
+            // Stateless events are not subject to document limits
+            if (!checkDocumentLimit(table, aux, result))
+            {
+                // Limit reached, do not persist this record
+                // The event will still be sent as stateless (below)
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_DEBUG, "Document limit reached for table " + table + ", skipping persistence");
+                }
+            }
+            else
+            {
+                // Within limit, persist the event
+                m_persistDiffFunction(calculateHashId(aux, table), OPERATION_STATES_MAP.at(result), indexIt->second, dataToQueue, version);
+            }
         }
     }
 
@@ -322,6 +348,7 @@ void Syscollector::updateChanges(const std::string& table,
         QUEUE_SIZE,
         callback
     };
+
     nlohmann::json input;
     input["table"] = table;
     input["data"] = values;
@@ -355,7 +382,15 @@ Syscollector::Syscollector()
     , m_browserExtensions { false }
     , m_vdSyncEnabled { false }
     , m_failedItems { nullptr }
-{}
+    , m_itemsToUpdateSynced { nullptr }
+{
+    // Initialize document limits to 0 (unlimited) for all indices
+    for (const auto& [table, index] : INDEX_MAP)
+    {
+        m_documentLimits[index] = 0;
+        m_documentCounts[index] = 0;
+    }
+}
 
 std::string Syscollector::getCreateStatement() const
 {
@@ -432,12 +467,43 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_spNormalizer  = std::move(normalizer);
     m_initialized   = true;
 
+    // Initialize document counts from database
+    initializeDocumentCounts();
+
     m_allCollectorsDisabled = !(m_hardware || m_os || m_network || m_packages || m_ports || m_processes || m_hotfixes || m_groups || m_users || m_services || m_browserExtensions);
     m_dataCleanRetries = 1;  // Default retries for data clean
 
     // Check disabled collectors with existing data
     checkDisabledCollectorsIndicesWithData();
 }
+
+void Syscollector::setSocketFunctions(SocketConnectFunc connectFunc,
+                                      SocketSendFunc sendFunc,
+                                      SocketRecvFunc recvFunc,
+                                      SocketCloseFunc closeFunc)
+{
+    m_socketConnect = std::move(connectFunc);
+    m_socketSend = std::move(sendFunc);
+    m_socketRecv = std::move(recvFunc);
+    m_socketClose = std::move(closeFunc);
+
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_DEBUG, "Socket communication functions set for agentd communication (Unix/Linux)");
+    }
+}
+
+#ifdef WIN32
+void Syscollector::setAgcomDispatchFunction(AgcomDispatchFunc dispatchFunc)
+{
+    m_agcomDispatch = std::move(dispatchFunc);
+
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_DEBUG, "Agcom dispatch function set for agentd communication (Windows)");
+    }
+}
+#endif
 
 void Syscollector::start()
 {
@@ -507,6 +573,63 @@ void Syscollector::start()
 #else
         m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. OS and packages are required to be enabled.");
 #endif
+    }
+
+    // Try to fetch document limits from agentd before starting syncLoop
+    // This is done asynchronously to avoid blocking module startup
+    constexpr int MAX_LIMIT_FETCH_RETRIES = 10;
+    constexpr int RETRY_DELAY_SECONDS = 5;
+
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_INFO, "Attempting to fetch document limits from agentd...");
+    }
+
+    bool limitsObtained = false;
+    for (int attempt = 0; attempt < MAX_LIMIT_FETCH_RETRIES && !m_stopping; ++attempt)
+    {
+        if (attempt > 0)
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG,
+                    "Retrying to fetch document limits (attempt " + std::to_string(attempt + 1) +
+                    "/" + std::to_string(MAX_LIMIT_FETCH_RETRIES) + ")...");
+            }
+            std::this_thread::sleep_for(std::chrono::seconds(RETRY_DELAY_SECONDS));
+        }
+
+        auto limits = fetchDocumentLimitsFromAgentd();
+        if (limits.has_value())
+        {
+            if (setDocumentLimits(limits.value()))
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_INFO, "Document limits successfully configured from agentd");
+                }
+                limitsObtained = true;
+                break;
+            }
+            else
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_ERROR, "Failed to apply document limits obtained from agentd");
+                }
+            }
+        }
+    }
+
+    if (!limitsObtained && !m_stopping)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING,
+                "Could not obtain document limits from agentd after " +
+                std::to_string(MAX_LIMIT_FETCH_RETRIES) + " attempts. " +
+                "Continuing without limits (unlimited mode).");
+        }
     }
 
     std::unique_lock<std::mutex> scan_lock{m_scan_mutex};
@@ -1319,6 +1442,7 @@ void Syscollector::scanNetwork()
     if (m_network)
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting network scan");
+
         const auto networkData(getNetworkData());
 
         if (!networkData.is_null())
@@ -1517,7 +1641,7 @@ void Syscollector::scanProcesses()
             QUEUE_SIZE,
             callback
         };
-        m_spInfo->processes([&txn](nlohmann::json & rawData)
+        m_spInfo->processes([this, &txn](nlohmann::json & rawData)
         {
             nlohmann::json input;
 
@@ -1692,6 +1816,11 @@ void Syscollector::scan()
     std::vector<std::pair<std::string, nlohmann::json>> failedItems;
     m_failedItems = &failedItems;
 
+    // Vector to accumulate items that passed document limit check for deferred synced=1 update
+    // All scan functions will use this shared vector to collect items to update
+    std::vector<std::pair<std::string, nlohmann::json>> itemsToUpdateSynced;
+    m_itemsToUpdateSynced = &itemsToUpdateSynced;
+
     m_logFunction(LOG_INFO, "Starting evaluation.");
     TRY_CATCH_TASK(scanHardware);
     TRY_CATCH_TASK(scanOs);
@@ -1705,6 +1834,11 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanServices);
     TRY_CATCH_TASK(scanBrowserExtensions);
 
+    // Update synced=1 flag for all items that passed document limit check
+    // This must be done BEFORE processVDDataContext so that DataContext queries
+    // can filter by synced=1 and only include items within document limits
+    updateSyncedFlagInDB(itemsToUpdateSynced, 1);
+
     // Process VD DataContext after scan completes
     // This adds context data (e.g., all packages when OS changes) based on platform-specific rules
     if (m_vdSyncEnabled)
@@ -1714,6 +1848,7 @@ void Syscollector::scan()
 
     // Clean up after all scans
     m_failedItems = nullptr;
+    m_itemsToUpdateSynced = nullptr;
 
     // Delete all items that failed schema validation inside a DBSync transaction
     // This ensures deletions are committed to disk immediately
@@ -2196,10 +2331,38 @@ std::vector<nlohmann::json> Syscollector::fetchAllFromTable(const std::string& t
 
     try
     {
-        // Build SELECT query to fetch all rows from the table
+        // Determine if we need to filter by synced=1
+        // Find the index for this table to check document limits
+        auto indexIt = INDEX_MAP.find(tableName);
+        std::string rowFilterClause;
+
+        if (indexIt != INDEX_MAP.end())
+        {
+            const std::string& index = indexIt->second;
+            size_t documentLimit = m_documentLimits[index];
+
+            if (documentLimit > 0)
+            {
+                // With limits: only include items with synced=1 (within document limits)
+                rowFilterClause = "WHERE synced=1";
+            }
+            else
+            {
+                // No limits: include all items regardless of synced value
+                rowFilterClause = "";
+            }
+        }
+        else
+        {
+            // No index mapping found, default to no filter
+            rowFilterClause = "";
+        }
+
+        // Build SELECT query to fetch rows from the table
         auto selectQuery = SelectQuery::builder()
                            .table(tableName)
                            .columnList({"*"})
+                           .rowFilter(rowFilterClause)
                            .build();
 
         // Callback to collect selected rows, filtering out excluded IDs in-memory
@@ -2224,8 +2387,9 @@ std::vector<nlohmann::json> Syscollector::fetchAllFromTable(const std::string& t
 
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG, "Fetched " + std::to_string(results.size()) + " rows from table " + tableName +
-                          " (excluded " + std::to_string(excludeIds.size()) + " DataValue items)");
+            std::string filterInfo = rowFilterClause.empty() ? " (no limit filter)" : " with synced=1";
+            m_logFunction(LOG_DEBUG, "Fetched " + std::to_string(results.size()) + " rows" + filterInfo +
+                          " from table " + tableName + " (excluded " + std::to_string(excludeIds.size()) + " DataValue items)");
         }
     }
     catch (const std::exception& e)
@@ -2706,6 +2870,7 @@ int Syscollector::setVersion(int version)
                     nlohmann::json input;
                     input["table"] = tableName;
                     input["data"] = nlohmann::json::array({row});
+                    input["options"]["ignore"] = nlohmann::json::array({"synced"});
 
                     txn.syncTxnRow(input);
                 }
@@ -2893,6 +3058,769 @@ std::string Syscollector::query(const std::string& jsonQuery)
 
         return response.dump();
     }
+}
+
+bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
+{
+    try
+    {
+        if (!limits.is_object())
+        {
+            return false;
+        }
+
+        // Validate input first (without holding locks)
+        for (auto& [index, limit] : limits.items())
+        {
+            if (!limit.is_number_unsigned())
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_ERROR, "Invalid limit value for index: " + index);
+                }
+                return false;
+            }
+
+            // Validate that the index exists in INDEX_MAP
+            bool validIndex = false;
+            for (const auto& [table, syncIndex] : INDEX_MAP)
+            {
+                if (syncIndex == index)
+                {
+                    validIndex = true;
+                    break;
+                }
+            }
+
+            if (!validIndex)
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_ERROR, "Unknown index: " + index);
+                }
+                return false;
+            }
+        }
+
+        // Wait for scan to finish before setting limits
+        // This ensures no items are in syncedItems vector
+        while (m_scanning.load())
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Waiting for scan to finish before setting document limits...");
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+
+        std::lock_guard<std::mutex> lock(m_limitsMutex);
+
+        // Set new limits and adjust database records
+        for (auto& [index, limit] : limits.items())
+        {
+            size_t newLimit = limit.get<size_t>();
+
+            // Find table name for this index
+            std::string tableName;
+            for (const auto& [table, syncIndex] : INDEX_MAP)
+            {
+                if (syncIndex == index)
+                {
+                    tableName = table;
+                    break;
+                }
+            }
+
+            if (tableName.empty())
+            {
+                continue;
+            }
+
+            // Count current records with synced=1
+            size_t currentCount = 0;
+            if (m_spDBSync)
+            {
+                auto selectQuery = SelectQuery::builder()
+                                  .table(tableName)
+                                  .columnList({"COUNT(*)"})
+                                  .rowFilter("WHERE synced=1")
+                                  .build();
+
+                m_spDBSync->selectRows(selectQuery.query(),
+                    [&currentCount](ReturnTypeCallback, const nlohmann::json& result)
+                    {
+                        // Result format: {"COUNT(*)": N}
+                        if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
+                        {
+                            currentCount = result["COUNT(*)"].get<size_t>();
+                        }
+                    });
+            }
+
+            // Set the new limit
+            m_documentLimits[index] = newLimit;
+
+            // Reset document count based on new limit
+            if (newLimit == 0)
+            {
+                // No limit: count reflects all synced records
+                m_documentCounts[index] = currentCount;
+
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_INFO, "Document limit set to unlimited for index '" + index +
+                                 "' (current synced count: " + std::to_string(currentCount) + ")");
+                }
+            }
+            else if (newLimit < currentCount)
+            {
+                // New limit is less than current count
+                // Need to reset synced=1 to synced=0 for excess records
+                size_t excessCount = currentCount - newLimit;
+
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_WARNING, "Document limit reduced for index '" + index +
+                                 "' from " + std::to_string(currentCount) + " to " + std::to_string(newLimit) +
+                                 ". Resetting " + std::to_string(excessCount) + " excess records to synced=0.");
+                }
+
+                // Select excess records to reset (last records by primary key order)
+                // Use DESC to select the LAST records, keeping the FIRST records synced
+                std::vector<nlohmann::json> excessRecords;
+                auto pkFields = getPrimaryKeyFields(tableName);
+                std::string orderByFields;
+
+                if (!pkFields.empty())
+                {
+                    // Each field needs DESC suffix for proper ordering
+                    orderByFields = pkFields[0] + " DESC";
+                    for (size_t i = 1; i < pkFields.size(); ++i)
+                    {
+                        orderByFields += ", " + pkFields[i] + " DESC";
+                    }
+                }
+
+                auto selectQuery = SelectQuery::builder()
+                                  .table(tableName)
+                                  .columnList({"*"})
+                                  .rowFilter("WHERE synced=1")
+                                  .orderByOpt(orderByFields)
+                                  .countOpt(static_cast<uint32_t>(excessCount))
+                                  .build();
+
+                m_spDBSync->selectRows(selectQuery.query(),
+                    [&excessRecords](ReturnTypeCallback, const nlohmann::json& result)
+                    {
+                        excessRecords.push_back(result);
+                    });
+
+                // Reset synced flag for excess records using shared method
+                if (!excessRecords.empty())
+                {
+                    // Convert to vector of pairs (table_name, record)
+                    std::vector<std::pair<std::string, nlohmann::json>> itemsToReset;
+                    for (const auto& record : excessRecords)
+                    {
+                        itemsToReset.push_back({tableName, record});
+                    }
+
+                    // Use shared method to update synced=0
+                    updateSyncedFlagInDB(itemsToReset, 0);
+                }
+
+                // Update the in-memory counter to the new limit
+                m_documentCounts[index] = newLimit;
+            }
+            else
+            {
+                // New limit >= current count
+                // If there's space available (newLimit > currentCount), promote synced=0 records
+                if (newLimit > currentCount && m_persistDiffFunction)
+                {
+                    size_t availableSpace = newLimit - currentCount;
+
+                    // Count records with synced=0
+                    size_t unsyncedCount = 0;
+                    auto countQuery = SelectQuery::builder()
+                                     .table(tableName)
+                                     .columnList({"COUNT(*)"})
+                                     .rowFilter("WHERE synced=0")
+                                     .build();
+
+                    m_spDBSync->selectRows(countQuery.query(),
+                        [&unsyncedCount](ReturnTypeCallback, const nlohmann::json& result)
+                        {
+                            if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
+                            {
+                                unsyncedCount = result["COUNT(*)"].get<size_t>();
+                            }
+                        });
+
+                    if (unsyncedCount > 0)
+                    {
+                        // How many can we promote?
+                        size_t toPromote = std::min(availableSpace, unsyncedCount);
+
+                        if (m_logFunction)
+                        {
+                            m_logFunction(LOG_INFO, "Document limit increased for index '" + index +
+                                         "' from " + std::to_string(currentCount) + " to " + std::to_string(newLimit) +
+                                         ". Promoting " + std::to_string(toPromote) + " records with synced=0.");
+                        }
+
+                        // Select records to promote (first records by primary key order)
+                        std::vector<nlohmann::json> recordsToPromote;
+                        auto pkFields = getPrimaryKeyFields(tableName);
+                        std::string orderByFields;
+
+                        if (!pkFields.empty())
+                        {
+                            // Each field needs ASC suffix for explicit ordering (though ASC is default)
+                            orderByFields = pkFields[0] + " ASC";
+                            for (size_t i = 1; i < pkFields.size(); ++i)
+                            {
+                                orderByFields += ", " + pkFields[i] + " ASC";
+                            }
+                        }
+
+                        auto selectQuery = SelectQuery::builder()
+                                          .table(tableName)
+                                          .columnList({"*"})
+                                          .rowFilter("WHERE synced=0")
+                                          .orderByOpt(orderByFields)
+                                          .countOpt(static_cast<uint32_t>(toPromote))
+                                          .build();
+
+                        m_spDBSync->selectRows(selectQuery.query(),
+                            [&recordsToPromote](ReturnTypeCallback, const nlohmann::json& result)
+                            {
+                                recordsToPromote.push_back(result);
+                            });
+
+                        // Process each record: generate stateful INSERT event and mark as synced=1
+                        std::vector<std::pair<std::string, nlohmann::json>> itemsToMarkSynced;
+                        for (const auto& record : recordsToPromote)
+                        {
+                            try
+                            {
+                                // Get version
+                                uint64_t version = record.value("version", 1);
+
+                                // Transform to ECS format
+                                auto [ecsDataTransformed, _] = ecsData(record, tableName, true);
+
+                                // Calculate hash ID
+                                std::string hashId = calculateHashId(record, tableName);
+
+                                // Generate stateful INSERT event
+                                m_persistDiffFunction(hashId, OPERATION_CREATE, index, ecsDataTransformed.dump(), version);
+
+                                // Track for synced=1 update
+                                itemsToMarkSynced.push_back({tableName, record});
+                            }
+                            catch (const std::exception& e)
+                            {
+                                if (m_logFunction)
+                                {
+                                    m_logFunction(LOG_ERROR, "Failed to promote record in table " + tableName +
+                                                 ": " + std::string(e.what()));
+                                }
+                            }
+                        }
+
+                        // Mark promoted records as synced=1
+                        if (!itemsToMarkSynced.empty())
+                        {
+                            updateSyncedFlagInDB(itemsToMarkSynced, 1);
+                            // Update counter
+                            m_documentCounts[index] = currentCount + itemsToMarkSynced.size();
+
+                            if (m_logFunction)
+                            {
+                                m_logFunction(LOG_INFO, "Successfully promoted " + std::to_string(itemsToMarkSynced.size()) +
+                                             " records for index '" + index + "'");
+                            }
+                        }
+                        else
+                        {
+                            m_documentCounts[index] = currentCount;
+                        }
+                    }
+                    else
+                    {
+                        // No unsynced records to promote
+                        m_documentCounts[index] = currentCount;
+
+                        if (m_logFunction)
+                        {
+                            m_logFunction(LOG_INFO, "Document limit set for index '" + index + "': " +
+                                         std::to_string(newLimit) +
+                                         " (current synced count: " + std::to_string(currentCount) + ", no unsynced records to promote)");
+                        }
+                    }
+                }
+                else
+                {
+                    // No space available or no persist function
+                    m_documentCounts[index] = currentCount;
+
+                    if (m_logFunction)
+                    {
+                        m_logFunction(LOG_INFO, "Document limit set for index '" + index + "': " +
+                                     std::to_string(newLimit) +
+                                     " (current synced count: " + std::to_string(currentCount) + ")");
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+    catch (const std::exception& ex)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Exception setting document limits: " + std::string(ex.what()));
+        }
+        return false;
+    }
+}
+
+std::optional<nlohmann::json> Syscollector::fetchDocumentLimitsFromAgentd()
+{
+#ifdef WIN32
+    // Windows: Use agcom_dispatch directly (no sockets needed)
+    if (!m_agcomDispatch)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "Agcom dispatch function not set, cannot fetch document limits");
+        }
+        return std::nullopt;
+    }
+
+    constexpr auto REQUEST_COMMAND = "getdoclimits syscollector";
+    constexpr int MAX_RETRIES = 3;
+    constexpr int RETRY_DELAY_MS = 1000;
+
+    for (int attempt = 0; attempt < MAX_RETRIES; ++attempt)
+    {
+        if (attempt > 0)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(RETRY_DELAY_MS));
+        }
+
+        try
+        {
+            // Make a mutable copy of the command
+            char command[256];
+            strncpy(command, REQUEST_COMMAND, sizeof(command) - 1);
+            command[sizeof(command) - 1] = '\0';
+
+            char* output = nullptr;
+            size_t length = m_agcomDispatch(command, &output);
+
+            if (length == 0 || !output)
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_INFO, "Empty response from agcom_dispatch (attempt " +
+                        std::to_string(attempt + 1) + "/" + std::to_string(MAX_RETRIES) + ")");
+                }
+                continue;
+            }
+
+            std::string response(output, length);
+            free(output);  // agcom_dispatch uses strdup, so we need to free
+
+            m_logFunction(LOG_INFO, "Response from agcom_dispatch: " + response);
+
+            // Check if response starts with "ok "
+            if (response.substr(0, 3) == "ok ")
+            {
+                try
+                {
+                    // Parse the JSON part after "ok "
+                    std::string jsonStr = response.substr(3);
+                    auto limitsJson = nlohmann::json::parse(jsonStr);
+
+                    if (m_logFunction)
+                    {
+                        m_logFunction(LOG_INFO, "Successfully fetched document limits from agentd (Windows)");
+                    }
+
+                    return limitsJson;
+                }
+                catch (const nlohmann::json::exception& ex)
+                {
+                    if (m_logFunction)
+                    {
+                        m_logFunction(LOG_ERROR, "Failed to parse document limits JSON: " + std::string(ex.what()));
+                    }
+                    return std::nullopt;
+                }
+            }
+            else if (response.substr(0, 4) == "err ")
+            {
+                // Error response from agentd
+                std::string errorMsg = response.substr(4);
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_DEBUG, "Agcom dispatch returned error: " + errorMsg);
+                }
+                return std::nullopt;
+            }
+            else
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_ERROR, "Unexpected response format from agcom_dispatch: " + response);
+                }
+                return std::nullopt;
+            }
+        }
+        catch (const std::exception& ex)
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_ERROR, "Exception calling agcom_dispatch: " + std::string(ex.what()));
+            }
+            continue;
+        }
+    }
+
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_DEBUG, "Failed to fetch document limits from agentd after " +
+            std::to_string(MAX_RETRIES) + " attempts (Windows)");
+    }
+
+    return std::nullopt;
+#else
+    // Unix/Linux: Use socket communication
+    // Check if socket functions are set
+    if (!m_socketConnect || !m_socketSend || !m_socketRecv || !m_socketClose)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "Socket communication functions not set, cannot fetch document limits");
+        }
+        return std::nullopt;
+    }
+
+    constexpr auto AGENT_SOCKET = "queue/sockets/agent";
+    constexpr auto REQUEST_COMMAND = "getdoclimits syscollector";
+    constexpr int MAX_RETRIES = 3;
+    constexpr int RETRY_DELAY_MS = 1000;
+
+    for (int attempt = 0; attempt < MAX_RETRIES; ++attempt)
+    {
+        if (attempt > 0)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(RETRY_DELAY_MS));
+        }
+
+        // Connect to agent socket using function pointer
+        int sock = m_socketConnect(AGENT_SOCKET, SOCK_STREAM, SYSCOLLECTOR_OS_MAXSTR);
+        if (sock < 0)
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_INFO,
+                    "Could not connect to agent socket (attempt " + std::to_string(attempt + 1) +
+                    "/" + std::to_string(MAX_RETRIES) + "): " + std::string(strerror(errno)));
+            }
+            continue;
+        }
+
+        // Send request using function pointer
+        if (m_socketSend(sock, strlen(REQUEST_COMMAND), REQUEST_COMMAND) != 0)
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_ERROR, "Failed to send request to agent socket: " + std::string(strerror(errno)));
+            }
+            m_socketClose(sock);
+            continue;
+        }
+
+        // Receive response using function pointer
+        char buffer[SYSCOLLECTOR_OS_MAXSTR + 1] = {0};
+        ssize_t length = m_socketRecv(sock, buffer, SYSCOLLECTOR_OS_MAXSTR);
+        m_socketClose(sock);
+
+        if (length <= 0)
+        {
+            if (m_logFunction)
+            {
+                if (length == 0)
+                {
+                    m_logFunction(LOG_INFO, "Empty response from agent socket");
+                }
+                else if (length == SYSCOLLECTOR_OS_SOCKTERR)
+                {
+                    m_logFunction(LOG_ERROR, "Maximum buffer length reached reading from agent socket");
+                }
+                else
+                {
+                    m_logFunction(LOG_ERROR, "Failed to receive response from agent socket: " + std::string(strerror(errno)));
+                }
+            }
+            continue;
+        }
+
+        buffer[length] = '\0';
+        std::string response(buffer);
+
+        m_logFunction(LOG_INFO, "Response from agent socket: " + response);
+
+        // Check if response starts with "ok "
+        if (response.substr(0, 3) == "ok ")
+        {
+            try
+            {
+                // Parse the JSON part after "ok "
+                std::string jsonStr = response.substr(3);
+                auto limitsJson = nlohmann::json::parse(jsonStr);
+
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_INFO, "Successfully fetched document limits from agentd");
+                }
+
+                return limitsJson;
+            }
+            catch (const nlohmann::json::exception& ex)
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_ERROR, "Failed to parse document limits JSON: " + std::string(ex.what()));
+                }
+                return std::nullopt;
+            }
+        }
+        else if (response.substr(0, 4) == "err ")
+        {
+            // Error response from agentd
+            std::string errorMsg = response.substr(4);
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Agent socket returned error: " + errorMsg);
+            }
+            return std::nullopt;
+        }
+        else
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_ERROR, "Unexpected response format from agent socket: " + response);
+            }
+            return std::nullopt;
+        }
+    }
+
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_DEBUG, "Failed to fetch document limits from agentd after " +
+            std::to_string(MAX_RETRIES) + " attempts");
+    }
+
+    return std::nullopt;
+#endif
+}
+
+void Syscollector::initializeDocumentCounts()
+{
+    if (!m_spDBSync)
+    {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(m_limitsMutex);
+
+    const std::vector<std::string> tables =
+    {
+        OS_TABLE, HW_TABLE, PACKAGES_TABLE, HOTFIXES_TABLE,
+        PROCESSES_TABLE, PORTS_TABLE, NET_IFACE_TABLE,
+        NET_PROTOCOL_TABLE, NET_ADDRESS_TABLE, USERS_TABLE,
+        GROUPS_TABLE, SERVICES_TABLE, BROWSER_EXTENSIONS_TABLE
+    };
+
+    for (const auto& table : tables)
+    {
+        try
+        {
+            auto indexIt = INDEX_MAP.find(table);
+            if (indexIt == INDEX_MAP.end())
+            {
+                continue;
+            }
+
+            const std::string& index = indexIt->second;
+
+            // Count records with synced=1
+            auto selectQuery = SelectQuery::builder()
+                              .table(table)
+                              .columnList({"COUNT(*)"})
+                              .rowFilter("WHERE synced=1")
+                              .build();
+
+            size_t count = 0;
+            m_spDBSync->selectRows(selectQuery.query(),
+                [&count](ReturnTypeCallback, const nlohmann::json& result)
+                {
+                    // Result format: {"COUNT(*)": N}
+                    if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
+                    {
+                        count = result["COUNT(*)"].get<size_t>();
+                    }
+                });
+
+            m_documentCounts[index] = count;
+
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Initialized document count for index '" + index +
+                             "': " + std::to_string(count));
+            }
+        }
+        catch (const std::exception& ex)
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_ERROR, "Failed to initialize count for table " + table +
+                             ": " + std::string(ex.what()));
+            }
+        }
+    }
+}
+
+bool Syscollector::checkDocumentLimit(const std::string& table,
+                                      const nlohmann::json& data,
+                                      ReturnTypeCallback result)
+{
+    auto indexIt = INDEX_MAP.find(table);
+    if (indexIt == INDEX_MAP.end())
+    {
+        return true; // No index mapping, allow
+    }
+
+    const std::string& index = indexIt->second;
+
+    std::lock_guard<std::mutex> lock(m_limitsMutex);
+
+    // Get configured limit (0 = no limit)
+    size_t limit = 0;
+    auto limitIt = m_documentLimits.find(index);
+    if (limitIt != m_documentLimits.end())
+    {
+        limit = limitIt->second;
+    }
+
+    // If limit is 0 (unlimited), no need to track synced flag
+    // All items will be synced regardless
+    if (limit == 0)
+    {
+        return true;
+    }
+
+    // Get current count
+    size_t currentCount = m_documentCounts[index];
+
+    // Check if the record is already synced (synced=1)
+    bool isAlreadySynced = false;
+    if (data.contains("synced") && data["synced"].is_number())
+    {
+        isAlreadySynced = (data["synced"].get<int>() == 1);
+    }
+
+    if (result == INSERTED)
+    {
+        // New entry
+        if (!isAlreadySynced && currentCount >= limit)
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG,
+                             "Document limit reached for index '" + index +
+                             "' (limit: " + std::to_string(limit) +
+                             ", current: " + std::to_string(currentCount) +
+                             "). Skipping new entry.");
+            }
+            return false;
+        }
+
+        // Within limit, increment counter and mark for synced=1 update
+        if (!isAlreadySynced)
+        {
+            m_documentCounts[index]++;
+
+            // Track this item for synced=1 update at end of scan
+            if (m_itemsToUpdateSynced)
+            {
+                m_itemsToUpdateSynced->push_back({table, data});
+            }
+        }
+    }
+    else if (result == MODIFIED)
+    {
+        // Update: always allow if already synced
+        if (isAlreadySynced)
+        {
+            return true;
+        }
+
+        // If not synced and there's space, increment counter and mark for update
+        if (currentCount < limit)
+        {
+            m_documentCounts[index]++;
+
+            // Track this item for synced=1 update at end of scan
+            if (m_itemsToUpdateSynced)
+            {
+                m_itemsToUpdateSynced->push_back({table, data});
+            }
+
+            return true;
+        }
+
+        // No space for new records
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG,
+                         "Document limit reached for index '" + index +
+                         "'. Cannot sync modified entry.");
+        }
+        return false;
+    }
+    else if (result == DELETED)
+    {
+        // Delete: only allow if was synced (synced=1)
+        // If synced=0, the manager never had this record, so no need to sync DELETE
+        if (isAlreadySynced)
+        {
+            // Was synced, decrement counter and allow DELETE event
+            if (m_documentCounts[index] > 0)
+            {
+                m_documentCounts[index]--;
+            }
+            return true;
+        }
+        else
+        {
+            // Not synced, reject DELETE event
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG,
+                             "Skipping DELETE event for non-synced record in table '" + table +
+                             "' (synced=0).");
+            }
+            return false;
+        }
+    }
+
+    return true;
 }
 
 bool Syscollector::hasDataInTable(const std::string& tableName)
@@ -3217,7 +4145,31 @@ bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
 {
     m_logFunction(LOG_DEBUG, "Attempting to get checksum for " + tableName + " table");
 
-    std::string final_checksum = m_spDBSync->calculateTableChecksum(tableName);
+    // Determine if we need to filter by synced=1 when calculating checksum
+    // Only filter when document limits are configured (limit > 0)
+    std::string rowFilter;
+    auto indexIt = INDEX_MAP.find(tableName);
+    if (indexIt != INDEX_MAP.end())
+    {
+        const std::string& index = indexIt->second;
+        size_t documentLimit = m_documentLimits[index];
+
+        if (documentLimit > 0)
+        {
+            // With limits: only include items with synced=1 in checksum
+            // This matches what the manager has (only synced items were sent)
+            rowFilter = "WHERE synced=1";
+            m_logFunction(LOG_DEBUG, "Calculating checksum with filter 'synced=1' (limit=" + std::to_string(documentLimit) + ")");
+        }
+        else
+        {
+            // No limits: include all items in checksum
+            rowFilter = "";
+            m_logFunction(LOG_DEBUG, "Calculating checksum without filter (no limit)");
+        }
+    }
+
+    std::string final_checksum = m_spDBSync->calculateTableChecksum(tableName, rowFilter);
 
     m_logFunction(LOG_DEBUG, "Success! Final file table checksum is: " + std::string(final_checksum));
 
@@ -3372,9 +4324,42 @@ void Syscollector::runRecoveryProcess()
 
                 std::vector<nlohmann::json> items;
 
+                // Determine if we need to filter by synced=1
+                // Only filter when document limits are configured (limit > 0)
+                // If limit == 0 (unlimited), recover all items without filtering
+                size_t documentLimit = m_documentLimits[index];
+                std::string rowFilterClause;
+
                 try
                 {
-                    items = m_spDBSync->getEveryElement(tableName);
+
+                    if (documentLimit > 0)
+                    {
+                        // With limits: only recover items with synced=1
+                        // Items with synced=0 exceeded the document limit and should not be recovered
+                        rowFilterClause = "WHERE synced=1";
+                    }
+                    else
+                    {
+                        // No limits: recover all items regardless of synced value
+                        rowFilterClause = "";
+                    }
+
+                    auto callback = [&items](ReturnTypeCallback result, const nlohmann::json& data)
+                    {
+                        if (result == ReturnTypeCallback::SELECTED)
+                        {
+                            items.push_back(data);
+                        }
+                    };
+
+                    auto selectQuery = SelectQuery::builder()
+                                       .table(tableName)
+                                       .columnList({"*"})
+                                       .rowFilter(rowFilterClause)
+                                       .build();
+
+                    m_spDBSync->selectRows(selectQuery.query(), callback);
                 }
                 catch (const std::exception& ex)
                 {
@@ -3544,4 +4529,167 @@ void Syscollector::deleteFailedItemsFromDB(const std::vector<std::pair<std::stri
             m_logFunction(LOG_ERROR, "Failed to create DBSync transaction for deletion: " + std::string(e.what()));
         }
     }
+}
+
+void Syscollector::updateSyncedFlagInDB(const std::vector<std::pair<std::string, nlohmann::json>>& itemsToUpdate, int syncedValue) const
+{
+    if (itemsToUpdate.empty() || !m_spDBSync)
+    {
+        return;
+    }
+
+    try
+    {
+        // Strategy: Delete rows, then re-insert with new synced value
+        // This is the only way to update fields not part of checksum using DBSync API
+
+        // Step 1: Delete all rows in a transaction
+        {
+            const auto txnCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+            DBSyncTxn deleteTxn{m_spDBSync->handle(), nlohmann::json::array(), 0, 1, txnCallback};
+
+            for (const auto& [tableName, data] : itemsToUpdate)
+            {
+                try
+                {
+                    auto deleteQuery = DeleteQuery::builder()
+                                       .table(tableName)
+                                       .data(data)
+                                       .rowFilter("")
+                                       .build();
+
+                    m_spDBSync->deleteRows(deleteQuery.query());
+                }
+                catch (const std::exception& e)
+                {
+                    if (m_logFunction)
+                    {
+                        m_logFunction(LOG_ERROR, "Failed to delete row: " + std::string(e.what()));
+                    }
+                }
+            }
+
+            deleteTxn.getDeletedRows(txnCallback);
+        }
+
+        // Step 2: Re-insert rows with new synced value in a transaction to force commit
+        {
+            const auto txnCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+            DBSyncTxn insertTxn{m_spDBSync->handle(), nlohmann::json::array(), 0, 1, txnCallback};
+
+            for (const auto& [tableName, data] : itemsToUpdate)
+            {
+                try
+                {
+                    nlohmann::json updatedData = data;
+                    updatedData["synced"] = syncedValue;
+
+                    nlohmann::json insertInput;
+                    insertInput["table"] = tableName;
+                    insertInput["data"] = nlohmann::json::array({updatedData});
+
+                    m_spDBSync->insertData(insertInput);
+                }
+                catch (const std::exception& e)
+                {
+                    if (m_logFunction)
+                    {
+                        m_logFunction(LOG_ERROR, "Failed to insert row for table " + tableName + ": " + std::string(e.what()));
+                    }
+                }
+            }
+
+            // Force commit of inserts
+            insertTxn.getDeletedRows(txnCallback);
+        }
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Updated synced=" + std::to_string(syncedValue) +
+                         " for " + std::to_string(itemsToUpdate.size()) + " item(s) in DBSync");
+        }
+    }
+    catch (const std::exception& e)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Failed to update synced flag: " + std::string(e.what()));
+        }
+    }
+}
+
+std::vector<std::string> Syscollector::getPrimaryKeyFields(const std::string& tableName) const
+{
+    // Map table names to their primary key field strings defined in syscollectorTablesDef.hpp
+    static const std::map<std::string, const char*> tablePrimaryKeys = {
+        {OS_TABLE, OS_PK_FIELDS},
+        {HW_TABLE, HW_PK_FIELDS},
+        {HOTFIXES_TABLE, HOTFIXES_PK_FIELDS},
+        {PACKAGES_TABLE, PACKAGES_PK_FIELDS},
+        {PROCESSES_TABLE, PROCESSES_PK_FIELDS},
+        {PORTS_TABLE, PORTS_PK_FIELDS},
+        {NET_IFACE_TABLE, NET_IFACE_PK_FIELDS},
+        {NET_PROTOCOL_TABLE, NET_PROTOCOL_PK_FIELDS},
+        {NET_ADDRESS_TABLE, NET_ADDRESS_PK_FIELDS},
+        {USERS_TABLE, USERS_PK_FIELDS},
+        {GROUPS_TABLE, GROUPS_PK_FIELDS},
+        {SERVICES_TABLE, SERVICES_PK_FIELDS},
+        {BROWSER_EXTENSIONS_TABLE, BROWSER_EXTENSIONS_PK_FIELDS}
+    };
+
+    auto it = tablePrimaryKeys.find(tableName);
+    if (it == tablePrimaryKeys.end())
+    {
+        return {};
+    }
+
+    // Parse comma-separated field names into vector
+    std::vector<std::string> fields;
+    std::string pkStr = it->second;
+    size_t start = 0;
+    size_t end = pkStr.find(',');
+
+    while (end != std::string::npos)
+    {
+        std::string field = pkStr.substr(start, end - start);
+        // Trim leading/trailing spaces
+        size_t firstNonSpace = field.find_first_not_of(" ");
+        size_t lastNonSpace = field.find_last_not_of(" ");
+        if (firstNonSpace != std::string::npos)
+        {
+            fields.push_back(field.substr(firstNonSpace, lastNonSpace - firstNonSpace + 1));
+        }
+        start = end + 1;
+        end = pkStr.find(',', start);
+    }
+
+    // Add last field
+    std::string lastField = pkStr.substr(start);
+    size_t firstNonSpace = lastField.find_first_not_of(" ");
+    size_t lastNonSpace = lastField.find_last_not_of(" ");
+    if (firstNonSpace != std::string::npos)
+    {
+        fields.push_back(lastField.substr(firstNonSpace, lastNonSpace - firstNonSpace + 1));
+    }
+
+    return fields;
+}
+
+std::string Syscollector::buildOrderByClause(const std::string& tableName, bool ascending) const
+{
+    auto pkFields = getPrimaryKeyFields(tableName);
+
+    if (pkFields.empty())
+    {
+        return "";
+    }
+
+    std::string orderBy = "ORDER BY " + pkFields[0];
+    for (size_t i = 1; i < pkFields.size(); ++i)
+    {
+        orderBy += ", " + pkFields[i];
+    }
+    orderBy += ascending ? " ASC" : " DESC";
+
+    return orderBy;
 }

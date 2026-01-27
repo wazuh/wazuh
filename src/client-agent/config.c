@@ -50,6 +50,38 @@ int ClientConf(const char *cfgfile)
     atc->package_uninstallation = false;
 #endif
 
+    // Initialize document limits structure
+    os_calloc(1, sizeof(document_limits_config), agt->doc_limits);
+    agt->doc_limits->configured = 0;
+    agt->doc_limits->limits = NULL;
+
+    // TODO: Remove this hardcoded initialization once document_limits
+    // is set through the proper configuration mechanism (when agent connects to manager)
+    // This is for testing purposes only
+    if (!agt->doc_limits->limits) {
+        agt->doc_limits->limits = cJSON_CreateObject();
+
+        // Syscollector limits
+        cJSON *syscollector_limits = cJSON_CreateObject();
+        cJSON_AddNumberToObject(syscollector_limits, "wazuh-states-inventory-packages", 100);
+        cJSON_AddNumberToObject(syscollector_limits, "wazuh-states-inventory-processes", 110);
+        cJSON_AddNumberToObject(syscollector_limits, "wazuh-states-inventory-ports", 12);
+        cJSON_AddNumberToObject(syscollector_limits, "wazuh-states-inventory-networks", 3);
+        cJSON_AddNumberToObject(syscollector_limits, "wazuh-states-inventory-protocols", 3);
+        cJSON_AddNumberToObject(syscollector_limits, "wazuh-states-inventory-interfaces", 3);
+        cJSON_AddNumberToObject(syscollector_limits, "wazuh-states-inventory-system", 0);  // unlimited
+        cJSON_AddNumberToObject(syscollector_limits, "wazuh-states-inventory-hardware", 0);  // unlimited
+        cJSON_AddNumberToObject(syscollector_limits, "wazuh-states-inventory-hotfixes", 0);  // unlimited
+        cJSON_AddNumberToObject(syscollector_limits, "wazuh-states-inventory-users", 16);
+        cJSON_AddNumberToObject(syscollector_limits, "wazuh-states-inventory-groups", 17);
+        cJSON_AddNumberToObject(syscollector_limits, "wazuh-states-inventory-services", 180);
+        cJSON_AddNumberToObject(syscollector_limits, "wazuh-states-inventory-browser-extensions", 19);
+        cJSON_AddItemToObject(agt->doc_limits->limits, "syscollector", syscollector_limits);
+
+        agt->doc_limits->configured = 1;
+        mdebug1("Document limits initialized with hardcoded test values");
+    }
+
     os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;
 
@@ -271,4 +303,47 @@ cJSON *getAgentInternalOptions(void) {
     cJSON_AddItemToObject(root,"internal",internals);
 
     return root;
+}
+
+cJSON *getDocumentLimits(const char *module) {
+    if (!agt || !agt->doc_limits || !module) {
+        return NULL;
+    }
+
+    // Check if limits have been configured
+    if (!agt->doc_limits->configured || !agt->doc_limits->limits) {
+        return NULL;
+    }
+
+    // Get the limits for the specified module
+    cJSON *module_limits = cJSON_GetObjectItem(agt->doc_limits->limits, module);
+    if (!module_limits) {
+        return NULL;
+    }
+
+    // Create a deep copy of the module's limits
+    return cJSON_Duplicate(module_limits, 1);
+}
+
+int setDocumentLimits(cJSON *limits_json) {
+    if (!agt || !agt->doc_limits || !limits_json) {
+        return -1;
+    }
+
+    // Delete previous limits if they exist
+    if (agt->doc_limits->limits) {
+        cJSON_Delete(agt->doc_limits->limits);
+    }
+
+    // Set new limits (duplicate to own the memory)
+    agt->doc_limits->limits = cJSON_Duplicate(limits_json, 1);
+    if (!agt->doc_limits->limits) {
+        return -1;
+    }
+
+    // Mark as configured
+    agt->doc_limits->configured = 1;
+
+    mdebug1("Document limits updated from manager");
+    return 0;
 }

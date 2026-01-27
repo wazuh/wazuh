@@ -172,16 +172,18 @@ class EXPORTED DBSync : public IDBSync
         /**
         * @brief Gets the concatenated checksums from all the elements of a table
         * @param tableName Name of the table to query.
+        * @param rowFilter Optional SQL WHERE clause to filter rows (e.g., "WHERE synced=1")
         * @return the concatenated checksum
         */
-        std::string getConcatenatedChecksums(const std::string& tableName) override;
+        std::string getConcatenatedChecksums(const std::string& tableName, const std::string& rowFilter = "") override;
 
         /**
          * @brief Calculate the checksum-of-checksums for a table
          * @param tableName The table to calculate checksum for
+         * @param rowFilter Optional SQL WHERE clause to filter rows (e.g., "WHERE synced=1")
          * @return The SHA1 checksum-of-checksums as a hex string
          */
-        std::string calculateTableChecksum(const std::string& tableName) override;
+        std::string calculateTableChecksum(const std::string& tableName, const std::string& rowFilter = "") override;
 
         /**
          * @brief Increase the version column for all entries in a table.

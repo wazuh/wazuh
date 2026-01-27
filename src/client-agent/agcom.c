@@ -36,6 +36,27 @@ size_t agcom_dispatch(char * command, char ** output){
     } else if (strcmp(rcv_comm, "getstate") == 0) {
         *output = w_agentd_state_get();
         return strlen(*output);
+    } else if (strcmp(rcv_comm, "getdoclimits") == 0) {
+        // getdoclimits module
+        if (!rcv_args){
+            mdebug1("AGCOM getdoclimits needs arguments (module name).");
+            os_strdup("err AGCOM getdoclimits needs arguments", *output);
+            return strlen(*output);
+        }
+
+        cJSON *cfg = getDocumentLimits(rcv_args);
+        if (cfg) {
+            os_strdup("ok", *output);
+            char *json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
+            cJSON_Delete(cfg);
+            return strlen(*output);
+        } else {
+            mdebug1("AGCOM Document limits not configured for module '%s'.", rcv_args);
+            os_strdup("err Document limits not configured", *output);
+            return strlen(*output);
+        }
     } else {
         mdebug1("AGCOM Unrecognized command '%s'.", rcv_comm);
         os_strdup("err Unrecognized command", *output);

@@ -109,6 +109,58 @@ void syscollector_init(const unsigned int inverval,
     }
 }
 
+void syscollector_set_socket_funcs(socket_connect_func_t connectFunc,
+                                   socket_send_func_t sendFunc,
+                                   socket_recv_func_t recvFunc,
+                                   socket_close_func_t closeFunc)
+{
+    if (connectFunc && sendFunc && recvFunc && closeFunc)
+    {
+        try
+        {
+            Syscollector::instance().setSocketFunctions(
+                [connectFunc](const char* path, int type, int max_msg_size) -> int {
+                    return connectFunc(path, type, max_msg_size);
+                },
+                [sendFunc](int sock, uint32_t size, const void* msg) -> int {
+                    return sendFunc(sock, size, msg);
+                },
+                [recvFunc](int sock, char* buf, size_t size) -> ssize_t {
+                    return recvFunc(sock, buf, size);
+                },
+                [closeFunc](int sock) -> int {
+                    return closeFunc(sock);
+                }
+            );
+        }
+        catch (const std::exception& ex)
+        {
+            fprintf(stderr, "Failed to set socket functions for syscollector: %s\n", ex.what());
+        }
+    }
+}
+
+#ifdef WIN32
+void syscollector_set_agcom_dispatch(agcom_dispatch_func_t dispatchFunc)
+{
+    if (dispatchFunc)
+    {
+        try
+        {
+            Syscollector::instance().setAgcomDispatchFunction(
+                [dispatchFunc](char* command, char** output) -> size_t {
+                    return dispatchFunc(command, output);
+                }
+            );
+        }
+        catch (const std::exception& ex)
+        {
+            fprintf(stderr, "Failed to set agcom dispatch function for syscollector: %s\n", ex.what());
+        }
+    }
+}
+#endif
+
 void syscollector_start()
 {
     Syscollector::instance().start();

@@ -40,6 +40,39 @@ cJSON *getClientConfig(void);
 cJSON *getBufferConfig(void);
 cJSON *getLabelsConfig(void);
 cJSON *getAgentInternalOptions(void);
+
+/**
+ * @brief Get document limits for a specific module
+ *
+ * Retrieves the document limits configuration for the specified module from
+ * agt->doc_limits structure. The limits JSON is structured as:
+ * {
+ *   "syscollector": {
+ *     "wazuh-states-inventory-packages": 10000,
+ *     "wazuh-states-inventory-processes": 5000,
+ *     ...
+ *   },
+ *   "other_module": {
+ *     ...
+ *   }
+ * }
+ *
+ * @param module The module name to get limits for (e.g., "syscollector")
+ * @return cJSON object with the module's limits, or NULL if not found/not configured
+ */
+cJSON *getDocumentLimits(const char *module);
+
+/**
+ * @brief Set document limits configuration from manager
+ *
+ * This function should be called when the agent receives document limits
+ * configuration from the manager. It replaces the current limits and sets
+ * the configured flag to 1.
+ *
+ * @param limits_json JSON object with the complete limits structure (will be duplicated)
+ * @return 0 on success, -1 on error
+ */
+int setDocumentLimits(cJSON *limits_json);
 #ifndef WIN32
 cJSON *getAntiTamperingConfig(void);
 #endif
@@ -213,6 +246,17 @@ void clear_merged_hash_cache();
 
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
+
+#ifndef WIN32
+// Agent local socket for direct queries
+#define AGENT_LOCAL_SOCK "queue/sockets/agent"
+
+// Initialize agent local socket (must be called before Privsep_SetUser)
+int agcom_init(uid_t uid, gid_t gid);
+
+// Agent local socket listener thread
+void * agcom_main(void * arg);
+#endif
 
 /*** Global variables ***/
 extern int agent_debug_level;

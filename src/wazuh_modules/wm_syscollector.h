@@ -63,4 +63,24 @@ typedef struct wm_sys_t {
 // Parse XML configuration
 int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module);
 
+// Socket communication function types for agentd communication (Unix/Linux)
+typedef int (*socket_connect_func_t)(const char* path, int type, int max_msg_size);
+typedef int (*socket_send_func_t)(int sock, uint32_t size, const void* msg);
+typedef ssize_t (*socket_recv_func_t)(int sock, char* buf, size_t size);
+typedef int (*socket_close_func_t)(int sock);
+
+// Set socket communication functions (must be called before syscollector_start on Unix/Linux)
+void syscollector_set_socket_funcs(socket_connect_func_t connectFunc,
+                                   socket_send_func_t sendFunc,
+                                   socket_recv_func_t recvFunc,
+                                   socket_close_func_t closeFunc);
+
+#ifdef WIN32
+// Windows: Direct agcom_dispatch function type
+typedef size_t (*agcom_dispatch_func_t)(char* command, char** output);
+
+// Set agcom dispatch function (must be called before syscollector_start on Windows)
+void syscollector_set_agcom_dispatch(agcom_dispatch_func_t dispatchFunc);
+#endif
+
 #endif
