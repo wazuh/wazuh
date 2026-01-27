@@ -80,6 +80,19 @@ void *AR_Forward(__attribute__((unused)) void *arg)
             } else if (*tmp_str == SPECIFIC_AGENT_SIZED_C) {
                 ar_location |= SPECIFIC_AGENT_SIZED;
             }
+            tmp_str++;
+            if (*tmp_str == DESTINATION_AGENT_C) {
+                ar_location |= DESTINATION_AGENT;
+                
+                // TODO: get agent IP from JSON parsed "dest_ip"
+                // active-responses.h should have get_dest_ip_from_json()
+                // besides get_srcip_from_json()
+                //
+                // then find the correct agent_id for this IP
+                // read-agents.c->get_agent_info
+                ar_agent_id = tmp_str; // CHANGE THIS
+
+            }
             tmp_str += 2;
 
             /* Extract the agent id */
@@ -189,9 +202,8 @@ void *AR_Forward(__attribute__((unused)) void *arg)
 
                 key_unlock();
             }
-
-            /* Send to the remote agent that generated the event or to a pre-defined agent */
-            else if (ar_location & (REMOTE_AGENT | SPECIFIC_AGENT)) {
+            /* Send to the remote agent that generated the event or to a pre-defined agent or to the dest_ip agent */
+            else if (ar_location & (REMOTE_AGENT | SPECIFIC_AGENT | DESTINATION_AGENT)) {
                 if (send_msg(ar_agent_id, msg_to_send, -1) >= 0) {
                     rem_inc_send_ar(ar_agent_id);
                 }
