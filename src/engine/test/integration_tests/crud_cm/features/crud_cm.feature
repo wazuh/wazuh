@@ -20,15 +20,13 @@ Feature: Resource management via cmcrud resource handlers
     Then the resource list request should succeed
     And the resource list should contain a resource named "decoder/my_decoder/0"
 
-  Scenario: Update an existing decoder resource using its UUID and see the hash change
+  Scenario: Update an existing decoder resource using its UUID and see the content change
     Given I have created a "decoder" resource named "decoder/my_decoder/0" in namespace "analytics"
     And I have fetched the decoder resources in namespace "analytics"
-    And I have stored the UUID and hash of the resource named "decoder/my_decoder/0"
+    And I have stored the UUID of the resource named "decoder/my_decoder/0"
     When I send a request to update that decoder resource with modified YAML in namespace "analytics"
     Then the resource request should succeed
-    When I request the list of "decoder" resources in namespace "analytics"
-    Then the resource list request should succeed
-    And the hash for that stored resource in namespace "analytics" should be different
+    Then the updated decoder resource in namespace "analytics" should include "test.updated: true"
 
   Scenario: Delete an existing decoder resource and verify it is gone
     Given I have created a "decoder" resource named "decoder/my_decoder/0" in namespace "analytics"
