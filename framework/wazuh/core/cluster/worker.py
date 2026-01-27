@@ -401,7 +401,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         async with self.reload_ruleset_flag:
             if self.reload_ruleset_flag.is_set():
-                response = analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
+                response = await analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
                 analysis.log_ruleset_reload_response(self.logger, response)
 
                 # Clear the flag
@@ -738,7 +738,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
             async with self.reload_ruleset_flag:
                 if self.reload_ruleset_flag.is_set():
-                    response = analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
+                    response = await analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
                     analysis.log_ruleset_reload_response(self.logger, response)
 
                     # Clear the flag
