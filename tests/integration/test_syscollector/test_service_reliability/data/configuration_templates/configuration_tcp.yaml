@@ -1,0 +1,99 @@
+- sections:
+    - section: client
+      elements:
+        - server:
+            elements:
+              - address:
+                  value: '127.0.0.1'
+              - port:
+                  value: '1514'
+              - protocol:
+                  value: 'tcp'
+
+    - section: wodle
+      attributes:
+        - name: syscollector
+      elements:
+        - disabled:
+            value: 'no'
+        - interval:
+            value: '5s'
+        - scan_on_start:
+            value: 'yes'
+        - hardware:
+            value: 'yes'
+        - os:
+            value: 'yes'
+        - network:
+            value: 'yes'
+        - packages:
+            value: 'yes'
+        - ports:
+            value: 'yes'
+            attributes:
+              - all: 'yes'
+        - processes:
+            value: 'yes'
+        - hotfixes:
+            value: 'yes'
+        - users:
+            value: 'yes'
+        - groups:
+            value: 'yes'
+        - services:
+            value: 'yes'
+        - browser_extensions:
+            value: 'yes'
+        - synchronization:
+            elements:
+              - max_eps:
+                  value: '10'
+
+    # Enable syscheck (FIM) to create rsync traffic
+    - section: syscheck
+      elements:
+        - disabled:
+            value: 'no'
+        - frequency:
+            value: '60'
+        - scan_on_start:
+            value: 'yes'
+        # Windows registry entries to monitor (creates rsync traffic)
+        - windows_registry:
+            value: 'HKEY_LOCAL_MACHINE\Software\Classes\batfile'
+        - windows_registry:
+            value: 'HKEY_LOCAL_MACHINE\Software\Classes\cmdfile'
+        - windows_registry:
+            value: 'HKEY_LOCAL_MACHINE\Software\Classes\comfile'
+        - windows_registry:
+            value: 'HKEY_LOCAL_MACHINE\Software\Classes\exefile'
+        - windows_registry:
+            value: 'HKEY_LOCAL_MACHINE\Software\Classes\piffile'
+        - windows_registry:
+            value: 'HKEY_LOCAL_MACHINE\Software\Classes\AllFilesystemObjects'
+        - windows_registry:
+            value: 'HKEY_LOCAL_MACHINE\Software\Classes\Directory'
+        - windows_registry:
+            value: 'HKEY_LOCAL_MACHINE\Software\Classes\Folder'
+        - windows_registry:
+            value: 'HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services'
+        - synchronization:
+            elements:
+              - enabled:
+                  value: 'yes'
+              - interval:
+                  value: '5m'
+              - max_eps:
+                  value: '10'
+
+    # Disable rootcheck to reduce noise
+    - section: rootcheck
+      elements:
+        - disabled:
+            value: 'yes'
+
+    # Disable SCA to reduce noise
+    - section: sca
+      elements:
+        - enabled:
+            value: 'no'

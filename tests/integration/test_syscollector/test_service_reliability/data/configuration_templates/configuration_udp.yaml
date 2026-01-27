@@ -1,0 +1,55 @@
+- sections:
+    - section: client
+      elements:
+        - server:
+            elements:
+              - address:
+                  value: '127.0.0.1'
+              - port:
+                  value: '1514'
+              - protocol:
+                  value: 'udp'
+
+    - section: wodle
+      attributes:
+        - name: syscollector
+      elements:
+        - disabled:
+            value: 'no'
+        - interval:
+            value: '5s'
+        - scan_on_start:
+            value: 'no'
+        - hardware:
+            value: 'yes'
+        - os:
+            value: 'yes'
+        - network:
+            value: 'yes'
+        - packages:
+            value: 'yes'
+        - ports:
+            value: 'yes'
+        - processes:
+            value: 'yes'
+        - hotfixes:
+            value: 'yes'
+        - synchronization:
+            elements:
+              - max_eps:
+                  value: '10'
+
+    - section: syscheck
+      elements:
+        - disabled:
+            value: 'yes'
+
+    - section: rootcheck
+      elements:
+        - disabled:
+            value: 'yes'
+
+    - section: sca
+      elements:
+        - enabled:
+            value: 'no'
