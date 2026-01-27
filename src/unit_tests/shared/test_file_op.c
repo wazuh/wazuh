@@ -1300,9 +1300,9 @@ void test_wCreateFile_network_path(void **state) {
 
 void test_wCreateProcessW_local_path(void **state) {
     errno = 0;
-    char *path = "C:\\file.txt";
+    wchar_t path[] = L"C:\\file.txt";
 
-    expect_string(wrap_CreateProcessW, lpCommandLine, path);
+    expect_value(wrap_CreateProcessW, lpCommandLine, path);
     will_return(wrap_CreateProcessW, TRUE);
 
     bool ret = wCreateProcessW(NULL, path, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
@@ -1312,7 +1312,7 @@ void test_wCreateProcessW_local_path(void **state) {
 
 void test_wCreateProcessW_network_path(void **state) {
     errno = 0;
-    char *path = "Z:\\file.txt";
+    wchar_t path[] = L"Z:\\file.txt";
 
     expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
 

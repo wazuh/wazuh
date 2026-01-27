@@ -21,7 +21,6 @@
 #include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
 #include "unit_tests/wrappers/windows/fileapi_wrappers.h"
 #include "unit_tests/wrappers/windows/handleapi_wrappers.h"
-#include "unit_tests/wrappers/windows/winnetwk_wrappers.h"
 #include "unit_tests/wrappers/windows/stat64_wrappers.h"
 #include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
 #endif
@@ -31,7 +30,6 @@
 #include <regex.h>
 #else
 #include <aclapi.h>
-#include <winnetwk.h>
 #include <winreg.h>
 #endif
 
@@ -447,9 +445,13 @@ BOOL wCreateProcessW(LPCWSTR               lpApplicationName,
     	             LPSTARTUPINFOW        lpStartupInfo,
     	             LPPROCESS_INFORMATION lpProcessInformation) {
 
-    if (is_network_path(lpCommandLine)) {
+    // Convert wide string to narrow string for network path validation
+    char narrow_path[MAX_PATH];
+    WideCharToMultiByte(CP_UTF8, 0, lpCommandLine, -1, narrow_path, MAX_PATH, NULL, NULL);
+
+    if (is_network_path(narrow_path)) {
         errno = EACCES;
-        mwarn(NETWORK_PATH_EXECUTED, lpCommandLine);
+        mwarn(NETWORK_PATH_EXECUTED, narrow_path);
         return (false);
     }
     return CreateProcessW(lpApplicationName,
