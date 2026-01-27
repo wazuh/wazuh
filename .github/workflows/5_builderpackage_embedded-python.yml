@@ -1,0 +1,129 @@
+name: 5.X - Package - Build Wazuh server embedded Python
+
+on:
+  workflow_dispatch:
+    inputs:
+      architecture:
+        description: 'Comma-separated architecture. Example: "amd64,arm64"'
+        type: string
+        default: "amd64,arm64"
+        required: true
+      build_cpython:
+        description: Whether to build embedded Python or not.
+        type: boolean
+        default: true
+        required: false
+      build_deps:
+        description: Whether to build embedded Python dependencies or not.
+          Enabling build_cpython will enable this option automatically.
+        type: boolean
+        default: true
+        required: false
+
+jobs:
+  pick-architecture:
+    name: Get architectures to build
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Generate dynamic matrix
+        id: set-matrix
+        run: |
+          set -euo pipefail
+          JSON_ARRAY=$(
+            echo "${{ inputs.architecture }}" \
+            | tr ',' '\n' \
+            | while read -r raw_arch; do
+                arch=$(echo "$raw_arch" | xargs)
+
+                case "$arch" in
+                  arm64|aarch64)
+                    IMG_ARCH="arm64"
+                    ;;
+                  amd64|x86_64)
+                    IMG_ARCH="amd64"
+                    ;;
+                  "")
+                    continue
+                    ;;
+                  *)
+                    echo "Unsupported architecture: $arch" >&2
+                    exit 1
+                    ;;
+                esac
+
+                jq -c -n --arg arch "$IMG_ARCH" '{architecture: $arch}'
+              done
+          )
+      
+          JSON_ARRAY=$(echo "$JSON_ARRAY" | jq -c -s 'unique | {include: .}')
+          echo "Picked architectures: $JSON_ARRAY"
+          echo "matrix=$JSON_ARRAY" >> "$GITHUB_OUTPUT"
+
+  build-embedded-python:
+    name: Build Wazuh server embedded Python
+    needs: pick-architecture
+    strategy:
+      matrix: ${{ fromJSON(needs.pick-architecture.outputs.matrix) }}
+      fail-fast: false
+    runs-on: ${{ matrix.architecture == 'arm64' && 'wz-linux-arm64' || 'ubuntu-24.04' }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+
+      - name: Checkout Wazuh repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set ARCH and PACKAGE_ARCH
+        run: |
+          case "${{ matrix.architecture }}" in
+              x86_64|amd64)
+                arch="amd64"
+                pkg_arch="x86_64"
+                ;;
+              aarch64|arm64)
+                arch="arm64"
+                pkg_arch="arm64"
+                ;;
+          esac
+
+          echo "ARCH=$arch" >> $GITHUB_ENV
+          echo "PACKAGE_ARCH=$pkg_arch" >> $GITHUB_ENV
+
+      - name: Set TAG and CONTAINER_NAME
+        run: |
+          VERSION=$(jq -r '.version' $GITHUB_WORKSPACE/VERSION.json)
+          echo "TAG=$VERSION" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_rpm_manager_builder_${{ env.ARCH }}" >> $GITHUB_ENV
+
+      - name: Pull builder container image
+        run: |
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+
+      - name: Run embedded Python compilation
+        working-directory: framework/cpython
+        run: |
+          docker run --env ARCH="${{ env.PACKAGE_ARCH }}" \
+            -v $GITHUB_WORKSPACE:/wazuh_host -v /tmp:/output \
+            --entrypoint=bash ${{ env.CONTAINER_NAME }}:${{ env.TAG }} \
+            /wazuh_host/framework/cpython/compile.sh \
+              ${{ inputs.build_cpython == true && '--build-cpython' || '' }} \
+              ${{ inputs.build_deps == true && '--build-deps' || '' }}
+
+      - name: Upload Wazuh server embedded Python sources to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpython_${{ env.PACKAGE_ARCH }}.tar.gz
+          path: /tmp/cpython_${{ env.PACKAGE_ARCH }}.tar.gz
+          if-no-files-found: error
+
+      - name: Upload Wazuh server out-of-the-box embedded Python to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpython.tar.gz
+          path: /tmp/cpython.tar.gz
+          if-no-files-found: error
