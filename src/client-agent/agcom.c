@@ -140,6 +140,7 @@ size_t agcom_gethandshake(char ** output) {
     cJSON *root = cJSON_CreateObject();
 
     cJSON_AddStringToObject(root, "cluster_name", agent_cluster_name);
+    cJSON_AddStringToObject(root, "cluster_node", agent_cluster_node);
     cJSON_AddStringToObject(root, "agent_groups", agent_agent_groups);
 
     char *json_str = cJSON_PrintUnformatted(root);

@@ -43,12 +43,15 @@ STATIC void send_msg_on_startup(void);
  * @param limits Pointer to module limits structure to populate
  * @param cluster_name Buffer to store cluster name (min 256 bytes)
  * @param cluster_name_size Size of cluster_name buffer
+ * @param cluster_node Buffer to store cluster node (min 256 bytes)
+ * @param cluster_node_size Size of cluster_node buffer
  * @param agent_groups Buffer to store agent groups as CSV (can be NULL)
  * @param agent_groups_size Size of agent_groups buffer
  * @return 0 on success, -1 on error
  */
 STATIC int parse_handshake_json(const char *json_str, module_limits_t *limits,
                                 char *cluster_name, size_t cluster_name_size,
+                                char *cluster_node, size_t cluster_node_size,
                                 char *agent_groups, size_t agent_groups_size) {
     cJSON *root = NULL;
     cJSON *limits_obj = NULL;
@@ -147,6 +150,15 @@ STATIC int parse_handshake_json(const char *json_str, module_limits_t *limits,
         if (cluster && cJSON_IsString(cluster) && cluster->valuestring) {
             strncpy(cluster_name, cluster->valuestring, cluster_name_size - 1);
             cluster_name[cluster_name_size - 1] = '\0';
+        }
+    }
+
+    /* Parse cluster_node (separate from limits) */
+    if (cluster_node && cluster_node_size > 0) {
+        cJSON *node = cJSON_GetObjectItem(root, "cluster_node");
+        if (node && cJSON_IsString(node) && node->valuestring) {
+            strncpy(cluster_node, node->valuestring, cluster_node_size - 1);
+            cluster_node[cluster_node_size - 1] = '\0';
         }
     }
 
@@ -479,9 +491,11 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                         const char *json_start = strchr(tmp_msg, '{');
                         if (json_start) {
                             char cluster_name_buffer[256] = {0};
+                            char cluster_node_buffer[256] = {0};
                             char agent_groups_buffer[OS_SIZE_65536] = {0};
                             if (parse_handshake_json(json_start, &agent_module_limits,
                                                       cluster_name_buffer, sizeof(cluster_name_buffer),
+                                                      cluster_node_buffer, sizeof(cluster_node_buffer),
                                                       agent_groups_buffer, sizeof(agent_groups_buffer)) == 0) {
                                 minfo("Module limits received from manager");
 
@@ -514,6 +528,16 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                     minfo("Connected to cluster: %s", agent_cluster_name);
                                 } else {
                                     mwarn("No cluster name received from manager");
+                                }
+
+                                /* Store cluster_node in global for agent-info module to query via agcom */
+                                if (cluster_node_buffer[0] != '\0') {
+                                    strncpy(agent_cluster_node, cluster_node_buffer,
+                                            sizeof(agent_cluster_node) - 1);
+                                    agent_cluster_node[sizeof(agent_cluster_node) - 1] = '\0';
+                                    minfo("Connected to node: %s", agent_cluster_node);
+                                } else {
+                                    mwarn("No cluster node received from manager");
                                 }
 
                                 /* Store agent_groups in global for agent-info module to query via agcom */
