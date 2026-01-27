@@ -1,0 +1,549 @@
+run-name: Build Wazuh agent Linux amd64 - ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }} - ${{ inputs.system || 'deb,rpm' }} - ${{ inputs.architecture || 'amd64' }}
+name: 5.X - Build Wazuh agent Linux amd64 (DEB/RPM)
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - "src/**"
+      - "packages/**"
+      - ".github/workflows/5_builderpackage_agent-linux-amd64.yml"
+  workflow_dispatch:
+    inputs:
+      architecture:
+        type: choice
+        description: Package architecture [x86_64, amd64].
+        required: true
+        default: amd64
+        options:
+          - x86_64
+          - amd64
+      system:
+        type: choice
+        description: Package OS [deb, rpm].
+        required: true
+        default: deb
+        options:
+          - deb
+          - rpm
+      revision:
+        description: |
+          Package revision (name and metadata).
+          Default is '0'.
+        required: false
+        default: '0'
+      debug:
+        type: boolean
+        description: |
+          Build the binaries as debug (without optimizations).
+          Default is 'false'.
+        required: false
+        default: false
+      checksum:
+        type: boolean
+        description: |
+          Generate package checksum.
+          Default is 'false'.
+        required: false
+        default: false
+
+jobs:
+  # ===================== DEB JOBS =====================
+  build-deb-amd64:
+    if: github.event_name == 'pull_request' || inputs.system == 'deb'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    name: Build DEB package
+    outputs:
+      package-name: ${{ steps.build.outputs.package-name }}
+      package-symbols-name: ${{ steps.build.outputs.package-symbols-name }}
+      version: ${{ steps.build.outputs.version }}
+      container-name: ${{ steps.build.outputs.container-name }}
+      tag: ${{ steps.build.outputs.tag }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set ARCH
+        run: |
+          arch="amd64"
+          echo "ARCH=$arch" >> $GITHUB_ENV
+
+      - name: Set VERSION and CONTAINER_NAME
+        run: |
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "TAG=$VERSION" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_deb_agent_builder_${{ env.ARCH }}" >> $GITHUB_ENV
+          echo "SYSTEM=deb" >> $GITHUB_ENV
+
+      - name: Download docker image for package building
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+
+      - name: Append short commit to VERSION file
+        run: |
+          SHORT_COMMIT=$(git rev-parse --short=7 HEAD)
+          if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+          echo "Found commit: $SHORT_COMMIT"
+          sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
+          cat VERSION.json
+
+      - name: Build DEB package
+        id: build
+        run: |
+          REVISION=${{ inputs.revision || '0' }}
+          FLAGS="--verbose -t agent -s /tmp --dont-build-docker -j $(nproc) "
+          FLAGS+="-r $REVISION "
+          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
+          echo "generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ env.SYSTEM }} $FLAGS"
+          bash packages/generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ env.SYSTEM }} $FLAGS
+
+          PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.deb -exec basename {} 2>/dev/null \;| grep -v -E "^wazuh-agent-dbg")
+          PACKAGE_SYMBOLS_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.deb -exec basename {} 2>/dev/null \;| grep -E "^wazuh-agent-dbg")
+
+          echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "package-symbols-name=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_OUTPUT
+          echo "version=${{ env.VERSION }}" >> $GITHUB_OUTPUT
+          echo "container-name=${{ env.CONTAINER_NAME }}" >> $GITHUB_OUTPUT
+          echo "tag=${{ env.TAG }}" >> $GITHUB_OUTPUT
+
+      - name: Upload package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-name }}
+          path: /tmp/${{ steps.build.outputs.package-name }}
+          retention-days: 7
+
+      - name: Upload debug symbols as artifact
+        if: steps.build.outputs.package-symbols-name != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-symbols-name }}
+          path: /tmp/${{ steps.build.outputs.package-symbols-name }}
+          retention-days: 7
+
+      - name: Upload checksums as artifacts
+        if: inputs.checksum == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-name }}-checksums
+          path: |
+            /tmp/${{ steps.build.outputs.package-name }}.sha512
+            /tmp/${{ steps.build.outputs.package-symbols-name }}.sha512
+          retention-days: 7
+
+  test-deb-amd64:
+    needs: build-deb-amd64
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    name: Test DEB package
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-deb-amd64.outputs.package-name }}
+          path: /tmp
+
+      - name: Set environment variables
+        run: |
+          echo "PACKAGE_NAME=${{ needs.build-deb-amd64.outputs.package-name }}" >> $GITHUB_ENV
+          echo "VERSION=${{ needs.build-deb-amd64.outputs.version }}" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=${{ needs.build-deb-amd64.outputs.container-name }}" >> $GITHUB_ENV
+          echo "TAG=${{ needs.build-deb-amd64.outputs.tag }}" >> $GITHUB_ENV
+          echo "ARCH=amd64" >> $GITHUB_ENV
+          echo "SYSTEM=deb" >> $GITHUB_ENV
+
+      - name: Download docker image for testing
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+
+      - name: Test install package
+        run: |
+          TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
+          if [ -z "${{ env.PACKAGE_NAME }}" ]; then
+            echo "No package found!"
+            exit 1
+          fi
+          sudo docker run \
+            -v $TESTS_PATH/:/tests \
+            -v /tmp/:/packages \
+            -v /var/ossec:/var/ossec \
+            -e ARCH="${{ env.ARCH }}" \
+            -e SYSTEM="${{ env.SYSTEM }}" \
+            --entrypoint '/tests/install_component.sh' \
+            ${{ env.CONTAINER_NAME }}:${{ env.TAG }} \
+            ${{ env.PACKAGE_NAME }} agent
+          if grep -iq " installed.*wazuh-agent" /tmp/status.log ; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed."
+            exit 1
+          fi
+
+      - name: Test uninstall package
+        uses: ./.github/actions/5_builderpackage_linux-smoke-uninstall-test
+        with:
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+
+      - name: Get last stable version
+        id: last-stable-version
+        uses: ./.github/actions/5_builderpackage_get-last-stable-version
+        with:
+          repo_owner: wazuh
+          repo_name: wazuh
+          testing_version: ${{ env.VERSION }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get package url of the last stable version
+        id: upgrade-package-url
+        uses: ./.github/actions/5_builderpackage_get-upgrade-test-package-url
+        with:
+          component: agent
+          os: linux
+          system: ${{ env.SYSTEM }}
+          version: ${{ steps.last-stable-version.outputs.latest_stable_version }}
+          architecture: ${{ env.ARCH }}
+
+      - name: Test upgrade from ${{ steps.last-stable-version.outputs.latest_stable_version }} to ${{ env.VERSION }}
+        uses: ./.github/actions/5_builderpackage_linux-smoke-upgrade-test
+        with:
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          expected_upgrade_version: ${{ env.VERSION }}
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+
+  upload-deb-amd64-to-s3:
+    needs: [build-deb-amd64, test-deb-amd64]
+    if: success()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    name: Upload DEB to S3
+
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-deb-amd64.outputs.package-name }}
+          path: /tmp
+
+      - name: Download debug symbols artifacts
+        if: needs.build-deb-amd64.outputs.package-symbols-name != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-deb-amd64.outputs.package-symbols-name }}
+          path: /tmp
+
+      - name: Download checksums
+        if: inputs.checksum == true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-deb-amd64.outputs.package-name }}-checksums
+          path: /tmp
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Upload package to S3
+        run: |
+          PACKAGE_NAME="${{ needs.build-deb-amd64.outputs.package-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$PACKAGE_NAME" ]; then
+            aws s3 cp /tmp/$PACKAGE_NAME $S3_URI/
+            echo "S3 URI: $S3_URI/$PACKAGE_NAME"
+          else
+            echo "Package file is empty or does not exist."
+            exit 1
+          fi
+
+      - name: Upload checksum to S3
+        if: inputs.checksum == true
+        run: |
+          PACKAGE_NAME="${{ needs.build-deb-amd64.outputs.package-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$PACKAGE_NAME.sha512" ]; then
+            aws s3 cp /tmp/$PACKAGE_NAME.sha512 $S3_URI/
+          else
+            echo "Warning: Checksum file not found, skipping"
+          fi
+
+      - name: Upload debug symbols to S3
+        if: needs.build-deb-amd64.outputs.package-symbols-name != ''
+        run: |
+          SYMBOLS_NAME="${{ needs.build-deb-amd64.outputs.package-symbols-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$SYMBOLS_NAME" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME $S3_URI/
+          else
+            echo "Warning: Debug symbols file not found, skipping"
+          fi
+
+      - name: Upload debug symbols checksum to S3
+        if: inputs.checksum == true && needs.build-deb-amd64.outputs.package-symbols-name != ''
+        run: |
+          SYMBOLS_NAME="${{ needs.build-deb-amd64.outputs.package-symbols-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$SYMBOLS_NAME.sha512" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME.sha512 $S3_URI/
+          else
+            echo "Warning: Debug symbols checksum file not found, skipping"
+          fi
+
+  # ===================== RPM JOBS =====================
+  build-rpm-amd64:
+    if: github.event_name == 'pull_request' || inputs.system == 'rpm'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    name: Build RPM package
+    outputs:
+      package-name: ${{ steps.build.outputs.package-name }}
+      package-symbols-name: ${{ steps.build.outputs.package-symbols-name }}
+      version: ${{ steps.build.outputs.version }}
+      container-name: ${{ steps.build.outputs.container-name }}
+      tag: ${{ steps.build.outputs.tag }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set ARCH
+        run: |
+          arch="amd64"
+          echo "ARCH=$arch" >> $GITHUB_ENV
+
+      - name: Set VERSION and CONTAINER_NAME
+        run: |
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "TAG=$VERSION" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_rpm_agent_builder_${{ env.ARCH }}" >> $GITHUB_ENV
+          echo "SYSTEM=rpm" >> $GITHUB_ENV
+
+      - name: Download docker image for package building
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+
+      - name: Append short commit to VERSION file
+        run: |
+          SHORT_COMMIT=$(git rev-parse --short=7 HEAD)
+          if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+          echo "Found commit: $SHORT_COMMIT"
+          sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
+          cat VERSION.json
+
+      - name: Build RPM package
+        id: build
+        run: |
+          REVISION=${{ inputs.revision || '0' }}
+          FLAGS="--verbose -t agent -s /tmp --dont-build-docker -j $(nproc) "
+          FLAGS+="-r $REVISION "
+          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
+          echo "generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ env.SYSTEM }} $FLAGS"
+          bash packages/generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ env.SYSTEM }} $FLAGS
+
+          PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.rpm -exec basename {} 2>/dev/null \;| grep -v -E "^wazuh-agent-debuginfo")
+          PACKAGE_SYMBOLS_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.rpm -exec basename {} 2>/dev/null \;| grep -E "^wazuh-agent-debuginfo")
+
+          echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "package-symbols-name=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_OUTPUT
+          echo "version=${{ env.VERSION }}" >> $GITHUB_OUTPUT
+          echo "container-name=${{ env.CONTAINER_NAME }}" >> $GITHUB_OUTPUT
+          echo "tag=${{ env.TAG }}" >> $GITHUB_OUTPUT
+
+      - name: Upload package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-name }}
+          path: /tmp/${{ steps.build.outputs.package-name }}
+          retention-days: 7
+
+      - name: Upload debug symbols as artifact
+        if: steps.build.outputs.package-symbols-name != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-symbols-name }}
+          path: /tmp/${{ steps.build.outputs.package-symbols-name }}
+          retention-days: 7
+
+      - name: Upload checksums as artifacts
+        if: inputs.checksum == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-name }}-checksums
+          path: |
+            /tmp/${{ steps.build.outputs.package-name }}.sha512
+            /tmp/${{ steps.build.outputs.package-symbols-name }}.sha512
+          retention-days: 7
+
+  test-rpm-amd64:
+    needs: build-rpm-amd64
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    name: Test RPM package
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-rpm-amd64.outputs.package-name }}
+          path: /tmp
+
+      - name: Set environment variables
+        run: |
+          echo "PACKAGE_NAME=${{ needs.build-rpm-amd64.outputs.package-name }}" >> $GITHUB_ENV
+          echo "VERSION=${{ needs.build-rpm-amd64.outputs.version }}" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=${{ needs.build-rpm-amd64.outputs.container-name }}" >> $GITHUB_ENV
+          echo "TAG=${{ needs.build-rpm-amd64.outputs.tag }}" >> $GITHUB_ENV
+          echo "ARCH=amd64" >> $GITHUB_ENV
+          echo "SYSTEM=rpm" >> $GITHUB_ENV
+
+      - name: Download docker image for testing
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+
+      - name: Test install package
+        run: |
+          TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
+          if [ -z "${{ env.PACKAGE_NAME }}" ]; then
+            echo "No package found!"
+            exit 1
+          fi
+          sudo docker run \
+            -v $TESTS_PATH/:/tests \
+            -v /tmp/:/packages \
+            -v /var/ossec:/var/ossec \
+            -e ARCH="${{ env.ARCH }}" \
+            -e SYSTEM="${{ env.SYSTEM }}" \
+            --entrypoint '/tests/install_component.sh' \
+            ${{ env.CONTAINER_NAME }}:${{ env.TAG }} \
+            ${{ env.PACKAGE_NAME }} agent
+          if grep -iq " installed.*wazuh-agent" /tmp/status.log ; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed."
+            exit 1
+          fi
+
+      - name: Test uninstall package
+        uses: ./.github/actions/5_builderpackage_linux-smoke-uninstall-test
+        with:
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+
+      - name: Get last stable version
+        id: last-stable-version
+        uses: ./.github/actions/5_builderpackage_get-last-stable-version
+        with:
+          repo_owner: wazuh
+          repo_name: wazuh
+          testing_version: ${{ env.VERSION }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get package url of the last stable version
+        id: upgrade-package-url
+        uses: ./.github/actions/5_builderpackage_get-upgrade-test-package-url
+        with:
+          component: agent
+          os: linux
+          system: ${{ env.SYSTEM }}
+          version: ${{ steps.last-stable-version.outputs.latest_stable_version }}
+          architecture: ${{ env.ARCH }}
+
+      - name: Test upgrade from ${{ steps.last-stable-version.outputs.latest_stable_version }} to ${{ env.VERSION }}
+        uses: ./.github/actions/5_builderpackage_linux-smoke-upgrade-test
+        with:
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          expected_upgrade_version: ${{ env.VERSION }}
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+
+  upload-rpm-amd64-to-s3:
+    needs: [build-rpm-amd64, test-rpm-amd64]
+    if: success()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    name: Upload RPM to S3
+
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-rpm-amd64.outputs.package-name }}
+          path: /tmp
+
+      - name: Download debug symbols artifacts
+        if: needs.build-rpm-amd64.outputs.package-symbols-name != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-rpm-amd64.outputs.package-symbols-name }}
+          path: /tmp
+
+      - name: Download checksums
+        if: inputs.checksum == true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-rpm-amd64.outputs.package-name }}-checksums
+          path: /tmp
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Upload package to S3
+        run: |
+          PACKAGE_NAME="${{ needs.build-rpm-amd64.outputs.package-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$PACKAGE_NAME" ]; then
+            aws s3 cp /tmp/$PACKAGE_NAME $S3_URI/
+            echo "S3 URI: $S3_URI/$PACKAGE_NAME"
+          else
+            echo "Package file is empty or does not exist."
+            exit 1
+          fi
+
+      - name: Upload checksum to S3
+        if: inputs.checksum == true
+        run: |
+          PACKAGE_NAME="${{ needs.build-rpm-amd64.outputs.package-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$PACKAGE_NAME.sha512" ]; then
+            aws s3 cp /tmp/$PACKAGE_NAME.sha512 $S3_URI/
+          else
+            echo "Warning: Checksum file not found, skipping"
+          fi
+
+      - name: Upload debug symbols to S3
+        if: needs.build-rpm-amd64.outputs.package-symbols-name != ''
+        run: |
+          SYMBOLS_NAME="${{ needs.build-rpm-amd64.outputs.package-symbols-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$SYMBOLS_NAME" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME $S3_URI/
+          else
+            echo "Warning: Debug symbols file not found, skipping"
+          fi
+
+      - name: Upload debug symbols checksum to S3
+        if: inputs.checksum == true && needs.build-rpm-amd64.outputs.package-symbols-name != ''
+        run: |
+          SYMBOLS_NAME="${{ needs.build-rpm-amd64.outputs.package-symbols-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$SYMBOLS_NAME.sha512" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME.sha512 $S3_URI/
+          else
+            echo "Warning: Debug symbols checksum file not found, skipping"
+          fi

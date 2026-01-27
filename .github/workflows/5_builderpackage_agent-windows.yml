@@ -1,0 +1,359 @@
+run-name: Build Wazuh agent Windows i686 - ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+name: 5.X - Build Wazuh agent Windows (MSI)
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - "src/**"
+      - "packages/**"
+      - ".github/workflows/5_builderpackage_agent-windows.yml"
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: |
+          Package revision (name and metadata).
+          Default is '0'.
+        required: false
+        default: '0'
+      debug:
+        type: boolean
+        description: |
+          Build the binaries as debug (without optimizations).
+          Default is 'false'.
+        required: false
+        default: false
+      checksum:
+        type: boolean
+        description: |
+          Generate package checksum.
+          Default is 'false'.
+        required: false
+        default: false
+
+jobs:
+  build-windows-i686:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    name: Build Windows agent binaries
+    outputs:
+      version: ${{ steps.set-version.outputs.version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64 g++-mingw-w64 make
+
+      - name: Set VERSION
+        id: set-version
+        run: |
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Append short commit to VERSION file
+        run: |
+          SHORT_COMMIT=$(git rev-parse --short=7 HEAD)
+          if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+          echo "Found commit: $SHORT_COMMIT"
+          sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
+          cat VERSION.json
+
+      - name: Build Windows dependencies
+        run: |
+          make -C src deps TARGET=winagent -j$(nproc)
+
+      - name: Build Windows agent
+        run: |
+          make -C src TARGET=winagent -j$(nproc)
+
+      - name: Upload compiled binaries as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-binaries
+          path: |
+            src/
+            VERSION.json
+          retention-days: 1
+
+  package-windows-i686:
+    needs: build-windows-i686
+    runs-on: windows-2022
+    timeout-minutes: 30
+    name: Generate MSI package
+    outputs:
+      package-name: ${{ steps.build.outputs.package-name }}
+      package-symbols-name: ${{ steps.build.outputs.package-symbols-name }}
+      version: ${{ needs.build-windows-i686.outputs.version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download compiled binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-binaries
+          path: compiled-binaries
+
+      - name: Copy binaries to workspace
+        shell: bash
+        run: |
+          # Copy compiled binaries from artifact to workspace
+          cp -r compiled-binaries/src/* src/ || true
+          # Restore VERSION.json with commit info
+          cp compiled-binaries/VERSION.json . || true
+          # Verify key files exist
+          ls -la src/win32/*.exe src/*.dll || echo "Warning: Some binaries may be missing"
+
+      - name: Set PKG_NAME
+        shell: bash
+        run: |
+          VERSION="${{ needs.build-windows-i686.outputs.version }}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          COMMIT_HASH="$(git rev-parse --short=7 HEAD)"
+          REVISION="${{ inputs.revision }}"
+          if [ -z "$REVISION" ]; then REVISION="0"; fi
+          PKG_NAME="wazuh-agent_${VERSION}-${REVISION}_windows_${COMMIT_HASH}"
+          echo "PKG_NAME=$PKG_NAME" >> $GITHUB_ENV
+          echo "PKG_NAME_SYMBOLS_SHORT=wazuh-agent-debug-symbols_${VERSION}-${REVISION}_windows_${COMMIT_HASH}" >> $GITHUB_ENV
+          echo "PACKAGE_SYMBOLS_NAME=wazuh-agent-debug-symbols_${VERSION}-${REVISION}_windows_${COMMIT_HASH}" >> $GITHUB_ENV
+
+      - name: Disable signing in MSI script
+        shell: bash
+        run: |
+          sed -i 's+signtool+::signtool+g' src/win32/wazuh-installer-build-msi.bat
+          sed -i 's+pause+::pause+g' src/win32/wazuh-installer-build-msi.bat
+
+      - name: Copy generation script
+        shell: bash
+        run: |
+          cp packages/windows/generate_wazuh_msi.ps1 src/win32/
+
+      - name: Download cv2pdb for debug symbols
+        shell: pwsh
+        run: |
+          # Download cv2pdb.exe for converting debug symbols
+          $cv2pdbUrl = "https://github.com/rainers/cv2pdb/releases/download/v0.52/cv2pdb-0.52.zip"
+          Invoke-WebRequest -Uri $cv2pdbUrl -OutFile cv2pdb.zip
+          Expand-Archive -Path cv2pdb.zip -DestinationPath cv2pdb_temp
+          # Copy cv2pdb.exe to win32 directory where the script expects it
+          Copy-Item cv2pdb_temp/cv2pdb.exe src/win32/
+          # Verify
+          if (Test-Path "src/win32/cv2pdb.exe") {
+            Write-Host "cv2pdb.exe downloaded successfully"
+          } else {
+            Write-Host "Failed to download cv2pdb.exe"
+            exit 1
+          }
+
+      - name: Generate MSI package (without signing)
+        id: build
+        shell: pwsh
+        run: |
+          cd src/win32
+          ./generate_wazuh_msi.ps1 -MSI_NAME ${{ env.PKG_NAME }}.msi -SIGN no
+
+          $PACKAGE_NAME = "${{ env.PKG_NAME }}.msi"
+          $PACKAGE_SYMBOLS_NAME = ""
+          if (Test-Path "${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip") {
+            $PACKAGE_SYMBOLS_NAME = "${{ env.PACKAGE_SYMBOLS_NAME }}.zip"
+            Rename-Item "${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip" "$PACKAGE_SYMBOLS_NAME"
+          }
+
+          echo "package-name=$PACKAGE_NAME" >> $env:GITHUB_OUTPUT
+          echo "package-symbols-name=$PACKAGE_SYMBOLS_NAME" >> $env:GITHUB_OUTPUT
+
+      - name: Upload package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-name }}
+          path: src/win32/${{ steps.build.outputs.package-name }}
+          retention-days: 7
+
+      - name: Upload debug symbols as artifact
+        if: steps.build.outputs.package-symbols-name != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-symbols-name }}
+          path: src/win32/${{ steps.build.outputs.package-symbols-name }}
+          retention-days: 7
+
+      - name: Generate checksums
+        if: inputs.checksum == true
+        run: |
+          cd src/win32
+          sha512sum "${{ steps.build.outputs.package-name }}" > "${{ steps.build.outputs.package-name }}.sha512"
+          if [ -f "${{ steps.build.outputs.package-symbols-name }}" ]; then
+            sha512sum "${{ steps.build.outputs.package-symbols-name }}" > "${{ steps.build.outputs.package-symbols-name }}.sha512"
+          fi
+
+      - name: Upload package checksum as artifact
+        if: inputs.checksum == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-name }}.sha512
+          path: src/win32/${{ steps.build.outputs.package-name }}.sha512
+          retention-days: 7
+
+      - name: Upload debug symbols checksum as artifact
+        if: inputs.checksum == true && steps.build.outputs.package-symbols-name != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-symbols-name }}.sha512
+          path: src/win32/${{ steps.build.outputs.package-symbols-name }}.sha512
+          retention-days: 7
+
+  test-windows-i686:
+    needs: package-windows-i686
+    runs-on: windows-2022
+    timeout-minutes: 30
+    name: Test MSI package
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.package-windows-i686.outputs.package-name }}
+          path: src/win32
+
+      - name: Set environment variables
+        shell: bash
+        run: |
+          echo "PACKAGE_NAME=${{ needs.package-windows-i686.outputs.package-name }}" >> $GITHUB_ENV
+          echo "VERSION=${{ needs.package-windows-i686.outputs.version }}" >> $GITHUB_ENV
+
+      - name: Test install Windows agent
+        shell: pwsh
+        run: |
+          Start-Process -FilePath "src/win32/${{ env.PACKAGE_NAME }}" -ArgumentList '/q WAZUH_MANAGER="1.1.1.1" /l installer.log' -Wait
+          $installerfile = Get-Content installer.log
+          if ($installerfile -match "Wazuh Agent -- Installation completed successfully") {
+            Write-Output "Installation successfully."
+          } else {
+            Write-Output "The installation could not be completed."
+            exit 1
+          }
+
+      - name: Get last stable version
+        id: last-stable-version
+        uses: ./.github/actions/5_builderpackage_get-last-stable-version
+        with:
+          repo_owner: wazuh
+          repo_name: wazuh
+          testing_version: ${{ env.VERSION }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get package url of the last stable version
+        id: upgrade-package-url
+        uses: ./.github/actions/5_builderpackage_get-upgrade-test-package-url
+        with:
+          component: agent
+          os: windows
+          version: ${{ steps.last-stable-version.outputs.latest_stable_version }}
+
+      - name: Prepare package for upgrade test
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path C:\win-agent-base
+          Copy-Item "src/win32/${{ env.PACKAGE_NAME }}" -Destination "C:\win-agent-base\" -Force
+
+      - name: Test uninstall and upgrade from ${{ steps.last-stable-version.outputs.latest_stable_version }} to ${{ env.VERSION }}
+        uses: ./.github/actions/5_builderpackage_windows-smoke-upgrade-test
+        with:
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          expected_upgrade_version: ${{ env.VERSION }}
+
+  upload-windows-i686-to-s3:
+    needs: [package-windows-i686, test-windows-i686]
+    if: success()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    name: Upload MSI to S3
+
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.package-windows-i686.outputs.package-name }}
+          path: /tmp
+
+      - name: Download debug symbols artifacts
+        if: needs.package-windows-i686.outputs.package-symbols-name != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.package-windows-i686.outputs.package-symbols-name }}
+          path: /tmp
+
+      - name: Download package checksum
+        if: inputs.checksum == true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.package-windows-i686.outputs.package-name }}.sha512
+          path: /tmp
+
+      - name: Download debug symbols checksum
+        if: inputs.checksum == true && needs.package-windows-i686.outputs.package-symbols-name != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.package-windows-i686.outputs.package-symbols-name }}.sha512
+          path: /tmp
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Upload package to S3
+        run: |
+          PACKAGE_NAME="${{ needs.package-windows-i686.outputs.package-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+              if [ -s "/tmp/$PACKAGE_NAME" ]; then
+            aws s3 cp /tmp/$PACKAGE_NAME $S3_URI/
+            echo "S3 URI: $S3_URI/$PACKAGE_NAME"
+          else
+            echo "Package file is empty or does not exist."
+            exit 1
+          fi
+
+      - name: Upload checksum to S3
+        if: inputs.checksum == true
+        run: |
+          PACKAGE_NAME="${{ needs.package-windows-i686.outputs.package-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$PACKAGE_NAME.sha512" ]; then
+            aws s3 cp /tmp/$PACKAGE_NAME.sha512 $S3_URI/
+          else
+            echo "Warning: Checksum file not found, skipping"
+          fi
+
+      - name: Upload debug symbols to S3
+        if: needs.package-windows-i686.outputs.package-symbols-name != ''
+        run: |
+          SYMBOLS_NAME="${{ needs.package-windows-i686.outputs.package-symbols-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$SYMBOLS_NAME" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME $S3_URI/
+          else
+            echo "Warning: Debug symbols file not found, skipping"
+          fi
+
+      - name: Upload debug symbols checksum to S3
+        if: inputs.checksum == true && needs.package-windows-i686.outputs.package-symbols-name != ''
+        run: |
+          SYMBOLS_NAME="${{ needs.package-windows-i686.outputs.package-symbols-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$SYMBOLS_NAME.sha512" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME.sha512 $S3_URI/
+          else
+            echo "Warning: Debug symbols checksum file not found, skipping"
+          fi
