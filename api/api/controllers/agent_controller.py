@@ -240,7 +240,7 @@ async def reconnect_agents(pretty: bool = False, wait_for_complete: bool = False
     wait_for_complete : bool
         Disable timeout response. Default `False`
     agents_list : list or str
-        List of agent IDs. All possible values from 000 onwards. Default `*`
+        List of agent IDs. Default `*`
 
     Returns
     -------
@@ -347,7 +347,7 @@ async def get_agent_config(pretty: bool = False, wait_for_complete: bool = False
     wait_for_complete : bool
         Disable timeout response.
     agent_id : str
-        Agent ID. All possible values from 000 onwards.
+        Agent ID.
     component : str
         Selected agent's component which configuration is got.
 
@@ -389,7 +389,7 @@ async def delete_single_agent_multiple_groups(agent_id: str, groups_list: str = 
     wait_for_complete : bool
         Disable timeout response.
     agent_id : str
-        Agent ID. All possible values from 000 onwards.
+        Agent ID.
     groups_list : str
         Array of groups IDs to remove the agent from.
 
@@ -464,7 +464,7 @@ async def delete_single_agent_single_group(agent_id: str, group_id: str, pretty:
     wait_for_complete : bool
         Disable timeout response.
     agent_id : str
-        Agent ID. All possible values from 000 onwards.
+        Agent ID.
     group_id : str
         ID of the group to remove the agent from.
 
@@ -500,7 +500,7 @@ async def put_agent_single_group(agent_id: str, group_id: str, force_single_grou
     wait_for_complete : bool
         Disable timeout response.
     agent_id : str
-        Agent ID. All possible values from 000 onwards.
+        Agent ID.
     group_id : str
         ID of the group to remove the agent from.
     force_single_group : bool
@@ -538,7 +538,7 @@ async def get_agent_key(agent_id: str, pretty: bool = False, wait_for_complete: 
     wait_for_complete : bool
         Disable timeout response.
     agent_id : str
-        Agent ID. All possible values from 000 onwards.
+        Agent ID.
 
     Returns
     -------
@@ -570,7 +570,7 @@ async def restart_agent(agent_id: str, pretty: bool = False, wait_for_complete: 
     wait_for_complete : bool
         Disable timeout response.
     agent_id : str
-        Agent ID. All possible values from 000 onwards.
+        Agent ID.
 
     Returns
     -------
@@ -606,7 +606,7 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
     wait_for_complete : bool
         Disable timeout response.
     agents_list : str
-        List of agent IDs. All possible values from 000 onwards.
+        List of agent IDs.
     wpk_repo : str
         WPK repository.
     upgrade_version : str
@@ -691,7 +691,7 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
     wait_for_complete : bool
         Disable timeout response.
     agents_list : str
-        List of agent IDs. All possible values from 000 onwards.
+        List of agent IDs.
     file_path : str
         Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
     installer : str
@@ -766,7 +766,7 @@ async def get_agent_upgrade(agents_list: str = None, pretty: bool = False, wait_
     wait_for_complete : bool
         Disable timeout response.
     agents_list : str
-        List of agent IDs. All possible values from 000 onwards.
+        List of agent IDs.
     q : str
         Query to filter agents by.
     manager : str
@@ -865,7 +865,7 @@ async def get_component_stats(pretty: bool = False, wait_for_complete: bool = Fa
     wait_for_complete : bool
         Disable timeout response.
     agent_id : str
-        Agent ID for which the specified component's stats are got. All possible values from 000 onwards.
+        Agent ID for which the specified component's stats are got.
     component : str
         Selected agent's component which stats are got.
 
@@ -1279,7 +1279,7 @@ async def put_group_config(body: bytes, group_id: str, pretty: bool = False,
 
 
 async def get_group_files(group_id: str, pretty: bool = False, wait_for_complete: bool = False,
-                          offset: int = 0, limit: int = None, sort: str = None, search: str = None, 
+                          offset: int = 0, limit: int = None, sort: str = None, search: str = None,
                           q: str = None, select: str = None, distinct: bool = False) -> ConnexionResponse:
     """Get the files placed under the group directory.
 
@@ -1502,7 +1502,7 @@ async def get_agent_no_group(pretty: bool = False, wait_for_complete: bool = Fal
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'q': 'id!=000;group=null' + (';' + q if q else '')}
+                'q': 'group=null' + (';' + q if q else '')}
 
     dapi = DistributedAPI(f=agent.get_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

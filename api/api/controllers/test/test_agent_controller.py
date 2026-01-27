@@ -1064,7 +1064,7 @@ async def test_get_agent_no_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
                 'select': None,
                 'sort': None,
                 'search': None,
-                'q': 'id!=000;group=null'
+                'q': 'group=null'
                 }
     mock_dapi.assert_called_once_with(f=agent.get_agents,
                                       f_kwargs=mock_remove.return_value,

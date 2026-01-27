@@ -3500,7 +3500,7 @@ components:
     agent_id:
       in: path
       name: agent_id
-      description: "Agent ID. All possible values from 000 onwards"
+      description: "Agent ID"
       required: true
       schema:
         $ref: '#/components/schemas/AgentID'
@@ -8754,7 +8754,6 @@ paths:
               example:
                 data:
                   affected_items:
-                    - "000"
                     - "001"
                     - "002"
                     - "003"
@@ -8802,7 +8801,6 @@ paths:
               example:
                 data:
                   affected_items:
-                    - '000'
                     - '001'
                     - '002'
                     - '003'
