@@ -1,4 +1,10 @@
 #!/bin/bash
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
 
 output_dir="./output"
 wazuh_version=$(jq -r '.version' "$(dirname "${BASH_SOURCE[0]}")/../../VERSION.json")
