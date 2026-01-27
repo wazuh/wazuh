@@ -15,3 +15,5 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 target_link_libraries(${PROJECT_NAME} benchmark router)
 
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+
+set_tests_properties(${PROJECT_NAME} PROPERTIES LABELS "router")

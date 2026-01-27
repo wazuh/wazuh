@@ -44,3 +44,5 @@ if(APPLE)
 endif(APPLE)
 
 add_test(NAME sysInfoMacPackage_unit_test COMMAND sysInfoMacPackage_unit_test)
+
+set_tests_properties(sysInfoMacPackage_unit_test PROPERTIES LABELS "data_provider")

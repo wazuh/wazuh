@@ -21,3 +21,5 @@ target_link_libraries(
   gtest_main)
 
 add_test(NAME bounded_queue_test COMMAND bounded_queue_test)
+
+set_tests_properties(bounded_queue_test PROPERTIES LABELS "syscheckd")

@@ -84,3 +84,5 @@ else()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME fim_db_interface_test COMMAND fim_db_interface_test)
+
+set_tests_properties(fim_db_interface_test PROPERTIES LABELS "syscheckd")

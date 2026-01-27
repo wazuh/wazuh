@@ -58,21 +58,6 @@ target_include_directories(
           ${SRC_FOLDER}/external/flatbuffers/include
           ${SRC_FOLDER}/external/cJSON
           ${SRC_FOLDER}/external/rocksdb/include)
+
 add_test(NAME inventory_sync_utest COMMAND inventory_sync_utest)
-set_tests_properties(inventory_sync_utest PROPERTIES LABELS
-                                                     "inventory_sync_utest")
-
-# file(GLOB COMPONENT_SRC_FILES ${COMPONENT_SRC_DIR}/*.cpp )
-
-# message("[?] Files to compile: " ${COMPONENT_SRC_FILES})
-
-# add_executable(inventory_sync_ctest ${COMPONENT_SRC_FILES} )
-
-# target_link_libraries(inventory_sync_ctest debug gtestd debug gmockd debug
-# gtest_maind debug gmock_maind optimized gtest optimized gmock optimized
-# gtest_main optimized gmock_main crypto )
-
-# target_include_directories(inventory_sync_ctest PRIVATE ${TEST_SRC_DIR}
-# ${TEST_MOCK_DIR}) add_test(NAME inventory_sync_ctest COMMAND
-# inventory_sync_ctest) set_tests_properties(inventory_sync_ctest PROPERTIES
-# LABELS "inventory_sync_ctest")
+set_tests_properties(inventory_sync_utest PROPERTIES LABELS inventory_sync_utest)

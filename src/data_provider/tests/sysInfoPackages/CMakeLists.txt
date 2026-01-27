@@ -35,3 +35,5 @@ target_link_libraries(
   pthread)
 
 add_test(NAME sysInfoPackages_unit_test COMMAND sysInfoPackages_unit_test)
+
+set_tests_properties(sysInfoPackages_unit_test PROPERTIES LABELS "data_provider")

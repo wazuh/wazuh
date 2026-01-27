@@ -62,3 +62,5 @@ else()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME sysinfo_unit_test COMMAND sysinfo_unit_test)
+
+set_tests_properties(sysinfo_unit_test PROPERTIES LABELS "data_provider")

@@ -59,3 +59,5 @@ else()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME sys_normalizer_unit_test COMMAND sys_normalizer_unit_test)
+
+set_tests_properties(sys_normalizer_unit_test PROPERTIES LABELS "syscollector")

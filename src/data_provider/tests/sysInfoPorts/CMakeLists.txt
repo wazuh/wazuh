@@ -31,3 +31,5 @@ target_link_libraries(
   cjson)
 
 add_test(NAME sysInfoPort_unit_test COMMAND sysInfoPort_unit_test)
+
+set_tests_properties(sysInfoPort_unit_test PROPERTIES LABELS "data_provider")

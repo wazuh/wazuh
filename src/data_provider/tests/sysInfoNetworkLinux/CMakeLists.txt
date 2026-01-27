@@ -39,3 +39,5 @@ target_link_libraries(
 
 add_test(NAME sysInfoNetworkLinux_unit_test
          COMMAND sysInfoNetworkLinux_unit_test)
+
+set_tests_properties(sysInfoNetworkLinux_unit_test PROPERTIES LABELS "data_provider")

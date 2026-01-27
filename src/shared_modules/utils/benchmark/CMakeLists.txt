@@ -32,3 +32,5 @@ else()
 endif()
 
 add_test(NAME utils_benchmark_test COMMAND utils_benchmark_test)
+
+set_tests_properties(utils_benchmark_test PROPERTIES LABELS "utils")

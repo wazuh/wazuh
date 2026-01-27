@@ -66,3 +66,5 @@ else()
     dl)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 add_test(NAME fim_integration_test COMMAND fim_integration_test)
+
+set_tests_properties(fim_integration_test PROPERTIES LABELS "dbsync")

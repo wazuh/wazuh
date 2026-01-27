@@ -33,4 +33,5 @@ target_link_libraries(
           $<$<PLATFORM_ID:Windows>:-static-libgcc>
           $<$<PLATFORM_ID:Windows>:-static-libstdc++>)
 add_test(NAME Filesystem COMMAND filesystem_unit_test)
-set_tests_properties(Filesystem PROPERTIES LABELS file_helper_utest)
+
+set_tests_properties(Filesystem PROPERTIES LABELS "file_helper")

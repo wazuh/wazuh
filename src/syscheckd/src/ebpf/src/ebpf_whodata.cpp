@@ -25,6 +25,17 @@
 #include "ebpf_whodata.hpp"
 #include "bpf_helpers.h"
 
+// Define global function pointers (declared extern in bpf_helpers.h)
+void (*bpf_object__destroy_skeleton)(struct bpf_object_skeleton *obj) = nullptr;
+int (*bpf_object__open_skeleton)(struct bpf_object_skeleton *obj, const struct bpf_object_open_opts *opts) = nullptr;
+int (*bpf_object__load_skeleton)(struct bpf_object_skeleton *obj) = nullptr;
+int (*bpf_object__attach_skeleton)(struct bpf_object_skeleton *obj) = nullptr;
+void (*bpf_object__detach_skeleton)(struct bpf_object_skeleton *obj) = nullptr;
+
+// Define global variables (declared extern in ebpf_whodata.hpp)
+volatile bool event_received = false;
+volatile bool ebpf_hc_created = false;
+
 #define KERNEL_VERSION_FILE "/proc/sys/kernel/osrelease"
 #define EBPF_HC_FILE "tmp/ebpf_hc"
 #define LIB_INSTALL_PATH "bpf"

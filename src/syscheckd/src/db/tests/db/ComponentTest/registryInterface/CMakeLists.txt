@@ -64,3 +64,5 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME fim_registry_interface_test COMMAND fim_registry_interface_test)
+
+set_tests_properties(fim_registry_interface_test PROPERTIES LABELS "syscheckd")

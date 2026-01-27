@@ -43,17 +43,25 @@ add_executable(sca_unit_test sca_test.cpp)
 target_link_libraries(sca_unit_test PRIVATE SCAImpl)
 add_test(NAME SCATest COMMAND sca_unit_test)
 
+set_tests_properties(SCATest PROPERTIES LABELS "sca")
+
 add_executable(sca_policy_loader_unit_test sca_policy_loader_test.cpp)
 target_link_libraries(sca_policy_loader_unit_test PRIVATE SCAImpl)
 add_test(NAME SCAPolicyLoaderTest COMMAND sca_policy_loader_unit_test)
+
+set_tests_properties(SCAPolicyLoaderTest PROPERTIES LABELS "sca")
 
 add_executable(sca_event_handler_unit_test sca_event_handler_test.cpp)
 target_link_libraries(sca_event_handler_unit_test PRIVATE SCAImpl)
 add_test(NAME SCAEventHandlerTest COMMAND sca_event_handler_unit_test)
 
+set_tests_properties(SCAEventHandlerTest PROPERTIES LABELS "sca")
+
 add_executable(sca_utils_unit_test sca_utils_test.cpp)
 target_link_libraries(sca_utils_unit_test PRIVATE SCAImpl)
 add_test(NAME SCAUtilsTest COMMAND sca_utils_unit_test)
+
+set_tests_properties(SCAUtilsTest PROPERTIES LABELS "sca")
 
 add_executable(check_condition_evaluator_unit_test
                check_condition_evaluator_test.cpp)
@@ -61,17 +69,25 @@ target_link_libraries(check_condition_evaluator_unit_test PRIVATE SCAImpl)
 add_test(NAME CheckConditionEvaluatorTest
          COMMAND check_condition_evaluator_unit_test)
 
+set_tests_properties(CheckConditionEvaluatorTest PROPERTIES LABELS "sca")
+
 add_executable(rule_creation_unit_test rule_creation_test.cpp)
 target_link_libraries(rule_creation_unit_test PRIVATE SCAImpl)
 add_test(NAME RuleCreationTest COMMAND rule_creation_unit_test)
+
+set_tests_properties(RuleCreationTest PROPERTIES LABELS "sca")
 
 add_executable(file_rule_evaluator_unit_test file_rule_evaluator_test.cpp)
 target_link_libraries(file_rule_evaluator_unit_test PRIVATE SCAImpl)
 add_test(NAME FileRuleEvaluatorTest COMMAND file_rule_evaluator_unit_test)
 
+set_tests_properties(FileRuleEvaluatorTest PROPERTIES LABELS "sca")
+
 add_executable(command_rule_evaluator_unit_test command_rule_evaluator_test.cpp)
 target_link_libraries(command_rule_evaluator_unit_test PRIVATE SCAImpl)
 add_test(NAME CommandRuleEvaluatorTest COMMAND command_rule_evaluator_unit_test)
+
+set_tests_properties(CommandRuleEvaluatorTest PROPERTIES LABELS "sca")
 
 add_executable(directory_rule_evaluator_unit_test
                directory_rule_evaluator_test.cpp)
@@ -79,29 +95,43 @@ target_link_libraries(directory_rule_evaluator_unit_test PRIVATE SCAImpl)
 add_test(NAME DirectoryRuleEvaluatorTest
          COMMAND directory_rule_evaluator_unit_test)
 
+set_tests_properties(DirectoryRuleEvaluatorTest PROPERTIES LABELS "sca")
+
 add_executable(process_rule_evaluator_unit_test process_rule_evaluator_test.cpp)
 target_link_libraries(process_rule_evaluator_unit_test PRIVATE SCAImpl)
 add_test(NAME ProcessRuleEvaluatorTest COMMAND process_rule_evaluator_unit_test)
+
+set_tests_properties(ProcessRuleEvaluatorTest PROPERTIES LABELS "sca")
 
 add_executable(sca_policy_parser_unit_test sca_policy_parser_test.cpp)
 target_link_libraries(sca_policy_parser_unit_test PRIVATE SCAImpl)
 add_test(NAME SCAPolicyParserTest COMMAND sca_policy_parser_unit_test)
 
+set_tests_properties(SCAPolicyParserTest PROPERTIES LABELS "sca")
+
 add_executable(sca_checksum_unit_test sca_checksum_test.cpp)
 target_link_libraries(sca_checksum_unit_test PRIVATE SCAImpl)
 add_test(NAME SCAChecksumTest COMMAND sca_checksum_unit_test)
+
+set_tests_properties(SCAChecksumTest PROPERTIES LABELS "sca")
 
 add_executable(sca_recovery_unit_test sca_recovery_test.cpp)
 target_link_libraries(sca_recovery_unit_test PRIVATE SCAImpl)
 add_test(NAME SCARecoveryTest COMMAND sca_recovery_unit_test)
 
+set_tests_properties(SCARecoveryTest PROPERTIES LABELS "sca")
+
 add_executable(sca_recovery_utils_unit_test sca_recovery_utils_test.cpp)
 target_link_libraries(sca_recovery_utils_unit_test PRIVATE SCAImpl)
 add_test(NAME SCARecoveryUtilsTest COMMAND sca_recovery_utils_unit_test)
 
+set_tests_properties(SCARecoveryUtilsTest PROPERTIES LABELS "sca")
+
 add_executable(sca_dataclean_unit_test sca_dataclean_test.cpp)
 target_link_libraries(sca_dataclean_unit_test PRIVATE SCAImpl)
 add_test(NAME SCADataCleanTest COMMAND sca_dataclean_unit_test)
+
+set_tests_properties(SCADataCleanTest PROPERTIES LABELS "sca")
 
 if(WIN32)
   add_executable(registry_rule_evaluator_unit_test
@@ -109,4 +139,6 @@ if(WIN32)
   target_link_libraries(registry_rule_evaluator_unit_test PRIVATE SCAImpl)
   add_test(NAME RegistryRuleEvaluatorTest
            COMMAND registry_rule_evaluator_unit_test)
+
+  set_tests_properties(RegistryRuleEvaluatorTest PROPERTIES LABELS "sca")
 endif()

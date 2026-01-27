@@ -32,3 +32,5 @@ target_link_libraries(
   dl)
 
 add_test(NAME Rpm_unit_test COMMAND Rpm_unit_test)
+
+set_tests_properties(Rpm_unit_test PROPERTIES LABELS "data_provider")

@@ -37,3 +37,5 @@ target_link_libraries(
   cjson
   dl)
 add_test(NAME sysInfoNetworkBSD_unit_test COMMAND sysInfoNetworkBSD_unit_test)
+
+set_tests_properties(sysInfoNetworkBSD_unit_test PROPERTIES LABELS "data_provider")

@@ -77,3 +77,5 @@ else()
 endif()
 
 add_test(NAME LoggedInUsersTests COMMAND extended_sources_users_unit_test)
+
+set_tests_properties(LoggedInUsersTests PROPERTIES LABELS "data_provider")

@@ -77,3 +77,5 @@ else()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME registryvalue_unit_test COMMAND registryvalue_unit_test)
+
+set_tests_properties(registryvalue_unit_test PROPERTIES LABELS "syscheckd")

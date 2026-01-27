@@ -56,3 +56,5 @@ else()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME schema_validator_unit_test COMMAND schema_validator_unit_test)
+
+set_tests_properties(schema_validator_unit_test PROPERTIES LABELS "schema_validator")

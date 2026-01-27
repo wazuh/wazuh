@@ -241,6 +241,16 @@ endif(APPLE)
 if(UNIT_TEST)
   enable_testing()
   add_coverage_libraries(sysinfo)
+
+  # Add coverage flags globally for all test executables (including those that compile sources directly)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options(--coverage)
+    add_link_options(-fprofile-arcs)
+  else()
+    add_compile_options(--coverage)
+    add_link_options(--coverage)
+  endif()
+
   add_subdirectory(tests)
 endif(UNIT_TEST)
 

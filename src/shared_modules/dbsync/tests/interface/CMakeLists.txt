@@ -69,3 +69,5 @@ else()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME dbsync_unit_test COMMAND dbsync_unit_test)
+
+set_tests_properties(dbsync_unit_test PROPERTIES LABELS "dbsync")

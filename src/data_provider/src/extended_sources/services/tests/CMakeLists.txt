@@ -35,3 +35,5 @@ target_link_libraries(
   gmock_maind)
 
 add_test(NAME ServicesTests COMMAND extended_sources_services_unit_test)
+
+set_tests_properties(ServicesTests PROPERTIES LABELS "data_provider")

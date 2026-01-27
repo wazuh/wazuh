@@ -175,5 +175,5 @@ else()
   endif(APPLE)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-add_test(NAME utils_utest COMMAND utils_utest)
-set_tests_properties(utils_utest PROPERTIES LABELS utils_utest)
+add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+set_tests_properties(${PROJECT_NAME} PROPERTIES LABELS ${PROJECT_NAME})

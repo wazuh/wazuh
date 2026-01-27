@@ -36,3 +36,5 @@ target_link_libraries(
 
 add_test(NAME sysInfoPackagesLinuxHelper_unit_test
          COMMAND sysInfoPackagesLinuxHelper_unit_test)
+
+set_tests_properties(sysInfoPackagesLinuxHelper_unit_test PROPERTIES LABELS "data_provider")

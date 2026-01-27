@@ -42,41 +42,57 @@ add_executable(agent_info_basic_test agent_info_basic_test.cpp)
 target_link_libraries(agent_info_basic_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoBasicTest COMMAND agent_info_basic_test)
 
+set_tests_properties(AgentInfoBasicTest PROPERTIES LABELS "agent_info")
+
 # Agent Info Metadata Tests (client.keys, merged.mg, OS info)
 add_executable(agent_info_metadata_test agent_info_metadata_test.cpp)
 target_link_libraries(agent_info_metadata_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoMetadataTest COMMAND agent_info_metadata_test)
+
+set_tests_properties(AgentInfoMetadataTest PROPERTIES LABELS "agent_info")
 
 # Agent Info DBSync Integration Tests (callbacks, SQL operations)
 add_executable(agent_info_dbsync_test agent_info_dbsync_test.cpp)
 target_link_libraries(agent_info_dbsync_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoDBSyncTest COMMAND agent_info_dbsync_test)
 
+set_tests_properties(AgentInfoDBSyncTest PROPERTIES LABELS "agent_info")
+
 # Agent Info Event Processing Tests (INSERTED/MODIFIED/DELETED events)
 add_executable(agent_info_events_test agent_info_events_test.cpp)
 target_link_libraries(agent_info_events_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoEventsTest COMMAND agent_info_events_test)
+
+set_tests_properties(AgentInfoEventsTest PROPERTIES LABELS "agent_info")
 
 # Agent Info Utility Functions Tests (checksums, hash IDs, ECS formatting)
 add_executable(agent_info_utils_test agent_info_utils_test.cpp)
 target_link_libraries(agent_info_utils_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoUtilsTest COMMAND agent_info_utils_test)
 
+set_tests_properties(AgentInfoUtilsTest PROPERTIES LABELS "agent_info")
+
 # Agent Info Logging Tests (log levels, error handling)
 add_executable(agent_info_logging_test agent_info_logging_test.cpp)
 target_link_libraries(agent_info_logging_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoLoggingTest COMMAND agent_info_logging_test)
+
+set_tests_properties(AgentInfoLoggingTest PROPERTIES LABELS "agent_info")
 
 # Agent Info Integration Tests (end-to-end with real DBSync)
 add_executable(agent_info_integration_test agent_info_integration_test.cpp)
 target_link_libraries(agent_info_integration_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoIntegrationTest COMMAND agent_info_integration_test)
 
+set_tests_properties(AgentInfoIntegrationTest PROPERTIES LABELS "agent_info")
+
 # Agent Info Coordination Tests (module coordination, query handling,
 # resetSyncFlag)
 add_executable(agent_info_coordination_test agent_info_coordination_test.cpp)
 target_link_libraries(agent_info_coordination_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoCoordinationTest COMMAND agent_info_coordination_test)
+
+set_tests_properties(AgentInfoCoordinationTest PROPERTIES LABELS "agent_info")
 
 # Agent Info Successful Coordination Tests (complete coordination flow)
 add_executable(agent_info_successful_coordination_test
@@ -86,7 +102,11 @@ target_link_libraries(agent_info_successful_coordination_test
 add_test(NAME AgentInfoSuccessfulCoordinationTest
          COMMAND agent_info_successful_coordination_test)
 
+set_tests_properties(AgentInfoSuccessfulCoordinationTest PROPERTIES LABELS "agent_info")
+
 # Agent Info Integrity Check Tests (periodic integrity checks, CHECK modes)
 add_executable(agent_info_integrity_test agent_info_integrity_test.cpp)
 target_link_libraries(agent_info_integrity_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoIntegrityTest COMMAND agent_info_integrity_test)
+
+set_tests_properties(AgentInfoIntegrityTest PROPERTIES LABELS "agent_info")

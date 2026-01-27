@@ -39,3 +39,5 @@ target_link_libraries(
   $<$<PLATFORM_ID:Windows>:-static-libstdc++>)
 add_test(NAME BrowsersExtensionsTests
          COMMAND extended_sources_browser_extensions_unit_test)
+
+set_tests_properties(BrowsersExtensionsTests PROPERTIES LABELS "data_provider")

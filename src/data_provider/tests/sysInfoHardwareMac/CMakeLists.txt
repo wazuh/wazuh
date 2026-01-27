@@ -36,6 +36,8 @@ target_link_libraries(
 
 add_test(NAME sysInfoHardwareMac_unit_test COMMAND sysInfoHardwareMac_unit_test)
 
+set_tests_properties(sysInfoHardwareMac_unit_test PROPERTIES LABELS "data_provider")
+
 if(${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "arm64.*|ARM64.*")
   file(GLOB sysinfo_ARM_UNIT_TEST_SRC
        "${SRC_FOLDER}/data_provider/src/hardware/*ARMMac.cpp"
@@ -77,4 +79,6 @@ if(${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "arm64.*|ARM64.*")
 
   add_test(NAME sysInfoHardwareARMMac_unit_test
            COMMAND sysInfoHardwareARMMac_unit_test)
+
+  set_tests_properties(sysInfoHardwareARMMac_unit_test PROPERTIES LABELS "data_provider")
 endif()

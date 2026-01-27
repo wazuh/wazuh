@@ -53,5 +53,7 @@ else()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME agent_metadata_tests COMMAND agent_metadata_tests)
+
+set_tests_properties(agent_metadata_tests PROPERTIES LABELS "agent_metadata")
 set_tests_properties(agent_metadata_tests PROPERTIES WORKING_DIRECTORY
                                                      "${CMAKE_BINARY_DIR}/bin")

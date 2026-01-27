@@ -51,3 +51,5 @@ target_link_libraries(
   gmock_main)
 
 add_test(NAME GroupsTests COMMAND extended_sources_groups_unit_test)
+
+set_tests_properties(GroupsTests PROPERTIES LABELS "data_provider")

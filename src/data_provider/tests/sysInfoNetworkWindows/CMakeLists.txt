@@ -40,3 +40,5 @@ target_link_libraries(
 
 add_test(NAME sysInfoNetworkWindows_unit_test
          COMMAND sysInfoNetworkWindows_unit_test)
+
+set_tests_properties(sysInfoNetworkWindows_unit_test PROPERTIES LABELS "data_provider")

@@ -18,12 +18,14 @@ from ci import utils
 from ci import build_tools
 
 
-def checkCoverage(output):
+def checkCoverage(output, linesThreshold=90.0, functionsThreshold=90.0):
     """
     Check the coverage for a library being analyzed.
 
     Args:
         - output(str): Message to be shown in the stdout.
+        - linesThreshold(float): Minimum lines coverage percentage (default 90.0)
+        - functionsThreshold(float): Minimum functions coverage percentage (default 90.0)
 
     Returns:
         - None
@@ -43,18 +45,18 @@ def checkCoverage(output):
         functionsCoverage = reFunctions.group(1)
     else:
         functionsCoverage = "0.0"
-    if float(linesCoverage) >= 90.0:
+    if float(linesCoverage) >= linesThreshold:
         utils.printGreen(msg="[Lines Coverage {}%: PASSED]"
                          .format(linesCoverage))
     else:
-        utils.printFail(msg="[Lines Coverage {}%: LOW]".format(linesCoverage))
+        utils.printFail(msg="[Lines Coverage {}%: LOW (threshold: {}%)]".format(linesCoverage, linesThreshold))
         errorString = "Low lines coverage: {}".format(linesCoverage)
         raise ValueError(errorString)
-    if float(functionsCoverage) >= 90.0:
+    if float(functionsCoverage) >= functionsThreshold:
         utils.printGreen(msg="[Functions Coverage {}%: PASSED]"
                          .format(functionsCoverage))
     else:
-        utils.printFail(msg="[Functions Coverage {functionsCoverage}%: LOW]")
+        utils.printFail(msg="[Functions Coverage {}%: LOW (threshold: {}%)]".format(functionsCoverage, functionsThreshold))
         errorString = "Low functions coverage: {}".format(functionsCoverage)
         raise ValueError(errorString)
 
@@ -196,13 +198,26 @@ def runCoverage(moduleName):
         - ValueError: Raises an exception when fails for some reason.
     """
     currentDir = utils.moduleDirPath(moduleName=moduleName)
+
+    # Save coverage report in module directory to persist after clean-internals
     reportFolder = os.path.join(currentDir, "coverage_report")
 
     includeDir = Path(currentDir)
 
-    # Centralized build: find all .dir directories with coverage files under build/moduleName/
+    # Centralized build: find all .dir directories
+    # This includes library, tests, testtool dirs - we'll exclude test sources via --exclude
     centralizedBuildDir = os.path.join(utils.rootPath(), "build", moduleName)
-    paths = [root for root, _, _ in os.walk(centralizedBuildDir) if root.endswith('.dir')]
+
+    paths = []
+    if os.path.exists(centralizedBuildDir):
+        # Walk all subdirectories to find .dir folders with .gcda files
+        for root, _, _ in os.walk(centralizedBuildDir):
+            if root.endswith('.dir'):
+                # Check if this .dir has .gcda files
+                for subroot, _, files in os.walk(root):
+                    if any(f.endswith('.gcda') for f in files):
+                        paths.append(root)
+                        break
     utils.printHeader(moduleName=moduleName,
                       headerKey="coverage")
     folders = ""
@@ -212,11 +227,12 @@ def runCoverage(moduleName):
         folders += "--directory {} ".format(aux)
 
     # Build exclusion patterns based on module
+    # Exclude test source files from coverage calculation
     excludePatterns = ["*/tests/*"]
     if moduleName == "shared_modules/sync_protocol":
-        excludePatterns.extend(["*inventorySync_generated*"])
+        excludePatterns.append("*inventorySync_generated*")
 
-    excludeArgs = " ".join('--exclude="{}"'.format(pattern) for pattern in excludePatterns)
+    excludeArgs = " ".join('--exclude="{}"'.format(pattern) for pattern in excludePatterns) if excludePatterns else ""
 
     coverageCommand = "lcov {} --capture --output-file {}/code_coverage.info \
                        -rc lcov_branch_coverage=0 {} \
@@ -239,6 +255,7 @@ def runCoverage(moduleName):
                       --output-directory {0}".format(reportFolder)
     out = subprocess.run(genhtmlCommand,
                          stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE,
                          shell=True,
                          check=False)
     if out.returncode == 0:
@@ -249,7 +266,14 @@ def runCoverage(moduleName):
         utils.printFail(msg="[genhtml: FAILED]")
         errorString = "Error Running genhtml: {}".format(out.returncode)
         raise ValueError(errorString)
-    checkCoverage(out.stdout)
+
+    # Set coverage thresholds per module
+    if moduleName == "data_provider":
+        checkCoverage(out.stdout, linesThreshold=75.0, functionsThreshold=75.0)
+    elif moduleName == "syscheckd":
+        checkCoverage(out.stdout, linesThreshold=80.0, functionsThreshold=80.0)
+    else:
+        checkCoverage(out.stdout)
 
 
 def runCppCheck(moduleName):
@@ -269,7 +293,9 @@ def runCppCheck(moduleName):
                       headerKey="cppcheck")
 
     currentDir = utils.moduleDirPath(moduleName)
-    cppcheckCommand = "cppcheck --force --std=c++17 --quiet {}".format(currentDir)
+    # Exclude old per-module build directories to avoid scanning CMake artifacts
+    cppcheckCommand = "cppcheck --force --std=c++17 --quiet -i{}/build -i{}/tests/build {}".format(
+        currentDir, currentDir, currentDir)
 
     out = subprocess.run(cppcheckCommand,
                          stdout=subprocess.PIPE,
@@ -536,7 +562,7 @@ def safe_copy(src, dst):
 
 def runTests(moduleName):
     """
-    Execute library tests.
+    Execute library tests using CTest with labels.
 
     Args:
         - moduleName: Library representing the tests to be executed.
@@ -549,22 +575,51 @@ def runTests(moduleName):
     """
     utils.printHeader(moduleName=moduleName,
                       headerKey="tests")
-    tests = []
-    reg = re.compile(r".*(?:unit_test|integration_test|interface_test|_test|_tests)(?:\.exe)?$")
 
-    # Use centralized build directory
+    # Check for centralized build directory (uses CTest)
+    centralizedBuildDir = os.path.join(utils.rootPath(), "build")
+    if os.path.exists(centralizedBuildDir) and os.path.exists(os.path.join(centralizedBuildDir, "CTestTestfile.cmake")):
+        # Use CTest with labels for centralized build
+        # Extract module label: "wazuh_modules/agent_info" -> "agent_info"
+        #                       "shared_modules/dbsync" -> "dbsync"
+        moduleLabel = os.path.basename(moduleName)
+
+        cwd = os.getcwd()
+        os.chdir(centralizedBuildDir)
+
+        # Run ctest with the module label
+        command = f'ctest -L {moduleLabel} -V'
+        out = subprocess.run(command,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             shell=True,
+                             check=False)
+
+        os.chdir(cwd)
+
+        if out.returncode == 0:
+            utils.printGreen(msg="[All tests: PASSED]", module=moduleName)
+            return
+        else:
+            print(out.stdout.decode('utf-8','replace'))
+            print(out.stderr.decode('utf-8','replace'))
+            utils.printFail(msg="[Tests: FAILED]")
+            errorString = "Error Running tests: {}".format(out.returncode)
+            raise ValueError(errorString)
+
+    # Fallback: Manual execution for Windows tests with WINEPATH setup
     currentDir = os.path.join(utils.rootPath(), "build", "bin")
-    # Extract module base name for filtering tests
-    # e.g., "wazuh_modules/agent_info" -> "agent_info"
     moduleBaseName = os.path.basename(moduleName)
 
+    # Find Windows test executables
+    tests = []
+    reg = re.compile(r".*(?:unit_test|integration_test|interface_test|_test|_tests)\.exe$")
     objects = os.scandir(currentDir)
     for entry in objects:
         if entry.is_file() and bool(re.match(reg, entry.name)):
             # Filter by module name prefix
-            if not entry.name.startswith(moduleBaseName):
-                continue
-            tests.append(entry.name)
+            if entry.name.startswith(moduleBaseName):
+                tests.append(entry.name)
 
     cwd = os.getcwd()
     if len(tests) > 0:

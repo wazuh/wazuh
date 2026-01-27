@@ -79,3 +79,5 @@ else()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME fileitem_unit_test COMMAND fileitem_unit_test)
+
+set_tests_properties(fileitem_unit_test PROPERTIES LABELS "syscheckd")

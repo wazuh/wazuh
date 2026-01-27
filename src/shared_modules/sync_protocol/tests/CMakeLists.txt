@@ -79,3 +79,5 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME agent_sync_protocol_tests COMMAND agent_sync_protocol_tests)
+
+set_tests_properties(agent_sync_protocol_tests PROPERTIES LABELS "sync_protocol")

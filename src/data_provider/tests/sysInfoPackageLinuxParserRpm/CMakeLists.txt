@@ -36,3 +36,5 @@ target_link_libraries(
 
 add_test(NAME sysInfoPackageLinuxParserRPM_unit_test
          COMMAND sysInfoPackageLinuxParserRPM_unit_test)
+
+set_tests_properties(sysInfoPackageLinuxParserRPM_unit_test PROPERTIES LABELS "data_provider")

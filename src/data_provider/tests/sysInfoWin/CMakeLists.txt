@@ -41,3 +41,5 @@ target_link_libraries(
   -static-libstdc++)
 
 add_test(NAME sysInfoWindows_unit_test COMMAND sysInfoWindows_unit_test)
+
+set_tests_properties(sysInfoWindows_unit_test PROPERTIES LABELS "data_provider")
