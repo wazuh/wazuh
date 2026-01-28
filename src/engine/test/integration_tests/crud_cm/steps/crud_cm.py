@@ -257,6 +257,7 @@ def build_valid_policy_yaml() -> str:
     """
     return """\
 title: bar
+hash: "crud-cm-test-hash"
 root_decoder: "00000000-0000-0000-0000-000000000001"
 integrations:
   - "dummy-integration-uuid"
@@ -269,6 +270,7 @@ def build_policy_yaml_missing_integrations() -> str:
     """
     return """\
 title: bar
+hash: "crud-cm-test-hash"
 root_decoder: "00000000-0000-0000-0000-000000000001"
 """
 
@@ -279,6 +281,7 @@ def build_policy_yaml_with_empty_integrations() -> str:
     """
     return """\
 title: bar
+hash: "crud-cm-test-hash"
 root_decoder: "00000000-0000-0000-0000-000000000001"
 integrations: []
 """
@@ -302,6 +305,7 @@ def build_full_valid_policy_yaml(default_parent: str,
     return f"""\
 type: policy
 title: Development 0.0.1
+hash: "crud-cm-test-hash"
 default_parent: {default_parent}
 root_decoder: {root_decoder}
 integrations:

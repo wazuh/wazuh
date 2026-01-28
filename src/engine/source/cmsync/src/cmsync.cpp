@@ -260,8 +260,7 @@ void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::Na
                                    policyResource.decoders,
                                    policyResource.integration,
                                    policyResource.policy,
-                                   /*softValidation=*/true,
-                                   policyResource.policyHash);
+                                   /*softValidation=*/true);
     }
     catch (const std::exception& e)
     {

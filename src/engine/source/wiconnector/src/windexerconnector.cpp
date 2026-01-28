@@ -323,7 +323,12 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
                 if (source.contains("space") && source["space"].contains("hash")
                     && source["space"]["hash"].contains("sha256"))
                 {
-                    policyMap.policyHash = source["space"]["hash"]["sha256"].get<std::string>();
+                    const auto hash = source["space"]["hash"]["sha256"].get<std::string>();
+                    policyMap.policy.setString(hash, "/hash");
+                }
+                else
+                {
+                    throw IndexerConnectorException("space.hash.sha256 field not found for policy");
                 }
             }
             else

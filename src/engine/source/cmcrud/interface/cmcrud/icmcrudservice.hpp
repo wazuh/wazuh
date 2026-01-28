@@ -1,7 +1,6 @@
 #ifndef _CM_CRUD_ICMCRUD_SERVICE_HPP
 #define _CM_CRUD_ICMCRUD_SERVICE_HPP
 
-#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -123,8 +122,7 @@ public:
                                  const std::vector<json::Json>& decoders,
                                  const std::vector<json::Json>& integrations,
                                  const json::Json& policy,
-                                 bool softValidation,
-                                 std::optional<std::string> externalPolicyHash = std::nullopt) = 0;
+                                 bool softValidation) = 0;
 
     /********************************* Policy *********************************/
 
