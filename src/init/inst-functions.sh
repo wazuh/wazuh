@@ -654,6 +654,8 @@ InstallCommon()
   INSTALL="install"
 
   if [ ${INSTYPE} = 'server' ]; then
+      WAZUH_GROUP='wazuh-manager'
+      WAZUH_USER='wazuh-manager'
       OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
       OSSEC_CONF_SRC='../etc/ossec-server.conf'
   elif [ ${INSTYPE} = 'agent' ]; then
