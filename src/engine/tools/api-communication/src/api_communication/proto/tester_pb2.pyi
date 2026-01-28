@@ -11,12 +11,8 @@ ASSET_ONLY: TraceLevel
 DESCRIPTOR: _descriptor.FileDescriptor
 DISABLED: State
 ENABLED: State
-ERROR: Sync
 NONE: TraceLevel
-OUTDATED: Sync
 STATE_UNKNOWN: State
-SYNC_UNKNOWN: Sync
-UPDATED: Sync
 
 class PublicRunPost_Request(_message.Message):
     __slots__ = ["agent_metadata", "event", "location", "queue", "trace_level"]
@@ -72,13 +68,12 @@ class RunPost_Response(_message.Message):
     def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., result: _Optional[_Union[Result, _Mapping]] = ...) -> None: ...
 
 class Session(_message.Message):
-    __slots__ = ["description", "entry_status", "last_use", "lifetime", "name", "namespaceId", "namespace_sync"]
+    __slots__ = ["description", "entry_status", "last_use", "lifetime", "name", "namespaceId"]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
     ENTRY_STATUS_FIELD_NUMBER: _ClassVar[int]
     LAST_USE_FIELD_NUMBER: _ClassVar[int]
     LIFETIME_FIELD_NUMBER: _ClassVar[int]
     NAMESPACEID_FIELD_NUMBER: _ClassVar[int]
-    NAMESPACE_SYNC_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     description: str
     entry_status: State
@@ -86,8 +81,7 @@ class Session(_message.Message):
     lifetime: int
     name: str
     namespaceId: str
-    namespace_sync: Sync
-    def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., lifetime: _Optional[int] = ..., description: _Optional[str] = ..., namespace_sync: _Optional[_Union[Sync, str]] = ..., entry_status: _Optional[_Union[State, str]] = ..., last_use: _Optional[int] = ...) -> None: ...
+    def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., lifetime: _Optional[int] = ..., description: _Optional[str] = ..., entry_status: _Optional[_Union[State, str]] = ..., last_use: _Optional[int] = ...) -> None: ...
 
 class SessionDelete_Request(_message.Message):
     __slots__ = ["name"]
@@ -150,9 +144,6 @@ class TableGet_Response(_message.Message):
     def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., sessions: _Optional[_Iterable[_Union[Session, _Mapping]]] = ...) -> None: ...
 
 class State(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
-    __slots__ = []
-
-class Sync(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = []
 
 class TraceLevel(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):

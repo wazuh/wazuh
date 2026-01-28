@@ -369,6 +369,7 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
     }
 
     auto pol = cm::store::dataType::Policy::fromJson(policy);
+
     if (!softValidation)
     {
         validatePolicy(nsReader, pol);
@@ -426,8 +427,6 @@ std::vector<ResourceSummary> CrudService::listResources(const cm::store::Namespa
             ResourceSummary summary;
             summary.uuid = uuid;
             summary.name = name;
-            summary.hash = nsReader->resolveHashFromUUID(uuid);
-
             result.emplace_back(std::move(summary));
         }
         return result;

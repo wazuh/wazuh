@@ -66,17 +66,15 @@ private:
     void rebuildCacheFromStorage();
 
     /**
-     * @brief Upsert the UUID field in the given YML/Json content and compute content hash
+     * @brief Upsert the UUID field in the given YML/Json content
      *
      * If the UUID field already exists, it will be checked for validity and returned.
      * If it does not exist, a new UUID will be generated, inserted into the content, and returned.
-     * Additionally, computes a hash of the normalized JSON content (compact format),
-     * ignoring formatting differences and comments.
      * @param ymlContent YML content as a string (will be modified if UUID is added)
-     * @return std::pair<std::string, std::string> UUID and computed hash of the content
+     * @return std::string UUID of the content
      * @throw std::runtime_error if the existing UUID is invalid or content parsing fails
      */
-    std::pair<std::string, std::string> upsertUUIDAndComputeHash(std::string& ymlContent);
+    std::string upsertUUID(std::string& ymlContent);
 
     /**
      * @brief Get the path for a resource based on its name and type
@@ -151,8 +149,6 @@ public:
     std::vector<std::tuple<std::string, std::string>> getCollection(ResourceType type) const override;
     /** @copydoc ICMStoreNSReader::resolveNameFromUUID */
     std::tuple<std::string, ResourceType> resolveNameFromUUID(const std::string& uuid) const override;
-    /** @copydoc ICMStoreNSReader::resolveHashFromUUID */
-    std::string resolveHashFromUUID(const std::string& uuid) const override;
     /** @copydoc ICMStoreNSReader::resolveUUIDFromName */
     std::string resolveUUIDFromName(const std::string& name, ResourceType type) const override;
 

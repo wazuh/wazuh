@@ -16,12 +16,11 @@ namespace cm::store
 {
 using NameType = std::tuple<std::string, ResourceType>;
 
-// Entry structure to hold name, type, and hash
+// Entry structure to hold name and type
 struct EntryData
 {
     std::string name;
     ResourceType type;
-    std::string hash;
 };
 
 // Hash function for NameType to be used in unordered_map
@@ -36,17 +35,16 @@ struct NameTypeHash
 };
 
 /**
- * @brief Bidirectional cache for UUID to name-type-hash mappings.
+ * @brief Bidirectional cache for UUID to name-type mappings.
  *
  * This class maintains two internal hash maps to provide O(1) lookup times
  * for both UUID-to-entry-data and name-type-to-UUID queries.
- * Each entry now includes a hash string as metadata.
  * @warning This class is not thread-safe. External synchronization is required for concurrent access.
  */
 class CacheNS
 {
 private:
-    std::unordered_map<std::string, EntryData> m_uuidToEntryMap; ///< Map from UUID to EntryData (Name, Type, Hash)
+    std::unordered_map<std::string, EntryData> m_uuidToEntryMap; ///< Map from UUID to EntryData (Name, Type)
     std::unordered_map<NameType, std::string, NameTypeHash> m_nameTypeToUUIDMap; ///< Map from (Name, Type) to UUID
 public:
     CacheNS() = default;
@@ -72,14 +70,13 @@ public:
     void deserialize(const json::Json& j);
 
     /**
-     * @brief Adds a new entry to the cache with the specified UUID, name, type, and hash.
+     * @brief Adds a new entry to the cache with the specified UUID, name, and type.
      * @param uuid The unique identifier string
      * @param name The resource name
      * @param type The resource type
-     * @param hash The hash string (metadata associated with the resource)
      * @throw std::runtime_error if the UUID or name-type pair already exists in the cache
      */
-    void addEntry(const std::string& uuid, const std::string& name, ResourceType type, const std::string& hash);
+    void addEntry(const std::string& uuid, const std::string& name, ResourceType type);
 
     /**
      * @brief Removes an entry from the cache using its UUID.
@@ -115,22 +112,6 @@ public:
      * @return std::optional<NameType> The name-type pair if found, std::nullopt otherwise
      */
     std::optional<NameType> getNameTypeByUUID(const std::string& uuid) const;
-
-    /**
-     * @brief Retrieves the hash associated with the given UUID.
-     *
-     * @param uuid The UUID to look up
-     * @return std::optional<std::string> The hash if found, std::nullopt otherwise
-     */
-    std::optional<std::string> getHashByUUID(const std::string& uuid) const;
-
-    /**
-     * @brief Updates the hash associated with the given UUID.
-     * @param uuid The UUID of the entry to update
-     * @param newHash The new hash string to set
-     * @throw std::runtime_error if the UUID does not exist in the cache
-     */
-    void updateHashByUUID(const std::string& uuid, const std::string& newHash);
 
     /**
      * @brief Retrieves the UUID associated with the given name and type.

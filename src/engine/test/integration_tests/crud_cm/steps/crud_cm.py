@@ -110,6 +110,15 @@ def request_resource_list(space: str, rtype: str):
     return send_recv(req, api_crud.resourceList_Response())
 
 
+def request_resource_get(space: str, uuid: str, as_json: bool = False):
+    req = api_crud.resourceGet_Request()
+    req.space = space
+    req.uuid = uuid
+    if as_json:
+        req.asJson = True
+    return send_recv(req, api_crud.resourceGet_Response())
+
+
 # ============================================================
 # YAML builders for decoder assets
 # ============================================================
@@ -248,6 +257,7 @@ def build_valid_policy_yaml() -> str:
     """
     return """\
 title: bar
+hash: "crud-cm-test-hash"
 root_decoder: "00000000-0000-0000-0000-000000000001"
 integrations:
   - "dummy-integration-uuid"
@@ -260,6 +270,7 @@ def build_policy_yaml_missing_integrations() -> str:
     """
     return """\
 title: bar
+hash: "crud-cm-test-hash"
 root_decoder: "00000000-0000-0000-0000-000000000001"
 """
 
@@ -270,6 +281,7 @@ def build_policy_yaml_with_empty_integrations() -> str:
     """
     return """\
 title: bar
+hash: "crud-cm-test-hash"
 root_decoder: "00000000-0000-0000-0000-000000000001"
 integrations: []
 """
@@ -293,6 +305,7 @@ def build_full_valid_policy_yaml(default_parent: str,
     return f"""\
 type: policy
 title: Development 0.0.1
+hash: "crud-cm-test-hash"
 default_parent: {default_parent}
 root_decoder: {root_decoder}
 integrations:
@@ -385,14 +398,6 @@ def step_impl(context, name):
     matches = [r.uuid for r in resources if r.name == name]
     assert matches, f"Resource named '{name}' not found in {resources}"
     context.resource_uuid = matches[0]
-
-
-@given('I have stored the UUID and hash of the resource named "{name}"')
-def step_impl(context, name):
-    resources = list(context.res_response.resources)
-    matches = [(r.uuid, r.hash) for r in resources if r.name == name]
-    assert matches, f"Resource named '{name}' not found in {resources}"
-    context.resource_uuid, context.resource_hash = matches[0]
 
 
 @given('I have prepared a valid integration and decoders for policies in namespace "{space}"')
@@ -584,21 +589,15 @@ def step_impl(context, prefix):
     )
 
 
-@then('the hash for that stored resource in namespace "{space}" should be different')
+@then('the updated decoder resource in namespace "{space}" should include "test.updated: true"')
 def step_impl(context, space):
-    old_hash = getattr(context, "resource_hash", None)
     uuid = getattr(context, "resource_uuid", None)
     assert uuid is not None, "No resource UUID stored in context"
-    assert old_hash is not None, "No resource hash stored in context"
 
-    err, resp = request_resource_list(space, "decoder")
+    err, resp = request_resource_get(space, uuid, as_json=False)
     assert err is None, f"{err}"
-    resources = list(resp.resources)
-    matches = [r.hash for r in resources if r.uuid == uuid]
-    assert matches, f"Resource with UUID '{uuid}' not found after update"
-    new_hash = matches[0]
-
-    assert new_hash != old_hash, f"Expected hash to change, but old={old_hash}, new={new_hash}"
+    assert resp.status == api_engine.OK, f"{resp}"
+    assert "test.updated: true" in resp.content, f"{resp.content}"
 
 
 # ============================================================

@@ -9,6 +9,8 @@
 #include <tuple>
 #include <vector>
 
+#include <base/name.hpp>
+
 #include <cmstore/dataintegration.hpp>
 #include <cmstore/datakvdb.hpp>
 #include <cmstore/datapolicy.hpp>
