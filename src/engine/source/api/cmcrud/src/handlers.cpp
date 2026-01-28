@@ -13,6 +13,9 @@
 #include <api/cmcrud/handlers.hpp>
 #include <api/shared/constants.hpp>
 
+namespace {
+    constexpr std::string_view ORGIN_SPACE_TESTING = "testing";
+}
 namespace api::cmcrud::handlers
 {
 
@@ -192,7 +195,8 @@ adapter::RouteHandler namespaceImport(std::shared_ptr<cm::crud::ICrudService> cr
         try
         {
             const cm::store::NamespaceId nsId {protoReq.space()};
-            service->importNamespace(nsId, protoReq.jsoncontent(), protoReq.force());
+            // Use empty origin, so if exists, the origin space is not set.
+            service->importNamespace(nsId, protoReq.jsoncontent(), "", protoReq.force());
         }
         catch (const std::exception& ex)
         {
@@ -415,7 +419,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
         try
         {
             // Import into temp namespace
-            service->importNamespace(tmpNsId, fullPolicyStr, /*force=*/true);
+            service->importNamespace(tmpNsId, fullPolicyStr, ORGIN_SPACE_TESTING,/*force=*/true);
             tmpNamespaceCreated = true;
 
             // Create a tester entry to validate tester-loading path.
