@@ -251,7 +251,7 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
  *
  * @throw std::runtime_error If any error occurs.
  */
-base::Expression buildExpression(const PolicyGraph& graph, const std::string& name);
+base::Expression buildExpression(const PolicyGraph& graph, const cm::store::dataType::Policy& data);
 
 } // namespace builder::policy::factory
 

@@ -59,7 +59,7 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
     // TODO: Assign graphiv string
 
     // Build the expression
-    m_expression = factory::buildExpression(policyGraph, m_name);
+    m_expression = factory::buildExpression(policyGraph, policyData);
 }
 
 } // namespace builder::policy
