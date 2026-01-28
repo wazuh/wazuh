@@ -1,0 +1,24 @@
+name: 5.X - Engine Standalone (on push)
+
+# This workflow runs on pull requests that modify engine-related files.
+# It delegates all build logic to the reusable Engine Standalone workflow.
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - '.github/workflows/5_builderpackage_engine-standalone.yml'
+      - '.github/workflows/5_builderpackage_engine-standalone_onpush.yml'
+      - 'src/engine/**'
+      - 'packages/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  call-build-workflow:
+    uses: ./.github/workflows/5_builderpackage_engine-standalone.yml
+    secrets: inherit
+    with:
+      wazuh-branch: ${{ github.head_ref }}
+      build-type: 'release'
