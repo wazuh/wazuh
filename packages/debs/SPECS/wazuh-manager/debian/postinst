@@ -16,9 +16,9 @@ case "$1" in
         OS="linux"
         VER="0"
     fi
-    DIR="/var/ossec"
-    USER="wazuh"
-    GROUP="wazuh"
+    DIR="/var/wazuh-manager"
+    USER="wazuh-manager"
+    GROUP="wazuh-manager"
     WAZUH_GLOBAL_TMP_DIR="${DIR}/packages_files"
     WAZUH_TMP_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_config_files"
     OSMYSHELL="/sbin/nologin"
@@ -177,7 +177,7 @@ case "$1" in
     find ${DIR}/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
 
     if [ -f ${DIR}/etc/shared/ar.conf ]; then
-        chown root:wazuh ${DIR}/etc/shared/ar.conf
+        chown root:${GROUP} ${DIR}/etc/shared/ar.conf
     fi
 
     # Check if SELinux is installed and enabled
@@ -211,7 +211,7 @@ case "$1" in
     # Remove old ossec user and group if exists and change ownwership of files
 
     if getent group ossec > /dev/null 2>&1; then
-        find ${DIR}/ -group ossec -user root -print0 | xargs -0 chown root:wazuh > /dev/null 2>&1 || true
+        find ${DIR}/ -group ossec -user root -print0 | xargs -0 chown root:${GROUP} > /dev/null 2>&1 || true
         if getent passwd ossec > /dev/null 2>&1; then
             find ${DIR}/ -group ossec -user ossec -print0 | xargs -0 chown ${USER}:${GROUP} > /dev/null 2>&1 || true
             deluser ossec > /dev/null 2>&1
