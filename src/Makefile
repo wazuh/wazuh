@@ -456,6 +456,10 @@ ifeq (${TARGET},local)
 	DEFINES+=-DLOCAL
 endif
 
+ifneq (,$(filter ${TARGET},server))
+	DEFINES+=-DWAZUH_MANAGER
+endif
+
 
 .PHONY: build
 build: ${TARGET}

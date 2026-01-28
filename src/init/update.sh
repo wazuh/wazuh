@@ -367,10 +367,10 @@ UpdateOldVersions()
         getPreinstalledDir
     fi
 
-    OSSEC_CONF_FILE="$PREINSTALLEDDIR/etc/ossec.conf"
-    OSSEC_CONF_FILE_ORIG="$PREINSTALLEDDIR/etc/ossec.conf.orig"
+    OSSEC_CONF_FILE="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}"
+    OSSEC_CONF_FILE_ORIG="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}.orig"
 
-    # ossec.conf -> ossec.conf.orig
+    # config file -> config file.orig
     cp -pr $OSSEC_CONF_FILE $OSSEC_CONF_FILE_ORIG
 
     # Delete old service
@@ -379,11 +379,11 @@ UpdateOldVersions()
     fi
 
     if [ ! "$INSTYPE" = "agent" ]; then
-        # New ossec.conf by default
+        # New manager config by default
         ./gen_ossec.sh conf "manager" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
         ./add_localfiles.sh $PREINSTALLEDDIR >> $OSSEC_CONF_FILE
     else
-        # New ossec.conf by default
+        # New agent config by default
         ./gen_ossec.sh conf "agent" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
         # Replace IP
         ./src/init/replace_manager_ip.sh $OSSEC_CONF_FILE_ORIG $OSSEC_CONF_FILE

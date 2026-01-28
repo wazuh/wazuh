@@ -196,7 +196,8 @@ ACTIVE_CONFIG_VERSION = 'Wazuh v3.7.0'
 
 
 # ================================================ Wazuh path - Config =================================================
-OSSEC_CONF = os.path.join(WAZUH_PATH, 'etc', 'ossec.conf')
+MANAGER_CONF = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager.conf')
+OSSEC_CONF = MANAGER_CONF if os.path.exists(MANAGER_CONF) else os.path.join(WAZUH_PATH, 'etc', 'ossec.conf')
 INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'internal_options.conf')
 LOCAL_INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'local_internal_options.conf')
 AR_CONF = os.path.join(WAZUH_PATH, 'etc', 'shared', 'ar.conf')
@@ -206,8 +207,10 @@ SHARED_PATH = os.path.join(WAZUH_PATH, 'etc', 'shared')
 
 # ================================================= Wazuh path - Misc ==================================================
 WAZUH_LOGS = os.path.join(WAZUH_PATH, 'logs')
-WAZUH_LOG = os.path.join(WAZUH_LOGS, 'ossec.log')
-WAZUH_LOG_JSON = os.path.join(WAZUH_LOGS, 'ossec.json')
+MANAGER_LOG = os.path.join(WAZUH_LOGS, 'wazuh-manager.log')
+MANAGER_LOG_JSON = os.path.join(WAZUH_LOGS, 'wazuh-manager.json')
+WAZUH_LOG = MANAGER_LOG if os.path.exists(MANAGER_LOG) else os.path.join(WAZUH_LOGS, 'ossec.log')
+WAZUH_LOG_JSON = MANAGER_LOG_JSON if os.path.exists(MANAGER_LOG_JSON) else os.path.join(WAZUH_LOGS, 'ossec.json')
 DATABASE_PATH = os.path.join(WAZUH_PATH, 'var', 'db')
 DATABASE_PATH_GLOBAL = os.path.join(DATABASE_PATH, 'global.db')
 ANALYSISD_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-manager-analysisd.state')
