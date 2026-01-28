@@ -11,6 +11,7 @@ cd ${LOCAL}
 PWD=`pwd`
 DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
+WAZUH_CONF="${WAZUH_CONF:-wazuh-manager.conf}"
 
 # Installation info
 VERSION="v5.0.0"
@@ -347,9 +348,9 @@ start_service()
         fi
     done
 
-    node_type=$(grep '<node_type>' ${DIR}/etc/ossec.conf | sed 's/<node_type>\(.*\)<\/node_type>/\1/' | tr -d ' ');
+    node_type=$(grep '<node_type>' ${DIR}/etc/${WAZUH_CONF} | sed 's/<node_type>\(.*\)<\/node_type>/\1/' | tr -d ' ');
     if [ -z $node_type ]; then
-        echo "Invalid cluster configuration, check the $DIR/etc/ossec.conf file."
+        echo "Invalid cluster configuration, check the $DIR/etc/${WAZUH_CONF} file."
         unlock;
         exit 1;
     fi
@@ -367,10 +368,10 @@ start_service()
 
         ## If wazuh-manager-authd is disabled, don't try to start it.
         if [ X"$i" = "Xwazuh-manager-authd" ]; then
-             start_config="$(grep -n "<auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
-             end_config="$(grep -n "</auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
+             start_config="$(grep -n "<auth>" ${DIR}/etc/${WAZUH_CONF} | cut -d':' -f 1)"
+             end_config="$(grep -n "</auth>" ${DIR}/etc/${WAZUH_CONF} | cut -d':' -f 1)"
              if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-                sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
+                sed -n "${start_config},${end_config}p" ${DIR}/etc/${WAZUH_CONF} | grep "<disabled>yes" >/dev/null 2>&1
                 if [ $? = 0 ]; then
                     continue
                 fi
