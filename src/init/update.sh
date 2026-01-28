@@ -223,10 +223,14 @@ isWazuhInstalled()
 ##########
 getPreinstalledDir()
 {
-    if [ -d "$DIRECTORY" ]; then
-        PREINSTALLEDDIR="$DIRECTORY"
-        if isWazuhInstalled $PREINSTALLEDDIR; then
-            return 0;
+    # Checking ossec-init.conf for old wazuh versions
+    if [ -f "${OSSEC_INIT}" ]; then
+        . ${OSSEC_INIT}
+        if [ -d "$DIRECTORY" ]; then
+            PREINSTALLEDDIR="$DIRECTORY"
+            if isWazuhInstalled $PREINSTALLEDDIR; then
+                return 0;
+            fi
         fi
     fi
 
@@ -253,11 +257,16 @@ getPreinstalledDir()
 
 getPreinstalledType()
 {
-    if [ "X$PREINSTALLEDDIR" = "X" ]; then
-        getPreinstalledDir
-    fi
+    # Checking ossec-init.conf for old wazuh versions
+    if [ -f "${OSSEC_INIT}" ]; then
+        . ${OSSEC_INIT}
+    else
+        if [ "X$PREINSTALLEDDIR" = "X" ]; then
+            getPreinstalledDir
+        fi
 
-    TYPE=`$PREINSTALLEDDIR/bin/wazuh-control info -t`
+        TYPE=`$PREINSTALLEDDIR/bin/wazuh-control info -t`
+    fi
 
     echo $TYPE
     return 0;
@@ -265,18 +274,30 @@ getPreinstalledType()
 
 getPreinstalledVersion()
 {
-    if [ "X$PREINSTALLEDDIR" = "X" ]; then
-        getPreinstalledDir
-    fi
+    # Checking ossec-init.conf for old wazuh versions
+    if [ -f "${OSSEC_INIT}" ]; then
+        . ${OSSEC_INIT}
+    else
+        if [ "X$PREINSTALLEDDIR" = "X" ]; then
+            getPreinstalledDir
+        fi
 
-    VERSION=`$PREINSTALLEDDIR/bin/wazuh-control info -v`
+        VERSION=`$PREINSTALLEDDIR/bin/wazuh-control info -v`
+    fi
 
     echo $VERSION
 }
 
 getPreinstalledName()
 {
-    NAME="Wazuh"
+    NAME=""
+    # Checking ossec-init.conf for old wazuh versions. New versions
+    # do not provide this information at all.
+    if [ -f "${OSSEC_INIT}" ]; then
+        . ${OSSEC_INIT}
+    else
+        NAME="Wazuh"
+    fi
 
     echo $NAME
 }
