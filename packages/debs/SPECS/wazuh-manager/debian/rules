@@ -20,7 +20,7 @@ export PKG_DIR=debian/wazuh-manager
 export TARGET_DIR=${CURDIR}/${PKG_DIR}
 
 # Package build options
-export INSTALLATION_DIR="/var/ossec"
+export INSTALLATION_DIR="/var/wazuh-manager"
 export INSTALLATION_SCRIPTS_DIR="${INSTALLATION_DIR}/packages_files/manager_installation_scripts"
 export JOBS="5"
 export DEBUG_ENABLED="no"

@@ -2,7 +2,7 @@
 # postrm script for Wazuh
 # Wazuh, Inc 2015
 set -e
-DIR="/var/ossec"
+DIR="/var/wazuh-manager"
 WAZUH_TMP_DIR="${DIR}/packages_files/manager_config_files"
 
 case "$1" in

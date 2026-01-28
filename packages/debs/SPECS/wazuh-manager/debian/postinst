@@ -7,7 +7,7 @@ case "$1" in
 
     OS=$(lsb_release -si)
     VER=$(lsb_release -sr)
-    DIR="/var/ossec"
+    DIR="/var/wazuh-manager"
     USER="wazuh"
     GROUP="wazuh"
     WAZUH_GLOBAL_TMP_DIR="${DIR}/packages_files"
