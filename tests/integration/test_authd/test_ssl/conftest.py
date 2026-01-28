@@ -13,7 +13,7 @@ def generate_ca_certificate(test_metadata):
     """
     Generate custom CA certificate.
     """
-    SSL_AGENT_CA = '/var/ossec/etc/test_rootCA.pem'
+    SSL_AGENT_CA = '/var/wazuh-manager/etc/test_rootCA.pem'
     SSL_AGENT_CERT = '/tmp/test_sslagent.cert'
     SSL_AGENT_PRIVATE_KEY = '/tmp/test_sslagent.key'
     AGENT_IP = '127.0.0.1'
