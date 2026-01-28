@@ -33,7 +33,7 @@ setup_build(){
     sed -i "s#export CC.*#export CC=${CC}#g" ${sources_dir}/debian/rules
     sed -i "s#export CXX.*#export CXX=${CXX}#g" ${sources_dir}/debian/rules
     sed -i "s:export INSTALLATION_DIR=.*:export INSTALLATION_DIR=${INSTALLATION_PATH}:g" ${sources_dir}/debian/rules
-    sed -i "s:DIR=\"/var/ossec\":DIR=\"${INSTALLATION_PATH}\":g" ${sources_dir}/debian/{preinst,postinst,prerm,postrm}
+    sed -i "s:DIR=\"/var/wazuh-manager\":DIR=\"${INSTALLATION_PATH}\":g" ${sources_dir}/debian/{preinst,postinst,prerm,postrm}
 }
 
 set_debug(){
