@@ -35,6 +35,9 @@ on:
       - "framework/**"
       - "src/**"
       - ".github/workflows/5_builderpackage_manager-multiples.yml"
+      - "packages/*/SPECS/wazuh-manager/**"
+      - "packages/*"
+      - "packages/*/utils/*"
 
 jobs:
   select-targets:
