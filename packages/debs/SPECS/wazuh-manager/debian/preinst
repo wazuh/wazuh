@@ -1,6 +1,6 @@
 #!/bin/sh
 # preinst script for Wazuh
-
+set -x
 set -e
 
 # configuration variables

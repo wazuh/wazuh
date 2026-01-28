@@ -1,12 +1,13 @@
 #!/bin/sh
 # postrm script for Wazuh
 # Wazuh, Inc 2015
+set -x
 set -e
 DIR="/var/wazuh-manager"
 WAZUH_TMP_DIR="${DIR}/packages_files/manager_config_files"
 
 case "$1" in
-    remove|failed-upgrade|disappear)
+    remove|failed-upgrade|disappear|abort-upgrade|abort-install)
 
         if [ -d ${WAZUH_TMP_DIR} ]; then
             rm -rf ${WAZUH_TMP_DIR}
@@ -57,14 +58,6 @@ case "$1" in
         find ${DIR}/etc/ -type f ! -name *shared* -exec mv {} {}.save \;
         find ${DIR}/api/ -type f -exec mv {} {}.save \;
 
-    ;;
-
-    abort-upgrade|abort-install)
-        # When upgrade/install is aborted (e.g., by preinst hard block), keep any
-        # existing installation intact. Only clean up temporary files.
-        if [ -d ${WAZUH_TMP_DIR} ]; then
-            rm -rf ${WAZUH_TMP_DIR}
-        fi
     ;;
 
     purge)
