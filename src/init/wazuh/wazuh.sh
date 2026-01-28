@@ -18,7 +18,7 @@ InstallSELinuxPolicyPackage(){
 }
 
 CheckModuleIsEnabled(){
-    # This function requires a properly formatted ossec.conf.
+    # This function requires a properly formatted config file.
     # It doesn't work if the configuration is set in the same line
 
     # How to use it:
@@ -29,7 +29,9 @@ CheckModuleIsEnabled(){
     close_label="$2"
     enable_label="$3"
 
-    if grep -n "${open_label}" $PREINSTALLEDDIR/etc/ossec.conf > /dev/null ; then
+    local conf_path="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}"
+
+    if grep -n "${open_label}" "$conf_path" > /dev/null ; then
         is_disabled="no"
     else
         is_disabled="yes"
@@ -46,12 +48,12 @@ CheckModuleIsEnabled(){
     fi
 
     end_config_limit="99999999"
-    for start_config in $(grep -n "${open_label}" $PREINSTALLEDDIR/etc/ossec.conf | cut -d':' -f 1); do
-        end_config="$(sed -n "${start_config},${end_config_limit}p" $PREINSTALLEDDIR/etc/ossec.conf | sed -n "/${open_label}/,\$p" | grep -n "${close_label}" | head -n 1 | cut -d':' -f 1)"
+    for start_config in $(grep -n "${open_label}" "$conf_path" | cut -d':' -f 1); do
+        end_config="$(sed -n "${start_config},${end_config_limit}p" "$conf_path" | sed -n "/${open_label}/,\$p" | grep -n "${close_label}" | head -n 1 | cut -d':' -f 1)"
         end_config="$((start_config + end_config))"
 
         if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-            configuration_block="$(sed -n "${start_config},${end_config}p" $PREINSTALLEDDIR/etc/ossec.conf)"
+            configuration_block="$(sed -n "${start_config},${end_config}p" "$conf_path")"
 
             for line in $(echo ${configuration_block} | grep -n "${tag}" | cut -d':' -f 1); do
                 # Check if the component is enabled
@@ -238,10 +240,10 @@ WazuhUpgrade()
 
     # Ensure that the 'Indexer' is configured
     if [ "X$1" = "Xserver" ]; then
-        local OSSEC_CONF_PATH="$PREINSTALLEDDIR/etc/ossec.conf"
+        local WAZUH_CONF_PATH="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}"
         local INDEXER_TEMPLATE_PATH="./etc/templates/config/generic/wodle-indexer.manager.template"
 
         . ./src/init/update-indexer.sh
-        updateIndexerTemplate "$OSSEC_CONF_PATH" "$INDEXER_TEMPLATE_PATH"
+        updateIndexerTemplate "$WAZUH_CONF_PATH" "$INDEXER_TEMPLATE_PATH"
     fi
 }
