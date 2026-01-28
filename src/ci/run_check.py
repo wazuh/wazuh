@@ -516,17 +516,11 @@ def runTestToolForWindows(moduleName, testToolConfig):
     # Centralized build directory
     binDir = os.path.join(utils.rootPath(), "build", "bin")
 
-    # Copy DLLs to centralized build/bin directory
-    libgcc = utils.findFile(name="libgcc_s_dw2-1.dll", path=utils.rootPath())
-    stdcpp = utils.findFile(name="libstdc++-6.dll", path=utils.rootPath())
-
-    if libgcc:
-        shutil.copyfile(libgcc, os.path.join(binDir, "libgcc_s_dw2-1.dll"))
-    if stdcpp:
-        shutil.copyfile(stdcpp, os.path.join(binDir, "libstdc++-6.dll"))
+    # Ensure runtime DLLs are available in build/bin for Wine
+    collect_windows_runtime_dlls(binDir)
 
     # Setup WINEPATH for Wine
-    winepath_str = f"/usr/i686-w64-mingw32/lib;{utils.rootPath()}"
+    winepath_str = setup_winepath()
 
     for element in module:
         path = os.path.join(binDir, element['test_tool_name'])
@@ -552,6 +546,7 @@ def setup_winepath():
     dll_dirs = [
         "/usr/i686-w64-mingw32/bin",
         "/usr/i686-w64-mingw32/lib",
+        utils.rootPath(),
         binDir,
     ]
 
@@ -586,6 +581,57 @@ def safe_copy(src, dst):
     """Copy file if src exists and is different from dst."""
     if src and os.path.abspath(src) != os.path.abspath(dst):
         shutil.copyfile(src, dst)
+
+
+def find_dll_in_paths(dll_name, search_paths):
+    """
+    Find a DLL by checking known paths first, then falling back to a walk.
+    """
+    for base in search_paths:
+        candidate = os.path.join(base, dll_name)
+        if os.path.isfile(candidate):
+            return candidate
+
+    for base in search_paths:
+        found = utils.findFile(name=dll_name, path=base)
+        if found:
+            return found
+
+    return ""
+
+
+def collect_windows_runtime_dlls(bin_dir):
+    """
+    Copy MinGW runtime DLLs into build/bin to make Wine test runs reliable.
+    """
+    runtime_dlls = [
+        "libgcc_s_dw2-1.dll",
+        "libstdc++-6.dll",
+        "libwinpthread-1.dll",
+        "libwazuhext.dll",
+    ]
+
+    search_paths = [
+        bin_dir,
+        utils.rootPath(),
+    ]
+
+    for path_entry in setup_winepath().split(";"):
+        if path_entry and os.path.isdir(path_entry):
+            search_paths.append(path_entry)
+
+    # De-dup while preserving order
+    uniq_paths = []
+    seen = set()
+    for p in search_paths:
+        if p not in seen:
+            seen.add(p)
+            uniq_paths.append(p)
+
+    for dll_name in runtime_dlls:
+        src = find_dll_in_paths(dll_name, uniq_paths)
+        if src:
+            safe_copy(src, os.path.join(bin_dir, dll_name))
 
 
 def runTests(moduleName):
@@ -625,6 +671,8 @@ def runTests(moduleName):
     if os.path.exists(binDir):
         exeFiles = [f for f in os.listdir(binDir) if f.endswith('.exe')]
         if exeFiles:
+            # Ensure runtime DLLs are available for Wine to load
+            collect_windows_runtime_dlls(binDir)
             # Windows build detected, set WINEPATH and WINEARCH for Wine
             env['WINEPATH'] = setup_winepath()
             env['WINEARCH'] = 'win64'
