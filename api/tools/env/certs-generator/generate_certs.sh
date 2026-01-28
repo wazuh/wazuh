@@ -19,6 +19,7 @@ fi
 ./wazuh-certs-tool.sh -A
 
 echo "Copying and renaming certificates to ${CERTS_DIR}..."
+chmod 644 wazuh-certificates/*
 cp -r wazuh-certificates/* "${CERTS_DIR}/"
 
 echo "Certificates generated successfully."
