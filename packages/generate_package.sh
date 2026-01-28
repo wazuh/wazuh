@@ -22,7 +22,7 @@ DEBUG="no"
 SRC="no"
 BUILD_DOCKER="yes"
 DOCKER_TAG="latest"
-INSTALLATION_PATH="/var/ossec"
+INSTALLATION_PATH=""
 CHECKSUM="no"
 FUTURE="no"
 IS_STAGE="no"
@@ -99,7 +99,7 @@ help() {
     echo "    -j, --jobs <number>        [Optional] Change number of parallel jobs when compiling the manager or agent. By default: 2."
     echo "    -r, --revision <rev>       [Optional] Package revision. By default: 0."
     echo "    -s, --store <path>         [Optional] Set the destination path of package. By default, an output folder will be created."
-    echo "    -p, --path <path>          [Optional] Installation path for the package. By default: /var/ossec."
+    echo "    -p, --path <path>          [Optional] Installation path for the package. By default: /var/wazuh-manager (manager) or /var/ossec (agent)."
     echo "    -d, --debug                [Optional] Build the binaries with debug flags (without optimizations). By default: no."
     echo "    -c, --checksum             [Optional] Generate checksum on the same directory than the package. By default: no."
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
@@ -239,6 +239,15 @@ main() {
     # Add a default source only if neither the branch nor a custom code volume is defined.
     if [ -z "${CUSTOM_CODE_VOL}" ] && [ -z "${BRANCH}" ]; then
         CUSTOM_CODE_VOL="-v $WAZUH_PATH:/wazuh-local-src:Z"
+    fi
+
+    # Set default INSTALLATION_PATH based on TARGET if not explicitly provided
+    if [ -z "${INSTALLATION_PATH}" ]; then
+        if [ "${TARGET}" = "manager" ]; then
+            INSTALLATION_PATH="/var/wazuh-manager"
+        else
+            INSTALLATION_PATH="/var/ossec"
+        fi
     fi
 
     build && clean 0

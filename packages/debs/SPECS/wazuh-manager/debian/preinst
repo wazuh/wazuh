@@ -4,7 +4,7 @@
 set -e
 
 # configuration variables
-DIR="/var/ossec"
+DIR="/var/wazuh-manager"
 WAZUH_TMP_DIR="${DIR}/packages_files/manager_config_files"
 VERSION="$2"
 MAJOR=$(echo "$VERSION" | cut -dv -f2 | cut -d. -f1)
@@ -19,6 +19,53 @@ fi
 
 case "$1" in
     install|upgrade)
+
+        # ============================================================
+        # SOFT BLOCK: Prevent manager install into /var/ossec without force
+        # ============================================================
+        if [ "${DIR}" = "/var/ossec" ]; then
+            if [ -z "${WAZUH_FORCE_INSTALL}" ]; then
+                cat <<EOF
+==============================================================
+ERROR: Installing Wazuh Manager into /var/ossec is not recommended.
+
+The path /var/ossec is the default path for Wazuh Agent. Installing
+the manager into this path may cause conflicts with existing agent
+installations and data.
+
+The recommended installation path for Wazuh Manager is /var/wazuh-manager.
+
+If you still want to proceed with the installation into /var/ossec,
+set the WAZUH_FORCE_INSTALL environment variable:
+
+    WAZUH_FORCE_INSTALL=1 dpkg -i wazuh-manager_*.deb
+
+or for apt:
+
+    WAZUH_FORCE_INSTALL=1 apt install ./wazuh-manager_*.deb
+==============================================================
+EOF
+                exit 1
+            fi
+        fi
+
+        # HARD BLOCK: Prevent upgrade from 4.X to 5.X
+        if [ "$1" = "upgrade" ] && [ -n "$2" ]; then
+            # $2 contains the old version in upgrade scenarios
+            OLD_VERSION="$2"
+            OLD_MAJOR=$(echo "$OLD_VERSION" | cut -d. -f1)
+
+            if [ "$OLD_MAJOR" = "4" ]; then
+                cat <<EOF
+==============================================================
+ERROR: Direct upgrade from Wazuh Manager 4.X to 5.X is not supported.
+
+Detected installed version: $OLD_VERSION
+==============================================================
+EOF
+                exit 1
+            fi
+        fi
 
         if [ "$1" = "upgrade" ]; then
             if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
