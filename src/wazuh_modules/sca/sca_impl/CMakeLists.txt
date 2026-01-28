@@ -95,6 +95,13 @@ if(NOT PCRE2_LIB)
   message(STATUS "pcre2-8 library not found, using target name")
 endif()
 
+if(TARGET FileIO)
+  set(FILE_IO_LIB FileIO)
+endif()
+if(TARGET FilesystemWrapper)
+  set(FILESYSTEM_WRAPPER_LIB FilesystemWrapper)
+endif()
+
 add_library(
   SCAImpl STATIC
   src/sca_impl.cpp
@@ -122,9 +129,9 @@ target_compile_definitions(SCAImpl PRIVATE PCRE2_STATIC PCRE2_CODE_UNIT_WIDTH=8)
 
 target_link_libraries(
   SCAImpl
+  PUBLIC ${FILE_IO_LIB}
   PRIVATE sysinfo
           ${FILESYSTEM_WRAPPER_LIB}
-          ${FILE_IO_LIB}
           ${SYNC_PROTOCOL_LIB}
           ${DBSYNC_LIB}
           schema_validator

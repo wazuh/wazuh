@@ -99,6 +99,13 @@ if(NOT PCRE2_LIB)
   message(STATUS "pcre2-8 library not found, using target name")
 endif()
 
+if(TARGET FileIO)
+  set(FILE_IO_LIB FileIO)
+endif()
+if(TARGET FilesystemWrapper)
+  set(FILESYSTEM_WRAPPER_LIB FilesystemWrapper)
+endif()
+
 add_library(AGENT_INFO_IMPL STATIC src/agent_info_impl.cpp)
 # ${SRC_FOLDER}/${RESOURCE_OBJ})
 
@@ -113,9 +120,9 @@ target_compile_definitions(AGENT_INFO_IMPL PRIVATE PCRE2_STATIC
                                                    PCRE2_CODE_UNIT_WIDTH=8)
 target_link_libraries(
   AGENT_INFO_IMPL
+  PUBLIC ${FILE_IO_LIB}
   PRIVATE sysinfo
           ${FILESYSTEM_WRAPPER_LIB}
-          ${FILE_IO_LIB}
           ${AGENT_METADATA_LIB}
           ${SYNC_PROTOCOL_LIB}
           ${DBSYNC_LIB}
