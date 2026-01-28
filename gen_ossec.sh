@@ -39,6 +39,13 @@ if [ "$1" = "conf" ] && [ "$#" -ge "4" ]; then
     DIST_VER="$4"
     DIST_SUBVER="0"
   fi
+
+  if [ "$INSTYPE" = "server" ]; then
+    INSTALLDIR="/var/wazuh-manager"
+  else
+    INSTALLDIR="/var/ossec"
+  fi
+
   if [ "$#" = "5" ]; then
     INSTALLDIR="$5"
   fi
