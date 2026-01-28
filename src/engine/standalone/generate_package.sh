@@ -5,8 +5,6 @@ CURRENT_PATH="$( cd $(dirname $0) ; pwd -P )"
 WAZUH_PATH="$(cd $CURRENT_PATH/../../..; pwd -P)"
 ARCHITECTURE="amd64"
 OUTDIR="${CURRENT_PATH}/output"
-BRANCH=""
-JOBS="2"
 DEBUG="no"
 BUILD_DOCKER="yes"
 DOCKER_TAG="latest"
@@ -94,24 +92,22 @@ build_standalone() {
 
     install -d -m 770 \
         ${TEMP_DIR}/bin/lib \
-        ${TEMP_DIR}/default-security-policy \
         ${TEMP_DIR}/data/store/schema \
         ${TEMP_DIR}/data/store/schema/engine-schema \
         ${TEMP_DIR}/data/store/schema/wazuh-logpar-overrides \
         ${TEMP_DIR}/data/store/schema/allowed-fields \
         ${TEMP_DIR}/data/kvdb \
         ${TEMP_DIR}/data/tzdb \
-        ${TEMP_DIR}/data/cti \
+        ${TEMP_DIR}/data/mmdb \
         ${TEMP_DIR}/schemas \
         ${TEMP_DIR}/logs \
         ${TEMP_DIR}/sockets
 
     # Create .keep files
     touch ${TEMP_DIR}/bin/lib/.keep
-    touch ${TEMP_DIR}/default-security-policy/.keep
     touch ${TEMP_DIR}/data/kvdb/.keep
     touch ${TEMP_DIR}/data/tzdb/.keep
-    touch ${TEMP_DIR}/data/cti/.keep
+    touch ${TEMP_DIR}/data/mmdb/.keep
     touch ${TEMP_DIR}/logs/.keep
     touch ${TEMP_DIR}/sockets/.keep
 
@@ -160,9 +156,7 @@ help() {
     echo
     echo "Usage: $0 [OPTIONS]"
     echo
-    echo "    -b, --branch <branch>      [Optional] Select Git branch (not used in local build)."
     echo "    -a, --architecture <arch>  [Optional] Target architecture of the package [amd64/x86_64/arm64/aarch64]. By default: amd64."
-    echo "    -j, --jobs <number>        [Optional] Change number of parallel jobs when compiling. By default: 2."
     echo "    -s, --store <path>         [Optional] Set the destination path of package. By default, an output folder will be created."
     echo "    -d, --debug                [Optional] Build the binaries with debug flags (without optimizations). By default: no."
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
@@ -176,28 +170,12 @@ main() {
     while [ -n "$1" ]
     do
         case "$1" in
-        "-b"|"--branch")
-            if [ -n "$2" ]; then
-                BRANCH="$2"
-                shift 2
-            else
-                help 1
-            fi
-            ;;
         "-h"|"--help")
             help 0
             ;;
         "-a"|"--architecture")
             if [ -n "$2" ]; then
                 ARCHITECTURE="$2"
-                shift 2
-            else
-                help 1
-            fi
-            ;;
-        "-j"|"--jobs")
-            if [ -n "$2" ]; then
-                JOBS="$2"
                 shift 2
             else
                 help 1

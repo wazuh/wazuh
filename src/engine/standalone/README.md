@@ -6,12 +6,11 @@ You can build the Wazuh Engine Standalone package locally using the `generate_pa
 
 ```bash
 cd wazuh/src/engine/standalone
-./generate_package.sh -a amd64 -j 20
+./generate_package.sh -a amd64
 ```
 
 Available options:
 - `-a, --architecture <arch>`: Target architecture [amd64/x86_64/arm64/aarch64]. Default: amd64
-- `-j, --jobs <number>`: Number of parallel jobs for compilation. Default: 2
 - `-d, --debug`: Build with debug flags (without optimizations)
 - `-s, --store <path>`: Set destination path for the package. Default: ./output
 - `--dont-build-docker`: Use existing docker image instead of building a new one
@@ -45,16 +44,15 @@ The standalone engine will create the following directory structure:
 
 - **bin/**: Contains the engine
     - **bin/lib**: Contains the shared libraries used by the engine
-- **default-security-policy/**: Contains the core integration files, including systems decoders and outputs
-    used to create the base security policy, they may not exist, this is for information purposes only.
 - **data/**: Contains the data files used by the engine in runtime, this directory should
     not be modified manually
-    - **data/store**: Contains all the asset in catalog  a format that wazuh-engine can understand (Meaning precompiled)
+    - **data/store**: Contains all the assets in catalog in a format that wazuh-engine can understand (precompiled)
     - **data/kvdb**: Contains the key-value database used by the engine in runtime
     - **data/tzdb**: Contains the time zone database used by the engine
+    - **data/mmdb**: Contains the MaxMind GeoIP database files
 - **logs**: Contains the `alerts-ecs.json` file, which is configured to be the output in
     the default security policy, this file will be created by the engine if it does not exist.
-- **sockets**: user for engine sockets
+- **sockets**: Used for engine sockets
     - **sockets/engine-api.sock**: Engine HTTP server socket.
 
 
