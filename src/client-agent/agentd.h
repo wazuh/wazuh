@@ -217,6 +217,10 @@ size_t agcom_getconfig(const char * section, char ** output);
 size_t agcom_gethandshake(char ** output);
 cJSON *getDocumentLimits(const char *module);
 
+#ifndef WIN32
+void * agcom_main(void * arg);
+#endif
+
 /*** Global variables ***/
 extern int agent_debug_level;
 extern int win_debug_level;

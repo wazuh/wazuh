@@ -209,3 +209,80 @@ cJSON *getDocumentLimits(const char *module) {
 
     return cfg;
 }
+
+#ifndef WIN32
+void * agcom_main(__attribute__((unused)) void * arg) {
+    int sock;
+    int peer;
+    char *buffer = NULL;
+    char *response = NULL;
+    ssize_t length;
+    fd_set fdset;
+
+    mdebug1("Local requests thread ready");
+
+    // Bind socket
+    if (sock = OS_BindUnixDomain(AG_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+        merror("Unable to bind to socket '%s': (%d) %s.",
+               AG_LOCAL_SOCK, errno, strerror(errno));
+        return NULL;
+    }
+
+    // Main loop
+    while (1) {
+        // Select
+        FD_ZERO(&fdset);
+        FD_SET(sock, &fdset);
+
+        switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
+        case -1:
+            if (errno != EINTR) {
+                merror_exit("At agcom_main(): select(): %s", strerror(errno));
+            }
+            continue;
+        case 0:
+            continue;
+        }
+
+        // Accept
+        if (peer = accept(sock, NULL, NULL), peer < 0) {
+            if (errno != EINTR) {
+                merror("At agcom_main(): accept(): %s", strerror(errno));
+            }
+            continue;
+        }
+
+        // Receive
+        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+        switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length) {
+        case OS_SOCKTERR:
+            merror("At agcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
+            break;
+        case -1:
+            merror("At agcom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
+            break;
+        case 0:
+            mdebug1("Empty message from local client.");
+            close(peer);
+            os_free(buffer);
+            continue;
+        case OS_MAXLEN:
+            merror("Received message > %i", MAX_DYN_STR);
+            close(peer);
+            os_free(buffer);
+            continue;
+        default:
+            // Dispatch
+            length = agcom_dispatch(buffer, &response);
+            // Send
+            OS_SendSecureTCP(peer, length, response);
+            os_free(response);
+            close(peer);
+        }
+        os_free(buffer);
+    }
+
+    close(sock);
+    return NULL;
+}
+#endif /* !WIN32 */

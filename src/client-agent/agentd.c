@@ -144,6 +144,9 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     req_init();
     w_create_thread(req_receiver, NULL);
 
+    // Start local socket listener for agcom requests (Unix only)
+    w_create_thread(agcom_main, NULL);
+
     /* Send agent stopped message at exit */
     atexit(send_agent_stopped_message);
 
