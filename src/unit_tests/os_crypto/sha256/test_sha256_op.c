@@ -82,12 +82,23 @@ void test_sha256_file_fail() {
     assert_int_equal(OS_SHA256_File(path, buffer, OS_TEXT), -1);
 }
 
-int main(void) {
+void test_OS_SHA256_File_null_path(void** state)
+{
+    (void)state;
+    os_sha256 output;
+
+    int ret = OS_SHA256_File(NULL, output, OS_BINARY);
+
+    assert_int_equal(ret, -1);
+}
+
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_sha256_string),
         cmocka_unit_test(test_sha256_string_sized),
         cmocka_unit_test_setup_teardown(test_sha256_file, setup_group, teardown_group),
         cmocka_unit_test_setup_teardown(test_sha256_file_fail, setup_group, teardown_group),
-    };
+        cmocka_unit_test(test_OS_SHA256_File_null_path)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
