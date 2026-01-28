@@ -14,14 +14,14 @@
     </cluster>
     <indexer>
         <hosts>
-            <host>https://172.20.0.15:9200</host>
+            <host>https://wazuh.indexer:9200</host>
         </hosts>
         <ssl>
             <certificate_authorities>
                 <ca>/var/ossec/etc/certs/root-ca.pem</ca>
             </certificate_authorities>
-            <certificate>/var/ossec/etc/certs/server.pem</certificate>
-            <key>/var/ossec/etc/certs/server-key.pem</key>
+            <certificate>/var/ossec/etc/certs/wazuh.master.pem</certificate>
+            <key>/var/ossec/etc/certs/wazuh.master-key.pem</key>
         </ssl>
     </indexer>
 

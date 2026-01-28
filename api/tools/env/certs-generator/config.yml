@@ -1,14 +1,15 @@
 nodes:
   indexer:
-    - name: node-1
-      ip: 172.20.0.15
+    - name: wazuh.indexer
+      ip: wazuh.indexer
+
   server:
-    - name: wazuh-master
-      ip: 172.20.0.7
+    - name: wazuh.master
+      ip: wazuh.master
       node_type: master
-    - name: wazuh-worker1
-      ip: 172.20.0.5
+    - name: wazuh.worker
+      ip: wazuh.worker
       node_type: worker
-    - name: wazuh-worker2
-      ip: 172.20.0.4
+    - name: wazuh2.worker
+      ip: wazuh2.worker
       node_type: worker
