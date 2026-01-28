@@ -864,6 +864,11 @@ main()
         INSTYPE=${USER_INSTALL_TYPE}
     fi
 
+    # Adjust default install dir for manager when not overridden
+    if [ -z "${USER_DIR}" ] && [ "X$INSTYPE" = "Xserver" ] && [ "X$INSTALLDIR" = "X/var/ossec" ]; then
+        INSTALLDIR="/var/wazuh-manager"
+    fi
+
     # Setting up the installation directory
     setInstallDir
 
@@ -900,7 +905,7 @@ main()
     echo " - ${tostop}:"
     echo "      $INSTALLDIR/bin/wazuh-control stop"
     echo ""
-    echo " - ${configat} $INSTALLDIR/etc/ossec.conf"
+    echo " - ${configat} $INSTALLDIR/etc/${WAZUH_CONF}"
     echo ""
 
 
