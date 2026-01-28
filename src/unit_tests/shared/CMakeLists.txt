@@ -38,7 +38,8 @@ else()
                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=CreateProcessW \
                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap=getpid \
                                     -Wl,--wrap=access -Wl,--wrap=CreateFile -Wl,--wrap=opendir -Wl,--wrap=stat \
-                                    -Wl,--wrap=utf8_CreateFile -Wl,--wrap=utf8_stat64 -Wl,--wrap=QueryDosDeviceA ${DEBUG_OP_WRAPPERS}")
+                                    -Wl,--wrap=utf8_CreateFile -Wl,--wrap=utf8_stat64 -Wl,--wrap=QueryDosDeviceA \
+                                    -Wl,--wrap=convert_windows_string -Wl,--wrap=wstr_split ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_integrity_op")

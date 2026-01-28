@@ -25,6 +25,7 @@
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/string_op_wrappers.h"
 #include "../wrappers/wazuh/shared/utf8_winapi_wrapper_wrappers.h"
 #include "../wrappers/externals/zlib/zlib_wrappers.h"
 #ifdef WIN32
@@ -1302,6 +1303,9 @@ void test_wCreateProcessW_local_path(void **state) {
     errno = 0;
     wchar_t path[] = L"C:\\file.txt";
 
+    expect_value(__wrap_convert_windows_string, string, path);
+    will_return(__wrap_convert_windows_string, strdup("C:\\file.txt"));
+
     expect_value(wrap_CreateProcessW, lpCommandLine, path);
     will_return(wrap_CreateProcessW, TRUE);
 
@@ -1314,11 +1318,26 @@ void test_wCreateProcessW_network_path(void **state) {
     errno = 0;
     wchar_t path[] = L"Z:\\file.txt";
 
+    expect_value(__wrap_convert_windows_string, string, path);
+    will_return(__wrap_convert_windows_string, strdup("Z:\\file.txt"));
+
     expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
 
     bool ret = wCreateProcessW(NULL, path, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
     assert_false(ret);
     assert_int_equal(errno, EACCES);
+}
+
+void test_wCreateProcessW_conversion_failure(void **state) {
+    errno = 0;
+    wchar_t path[] = L"C:\\file.txt";
+
+    expect_value(__wrap_convert_windows_string, string, path);
+    will_return(__wrap_convert_windows_string, NULL);
+
+    bool ret = wCreateProcessW(NULL, path, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+    assert_false(ret);
+    assert_int_equal(errno, EINVAL);
 }
 
 void test_wopendir_local_path(void **state) {
@@ -1846,6 +1865,7 @@ int main(void) {
         cmocka_unit_test(test_wCreateFile_network_path),
         cmocka_unit_test(test_wCreateProcessW_local_path),
         cmocka_unit_test(test_wCreateProcessW_network_path),
+        cmocka_unit_test(test_wCreateProcessW_conversion_failure),
         cmocka_unit_test(test_wopendir_local_path),
         cmocka_unit_test(test_wopendir_network_path),
         cmocka_unit_test(test_w_stat_local_path),
