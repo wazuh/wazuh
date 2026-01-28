@@ -171,7 +171,7 @@ if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=fim_configuration_directory -Wl,--wrap,fim_sync_push_msg \
                                      -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap=QueryDosDeviceA")
 
   # Create event channel tests for run_realtime
   list(APPEND syscheckd_event_tests_names "test_run_realtime_event")
@@ -181,7 +181,7 @@ if(${TARGET} STREQUAL "winagent")
                                            -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch
                                            -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                            -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown \
-                                           -Wl,--wrap=utf8_CreateFile")
+                                           -Wl,--wrap=utf8_CreateFile -Wl,--wrap=QueryDosDeviceA")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
 endif()
@@ -205,7 +205,7 @@ else()
                                       -Wl,--wrap=fim_db_get_count_registry_data \
                                       -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                       -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                      -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                      -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap=QueryDosDeviceA")
   else()
     list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap,getpid")
   endif()
@@ -262,12 +262,12 @@ elseif(${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap,fim_sync_push_msg -Wl,--wrap=fim_db_get_count_registry_data \
                                      -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap=QueryDosDeviceA")
 
   # Create event channel tests for run_check
   list(APPEND syscheckd_event_tests_names "test_run_check_event")
   list(APPEND syscheckd_event_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start,--wrap=run_whodata_scan \
-                                                                   -Wl,--wrap=audit_restore
+                                                                   -Wl,--wrap=audit_restore -Wl,--wrap=QueryDosDeviceA \
                                                                    -Wl,--wrap,pthread_rwlock_rdlock \
                                                                    -Wl,--wrap,pthread_rwlock_unlock \
                                                                    -Wl,--wrap,pthread_mutex_lock \
@@ -380,7 +380,7 @@ if(${TARGET} STREQUAL "winagent")
                                           -Wl,--wrap,get_UTC_modification_time -Wl,--wrap,fim_sync_push_msg \
                                           -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                           -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown \
-                                          -Wl,--wrap=utf8_stat64"
+                                          -Wl,--wrap=utf8_stat64 -Wl,--wrap=QueryDosDeviceA"
                                           fimdb)
 else()
     target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
