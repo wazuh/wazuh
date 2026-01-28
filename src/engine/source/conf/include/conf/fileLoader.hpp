@@ -2,13 +2,16 @@
 #define _CONF_FILELOADER_HPP
 
 #include <filesystem>
+#include "defs.h"
 
 namespace conf
 {
 
 using OptionMap = std::unordered_map<std::string, std::string>; // (full_key, value)
-constexpr auto OSSEC_DEFINES = "/var/ossec/etc/internal_options.conf";
-constexpr auto OSSEC_LDEFINES = "/var/ossec/etc/local_internal_options.conf";
+
+// To change the installation path, modify WAZUH_MANAGER_PATH in src/headers/defs.h
+#define OSSEC_DEFINES WAZUH_MANAGER_PATH "/etc/internal_options.conf"
+#define OSSEC_LDEFINES WAZUH_MANAGER_PATH "/etc/local_internal_options.conf"
 
 struct IFileLoader
 {
