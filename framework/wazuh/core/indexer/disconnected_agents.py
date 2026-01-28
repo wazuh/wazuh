@@ -218,10 +218,7 @@ class DisconnectedAgentGroupSyncTask:
             agents = []
             now_utc = core_utils.get_utc_now()  
             for agent in agents_not_active:
-                if agent["status"] in ('pending', 'never_connected'):
-                    disconnected_time = agent["dateAdd"]
-                else:
-                    disconnected_time = agent["lastKeepAlive"]
+                disconnected_time = agent["lastKeepAlive"] or agent["dateAdd"]
                 if (
                     disconnected_time
                     + timedelta(seconds=self.min_disconnection_time)
