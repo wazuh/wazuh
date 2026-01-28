@@ -514,44 +514,72 @@ def runTestToolForWindows(moduleName, testToolConfig):
     module = testToolConfig[winModuleName]
 
     # Centralized build directory
-    rootPath = os.path.join(utils.rootPath(), "build", "bin")
+    binDir = os.path.join(utils.rootPath(), "build", "bin")
 
-    libgcc = utils.findFile(name="libgcc_s_dw2-1.dll",
-                            path=utils.rootPath())
-    dbsync = utils.findFile(name="dbsync.dll",
-                            path=utils.rootPath())
-    agent_sync_protocol = utils.findFile(name="libagent_sync_protocol.dll",
-                                        path=utils.rootPath())
-    schema_validator = utils.findFile(name="schema_validator.dll",
-                                      path=utils.rootPath())
-    agent_metadata = utils.findFile(name="libagent_metadata.dll",
-                                    path=utils.rootPath())
-    stdcpp = utils.findFile(name="libstdc++-6.dll",
-                            path=utils.rootPath())
-    shutil.copyfile(libgcc,
-                    os.path.join(rootPath, "libgcc_s_dw2-1.dll"))
-    shutil.copyfile(dbsync,
-                    os.path.join(rootPath, "dbsync.dll"))
-    shutil.copyfile(agent_sync_protocol,
-                    os.path.join(rootPath, "libagent_sync_protocol.dll"))
-    shutil.copyfile(schema_validator,
-                    os.path.join(rootPath, "schema_validator.dll"))
-    shutil.copyfile(agent_metadata,
-                    os.path.join(rootPath, "libagent_metadata.dll"))
-    shutil.copyfile(stdcpp,
-                    os.path.join(rootPath, "libstdc++-6.dll"))
+    # Copy DLLs to centralized build/bin directory
+    libgcc = utils.findFile(name="libgcc_s_dw2-1.dll", path=utils.rootPath())
+    stdcpp = utils.findFile(name="libstdc++-6.dll", path=utils.rootPath())
+
+    if libgcc:
+        shutil.copyfile(libgcc, os.path.join(binDir, "libgcc_s_dw2-1.dll"))
+    if stdcpp:
+        shutil.copyfile(stdcpp, os.path.join(binDir, "libstdc++-6.dll"))
+
+    # Setup WINEPATH for Wine
+    winepath_str = f"/usr/i686-w64-mingw32/lib;{utils.rootPath()}"
 
     for element in module:
-        path = os.path.join(rootPath, element['test_tool_name'])
+        path = os.path.join(binDir, element['test_tool_name'])
         args = " ".join(element['args'])
-        testToolCommand = "WINEPATH=\"/usr/i686-w64-mingw32/lib;{}\" \
-                           WINEARCH=win64 /usr/bin/wine {}.exe {}"\
-                           .format(utils.rootPath(), path, args)
+        testToolCommand = f'WINEPATH="{winepath_str}" WINEARCH=win64 /usr/bin/wine {path}.exe {args}'
         runTestTool(moduleName=moduleName,
                     testToolCommand=testToolCommand,
                     element=element)
 
     utils.printGreen(msg="[TEST TOOL for Windows: PASSED]")
+
+
+def setup_winepath():
+    """
+    Build WINEPATH string for running Windows executables under Wine.
+    Includes paths to MinGW runtime DLLs, GCC libraries, and centralized build output.
+
+    Returns:
+        - str: Semicolon-separated WINEPATH string
+    """
+    binDir = os.path.join(utils.rootPath(), "build", "bin")
+
+    dll_dirs = [
+        "/usr/i686-w64-mingw32/bin",
+        "/usr/i686-w64-mingw32/lib",
+        binDir,
+    ]
+
+    # Add GCC runtime DLL paths - prioritize -posix variant
+    gcc_root = "/usr/lib/gcc/i686-w64-mingw32"
+    if os.path.isdir(gcc_root):
+        # First add -posix variants (higher priority)
+        for sub in sorted(os.listdir(gcc_root), reverse=True):
+            if "-posix" in sub:
+                p = os.path.join(gcc_root, sub)
+                if os.path.isdir(p):
+                    dll_dirs.append(p)
+        # Then add others as fallback
+        for sub in sorted(os.listdir(gcc_root), reverse=True):
+            if "-posix" not in sub:
+                p = os.path.join(gcc_root, sub)
+                if os.path.isdir(p):
+                    dll_dirs.append(p)
+
+    # De-dup + keep only existing dirs
+    uniq_dirs = []
+    seen = set()
+    for d in (os.fspath(x) for x in dll_dirs if x and os.path.isdir(os.fspath(x))):
+        if d not in seen:
+            seen.add(d)
+            uniq_dirs.append(d)
+
+    return ";".join(uniq_dirs)
 
 
 def safe_copy(src, dst):
@@ -576,134 +604,53 @@ def runTests(moduleName):
     utils.printHeader(moduleName=moduleName,
                       headerKey="tests")
 
-    # Check for centralized build directory (uses CTest)
+    # Centralized build: Use CTest with labels
     centralizedBuildDir = os.path.join(utils.rootPath(), "build")
-    if os.path.exists(centralizedBuildDir) and os.path.exists(os.path.join(centralizedBuildDir, "CTestTestfile.cmake")):
-        # Use CTest with labels for centralized build
-        # Extract module label: "wazuh_modules/agent_info" -> "agent_info"
-        #                       "shared_modules/dbsync" -> "dbsync"
-        moduleLabel = os.path.basename(moduleName)
+    if not os.path.exists(centralizedBuildDir) or not os.path.exists(os.path.join(centralizedBuildDir, "CTestTestfile.cmake")):
+        utils.printFail(msg="[Tests: CTest configuration not found]")
+        raise ValueError("CTest configuration not found in centralized build directory")
 
-        cwd = os.getcwd()
-        os.chdir(centralizedBuildDir)
-
-        # Run ctest with the module label
-        command = f'ctest -L {moduleLabel} -V'
-        out = subprocess.run(command,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             shell=True,
-                             check=False)
-
-        os.chdir(cwd)
-
-        if out.returncode == 0:
-            utils.printGreen(msg="[All tests: PASSED]", module=moduleName)
-            return
-        else:
-            print(out.stdout.decode('utf-8','replace'))
-            print(out.stderr.decode('utf-8','replace'))
-            utils.printFail(msg="[Tests: FAILED]")
-            errorString = "Error Running tests: {}".format(out.returncode)
-            raise ValueError(errorString)
-
-    # Fallback: Manual execution for Windows tests with WINEPATH setup
-    currentDir = os.path.join(utils.rootPath(), "build", "bin")
-    moduleBaseName = os.path.basename(moduleName)
-
-    # Find Windows test executables
-    tests = []
-    reg = re.compile(r".*(?:unit_test|integration_test|interface_test|_test|_tests)\.exe$")
-    objects = os.scandir(currentDir)
-    for entry in objects:
-        if entry.is_file() and bool(re.match(reg, entry.name)):
-            # Filter by module name prefix
-            if entry.name.startswith(moduleBaseName):
-                tests.append(entry.name)
+    # Extract module label: "wazuh_modules/agent_info" -> "agent_info"
+    #                       "shared_modules/dbsync" -> "dbsync"
+    moduleLabel = os.path.basename(moduleName)
 
     cwd = os.getcwd()
-    if len(tests) > 0:
-        os.chdir(currentDir)
-        for test in tests:
-            path = os.path.join(currentDir, test)
-            if ".exe" in test:
-                # Don't copy DLLs!! Just add the correct paths
-                # For centralized build, all DLLs are in build/bin
-                centralizedBinDir = os.path.join(utils.rootPath(), "build", "bin")
-                dll_dirs = [
-                    "/usr/i686-w64-mingw32/bin",
-                    "/usr/i686-w64-mingw32/lib",
-                    utils.currentPath(),
-                    currentDir,  # already chdir'ed to this later
-                    centralizedBinDir,
-                ]
+    os.chdir(centralizedBuildDir)
 
-                # Add GCC runtime DLL paths - prioritize -posix variant
-                gcc_root = "/usr/lib/gcc/i686-w64-mingw32"
-                if os.path.isdir(gcc_root):
-                    # First add -posix variants (higher priority)
-                    for sub in sorted(os.listdir(gcc_root), reverse=True):
-                        if "-posix" in sub:
-                            p = os.path.join(gcc_root, sub)
-                            if os.path.isdir(p):
-                                dll_dirs.append(p)
-                    # Then add others as fallback
-                    for sub in sorted(os.listdir(gcc_root), reverse=True):
-                        if "-posix" not in sub:
-                            p = os.path.join(gcc_root, sub)
-                            if os.path.isdir(p):
-                                dll_dirs.append(p)
+    # Set up environment for Wine (Windows cross-compilation tests)
+    env = os.environ.copy()
+    binDir = os.path.join(centralizedBuildDir, "bin")
 
-                for _name in ("libstdc++-6.dll", "libgcc_s_dw2-1.dll", "libwinpthread-1.dll",
-                              "dbsync.dll", "sysinfo.dll", "libwazuhext.dll", "libagent_sync_protocol.dll",
-                              "libagent_metadata.dll", "schema_validator.dll"):
-                    try:
-                        _p = utils.findFile(name=_name, path=utils.rootPath())
-                        if _p:
-                            dll_dirs.append(os.path.dirname(_p))
-                    except Exception:
-                        pass
+    # Check if this is a Windows build by looking for .exe files
+    if os.path.exists(binDir):
+        exeFiles = [f for f in os.listdir(binDir) if f.endswith('.exe')]
+        if exeFiles:
+            # Windows build detected, set WINEPATH and WINEARCH for Wine
+            env['WINEPATH'] = setup_winepath()
+            env['WINEARCH'] = 'win64'
+            # Disable Wine crash dialog popup
+            subprocess.run('wine reg add "HKCU\\Software\\Wine\\WineDbg" /v ShowCrashDialog /t REG_DWORD /d 0 /f',
+                          shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-                # De-dup + keep only existing dirs
-                uniq_dirs = []
-                seen = set()
-                for d in (os.fspath(x) for x in dll_dirs if x and os.path.isdir(os.fspath(x))):
-                    if d not in seen:
-                        seen.add(d)
-                        uniq_dirs.append(d)
-
-                # Use WINEPATH instead of Windows PATH for proper DLL search order
-                winepath_str = ";".join(uniq_dirs)
-
-                command = (
-                    f'WINEPATH="{winepath_str}" '
-                    f'WINEARCH=win64 '
-                    'wine reg add "HKCU\\Software\\Wine\\WineDbg" /v ShowCrashDialog /t REG_DWORD /d 0 /f & '
-                    f'WINEPATH="{winepath_str}" wine {os.path.basename(path)}'
-                )
-            else:
-                command = path
-            out = subprocess.run(command,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE,
-                                 shell=True,
-                                 check=False)
-            if out.returncode == 0:
-                utils.printGreen(msg="[{}: PASSED]".format(test))
-            else:
-                print(out.stdout.decode('utf-8','replace'))
-                print(out.stderr.decode('utf-8','replace'))
-                utils.printFail(msg="[{}: FAILED]".format(test))
-                errorString = "Error Running test: {}".format(out.returncode)
-                raise ValueError(errorString)
-
-        utils.printGreen(msg="[All tests: PASSED]",
-                         module=moduleName)
-    else:
-        errorString = "Error Running tests"
-        raise ValueError(errorString)
+    # Run ctest with the module label
+    command = f'ctest -L {moduleLabel} -V'
+    out = subprocess.run(command,
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE,
+                         shell=True,
+                         check=False,
+                         env=env)
 
     os.chdir(cwd)
+
+    if out.returncode == 0:
+        utils.printGreen(msg="[All tests: PASSED]", module=moduleName)
+    else:
+        print(out.stdout.decode('utf-8','replace'))
+        print(out.stderr.decode('utf-8','replace'))
+        utils.printFail(msg="[Tests: FAILED]")
+        errorString = "Error Running tests: {}".format(out.returncode)
+        raise ValueError(errorString)
 
 
 def runTestToolCheck(moduleName):
