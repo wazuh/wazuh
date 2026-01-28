@@ -895,7 +895,7 @@ main()
     echo " - ${tostop}:"
     echo "      $INSTALLDIR/bin/wazuh-control stop"
     echo ""
-    echo " - ${configat} $INSTALLDIR/etc/ossec.conf"
+    echo " - ${configat} $INSTALLDIR/etc/${WAZUH_CONF}"
     echo ""
 
 

@@ -314,10 +314,16 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Built-in defines */
 
+#ifndef OSSECCONF
 #ifndef WIN32
+#ifdef WAZUH_MANAGER
+#define OSSECCONF       "etc/wazuh-manager.conf"
+#else
 #define OSSECCONF       "etc/ossec.conf"
+#endif
 #else
 #define OSSECCONF       "ossec.conf"
+#endif
 #endif
 
 #define SHAREDCFG_FILE      SHAREDCFG_DIR "/merged.mg"
