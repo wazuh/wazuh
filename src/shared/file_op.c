@@ -1705,6 +1705,12 @@ char **expand_win32_wildcards(const char *path) {
     int expanded_index = 0;
     size_t glob_pos = 0;
 
+    if (is_network_path(path)) {
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, path);
+        return NULL;
+    }
+
     os_calloc(2, sizeof(char *), pending_expand);
     os_strdup(path, pending_expand[0]);
     // Loop until there is not any directory to expand.

@@ -279,7 +279,19 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 labels_free(logf[pl].labels);
                 return 0;
             }
-
+#ifdef WIN32
+            if (is_network_path(node[i]->content)) {
+                logf[pl].file = NULL;
+                logf[pl].ffile = NULL;
+                logf[pl].command = NULL;
+                logf[pl].alias = NULL;
+                logf[pl].logformat = NULL;
+                logf[pl].fp = NULL;
+                labels_free(logf[pl].labels);
+                mwarn(NETWORK_PATH_CONFIGURED, node[i]->element, node[i]->content);
+                return 0;
+            }
+#endif
             os_strdup(node[i]->content, logf[pl].file);
             logf[pl].command = logf[pl].file;
         } else if (strcmp(node[i]->element, xml_localfile_frequency) == 0) {
