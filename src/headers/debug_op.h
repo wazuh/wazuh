@@ -28,12 +28,23 @@
 /* For internal logs */
 #ifndef LOGFILE
 #ifndef WIN32
+#ifdef WAZUH_MANAGER
+#define LOGFILE   "logs/wazuh-manager.log"
+#define LOGJSONFILE "logs/wazuh-manager.json"
+#else
 #define LOGFILE   "logs/ossec.log"
 #define LOGJSONFILE "logs/ossec.json"
-#define _PRINTF_FORMAT printf
+#endif
 #else
 #define LOGFILE "ossec.log"
 #define LOGJSONFILE "ossec.json"
+#endif
+#endif
+
+#ifndef _PRINTF_FORMAT
+#ifndef WIN32
+#define _PRINTF_FORMAT printf
+#else
 #define _PRINTF_FORMAT __MINGW_PRINTF_FORMAT
 #endif
 #endif
