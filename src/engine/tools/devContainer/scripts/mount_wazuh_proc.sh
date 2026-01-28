@@ -2,7 +2,7 @@
 
 # Check if WAZUH_HOME is set
 if [ -z "$WAZUH_HOME" ]; then
-    WAZUH_HOME="/var/ossec"
+    WAZUH_HOME="/var/wazuh-manager"
 fi
 
 if [ ! -d "$WAZUH_HOME" ]; then

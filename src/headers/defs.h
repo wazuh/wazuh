@@ -112,15 +112,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 // Wazuh home environment variable
 #define WAZUH_HOME_ENV  "WAZUH_HOME"
 
-// Manager installation path
-#define WAZUH_MANAGER_PATH "/var/wazuh-manager"
-
-// Agent installation path
-#define WAZUH_AGENT_PATH "/var/ossec"
-
-// Default installation path
-#define WAZUH_DEFAULT_PATH WAZUH_AGENT_PATH
-
 /* Default queue */
 #define DEFAULTQUEUE    "queue/sockets/queue"
 

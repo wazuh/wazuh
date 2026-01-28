@@ -25,7 +25,7 @@ from azure_services.analytics import (
     start_log_analytics,
 )
 from db import orm
-
+import os
 PAST_DATE = '2022-01-01T12:00:00.000000Z'
 PRESENT_DATE = '2022-06-15T12:00:00.000000Z'
 FUTURE_DATE = '2022-12-31T12:00:00.000000Z'
@@ -37,7 +37,7 @@ TEST_DATA_PATH = join(dirname(dirname(realpath(__file__))), 'data')
     'auth_path, la_id, key, offset, query, workspace, reparse, tag',
     [
         (None, 'client', 'secret', '1d', 'query', 'workspace', False, 'la_tag'),
-        ('/var/ossec/', None, None, '', '', '', False, ''),
+        (os.environ['INSTALLDIR'], None, None, '', '', '', False, ''),
     ],
 )
 @patch('azure_services.analytics.get_log_analytics_events')

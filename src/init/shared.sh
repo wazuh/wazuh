@@ -35,7 +35,7 @@ HOST_CMD=`command -v host 2>/dev/null`
 NAME="Wazuh"
 INSTYPE="server"
 # Default installation directory
-INSTALLDIR="/var/ossec";
+INSTALLDIR="/var/wazuh-manager";
 PREINSTALLEDDIR=""
 CEXTRA=""
 

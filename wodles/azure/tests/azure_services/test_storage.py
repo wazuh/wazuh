@@ -22,6 +22,7 @@ sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 
 from azure_services.storage import get_blobs, start_storage, download_blob
 from db import orm
+import os
 
 PAST_DATE = '2022-01-01T12:00:00.000000Z'
 PRESENT_DATE = '2022-06-15T12:00:00.000000Z'
@@ -62,7 +63,7 @@ def create_mocked_blob(blob_name: str, last_modified: datetime = None, content_l
     'auth_path, name, key, container_name',
     [
         (None, 'name', 'key', 'container'),
-        ('/var/ossec/', '', '', '*'),
+        (os.environ['INSTALLDIR'], '', '', '*'),
     ],
 )
 @patch('azure_services.storage.get_blobs')

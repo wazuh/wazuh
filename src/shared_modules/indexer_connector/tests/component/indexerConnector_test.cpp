@@ -208,9 +208,9 @@ TEST_F(IndexerConnectorTest, ConnectionWithSslCredentials)
     nlohmann::json indexerConfig;
     indexerConfig["name"] = INDEXER_NAME;
     indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
-    indexerConfig["ssl"]["certificate_authorities"] = nlohmann::json::array({"/var/ossec/etc/certs/root-ca.pem"});
-    indexerConfig["ssl"]["certificate"] = "/var/ossec/etc/certs/server.pem";
-    indexerConfig["ssl"]["key"] = "/var/ossec/etc/certs/server-key.pem";
+    indexerConfig["ssl"]["certificate_authorities"] = nlohmann::json::array({"/var/wazuh-manager/etc/certs/root-ca.pem"});
+    indexerConfig["ssl"]["certificate"] = "/var/wazuh-manager/etc/certs/server.pem";
+    indexerConfig["ssl"]["key"] = "/var/wazuh-manager/etc/certs/server-key.pem";
 
     // Create connector and wait until the connection is established.
     auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
