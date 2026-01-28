@@ -63,6 +63,8 @@ table Start {
     agentid: string;
     groups: [string];
     global_version: ulong;
+    cluster_name: string;
+    cluster_node: string;
 }
 
 table StartAck {
