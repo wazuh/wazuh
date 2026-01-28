@@ -205,7 +205,7 @@ jobs:
           TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
           if [ -z "${{ env.PACKAGE_NAME }}" ]; then echo "No package found matching the pattern!"; exit 1; fi
 
-          CONTAINER_ID=$(sudo docker run -d -v $TESTS_PATH/:/tests -v /tmp/:/packages -v /var/ossec:/var/ossec \
+          CONTAINER_ID=$(sudo docker run -d -v $TESTS_PATH/:/tests -v /tmp/:/packages -v /var/wazuh-manager:/var/wazuh-manager \
             --entrypoint '/bin/sh' $CONTAINER_NAME:${{ env.TAG }} -c "tail -f /dev/null")
 
           sudo docker exec $CONTAINER_ID /tests/install_component.sh $PACKAGE_NAME manager
@@ -229,11 +229,11 @@ jobs:
           wazuh_uid: ${{ env.WAZUH_UID }}
           wazuh_gid: ${{ env.WAZUH_GID }}
           size_check: "false"
-          ignore: "site-packages,/var/ossec/framework/python"
+          ignore: "site-packages,/var/wazuh-manager/framework/python"
 
       - name: Check embedded Python version
         run: |
-          EMBEDDED_PYTHON_VERSION=$(sudo docker exec $CONTAINER_ID /var/ossec/framework/python/bin/python3 --version | awk '{print $2}')
+          EMBEDDED_PYTHON_VERSION=$(sudo docker exec $CONTAINER_ID /var/wazuh-manager/framework/python/bin/python3 --version | awk '{print $2}')
           echo "Embedded Python version: $EMBEDDED_PYTHON_VERSION"
           EXPECTED_PYTHON_VERSION=$(cat $GITHUB_WORKSPACE/framework/.python-version)
           echo "Expected Python version: $EXPECTED_PYTHON_VERSION"
@@ -313,7 +313,7 @@ jobs:
 
           docker exec wazuh_previous bash -c "$UPDATE_CMD"
           docker exec wazuh_previous bash -c "$INSTALL_CMD"
-          docker exec wazuh_previous bash -c "/var/ossec/bin/wazuh-control info || echo 'Manager not started yet'"
+          docker exec wazuh_previous bash -c "/var/wazug-manager/bin/wazuh-control info || echo 'Manager not started yet'"
 
       - name: Upgrade to current Wazuh version
         run: |
@@ -329,7 +329,7 @@ jobs:
           echo "Upgrading to current version with package: $FILE_NAME"
           docker cp /tmp/$FILE_NAME wazuh_previous:/packages/$FILE_NAME
           docker exec wazuh_previous bash -c "$INSTALL_CMD"
-          docker exec wazuh_previous bash -c "/var/ossec/bin/wazuh-control info || echo 'Manager not started yet after upgrade'"
+          docker exec wazuh_previous bash -c "/var/wazuh-manager/bin/wazuh-control info || echo 'Manager not started yet after upgrade'"
 
       - name: Upload package to GitHub
         if: always()
