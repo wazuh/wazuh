@@ -1837,8 +1837,8 @@ async def test_disconnected_agent_group_sync_task_batch_agents(get_ossec_conf_mo
 @pytest.mark.asyncio
 @patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
 @patch('wazuh.core.cluster.master.AsyncWazuhDBConnection')
-@patch('wazuh.core.agent.Agent.get_agents_overview')
-async def test_disconnected_agent_group_sync_task_get_disconnected_agents(mock_get_agents, mock_wdb_conn, get_ossec_conf_mock):
+@patch('wazuh.core.indexer.disconnected_agents.WazuhDBQueryAgents')
+async def test_disconnected_agent_group_sync_task_get_disconnected_agents(mock_wazuh_db_query, mock_wdb_conn, get_ossec_conf_mock):
     """Test DisconnectedAgentGroupSyncTask _get_disconnected_agents method."""
 
     cluster_items_with_sync = cluster_items.copy()
@@ -1850,26 +1850,29 @@ async def test_disconnected_agent_group_sync_task_get_disconnected_agents(mock_g
     server_mock = MagicMock()
     server_mock.setup_task_logger.return_value = MagicMock()
 
-    # Provide disconnection_time so agents meet min_offline threshold
     from datetime import datetime, timezone, timedelta
-    old_time = datetime.now(timezone.utc) - timedelta(seconds=2000)
-
+    now = datetime.now(timezone.utc)
+    old_time = now - timedelta(seconds=2000)
     mock_agents = [
-        {'id': '001', 'name': 'agent1', 'status': 'disconnected', 'group': ['default'], 'disconnection_time': old_time},
-        {'id': '002', 'name': 'agent2', 'status': 'disconnected', 'group': ['group1'], 'disconnection_time': old_time},
+        {'id': '001', 'name': 'agent1', 'status': 'disconnected', 'group': ['default'], 'lastKeepAlive': old_time},
+        {'id': '002', 'name': 'agent2', 'status': 'disconnected', 'group': ['group1'], 'lastKeepAlive': old_time},
     ]
-    # New implementation expects 'items' key
-    mock_get_agents.return_value = {
-        'items': mock_agents
-    }
+
+    mock_db_query = MagicMock()
+    mock_db_query.run.return_value = {"items": mock_agents}
+
+    mock_wazuh_db_query.return_value.__enter__.return_value = mock_db_query
 
     task = master.DisconnectedAgentGroupSyncTask(
         server=server_mock,
         cluster_items=cluster_items_with_sync,
     )
 
-    wdb_conn = MagicMock()
-    result = await task._get_disconnected_agents(wdb_conn)
+    with patch('wazuh.core.indexer.disconnected_agents.core_utils.get_utc_now') as mock_get_utc_now:
+        mock_get_utc_now.return_value = now
+
+        wdb_conn = MagicMock()
+        result = await task._get_disconnected_agents(wdb_conn)
 
     assert len(result) == 2
     assert result[0]['id'] == '001'
