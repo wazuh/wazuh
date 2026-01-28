@@ -37,6 +37,9 @@ INSTYPE="server"
 INSTALLDIR="/var/wazuh-manager";
 PREINSTALLEDDIR=""
 CEXTRA=""
+WAZUH_CONF="ossec.conf"
+WAZUH_LOGFILE="ossec.log"
+WAZUH_LOGJSON="ossec.json"
 
 # Internal definitions
 NEWCONFIG="./etc/ossec.mc"
