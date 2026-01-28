@@ -2,7 +2,7 @@
 # prerm script for wazuh-manager
 
 set -e
-DIR="/var/ossec"
+DIR="/var/wazuh-manager"
 
 case "$1" in
     upgrade|deconfigure)

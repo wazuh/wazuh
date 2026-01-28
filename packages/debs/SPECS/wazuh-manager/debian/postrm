@@ -2,7 +2,7 @@
 # postrm script for Wazuh
 # Wazuh, Inc 2015
 set -e
-DIR="/var/ossec"
+DIR="/var/wazuh-manager"
 WAZUH_TMP_DIR="${DIR}/packages_files/manager_config_files"
 
 case "$1" in
@@ -51,20 +51,23 @@ case "$1" in
 
         # Delete old .save
         find ${DIR}/etc/ -type f  -name "*save" -exec rm -f {} \;
-        find ${DIR}/api/ -type f  -name "*save" -exec rm -f {} \;
 
         # Rename the files
         find ${DIR}/etc/ -type f ! -name *shared* -exec mv {} {}.save \;
-        find ${DIR}/api/ -type f -exec mv {} {}.save \;
+
+        if [ -d "${DIR}/api" ]; then
+            find "${DIR}/api/" -type f -name "*save" -exec rm -f {} \;
+            find "${DIR}/api/" -type f -exec mv {} {}.save \;
+        fi
 
     ;;
 
     purge)
-        if getent passwd wazuh > /dev/null 2>&1 ; then
-            deluser wazuh  > /dev/null 2>&1
+        if getent passwd wazuh-manager > /dev/null 2>&1 ; then
+            deluser wazuh-manager  > /dev/null 2>&1
         fi
-        if getent group wazuh > /dev/null 2>&1; then
-            delgroup wazuh  > /dev/null 2>&1
+        if getent group wazuh-manager > /dev/null 2>&1; then
+            delgroup wazuh-manager  > /dev/null 2>&1
         fi
         rm -rf ${DIR}
     ;;
