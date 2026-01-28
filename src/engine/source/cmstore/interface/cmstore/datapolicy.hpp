@@ -231,10 +231,12 @@ public:
                        std::move(enrichments),
                        std::move(outputs)};
 
-        if (auto hashOpt = policyJson.getString(jsonpolicy::PATH_KEY_HASH); hashOpt.has_value() && !hashOpt->empty())
+        auto hashOpt = policyJson.getString(jsonpolicy::PATH_KEY_HASH);
+        if (!hashOpt.has_value() || hashOpt->empty())
         {
-            policy.setExternalHash(*hashOpt);
+            throw std::runtime_error("Policy JSON must have a non-empty 'hash' field");
         }
+        policy.m_hash = *hashOpt;
 
         return policy;
     }
@@ -278,8 +280,6 @@ public:
     }
 
     //Setters
-    void setExternalHash(const std::string_view hash) { m_hash = std::string(hash); }
-
     // Getters
     const std::string& getTitle() const { return m_title; }
     const std::vector<std::string>& getFiltersUUIDs() const { return m_filters; }

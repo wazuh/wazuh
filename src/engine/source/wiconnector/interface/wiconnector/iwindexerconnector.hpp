@@ -28,7 +28,6 @@ struct PolicyResources
     std::vector<json::Json> decoders {};    ///< List of decoder
     std::vector<json::Json> integration {}; ///< List of integration decoder
     json::Json policy {};                   ///< The policy
-    std::string policyHash {};              ///< The policy hash from indexer
 };
 
 class IWIndexerConnector

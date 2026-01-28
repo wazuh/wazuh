@@ -73,6 +73,7 @@ def build_policy_yaml(default_parent: str, root_decoder: str, integration_uuids)
     return f"""\
 type: policy
 title: Development 0.0.1
+hash: "router-test-hash"
 default_parent: {default_parent}
 root_decoder: {root_decoder}
 integrations:
