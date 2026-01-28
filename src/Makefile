@@ -334,6 +334,18 @@ ifndef TARGET
 	TARGET=failtarget
 endif # TARGET
 
+ifeq (${TARGET},agent)
+	DEFINES+=-DCLIENT
+endif
+
+ifeq (${TARGET},local)
+	DEFINES+=-DLOCAL
+endif
+
+ifneq (,$(filter ${TARGET},server))
+	DEFINES+=-DWAZUH_MANAGER
+endif
+
 .PHONY: build
 build: ${TARGET}
 ifneq (${TARGET},failtarget)
