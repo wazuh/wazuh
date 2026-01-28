@@ -22,7 +22,7 @@ fi
 
 # Check if WAZUH_HOME is set
 if [ -z "$WAZUH_HOME" ]; then
-    WAZUH_HOME="/var/ossec"
+    WAZUH_HOME="/var/wazuh-manager"
 fi
 
 if [ ! -d "$WAZUH_HOME" ]; then
@@ -32,7 +32,7 @@ fi
 
 # Umount proc filesystem if it exists (Mounted for development purposes)
 if mountpoint -q ${WAZUH_HOME/proc}; then
-    umount /var/ossec/proc
+    umount /var/wazuh-manager/proc
 fi
 
 

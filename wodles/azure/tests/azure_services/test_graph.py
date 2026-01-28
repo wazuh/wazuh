@@ -24,6 +24,7 @@ from azure_services.graph import (
     start_graph,
 )
 from db import orm
+import os
 
 PAST_DATE = '2022-01-01T12:00:00.000000Z'
 PRESENT_DATE = '2022-06-15T12:00:00.000000Z'
@@ -36,7 +37,7 @@ TEST_DATA_PATH = join(dirname(dirname(realpath(__file__))), 'data')
     'auth_path, graph_id, key, offset, query, tag, reparse',
     [
         (None, 'client', 'secret', '1d', 'query', 'tag', False),
-        ('/var/ossec/', None, None, '', '', '', False),
+        (os.environ['INSTALLDIR'], None, None, '', '', '', False),
     ],
 )
 @patch('azure_services.graph.get_graph_events')
