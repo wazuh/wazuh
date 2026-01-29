@@ -33,7 +33,7 @@ option(ENGINE_GENERATE_PROTO "Generate protobuf code" OFF)
 
 ####################################################################################################
 #    If WAZUH_ENGINE_TEST is defined (make ENGINE_TEST=1), we build the engine with tests and benchmarks.
-#    If UNIT_TEST is defined (make DEBUG=1 TEST=1), we build the engine with tests and enable AddressSanitizer
+#    If UNIT_TEST is defined (make TEST=1), we build the engine with tests and enable AddressSanitizer
 ####################################################################################################
 if(WAZUH_ENGINE_TEST)
     set(ENGINE_BUILD_TEST ON CACHE BOOL "Generate tests" FORCE)

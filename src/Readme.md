@@ -21,9 +21,9 @@ There are several modules needed in order to the tool to work correctly.
   - scan-build-12
 
 ## Compile Wazuh
-In order to run unit tests on a specific wazuh target, the project needs to be built with the `DEBUG` and `TEST` options as shown below:
+In order to run unit tests on a specific wazuh target, the project needs to be built with the `TEST` option as shown below:
 ```
-make TARGET=server|agent DEBUG=1 TEST=1
+make TARGET=server|agent TEST=1
 ```
 
 ## How to use the tool

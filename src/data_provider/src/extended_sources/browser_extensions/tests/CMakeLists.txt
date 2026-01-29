@@ -30,10 +30,22 @@ target_link_libraries(
   extended_sources_browser_extensions_unit_test
   browser_extensions
   FilesystemWrapper
+  debug
   gtestd
+  debug
   gmockd
+  debug
   gtest_maind
+  debug
   gmock_maind
+  optimized
+  gtest
+  optimized
+  gmock
+  optimized
+  gtest_main
+  optimized
+  gmock_main
   pthread
   $<$<PLATFORM_ID:Windows>:-static-libgcc>
   $<$<PLATFORM_ID:Windows>:-static-libstdc++>)
