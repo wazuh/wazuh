@@ -43,6 +43,10 @@ add_executable(sca_event_handler_unit_test sca_event_handler_test.cpp)
 target_link_libraries(sca_event_handler_unit_test PRIVATE SCAImpl)
 add_test(NAME SCAEventHandlerTest COMMAND sca_event_handler_unit_test)
 
+add_executable(sca_sync_manager_unit_test sca_sync_manager_test.cpp)
+target_link_libraries(sca_sync_manager_unit_test PRIVATE SCAImpl)
+add_test(NAME SCASyncManagerTest COMMAND sca_sync_manager_unit_test)
+
 add_executable(sca_utils_unit_test sca_utils_test.cpp)
 target_link_libraries(sca_utils_unit_test PRIVATE SCAImpl)
 add_test(NAME SCAUtilsTest COMMAND sca_utils_unit_test)

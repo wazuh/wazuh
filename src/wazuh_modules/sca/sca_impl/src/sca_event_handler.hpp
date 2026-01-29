@@ -13,6 +13,8 @@
 #include <utility>
 #include <vector>
 
+class SCASyncManager;
+
 /// @brief Handles Security Configuration Assessment (SCA) events.
 ///
 /// This class is responsible for processing and generating SCA events related to policy and check updates. It receives
@@ -32,7 +34,8 @@ class SCAEventHandler
         /// @param pushStatefulMessage Callback function used to push stateful messages to the message queue.
         SCAEventHandler(std::shared_ptr<IDBSync> dBSync = nullptr,
                         std::function<int(const std::string&)> pushStatelessMessage = nullptr,
-                        std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> pushStatefulMessage = nullptr);
+                        std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> pushStatefulMessage = nullptr,
+                        std::shared_ptr<SCASyncManager> syncManager = nullptr);
 
         /// @brief Destructor
         virtual ~SCAEventHandler() = default;
@@ -168,5 +171,15 @@ class SCAEventHandler
     private:
         /// @brief Pointer to the IDBSync object for database synchronization.
         std::shared_ptr<IDBSync> m_dBSync;
+
+        /// @brief Sync manager for document limits.
+        std::shared_ptr<SCASyncManager> m_syncManager;
+
+        /// @brief Handle failed checks deletion and sync promotions.
+        void HandleFailedChecks(std::vector<nlohmann::json> failedChecks) const;
+
+        /// @brief Process promoted checks after deletion to keep FIFO sync limit.
+        void ProcessPromotedChecks(const std::vector<std::string>& promotedIds,
+                                   std::vector<nlohmann::json>* failedChecks) const;
 };
 // LCOV_EXCL_STOP

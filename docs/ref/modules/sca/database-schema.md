@@ -57,6 +57,7 @@ INSERT INTO sca_policy VALUES (
 
 ```sql
 CREATE TABLE IF NOT EXISTS sca_check (
+    checksum TEXT NOT NULL,
     id TEXT PRIMARY KEY,
     policy_id TEXT REFERENCES sca_policy(id),
     name TEXT,
@@ -68,7 +69,10 @@ CREATE TABLE IF NOT EXISTS sca_check (
     reason TEXT,
     condition TEXT,
     compliance TEXT,
-    rules TEXT
+    rules TEXT,
+    regex_type TEXT DEFAULT 'pcre2',
+    version INTEGER NOT NULL DEFAULT 1,
+    sync INTEGER NOT NULL DEFAULT 0
 );
 ```
 
@@ -76,6 +80,7 @@ This table stores individual checks associated with a policy. Each check include
 
 | Mandatory | Column        | Data Type | Description                                                               | ECS Mapping | ECS Data Type |
 | :-------: | ------------- | --------- | ------------------------------------------------------------------------- | ----------- | ------------- |
+|     ✔️    | `checksum`    | TEXT      | SHA1 checksum of the check data used for synchronization                 | checksum.hash.sha1 | keyword |
 |     ✔️    | `id`          | TEXT      | Unique identifier of the check                                           | check.id    | keyword       |
 |     ✔️    | `policy_id`   | TEXT      | Reference to the associated policy ID                                    | policy.id   | keyword       |
 |           | `name`        | TEXT      | Short name summarizing the check                                         | check.name  | keyword       |
@@ -88,6 +93,9 @@ This table stores individual checks associated with a policy. Each check include
 |           | `condition`   | TEXT      | Logical condition under which the check applies (all, any, none)        | check.condition | keyword    |
 |           | `compliance`  | TEXT      | Compliance mapping (e.g., CIS ID, NIST tag)                             | check.compliance | keyword   |
 |           | `rules`       | TEXT      | Serialized rule(s) logic used to perform the actual check               | check.rules | text          |
+|           | `regex_type`  | TEXT      | Internal regex engine identifier for rule evaluation                    | N/A         | N/A          |
+|     ✔️    | `version`     | INTEGER   | Monotonic version for stateful synchronization                          | state.document_version | long |
+|     ✔️    | `sync`        | INTEGER   | Internal sync flag (1 = synced, 0 = local-only)                         | N/A         | N/A          |
 
 **Indexes:**
 - Primary key on `id` for fast check lookups
@@ -103,7 +111,10 @@ This table stores individual checks associated with a policy. Each check include
 
 **Example Data:**
 ```sql
-INSERT INTO sca_check VALUES (
+INSERT INTO sca_check (checksum, id, policy_id, name, description, rationale, remediation, refs, result, reason,
+                       condition, compliance, rules, regex_type, version, sync)
+VALUES (
+    'f1e2d3c4b5a697887766554433221100aabbccdd',
     '5501',
     'cis_debian10',
     'Ensure permissions on /etc/ssh/sshd_config are configured',
@@ -115,7 +126,10 @@ INSERT INTO sca_check VALUES (
     NULL,
     'all',
     'cis:5.2.1,cis_csc:14.6',
-    '[{"type":"file","path":"/etc/ssh/sshd_config","permissions":"600"}]'
+    '[{"type":"file","path":"/etc/ssh/sshd_config","permissions":"600"}]',
+    'pcre2',
+    1,
+    1
 );
 ```
 
