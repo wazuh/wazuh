@@ -143,7 +143,7 @@ bool SCASyncManager::shouldSyncInsert(const nlohmann::json& checkData)
         }
         else
         {
-            updateSyncFlag(checkId, checkData["version"].get<uint64_t>(), desiredSync);
+            deferSyncFlagUpdate(checkId, checkData["version"].get<uint64_t>(), desiredSync);
         }
     }
 
@@ -185,7 +185,7 @@ bool SCASyncManager::shouldSyncModify(const nlohmann::json& checkData)
         return false;
     }
 
-    updateSyncFlag(checkId, checkData["version"].get<uint64_t>(), 1);
+    deferSyncFlagUpdate(checkId, checkData["version"].get<uint64_t>(), 1);
     m_syncedIds.insert(checkId);
     ++m_syncedCount;
 
@@ -252,7 +252,7 @@ SCASyncManager::DeleteResult SCASyncManager::handleDelete(const nlohmann::json& 
             continue;
         }
 
-        updateSyncFlag(promoteId, row["version"].get<uint64_t>(), 1);
+        deferSyncFlagUpdate(promoteId, row["version"].get<uint64_t>(), 1);
         m_syncedIds.insert(promoteId);
         ++m_syncedCount;
         result.promotedIds.push_back(promoteId);
@@ -365,6 +365,31 @@ void SCASyncManager::updateSyncFlag(const std::string& checkId, uint64_t version
     {
     };
     m_dBSync->syncRow(updateQuery.query(), callback);
+}
+
+void SCASyncManager::deferSyncFlagUpdate(const std::string& checkId, uint64_t version, int syncValue)
+{
+    m_pendingUpdates.push_back({checkId, version, syncValue});
+}
+
+void SCASyncManager::applyDeferredUpdates()
+{
+    std::vector<PendingUpdate> pending;
+
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_pendingUpdates.empty())
+        {
+            return;
+        }
+
+        pending.swap(m_pendingUpdates);
+    }
+
+    for (const auto& update : pending)
+    {
+        updateSyncFlag(update.checkId, update.version, update.syncValue);
+    }
 }
 
 std::vector<nlohmann::json> SCASyncManager::selectChecks(const std::string& filter, uint32_t limit) const

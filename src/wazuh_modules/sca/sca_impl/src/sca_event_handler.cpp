@@ -146,6 +146,11 @@ void SCAEventHandler::ReportPoliciesDelta(
     }
 
     HandleFailedChecks(std::move(failedChecks));
+
+    if (m_syncManager)
+    {
+        m_syncManager->applyDeferredUpdates();
+    }
 }
 
 void SCAEventHandler::ReportCheckResult(const std::string& policyId,
@@ -256,6 +261,11 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
     m_dBSync->syncRow(updateResultQuery.query(), callback);
 
     HandleFailedChecks(std::move(failedChecks));
+
+    if (m_syncManager)
+    {
+        m_syncManager->applyDeferredUpdates();
+    }
 }
 
 nlohmann::json

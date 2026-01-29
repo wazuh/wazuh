@@ -142,6 +142,7 @@ TEST_F(SCASyncManagerTest, DeletePromotesOldestUnsynced)
     EXPECT_TRUE(result.wasSynced);
     ASSERT_EQ(result.promotedIds.size(), 1U);
     EXPECT_EQ(result.promotedIds[0], "check-3");
+    manager.applyDeferredUpdates();
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-3"), 1);
 }
 
@@ -161,6 +162,7 @@ TEST_F(SCASyncManagerTest, UnlimitedModeSyncsAllChecks)
 
     insertCheck(m_dbSync, "check-3");
     EXPECT_TRUE(manager.shouldSyncInsert(makeCheckData("check-3", 1, 0)));
+    manager.applyDeferredUpdates();
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-3"), 1);
 }
 
@@ -196,6 +198,7 @@ TEST_F(SCASyncManagerTest, ModifyPromotesWhenSpaceAvailable)
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-2"), 0);
 
     EXPECT_TRUE(manager.shouldSyncModify(makeCheckData("check-2", 1, 0)));
+    manager.applyDeferredUpdates();
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-2"), 1);
 }
 
@@ -270,6 +273,7 @@ TEST_F(SCASyncManagerTest, DeleteAllChecksStopsPromotion)
     ASSERT_TRUE(firstDelete.wasSynced);
     ASSERT_EQ(firstDelete.promotedIds.size(), 1U);
     EXPECT_EQ(firstDelete.promotedIds[0], "check-2");
+    manager.applyDeferredUpdates();
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-2"), 1);
 
     deleteCheck(m_dbSync, "check-2");
