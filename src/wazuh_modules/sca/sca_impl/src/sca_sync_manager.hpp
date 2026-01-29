@@ -28,6 +28,7 @@ class SCASyncManager
         bool shouldSyncModify(const nlohmann::json& checkData);
         DeleteResult handleDelete(const nlohmann::json& checkData);
         void applyDeferredUpdates();
+        void reconcile();
 
     private:
         struct PendingUpdate

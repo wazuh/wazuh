@@ -65,10 +65,24 @@ class IDBSync
         /// @return the concatenated checksum
         virtual std::string getConcatenatedChecksums(const std::string& tableName) = 0;
 
+        /// @brief Gets the concatenated checksums from a filtered set of elements
+        /// @param tableName The table to read from
+        /// @param rowFilter Filter applied to the query
+        /// @return the concatenated checksum
+        virtual std::string getConcatenatedChecksums(const std::string& tableName,
+                                                     const std::string& rowFilter) = 0;
+
         /// @brief Calculate the checksum-of-checksums for a table
         /// @param tableName The table to calculate checksum for
         /// @return The SHA1 checksum-of-checksums as a hex string
         virtual std::string calculateTableChecksum(const std::string& tableName) = 0;
+
+        /// @brief Calculate the checksum-of-checksums for a filtered set of elements
+        /// @param tableName The table to calculate checksum for
+        /// @param rowFilter Filter applied to the query
+        /// @return The SHA1 checksum-of-checksums as a hex string
+        virtual std::string calculateTableChecksum(const std::string& tableName,
+                                                   const std::string& rowFilter) = 0;
 
         /// @brief Increases the version of each entry in a table by 1
         /// @param tableName Name of the table to update

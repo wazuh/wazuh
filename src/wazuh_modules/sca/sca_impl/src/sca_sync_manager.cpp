@@ -392,6 +392,12 @@ void SCASyncManager::applyDeferredUpdates()
     }
 }
 
+void SCASyncManager::reconcile()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    enforceLimitLocked();
+}
+
 std::vector<nlohmann::json> SCASyncManager::selectChecks(const std::string& filter, uint32_t limit) const
 {
     std::vector<nlohmann::json> rows;

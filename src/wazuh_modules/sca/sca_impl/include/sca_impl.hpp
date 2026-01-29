@@ -167,6 +167,8 @@ class SecurityConfigurationAssessment
         /// @brief Get the upgrade statements for the database
         std::vector<std::string> GetUpgradeStatements() const;
 
+        /// @brief Calculate checksum for synced checks only (sync=1).
+        std::string calculateSyncedChecksChecksum();
 
         /// @brief Integrity check interval in seconds (0 = disabled)
         std::chrono::seconds m_integrityInterval = std::chrono::seconds(0);

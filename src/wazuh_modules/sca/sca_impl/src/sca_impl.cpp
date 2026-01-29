@@ -173,6 +173,11 @@ void SecurityConfigurationAssessment::Run()
         );
         // *INDENT-ON*
 
+        if (m_syncManager)
+        {
+            m_syncManager->reconcile();
+        }
+
         // Check for policies removed at runtime (e.g., config change during scan loop).
         // This uses m_policies (loaded objects) since LoadPolicies() may filter out invalid policies.
         if (m_policies.empty())
@@ -326,6 +331,22 @@ std::string SecurityConfigurationAssessment::GetCreateStatement() const
 std::vector<std::string> SecurityConfigurationAssessment::GetUpgradeStatements() const
 {
     return {R"(ALTER TABLE sca_check ADD COLUMN sync INTEGER NOT NULL DEFAULT 0;)"};
+}
+
+std::string SecurityConfigurationAssessment::calculateSyncedChecksChecksum()
+{
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot calculate checksum");
+        return {};
+    }
+
+    std::string concatenatedChecksums = m_dBSync->getConcatenatedChecksums("sca_check", "WHERE sync = 1");
+
+    Utils::HashData hash(Utils::HashType::Sha1);
+    hash.update(concatenatedChecksums.c_str(), concatenatedChecksums.length());
+    const std::vector<unsigned char> hashResult = hash.hash();
+    return Utils::asciiToHex(hashResult);
 }
 
 // LCOV_EXCL_START
@@ -775,15 +796,8 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
 
                 try
                 {
-                    if (!m_dBSync)
-                    {
-                        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot calculate checksum");
-                    }
-                    else
-                    {
-                        checksum = m_dBSync->calculateTableChecksum("sca_check");
-                        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA table checksum calculated: " + checksum);
-                    }
+                    checksum = calculateSyncedChecksChecksum();
+                    LoggingHelper::getInstance().log(LOG_DEBUG, "SCA table checksum calculated: " + checksum);
                 }
                 catch (const std::exception& err)
                 {
