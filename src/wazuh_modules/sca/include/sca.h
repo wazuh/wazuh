@@ -66,6 +66,7 @@ EXPORTED void sca_set_sync_parameters(const char* module_name, const char* sync_
 EXPORTED bool sca_sync_module(Mode_t mode);
 EXPORTED void sca_persist_diff(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version);
 EXPORTED bool sca_parse_response(const unsigned char* data, size_t length);
+EXPORTED void sca_set_sync_limit(uint64_t syncLimit);
 EXPORTED bool sca_notify_data_clean(const char** indices, size_t indices_count);
 EXPORTED void sca_delete_database();
 
@@ -99,6 +100,7 @@ typedef void (*sca_set_sync_parameters_func)(const char* module_name, const char
 typedef bool(*sca_sync_module_func)(Mode_t mode);
 typedef void(*sca_persist_diff_func)(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version);
 typedef bool(*sca_parse_response_func)(const unsigned char* data, size_t length);
+typedef void(*sca_set_sync_limit_func)(uint64_t syncLimit);
 typedef bool(*sca_notify_data_clean_func)(const char** indices, size_t indices_count);
 typedef void(*sca_delete_database_func)();
 

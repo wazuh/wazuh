@@ -4,6 +4,7 @@
 #include <sca_event_handler.hpp>
 #include <sca_policy.hpp>
 #include <sca_policy_loader.hpp>
+#include <sca_sync_manager.hpp>
 
 #include <dbsync.hpp>
 #include <filesystem_wrapper.hpp>
@@ -48,7 +49,8 @@ constexpr auto CHECK_SQL_STATEMENT
     compliance TEXT,
     rules TEXT,
     regex_type TEXT DEFAULT 'pcre2',
-    version INTEGER NOT NULL DEFAULT 1);)"
+    version INTEGER NOT NULL DEFAULT 1,
+    sync INTEGER NOT NULL DEFAULT 0);)"
 };
 
 constexpr auto METADATA_SQL_STATEMENT
@@ -68,7 +70,9 @@ SecurityConfigurationAssessment::SecurityConfigurationAssessment(
                    DbEngineType::SQLITE3,
                    dbPath,
                    GetCreateStatement(),
-                   DbManagement::PERSISTENT))
+                   DbManagement::PERSISTENT,
+                   GetUpgradeStatements()))
+    , m_syncManager(std::make_shared<SCASyncManager>(m_dBSync))
     , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
                           : std::make_shared<file_system::FileSystemWrapper>())
 {
@@ -92,6 +96,11 @@ void SecurityConfigurationAssessment::Run()
     }
 
     LoggingHelper::getInstance().log(LOG_INFO, "SCA module running.");
+
+    if (m_syncManager)
+    {
+        m_syncManager->initialize();
+    }
 
     // Check for policies removed between agent restarts (before scan loop starts).
     // This early check uses m_policiesData (raw config) since policies haven't been loaded yet.
@@ -157,7 +166,7 @@ void SecurityConfigurationAssessment::Run()
             m_remoteEnabled,
             [this](auto policyData, auto checksData)
             {
-                const SCAEventHandler eventHandler(m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage);
+                const SCAEventHandler eventHandler(m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage, m_syncManager);
                 eventHandler.ReportPoliciesDelta(policyData, checksData);
             },
             m_yamlToJsonFunc
@@ -194,7 +203,7 @@ void SecurityConfigurationAssessment::Run()
 
         auto reportCheckResult = [this](const CheckResult & checkResult)
         {
-            const SCAEventHandler eventHandler(m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage);
+            const SCAEventHandler eventHandler(m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage, m_syncManager);
             eventHandler.ReportCheckResult(
                 checkResult.policyId, checkResult.checkId, checkResult.result, checkResult.reason);
         };
@@ -314,6 +323,11 @@ std::string SecurityConfigurationAssessment::GetCreateStatement() const
     return ret;
 }
 
+std::vector<std::string> SecurityConfigurationAssessment::GetUpgradeStatements() const
+{
+    return {R"(ALTER TABLE sca_check ADD COLUMN sync INTEGER NOT NULL DEFAULT 0;)"};
+}
+
 // LCOV_EXCL_START
 
 // Sync protocol methods implementation
@@ -421,6 +435,14 @@ bool SecurityConfigurationAssessment::parseResponseBuffer(const uint8_t* data, s
     }
 
     return false;
+}
+
+void SecurityConfigurationAssessment::setSyncLimit(uint64_t syncLimit)
+{
+    if (m_syncManager)
+    {
+        m_syncManager->updateHandshake(syncLimit, {});
+    }
 }
 
 bool SecurityConfigurationAssessment::notifyDataClean(const std::vector<std::string>& indices)
@@ -883,8 +905,23 @@ bool SecurityConfigurationAssessment::performRecovery()
 
         m_dBSync->increaseEachEntryVersion("sca_check");
 
-        // Get all checks from database (now with incremented versions)
-        auto checks = m_dBSync->getEveryElement("sca_check");
+        // Get all synced checks from database (now with incremented versions)
+        std::vector<nlohmann::json> checks;
+        auto selectQuery = SelectQuery::builder()
+                           .table("sca_check")
+                           .columnList({"*"})
+                           .rowFilter("WHERE sync = 1")
+                           .build();
+
+        const auto selectCallback = [&checks](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        {
+            if (returnTypeCallback == SELECTED)
+            {
+                checks.push_back(resultData);
+            }
+        };
+
+        m_dBSync->selectRows(selectQuery.query(), selectCallback);
         LoggingHelper::getInstance().log(LOG_DEBUG, "Retrieved " + std::to_string(checks.size()) + " checks from database");
 
         // Clear in-memory data before repopulating
