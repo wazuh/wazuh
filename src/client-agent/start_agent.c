@@ -163,15 +163,63 @@ STATIC bool parse_cluster_name(const cJSON *root, char *cluster_name, size_t clu
 }
 
 /**
+ * @brief Parse agent_groups array from JSON and convert to CSV
+ * @return true on success (at least one group present), false on error
+ */
+STATIC bool parse_agent_groups(const cJSON *root, char *agent_groups, size_t agent_groups_size) {
+    if (!agent_groups || agent_groups_size == 0) {
+        return true;
+    }
+
+    agent_groups[0] = '\0';
+
+    cJSON *groups_array = cJSON_GetObjectItem(root, "agent_groups");
+    if (!groups_array || !cJSON_IsArray(groups_array)) {
+        mdebug1("Missing or invalid 'agent_groups' array in handshake JSON");
+        return false;
+    }
+
+    size_t offset = 0;
+    int valid_groups = 0;
+    cJSON *group_item = NULL;
+
+    cJSON_ArrayForEach(group_item, groups_array) {
+        if (cJSON_IsString(group_item) && group_item->valuestring && group_item->valuestring[0] != '\0') {
+            size_t group_len = strlen(group_item->valuestring);
+            /* Check if there's space: group + comma + null terminator */
+            if (offset + group_len + 2 < agent_groups_size) {
+                if (offset > 0) {
+                    agent_groups[offset++] = ',';
+                }
+                strcpy(agent_groups + offset, group_item->valuestring);
+                offset += group_len;
+                valid_groups++;
+            }
+        }
+    }
+    agent_groups[offset] = '\0';
+
+    /* Empty agent_groups is allowed - fallback to merge.mg will be used */
+    if (valid_groups == 0) {
+        mdebug1("Empty 'agent_groups' array, will use fallback");
+    }
+
+    return true;
+}
+
+/**
  * @brief Parse JSON payload from handshake ACK response
  * @param json_str JSON string to parse
  * @param limits Pointer to module limits structure to populate
  * @param cluster_name Buffer to store cluster name
  * @param cluster_name_size Size of cluster_name buffer
+ * @param agent_groups Buffer to store agent groups as CSV
+ * @param agent_groups_size Size of agent_groups buffer
  * @return 0 on success, -1 on error (all fields are required)
  */
 STATIC int parse_handshake_json(const char *json_str, module_limits_t *limits,
-                                char *cluster_name, size_t cluster_name_size) {
+                                char *cluster_name, size_t cluster_name_size,
+                                char *agent_groups, size_t agent_groups_size) {
     if (!json_str || !limits) {
         return -1;
     }
@@ -183,7 +231,8 @@ STATIC int parse_handshake_json(const char *json_str, module_limits_t *limits,
     }
 
     if (!parse_limits(root, limits) ||
-        !parse_cluster_name(root, cluster_name, cluster_name_size)) {
+        !parse_cluster_name(root, cluster_name, cluster_name_size) ||
+        !parse_agent_groups(root, agent_groups, agent_groups_size)) {
         cJSON_Delete(root);
         return -1;
     }
@@ -493,8 +542,10 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                         const char *json_start = strchr(tmp_msg, '{');
                         if (json_start) {
                             char cluster_name_buffer[256] = {0};
+                            char agent_groups_buffer[OS_SIZE_65536] = {0};
                             if (parse_handshake_json(json_start, &agent_module_limits,
-                                                      cluster_name_buffer, sizeof(cluster_name_buffer)) == 0) {
+                                                      cluster_name_buffer, sizeof(cluster_name_buffer),
+                                                      agent_groups_buffer, sizeof(agent_groups_buffer)) == 0) {
                                 minfo("Module limits received from manager");
 
                                 mdebug2("Received FIM limits: file=%d, registry_key=%d, registry_value=%d",
@@ -522,6 +573,11 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                 strncpy(agent_cluster_name, cluster_name_buffer, sizeof(agent_cluster_name) - 1);
                                 agent_cluster_name[sizeof(agent_cluster_name) - 1] = '\0';
                                 minfo("Connected to cluster: %s", agent_cluster_name);
+
+                                /* Store agent_groups in global for agent-info module to query via agcom */
+                                strncpy(agent_agent_groups, agent_groups_buffer, sizeof(agent_agent_groups) - 1);
+                                agent_agent_groups[sizeof(agent_agent_groups) - 1] = '\0';
+                                minfo("Agent groups: %s", agent_agent_groups);
                             } else {
                                 mwarn("Error parsing handshake JSON, will retry handshake");
                                 return false;

@@ -250,6 +250,7 @@ extern anti_tampering *atc;
 
 extern module_limits_t agent_module_limits;
 extern char agent_cluster_name[256];
+extern char agent_agent_groups[OS_SIZE_65536];
 
 static const char AG_IN_UNMERGE[] = "wazuh: Could not unmerge shared file.";
 

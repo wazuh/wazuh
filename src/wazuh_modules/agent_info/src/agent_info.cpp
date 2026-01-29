@@ -47,6 +47,10 @@ static const MQ_Functions* g_mq_functions = nullptr;
 // Global cluster name storage (set from handshake, used by agent_info_impl)
 static char g_cluster_name[256] = {0};
 
+// Global agent groups storage (set from handshake, used by agent_info_impl)
+// Uses OS_SIZE_65536 to accommodate multiple groups
+static char g_agent_groups[65536] = {0};
+
 // Internal wrapper functions that capture the callbacks
 static std::function<void(const std::string&)> g_report_function_wrapper;
 static std::function<void(const modules_log_level_t, const std::string&)> g_log_function_wrapper;
@@ -124,6 +128,39 @@ void agent_info_set_cluster_name(const char* cluster_name)
 const char* agent_info_get_cluster_name()
 {
     return g_cluster_name;
+}
+
+void agent_info_set_agent_groups(const char* agent_groups)
+{
+    if (agent_groups)
+    {
+        strncpy(g_agent_groups, agent_groups, sizeof(g_agent_groups) - 1);
+        g_agent_groups[sizeof(g_agent_groups) - 1] = '\0';
+
+        if (g_log_callback)
+        {
+            g_log_callback(LOG_DEBUG, "Agent groups set", "agent-info");
+        }
+    }
+    else
+    {
+        g_agent_groups[0] = '\0';
+    }
+}
+
+const char* agent_info_get_agent_groups()
+{
+    return g_agent_groups;
+}
+
+void agent_info_clear_agent_groups()
+{
+    g_agent_groups[0] = '\0';
+
+    if (g_log_callback)
+    {
+        g_log_callback(LOG_DEBUG, "Agent groups cleared (consumed)", "agent-info");
+    }
 }
 
 void agent_info_start(const struct wm_agent_info_t* agent_info_config)

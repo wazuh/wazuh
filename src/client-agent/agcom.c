@@ -143,11 +143,14 @@ size_t agcom_gethandshake(char **output) {
         return strlen(*output);
     }
 
+    /* Empty agent_groups is allowed - fallback to merge.mg will be used */
+
     char *json_str = NULL;
     cJSON *root = cJSON_CreateObject();
 
     if (root) {
         cJSON_AddStringToObject(root, "cluster_name", agent_cluster_name);
+        cJSON_AddStringToObject(root, "agent_groups", agent_agent_groups);
         json_str = cJSON_PrintUnformatted(root);
         cJSON_Delete(root);
     }

@@ -19,11 +19,14 @@
 #include <map>
 #include <mutex>
 #include <set>
+#include <sstream>
 #include <thread>
 
-// Forward declaration for cluster name getter (implemented in agent_info.cpp)
+// Forward declarations for handshake data getters (implemented in agent_info.cpp)
 extern "C" {
     const char* agent_info_get_cluster_name(void);
+    const char* agent_info_get_agent_groups(void);
+    void agent_info_clear_agent_groups(void);
 }
 
 constexpr auto QUEUE_SIZE = 4096;
@@ -431,12 +434,41 @@ void AgentInfoImpl::populateAgentMetadata()
         agentMetadata["cluster_name"] = "";
     }
 
-    // Read agent groups from merged.mg (only for agents)
+    // Get agent groups (only for agents)
+    // Priority: 1) Groups from handshake, 2) Groups from merged.mg
     std::vector<std::string> groups;
 
     if (m_isAgent)
     {
-        groups = readAgentGroups();
+        // First, try to get groups from handshake (received from manager)
+        const char* handshake_groups = agent_info_get_agent_groups();
+
+        if (handshake_groups && handshake_groups[0] != '\0')
+        {
+            // Parse CSV groups from handshake
+            std::string groups_str(handshake_groups);
+            std::istringstream iss(groups_str);
+            std::string group;
+
+            while (std::getline(iss, group, ','))
+            {
+                if (!group.empty())
+                {
+                    groups.push_back(group);
+                }
+            }
+
+            m_logFunction(LOG_DEBUG, "Using " + std::to_string(groups.size()) + " groups from manager handshake");
+
+            // Clear handshake groups after consuming them
+            // Subsequent calls will read from merged.mg
+            agent_info_clear_agent_groups();
+        }
+        else
+        {
+            // Fall back to reading from merged.mg
+            groups = readAgentGroups();
+        }
     }
 
     // Update the global metadata provider BEFORE updateChanges
