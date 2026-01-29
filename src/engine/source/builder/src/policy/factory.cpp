@@ -11,7 +11,6 @@
 
 #include "asset.hpp"
 #include "syntax.hpp"
-#include "builders/enrichment/enrichment.hpp"
 
 namespace
 {
@@ -339,7 +338,7 @@ PolicyGraph buildGraph(const BuiltAssets& assets)
     return graph;
 }
 
-base::Expression buildExpression(const PolicyGraph& graph, const cm::store::dataType::Policy& data)
+base::Expression buildExpression(const PolicyGraph& graph, const base::Expression& enrichmentExpression)
 {
 
     // Phase 1: Pre filters implies Decoders tree
@@ -378,9 +377,6 @@ base::Expression buildExpression(const PolicyGraph& graph, const cm::store::data
         }
         return base::Chain::create("Phase1_Decoders", {decodersExpr});
     }();
-
-    // Inyect IOCs here, is a and with phase 1. IOCs always should be successful to pass to filters.
-    auto phase2 = builders::enrichment::getEnrichmentExpression(data);
 
     // Phase 3: Post filters implies Outputs tree (Outpus and filters and optionals)
     auto phase3 = [&]() -> std::optional<base::Expression>
@@ -430,9 +426,9 @@ base::Expression buildExpression(const PolicyGraph& graph, const cm::store::data
     // Phase 1 only fails if pre-filters fail, phase 3 only fails if post-filters fail.
     if (phase3.has_value())
     {
-        return base::And::create(data.getOriginSpace(), {phase1, phase2, phase3.value()});
+        return base::And::create(graph.graphName, {phase1, enrichmentExpression, phase3.value()});
     }
-    return base::And::create(data.getOriginSpace(), {phase1, phase2});
+    return base::And::create(graph.graphName, {phase1, enrichmentExpression});
 }
 
 } // namespace builder::policy::factory

@@ -8,15 +8,19 @@ constexpr std::string_view JPATH_ORIGIN_SPACE = "/wazuh/space/name"; ///< wazuh.
 namespace builder::builders::enrichment
 {
 
-base::Expression getEnrichmentExpression(const cm::store::dataType::Policy& policy)
+base::Expression getEnrichmentExpression(const cm::store::dataType::Policy& policy, bool trace)
 {
     // Setting origin space
     return base::Term<base::EngineOp>::create(
         "enrichment.setOriginSpace",
-        [originSpace = policy.getOriginSpace()](base::Event event) -> base::result::Result<base::Event>
+        [originSpace = policy.getOriginSpace(), trace](base::Event event) -> base::result::Result<base::Event>
         {
             event->setString(originSpace, JPATH_ORIGIN_SPACE);
-            return base::result::Result<base::Event>(event, "Set space name", true);
+            if (trace)
+            {
+                return base::result::makeSuccess<decltype(event)>(event, "[enrichment] Set origin space");
+            }
+            return base::result::makeSuccess<decltype(event)>(event);
         });
 }
 

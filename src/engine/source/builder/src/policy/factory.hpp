@@ -95,6 +95,7 @@ struct PolicyGraph
 {
     // TODO Rename to policy tree or similar, now is not full policy graph, only the subgraphs
     std::unordered_map<AssetPipelineStage, Graph<base::Name, Asset>> subgraphs; ///< Subgraphs by type
+    std::string graphName;                                                      ///< Name of the graph
 
     // TODO: Implement
     /**
@@ -245,13 +246,13 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
  *    - If no outputs are configured, the pipeline ends after the last filter.
  *
  * @param graph Policy graph.
- * @param data Policy data.
+ * @param enrichmentExpression Expression for IOC enrichment.
  *
  * @return base::Expression
  *
  * @throw std::runtime_error If any error occurs.
  */
-base::Expression buildExpression(const PolicyGraph& graph, const cm::store::dataType::Policy& data);
+base::Expression buildExpression(const PolicyGraph& graph,  const base::Expression& enrichmentExpression);
 
 } // namespace builder::policy::factory
 

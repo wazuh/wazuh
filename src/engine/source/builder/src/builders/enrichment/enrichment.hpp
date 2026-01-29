@@ -8,7 +8,14 @@
 namespace builder::builders::enrichment
 {
 
-base::Expression getEnrichmentExpression(const cm::store::dataType::Policy& policy);
+/**
+ * @brief Get the enrichment expression for the policy.
+ *
+ * @param policy Policy data.
+ * @param trace Enable tracing in the enrichment expression.
+ * @return base::Expression Enrichment expression.
+ */
+base::Expression getEnrichmentExpression(const cm::store::dataType::Policy& policy, bool trace);
 
 } // namespace builder::builders::enrichment
 
