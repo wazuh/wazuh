@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.12.4)
 
 project(groups)
 
@@ -24,46 +24,32 @@ endif()
 set(SRC_FILES "")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    list(APPEND SRC_FILES
-      src/groups_windows.cpp
-      src/user_groups_windows.cpp
-      ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/windows/users_utils_wrapper.cpp
-      ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/windows/groups_utils_wrapper.cpp)
-    set(PLATFORM_LIBS_GROUPS netapi32 advapi32)
+  list(APPEND SRC_FILES src/groups_windows.cpp src/user_groups_windows.cpp
+       ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/windows/users_utils_wrapper.cpp
+       ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/windows/groups_utils_wrapper.cpp)
+  set(PLATFORM_LIBS_GROUPS netapi32 advapi32)
 else()
-    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        list(APPEND SRC_FILES
-          src/groups_linux.cpp
-          src/user_groups_linux.cpp)
-    elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-        find_library(OPEN_DIRECTORY OpenDirectory)
-        find_library(FOUNDATION Foundation)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    list(APPEND SRC_FILES src/groups_linux.cpp src/user_groups_linux.cpp)
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    find_library(OPEN_DIRECTORY OpenDirectory)
+    find_library(FOUNDATION Foundation)
 
-        list(APPEND SRC_FILES
-          src/groups_darwin.cpp
-          src/user_groups_darwin.cpp
-          ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/darwin/od_wrapper.mm)
-        set(PLATFORM_LIBS_GROUPS ${OPEN_DIRECTORY} ${FOUNDATION})
-    endif()
+    list(APPEND SRC_FILES src/groups_darwin.cpp src/user_groups_darwin.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/darwin/od_wrapper.mm)
+    set(PLATFORM_LIBS_GROUPS ${OPEN_DIRECTORY} ${FOUNDATION})
+  endif()
 endif()
 
 add_library(groups STATIC ${SRC_FILES})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  target_link_libraries(groups
-    wtsapi32
-    ${PLATFORM_LIBS_GROUPS}
-  )
+  target_link_libraries(groups PRIVATE wtsapi32 ${PLATFORM_LIBS_GROUPS})
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  target_link_libraries(groups ${PLATFORM_LIBS_GROUPS})
+  target_link_libraries(groups PRIVATE ${PLATFORM_LIBS_GROUPS})
 endif()
 
 if(UNIT_TEST)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        target_link_libraries(groups -fprofile-arcs)
-    else()
-        target_link_libraries(groups gcov)
-    endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-
-    add_subdirectory(tests)
+  add_coverage_libraries(groups)
+  add_subdirectory(tests)
 endif(UNIT_TEST)

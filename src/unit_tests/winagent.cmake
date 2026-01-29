@@ -18,20 +18,20 @@ if(NOT WAZUHEXT)
 endif()
 
 # Find the wazuh sysinfo library
-find_library(SYSINFO NAMES sysinfo HINTS "${SRC_FOLDER}/data_provider/build/bin")
+find_library(SYSINFO NAMES sysinfo HINTS "${SRC_FOLDER}/build/bin")
 set(uname "Win32")
 
 if(NOT SYSINFO)
-  message(FATAL_ERROR "SYSINFO is set to '${SYSINFO}', but did not find any file matching ${SRC_FOLDER}/${CMAKE_FIND_LIBRARY_PREFIXES}sysinfo${CMAKE_FIND_LIBRARY_SUFFIXES}")
-  message(FATAL_ERROR "libsysinfo not found in ${SRC_FOLDER}/data_provider/build/bin Aborting...")
+  message(FATAL_ERROR "SYSINFO is set to '${SYSINFO}', but did not find any file matching ${SRC_FOLDER}/build/bin/${CMAKE_FIND_LIBRARY_PREFIXES}sysinfo${CMAKE_FIND_LIBRARY_SUFFIXES}")
+  message(FATAL_ERROR "libsysinfo not found in ${SRC_FOLDER}/build/bin Aborting...")
 endif()
 
 # Find the agent_metadata library
-find_library(AGENT_METADATA NAMES agent_metadata HINTS "${SRC_FOLDER}/shared_modules/agent_metadata/build/bin")
+find_library(AGENT_METADATA NAMES agent_metadata HINTS "${SRC_FOLDER}/build/bin")
 
 if(NOT AGENT_METADATA)
-  message(FATAL_ERROR "AGENT_METADATA is set to '${AGENT_METADATA}', but did not find any file matching ${SRC_FOLDER}/shared_modules/agent_metadata/build/bin/${CMAKE_FIND_LIBRARY_PREFIXES}agent_metadata${CMAKE_FIND_LIBRARY_SUFFIXES}")
-  message(FATAL_ERROR "libagent_metadata not found in ${SRC_FOLDER}/shared_modules/agent_metadata/build/bin Aborting...")
+  message(FATAL_ERROR "AGENT_METADATA is set to '${AGENT_METADATA}', but did not find any file matching ${SRC_FOLDER}/build/bin/${CMAKE_FIND_LIBRARY_PREFIXES}agent_metadata${CMAKE_FIND_LIBRARY_SUFFIXES}")
+  message(FATAL_ERROR "libagent_metadata not found in ${SRC_FOLDER}/build/bin Aborting...")
 endif()
 
 # Win32 pthread library
@@ -88,10 +88,16 @@ set_target_properties(
 
 target_link_libraries(DEPENDENCIES_O ${WAZUHLIB} ${WAZUHEXT} ${PTHREAD} ${SYSINFO} ${AGENT_METADATA} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 wintrust)
 
+# Find CMake-built libraries (DLL import libraries)
+set(FIMDB_LIB ${SRC_FOLDER}/build/lib/libfimdb.dll.a)
+set(AGENT_SYNC_PROTOCOL_LIB ${SRC_FOLDER}/build/lib/libagent_sync_protocol.dll.a)
+set(DBSYNC_LIB ${SRC_FOLDER}/build/lib/libdbsync.dll.a)
+set(SCHEMA_VALIDATOR_LIB ${SRC_FOLDER}/build/lib/libschema_validator.dll.a)
+
 # Set tests dependencies
 # Use --start-group and --end-group to handle circular dependencies
-set(TEST_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} ${SYSINFO} ${AGENT_METADATA} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
-set(TEST_EVENT_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} ${SYSINFO} ${AGENT_METADATA} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
+set(TEST_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} ${SYSINFO} ${AGENT_METADATA} DEPENDENCIES_O ${AGENT_SYNC_PROTOCOL_LIB} ${DBSYNC_LIB} ${SCHEMA_VALIDATOR_LIB} ${FIMDB_LIB} -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
+set(TEST_EVENT_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} ${SYSINFO} ${AGENT_METADATA} DEPENDENCIES_O ${AGENT_SYNC_PROTOCOL_LIB} ${DBSYNC_LIB} ${SCHEMA_VALIDATOR_LIB} ${FIMDB_LIB} -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
 
 add_subdirectory(client-agent)
 add_subdirectory(wazuh_modules)

@@ -5,27 +5,33 @@ project(content_manager_utest)
 # Copy input files to the build directory
 file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-# Include directories
-include_directories(${CMAKE_SOURCE_DIR}/../http-request/include)
+if(NOT DEFINED WAZUH_MAIN_PROJECT)
+  get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+endif()
 
-file(GLOB PROJECT_SOURCES
-    *.cpp
-    ${CMAKE_SOURCE_DIR}/content_manager/src/*[!main]*.cpp
-)
+# Include directories
+include_directories(${SRC_FOLDER}/shared_modules/http-request/include)
+
+file(GLOB PROJECT_SOURCES *.cpp)
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 
-target_link_libraries(${PROJECT_NAME}
-    debug gtestd
-    debug gmockd
-    optimized gtest
-    optimized gmock
-    urlrequest
-    wazuhext
-    lzma
-    rocksdb
-    pthread
-)
+target_link_libraries(
+  ${PROJECT_NAME}
+  content_manager
+  debug
+  gtestd
+  debug
+  gmockd
+  optimized
+  gtest
+  optimized
+  gmock
+  urlrequest
+  wazuhext
+  lzma
+  rocksdb
+  pthread)
 
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
 set_tests_properties(${PROJECT_NAME} PROPERTIES LABELS ${PROJECT_NAME})

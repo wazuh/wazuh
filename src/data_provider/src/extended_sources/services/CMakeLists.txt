@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.12.4)
 
 project(services)
 
@@ -16,7 +16,8 @@ else()
 
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     include_directories(${CMAKE_SOURCE_DIR}/../external/dbus/include/dbus-1.0)
-    include_directories(${CMAKE_SOURCE_DIR}/../external/dbus/lib/dbus-1.0/include)
+    include_directories(
+      ${CMAKE_SOURCE_DIR}/../external/dbus/lib/dbus-1.0/include)
     link_directories(${CMAKE_SOURCE_DIR}/../external/dbus/lib)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/linux)
   elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -27,8 +28,8 @@ endif()
 set(SRC_FILES "")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  list(APPEND SRC_FILES
-    src/services_windows.cpp
+  list(
+    APPEND SRC_FILES src/services_windows.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/windows/services_utils_wrapper.cpp)
   set(PLATFORM_LIBS_SERVICES netapi32)
 else()
@@ -43,15 +44,9 @@ endif()
 
 add_library(services STATIC ${SRC_FILES})
 
-target_link_libraries(services ${PLATFORM_LIBS_SERVICES})
+target_link_libraries(services PRIVATE ${PLATFORM_LIBS_SERVICES})
 
 if(UNIT_TEST)
-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-      target_link_libraries(services -fprofile-arcs)
-  else()
-      target_link_libraries(services gcov)
-  endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-
+  add_coverage_libraries(services)
   add_subdirectory(tests)
 endif(UNIT_TEST)
-

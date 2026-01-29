@@ -14,8 +14,8 @@
 #include "dynamic_library_wrapper.h"
 #include <memory>
 
-volatile bool event_received = false;
-volatile bool ebpf_hc_created = false;
+extern volatile bool event_received;
+extern volatile bool ebpf_hc_created;
 
 class fimebpf
 {

@@ -1,33 +1,21 @@
 cmake_minimum_required(VERSION 3.12.4)
 project(schema_validator)
 
-# Default to Release if not specified
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
-endif()
-
 # C++17 standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Get SRC_FOLDER for Windows resources
-get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+if(NOT DEFINED WAZUH_MAIN_PROJECT)
+  get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+endif()
 
 # Compiler flags
 set(CMAKE_CXX_FLAGS
     "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -fPIC"
 )
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-else()
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
-endif()
 
 # Address/UB sanitizer (optional)
-if(FSANITIZE)
-  set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
-endif()
 
 # Set output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -39,14 +27,18 @@ set(SCHEMA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../external/indexer-plugins")
 file(GLOB SCHEMA_FILES "${SCHEMA_DIR}/*.json")
 
 if(NOT SCHEMA_FILES)
-  message(WARNING "No schema files found in ${SCHEMA_DIR}. Schemas will not be embedded.")
+  message(
+    WARNING
+      "No schema files found in ${SCHEMA_DIR}. Schemas will not be embedded.")
 endif()
 
 # Generate schemaResources.cpp from JSON schemas using CMake
 set(GENERATED_RESOURCES ${CMAKE_CURRENT_BINARY_DIR}/schemaResources.cpp)
 
 # Create a CMake script to generate the resources file
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generate_resources.cmake "
+file(
+  WRITE ${CMAKE_CURRENT_BINARY_DIR}/generate_resources.cmake
+  "
 # Auto-generated CMake script to embed JSON schemas
 
 set(OUTPUT_FILE \"${GENERATED_RESOURCES}\")
@@ -112,56 +104,45 @@ message(STATUS \"Generated \${OUTPUT_FILE} with \${SCHEMA_COUNT} schemas\")
 # Add custom command to generate the resources file
 add_custom_command(
   OUTPUT ${GENERATED_RESOURCES}
-  COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/generate_resources.cmake
+  COMMAND ${CMAKE_COMMAND} -P
+          ${CMAKE_CURRENT_BINARY_DIR}/generate_resources.cmake
   DEPENDS ${SCHEMA_FILES}
   COMMENT "Embedding JSON schemas into C++ source"
-  VERBATIM
-)
+  VERBATIM)
 
 # Build the schema_validator library
-add_library(schema_validator SHARED
-  src/schemaValidator.cpp
-  src/schemaValidator_c.cpp
-  ${GENERATED_RESOURCES}
-  ${SRC_FOLDER}/${RESOURCE_OBJ}
-)
+add_library(
+  schema_validator SHARED src/schemaValidator.cpp src/schemaValidator_c.cpp
+                          ${GENERATED_RESOURCES} ${SRC_FOLDER}/${RESOURCE_OBJ})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN_EXPORT)
-  set_target_properties(schema_validator PROPERTIES
-        PREFIX ""
-        SUFFIX ".dll"
-        LINK_FLAGS "-Wl,--add-stdcall-alias"
-        POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
-        # MinGW generates position-independent-code for DLL by default
+  set_target_properties(
+    schema_validator
+    PROPERTIES PREFIX ""
+               SUFFIX ".dll"
+               LINK_FLAGS "-Wl,--add-stdcall-alias"
+               POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
+               # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
   string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_include_directories(schema_validator
-  PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-  PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_BINARY_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../external/nlohmann
-)
+target_include_directories(
+  schema_validator
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../external/nlohmann)
 
 # Link against stdc++fs for filesystem support (needed for older compilers)
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.0")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION
+                                            VERSION_LESS "9.0")
   target_link_libraries(schema_validator PRIVATE stdc++fs)
 endif()
 
 if(UNIT_TEST)
-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_compile_options(schema_validator PRIVATE -fprofile-arcs -ftest-coverage)
-    target_link_libraries(schema_validator PRIVATE -fprofile-arcs)
-  else()
-    target_compile_options(schema_validator PRIVATE --coverage)
-    target_link_libraries(schema_validator PRIVATE gcov)
-  endif()
-
   enable_testing()
+  add_coverage_libraries(schema_validator)
   add_subdirectory(tests)
 endif()

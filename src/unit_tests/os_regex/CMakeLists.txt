@@ -27,7 +27,7 @@ set_target_properties(
 target_link_libraries(OS_REGEX_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 if(${TARGET} STREQUAL "winagent")
-    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+    link_directories(${SRC_FOLDER}/build/bin)
 endif(${TARGET} STREQUAL "winagent")
 
 # Generate os_regex tests

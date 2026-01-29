@@ -42,8 +42,8 @@ jobs:
           path: |
             src/libwazuhext.so
             src/libwazuhshared.so
-            src/build/shared_modules/indexer_connector/libindexer_connector.so
-            src/build/shared_modules/content_manager/libcontent_manager.so
+            src/build/lib/libindexer_connector.so
+            src/build/lib/libcontent_manager.so
 
       - name: Upload rocksdb shared libraries
         uses: actions/upload-artifact@v4

@@ -32,19 +32,5 @@ jobs:
       - name: Run wazuh unit tests for macOS 14
         run: |
           export DYLD_LIBRARY_PATH=/usr/local/lib:$DYLD_LIBRARY_PATH
-          cd src/data_provider/build
-          ctest -V
-          cd ../../shared_modules/dbsync/build
-          ctest -V
-          cd ../../../wazuh_modules/syscollector/build
-          ctest -V
-          cd ../../../shared_modules/sync_protocol/build
-          ctest -V
-          cd ../../../syscheckd/build
-          ctest -V
-          cd ../../wazuh_modules/sca/build
-          ctest -V
-          cd ../../agent_info/build
-          ctest -V
-          cd ../../../shared_modules/file_helper/build
+          cd src/build
           ctest -V

@@ -19,6 +19,7 @@
 #include <windows.h>
 #include <winreg.h>
 #include <cstdio>
+#include <cstring>
 #include <memory>
 #include "encodingWindowsHelper.h"
 #include "windowsHelper.h"

@@ -2,17 +2,19 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(content_manager)
 
-enable_testing()
-
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if (NOT SRC_FOLDER)
-    get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+if(NOT DEFINED WAZUH_MAIN_PROJECT)
+  get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 endif()
 
-if (NOT SHARED_MODULES)
-    get_filename_component(SHARED_MODULES ${SRC_FOLDER}/shared_modules/ ABSOLUTE)
+if(NOT DEFINED SHARED_MODULES)
+  get_filename_component(SHARED_MODULES ${SRC_FOLDER}/shared_modules/ ABSOLUTE)
 endif()
 
 # Include directories
@@ -43,22 +45,26 @@ link_directories(${SRC_FOLDER}/external/zlib/contrib/minizip/)
 link_directories(${SHARED_MODULES}/http-request/build)
 link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
 
-file(GLOB CONTENT_DOWNLOAD_SRC
-    "src/*.cpp"
-    )
+file(GLOB CONTENT_DOWNLOAD_SRC "src/*.cpp")
 
-add_library(content_manager SHARED
-    ${CONTENT_DOWNLOAD_SRC}
-    )
+add_library(content_manager SHARED ${CONTENT_DOWNLOAD_SRC})
 
-target_link_libraries(content_manager urlrequest gcc_s wazuhext lzma rocksdb flatbuffers)
+target_link_libraries(
+  content_manager PRIVATE
+  urlrequest
+  gcc_s
+  wazuhext
+  lzma
+  rocksdb
+  flatbuffers)
 
-set_target_properties(content_manager PROPERTIES
-        BUILD_RPATH_USE_ORIGIN TRUE
-        BUILD_RPATH "$ORIGIN/../lib"
-)
+set_target_properties(content_manager PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
+                                                 BUILD_RPATH "$ORIGIN/../lib")
+
+if(UNIT_TEST)
+  enable_testing()
+  add_coverage_libraries(content_manager)
+  add_subdirectory(tests)
+endif()
 
 add_subdirectory(testtool)
-if(UNIT_TEST)
-    add_subdirectory(tests)
-endif()

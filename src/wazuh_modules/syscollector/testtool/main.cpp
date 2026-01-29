@@ -83,9 +83,11 @@ int main(int argc, const char* argv[])
     const auto spInfo{ std::make_shared<SysInfo>() };
     DBSync::initialize(logErrorFunction);
 
+    std::thread thread;  // Declare thread outside try block
+
     try
     {
-        std::thread thread
+        thread = std::thread
         {
             [timedMainLoop, sleepTime]
             {
@@ -126,15 +128,16 @@ int main(int argc, const char* argv[])
                                       true);
 
         Syscollector::instance().start();
-
-        if (thread.joinable())
-        {
-            thread.join();
-        }
     }
     catch (const std::exception& ex)
     {
         std::cout << ex.what() << std::endl;
+    }
+
+    // Always join the thread before exiting (both success and exception paths)
+    if (thread.joinable())
+    {
+        thread.join();
     }
 
     DBSync::teardown();

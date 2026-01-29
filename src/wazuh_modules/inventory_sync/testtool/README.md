@@ -581,7 +581,7 @@ InventorySync writes these documents to RocksDB. Later, VD reads them and builds
       "name": "(gdb) InventorySync VD Test - Session from JSON",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/src/build/wazuh_modules/inventory_sync/testtool/inventory_sync_testtool",
+      "program": "${workspaceFolder}/src/build/bin/inventory_sync_testtool",
       "args": [
         "--input",
         "${workspaceFolder}/src/wazuh_modules/inventory_sync/testtool/test_data/INPUT_000.json",

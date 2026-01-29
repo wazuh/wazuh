@@ -1,14 +1,34 @@
-# Generate syscheck library
+# Collect syscheckd object files from CMake build
 if(${TARGET} STREQUAL "winagent")
-  file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*.obj
-                     ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*/*.obj)
-  list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/main.c.obj)
+  file(GLOB sysfiles
+       ${SRC_FOLDER}/build/syscheckd/CMakeFiles/syscheckd_lib.dir/src/*.obj
+       ${SRC_FOLDER}/build/syscheckd/CMakeFiles/syscheckd_lib.dir/src/*/*.obj
+       ${SRC_FOLDER}/build/syscheckd/CMakeFiles/syscheckd_lib.dir/src/*/*/*.obj)
+  list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/build/syscheckd/CMakeFiles/syscheckd_lib.dir/src/main.c.obj)
 else()
-  file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*.o
-                     ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*/*.o)
-  list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/main.c.o)
+  file(GLOB sysfiles
+       ${SRC_FOLDER}/build/syscheckd/CMakeFiles/syscheckd_lib.dir/src/*.o
+       ${SRC_FOLDER}/build/syscheckd/CMakeFiles/syscheckd_lib.dir/src/*/*.o
+       ${SRC_FOLDER}/build/syscheckd/CMakeFiles/syscheckd_lib.dir/src/*/*/*.o)
+  list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/build/syscheckd/CMakeFiles/syscheckd_lib.dir/src/main.c.o)
 endif()
 
+# Link against required libraries
+link_directories(${SRC_FOLDER}/build/lib)
+if(${TARGET} STREQUAL "winagent")
+  # On Windows, link to .dll.a import libraries
+  set(FIMDB_LIB ${SRC_FOLDER}/build/lib/libfimdb.dll.a)
+  set(AGENT_SYNC_PROTOCOL_LIB ${SRC_FOLDER}/build/lib/libagent_sync_protocol.dll.a)
+  set(DBSYNC_LIB ${SRC_FOLDER}/build/lib/libdbsync.dll.a)
+  set(SCHEMA_VALIDATOR_LIB ${SRC_FOLDER}/build/lib/libschema_validator.dll.a)
+else()
+  find_library(FIMDB_LIB NAMES fimdb HINTS ${SRC_FOLDER}/build/lib REQUIRED)
+  find_library(AGENT_SYNC_PROTOCOL_LIB NAMES agent_sync_protocol HINTS ${SRC_FOLDER}/build/lib REQUIRED)
+  find_library(DBSYNC_LIB NAMES dbsync HINTS ${SRC_FOLDER}/build/lib REQUIRED)
+  find_library(SCHEMA_VALIDATOR_LIB NAMES schema_validator HINTS ${SRC_FOLDER}/build/lib REQUIRED)
+endif()
+
+# Generate rootcheck library from object files
 file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
 list(APPEND rootfiles ${SRC_FOLDER}/shared/fs_op.o)
 list(APPEND rootfiles ${SRC_FOLDER}/shared/store_op.o)
@@ -63,10 +83,14 @@ set_target_properties(
   LINKER_LANGUAGE C
   )
 
-target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread agent_sync_protocol dbsync)
+if(${TARGET} STREQUAL "winagent")
+  target_link_libraries(SYSCHECK_O ${FIMDB_LIB} ${AGENT_SYNC_PROTOCOL_LIB} ${DBSYNC_LIB} ${SCHEMA_VALIDATOR_LIB} ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+else()
+  target_link_libraries(SYSCHECK_O ${FIMDB_LIB} ${AGENT_SYNC_PROTOCOL_LIB} ${DBSYNC_LIB} ${SCHEMA_VALIDATOR_LIB} ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread -ldl)
+endif()
 
 if(${TARGET} STREQUAL "winagent")
-    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+    link_directories(${SRC_FOLDER}/build/bin)
 endif(${TARGET} STREQUAL "winagent")
 
 # Add fim_tools library to compilation
@@ -92,9 +116,9 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate syscheckd-event library
 if(${TARGET} STREQUAL "winagent")
-  file(GLOB syscheck_event_files ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*.obj
-                                 ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*/*.obj)
-  list(REMOVE_ITEM sysfiles {SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/main.obj)
+  file(GLOB syscheck_event_files ${SRC_FOLDER}/build/syscheckd/CMakeFiles/wazuh-syscheckd-event.dir/src/*.obj
+                                 ${SRC_FOLDER}/build/syscheckd/CMakeFiles/wazuh-syscheckd-event.dir/src/*/*.obj)
+  list(REMOVE_ITEM syscheck_event_files ${SRC_FOLDER}/build/syscheckd/CMakeFiles/wazuh-syscheckd-event.dir/src/main.c.obj)
   add_library(SYSCHECK_EVENT_O STATIC ${syscheck_event_files})
 
   set_source_files_properties(
@@ -111,7 +135,7 @@ if(${TARGET} STREQUAL "winagent")
     LINKER_LANGUAGE C
     )
 
-  target_link_libraries(SYSCHECK_EVENT_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread agent_sync_protocol dbsync)
+  target_link_libraries(SYSCHECK_EVENT_O ${FIMDB_LIB} ${AGENT_SYNC_PROTOCOL_LIB} ${DBSYNC_LIB} ${SCHEMA_VALIDATOR_LIB} ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
   add_subdirectory(registry)
 endif()

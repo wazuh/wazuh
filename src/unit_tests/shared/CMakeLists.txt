@@ -2,7 +2,8 @@
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 if(${TARGET} STREQUAL "winagent")
-    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+    link_directories(${SRC_FOLDER}/build/bin)
+    link_directories(${SRC_FOLDER}/build/lib)
 endif(${TARGET} STREQUAL "winagent")
 
 # Tests list and flags

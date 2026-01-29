@@ -4,7 +4,7 @@ include_directories(${SRC_FOLDER}/syscheckd/include)
 link_directories(${SRC_FOLDER}/unit_tests/wrappers/syscheckd/registry)
 
 if(${TARGET} STREQUAL "winagent")
-    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+    link_directories(${SRC_FOLDER}/build/bin)
 endif(${TARGET} STREQUAL "winagent")
 
 # registry.c tests
