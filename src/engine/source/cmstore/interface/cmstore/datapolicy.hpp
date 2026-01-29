@@ -85,8 +85,8 @@ public:
            std::vector<std::string> filters,
            std::vector<std::string> enrichments,
            std::vector<std::string> outputs,
-           std::string_view originSpace = DEFAULT_ORIGIN_SPACE
-        )
+           std::string_view originSpace = DEFAULT_ORIGIN_SPACE,
+           std::string_view hash = "")
         : m_title(policyTitle)
         , m_rootDecoder(rootDecoder)
         , m_integrations(std::move(integrationsUUIDs))
@@ -94,6 +94,7 @@ public:
         , m_enrichments(std::move(enrichments))
         , m_outputs(std::move(outputs))
         , m_originSpace(originSpace)
+        , m_hash(hash)
     {
         cm::store::detail::findDuplicateOrInvalidUUID(m_integrations, "Integration");
         cm::store::detail::findDuplicateOrInvalidUUID(m_outputs, "Output");
@@ -245,22 +246,23 @@ public:
             return originSpaceOpt.value();
         }();
 
-        Policy policy {title,
-                       rootDecoder,
-                       std::move(integrations),
-                       std::move(filters),
-                       std::move(enrichments),
-                       std::move(outputs),
-                       originSpace};
+        auto policyHash = [&]() -> std::string {
+            auto hashOpt = policyJson.getString(jsonpolicy::PATH_KEY_HASH);
+            if (!hashOpt.has_value() || hashOpt->empty())
+            {
+                throw std::runtime_error("Policy JSON must have a non-empty 'hash' field");
+            }
+            return hashOpt.value();
+        }();
 
-        auto hashOpt = policyJson.getString(jsonpolicy::PATH_KEY_HASH);
-        if (!hashOpt.has_value() || hashOpt->empty())
-        {
-            throw std::runtime_error("Policy JSON must have a non-empty 'hash' field");
-        }
-        policy.m_hash = *hashOpt;
-
-        return policy;
+        return {title,
+                rootDecoder,
+                std::move(integrations),
+                std::move(filters),
+                std::move(enrichments),
+                std::move(outputs),
+                originSpace,
+                policyHash};
 
     }
 
