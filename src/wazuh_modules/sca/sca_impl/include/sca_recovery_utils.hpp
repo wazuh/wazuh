@@ -78,6 +78,12 @@ namespace sca
             {
                 check.erase("regex_type");
             }
+
+            // Remove sync field - internal use only
+            if (check.contains("sync"))
+            {
+                check.erase("sync");
+            }
         }
 
         /// @brief Normalize policy data for stateful message format

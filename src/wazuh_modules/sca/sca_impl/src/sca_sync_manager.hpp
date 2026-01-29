@@ -1,0 +1,46 @@
+#pragma once
+
+#include <idbsync.hpp>
+#include <json.hpp>
+
+#include <cstdint>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_set>
+#include <vector>
+
+class SCASyncManager
+{
+    public:
+        struct DeleteResult
+        {
+            bool wasSynced {false};
+            std::vector<std::string> promotedIds;
+        };
+
+        explicit SCASyncManager(std::shared_ptr<IDBSync> dbSync);
+
+        void initialize();
+        void updateHandshake(uint64_t syncLimit, const std::string& clusterName);
+
+        bool shouldSyncInsert(const nlohmann::json& checkData);
+        bool shouldSyncModify(const std::string& checkId);
+        DeleteResult handleDelete(const nlohmann::json& checkData);
+
+    private:
+        void ensureInitializedLocked();
+        void enforceLimitLocked();
+        void updateSyncFlag(const std::string& checkId, uint64_t version, int syncValue);
+        std::vector<nlohmann::json> selectChecks(const std::string& filter, uint32_t limit) const;
+        std::string clusterNameForLog() const;
+
+        std::shared_ptr<IDBSync> m_dBSync;
+        mutable std::mutex m_mutex;
+        bool m_initialized {false};
+        uint64_t m_syncLimit {0};
+        uint64_t m_totalCount {0};
+        uint64_t m_syncedCount {0};
+        std::unordered_set<std::string> m_syncedIds;
+        std::string m_clusterName;
+};

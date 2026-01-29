@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.12.4)
 project(inventory_sync_testtool)
 
+if(FSANITIZE)
+set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
+endif()
+
 file(GLOB INVENTORY_SYNC_TESTTOOL_SRC
     "*.cpp"
     )

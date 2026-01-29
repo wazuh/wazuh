@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <stdint.h>
 
 bool __wrap_schema_validator_is_initialized(void) {
     return mock_type(bool);

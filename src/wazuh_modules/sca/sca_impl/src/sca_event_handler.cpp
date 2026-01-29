@@ -1,5 +1,6 @@
 #include <sca_checksum.hpp>
 #include <sca_event_handler.hpp>
+#include <sca_sync_manager.hpp>
 
 #include <dbsync.hpp>
 #include <hashHelper.h>
@@ -35,10 +36,12 @@ static const std::map<ReturnTypeCallback, Operation_t> OPERATION_STATES_MAP
 
 SCAEventHandler::SCAEventHandler(std::shared_ptr<IDBSync> dBSync,
                                  std::function<int(const std::string&)> pushStatelessMessage,
-                                 std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> pushStatefulMessage)
+                                 std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> pushStatefulMessage,
+                                 std::shared_ptr<SCASyncManager> syncManager)
     : m_pushStatelessMessage(std::move(pushStatelessMessage))
     , m_pushStatefulMessage(std::move(pushStatefulMessage))
-    , m_dBSync(std::move(dBSync)) {};
+    , m_dBSync(std::move(dBSync))
+    , m_syncManager(std::move(syncManager)) {};
 
 void SCAEventHandler::ReportPoliciesDelta(
     const std::unordered_map<std::string, nlohmann::json>& modifiedPoliciesMap,
@@ -49,24 +52,73 @@ void SCAEventHandler::ReportPoliciesDelta(
     // Vector to accumulate checks that fail validation for deferred deletion
     std::vector<nlohmann::json> failedChecks;
 
-    for (const auto& event : events)
+    const auto extractCheckData = [](const nlohmann::json & event)
     {
-        const auto [processedStatefulEvent, operation, version] = ProcessStateful(event);
-
-        // Validate and handle stateful message
-        nlohmann::json checkDataForDelete;
+        nlohmann::json checkData;
 
         if (event.contains("check") && event["check"].is_object())
         {
             if (event["check"].contains("new") && event["check"]["new"].is_object())
             {
-                checkDataForDelete = event["check"]["new"];
+                checkData = event["check"]["new"];
             }
             else
             {
-                checkDataForDelete = event["check"];
+                checkData = event["check"];
             }
         }
+
+        return checkData;
+    };
+
+    const auto extractCheckId = [](const nlohmann::json & checkData)
+    {
+        if (checkData.contains("id"))
+        {
+            if (checkData["id"].is_string())
+            {
+                return checkData["id"].get<std::string>();
+            }
+
+            if (checkData["id"].is_number_integer())
+            {
+                return std::to_string(checkData["id"].get<int>());
+            }
+        }
+
+        return std::string {};
+    };
+
+    for (const auto& event : events)
+    {
+        // Validate and handle stateful message
+        nlohmann::json checkDataForDelete = extractCheckData(event);
+        const std::string checkId = extractCheckId(checkDataForDelete);
+
+        bool shouldPushStateful = true;
+        std::vector<std::string> promotedIds;
+
+        if (m_syncManager)
+        {
+            const auto result = static_cast<ReturnTypeCallback>(event["result"].get<int>());
+
+            if (result == INSERTED)
+            {
+                shouldPushStateful = m_syncManager->shouldSyncInsert(checkDataForDelete);
+            }
+            else if (result == MODIFIED)
+            {
+                shouldPushStateful = m_syncManager->shouldSyncModify(checkId);
+            }
+            else if (result == DELETED)
+            {
+                auto deleteResult = m_syncManager->handleDelete(checkDataForDelete);
+                shouldPushStateful = deleteResult.wasSynced;
+                promotedIds = std::move(deleteResult.promotedIds);
+            }
+        }
+
+        const auto [processedStatefulEvent, operation, version] = ProcessStateful(event);
 
         const bool validationPassed = ValidateAndHandleStatefulMessage(
                                           processedStatefulEvent,
@@ -75,7 +127,7 @@ void SCAEventHandler::ReportPoliciesDelta(
                                           &failedChecks
                                       );
 
-        if (validationPassed)
+        if (validationPassed && shouldPushStateful)
         {
             PushStateful(processedStatefulEvent, operation, version);
         }
@@ -86,10 +138,14 @@ void SCAEventHandler::ReportPoliciesDelta(
         {
             PushStateless(processedStatelessEvent);
         }
+
+        if (!promotedIds.empty())
+        {
+            ProcessPromotedChecks(promotedIds, &failedChecks);
+        }
     }
 
-    // Delete checks that failed schema validation (batch delete with transaction)
-    DeleteFailedChecksFromDB(failedChecks);
+    HandleFailedChecks(std::move(failedChecks));
 }
 
 void SCAEventHandler::ReportCheckResult(const std::string& policyId,
@@ -151,6 +207,13 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
                 {"policy", policyData}, {"check", rowData}, {"result", result}, {"collector", "check"}
             };
 
+            bool shouldPushStateful = true;
+
+            if (m_syncManager)
+            {
+                shouldPushStateful = m_syncManager->shouldSyncModify(checkId);
+            }
+
             const auto [stateful, operation, version] = ProcessStateful(event);
 
             // Validate and handle stateful message
@@ -172,7 +235,7 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
                                               &failedChecks
                                           );
 
-            if (validationPassed)
+            if (validationPassed && shouldPushStateful)
             {
                 PushStateful(stateful, operation, version);
             }
@@ -192,8 +255,7 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
 
     m_dBSync->syncRow(updateResultQuery.query(), callback);
 
-    // Delete checks that failed schema validation (batch delete with transaction)
-    DeleteFailedChecksFromDB(failedChecks);
+    HandleFailedChecks(std::move(failedChecks));
 }
 
 nlohmann::json
@@ -484,6 +546,11 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                 check = event["check"];
             }
 
+            if (check.contains("sync"))
+            {
+                check.erase("sync");
+            }
+
             if (event["check"].contains("old") && event["check"]["old"].is_object())
             {
                 const auto& old = event["check"]["old"];
@@ -491,7 +558,7 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
 
                 for (auto& [key, value] : old.items())
                 {
-                    if (key == "id")
+                    if (key == "id" || key == "sync")
                     {
                         continue;
                     }
@@ -658,6 +725,12 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
         check.erase("regex_type");
     }
 
+    // Remove sync field - internal use only
+    if (check.contains("sync"))
+    {
+        check.erase("sync");
+    }
+
     // Remove impact field - present in YAML but not in database schema or indexer mapping
     if (check.contains("impact"))
     {
@@ -772,4 +845,100 @@ void SCAEventHandler::DeleteFailedChecksFromDB(const std::vector<nlohmann::json>
     }
 
     // LCOV_EXCL_STOP
+}
+
+void SCAEventHandler::HandleFailedChecks(std::vector<nlohmann::json> failedChecks) const
+{
+    while (!failedChecks.empty())
+    {
+        DeleteFailedChecksFromDB(failedChecks);
+
+        if (!m_syncManager)
+        {
+            return;
+        }
+
+        std::vector<nlohmann::json> promotedFailures;
+
+        for (const auto& failedCheck : failedChecks)
+        {
+            const auto deleteResult = m_syncManager->handleDelete(failedCheck);
+
+            if (!deleteResult.promotedIds.empty())
+            {
+                ProcessPromotedChecks(deleteResult.promotedIds, &promotedFailures);
+            }
+        }
+
+        failedChecks = std::move(promotedFailures);
+    }
+}
+
+void SCAEventHandler::ProcessPromotedChecks(const std::vector<std::string>& promotedIds,
+                                            std::vector<nlohmann::json>* failedChecks) const
+{
+    if (promotedIds.empty())
+    {
+        return;
+    }
+
+    for (const auto& checkId : promotedIds)
+    {
+        const auto checkData = GetPolicyCheckById(checkId);
+
+        if (checkData.empty() || !checkData.contains("policy_id"))
+        {
+            LoggingHelper::getInstance().log(LOG_WARNING, "Promoted check not found in DB: " + checkId);
+            continue;
+        }
+
+        std::string policyId;
+
+        if (checkData["policy_id"].is_string())
+        {
+            policyId = checkData["policy_id"].get<std::string>();
+        }
+        else if (checkData["policy_id"].is_number_integer())
+        {
+            policyId = std::to_string(checkData["policy_id"].get<int>());
+        }
+
+        if (policyId.empty())
+        {
+            LoggingHelper::getInstance().log(LOG_WARNING,
+                                             "Invalid policy_id for promoted check " + checkId + ", skipping");
+            continue;
+        }
+
+        const auto policyData = GetPolicyById(policyId);
+
+        if (policyData.empty())
+        {
+            LoggingHelper::getInstance().log(LOG_WARNING,
+                                             "Policy not found for promoted check " + checkId + ", skipping");
+            continue;
+        }
+
+        const nlohmann::json event =
+        {
+            {"policy", policyData},
+            {"check", checkData},
+            {"result", INSERTED},
+            {"collector", "sync"}
+        };
+
+        const auto [stateful, operation, version] = ProcessStateful(event);
+
+        const bool validationPassed = ValidateAndHandleStatefulMessage(
+                                          stateful,
+                                          "sync promotion checkId: " + checkId,
+                                          checkData,
+                                          failedChecks
+                                      );
+
+        if (validationPassed)
+        {
+            PushStateful(stateful, operation, version);
+        }
+    }
 }

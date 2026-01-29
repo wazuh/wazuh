@@ -23,6 +23,7 @@
 #include "atomic.h"
 #include "defs.h"
 #include "logging_helper.h"
+#include <limits.h>
 
 #include "sca/include/sca.h"
 #include "yaml2json.h"
@@ -105,6 +106,7 @@ sca_set_wm_exec_func sca_set_wm_exec_ptr = NULL;
 sca_set_log_function_func sca_set_log_function_ptr = NULL;
 sca_set_push_functions_func sca_set_push_functions_ptr = NULL;
 sca_set_sync_parameters_func sca_set_sync_parameters_ptr = NULL;
+sca_set_sync_limit_func sca_set_sync_limit_ptr = NULL;
 
 // Sync protocol function pointers
 sca_sync_module_func sca_sync_module_ptr = NULL;
@@ -250,12 +252,14 @@ void * wm_sca_main(wm_sca_t * data) {
 
     if (sca_module = so_get_module_handle(SCA_WM_NAME), sca_module)
     {
+        sca_init_ptr = so_get_function_sym(sca_module, "sca_init");
         sca_start_ptr = so_get_function_sym(sca_module, "sca_start");
         sca_stop_ptr = so_get_function_sym(sca_module, "sca_stop");
         sca_set_wm_exec_ptr = so_get_function_sym(sca_module, "sca_set_wm_exec");
         sca_set_log_function_ptr = so_get_function_sym(sca_module, "sca_set_log_function");
         sca_set_push_functions_ptr = so_get_function_sym(sca_module, "sca_set_push_functions");
         sca_set_sync_parameters_ptr = so_get_function_sym(sca_module, "sca_set_sync_parameters");
+        sca_set_sync_limit_ptr = so_get_function_sym(sca_module, "sca_set_sync_limit");
 
         // Get sync protocol function pointers
         sca_sync_module_ptr = so_get_function_sym(sca_module, "sca_sync_module");
@@ -316,6 +320,14 @@ void * wm_sca_main(wm_sca_t * data) {
 #else
     data->remote_commands = 1;  // Only agents require this setting. For manager it's always enabled.
 #endif
+    if (sca_init_ptr) {
+        sca_init_ptr();
+    }
+
+    if (sca_set_sync_limit_ptr) {
+        const int sync_limit = getDefine_Int("sca", "sync_limit", 0, INT_MAX);
+        sca_set_sync_limit_ptr((uint64_t)sync_limit);
+    }
 
     minfo("Starting SCA module...");
 
