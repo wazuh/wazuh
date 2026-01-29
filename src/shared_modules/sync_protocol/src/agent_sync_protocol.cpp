@@ -528,6 +528,8 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         auto agentversion = builder.CreateString(metadata.agent_version);
         auto agentname = builder.CreateString(metadata.agent_name);
         auto agentid = builder.CreateString(metadata.agent_id);
+        auto clustername = builder.CreateString(metadata.cluster_name);
+        auto clusternode = builder.CreateString(metadata.cluster_node);
 
         auto groups = builder.CreateVector(groups_vec);
 
@@ -560,6 +562,8 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         startBuilder.add_agentname(agentname);
         startBuilder.add_agentid(agentid);
         startBuilder.add_groups(groups);
+        startBuilder.add_cluster_name(clustername);
+        startBuilder.add_cluster_node(clusternode);
 
         // Only add global_version if provided
         if (globalVersion.has_value())

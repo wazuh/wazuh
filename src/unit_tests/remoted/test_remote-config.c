@@ -218,6 +218,30 @@ static void test_remoted_internal_options_config(void **state) {
     (void) state;
 
     // Set internal options with prime numbers using mocked getDefine_Int
+
+    // FIM limits
+    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int, 1);
+
+    // Syscollector limits
+    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int, 1);
+
+    // SCA limits
+    will_return(__wrap_getDefine_Int, 1);
+
     will_return(__wrap_getDefine_Int, 2);      // receive_chunk
     will_return(__wrap_getDefine_Int, 3);      // send_chunk
     will_return(__wrap_getDefine_Int, 5);      // buffer_relax

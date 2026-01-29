@@ -21,6 +21,7 @@
 #include "../os_crypto/md5/md5_op.h"
 #include "sec.h"
 #include "indexed_queue_op.h"
+#include "module_limits.h"
 
 #define FD_LIST_INIT_VALUE 1024
 #define REMOTED_MSG_HEADER "1:" ARGV0 ":"
@@ -225,5 +226,8 @@ extern size_t global_counter;
 extern size_t batch_events_capacity;
 extern size_t batch_events_per_agent_capacity;
 extern int enrich_cache_expire_time;
+
+extern module_limits_t manager_module_limits;
+extern bool manager_module_limits_enabled;
 
 #endif /* LOGREMOTE_H */

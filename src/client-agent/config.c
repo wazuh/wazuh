@@ -13,6 +13,7 @@
 #include "os_regex/os_regex.h"
 #include "os_net/os_net.h"
 #include "agentd.h"
+#include "module_limits.h"
 
 /* Global variables */
 time_t available_server;
@@ -27,6 +28,12 @@ int remote_conf;
 int min_eps;
 int rotate_log;
 int agent_debug_level;
+
+/* Agent's handshake globals */
+module_limits_t agent_module_limits;
+char agent_cluster_name[256] = {0};
+char agent_cluster_node[256] = {0};
+char agent_agent_groups[OS_SIZE_65536] = {0};
 
 /* Read the config file (for the remote client) */
 int ClientConf(const char *cfgfile)

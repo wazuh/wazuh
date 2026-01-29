@@ -30,6 +30,9 @@
 #define HC_STARTUP                      "agent startup "
 #define HC_SHUTDOWN                     "agent shutdown "
 #define HC_ACK                          "agent ack "
+
+/* Minimum agent version that supports module limits */
+#define MIN_VERSION_MODULE_LIMITS       "v5.0.0"
 #define HC_SK_DB_COMPLETED              "syscheck-db-completed"
 #define HC_SK_RESTART                   "syscheck restart"
 #define HC_REQUEST                      "req "
