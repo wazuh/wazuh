@@ -25,7 +25,7 @@ class SCASyncManager
         void updateHandshake(uint64_t syncLimit, const std::string& clusterName);
 
         bool shouldSyncInsert(const nlohmann::json& checkData);
-        bool shouldSyncModify(const std::string& checkId);
+        bool shouldSyncModify(const nlohmann::json& checkData);
         DeleteResult handleDelete(const nlohmann::json& checkData);
 
     private:

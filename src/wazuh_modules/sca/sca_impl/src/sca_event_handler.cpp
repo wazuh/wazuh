@@ -108,7 +108,7 @@ void SCAEventHandler::ReportPoliciesDelta(
             }
             else if (result == MODIFIED)
             {
-                shouldPushStateful = m_syncManager->shouldSyncModify(checkId);
+                shouldPushStateful = m_syncManager->shouldSyncModify(checkDataForDelete);
             }
             else if (result == DELETED)
             {
@@ -209,13 +209,6 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
 
             bool shouldPushStateful = true;
 
-            if (m_syncManager)
-            {
-                shouldPushStateful = m_syncManager->shouldSyncModify(checkId);
-            }
-
-            const auto [stateful, operation, version] = ProcessStateful(event);
-
             // Validate and handle stateful message
             nlohmann::json dataForDelete;
 
@@ -227,6 +220,13 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
             {
                 dataForDelete = rowData;
             }
+
+            if (m_syncManager)
+            {
+                shouldPushStateful = m_syncManager->shouldSyncModify(dataForDelete);
+            }
+
+            const auto [stateful, operation, version] = ProcessStateful(event);
 
             const bool validationPassed = ValidateAndHandleStatefulMessage(
                                               stateful,

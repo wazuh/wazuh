@@ -150,10 +150,12 @@ bool SCASyncManager::shouldSyncInsert(const nlohmann::json& checkData)
     return shouldSync;
 }
 
-bool SCASyncManager::shouldSyncModify(const std::string& checkId)
+bool SCASyncManager::shouldSyncModify(const nlohmann::json& checkData)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     ensureInitializedLocked();
+
+    const std::string checkId = extractId(checkData);
 
     if (checkId.empty())
     {
@@ -161,7 +163,37 @@ bool SCASyncManager::shouldSyncModify(const std::string& checkId)
         return false;
     }
 
-    return (m_syncLimit == 0) || (m_syncedIds.find(checkId) != m_syncedIds.end());
+    if (m_syncLimit == 0)
+    {
+        return true;
+    }
+
+    if (m_syncedIds.find(checkId) != m_syncedIds.end())
+    {
+        return true;
+    }
+
+    if (m_syncedCount >= m_syncLimit)
+    {
+        return false;
+    }
+
+    if (!checkData.contains("version"))
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR,
+                                         "SCA sync manager: modify without version for check " + checkId);
+        return false;
+    }
+
+    updateSyncFlag(checkId, checkData["version"].get<uint64_t>(), 1);
+    m_syncedIds.insert(checkId);
+    ++m_syncedCount;
+
+    LoggingHelper::getInstance().log(
+        LOG_INFO,
+        "SCA sync limit promotion: promoted check " + checkId + " on modify for cluster '" + clusterNameForLog() + "'");
+
+    return true;
 }
 
 SCASyncManager::DeleteResult SCASyncManager::handleDelete(const nlohmann::json& checkData)

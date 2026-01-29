@@ -115,8 +115,8 @@ TEST_F(SCASyncManagerTest, InitializeEnforcesLimitAndInsert)
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-1"), 1);
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-2"), 1);
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-3"), 0);
-    EXPECT_TRUE(manager.shouldSyncModify("check-1"));
-    EXPECT_FALSE(manager.shouldSyncModify("check-3"));
+    EXPECT_TRUE(manager.shouldSyncModify(makeCheckData("check-1", 1, 1)));
+    EXPECT_FALSE(manager.shouldSyncModify(makeCheckData("check-3", 1, 0)));
 
     insertCheck(m_dbSync, "check-4");
     nlohmann::json insertedCheck = {{"id", "check-4"}, {"version", 1}, {"sync", 0}};
@@ -156,8 +156,8 @@ TEST_F(SCASyncManagerTest, UnlimitedModeSyncsAllChecks)
 
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-1"), 1);
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-2"), 1);
-    EXPECT_TRUE(manager.shouldSyncModify("check-1"));
-    EXPECT_TRUE(manager.shouldSyncModify("missing-check"));
+    EXPECT_TRUE(manager.shouldSyncModify(makeCheckData("check-1", 1, 1)));
+    EXPECT_TRUE(manager.shouldSyncModify(makeCheckData("missing-check", 1, 0)));
 
     insertCheck(m_dbSync, "check-3");
     EXPECT_TRUE(manager.shouldSyncInsert(makeCheckData("check-3", 1, 0)));
@@ -175,10 +175,28 @@ TEST_F(SCASyncManagerTest, ModifyRespectsSyncedSet)
 
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-1"), 1);
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-2"), 0);
-    EXPECT_TRUE(manager.shouldSyncModify("check-1"));
-    EXPECT_FALSE(manager.shouldSyncModify("check-2"));
+    EXPECT_TRUE(manager.shouldSyncModify(makeCheckData("check-1", 1, 1)));
+    EXPECT_FALSE(manager.shouldSyncModify(makeCheckData("check-2", 1, 0)));
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-1"), 1);
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-2"), 0);
+}
+
+TEST_F(SCASyncManagerTest, ModifyPromotesWhenSpaceAvailable)
+{
+    insertCheck(m_dbSync, "check-1");
+
+    SCASyncManager manager(m_dbSync);
+    manager.updateHandshake(2, "cluster-a");
+    manager.initialize();
+
+    EXPECT_EQ(getSyncFlag(m_dbSync, "check-1"), 1);
+
+    // Insert a new check after initialization to simulate an unsynced entry not yet tracked by the manager.
+    insertCheck(m_dbSync, "check-2", 0);
+    EXPECT_EQ(getSyncFlag(m_dbSync, "check-2"), 0);
+
+    EXPECT_TRUE(manager.shouldSyncModify(makeCheckData("check-2", 1, 0)));
+    EXPECT_EQ(getSyncFlag(m_dbSync, "check-2"), 1);
 }
 
 TEST_F(SCASyncManagerTest, UpdateHandshakeReappliesLimit)
@@ -267,7 +285,7 @@ TEST_F(SCASyncManagerTest, EmptyDatabaseDoesNotPromote)
     manager.updateHandshake(2, "cluster-a");
     manager.initialize();
 
-    EXPECT_FALSE(manager.shouldSyncModify("missing-check"));
+    EXPECT_FALSE(manager.shouldSyncModify(makeCheckData("missing-check", 1, 0)));
 
     const auto result = manager.handleDelete(makeCheckData("missing-check", 1, 0));
 
