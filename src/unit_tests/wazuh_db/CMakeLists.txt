@@ -138,7 +138,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mu
 
 # Add extra compiling flags
 add_compile_options(-Wall)
-link_directories(${SRC_FOLDER}/build/shared_modules/router)
+link_directories(${SRC_FOLDER}/build/lib)
 
 # Wazuh-DB objects
 FILE(GLOB wazuh_db_objects ${SRC_FOLDER}/wazuh_db/*.o)

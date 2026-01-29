@@ -88,15 +88,14 @@ if(DEFINED ENV{TARGET} AND "$ENV{TARGET}" STREQUAL "server")
   target_include_directories(
     agent_sync_protocol PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../router/include)
 
-  # Router is built in src/build/shared_modules/router/ when using main
-  # CMakeLists.txt
+  # Router is built in src/build/lib/
   target_link_directories(
     agent_sync_protocol PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../build/shared_modules/router)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../build/lib)
   target_link_libraries(agent_sync_protocol PRIVATE router)
   message(
     STATUS
-      "Linking router from: ${CMAKE_CURRENT_SOURCE_DIR}/../../build/shared_modules/router"
+      "Linking router from: ${CMAKE_CURRENT_SOURCE_DIR}/../../build/lib"
   )
 else()
   target_sources(agent_sync_protocol PRIVATE src/mqueue_transport.cpp)

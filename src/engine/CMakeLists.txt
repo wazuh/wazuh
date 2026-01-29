@@ -186,7 +186,7 @@ endif()
 include_directories(${SHARED_MODULES}/utils)
 
 # Set the indexer connector build directory
-set(INDEXERCONNECTOR_LIB_BUILD_DIR "${CMAKE_SOURCE_DIR}/build/shared_modules/indexer_connector")
+set(INDEXERCONNECTOR_LIB_BUILD_DIR "${CMAKE_SOURCE_DIR}/build/lib")
 
 ####################################################################################################
 # Rocksdb dynamic link

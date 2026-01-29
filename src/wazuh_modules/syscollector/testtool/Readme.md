@@ -14,7 +14,7 @@ make TARGET=server|agent <DEBUG=1>
 ```
 
 ## How to use the tool
-In order to run the `syscollector_test_tool` (located in `src/wazuh_modules/syscollector/build/bin` folder) utility the only step to be followed is just to execute the tool (without parameters):
+In order to run the `syscollector_test_tool` (located in `src/build/bin` folder) utility the only step to be followed is just to execute the tool (without parameters):
 ```
 ./syscollector_test_tool
 ```

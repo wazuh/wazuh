@@ -221,8 +221,8 @@ Schema resources are automatically embedded during the build process using CMake
 Run unit tests with:
 
 ```bash
-cd src/shared_modules/schema_validator/build
-make test
+cd src/build
+ctest -L schema_validator -V
 ```
 
 ## References
