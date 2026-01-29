@@ -313,7 +313,7 @@ jobs:
 
           docker exec wazuh_previous bash -c "$UPDATE_CMD"
           docker exec wazuh_previous bash -c "$INSTALL_CMD"
-          docker exec wazuh_previous bash -c "/var/wazug-manager/bin/wazuh-control info || echo 'Manager not started yet'"
+          docker exec wazuh_previous bash -c "/var/wazuh-manager/bin/wazuh-control info || echo 'Manager not started yet'"
 
       - name: Upgrade to current Wazuh version
         run: |

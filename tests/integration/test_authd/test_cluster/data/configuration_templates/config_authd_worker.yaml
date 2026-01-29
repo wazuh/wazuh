@@ -32,7 +32,7 @@
       - ssl_manager_cert:
           value: '/var/wazuh-manager/etc/sslmanager.cert'
       - ssl_manager_key:
-          value: '/var/wazuh-manageretc/sslmanager.key'
+          value: '/var/wazuh-manager/etc/sslmanager.key'
       - ssl_auto_negotiate:
           value: 'no'
     - section: cluster

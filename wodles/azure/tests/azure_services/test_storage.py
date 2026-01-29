@@ -63,7 +63,7 @@ def create_mocked_blob(blob_name: str, last_modified: datetime = None, content_l
     'auth_path, name, key, container_name',
     [
         (None, 'name', 'key', 'container'),
-        (os.environ['INSTALLDIR'], '', '', '*'),
+        (os.environ.get('INSTALLDIR', '/var/wazuh-manager'), '', '', '*'),
     ],
 )
 @patch('azure_services.storage.get_blobs')

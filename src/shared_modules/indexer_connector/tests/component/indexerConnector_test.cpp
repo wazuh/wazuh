@@ -208,7 +208,8 @@ TEST_F(IndexerConnectorTest, ConnectionWithSslCredentials)
     nlohmann::json indexerConfig;
     indexerConfig["name"] = INDEXER_NAME;
     indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
-    indexerConfig["ssl"]["certificate_authorities"] = nlohmann::json::array({"/var/wazuh-manager/etc/certs/root-ca.pem"});
+    indexerConfig["ssl"]["certificate_authorities"] =
+        nlohmann::json::array({"/var/wazuh-manager/etc/certs/root-ca.pem"});
     indexerConfig["ssl"]["certificate"] = "/var/wazuh-manager/etc/certs/server.pem";
     indexerConfig["ssl"]["key"] = "/var/wazuh-manager/etc/certs/server-key.pem";
 

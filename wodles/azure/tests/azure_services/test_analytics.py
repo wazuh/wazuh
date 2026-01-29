@@ -37,7 +37,7 @@ TEST_DATA_PATH = join(dirname(dirname(realpath(__file__))), 'data')
     'auth_path, la_id, key, offset, query, workspace, reparse, tag',
     [
         (None, 'client', 'secret', '1d', 'query', 'workspace', False, 'la_tag'),
-        (os.environ['INSTALLDIR'], None, None, '', '', '', False, ''),
+        (os.environ.get('INSTALLDIR', '/var/wazuh-manager'), None, None, '', '', '', False, ''),
     ],
 )
 @patch('azure_services.analytics.get_log_analytics_events')

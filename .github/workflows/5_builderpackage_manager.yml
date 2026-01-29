@@ -233,6 +233,7 @@ jobs:
           wazuh_gid: ${{ env.WAZUH_GID }}
           size_check: "false"
           ignore: "site-packages,/var/wazuh-manager/framework/python"
+          installation_directory: "/var/wazuh-manager"
 
       - name: Check embedded Python version
         run: |

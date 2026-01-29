@@ -71,7 +71,7 @@ build_package(){
 
     $linux $rpmbuild --define "_sysconfdir /etc" --define "_topdir ${rpm_build_dir}" \
         --define "_threads ${JOBS}" --define "_release ${REVISION}" --define "_isstage ${IS_STAGE}" \
-        --define "_localstatedir ${INSTALLATION_PATH}" --define "_debugenabled ${debug}" \
+        --define "_localstatedir ${INSTALLDIR}" --define "_debugenabled ${debug}" \
         --define "_version ${wazuh_version}" --define "_hashcommit ${short_commit_hash}" \
         --target $ARCH -ba ${rpm_build_dir}/SPECS/${package_name}.spec
     return $?

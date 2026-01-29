@@ -37,7 +37,7 @@ TEST_DATA_PATH = join(dirname(dirname(realpath(__file__))), 'data')
     'auth_path, graph_id, key, offset, query, tag, reparse',
     [
         (None, 'client', 'secret', '1d', 'query', 'tag', False),
-        (os.environ['INSTALLDIR'], None, None, '', '', '', False),
+        (os.environ.get('INSTALLDIR', '/var/wazuh-manager'), None, None, '', '', '', False),
     ],
 )
 @patch('azure_services.graph.get_graph_events')
