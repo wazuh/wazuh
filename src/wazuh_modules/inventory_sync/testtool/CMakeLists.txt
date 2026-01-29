@@ -3,6 +3,10 @@ project(inventory_sync_testtool)
 
 file(GLOB INVENTORY_SYNC_TESTTOOL_SRC "*.cpp")
 
+if(FSANITIZE)
+  set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
+endif()
+
 add_executable(inventory_sync_testtool ${INVENTORY_SYNC_TESTTOOL_SRC})
 
 target_link_libraries(
