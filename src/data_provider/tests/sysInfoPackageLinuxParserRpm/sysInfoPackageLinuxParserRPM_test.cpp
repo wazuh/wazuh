@@ -59,6 +59,7 @@ class RpmLibMock
         MOCK_METHOD(uint64_t, rpmtdGetNumber, (rpmtd td));
         MOCK_METHOD(int, rpmtsRun, (rpmts ts, rpmps okProbs, rpmprobFilterFlags ignoreSet));
         MOCK_METHOD(rpmdbMatchIterator, rpmtsInitIterator, (const rpmts ts, rpmDbiTagVal rpmtag, const void* keypointer, size_t keylen));
+        MOCK_METHOD(rpmVSFlags, rpmtsSetVSFlags, (rpmts ts, rpmVSFlags vsflags));
         MOCK_METHOD(Header, rpmdbNextIterator, (rpmdbMatchIterator mi));
         MOCK_METHOD(rpmdbMatchIterator, rpmdbFreeIterator, (rpmdbMatchIterator mi));
         MOCK_METHOD(rpmfi, rpmfiNew, (rpmts ts, Header h, rpmTagVal tag, rpmfiFlags flags));
@@ -121,6 +122,10 @@ int rpmtsRun(rpmts ts, rpmps okProbs, rpmprobFilterFlags ignoreSet)
 rpmdbMatchIterator rpmtsInitIterator(const rpmts ts, rpmDbiTagVal rpmtag, const void* keypointer, size_t keylen)
 {
     return gs_rpm_mock->rpmtsInitIterator(ts, rpmtag, keypointer, keylen);
+}
+rpmVSFlags rpmtsSetVSFlags(rpmts ts, rpmVSFlags vsflags)
+{
+    return gs_rpm_mock->rpmtsSetVSFlags(ts, vsflags);
 }
 Header rpmdbNextIterator(rpmdbMatchIterator mi)
 {
