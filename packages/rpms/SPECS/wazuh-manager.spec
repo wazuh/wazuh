@@ -268,13 +268,8 @@ if [ $1 = 2 ]; then
     rm -rf %{_localstatedir}/~api
   fi
 
-  if [ -f %{_sysconfdir}/ossec-init.conf ]; then
-    # Import the variables from ossec-init.conf file
-    . %{_sysconfdir}/ossec-init.conf
-  else
-    # Ask wazuh-control the version
-    VERSION=$(%{_localstatedir}/bin/wazuh-control info -v)
-  fi
+  # Ask wazuh-control the version
+  VERSION=$(%{_localstatedir}/bin/wazuh-control info -v)
 
   # Get the major and minor version
   MAJOR=$(echo $VERSION | cut -dv -f2 | cut -d. -f1)
@@ -302,8 +297,6 @@ if [ $1 = 2 ]; then
 fi
 
 %post
-
-echo "VERSION=\"$(%{_localstatedir}/bin/wazuh-control info -v)\"" > /etc/ossec-init.conf
 
 # Upgrade install code block
 if [ $1 = 2 ]; then
@@ -620,11 +613,6 @@ if [ -d %{_localstatedir}/queue/ossec ]; then
   rm -rf %{_localstatedir}/queue/ossec/
 fi
 
-if [ -f %{_sysconfdir}/ossec-init.conf ]; then
-  rm -f %{_sysconfdir}/ossec-init.conf
-  rm -f %{_localstatedir}/etc/ossec-init.conf
-fi
-
 # Remove groups backup files
 rm -rf %{_localstatedir}/backup/groups
 
@@ -639,7 +627,6 @@ rm -fr %{buildroot}
 %files
 %defattr(-,root,wazuh)
 %config(missingok) %{_initrddir}/wazuh-manager
-%attr(640, root, wazuh) %verify(not md5 size mtime) %ghost %{_sysconfdir}/ossec-init.conf
 /usr/lib/systemd/system/wazuh-manager.service
 %dir %attr(750, root, wazuh) %{_localstatedir}
 %attr(440, wazuh, wazuh) %{_localstatedir}/VERSION.json
