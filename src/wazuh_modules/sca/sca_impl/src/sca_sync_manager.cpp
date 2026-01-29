@@ -393,6 +393,7 @@ void SCASyncManager::applyDeferredUpdates()
 
     {
         std::lock_guard<std::mutex> lock(m_mutex);
+
         if (m_pendingUpdates.empty())
         {
             return;
