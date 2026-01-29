@@ -22,7 +22,7 @@ set_target_properties(
 )
 
 target_link_libraries(WIN32 ${WAZUHLIB} ${WAZUHEXT} -lpthread)
-link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+link_directories(${SRC_FOLDER}/build/bin)
 
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)

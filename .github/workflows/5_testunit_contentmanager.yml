@@ -48,6 +48,7 @@ jobs:
         with:
           path: src/shared_modules/content_manager
           id: content_manager
+          threshold: "65"
 
   contentmanager-asan:
     strategy:

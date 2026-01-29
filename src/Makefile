@@ -100,21 +100,6 @@ SHARED=so
 SELINUX_MODULE=selinux/wazuh.mod
 SELINUX_ENFORCEMENT=selinux/wazuh.te
 SELINUX_POLICY=selinux/wazuh.pp
-SHARED_MODULES=shared_modules/
-WAZUH_MODULES=wazuh_modules/
-DBSYNC=${SHARED_MODULES}dbsync/
-AGENT_METADATA=${SHARED_MODULES}agent_metadata/
-SYNC_PROTOCOL=${SHARED_MODULES}sync_protocol/
-SYSCOLLECTOR=wazuh_modules/syscollector/
-SCA=wazuh_modules/sca/
-AGENT_INFO=wazuh_modules/agent_info/
-ROUTER=${SHARED_MODULES}router/
-CONTENT_MANAGER=${SHARED_MODULES}content_manager/
-FILE_HELPER=${SHARED_MODULES}file_helper/
-SCHEMA_VALIDATOR=${SHARED_MODULES}schema_validator/
-VULNERABILITY_SCANNER=wazuh_modules/vulnerability_scanner/
-SYSINFO=data_provider/
-SYSCHECK=syscheckd/
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
@@ -127,52 +112,37 @@ CA_NAME?=DigiCert Assured ID Root CA
 HTTP_REQUEST_BRANCH?=1a98c1aa40df0fe82136d790043c2f9cbf1a24c4
 
 ifeq (${TARGET},winagent)
-CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX}
-WIN_CMAKE_RULES+=win32/sysinfo
-WIN_CMAKE_RULES+=win32/shared_modules
+CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX} -DEVENTCHANNEL_SUPPORT=ON
 WIN_RESOURCE_OBJ=-DRESOURCE_OBJ=win32/version-dll.o
-ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
-WIN_CMAKE_RULES+=win32/syscollector
-endif
-WIN_CMAKE_RULES+=win32/sca
-endif
-
-ifeq (${uname_S},Darwin)
-SYSINFO_OS=-DCMAKE_SYSTEM_NAME=Darwin
 endif
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
-SYSCHECK_TEST=-DUNIT_TEST=ON #--coverage
-DBSYNC_TEST=-DUNIT_TEST=ON #--coverage
-FILE_HELPER_TEST=-DBUILD_TESTS=ON #--coverage
-FILE_HELPER_TEST=-DUNIT_TEST=ON #--coverage
-SYSCOLLECTOR_TEST=-DUNIT_TEST=ON #--coverage
-SCA_TEST=-DUNIT_TEST=ON #--coverage
-AGENT_INFO_TEST=-DUNIT_TEST=ON #--coverage
-AGENT_METADATA_TEST=-DUNIT_TEST=ON #--coverage
-SYSINFO_TEST=-DUNIT_TEST=ON #--coverage
-SYNC_PROTOCOL_TEST=-DUNIT_TEST=ON #--coverage
-SCHEMA_VALIDATOR_TEST=-DUNIT_TEST=ON #--coverage
-WAZUH_TEST=-DUNIT_TEST=ON #--coverage
+WAZUH_TEST=-DUNIT_TEST=ON
 endif
 ifneq (,$(filter ${FSANITIZE},YES yes y Y 1))
 CMAKE_OPTS+=-DFSANITIZE=ON
 endif
+ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
+CMAKE_OPTS+=-DENABLE_SYSC=ON
+endif
+ifneq (${TARGET},winagent)
+ifneq (,$(filter ${USE_INOTIFY},YES auto yes y Y 1))
+CMAKE_OPTS+=-DINOTIFY_ENABLED=ON
+else ifeq (${uname_S},Linux)
+CMAKE_OPTS+=-DINOTIFY_ENABLED=ON
+endif
+ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
+CMAKE_OPTS+=-DENABLE_AUDIT=ON
+else ifeq (${uname_S},Linux)
+CMAKE_OPTS+=-DENABLE_AUDIT=ON
+endif
+endif
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
-SHARED_MODULES_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 GTEST_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
-SYSCOLLECTOR_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
-SCA_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
-AGENT_INFO_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
-SYSINFO_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
-SYNC_PROTOCOL_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
-SCHEMA_VALIDATOR_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
-SYSCHECK_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 WAZUH_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 endif
 
 ifeq (${COVERITY}, YES)
-	SHARED_MODULES_RELEASE_TYPE+=-DCOVERITY=1
 	export COVERITY_UNSUPPORTED_COMPILER_INVOCATION=1
 endif
 
@@ -208,7 +178,6 @@ endif
 		OSSEC_LIBS+=-lrt -ldl -lm
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 		AR_LDFLAGS+=-pthread -lrt -ldl
-		OSSEC_CFLAGS+=-Wl,--start-group
 		USE_AUDIT=yes
 		CC=gcc
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
@@ -334,29 +303,10 @@ OSSEC_CFLAGS+=${OFLAGS}
 OSSEC_LDFLAGS+=${OFLAGS}
 AR_LDFLAGS+=${OFLAGS}
 
-DBSYNC_LIB+=-ldbsync
-AGENT_METADATA_LIB+=-lagent_metadata
-SYNC_PROTOCOL_LIB+=-llibagent_sync_protocol
-SCHEMA_VALIDATOR_LIB+=-lschema_validator
-FILE_HELPER_LIB+=-lFilesystemWrapper -lFileIO
-
 ifeq (${TARGET}, winagent)
-	OSSEC_LDFLAGS+=-L${DBSYNC}build/bin
-	OSSEC_LDFLAGS+=-L${AGENT_METADATA}build/bin
-	OSSEC_LDFLAGS+=-L${SYNC_PROTOCOL}build/bin
-	OSSEC_LDFLAGS+=-L${SCHEMA_VALIDATOR}build/bin
-	OSSEC_LDFLAGS+=-L${FILE_HELPER}build/bin
+	OSSEC_LDFLAGS+=-Lbuild/bin -Lbuild/lib
 else
-	OSSEC_LDFLAGS+=-L${DBSYNC}build/lib
-	OSSEC_LDFLAGS+=-L${AGENT_METADATA}build/lib
-	OSSEC_LDFLAGS+=-L${SYNC_PROTOCOL}build/lib
-	OSSEC_LDFLAGS+=-L${SCHEMA_VALIDATOR}build/lib
-	OSSEC_LDFLAGS+=-L${FILE_HELPER}build/lib
-endif
-
-ifeq (${TARGET},server)
-	WAZUH_LIBS+=-lrouter
-	WAZUH_LDFLAGS+=-Lbuild/shared_modules/router
+	OSSEC_LDFLAGS+=-Lbuild/lib
 endif
 
 ifneq (,$(filter ${CLEANFULL},YES yes y Y 1))
@@ -377,7 +327,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${AGENT_METADATA}include -I${SYNC_PROTOCOL}include -I${SYSCOLLECTOR}include -I${SCA}include -I${AGENT_INFO}include -I${SYSINFO}include -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I${SYSCHECK}include -I${ROUTER}include -I${CONTENT_MANAGER}include -I${FILE_HELPER}file_io/include -I${FILE_HELPER}filesystem/include -I${VULNERABILITY_SCANNER}include -I./shared_modules/
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I./data_provider/include/ -I./shared_modules/ -I./shared_modules/agent_metadata/include -I./shared_modules/common/ -I./shared_modules/content_manager/include -I./shared_modules/router/include -I./shared_modules/sync_protocol/include -I./syscheckd/include -I./wazuh_modules/syscollector/include -I./wazuh_modules/vulnerability_scanner/include
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -482,26 +432,6 @@ endif
 
 ifneq (,$(filter ${USE_BIG_ENDIAN},YES yes y Y 1))
 	DEFINES+=-DOS_BIG_ENDIAN
-endif
-
-SYSINFO_LIB+=-lsysinfo
-
-ifeq (${TARGET}, winagent)
-	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/bin
-	OSSEC_LDFLAGS+=-L${SCA}build/bin
-	OSSEC_LDFLAGS+=-L${SYSINFO}build/bin
-	OSSEC_LDFLAGS+=-L${SYSCHECK}build/lib
-	OSSEC_LDFLAGS+=-L${SYSCHECK}build/bin
-else
-	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/lib
-	OSSEC_LDFLAGS+=-L${SCA}build/lib
-	OSSEC_LDFLAGS+=-L${AGENT_INFO}build/lib
-	OSSEC_LDFLAGS+=-L${SYSINFO}build/lib
-	OSSEC_LDFLAGS+=-L${SYSCHECK}build/lib
-endif
-
-ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
-	SYSCOLLECTOR_LIB+=-lsyscollector
 endif
 
 
@@ -618,34 +548,25 @@ settings:
 BUILD_SERVER+=wazuh-execd -
 BUILD_SERVER+=wazuh-logcollector -
 BUILD_SERVER+=wazuh-remoted
-BUILD_SERVER+=wazuh-agentd
+ifeq (,$(filter ${TEST},YES yes y Y 1))
 BUILD_SERVER+=utils
 BUILD_SERVER+=active-responses
-BUILD_SERVER+=wazuh-syscheckd
+endif
 BUILD_SERVER+=wazuh-monitord
 BUILD_SERVER+=wazuh-authd
 BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
-BUILD_SERVER+=wazuh-keystore
 
 BUILD_AGENT+=wazuh-agentd
 BUILD_AGENT+=wazuh-logcollector
-BUILD_AGENT+=wazuh-syscheckd
 BUILD_AGENT+=wazuh-execd
 BUILD_AGENT+=manage_agents
+ifeq (,$(filter ${TEST},YES yes y Y 1))
 BUILD_AGENT+=active-responses
+endif
 BUILD_AGENT+=wazuh-modulesd
 
-BUILD_CMAKE_PROJECTS+=build_sysinfo
-BUILD_CMAKE_PROJECTS+=build_shared_modules
-ifeq (${TARGET},server)
 BUILD_CMAKE_PROJECTS+=build_wazuh_cmake
-endif
-ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
-BUILD_CMAKE_PROJECTS+=build_syscollector
-endif
-BUILD_CMAKE_PROJECTS+=build_sca
-BUILD_CMAKE_PROJECTS+=build_agent_info
 
 ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}: ${libstdc++_path}
 	cp $< $@
@@ -698,7 +619,7 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-WINDOWS_LIBS:=win32/syscollector win32/sca win32/agent_info win32/syscheck
+WINDOWS_CMAKE_MODULES:=win32/wazuh_cmake_modules
 WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/os_win32ui.exe
 WINDOWS_ACTIVE_RESPONSES:=win32/restart-wazuh.exe win32/route-null.exe win32/netsh.exe
 
@@ -708,7 +629,7 @@ endif
 .PHONY: winagent
 winagent: external win32/libwinpthread-1.dll win32/libwinpthreadpatched.a ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME} win32/version-dll.o win32/version-app.o
 	${MAKE} ${WAZUHEXT_LIB} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lws2_32 -lcrypt32"
-	${MAKE} ${WINDOWS_LIBS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1"
+	${MAKE} ${WINDOWS_CMAKE_MODULES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1"
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust -lmpr"
 	${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust -lmpr"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
@@ -718,32 +639,8 @@ winagent: external win32/libwinpthread-1.dll win32/libwinpthreadpatched.a ${WAZU
 	cd win32/ && ./unix2dos.pl ../../LICENSE > LICENSE.txt
 	cd win32/ && ./unix2dos.pl ../../VERSION.json > VERSION.json
 
-win32/shared_modules: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
-	cd ${FILE_HELPER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FILE_HELPER_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-	cd ${AGENT_METADATA} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${AGENT_METADATA_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-	cd ${SCHEMA_VALIDATOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SCHEMA_VALIDATOR_TEST} ${SCHEMA_VALIDATOR_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-
-#### Sysinfo ##
-
-win32/sysinfo: $(WAZUHEXT_LIB) win32/shared_modules win32/version-dll.o
-	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-
-#### Syscollector ##
-win32/syscollector: win32/shared_modules win32/sysinfo win32/version-dll.o
-	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-
-### SCA ##
-win32/sca: win32/shared_modules win32/sysinfo
-	cd ${SCA} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SCA_TEST} ${SCA_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-
-### agent_info ##
-win32/agent_info: win32/shared_modules win32/sysinfo
-	cd ${AGENT_INFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${AGENT_INFO_TEST} ${AGENT_INFO_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-
-win32/syscheck: win32/shared_modules $(WAZUHEXT_LIB)
-	cd ${SYSCHECK} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCHECK_TEST} ${SYSCHECK_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
+win32/wazuh_cmake_modules: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) win32/version-dll.o
+	${MAKE} build_wazuh_cmake
 
 win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 	cp $< $@
@@ -935,11 +832,8 @@ ${RE2_LIB}: $(ABSEILCPP_LIB)
 	-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
 	-DCMAKE_INSTALL_PREFIX=./result && \
 	${MAKE}
-### simdjson ###
-${SIMDJSON_LIB}:
-	cd $(EXTERNAL_SIMDJSON) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DSIMDJSON_DEVELOPER_MODE=OFF -DSIMDJSON_AVX512_ALLOWED=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
 
-### flatbuffers ###
+## abseilcpp ###
 ${FLATBUFFERS_LIB}:
 	cd $(EXTERNAL_FLATBUFFERS) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DFLATBUFFERS_BUILD_TESTS=0 -DFLATBUFFERS_INSTALL=0 -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
 	test -f $(EXTERNAL_FLATBUFFERS)build/flatc || (echo "ERROR: flatc compiler not found at: $(EXTERNAL_FLATBUFFERS)build/flatc" && exit 1)
@@ -1172,8 +1066,6 @@ $(MSGPACK_LIB): ${msgpack_o}
 endif
 
 #### PCRE2 lib #########
-
-
 
 $(LIBPCRE2_LIB):
 ifeq (${TARGET},winagent)
@@ -1541,7 +1433,7 @@ WAZUH_LIB = libwazuhshared.$(SHARED)
 endif
 BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
 
-$(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS) $(WINDOWS_BINS): $(BUILD_LIBS)
+$(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS): $(BUILD_LIBS)
 
 #### os_xml ########
 
@@ -1769,7 +1661,7 @@ wazuh_db/%.o: wazuh_db/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-db\" -c $^ -o $@
 
 wazuh-db: ${wdb_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} ${WAZUH_LDFLAGS} $^ ${OSSEC_LIBS} ${WAZUH_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter ${OSSEC_LIBS} -o $@
 
 #### Config ##########
 
@@ -1779,44 +1671,9 @@ config_o := $(config_c:.c=.o)
 config/%.o: config/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-#### Router (server only) ##
-build_router:
-ifeq (${TARGET},server)
-	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${CMAKE_ENGINE_OPTS} && ${MAKE} router
-endif
-
-ifeq (${TARGET},server)
-build_shared_modules: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) build_router
-else
-build_shared_modules: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
-endif
-	cd ${FILE_HELPER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FILE_HELPER_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
-	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
-	cd ${AGENT_METADATA} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${AGENT_METADATA_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
-	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} .. && ${MAKE}
-	cd ${SCHEMA_VALIDATOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SCHEMA_VALIDATOR_TEST} ${SCHEMA_VALIDATOR_RELEASE_TYPE} .. && ${MAKE}
-
-#### Sysinfo ##
-build_sysinfo: build_shared_modules $(WAZUHEXT_LIB)
-	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} .. && ${MAKE}
-
-#### Syscollector ##
-ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
-build_syscollector: build_shared_modules build_sysinfo
-	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
-endif
-
-#### SCA ##
-build_sca: build_shared_modules build_sysinfo
-	cd ${SCA} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${SCA_TEST} ${SCA_RELEASE_TYPE} .. && ${MAKE}
-
-#### Agent Info ##
-build_agent_info: build_shared_modules build_sysinfo
-	cd ${AGENT_INFO} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${AGENT_INFO_TEST} ${AGENT_INFO_RELEASE_TYPE} .. && ${MAKE}
-
 #### Wazuh cmake ###
-build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) build_syscollector build_sca build_agent_info
-	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${CMAKE_ENGINE_OPTS} && ${MAKE}
+build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) libwazuh.a librootcheck.a
+	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${WIN_RESOURCE_OBJ} ${CMAKE_ENGINE_OPTS} && ${MAKE}
 
 #### Wazuh modules ##
 wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
@@ -1975,7 +1832,7 @@ remoted/%.o: remoted/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS}  -DPORTABLE_UNALIGNED_ACCESS=0 -I./remoted -DARGV0=\"wazuh-remoted\" -c $^ -o $@
 
 wazuh-remoted: ${remoted_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} ${WAZUH_LDFLAGS} $^ ${OSSEC_LIBS} ${WAZUH_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter ${OSSEC_LIBS} -o $@
 
 #### wazuh-agentd ####
 
@@ -1986,7 +1843,7 @@ client-agent/%.o: client-agent/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./client-agent -DARGV0=\"wazuh-agentd\" -c $^ -o $@
 
 wazuh-agentd: ${client_agent_o} monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${AGENT_METADATA_LIB} ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lagent_metadata ${OSSEC_LIBS} -o $@
 
 #### addagent ######
 
@@ -2122,11 +1979,6 @@ librootcheck.a: ${rootcheck_o_lib} ${shared_o}
 	${OSSEC_RANLIB} $@
 
 
-#### FIM ######
-
-wazuh-syscheckd: librootcheck.a libwazuh.a ${WAZUHEXT_LIB} build_shared_modules
-	cd syscheckd && mkdir -p build && cd build && cmake ${SYSCHECK_OS} ${CMAKE_OPTS} -DCMAKE_C_FLAGS="${DEFINES} -pipe -Wall -Wextra -std=gnu99" ${SYSCHECK_TEST} ${SYSCHECK_RELEASE_TYPE} .. && ${MAKE}
-
 #### Monitor #######
 
 monitor_c := $(wildcard monitord/*.c)
@@ -2148,7 +2000,7 @@ os_auth/%.o: os_auth/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./os_auth -DARGV0=\"wazuh-authd\" -c $^ -o $@
 
 wazuh-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o os_auth/authcom.o os_auth/auth.o os_auth/key_request.o os_auth/generate_cert.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} ${WAZUH_LDFLAGS} $^ ${OSSEC_LIBS} ${WAZUH_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter ${OSSEC_LIBS} -o $@
 
 ### wazuh-modulesd ##
 
@@ -2388,10 +2240,10 @@ win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
 
 win32/wazuh-agent.exe: win32/wazuh_agent_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.o ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${DBSYNC_LIB} -lwazuh-syscheckd -l:libfimdb.lib libwazuh.a ${AGENT_METADATA_LIB} ${SYNC_PROTOCOL_LIB} ${SCHEMA_VALIDATOR_LIB} ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ -ldbsync -lwazuh-syscheckd -l:libfimdb.lib libwazuh.a -lagent_metadata -llibagent_sync_protocol -lschema_validator ${OSSEC_LIBS} -o $@
 
 win32/wazuh-agent-eventchannel.exe: win32/wazuh_agent_eventchannel_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.o ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${DBSYNC_LIB} -lwazuh-syscheckd-event -l:libfimdb.lib libwazuh.a ${AGENT_METADATA_LIB} ${SYNC_PROTOCOL_LIB} ${SCHEMA_VALIDATOR_LIB} ${OSSEC_LIBS} -lwevtapi -o $@
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ -ldbsync -lwazuh-syscheckd-event -l:libfimdb.lib libwazuh.a -lagent_metadata -llibagent_sync_protocol -lschema_validator ${OSSEC_LIBS} -lwevtapi -o $@
 
 win32/manage_agents.exe: win32/manage_agents_resource.o win32/version-app.o win32/win_service_rk.o ${addagent_o}
 	${OSSEC_CCBIN} -DARGV0=\"manage-agents\" -DMA ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
@@ -2404,9 +2256,6 @@ win32/setup-syscheck.exe: win32/win_service_rk.o win32/setup-syscheck.o win32/se
 
 win32/setup-iis.exe: win32/win_service_rk.o win32/setup-iis.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-iis\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-win32/ui_resource.o: win32/ui/win32ui.rc
-	${OSSEC_WINDRES} -i $< -o $@
 
 win32/os_win32ui.exe: win32/ui_resource.o win32/version-app.o win32/win_service_rk.o ${win32_ui_o}
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -I./syscheckd/include -mwindows -o $@
@@ -2530,24 +2379,13 @@ clean-internals: clean-unit-tests
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
 	rm -f $(WAZUH_LIB)
-	rm -rf $(DBSYNC)build
-	rm -rf $(AGENT_METADATA)build
-	rm -rf $(SYNC_PROTOCOL)build
-	rm -rf $(SCHEMA_VALIDATOR)build
-	rm -rf $(FILE_HELPER)build
-	rm -rf $(SYSCOLLECTOR)build
-	rm -rf $(SCA)build
-	rm -rf $(AGENT_INFO)build
-	rm -rf $(SHARED_MODULES)utils/flatbuffers/include/
-	rm -rf $(wildcard $(VULNERABILITY_SCANNER)include/*_generated.h)
-	rm -rf $(SYSINFO)build
-	rm -rf $(SYSCHECK)build
-	rm -rf ${SHARED_MODULES}http-request/build
 	rm -rf build
 	rm -rf libwazuhext
 	rm -rf libstdc++.so.6
 	rm -rf libgcc_s.so.1
 	rm -f libwazuh.a
+	rm -f wazuh-keystore
+	rm -f wazuh-syscheckd
 	rm -f shared/*.o
 
 

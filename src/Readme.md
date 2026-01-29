@@ -112,22 +112,22 @@ Report: /root/repos/wazuh/src/shared_modules/dbsync/coverage_report/index.html
 shared_modules/dbsync > [make: PASSED]
 [Cleanfolder : PASSED]
 <TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
-/root/repos/wazuh/src/shared_modules/dbsync/build/bin/dbsync_test_tool -c config.json -a snapshotsUpdate/insertData.json,snapshotsUpdate/updateWithSnapshot.json -o ./output
+/root/repos/wazuh/src/build/bin/dbsync_test_tool -c config.json -a snapshotsUpdate/insertData.json,snapshotsUpdate/updateWithSnapshot.json -o ./output
 [TestTool: PASSED]
 <TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
-/root/repos/wazuh/src/shared_modules/dbsync/build/bin/dbsync_test_tool -c config.json -a InsertionUpdateDeleteSelect/inputSyncRowInsert.json,InsertionUpdateDeleteSelect/inputSyncRowModified.json,InsertionUpdateDeleteSelect/deleteRows.json,InsertionUpdateDeleteSelect/inputSelectRows.json -o ./output
+/root/repos/wazuh/src/build/bin/dbsync_test_tool -c config.json -a InsertionUpdateDeleteSelect/inputSyncRowInsert.json,InsertionUpdateDeleteSelect/inputSyncRowModified.json,InsertionUpdateDeleteSelect/deleteRows.json,InsertionUpdateDeleteSelect/inputSelectRows.json -o ./output
 [TestTool: PASSED]
 <TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
-/root/repos/wazuh/src/shared_modules/dbsync/build/bin/dbsync_test_tool -c config.json -a txnOperation/createTxn.json,txnOperation/inputSyncRowInsertTxn.json,txnOperation/pksGetDeletedRows.json,txnOperation/inputSyncRowModifiedTxn.json,txnOperation/closeTxn.json -o ./output
+/root/repos/wazuh/src/build/bin/dbsync_test_tool -c config.json -a txnOperation/createTxn.json,txnOperation/inputSyncRowInsertTxn.json,txnOperation/pksGetDeletedRows.json,txnOperation/inputSyncRowModifiedTxn.json,txnOperation/closeTxn.json -o ./output
 [TestTool: PASSED]
 <TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
-/root/repos/wazuh/src/shared_modules/dbsync/build/bin/dbsync_test_tool -c config.json -a txnOperation/createTxn.json,txnOperation/inputSyncRowInsertTxn.json,txnOperation/fullyGetDeletedRows.json,txnOperation/inputSyncRowModifiedTxn.json,txnOperation/closeTxn.json -o ./output
+/root/repos/wazuh/src/build/bin/dbsync_test_tool -c config.json -a txnOperation/createTxn.json,txnOperation/inputSyncRowInsertTxn.json,txnOperation/fullyGetDeletedRows.json,txnOperation/inputSyncRowModifiedTxn.json,txnOperation/closeTxn.json -o ./output
 [TestTool: PASSED]
 <TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
-/root/repos/wazuh/src/shared_modules/dbsync/build/bin/dbsync_test_tool -c config.json -a triggerActions/insertDataProcesses.json,triggerActions/insertDataSocket.json,triggerActions/addTableRelationship.json,triggerActions/deleteRows.json -o ./output
+/root/repos/wazuh/src/build/bin/dbsync_test_tool -c config.json -a triggerActions/insertDataProcesses.json,triggerActions/insertDataSocket.json,triggerActions/addTableRelationship.json,triggerActions/deleteRows.json -o ./output
 [TestTool: PASSED]
 <TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
-/root/repos/wazuh/src/shared_modules/dbsync/build/bin/dbsync_test_tool -c config.json -a triggerActions/insertDataProcesses.json,triggerActions/insertDataSocket.json,triggerActions/addTableRelationship.json,triggerActions/deleteRows.json -o ./output
+/root/repos/wazuh/src/build/bin/dbsync_test_tool -c config.json -a triggerActions/insertDataProcesses.json,triggerActions/insertDataSocket.json,triggerActions/addTableRelationship.json,triggerActions/deleteRows.json -o ./output
 [TestTool: PASSED]
 <shared_modules/dbsync>[ASAN: PASSED]<shared_modules/dbsync>
 <shared_modules/dbsync>[RTR: PASSED]<shared_modules/dbsync>
@@ -216,22 +216,22 @@ Output Example executing the ASAN tests with `dbsync` module:
 shared_modules/dbsync > [make: PASSED]
 [Cleanfolder : PASSED]
 <TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
-/root/repos/wazuh/src/shared_modules/dbsync/build/bin/dbsync_test_tool -c config.json -a snapshotsUpdate/insertData.json,snapshotsUpdate/updateWithSnapshot.json -o ./output
+/root/repos/wazuh/src/build/bin/dbsync_test_tool -c config.json -a snapshotsUpdate/insertData.json,snapshotsUpdate/updateWithSnapshot.json -o ./output
 [TestTool: PASSED]
 <TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
-/root/repos/wazuh/src/shared_modules/dbsync/build/bin/dbsync_test_tool -c config.json -a InsertionUpdateDeleteSelect/inputSyncRowInsert.json,InsertionUpdateDeleteSelect/inputSyncRowModified.json,InsertionUpdateDeleteSelect/deleteRows.json,InsertionUpdateDeleteSelect/inputSelectRows.json -o ./output
+/root/repos/wazuh/src/build/bin/dbsync_test_tool -c config.json -a InsertionUpdateDeleteSelect/inputSyncRowInsert.json,InsertionUpdateDeleteSelect/inputSyncRowModified.json,InsertionUpdateDeleteSelect/deleteRows.json,InsertionUpdateDeleteSelect/inputSelectRows.json -o ./output
 [TestTool: PASSED]
 <TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
-/root/repos/wazuh/src/shared_modules/dbsync/build/bin/dbsync_test_tool -c config.json -a txnOperation/createTxn.json,txnOperation/inputSyncRowInsertTxn.json,txnOperation/pksGetDeletedRows.json,txnOperation/inputSyncRowModifiedTxn.json,txnOperation/closeTxn.json -o ./output
+/root/repos/wazuh/src/build/bin/dbsync_test_tool -c config.json -a txnOperation/createTxn.json,txnOperation/inputSyncRowInsertTxn.json,txnOperation/pksGetDeletedRows.json,txnOperation/inputSyncRowModifiedTxn.json,txnOperation/closeTxn.json -o ./output
 [TestTool: PASSED]
 <TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
-/root/repos/wazuh/src/shared_modules/dbsync/build/bin/dbsync_test_tool -c config.json -a txnOperation/createTxn.json,txnOperation/inputSyncRowInsertTxn.json,txnOperation/fullyGetDeletedRows.json,txnOperation/inputSyncRowModifiedTxn.json,txnOperation/closeTxn.json -o ./output
+/root/repos/wazuh/src/build/bin/dbsync_test_tool -c config.json -a txnOperation/createTxn.json,txnOperation/inputSyncRowInsertTxn.json,txnOperation/fullyGetDeletedRows.json,txnOperation/inputSyncRowModifiedTxn.json,txnOperation/closeTxn.json -o ./output
 [TestTool: PASSED]
 <TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
-/root/repos/wazuh/src/shared_modules/dbsync/build/bin/dbsync_test_tool -c config.json -a triggerActions/insertDataProcesses.json,triggerActions/insertDataSocket.json,triggerActions/addTableRelationship.json,triggerActions/deleteRows.json -o ./output
+/root/repos/wazuh/src/build/bin/dbsync_test_tool -c config.json -a triggerActions/insertDataProcesses.json,triggerActions/insertDataSocket.json,triggerActions/addTableRelationship.json,triggerActions/deleteRows.json -o ./output
 [TestTool: PASSED]
 <TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
-/root/repos/wazuh/src/shared_modules/dbsync/build/bin/dbsync_test_tool -c config.json -a triggerActions/insertDataProcesses.json,triggerActions/insertDataSocket.json,triggerActions/addTableRelationship.json,triggerActions/deleteRows.json -o ./output
+/root/repos/wazuh/src/build/bin/dbsync_test_tool -c config.json -a triggerActions/insertDataProcesses.json,triggerActions/insertDataSocket.json,triggerActions/addTableRelationship.json,triggerActions/deleteRows.json -o ./output
 [TestTool: PASSED]
 <shared_modules/dbsync>[ASAN: PASSED]<shared_modules/dbsync>
 ```

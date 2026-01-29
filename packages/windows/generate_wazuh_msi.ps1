@@ -73,15 +73,15 @@ function BuildWazuhMsi(){
             ".\InstallerScripts.vbs",
             "..\*.dll",
             ".\*.dll",
-            "..\data_provider\build\bin\sysinfo.dll",
-            "..\shared_modules\dbsync\build\bin\dbsync.dll",
-            "..\shared_modules\sync_protocol\build\bin\libagent_sync_protocol.dll",
-            "..\shared_modules\schema_validator\build\bin\schema_validator.dll",
-            "..\shared_modules\agent_metadata\build\bin\libagent_metadata.dll",
-            "..\wazuh_modules\syscollector\build\bin\syscollector.dll",
-            "..\wazuh_modules\sca\build\bin\sca.dll",
-            "..\wazuh_modules\agent_info\build\bin\agent_info.dll",
-            "..\syscheckd\build\bin\libfimdb.dll"
+            "..\build\bin\sysinfo.dll",
+            "..\build\bin\dbsync.dll",
+            "..\build\bin\libagent_sync_protocol.dll",
+            "..\build\bin\schema_validator.dll",
+            "..\build\bin\libagent_metadata.dll",
+            "..\build\bin\syscollector.dll",
+            "..\build\bin\sca.dll",
+            "..\build\bin\agent_info.dll",
+            "..\build\bin\libfimdb.dll"
         )
 
         # Sign the files
@@ -113,15 +113,15 @@ function ExtractDebugSymbols(){
 	$exeFiles += Get-ChildItem -Filter "*.dll"
 
 	#plus a few more individual libraries
-	$exeFiles +=  Get-ChildItem -Filter "data_provider\build\bin\sysinfo.dll"
-	$exeFiles +=  Get-ChildItem -Filter "shared_modules\dbsync\build\bin\dbsync.dll"
-    $exeFiles +=  Get-ChildItem -Filter "shared_modules\sync_protocol\build\bin\libagent_sync_protocol.dll"
-    $exeFiles +=  Get-ChildItem -Filter "shared_modules\schema_validator\build\bin\schema_validator.dll"
-    $exeFiles +=  Get-ChildItem -Filter "shared_modules\agent_metadata\build\bin\libagent_metadata.dll"
-	$exeFiles +=  Get-ChildItem -Filter "wazuh_modules\syscollector\build\bin\syscollector.dll"
-    $exeFiles +=  Get-ChildItem -Filter "wazuh_modules\sca\build\bin\sca.dll"
-    $exeFiles +=  Get-ChildItem -Filter "wazuh_modules\agent_info\build\bin\agent_info.dll"
-	$exeFiles +=  Get-ChildItem -Filter "syscheckd\build\bin\libfimdb.dll"
+	$exeFiles +=  Get-ChildItem -Filter "build\bin\sysinfo.dll"
+	$exeFiles +=  Get-ChildItem -Filter "build\bin\dbsync.dll"
+    $exeFiles +=  Get-ChildItem -Filter "build\bin\libagent_sync_protocol.dll"
+    $exeFiles +=  Get-ChildItem -Filter "build\bin\schema_validator.dll"
+    $exeFiles +=  Get-ChildItem -Filter "build\bin\libagent_metadata.dll"
+	$exeFiles +=  Get-ChildItem -Filter "build\bin\syscollector.dll"
+    $exeFiles +=  Get-ChildItem -Filter "build\bin\sca.dll"
+    $exeFiles +=  Get-ChildItem -Filter "build\bin\agent_info.dll"
+	$exeFiles +=  Get-ChildItem -Filter "build\bin\libfimdb.dll"
 	cd "win32"
 
 	#now loop

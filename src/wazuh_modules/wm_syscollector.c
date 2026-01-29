@@ -9,7 +9,7 @@
  * Foundation.
  */
 #include <stdlib.h>
-#include "../../wmodules_def.h"
+#include "wmodules_def.h"
 #include "syscollector/include/syscollector.h"
 #include "wmodules.h"
 #include "module_query_errors.h"

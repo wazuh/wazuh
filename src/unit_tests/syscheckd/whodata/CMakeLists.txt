@@ -161,7 +161,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
     add_test(NAME test_syscheck_ebpf COMMAND test_syscheck_ebpf)
 
 else()
-    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+    link_directories(${SRC_FOLDER}/build/bin)
     add_executable(test_win_whodata test_win_whodata.c)
     target_compile_options(test_win_whodata PRIVATE "-Wall")
     set(WIN_WHODATA_FLAGS "-Wl,--wrap,wstr_replace -Wl,--wrap,SendMSG -Wl,--wrap,popen \

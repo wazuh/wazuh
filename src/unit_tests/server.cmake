@@ -1,6 +1,11 @@
 # Find the wazuh shared library
+find_library(WAZUHLIB NAMES libwazuh.a HINTS "${SRC_FOLDER}")
 find_library(WAZUHEXT NAMES libwazuhext.so HINTS "${SRC_FOLDER}")
 set(uname "Linux")
+
+if(NOT WAZUHLIB)
+    message(FATAL_ERROR "libwazuh.a not found! Aborting...")
+endif()
 
 if(NOT WAZUHEXT)
     message(FATAL_ERROR "libwazuhext not found! Aborting...")
@@ -9,10 +14,15 @@ endif()
 # Add compiling flags
 add_compile_options(-ggdb -O0 -g -coverage -DTEST_SERVER -DENABLE_AUDIT -DINOTIFY_ENABLED -fsanitize=address -fsanitize=undefined)
 link_libraries(-fsanitize=address -fsanitize=undefined)
-# Set tests dependencies
-link_directories("${SRC_FOLDER}/syscheckd/build/lib/")
-link_directories("${SRC_FOLDER}/shared_modules/agent_metadata/build/lib/")
-set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lagent_metadata -lpthread -ldl -lfimebpf -lcmocka -fprofile-arcs -ftest-coverage)
+
+# Set tests dependencies - use linker groups to resolve circular dependencies
+link_directories("${SRC_FOLDER}/build/lib/")
+set(TEST_DEPS
+    -Wl,--start-group
+    ${WAZUHLIB} ${WAZUHEXT}
+    -lagent_metadata -lrouter -lfimebpf -lagent_sync_protocol -ldbsync -lschema_validator -lfimdb
+    -Wl,--end-group
+    -lpthread -ldl -lcmocka -fprofile-arcs -ftest-coverage)
 
 add_subdirectory(remoted)
 add_subdirectory(wazuh_db)

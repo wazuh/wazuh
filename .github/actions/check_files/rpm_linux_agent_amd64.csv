@@ -84,7 +84,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,2530376,0.1
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,686912,0.1
 /var/ossec/lib/libsca.so,root,wazuh,750,file,-rwxr-x---,693392,0.1
-/var/ossec/lib/libagent_info.so,root,wazuh,750,file,-rwxr-x---,387336,0.1
+/var/ossec/lib/libagent_info.so,root,wazuh,750,file,-rwxr-x---,340200,0.1
 /var/ossec/lib/libagent_metadata.so,root,wazuh,750,file,-rwxr-x---,14472,0.1
 /var/ossec/lib/libgcc_s.so.1,root,wazuh,750,file,-rwxr-x---,187064,0.1
 /var/ossec/etc/internal_options.conf,root,wazuh,640,file,-rw-r-----,13249,0.1

@@ -27,9 +27,9 @@
 #include <codecvt>
 #include "wuapi.h"
 
-
-// Define GUID manually for CLSID_UpdateSearcher
-DEFINE_GUID(CLSID_UpdateSearcher, 0x5A2A5E6E, 0xD633, 0x4C3A, 0x8A, 0x7E, 0x69, 0x4D, 0xBF, 0x9E, 0xCE, 0xD4);
+// Declare Windows Update API GUIDs (defined in utilsWrapperWin.cpp)
+extern "C" const GUID CLSID_UpdateSearcher;
+extern "C" const GUID IID_IUpdateSearcher;
 
 class EXPORTED IComHelper
 {

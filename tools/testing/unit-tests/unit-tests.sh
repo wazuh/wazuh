@@ -100,7 +100,7 @@ cmocka-tests() {
     } > cmocka-tests-$target.log 2>&1
 
     if [ "$target" = "winagent" ]; then
-        WINEARCH="win32" WINEPATH="/usr/i686-w64-mingw32/lib;/usr/lib/gcc/i686-w64-mingw32/13-posix;$(realpath $(pwd)/../..);$(realpath $(pwd)/../../shared_modules/sync_protocol/build/bin)" ctest || true
+        WINEARCH="win32" WINEPATH="/usr/i686-w64-mingw32/lib;/usr/lib/gcc/i686-w64-mingw32/13-posix;$(realpath $(pwd)/../..);$(realpath $(pwd)/../../build/bin)" ctest || true
     else
         make coverage || true
     fi 2>> cmocka-tests-$target.log

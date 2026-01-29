@@ -9,44 +9,41 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-if(FSANITIZE)
-  set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
-endif(FSANITIZE)
-
 # FilesystemWrapper target
 if(WIN32)
-    set(SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/src/filesystem_wrapper_win.cpp)
+  set(SOURCES
+      ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/src/filesystem_wrapper_win.cpp)
 else()
-    set(SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/src/filesystem_wrapper_unix.cpp)
+  set(SOURCES
+      ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/src/filesystem_wrapper_unix.cpp)
 endif()
 
-list(APPEND SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/src/filesystem_wrapper.cpp
+list(APPEND SOURCES
+     ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/src/filesystem_wrapper.cpp
      ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/src/filesystem_utils.cpp)
 
-if (NOT SRC_FOLDER)
-    get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+if(NOT DEFINED WAZUH_MAIN_PROJECT)
+  get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 endif()
 add_library(FilesystemWrapper STATIC ${SOURCES})
 set_property(TARGET FilesystemWrapper PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_include_directories(FilesystemWrapper PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/include PRIVATE ${SRC_FOLDER}/shared_modules/utils)
+target_include_directories(
+  FilesystemWrapper
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/include
+  PRIVATE ${SRC_FOLDER}/shared_modules/utils)
 
 # File io target
-add_library(FileIO STATIC ${CMAKE_CURRENT_SOURCE_DIR}/file_io/src/file_io_utils.cpp
-                          ${CMAKE_CURRENT_SOURCE_DIR}/file_io/src/file_io_wrapper.cpp)
+add_library(
+  FileIO STATIC ${CMAKE_CURRENT_SOURCE_DIR}/file_io/src/file_io_utils.cpp
+                ${CMAKE_CURRENT_SOURCE_DIR}/file_io/src/file_io_wrapper.cpp)
 set_property(TARGET FileIO PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_include_directories(FileIO PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/file_io/include)
+target_include_directories(FileIO
+                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/file_io/include)
 
 if(UNIT_TEST)
-    enable_testing()
-
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        target_link_libraries(FilesystemWrapper PRIVATE -fprofile-arcs)
-        target_link_libraries(FileIO PRIVATE -fprofile-arcs)
-    else()
-        target_link_libraries(FilesystemWrapper PRIVATE gcov)
-        target_link_libraries(FileIO PRIVATE gcov)
-    endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-
-    add_subdirectory(filesystem/tests)
-    add_subdirectory(file_io/tests)
+  enable_testing()
+  add_coverage_libraries(FilesystemWrapper)
+  add_coverage_libraries(FileIO)
+  add_subdirectory(filesystem/tests)
+  add_subdirectory(file_io/tests)
 endif()
