@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - Added query size checks for syscollector delta sync SQL generation to prevent buffer overflows. ([#33803](https://github.com/wazuh/wazuh/pull/33803))
 - Replaced unsafe `sprintf` calls in the SCA decoder to prevent buffer overflows. ([#33756](https://github.com/wazuh/wazuh/pull/33756))
 - Fixed a memory leak in the CIS-CAT decoder when database operations fail. ([#33739](https://github.com/wazuh/wazuh/pull/33739))
+- Fixed ruleset hot reload on workers by awaiting `send_reload_ruleset_msg`. ([#34184](https://github.com/wazuh/wazuh/pull/34184))
 
 ### Agent
 
