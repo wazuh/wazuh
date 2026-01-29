@@ -6,6 +6,8 @@ services:
                 WAZUH_BRANCH: ${WAZUH_BRANCH}
         pull_policy: never
         image: dev-wazuh-base
+        networks:
+            - wazuh-net
 
     certs-generator:
         build:
@@ -14,8 +16,11 @@ services:
         pull_policy: never
         volumes:
             - wazuh-certs:/certificates
+            - ./config/wazuh_dashboard_certs:/export/dashboard
             - ./certs-generator/config.yml:/config/config.yml:ro
         restart: "no"
+        networks:
+            - wazuh-net
 
     wazuh.indexer:
         image: quay.io/wazuh/wazuh-indexer:5.0.0-0
@@ -23,7 +28,10 @@ services:
         hostname: wazuh.indexer
         ports:
             - "9200:9200"
-            - "9300:9300"
+        networks:
+            wazuh-net:
+                aliases:
+                    - wazuh.indexer
         volumes:
             - wazuh-indexer-data:/var/lib/wazuh-indexer
             - wazuh-certs:/etc/wazuh-indexer/certs
@@ -47,6 +55,8 @@ services:
         pull_policy: never
         image: dev-wazuh-manager
         hostname: wazuh.master
+        networks:
+            - wazuh-net
         ports:
             - "55050:55000"
         volumes:
@@ -57,7 +67,7 @@ services:
             - ${WAZUH_LOCAL_PATH}/api/api:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
         environment:
             OPENDISTRO_SECURITY_ENABLED: "false"
-            NODE_NAME: "wazuh-master"
+            NODE_NAME: "wazuh.master"
         entrypoint:
             - /scripts/entrypoint.sh
             - wazuh.master
@@ -73,6 +83,8 @@ services:
         image: dev-wazuh-manager
         hostname: wazuh.worker
         pull_policy: never
+        networks:
+            - wazuh-net
         volumes:
             - wazuh-certs:/var/wazuh-manager/etc/certs
             - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/wazuh-manager/framework/scripts
@@ -95,6 +107,8 @@ services:
         image: dev-wazuh-manager
         hostname: wazuh.worker
         pull_policy: never
+        networks:
+            - wazuh-net
         volumes:
             - wazuh-certs:/var/wazuh-manager/etc/certs
             - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/wazuh-manager/framework/scripts
@@ -120,7 +134,9 @@ services:
         pull_policy: never
         restart: on-failure:5
         ports:
-            - "443:443"
+            - "1514:1514"
+        networks:
+            - wazuh-net
         depends_on:
             wazuh.master:
                 condition: service_started
@@ -136,6 +152,8 @@ services:
             context: ./wazuh-agent
         image: dev-wazuh-agent
         pull_policy: never
+        networks:
+            - wazuh-net
         entrypoint:
             - /scripts/entrypoint.sh
             - nginx-lb
@@ -144,6 +162,27 @@ services:
             nginx-lb:
                 condition: service_started
 
+    wazuh.dashboard:
+        image: public.ecr.aws/wazuh-cicd/wazuh/wazuh-dashboard:5.0.0-latest
+        container_name: wazuh.dashboard
+        hostname: wazuh.dashboard
+        networks:
+            - wazuh-net
+        ports:
+            - "443:5601"
+        volumes:
+            - ./config/wazuh_dashboard_certs:/tmp/certs
+            - ./wazuh-dashboard/wazuh.dashboard.yml:/usr/share/wazuh-dashboard/config/opensearch_dashboards.yml:ro
+            - wazuh-dashboard-custom:/usr/share/wazuh-dashboard/plugins/wazuh/public/assets/custom
+        depends_on:
+            wazuh.indexer:
+                condition: service_healthy
+
 volumes:
   wazuh-indexer-data:
   wazuh-certs:
+  wazuh-dashboard-custom:
+
+networks:
+  wazuh-net:
+    driver: bridge
