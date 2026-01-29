@@ -345,7 +345,7 @@ if [ $1 = 2 ]; then
   if [ -f "$FILE_PATH" ]; then
     CONFIG_INDEXER_TEMPLATE="%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/generic/wodle-indexer.manager.template"
     . "$FILE_PATH"
-    updateIndexerTemplate "%{_localstatedir}/etc/ossec.conf" $CONFIG_INDEXER_TEMPLATE
+    updateIndexerTemplate "%{_localstatedir}/etc/wazuh-manager.conf" $CONFIG_INDEXER_TEMPLATE
   fi
 fi
 
@@ -356,24 +356,24 @@ if [ $1 = 1 ]; then
 
   . %{_localstatedir}/packages_files/manager_installation_scripts/src/init/dist-detect.sh
 
-  # Generating ossec.conf file
-  %{_localstatedir}/packages_files/manager_installation_scripts/gen_ossec.sh conf manager ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/ossec.conf
-  chown root:wazuh-manager %{_localstatedir}/etc/ossec.conf
+  # Generating wazuh-manager.conf file
+  %{_localstatedir}/packages_files/manager_installation_scripts/gen_ossec.sh conf manager ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/wazuh-manager.conf
+  chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.conf
 
   touch %{_localstatedir}/logs/active-responses.log
   chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/active-responses.log
   chmod 0660 %{_localstatedir}/logs/active-responses.log
 
-  touch %{_localstatedir}/logs/ossec.log
-  chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/ossec.log
-  chmod 0660 %{_localstatedir}/logs/ossec.log
+  touch %{_localstatedir}/logs/wazuh-manager.log
+  chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/wazuh-manager.log
+  chmod 0660 %{_localstatedir}/logs/wazuh-manager.log
 
-  touch %{_localstatedir}/logs/ossec.json
-  chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/ossec.json
-  chmod 0660 %{_localstatedir}/logs/ossec.json
+  touch %{_localstatedir}/logs/wazuh-manager.json
+  chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/wazuh-manager.json
+  chmod 0660 %{_localstatedir}/logs/wazuh-manager.json
 
-  # Add default local_files to ossec.conf
-  %{_localstatedir}/packages_files/manager_installation_scripts/add_localfiles.sh %{_localstatedir} >> %{_localstatedir}/etc/ossec.conf
+  # Add default local_files to wazuh-manager.conf
+  %{_localstatedir}/packages_files/manager_installation_scripts/add_localfiles.sh %{_localstatedir} >> %{_localstatedir}/etc/wazuh-manager.conf
 fi
 
 if [[ -d /run/systemd/system ]]; then
@@ -472,8 +472,8 @@ if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&
   fi
 fi
 
-# Restore ossec.conf permissions after upgrading
-chmod 0660 %{_localstatedir}/etc/ossec.conf
+# Restore wazuh-manager.conf permissions after upgrading
+chmod 0660 %{_localstatedir}/etc/wazuh-manager.conf
 
 # Delete the installation files used to configure the manager
 rm -rf %{_localstatedir}/packages_files
@@ -655,7 +655,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/rbac_control
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-keystore
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc
-%attr(660, root, wazuh-manager) %ghost %{_localstatedir}/etc/ossec.conf
+%attr(660, root, wazuh-manager) %ghost %{_localstatedir}/etc/wazuh-manager.conf
 %attr(640, root, wazuh-manager) %ghost %{_localstatedir}/etc/sslmanager.cert
 %attr(640, root, wazuh-manager) %ghost %{_localstatedir}/etc/sslmanager.key
 %attr(640, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/client.keys
@@ -720,8 +720,8 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/logs
 %attr(660, wazuh-manager, wazuh-manager)  %ghost %{_localstatedir}/logs/active-responses.log
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/api.log
-%attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/ossec.log
-%attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/ossec.json
+%attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/wazuh-manager.log
+%attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/wazuh-manager.json
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/api
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/archives
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/alerts
