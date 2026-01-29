@@ -44,7 +44,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/wazuh-manager/etc/internal_options.conf,root,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/etc/local_internal_options.conf,root,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/etc/localtime,root,wazuh-manager,640,file,-rw-r-----,,
-/var/wazuh-manager/etc/ossec.conf,root,wazuh-manager,660,file,-rw-rw----,,
+/var/wazuh-manager/etc/wazuh-manager.conf,root,wazuh-manager,660,file,-rw-rw----,,
 /var/wazuh-manager/etc/shared/agent-template.conf,wazuh-manager,wazuh-manager,660,file,-rw-rw----,,
 /var/wazuh-manager/etc/shared/default/agent.conf,wazuh-manager,wazuh-manager,660,file,-rw-rw----,,
 /var/wazuh-manager/etc/sslmanager.cert,root,root,640,file,-rw-r-----,,
