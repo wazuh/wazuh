@@ -462,7 +462,13 @@ void SecurityConfigurationAssessment::setSyncLimit(uint64_t syncLimit)
 {
     if (m_syncManager)
     {
-        m_syncManager->updateHandshake(syncLimit, {});
+        const auto limitResult = m_syncManager->updateHandshake(syncLimit, {});
+
+        if (!limitResult.demotedIds.empty())
+        {
+            const SCAEventHandler eventHandler(m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage, m_syncManager);
+            eventHandler.ReportDemotedChecks(limitResult.demotedIds);
+        }
     }
 }
 

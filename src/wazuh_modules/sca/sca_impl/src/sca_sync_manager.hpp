@@ -13,6 +13,12 @@
 class SCASyncManager
 {
     public:
+        struct LimitResult
+        {
+            std::vector<std::string> promotedIds;
+            std::vector<std::string> demotedIds;
+        };
+
         struct DeleteResult
         {
             bool wasSynced {false};
@@ -22,7 +28,7 @@ class SCASyncManager
         explicit SCASyncManager(std::shared_ptr<IDBSync> dbSync);
 
         void initialize();
-        void updateHandshake(uint64_t syncLimit, const std::string& clusterName);
+        LimitResult updateHandshake(uint64_t syncLimit, const std::string& clusterName);
 
         bool shouldSyncInsert(const nlohmann::json& checkData);
         bool shouldSyncModify(const nlohmann::json& checkData);
@@ -39,7 +45,7 @@ class SCASyncManager
         };
 
         void ensureInitializedLocked();
-        void enforceLimitLocked();
+        LimitResult enforceLimitLocked();
         void updateSyncFlag(const std::string& checkId, uint64_t version, int syncValue);
         void deferSyncFlagUpdate(const std::string& checkId, uint64_t version, int syncValue);
         std::vector<nlohmann::json> selectChecks(const std::string& filter, uint32_t limit) const;

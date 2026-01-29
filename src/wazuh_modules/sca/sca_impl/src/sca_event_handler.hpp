@@ -46,6 +46,10 @@ class SCAEventHandler
         void ReportPoliciesDelta(const std::unordered_map<std::string, nlohmann::json>& modifiedPoliciesMap,
                                  const std::unordered_map<std::string, nlohmann::json>& modifiedChecksMap) const;
 
+        /// @brief Reports checks demoted by a sync limit reduction.
+        /// @param demotedIds Vector of check IDs to delete from the indexer.
+        void ReportDemotedChecks(const std::vector<std::string>& demotedIds) const;
+
         /// @brief Reports the result of a check execution.
         /// @param policyId The ID of the policy associated with the check.
         /// @param checkId The ID of the check.
@@ -181,5 +185,9 @@ class SCAEventHandler
         /// @brief Process promoted checks after deletion to keep FIFO sync limit.
         void ProcessPromotedChecks(const std::vector<std::string>& promotedIds,
                                    std::vector<nlohmann::json>* failedChecks) const;
+
+        /// @brief Process demoted checks after sync limit reduction.
+        void ProcessDemotedChecks(const std::vector<std::string>& demotedIds,
+                                  std::vector<nlohmann::json>* failedChecks) const;
 };
 // LCOV_EXCL_STOP

@@ -153,6 +153,23 @@ void SCAEventHandler::ReportPoliciesDelta(
     }
 }
 
+void SCAEventHandler::ReportDemotedChecks(const std::vector<std::string>& demotedIds) const
+{
+    if (demotedIds.empty())
+    {
+        return;
+    }
+
+    std::vector<nlohmann::json> failedChecks;
+
+    ProcessDemotedChecks(demotedIds, &failedChecks);
+
+    if (!failedChecks.empty())
+    {
+        HandleFailedChecks(std::move(failedChecks));
+    }
+}
+
 void SCAEventHandler::ReportCheckResult(const std::string& policyId,
                                         const std::string& checkId,
                                         const std::string& checkResult,
@@ -942,6 +959,75 @@ void SCAEventHandler::ProcessPromotedChecks(const std::vector<std::string>& prom
         const bool validationPassed = ValidateAndHandleStatefulMessage(
                                           stateful,
                                           "sync promotion checkId: " + checkId,
+                                          checkData,
+                                          failedChecks
+                                      );
+
+        if (validationPassed)
+        {
+            PushStateful(stateful, operation, version);
+        }
+    }
+}
+
+void SCAEventHandler::ProcessDemotedChecks(const std::vector<std::string>& demotedIds,
+                                           std::vector<nlohmann::json>* failedChecks) const
+{
+    if (demotedIds.empty())
+    {
+        return;
+    }
+
+    for (const auto& checkId : demotedIds)
+    {
+        const auto checkData = GetPolicyCheckById(checkId);
+
+        if (checkData.empty() || !checkData.contains("policy_id"))
+        {
+            LoggingHelper::getInstance().log(LOG_WARNING, "Demoted check not found in DB: " + checkId);
+            continue;
+        }
+
+        std::string policyId;
+
+        if (checkData["policy_id"].is_string())
+        {
+            policyId = checkData["policy_id"].get<std::string>();
+        }
+        else if (checkData["policy_id"].is_number_integer())
+        {
+            policyId = std::to_string(checkData["policy_id"].get<int>());
+        }
+
+        if (policyId.empty())
+        {
+            LoggingHelper::getInstance().log(LOG_WARNING,
+                                             "Invalid policy_id for demoted check " + checkId + ", skipping");
+            continue;
+        }
+
+        const auto policyData = GetPolicyById(policyId);
+
+        if (policyData.empty())
+        {
+            LoggingHelper::getInstance().log(LOG_WARNING,
+                                             "Policy not found for demoted check " + checkId + ", skipping");
+            continue;
+        }
+
+        const nlohmann::json event =
+        {
+            {"policy", policyData},
+            {"check", checkData},
+            {"result", DELETED},
+            {"collector", "sync"}
+        };
+
+        const auto [stateful, operation, version] = ProcessStateful(event);
+
+        const bool validationPassed = ValidateAndHandleStatefulMessage(
+                                          stateful,
+                                          "sync demotion checkId: " + checkId,
                                           checkData,
                                           failedChecks
                                       );

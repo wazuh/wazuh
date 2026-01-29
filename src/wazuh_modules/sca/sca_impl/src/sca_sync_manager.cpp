@@ -48,7 +48,7 @@ void SCASyncManager::initialize()
     m_initialized = true;
 }
 
-void SCASyncManager::updateHandshake(uint64_t syncLimit, const std::string& clusterName)
+SCASyncManager::LimitResult SCASyncManager::updateHandshake(uint64_t syncLimit, const std::string& clusterName)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -63,13 +63,15 @@ void SCASyncManager::updateHandshake(uint64_t syncLimit, const std::string& clus
 
     if (!m_initialized)
     {
-        return;
+        return {};
     }
 
     if (limitChanged)
     {
-        enforceLimitLocked();
+        return enforceLimitLocked();
     }
+
+    return {};
 }
 
 bool SCASyncManager::shouldSyncInsert(const nlohmann::json& checkData)
@@ -283,12 +285,14 @@ void SCASyncManager::ensureInitializedLocked()
     }
 }
 
-void SCASyncManager::enforceLimitLocked()
+SCASyncManager::LimitResult SCASyncManager::enforceLimitLocked()
 {
+    LimitResult result;
+
     if (!m_dBSync)
     {
         LoggingHelper::getInstance().log(LOG_ERROR, "SCA sync manager: DBSync not available");
-        return;
+        return result;
     }
 
     m_syncedIds.clear();
@@ -327,6 +331,15 @@ void SCASyncManager::enforceLimitLocked()
         if (currentSync != desiredSync)
         {
             updateSyncFlag(checkId, row["version"].get<uint64_t>(), desiredSync);
+
+            if (currentSync == 1 && desiredSync == 0)
+            {
+                result.demotedIds.push_back(checkId);
+            }
+            else if (currentSync == 0 && desiredSync == 1)
+            {
+                result.promotedIds.push_back(checkId);
+            }
         }
     }
 
@@ -346,6 +359,8 @@ void SCASyncManager::enforceLimitLocked()
             " total=" + std::to_string(m_totalCount) +
             " cluster='" + clusterNameForLog() + "'");
     }
+
+    return result;
 }
 
 void SCASyncManager::updateSyncFlag(const std::string& checkId, uint64_t version, int syncValue)
