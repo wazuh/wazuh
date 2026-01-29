@@ -754,7 +754,9 @@ TEST_P(BuildAssets, KVDBAvailability)
     auto cmStoreNSReader = std::make_shared<MockICMStoreNSReader>();
     auto buildCtx = std::make_shared<builder::builders::BuildCtx>();
     auto registry = builder::mocks::MockMetaRegistry<builder::builders::OpBuilderEntry,
-                                                     builder::builders::StageBuilder>::createMock();
+                                                     builder::builders::StageBuilder,
+                                                     builder::builders::EnrichmentBuilder
+                                                     >::createMock();
     auto definitionsBuilder = std::make_shared<defs::mocks::MockDefinitionsBuilder>();
     buildCtx->setRegistry(registry);
     auto assetBuilder = std::make_shared<AssetBuilder>(buildCtx, definitionsBuilder);
@@ -1602,7 +1604,8 @@ TEST_P(BuildAssetsOrder, DecoderOrderPreservedInGraph)
     auto cmStoreNSReader = std::make_shared<MockICMStoreNSReader>();
     auto buildCtx = std::make_shared<builder::builders::BuildCtx>();
     auto registry = builder::mocks::MockMetaRegistry<builder::builders::OpBuilderEntry,
-                                                     builder::builders::StageBuilder>::createMock();
+                                                     builder::builders::StageBuilder,
+                                                     builder::builders::EnrichmentBuilder>::createMock();
     auto definitionsBuilder = std::make_shared<defs::mocks::MockDefinitionsBuilder>();
     buildCtx->setRegistry(registry);
 

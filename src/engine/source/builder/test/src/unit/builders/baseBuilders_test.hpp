@@ -37,7 +37,7 @@ struct BuildersMocks
     std::shared_ptr<const MockBuildCtx> ctx;
     std::shared_ptr<RunState> runState;
     std::shared_ptr<MockSchema> validator;
-    std::shared_ptr<MockMetaRegistry<OpBuilderEntry, StageBuilder>> registry;
+    std::shared_ptr<MockMetaRegistry<OpBuilderEntry, StageBuilder, EnrichmentBuilder>> registry;
     std::shared_ptr<MockDefinitions> definitions;
     std::shared_ptr<MockAllowedFields> allowedFields;
     std::shared_ptr<cm::store::MockICMStoreNSReader> nsReader;
@@ -55,7 +55,7 @@ protected:
         mocks->ctx = std::make_shared<const MockBuildCtx>();
         mocks->runState = std::make_shared<RunState>();
         mocks->validator = std::make_shared<MockSchema>();
-        mocks->registry = MockMetaRegistry<OpBuilderEntry, StageBuilder>::createMock();
+        mocks->registry = MockMetaRegistry<OpBuilderEntry, StageBuilder, EnrichmentBuilder>::createMock();
         mocks->definitions = std::make_shared<MockDefinitions>();
         mocks->allowedFields = std::make_shared<MockAllowedFields>();
         mocks->nsReader = std::make_shared<cm::store::MockICMStoreNSReader>();
