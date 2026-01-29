@@ -77,6 +77,11 @@ if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
   add_definitions(-DCLIENT)
 endif()
 
+# Define WAZUH_MANAGER for manager builds
+if("${TARGET}" STREQUAL "server")
+  add_definitions(-DWAZUH_MANAGER)
+endif()
+
 # Keep Make-based Windows semantics for external headers that otherwise declare
 # symbols as dllimport. We link these through delay import stubs.
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

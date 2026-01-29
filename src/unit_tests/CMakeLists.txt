@@ -96,6 +96,7 @@ enable_testing()
 if(NOT TARGET)
   message(FATAL_ERROR "No TARGET specified. Aborting...")
 elseif(${TARGET} STREQUAL "server")
+  add_definitions(-DWAZUH_MANAGER)
   include("./server.cmake")
   configure_file(
     "config_files/test_global.conf"

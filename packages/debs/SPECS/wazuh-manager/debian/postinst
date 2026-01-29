@@ -44,8 +44,8 @@ case "$1" in
 
     if [ -z "$2" ] || [ -f ${WAZUH_TMP_DIR}/create_conf ] ; then
 
-        ${SCRIPTS_DIR}/gen_ossec.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/ossec.conf
-        ${SCRIPTS_DIR}/add_localfiles.sh ${DIR} >> ${DIR}/etc/ossec.conf
+        ${SCRIPTS_DIR}/gen_ossec.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf
+        ${SCRIPTS_DIR}/add_localfiles.sh ${DIR} >> ${DIR}/etc/wazuh-manager.conf
 
         passlist="${DIR}/agentless/.passlist"
 
@@ -60,8 +60,8 @@ case "$1" in
             fi
         fi
     else
-        ${SCRIPTS_DIR}/gen_ossec.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/ossec.conf.new
-        chmod 660 ${DIR}/etc/ossec.conf.new
+        ${SCRIPTS_DIR}/gen_ossec.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf.new
+        chmod 660 ${DIR}/etc/wazuh-manager.conf.new
     fi
 
     # Remove/relocate existing SQLite databases
@@ -130,9 +130,9 @@ case "$1" in
         mv ${WAZUH_TMP_DIR}/local_internal_options.conf ${DIR}/etc/local_internal_options.conf
     fi
 
-    # Restore ossec.conf configuration
-    if [ -f ${WAZUH_TMP_DIR}/ossec.conf ]; then
-        mv ${WAZUH_TMP_DIR}/ossec.conf ${DIR}/etc/ossec.conf
+    # Restore wazuh-manager.conf configuration
+    if [ -f ${WAZUH_TMP_DIR}/wazuh-manager.conf ]; then
+        mv ${WAZUH_TMP_DIR}/wazuh-manager.conf ${DIR}/etc/wazuh-manager.conf
     fi
 
     # Restore group files
@@ -165,13 +165,13 @@ case "$1" in
     chown ${USER}:${GROUP} ${DIR}/logs/active-responses.log
     chmod 0660 ${DIR}/logs/active-responses.log
 
-    touch ${DIR}/logs/ossec.log
-    chown ${USER}:${GROUP} ${DIR}/logs/ossec.log
-    chmod 0660 ${DIR}/logs/ossec.log
+    touch ${DIR}/logs/wazuh-manager.log
+    chown ${USER}:${GROUP} ${DIR}/logs/wazuh-manager.log
+    chmod 0660 ${DIR}/logs/wazuh-manager.log
 
-    touch ${DIR}/logs/ossec.json
-    chown ${USER}:${GROUP} ${DIR}/logs/ossec.json
-    chmod 0660 ${DIR}/logs/ossec.json
+    touch ${DIR}/logs/wazuh-manager.json
+    chown ${USER}:${GROUP} ${DIR}/logs/wazuh-manager.json
+    chmod 0660 ${DIR}/logs/wazuh-manager.json
 
     # Set merged.mg permissions to new ones
     find ${DIR}/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
@@ -195,7 +195,7 @@ case "$1" in
     # Ensure that the 'Indexer' is configured
     CONFIG_INDEXER_TEMPLATE="${SCRIPTS_DIR}/etc/templates/config/generic/wodle-indexer.manager.template"
     . ${SCRIPTS_DIR}/src/init/update-indexer.sh
-    updateIndexerTemplate "${DIR}/etc/ossec.conf" $CONFIG_INDEXER_TEMPLATE
+    updateIndexerTemplate "${DIR}/etc/wazuh-manager.conf" $CONFIG_INDEXER_TEMPLATE
 
     # Restoring file permissions
     ${SCRIPTS_DIR}/restore-permissions.sh > /dev/null 2>&1 || true
