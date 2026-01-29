@@ -4,6 +4,7 @@
 
 #include "assetBuilder.hpp"
 #include "builders/buildCtx.hpp"
+#include "builders/enrichment/enrichment.hpp"
 #include "factory.hpp"
 
 namespace builder::policy
@@ -56,10 +57,15 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
     // Build the policy graph
     // Exposing this step here is only needed for gathering the graphivz string
     auto policyGraph = factory::buildGraph(builtAssets);
+    policyGraph.graphName = m_name;
     // TODO: Assign graphiv string
 
+    // Create IOC enrichemnt expression
+    auto enrichmentExp = builders::enrichment::getEnrichmentExpression(policyData, trace);
+
+
     // Build the expression
-    m_expression = factory::buildExpression(policyGraph, m_name);
+    m_expression = factory::buildExpression(policyGraph, enrichmentExp);
 }
 
 } // namespace builder::policy

@@ -356,6 +356,12 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
         }
     }
 
+    // Enrich policy with origin_space if not present
+    if(policyMap.policy.isObject() && policyMap.policy.size() > 0)
+    {
+        policyMap.policy.setString(space, "/origin_space");
+    }
+
     return policyMap;
 }
 

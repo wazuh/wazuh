@@ -50,8 +50,14 @@ constexpr std::string_view PATH_KEY_FILTERS = "/filters";
 constexpr std::string_view PATH_KEY_ENRICHMENTS = "/enrichments";
 constexpr std::string_view PATH_KEY_OUTPUTS = "/outputs";
 constexpr std::string_view PATH_KEY_TITLE = "/title";
+constexpr std::string_view PATH_KEY_ORIGIN_SPACE = "/origin_space";
 
 } // namespace jsonpolicy
+
+namespace
+{
+constexpr std::string_view DEFAULT_ORIGIN_SPACE = "UNDEFINED"; ///< Default origin space when not specified
+}
 
 /**
  * @brief Policy class representing a policy in wazuh-engine
@@ -63,6 +69,7 @@ class Policy
 private:
     std::string m_title;                     ///< Title of the policy
     std::string m_rootDecoder;               ///< Root decoder UUID
+    std::string m_originSpace;               ///< Origin space name (Optional)
     std::vector<std::string> m_integrations; ///< Integrations UUIDs included in the policy
     std::vector<std::string> m_filters;      ///< Filters defined in the policy
     std::vector<std::string> m_enrichments;  ///< Enrichments plugins defined in the policy
@@ -91,13 +98,16 @@ public:
            std::vector<std::string> integrationsUUIDs,
            std::vector<std::string> filters,
            std::vector<std::string> enrichments,
-           std::vector<std::string> outputs)
+           std::vector<std::string> outputs,
+           std::string_view originSpace = DEFAULT_ORIGIN_SPACE
+        )
         : m_title(policyTitle)
         , m_rootDecoder(rootDecoder)
         , m_integrations(std::move(integrationsUUIDs))
         , m_filters(std::move(filters))
         , m_enrichments(std::move(enrichments))
         , m_outputs(std::move(outputs))
+        , m_originSpace(originSpace)
     {
         cm::store::detail::findDuplicateOrInvalidUUID(m_integrations, "Integration");
         cm::store::detail::findDuplicateOrInvalidUUID(m_outputs, "Output");
@@ -240,12 +250,24 @@ public:
             return outputs;
         }();
 
+        // optional origin_space
+        auto originSpace = [&]() -> std::string
+        {
+            auto originSpaceOpt = policyJson.getString(jsonpolicy::PATH_KEY_ORIGIN_SPACE);
+            if (!originSpaceOpt.has_value() || originSpaceOpt->empty())
+            {
+                return std::string(DEFAULT_ORIGIN_SPACE);
+            }
+            return originSpaceOpt.value();
+        }();
+
         return {title,
                 rootDecoder,
                 std::move(integrations),
                 std::move(filters),
                 std::move(enrichments),
-                std::move(outputs)};
+                std::move(outputs),
+                originSpace};
     }
 
     json::Json toJson() const
@@ -254,6 +276,8 @@ public:
 
         policyJson.setString(m_title, jsonpolicy::PATH_KEY_TITLE);
         policyJson.setString(m_rootDecoder, jsonpolicy::PATH_KEY_ROOT_PARENT);
+        policyJson.setString(m_originSpace, jsonpolicy::PATH_KEY_ORIGIN_SPACE);
+
         policyJson.setArray(jsonpolicy::PATH_KEY_INTEGRATIONS);
         for (const auto& uuid : m_integrations)
         {
@@ -289,6 +313,10 @@ public:
     const std::vector<std::string>& getIntegrationsUUIDs() const { return m_integrations; }
     const std::string& getRootDecoderUUID() const { return m_rootDecoder; }
     const std::string& getHash() const { return m_hash; }
+
+    // Getters and setters of optional values
+    const std::string& getOriginSpace() const { return m_originSpace; }
+    void setOriginSpace(std::string_view originSpace) { m_originSpace = originSpace; }
 };
 
 } // namespace cm::store::dataType
