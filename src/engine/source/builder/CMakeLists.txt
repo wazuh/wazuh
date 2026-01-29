@@ -41,6 +41,9 @@ add_library(builder STATIC
     ${SRC_DIR}/builders/stage/indexerOutput.cpp
 	${SRC_DIR}/builders/stage/first_of.cpp
 
+	# Enrichment
+	${SRC_DIR}/builders/enrichment/enrichment.cpp
+
     # Map
     ${SRC_DIR}/builders/opmap/map.cpp
     # TODO: Move to separate files
