@@ -175,6 +175,35 @@ bool SCASyncManager::shouldSyncModify(const nlohmann::json& checkData)
         return true;
     }
 
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "SCA sync manager: DBSync not available on modify");
+        return false;
+    }
+
+    bool existsInDb = false;
+
+    auto existsQuery = SelectQuery::builder()
+                       .table("sca_check")
+                       .columnList({"COUNT(*) AS count"})
+                       .rowFilter("WHERE id = '" + escapeSqlString(checkId) + "'")
+                       .build();
+
+    const auto existsCallback = [&existsInDb](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+    {
+        if (returnTypeCallback == SELECTED && resultData.contains("count") && resultData["count"].is_number())
+        {
+            existsInDb = (resultData["count"].get<uint64_t>() > 0);
+        }
+    };
+
+    m_dBSync->selectRows(existsQuery.query(), existsCallback);
+
+    if (!existsInDb)
+    {
+        return false;
+    }
+
     if (m_syncedCount >= m_syncLimit)
     {
         return false;
