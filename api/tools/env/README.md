@@ -42,3 +42,8 @@ If we need more agents we can use:
 - Use option **-no-cache** when you have building issues.
 
 `docker compose build --no-cache`
+
+- To completely clean the environment (including volumes), run:
+  ```bash
+  docker compose down -v
+  ```
