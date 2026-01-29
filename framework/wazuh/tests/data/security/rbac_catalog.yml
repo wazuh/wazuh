@@ -346,6 +346,24 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/restart
+      mitre:read:
+        description: Access information from MITRE database
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - mitre:read
+          resources:
+            - "*:*:*"
+          effect: allow
+        related_endpoints:
+          - GET /mitre/groups
+          - GET /mitre/metadata
+          - GET /mitre/mitigations
+          - GET /mitre/references
+          - GET /mitre/software
+          - GET /mitre/tactics
+          - GET /mitre/techniques
       rootcheck:run:
         description: Run agents rootcheck scan
         resources:

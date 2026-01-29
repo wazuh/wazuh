@@ -79,6 +79,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/framework/wazuh/core/cluster/worker.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/wazuh/event.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/wazuh/manager.py,root,wazuh,640,file,-rw-r-----,,
+/var/ossec/framework/wazuh/mitre.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/wazuh/rootcheck.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/wazuh/security.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/wazuh/stats.py,root,wazuh,640,file,-rw-r-----,,
