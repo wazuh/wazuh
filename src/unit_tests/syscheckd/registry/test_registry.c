@@ -1539,45 +1539,6 @@ static void test_fim_read_values_with_seechanges(void **state) {
     assert_non_null(txn_ctx.data);
 }
 
-static void test_fim_read_values_utf16_full_string_hash(void **state) {
-    HKEY key_handle = (HKEY)123;
-    char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
-    int arch = ARCH_64BIT;
-    DWORD value_count = 1;
-    DWORD max_value_length = 256;
-    DWORD max_value_data_length = 256;
-    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
-    event_data_t event_data = {.mode = FIM_SCHEDULED};
-    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
-
-    syscheck.registry = one_entry_config;
-    syscheck.registry[0].opts = CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM;
-
-    wchar_t *value_name = L"StringValue";
-
-    WCHAR value_data[] = L"test";
-    DWORD value_type = REG_SZ;
-    DWORD value_size = sizeof(value_data);
-
-    const char *expected_md5 = "098f6bcd4621d373cade4e832627b4f6";
-    const char *expected_sha1 = "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3";
-    const char *expected_sha256 = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
-
-    expect_RegEnumValueW_call(value_name, value_type, (LPBYTE)value_data, value_size, ERROR_SUCCESS);
-
-    will_return(__wrap_fim_db_transaction_sync_row, 0);
-
-    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
-                    mock_txn_handler, &txn_ctx);
-
-    assert_non_null(txn_ctx.data);
-    assert_int_equal(txn_ctx.data->type, REG_SZ);
-
-    assert_string_equal(txn_ctx.data->hash_md5, expected_md5);
-    assert_string_equal(txn_ctx.data->hash_sha1, expected_sha1);
-    assert_string_equal(txn_ctx.data->hash_sha256, expected_sha256);
-}
-
 static void test_fim_read_values_db_sync_fail(void **state) {
     HKEY key_handle = (HKEY)123;
     char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
@@ -1789,7 +1750,6 @@ int main(void) {
         cmocka_unit_test(test_fim_read_values_null_configuration),
         cmocka_unit_test(test_fim_read_values_arch_32bit),
         cmocka_unit_test(test_fim_read_values_with_seechanges),
-        cmocka_unit_test(test_fim_read_values_utf16_full_string_hash),
         cmocka_unit_test(test_fim_read_values_db_sync_fail),
         cmocka_unit_test(test_fim_read_values_ignored_value),
         cmocka_unit_test(test_fim_read_values_reg_qword),

@@ -78,7 +78,7 @@ build() {
         make clean-internals
         make clean-windows
         make clean-test
-        make TARGET=$target DEBUG=1 TEST=1 -j$JOBS
+        make TARGET=$target TEST=1 -j$JOBS
     } > build-$target.log 2>&1
 }
 
