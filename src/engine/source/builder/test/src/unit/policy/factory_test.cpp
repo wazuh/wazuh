@@ -21,7 +21,7 @@ namespace
 // Helper function to create a minimal dummy enrichment expression for tests
 base::Expression createDummyEnrichment()
 {
-    return base::Term<base::EngineOp>::create("enrichment.setOriginSpace", nullptr);
+    return base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
 }
 } // namespace
 namespace buildgraphtest
@@ -169,7 +169,7 @@ INSTANTIATE_TEST_SUITE_P(
                    {
                        auto decoder = Or::create("DecodersTree/Input", {assetExpr("decoder/asset/0")});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
-                       auto phase2 = base::Term<base::EngineOp>::create("enrichment.setOriginSpace", nullptr);
+                       auto phase2 = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
                        return And::create("test", {phase1, phase2});
                    })),
         // Single output - outputs alone are not valid (need decoders)
@@ -180,7 +180,7 @@ INSTANTIATE_TEST_SUITE_P(
                    {
                        auto decoder = Or::create("DecodersTree/Input", {assetExpr("decoder/root/0")});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
-                       auto phase2 = base::Term<base::EngineOp>::create("enrichment.setOriginSpace", nullptr);
+                       auto phase2 = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
                        auto output = Broadcast::create("OutputsTree/Input", {assetExpr("output/asset/0")});
                        return And::create("test", {phase1, phase2, output});
                    })),
@@ -196,7 +196,7 @@ INSTANTIATE_TEST_SUITE_P(
                            Implication::create("decoder/parent/0/Node", assetExpr("decoder/parent/0"), childrenOp);
                        auto decoder = Or::create("DecodersTree/Input", {parentExpr});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
-                       auto phase2 = base::Term<base::EngineOp>::create("enrichment.setOriginSpace", nullptr);
+                       auto phase2 = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
                        return And::create("test", {phase1, phase2});
                    })),
         // Output with child (need decoder too)
@@ -207,7 +207,7 @@ INSTANTIATE_TEST_SUITE_P(
                    {
                        auto decoder = Or::create("DecodersTree/Input", {assetExpr("decoder/root/0")});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
-                       auto phase2 = base::Term<base::EngineOp>::create("enrichment.setOriginSpace", nullptr);
+                       auto phase2 = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
                        auto childExpr = assetExpr("output/child/0");
                        auto childrenOp = Broadcast::create("output/parent/0/Children", {childExpr});
                        auto parentExpr =
@@ -229,7 +229,7 @@ INSTANTIATE_TEST_SUITE_P(
                            Implication::create("decoder/parent/0/Node", assetExpr("decoder/parent/0"), childrenOp);
                        auto decoder = Or::create("DecodersTree/Input", {parentExpr});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
-                       auto phase2 = base::Term<base::EngineOp>::create("enrichment.setOriginSpace", nullptr);
+                       auto phase2 = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
                        return And::create("test", {phase1, phase2});
                    })),
         // All types
@@ -248,7 +248,7 @@ INSTANTIATE_TEST_SUITE_P(
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
 
                        // Phase 2: Enrichment/IOCs
-                       auto phase2 = base::Term<base::EngineOp>::create("enrichment.setOriginSpace", nullptr);
+                       auto phase2 = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
 
                        // Phase 3: Outputs
                        auto outputChild = assetExpr("output/child/0");

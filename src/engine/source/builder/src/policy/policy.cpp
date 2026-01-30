@@ -43,7 +43,6 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
     auto assetBuilder = std::make_shared<AssetBuilder>(buildCtx, definitionsBuilder);
     auto builtAssets = factory::buildAssets(policyData, cmStoreNsReader, assetBuilder, sandbox);
 
-
     // Assign the assets
     // TODO: Build a single unordered_set in factory::buildAssets to avoid this loop
     for (const auto& [type, subgraph] : builtAssets)
@@ -60,9 +59,30 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
     policyGraph.graphName = m_name;
     // TODO: Assign graphiv string
 
-    // Create IOC enrichemnt expression
-    auto enrichmentExp = builders::enrichment::getEnrichmentExpression(policyData, trace);
+    // Enrichment stage
+    auto enrichmentExp = [&]() -> base::Expression
+    {
+        auto enrichmentExp = base::Chain::create("enrichment", {});
+        for (const auto& enrichPlugin : policyData.getEnrichments())
+        {
+            auto builderIt = registry->get<builders::EnrichmentBuilder>(enrichPlugin);
+            if (base::isError(builderIt))
+            {
+                throw std::runtime_error(fmt::format(
+                    "Enrichment plugin '{}' not found: {}", enrichPlugin, base::getError(builderIt).message));
+            }
+            auto builder = base::getResponse<builders::EnrichmentBuilder>(builderIt);
+            auto [exp, traceable] = builder(trace);
+            // TODO: Make success traceable
+            enrichmentExp->getOperands().push_back(exp);
+            m_assets.insert(base::Name(traceable));
+        }
 
+        auto [exp, traceable] = builders::enrichment::getSpaceEnrichment(policyData, trace);
+        enrichmentExp->getOperands().push_back(exp);
+        m_assets.insert(base::Name(traceable));
+        return enrichmentExp;
+    }();
 
     // Build the expression
     m_expression = factory::buildExpression(policyGraph, enrichmentExp);
