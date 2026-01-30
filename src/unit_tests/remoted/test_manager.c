@@ -29,10 +29,21 @@
 #include "../wazuh_db/wdb.h"
 #include "../remoted/remoted.h"
 #include "../remoted/shared_download.h"
+#include "../headers/module_limits.h"
 #include "../../remoted/manager.c"
 
 int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, int* wdb_sock);
 extern OSHash *agent_data_hash;
+
+/* Wrapper for get_cluster_name */
+char* __wrap_get_cluster_name(void) {
+    return mock_ptr_type(char *);
+}
+
+/* Wrapper for get_node_name */
+char* __wrap_get_node_name(void) {
+    return mock_ptr_type(char *);
+}
 
 /* tests */
 
@@ -5427,6 +5438,395 @@ void test_save_controlmsg_shutdown_wdb_fail(void **state)
     os_free(message);
 }
 
+/* build_handshake_json tests */
+
+static void test_build_handshake_json_default_values(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char *json_str = NULL;
+    cJSON *root = NULL;
+    cJSON *limits_obj = NULL;
+    cJSON *fim = NULL;
+    cJSON *syscollector = NULL;
+    cJSON *sca = NULL;
+    cJSON *cluster = NULL;
+
+    module_limits_init(&limits);
+
+    /* Mock get_cluster_name to return NULL (will use default) */
+    will_return(__wrap_get_cluster_name, NULL);
+    /* Mock get_node_name to return NULL (will use default) */
+    will_return(__wrap_get_node_name, NULL);
+
+    /* Pass NULL for agent_id to skip groups lookup */
+    json_str = build_handshake_json(&limits, NULL);
+
+    assert_non_null(json_str);
+
+    /* Parse and verify structure */
+    root = cJSON_Parse(json_str);
+    assert_non_null(root);
+
+    limits_obj = cJSON_GetObjectItem(root, "limits");
+    assert_non_null(limits_obj);
+
+    /* Verify FIM limits */
+    fim = cJSON_GetObjectItem(limits_obj, "fim");
+    assert_non_null(fim);
+    assert_int_equal(cJSON_GetObjectItem(fim, "file")->valueint, DEFAULT_FIM_FILE_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(fim, "registry_key")->valueint, DEFAULT_FIM_REGISTRY_KEY_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(fim, "registry_value")->valueint, DEFAULT_FIM_REGISTRY_VALUE_LIMIT);
+
+    /* Verify Syscollector limits */
+    syscollector = cJSON_GetObjectItem(limits_obj, "syscollector");
+    assert_non_null(syscollector);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "hotfixes")->valueint, DEFAULT_SYSCOLLECTOR_HOTFIXES_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "packages")->valueint, DEFAULT_SYSCOLLECTOR_PACKAGES_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "processes")->valueint, DEFAULT_SYSCOLLECTOR_PROCESSES_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "ports")->valueint, DEFAULT_SYSCOLLECTOR_PORTS_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "network_iface")->valueint, DEFAULT_SYSCOLLECTOR_NETWORK_IFACE_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "network_protocol")->valueint, DEFAULT_SYSCOLLECTOR_NETWORK_PROTO_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "network_address")->valueint, DEFAULT_SYSCOLLECTOR_NETWORK_ADDR_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "hardware")->valueint, DEFAULT_SYSCOLLECTOR_HARDWARE_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "os_info")->valueint, DEFAULT_SYSCOLLECTOR_OS_INFO_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "users")->valueint, DEFAULT_SYSCOLLECTOR_USERS_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "groups")->valueint, DEFAULT_SYSCOLLECTOR_GROUPS_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "services")->valueint, DEFAULT_SYSCOLLECTOR_SERVICES_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "browser_extensions")->valueint, DEFAULT_SYSCOLLECTOR_BROWSER_EXTENSIONS_LIMIT);
+
+    /* Verify SCA limits */
+    sca = cJSON_GetObjectItem(limits_obj, "sca");
+    assert_non_null(sca);
+    assert_int_equal(cJSON_GetObjectItem(sca, "checks")->valueint, DEFAULT_SCA_CHECKS_LIMIT);
+
+    /* Verify cluster_name uses default when get_cluster_name returns NULL */
+    cluster = cJSON_GetObjectItem(root, "cluster_name");
+    assert_non_null(cluster);
+    assert_string_equal(cluster->valuestring, DEFAULT_CLUSTER_NAME);
+
+    /* Verify cluster_node uses default when get_node_name returns NULL */
+    cJSON *cluster_node = cJSON_GetObjectItem(root, "cluster_node");
+    assert_non_null(cluster_node);
+    assert_string_equal(cluster_node->valuestring, DEFAULT_CLUSTER_NAME);
+
+    cJSON_Delete(root);
+    os_free(json_str);
+}
+
+static void test_build_handshake_json_custom_values(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char *json_str = NULL;
+    cJSON *root = NULL;
+    cJSON *limits_obj = NULL;
+    cJSON *fim = NULL;
+    cJSON *sca = NULL;
+
+    module_limits_init(&limits);
+
+    /* Set custom values */
+    limits.fim.file = 200000;
+    limits.fim.registry_key = 150000;
+    limits.fim.registry_value = 100000;
+    limits.sca.checks = 20000;
+
+    /* Mock get_cluster_name to return a custom name */
+    will_return(__wrap_get_cluster_name, strdup("custom-cluster"));
+    /* Mock get_node_name to return a custom node name */
+    will_return(__wrap_get_node_name, strdup("custom-node"));
+
+    /* Pass NULL for agent_id to skip groups lookup */
+    json_str = build_handshake_json(&limits, NULL);
+
+    assert_non_null(json_str);
+
+    /* Parse and verify structure */
+    root = cJSON_Parse(json_str);
+    assert_non_null(root);
+
+    limits_obj = cJSON_GetObjectItem(root, "limits");
+    assert_non_null(limits_obj);
+
+    /* Verify custom FIM limits */
+    fim = cJSON_GetObjectItem(limits_obj, "fim");
+    assert_non_null(fim);
+    assert_int_equal(cJSON_GetObjectItem(fim, "file")->valueint, 200000);
+    assert_int_equal(cJSON_GetObjectItem(fim, "registry_key")->valueint, 150000);
+    assert_int_equal(cJSON_GetObjectItem(fim, "registry_value")->valueint, 100000);
+
+    /* Verify custom SCA limits */
+    sca = cJSON_GetObjectItem(limits_obj, "sca");
+    assert_non_null(sca);
+    assert_int_equal(cJSON_GetObjectItem(sca, "checks")->valueint, 20000);
+
+    /* Verify custom cluster_name */
+    cJSON *cluster = cJSON_GetObjectItem(root, "cluster_name");
+    assert_non_null(cluster);
+    assert_string_equal(cluster->valuestring, "custom-cluster");
+
+    /* Verify custom cluster_node */
+    cJSON *cluster_node = cJSON_GetObjectItem(root, "cluster_node");
+    assert_non_null(cluster_node);
+    assert_string_equal(cluster_node->valuestring, "custom-node");
+
+    cJSON_Delete(root);
+    os_free(json_str);
+}
+
+static void test_build_handshake_json_null_limits(void **state) {
+    (void)state;
+    char *json_str = NULL;
+
+    json_str = build_handshake_json(NULL, NULL);
+
+    assert_null(json_str);
+}
+
+static void test_build_handshake_json_verifies_structure(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char *json_str = NULL;
+    cJSON *root = NULL;
+    cJSON *limits_obj = NULL;
+
+    module_limits_init(&limits);
+
+    /* Mock get_cluster_name to return a cluster name */
+    will_return(__wrap_get_cluster_name, strdup("wazuh-cluster"));
+    /* Mock get_node_name to return a node name */
+    will_return(__wrap_get_node_name, strdup("wazuh-node"));
+
+    /* Pass NULL for agent_id to skip groups lookup */
+    json_str = build_handshake_json(&limits, NULL);
+
+    assert_non_null(json_str);
+
+    /* Parse and verify complete structure */
+    root = cJSON_Parse(json_str);
+    assert_non_null(root);
+
+    /* Check top-level structure */
+    limits_obj = cJSON_GetObjectItem(root, "limits");
+    assert_non_null(limits_obj);
+    assert_true(cJSON_IsObject(limits_obj));
+
+    cJSON *cluster_name = cJSON_GetObjectItem(root, "cluster_name");
+    assert_non_null(cluster_name);
+    assert_true(cJSON_IsString(cluster_name));
+    assert_string_equal(cluster_name->valuestring, "wazuh-cluster");
+
+    /* Verify cluster_node exists and is a string */
+    cJSON *cluster_node = cJSON_GetObjectItem(root, "cluster_node");
+    assert_non_null(cluster_node);
+    assert_true(cJSON_IsString(cluster_node));
+    assert_string_equal(cluster_node->valuestring, "wazuh-node");
+
+    /* Check limits sub-objects exist and are objects */
+    cJSON *fim = cJSON_GetObjectItem(limits_obj, "fim");
+    assert_non_null(fim);
+    assert_true(cJSON_IsObject(fim));
+
+    cJSON *syscollector = cJSON_GetObjectItem(limits_obj, "syscollector");
+    assert_non_null(syscollector);
+    assert_true(cJSON_IsObject(syscollector));
+
+    cJSON *sca = cJSON_GetObjectItem(limits_obj, "sca");
+    assert_non_null(sca);
+    assert_true(cJSON_IsObject(sca));
+
+    cJSON_Delete(root);
+    os_free(json_str);
+}
+
+static void test_build_handshake_json_with_agent_groups(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char *json_str = NULL;
+    cJSON *root = NULL;
+    cJSON *groups_array = NULL;
+
+    module_limits_init(&limits);
+
+    /* Mock get_cluster_name to return a name */
+    will_return(__wrap_get_cluster_name, strdup("test-cluster"));
+    /* Mock get_node_name to return a name */
+    will_return(__wrap_get_node_name, strdup("test-node"));
+
+    /* Mock wdb_get_agent_group to return multiple groups */
+    expect_value(__wrap_wdb_get_agent_group, id, 1);
+    will_return(__wrap_wdb_get_agent_group, strdup("group1,group2,group3"));
+
+    /* Pass agent_id to trigger groups lookup */
+    json_str = build_handshake_json(&limits, "001");
+
+    assert_non_null(json_str);
+
+    /* Parse and verify structure */
+    root = cJSON_Parse(json_str);
+    assert_non_null(root);
+
+    /* Verify agent_groups is an array with 3 elements */
+    groups_array = cJSON_GetObjectItem(root, "agent_groups");
+    assert_non_null(groups_array);
+    assert_true(cJSON_IsArray(groups_array));
+    assert_int_equal(cJSON_GetArraySize(groups_array), 3);
+
+    /* Verify each group */
+    assert_string_equal(cJSON_GetArrayItem(groups_array, 0)->valuestring, "group1");
+    assert_string_equal(cJSON_GetArrayItem(groups_array, 1)->valuestring, "group2");
+    assert_string_equal(cJSON_GetArrayItem(groups_array, 2)->valuestring, "group3");
+
+    cJSON_Delete(root);
+    os_free(json_str);
+}
+
+static void test_build_handshake_json_with_single_agent_group(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char *json_str = NULL;
+    cJSON *root = NULL;
+    cJSON *groups_array = NULL;
+
+    module_limits_init(&limits);
+
+    /* Mock get_cluster_name to return a name */
+    will_return(__wrap_get_cluster_name, strdup("test-cluster"));
+    /* Mock get_node_name to return a name */
+    will_return(__wrap_get_node_name, strdup("test-node"));
+
+    /* Mock wdb_get_agent_group to return a single group (no comma) */
+    expect_value(__wrap_wdb_get_agent_group, id, 1);
+    will_return(__wrap_wdb_get_agent_group, strdup("default"));
+
+    /* Pass agent_id to trigger groups lookup */
+    json_str = build_handshake_json(&limits, "001");
+
+    assert_non_null(json_str);
+
+    /* Parse and verify structure */
+    root = cJSON_Parse(json_str);
+    assert_non_null(root);
+
+    /* Verify agent_groups is an array with 1 element */
+    groups_array = cJSON_GetObjectItem(root, "agent_groups");
+    assert_non_null(groups_array);
+    assert_true(cJSON_IsArray(groups_array));
+    assert_int_equal(cJSON_GetArraySize(groups_array), 1);
+
+    /* Verify the single group */
+    assert_string_equal(cJSON_GetArrayItem(groups_array, 0)->valuestring, "default");
+
+    cJSON_Delete(root);
+    os_free(json_str);
+}
+
+static void test_build_handshake_json_with_no_agent_groups(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char *json_str = NULL;
+    cJSON *root = NULL;
+    cJSON *groups_array = NULL;
+
+    module_limits_init(&limits);
+
+    /* Mock get_cluster_name to return a name */
+    will_return(__wrap_get_cluster_name, strdup("test-cluster"));
+    /* Mock get_node_name to return a name */
+    will_return(__wrap_get_node_name, strdup("test-node"));
+
+    /* Mock wdb_get_agent_group to return NULL (no groups) */
+    expect_value(__wrap_wdb_get_agent_group, id, 1);
+    will_return(__wrap_wdb_get_agent_group, NULL);
+
+    /* Pass agent_id to trigger groups lookup */
+    json_str = build_handshake_json(&limits, "001");
+
+    assert_non_null(json_str);
+
+    /* Parse and verify structure */
+    root = cJSON_Parse(json_str);
+    assert_non_null(root);
+
+    /* Verify agent_groups field is present but empty (agent can fallback to merge.mg) */
+    groups_array = cJSON_GetObjectItem(root, "agent_groups");
+    assert_non_null(groups_array);
+    assert_true(cJSON_IsArray(groups_array));
+    assert_int_equal(cJSON_GetArraySize(groups_array), 0);
+
+    cJSON_Delete(root);
+    os_free(json_str);
+}
+
+static void test_build_handshake_json_with_empty_agent_groups(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char *json_str = NULL;
+    cJSON *root = NULL;
+    cJSON *groups_array = NULL;
+
+    module_limits_init(&limits);
+
+    /* Mock get_cluster_name to return a name */
+    will_return(__wrap_get_cluster_name, strdup("test-cluster"));
+    /* Mock get_node_name to return a name */
+    will_return(__wrap_get_node_name, strdup("test-node"));
+
+    /* Mock wdb_get_agent_group to return empty string */
+    expect_value(__wrap_wdb_get_agent_group, id, 1);
+    will_return(__wrap_wdb_get_agent_group, strdup(""));
+
+    /* Pass agent_id to trigger groups lookup */
+    json_str = build_handshake_json(&limits, "001");
+
+    assert_non_null(json_str);
+
+    /* Parse and verify structure */
+    root = cJSON_Parse(json_str);
+    assert_non_null(root);
+
+    /* Verify agent_groups field is present but empty (agent can fallback to merge.mg) */
+    groups_array = cJSON_GetObjectItem(root, "agent_groups");
+    assert_non_null(groups_array);
+    assert_true(cJSON_IsArray(groups_array));
+    assert_int_equal(cJSON_GetArraySize(groups_array), 0);
+
+    cJSON_Delete(root);
+    os_free(json_str);
+}
+
+static void test_build_handshake_json_cluster_node_custom(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char *json_str = NULL;
+    cJSON *root = NULL;
+    cJSON *cluster_node = NULL;
+
+    module_limits_init(&limits);
+
+    /* Mock get_cluster_name to return a name */
+    will_return(__wrap_get_cluster_name, strdup("production-cluster"));
+    /* Mock get_node_name to return a custom worker node name */
+    will_return(__wrap_get_node_name, strdup("worker-node-1"));
+
+    /* Pass NULL for agent_id to skip groups lookup */
+    json_str = build_handshake_json(&limits, NULL);
+
+    assert_non_null(json_str);
+
+    /* Parse and verify structure */
+    root = cJSON_Parse(json_str);
+    assert_non_null(root);
+
+    /* Verify custom cluster_node value */
+    cluster_node = cJSON_GetObjectItem(root, "cluster_node");
+    assert_non_null(cluster_node);
+    assert_true(cJSON_IsString(cluster_node));
+    assert_string_equal(cluster_node->valuestring, "worker-node-1");
+
+    cJSON_Delete(root);
+    os_free(json_str);
+}
+
 
 int main(void)
 {
@@ -5568,6 +5968,16 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_save_controlmsg_startup, setup_globals, teardown_globals),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_shutdown, setup_globals, teardown_globals),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_shutdown_wdb_fail, setup_globals, teardown_globals),
+        // Tests build_handshake_json
+        cmocka_unit_test(test_build_handshake_json_default_values),
+        cmocka_unit_test(test_build_handshake_json_custom_values),
+        cmocka_unit_test(test_build_handshake_json_null_limits),
+        cmocka_unit_test(test_build_handshake_json_verifies_structure),
+        cmocka_unit_test(test_build_handshake_json_with_agent_groups),
+        cmocka_unit_test(test_build_handshake_json_with_single_agent_group),
+        cmocka_unit_test(test_build_handshake_json_with_no_agent_groups),
+        cmocka_unit_test(test_build_handshake_json_with_empty_agent_groups),
+        cmocka_unit_test(test_build_handshake_json_cluster_node_custom),
     };
     return cmocka_run_group_tests(tests, test_setup_group, test_teardown_group);
 }

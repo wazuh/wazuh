@@ -109,6 +109,8 @@ public:
         auto ostype = data->ostype() ? data->ostype()->string_view() : std::string_view();
         auto osversion = data->osversion() ? data->osversion()->string_view() : std::string_view();
         auto globalVersion = data->global_version();
+        auto clusterName = data->cluster_name() ? data->cluster_name()->string_view() : std::string_view();
+        auto clusterNode = data->cluster_node() ? data->cluster_node()->string_view() : std::string_view();
 
         auto agentIdString = std::string(agentId.data(), agentId.size());
 
@@ -175,13 +177,21 @@ public:
                                                .ostype = std::string(ostype.data(), ostype.size()),
                                                .osversion = std::string(osversion.data(), osversion.size()),
                                                .groups = std::move(groups),
-                                               .globalVersion = globalVersion});
+                                               .globalVersion = globalVersion,
+                                               .clusterName = std::string(clusterName.data(), clusterName.size()),
+                                               .clusterNode = std::string(clusterNode.data(), clusterNode.size())});
 
         logDebug2(LOGGER_DEFAULT_TAG,
                   "New session for module '%s' by agent '%s'. (Session %llu)",
                   m_context->moduleName.c_str(),
                   m_context->agentId.c_str(),
                   m_context->sessionId);
+
+        logDebug2(LOGGER_DEFAULT_TAG,
+                  "Session %llu cluster info - cluster_name: '%s', cluster_node: '%s'",
+                  m_context->sessionId,
+                  m_context->clusterName.c_str(),
+                  m_context->clusterNode.c_str());
 
         responseDispatcher.sendStartAck(
             Wazuh::SyncSchema::Status_Ok, m_context->agentId, m_context->sessionId, m_context->moduleName);

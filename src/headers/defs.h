@@ -123,6 +123,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 // Local requests socket
 #define COM_LOCAL_SOCK  "queue/sockets/com"
+#define AG_LOCAL_SOCK   "queue/sockets/agent"
 #define LC_LOCAL_SOCK  "queue/sockets/logcollector"
 #define SYS_LOCAL_SOCK  "queue/sockets/syscheck"
 #define WM_LOCAL_SOCK  "queue/sockets/wmodules"

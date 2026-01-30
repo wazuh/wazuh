@@ -12,6 +12,7 @@
 #include "remoted.h"
 #include "state.h"
 #include "remoted_op.h"
+#include "cluster_utils.h"
 #include "../wazuh_db/helpers/wdb_global_helpers.h"
 #include "../os_net/os_net.h"
 #include "shared_download.h"
@@ -21,6 +22,9 @@
 #if defined(__FreeBSD__) || defined(__MACH__)
 #define HOST_NAME_MAX 64
 #endif
+
+/* Default cluster name when not configured */
+#define DEFAULT_CLUSTER_NAME "undefined"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -241,13 +245,125 @@ void free_file_time(void *data) {
     }
 }
 
+/**
+ * @brief Build JSON payload for handshake ACK response
+ * @param limits Pointer to module limits structure
+ * @param agent_id Agent ID string for fetching groups (can be NULL)
+ * @return Allocated JSON string (caller must free) or NULL on error
+ */
+STATIC char* build_handshake_json(const module_limits_t *limits, const char *agent_id) {
+    char *json_str = NULL;
+    char *cluster_name = NULL;
+    char *cluster_node = NULL;
+    char *agent_groups_csv = NULL;
+
+    if (!limits) {
+        return NULL;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    if (!root) {
+        return NULL;
+    }
+
+    /* Build limits object */
+    cJSON *limits_obj = cJSON_CreateObject();
+    if (!limits_obj) {
+        cJSON_Delete(root);
+        return NULL;
+    }
+
+    /* FIM limits */
+    cJSON *fim = cJSON_CreateObject();
+    if (fim) {
+        cJSON_AddNumberToObject(fim, "file", limits->fim.file);
+        cJSON_AddNumberToObject(fim, "registry_key", limits->fim.registry_key);
+        cJSON_AddNumberToObject(fim, "registry_value", limits->fim.registry_value);
+        cJSON_AddItemToObject(limits_obj, "fim", fim);
+    }
+
+    /* Syscollector limits */
+    cJSON *syscollector = cJSON_CreateObject();
+    if (syscollector) {
+        cJSON_AddNumberToObject(syscollector, "hotfixes", limits->syscollector.hotfixes);
+        cJSON_AddNumberToObject(syscollector, "packages", limits->syscollector.packages);
+        cJSON_AddNumberToObject(syscollector, "processes", limits->syscollector.processes);
+        cJSON_AddNumberToObject(syscollector, "ports", limits->syscollector.ports);
+        cJSON_AddNumberToObject(syscollector, "network_iface", limits->syscollector.network_iface);
+        cJSON_AddNumberToObject(syscollector, "network_protocol", limits->syscollector.network_protocol);
+        cJSON_AddNumberToObject(syscollector, "network_address", limits->syscollector.network_address);
+        cJSON_AddNumberToObject(syscollector, "hardware", limits->syscollector.hardware);
+        cJSON_AddNumberToObject(syscollector, "os_info", limits->syscollector.os_info);
+        cJSON_AddNumberToObject(syscollector, "users", limits->syscollector.users);
+        cJSON_AddNumberToObject(syscollector, "groups", limits->syscollector.groups);
+        cJSON_AddNumberToObject(syscollector, "services", limits->syscollector.services);
+        cJSON_AddNumberToObject(syscollector, "browser_extensions", limits->syscollector.browser_extensions);
+        cJSON_AddItemToObject(limits_obj, "syscollector", syscollector);
+    }
+
+    /* SCA limits */
+    cJSON *sca = cJSON_CreateObject();
+    if (sca) {
+        cJSON_AddNumberToObject(sca, "checks", limits->sca.checks);
+        cJSON_AddItemToObject(limits_obj, "sca", sca);
+    }
+
+    cJSON_AddItemToObject(root, "limits", limits_obj);
+
+    /* Add cluster_name - get from cluster configuration */
+    cluster_name = get_cluster_name();  /* From cluster_utils.h, returns allocated string */
+    if (cluster_name) {
+        cJSON_AddStringToObject(root, "cluster_name", cluster_name);
+        os_free(cluster_name);
+    } else {
+        cJSON_AddStringToObject(root, "cluster_name", DEFAULT_CLUSTER_NAME);
+    }
+
+    /* Add cluster_node - get from cluster configuration */
+    cluster_node = get_node_name();  /* From cluster_utils.h, returns allocated string */
+    if (cluster_node) {
+        cJSON_AddStringToObject(root, "cluster_node", cluster_node);
+        os_free(cluster_node);
+    } else {
+        cJSON_AddStringToObject(root, "cluster_node", DEFAULT_CLUSTER_NAME);
+    }
+
+    /* Add agent_groups - always include field, agent can fallback to merge.mg if empty */
+    cJSON *groups_array = cJSON_CreateArray();
+    if (groups_array) {
+        if (agent_id) {
+            agent_groups_csv = wdb_get_agent_group(atoi(agent_id), NULL);
+            if (agent_groups_csv && agent_groups_csv[0] != '\0') {
+                char *groups_copy = strdup(agent_groups_csv);
+                if (groups_copy) {
+                    char *saveptr = NULL;
+                    char *group = strtok_r(groups_copy, ",", &saveptr);
+                    while (group) {
+                        cJSON_AddItemToArray(groups_array, cJSON_CreateString(group));
+                        group = strtok_r(NULL, ",", &saveptr);
+                    }
+                    os_free(groups_copy);
+                }
+            }
+            os_free(agent_groups_csv);
+        }
+        cJSON_AddItemToObject(root, "agent_groups", groups_array);
+    }
+
+    json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    return json_str;
+}
+
 /* Pre process control message and return whether it should be queued for wdb processing
  * Returns: 1 if message should be queued, 0 if not, -1 on error
  */
 int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, char **cleaned_msg, int *is_startup, int *is_shutdown)
 {
     char *end = NULL;
-    char msg_ack[OS_FLSIZE + 1] = "";
+    char msg_ack[OS_SIZE_1024 + 1] = "";
+    char agent_version[64] = {0};
 
     *is_startup = 0;
     *is_shutdown = 0;
@@ -293,6 +409,8 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
             if (agent_info = cJSON_Parse(strchr(clean, '{')), agent_info) {
                 cJSON *version = NULL;
                 if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
+                    // Capture agent version for module limits check
+                    strncpy(agent_version, version->valuestring, sizeof(agent_version) - 1);
                     // Update agent data to keep context of events to forward
                     OSHash_Set_ex(agent_data_hash, key->id, strdup(version->valuestring));
                     if (!logr.allow_higher_versions &&
@@ -367,7 +485,23 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
 
     /* Send ACK for non-shutdown messages */
     if (*is_shutdown == 0) {
-        snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
+        if (manager_module_limits_enabled &&
+            agent_version[0] != '\0' &&
+            compare_wazuh_versions(agent_version, MIN_VERSION_MODULE_LIMITS, true) >= 0) {
+
+            char *handshake_json = build_handshake_json(&manager_module_limits, key->id);
+            if (handshake_json) {
+                snprintf(msg_ack, OS_SIZE_1024, "%s%s%s", CONTROL_HEADER, HC_ACK, handshake_json);
+                os_free(handshake_json);
+                mdebug1("Sending module limits to agent %s", key->id);
+            } else {
+                snprintf(msg_ack, OS_SIZE_1024, "%s%s", CONTROL_HEADER, HC_ACK);
+                mwarn("Failed to build handshake JSON for agent %s", key->id);
+            }
+        } else {
+            snprintf(msg_ack, OS_SIZE_1024, "%s%s", CONTROL_HEADER, HC_ACK);
+        }
+
         if (send_msg_with_key_control(key->id, msg_ack, -1, true) >= 0) {
             rem_inc_send_ack(key->id);
         }

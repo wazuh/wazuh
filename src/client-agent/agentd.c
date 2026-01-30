@@ -28,6 +28,9 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     fd_set fdset;
     struct timeval fdtimeout;
 
+    /* Initialize module limits with default values */
+    module_limits_init(&agent_module_limits);
+
     available_server = 0;
 
     /* Initial random numbers must happen before chroot */
@@ -140,6 +143,9 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     // Start request module
     req_init();
     w_create_thread(req_receiver, NULL);
+
+    // Start local socket listener for agcom requests (Unix only)
+    w_create_thread(agcom_main, NULL);
 
     /* Send agent stopped message at exit */
     atexit(send_agent_stopped_message);
