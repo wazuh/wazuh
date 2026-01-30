@@ -259,6 +259,23 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
             except Exception as e:
                 aws_tools.debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
 
+    def rewind_marker_to_day_folder(self, marker: str, aws_account_id: str, aws_region: str) -> str:
+        """
+        Rewind the S3 StartAfter marker to the beginning of the day folder (YYYY/MM/DD)
+        to catch late-arriving objects uploaded out of order (e.g. CloudTrail / ALB).
+        """
+        date_match = self.date_regex.search(marker)
+        if not date_match:
+            return marker
+
+        day_str = date_match.group(1)  # YYYY/MM/DD
+        try:
+            day = datetime.strptime(day_str, PATH_DATE_FORMAT)
+        except ValueError:
+            return marker
+
+        return self.marker_custom_date(aws_region, aws_account_id, day)
+
     def db_count_region(self, aws_account_id, aws_region):
         """Counts the number of rows in DB for a region
         :param aws_account_id: AWS account ID
@@ -398,12 +415,17 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 self.sql_find_last_key_processed.format(table_name=self.db_table_name), {
                     'bucket_path': self.bucket_path,
                     'aws_region': aws_region,
-                    'prefix': f'{self.prefix}%',
+                    'prefix': f'{self.get_full_prefix(aws_account_id, aws_region)}%',
                     'aws_account_id': aws_account_id,
                     **kwargs
                 })
             try:
                 filter_marker = query_last_key.fetchone()[0]
+
+                # Rewind marker to day folder to catch late-arriving logs
+                if filter_marker:
+                    filter_marker = self.rewind_marker_to_day_folder(filter_marker, aws_account_id, aws_region)
+
             except (TypeError, IndexError):
                 # if DB is empty for a region
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id) if self.only_logs_after \
