@@ -5,6 +5,7 @@ CURRENT_PATH="$( cd $(dirname $0) ; pwd -P )"
 WAZUH_PATH="$(cd $CURRENT_PATH/../../..; pwd -P)"
 ARCHITECTURE="amd64"
 OUTDIR="${CURRENT_PATH}/output"
+JOBS="2"
 DEBUG="no"
 BUILD_DOCKER="yes"
 DOCKER_TAG="latest"
@@ -69,6 +70,7 @@ build_standalone() {
     echo "Building Wazuh Engine Standalone package..."
     docker run --entrypoint /workspace/wazuh/src/engine/standalone/docker-entrypoint.sh \
         -e BUILD_TYPE="${BUILD_TYPE}" \
+        -e JOBS="${JOBS}" \
         -t --rm -v ${WAZUH_PATH}:/workspace/wazuh:Z \
         ${CONTAINER_NAME}:${DOCKER_TAG} || return 1
 
@@ -157,6 +159,7 @@ help() {
     echo "Usage: $0 [OPTIONS]"
     echo
     echo "    -a, --architecture <arch>  [Optional] Target architecture of the package [amd64/x86_64/arm64/aarch64]. By default: amd64."
+    echo "    -j, --jobs <number>        [Optional] Number of parallel jobs when compiling. By default: 2."
     echo "    -s, --store <path>         [Optional] Set the destination path of package. By default, an output folder will be created."
     echo "    -d, --debug                [Optional] Build the binaries with debug flags (without optimizations). By default: no."
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
@@ -176,6 +179,14 @@ main() {
         "-a"|"--architecture")
             if [ -n "$2" ]; then
                 ARCHITECTURE="$2"
+                shift 2
+            else
+                help 1
+            fi
+            ;;
+        "-j"|"--jobs")
+            if [ -n "$2" ]; then
+                JOBS="$2"
                 shift 2
             else
                 help 1

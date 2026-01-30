@@ -14,14 +14,19 @@ set -e
 
 echo "Starting Wazuh server build process..."
 
+# Set default value for JOBS if not provided
+JOBS="${JOBS:-2}"
+
 build_dir="/build_wazuh"
 
 make -C /workspace/wazuh/src deps TARGET=server
 
 if [ "${BUILD_TYPE}" = "debug" ]; then
-    make -j2 -C /workspace/wazuh/src TARGET=server DEBUG="yes"
+    make -j${JOBS} -C /workspace/wazuh/src TARGET=server DEBUG="yes"
+    echo "Debug build completed with ${JOBS} jobs."
 else
-    make -j2 -C /workspace/wazuh/src TARGET=server
+    make -j${JOBS} -C /workspace/wazuh/src TARGET=server
+    echo "Release build completed with ${JOBS} jobs."
 fi
 
 if [ -d "/opt/gcc-14/lib64" ]; then

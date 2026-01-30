@@ -11,6 +11,7 @@ cd wazuh/src/engine/standalone
 
 Available options:
 - `-a, --architecture <arch>`: Target architecture [amd64/x86_64/arm64/aarch64]. Default: amd64
+- `-j, --jobs <number>`: Number of parallel jobs for compilation. Default: 2
 - `-d, --debug`: Build with debug flags (without optimizations)
 - `-s, --store <path>`: Set destination path for the package. Default: ./output
 - `--dont-build-docker`: Use existing docker image instead of building a new one
@@ -36,8 +37,6 @@ cd wazuh-engine-standalone
 ./run_engine.sh
 ```
 
-**NOTE: Currently the engine requires root privileges to run but will be fixed as soon as possible.**
-
 ## Directory structure
 
 The standalone engine will create the following directory structure:
@@ -54,43 +53,3 @@ The standalone engine will create the following directory structure:
     the default security policy, this file will be created by the engine if it does not exist.
 - **sockets**: Used for engine sockets
     - **sockets/engine-api.sock**: Engine HTTP server socket.
-
-
-## How the security default policy was created
-
-This version is distributed without a default policy. you can create it with the following commands:
-
-```bash
-# Clone the intelligence data repository on <DIRECTORY>, checkout `decoders_development` branch and replace download path here:
-INTELLIGENCE_DATA_RULESET="<DIRECTORY>/intelligence-data/ruleset/"
-# Engine standalone directory: ENGINE_STANDALONE_DIR
-ENGINE_STANDALONE_DIR="<DOWNLOAD_DIR>/wazuh-engine-standalone/"
-# Load the core decoder and output
-engine-catalog --api-socket $ENGINE_STANDALONE_DIR/sockets/engine-api.sock -n system create decoder < $INTELLIGENCE_DATA_RULESET/decoders/wazuh-core/core-wazuh-message.yml
-engine-catalog --api-socket $ENGINE_STANDALONE_DIR/sockets/engine-api.sock -n system create output < $INTELLIGENCE_DATA_RULESET/outputs/file-output-integrations.yml
-# Create default security policy
-engine-policy --api-socket $ENGINE_STANDALONE_DIR/sockets/engine-api.sock create -p policy/wazuh/0
-# Add the decoder and output to the default security policy
-engine-policy --api-socket $ENGINE_STANDALONE_DIR/sockets/engine-api.sock asset-add -n system decoder/core-wazuh-message/0
-engine-policy --api-socket $ENGINE_STANDALONE_DIR/sockets/engine-api.sock asset-add -n system output/file-output-integrations/0
-# Set the default parent for the decoder in user and wazuh namespaces
-engine-policy --api-socket $ENGINE_STANDALONE_DIR/sockets/engine-api.sock parent-set decoder/core-wazuh-message/0
-engine-policy --api-socket $ENGINE_STANDALONE_DIR/sockets/engine-api.sock parent-set -n wazuh decoder/core-wazuh-message/0
-```
-
-This security policy has one decoder and one output, all in `system` namespace:
- - **decoder/core-wazuh-message/0**: This decoder is root decoder and will map the current time to the `@timestamp` field in the ECS format.
-
-## Core decoder
-
-The core decoder is a root decoder that maps:
-- `@timestamp`: The current time in UTC format.
-- `tmp_json`: If `$event.original` is a valid JSON, it will be parsed and stored in this field.
-
-Extract of the core decoder:
-
-```yml
-  - map:
-      - '@timestamp': get_date()
-      - tmp_json: parse_json($event.original)
-```
