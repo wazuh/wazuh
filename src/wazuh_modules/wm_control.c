@@ -204,8 +204,8 @@ void *send_ip(){
             continue;
         }
 
-        os_calloc(IPSIZE + 1, sizeof(char), buffer);
-        switch (length = OS_RecvUnix(peer, IPSIZE, buffer), length) {
+        os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
+        switch (length = OS_RecvUnix(peer, OS_MAXSTR, buffer), length) {
         case -1:
             mterror(WM_CONTROL_LOGTAG, "At send_ip(): OS_RecvUnix(): %s", strerror(errno));
             break;
@@ -221,7 +221,7 @@ void *send_ip(){
             break;
 
         default:
-            response = getPrimaryIP();
+            wm_control_dispatch(buffer, &response);
             if(response){
                 OS_SendUnix(peer, response, 0);
                 free(response);
@@ -236,6 +236,32 @@ void *send_ip(){
 
     close(sock);
     return NULL;
+}
+
+size_t wm_control_dispatch(char *command, char **output) {
+    // Parse command and arguments
+    char *args = strchr(command, ' ');
+    if (args) {
+        *args = '\0';
+        args++;
+    }
+
+    mtdebug2(WM_CONTROL_LOGTAG, "Dispatching command: '%s'", command);
+
+    if (strcmp(command, "restart") == 0) {
+        return wm_control_execute_action("restart", output);
+
+    } else if (strcmp(command, "reload") == 0) {
+        return wm_control_execute_action("reload", output);
+
+    } else {
+        // Default: return IP for backward compatibility (getip, host_ip, or any other message)
+        *output = getPrimaryIP();
+        if (!*output) {
+            os_strdup("Err", *output);
+        }
+        return strlen(*output);
+    }
 }
 
 /**
