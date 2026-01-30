@@ -238,4 +238,122 @@ void *send_ip(){
     return NULL;
 }
 
+/**
+ * @brief Check if systemd is available as the init system
+ * @return true if systemd is available, false otherwise
+ */
+STATIC bool wm_control_check_systemd() {
+    // Check if systemd system directory exists
+    if (access("/run/systemd/system", F_OK) != 0) {
+        return false;
+    }
+
+    // Check if systemd is PID 1
+    FILE *fp = fopen("/proc/1/comm", "r");
+    if (fp) {
+        char init_name[256];
+        if (fgets(init_name, sizeof(init_name), fp)) {
+            init_name[strcspn(init_name, "\n")] = 0;
+            if (strcmp(init_name, "systemd") == 0) {
+                fclose(fp);
+                return true;
+            }
+        }
+        fclose(fp);
+    }
+
+    return false;
+}
+
+/**
+ * @brief Wait for wazuh-manager service to be in active state
+ *
+ * This is needed before attempting a reload to ensure the service is ready.
+ * Waits up to 60 seconds for the service to become active.
+ *
+ * @return true if service is active, false otherwise
+ */
+STATIC bool wm_control_wait_for_service_active() {
+    const int timeout = 60;
+    int elapsed = 0;
+
+    while (elapsed < timeout) {
+        FILE *fp = popen("systemctl is-active wazuh-manager 2>/dev/null", "r");
+        if (fp) {
+            char state[256];
+            if (fgets(state, sizeof(state), fp)) {
+                state[strcspn(state, "\n")] = 0;
+
+                if (strcmp(state, "inactive") == 0 || strcmp(state, "failed") == 0) {
+                    pclose(fp);
+                    mterror(WM_CONTROL_LOGTAG, "Service wazuh-manager is in state '%s', cannot reload", state);
+                    return false;
+                }
+
+                if (strcmp(state, "active") == 0) {
+                    pclose(fp);
+                    return true;
+                }
+            }
+            pclose(fp);
+        }
+
+        sleep(1);
+        elapsed++;
+    }
+
+    mterror(WM_CONTROL_LOGTAG, "Service wazuh-manager is not active after waiting %d seconds", timeout);
+    return false;
+}
+
+size_t wm_control_execute_action(const char *action, char **output) {
+    bool use_systemd = wm_control_check_systemd();
+    char *exec_cmd[4] = {NULL};
+
+    if (use_systemd) {
+        exec_cmd[0] = "/usr/bin/systemctl";
+        exec_cmd[1] = (char *)action;
+        exec_cmd[2] = "wazuh-manager";
+        mtinfo(WM_CONTROL_LOGTAG, "Executing '%s' on manager using systemctl", action);
+    } else {
+        exec_cmd[0] = "bin/wazuh-control";
+        exec_cmd[1] = (char *)action;
+        mtinfo(WM_CONTROL_LOGTAG, "Executing '%s' on manager using wazuh-control", action);
+    }
+
+    switch (fork()) {
+        case -1:
+            mterror(WM_CONTROL_LOGTAG, "Cannot fork for %s", action);
+            os_strdup("err Cannot fork", *output);
+            break;
+        case 0:
+            // Child process
+
+            // For reload with systemd, wait for service to be active first
+            if (use_systemd && strcmp(action, "reload") == 0) {
+                if (!wm_control_wait_for_service_active()) {
+                    mterror(WM_CONTROL_LOGTAG, "Service not active for reload");
+                    _exit(1);
+                }
+            }
+
+            // Execute command
+            if (execv(exec_cmd[0], exec_cmd) < 0) {
+                mterror(WM_CONTROL_LOGTAG, "Error executing %s command: %s (%d)", action, strerror(errno), errno);
+                _exit(1);
+            }
+            break;
+        default:
+            // Parent process - return success immediately
+            os_strdup("ok ", *output);
+            break;
+    }
+
+    if (!*output) {
+        os_strdup("ok ", *output);
+    }
+
+    return strlen(*output);
+}
+
 #endif

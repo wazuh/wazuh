@@ -27,5 +27,17 @@ wmodule *wm_control_read();
 char *getPrimaryIP();
 void *send_ip();
 
+/**
+ * @brief Execute restart or reload action on the Wazuh manager
+ *
+ * Detects if systemd is available and uses systemctl, otherwise falls back to wazuh-control.
+ * For reload actions, waits for service to be active before proceeding (systemd only).
+ *
+ * @param action "restart" or "reload"
+ * @param output Pointer to string that will contain the response message
+ * @return size_t Length of the output string
+ */
+size_t wm_control_execute_action(const char *action, char **output);
+
 #endif
 #endif
