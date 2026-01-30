@@ -237,6 +237,34 @@ testconfig()
         fi
     done
 }
+# Check if the system uses systemd
+is_systemd() {
+    [ -d /run/systemd/system ]
+}
+
+# Add daemons to execd cgroup if systemd is used in legacy systems
+add_to_cgroup()
+{
+    EXECD_PID=$(head -n 1 ${DIR}/var/run/wazuh-execd-*.pid 2>/dev/null)
+    CGROUP_PATH="/sys/fs/cgroup/systemd/system.slice/wazuh-manager.service/cgroup.procs"
+
+    # Check if cgroup path exists
+    if [ ! -f "$CGROUP_PATH" ]; then
+        echo "Warning: cgroup path does not exist: $CGROUP_PATH" >&2
+    else
+        for pidfile in ${DIR}/var/run/wazuh-*-*.pid; do
+            [ -f "$pidfile" ] || continue
+            pid=$(cat "$pidfile" 2>/dev/null)
+            [ -z "$pid" ] && continue
+            [ "$pid" = "$EXECD_PID" ] && continue
+
+            # Try to write to cgroup, capture any errors
+            if ! echo "$pid" >> "$CGROUP_PATH" 2>/dev/null; then
+                echo "Warning: Failed to add PID $pid to cgroup ($(basename "$pidfile"))" >&2
+            fi
+        done
+    fi
+}
 
 get_wazuh_engine_pid()
 {
@@ -361,15 +389,29 @@ start_service()
             failed=false
             rm -f ${DIR}/var/run/${i}.failed
             touch ${DIR}/var/run/${i}.start
-            if [ $USE_JSON = true ]; then
-                ${DIR}/bin/${i} ${DEBUG_CLI} > /dev/null 2>&1;
+
+            if [ ! -z "$LEGACY_SYSTEMD_VERSION" ]; then
+                if command -v systemd-run >/dev/null 2>&1; then
+                    # safe to use systemd-run
+                    if [ $USE_JSON = true ]; then
+                        systemd-run --scope --slice=system.slice ${DIR}/bin/${i} ${DEBUG_CLI} > /dev/null 2>&1
+                    else
+                        systemd-run --scope --slice=system.slice ${DIR}/bin/${i} ${DEBUG_CLI}
+                    fi
+                else
+                    echo "ERROR: systemd is in use but systemd-run is not available" >&2
+                    exit 1
+                fi
             else
                 if [ "$i" = "wazuh-analysisd" ]; then
                     wait_for_wazuh_engine_ready
+                elif [ $USE_JSON = true ]; then
+                    ${DIR}/bin/${i} ${DEBUG_CLI} > /dev/null 2>&1;
                 else
                     ${DIR}/bin/${i} ${DEBUG_CLI};
                 fi
             fi
+
             if [ $? != 0 ]; then
                 failed=true
             fi
@@ -403,6 +445,11 @@ start_service()
     # After we start we give 2 seconds for the daemons
     # to internally create their PID files.
     sleep 2;
+
+    # Add daemons to execd cgroup if systemd is used
+    if [ ! -z "$LEGACY_SYSTEMD_VERSION" ]; then
+        add_to_cgroup
+    fi
 
     if [ $USE_JSON = true ]; then
         echo -n ']}'
@@ -593,6 +640,12 @@ restart)
     ;;
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
+    if is_systemd; then
+        SYSTEMD_VERSION=$(systemctl --version | awk 'NR==1 {print $2}')
+        if [ "$SYSTEMD_VERSION" -le 237 ]; then
+            LEGACY_SYSTEMD_VERSION=1
+        fi
+    fi
     restart_service
     ;;
 status)

@@ -74,6 +74,50 @@ DWORD wrap_QueryDosDeviceW(LPCWSTR lpDeviceName,
     return mock();
 }
 
+DWORD wrap_QueryDosDeviceA(LPCSTR lpDeviceName,
+                           LPSTR lpTargetPath,
+                           DWORD ucchMax) {
+    // Provide default behavior without requiring explicit mocks in every test
+    // Z:, Y:, X: return network paths (typical test scenario)
+    // C:, D: and others return local paths
+    // This allows is_network_path() to work correctly in tests without setup overhead
+
+    if (lpDeviceName && strlen(lpDeviceName) >= 2 && lpDeviceName[1] == ':') {
+        char drive = toupper(lpDeviceName[0]);
+        const char *device_path;
+
+        // Provide realistic default device paths
+        // For typical network drive letters, return network paths so tests work
+        switch (drive) {
+            case 'Z':
+                // Z: is commonly used for network drives in tests
+                device_path = "\\Device\\LanmanRedirector\\server\\share";
+                break;
+            case 'Y':
+            case 'X':
+                // Also common network drive letters
+                device_path = "\\Device\\Mup\\server\\share";
+                break;
+            case 'D':
+                device_path = "\\Device\\HarddiskVolume2";
+                break;
+            case 'C':
+            default:
+                device_path = "\\Device\\HarddiskVolume1";
+                break;
+        }
+
+        size_t len = strlen(device_path);
+        if (len < ucchMax) {
+            strncpy(lpTargetPath, device_path, ucchMax);
+            lpTargetPath[ucchMax - 1] = '\0';
+            return (DWORD)len;
+        }
+    }
+
+    return 0;
+}
+
 WINBOOL wrap_FindNextVolumeW(HANDLE hFindVolume,
                              LPWSTR lpszVolumeName,
                              DWORD cchBufferLength) {
