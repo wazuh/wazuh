@@ -86,10 +86,13 @@ void test_OS_SHA256_File_null_path(void** state)
 {
     (void)state;
     os_sha256 output;
+    os_sha256 expected = {0};
+    memset(output, 0xFF, sizeof(output));
 
     int ret = OS_SHA256_File(NULL, output, OS_BINARY);
 
     assert_int_equal(ret, -1);
+    assert_memory_equal(output, expected, sizeof(output));
 }
 
 int main(void)
