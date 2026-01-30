@@ -195,7 +195,11 @@ public:
         }
 
         auto optLastHash = j.getString(JPATH_LAST_POLICY_HASH);
-        std::string lastHash = optLastHash.value_or("");
+        if (!optLastHash.has_value())
+        {
+            throw std::runtime_error("NsSyncState::fromJson: Missing last_policy_hash field");
+        }
+        const auto& lastHash = *optLastHash;
 
         return {*optOrigin, lastHash, cm::store::NamespaceId(*optNsId)};
     }
@@ -480,7 +484,6 @@ void CMSync::synchronize()
     const auto cmcrudPtr = lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
     std::unique_lock lock(m_mutex); // Lock the sync process, only 1 at a time
 
-
     for (auto& nsState : m_namespacesState)
     {
         try
@@ -511,10 +514,12 @@ void CMSync::synchronize()
                     return false;
                 }
                 const auto& entry = base::getResponse(resp);
-                return entry.namespaceId() == nsState.getNamespaceId() && entry.status() == ::router::env::State::ENABLED;
+                return entry.namespaceId() == nsState.getNamespaceId()
+                       && entry.status() == ::router::env::State::ENABLED;
             }();
-              // Check if the policy has changed
-            if (remoteHash == nsState.getLastPolicyHash() && cmcrudPtr->existsNamespace(nsState.getNamespaceId()) && validRoute)
+            // Check if the policy has changed
+            if (remoteHash == nsState.getLastPolicyHash() && cmcrudPtr->existsNamespace(nsState.getNamespaceId())
+                && validRoute)
             {
                 LOG_DEBUG("[CM::Sync] No changes detected for space '{}'", nsState.getOriginSpace());
                 continue;

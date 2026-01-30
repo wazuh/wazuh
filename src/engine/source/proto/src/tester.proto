@@ -27,8 +27,8 @@ message Session
     uint32 lifetime = 3;             // Lifetime of the session
     optional string description = 4; // Optional description of the session
 
-    State entry_status = 6; // Status of the session [INACTIVE|ACTIVE]
-    uint32 last_use = 7;    // Last use of the session
+    State entry_status = 5; // Status of the session [INACTIVE|ACTIVE]
+    uint32 last_use = 6;    // Last use of the session
 }
 
 /***************************************************

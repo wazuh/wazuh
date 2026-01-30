@@ -502,8 +502,8 @@ class Session final :
     kNamespaceIdFieldNumber = 2,
     kDescriptionFieldNumber = 4,
     kLifetimeFieldNumber = 3,
-    kEntryStatusFieldNumber = 6,
-    kLastUseFieldNumber = 7,
+    kEntryStatusFieldNumber = 5,
+    kLastUseFieldNumber = 6,
   };
   // string name = 1;
   void clear_name();
@@ -560,7 +560,7 @@ class Session final :
   void _internal_set_lifetime(uint32_t value);
   public:
 
-  // .com.wazuh.api.engine.tester.State entry_status = 6;
+  // .com.wazuh.api.engine.tester.State entry_status = 5;
   void clear_entry_status();
   ::com::wazuh::api::engine::tester::State entry_status() const;
   void set_entry_status(::com::wazuh::api::engine::tester::State value);
@@ -569,7 +569,7 @@ class Session final :
   void _internal_set_entry_status(::com::wazuh::api::engine::tester::State value);
   public:
 
-  // uint32 last_use = 7;
+  // uint32 last_use = 6;
   void clear_last_use();
   uint32_t last_use() const;
   void set_last_use(uint32_t value);
@@ -3082,7 +3082,7 @@ inline void Session::set_allocated_description(std::string* description) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.Session.description)
 }
 
-// .com.wazuh.api.engine.tester.State entry_status = 6;
+// .com.wazuh.api.engine.tester.State entry_status = 5;
 inline void Session::clear_entry_status() {
   _impl_.entry_status_ = 0;
 }
@@ -3102,7 +3102,7 @@ inline void Session::set_entry_status(::com::wazuh::api::engine::tester::State v
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.Session.entry_status)
 }
 
-// uint32 last_use = 7;
+// uint32 last_use = 6;
 inline void Session::clear_last_use() {
   _impl_.last_use_ = 0u;
 }

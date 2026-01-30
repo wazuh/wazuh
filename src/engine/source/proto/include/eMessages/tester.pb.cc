@@ -1040,18 +1040,18 @@ const char* Session::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) 
         } else
           goto handle_unusual;
         continue;
-      // .com.wazuh.api.engine.tester.State entry_status = 6;
-      case 6:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 48)) {
+      // .com.wazuh.api.engine.tester.State entry_status = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 40)) {
           uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
           _internal_set_entry_status(static_cast<::com::wazuh::api::engine::tester::State>(val));
         } else
           goto handle_unusual;
         continue;
-      // uint32 last_use = 7;
-      case 7:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 56)) {
+      // uint32 last_use = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 48)) {
           _impl_.last_use_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else
@@ -1123,17 +1123,17 @@ uint8_t* Session::_InternalSerialize(
         4, this->_internal_description(), target);
   }
 
-  // .com.wazuh.api.engine.tester.State entry_status = 6;
+  // .com.wazuh.api.engine.tester.State entry_status = 5;
   if (this->_internal_entry_status() != 0) {
     target = stream->EnsureSpace(target);
     target = ::_pbi::WireFormatLite::WriteEnumToArray(
-      6, this->_internal_entry_status(), target);
+      5, this->_internal_entry_status(), target);
   }
 
-  // uint32 last_use = 7;
+  // uint32 last_use = 6;
   if (this->_internal_last_use() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(7, this->_internal_last_use(), target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(6, this->_internal_last_use(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -1179,13 +1179,13 @@ size_t Session::ByteSizeLong() const {
     total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_lifetime());
   }
 
-  // .com.wazuh.api.engine.tester.State entry_status = 6;
+  // .com.wazuh.api.engine.tester.State entry_status = 5;
   if (this->_internal_entry_status() != 0) {
     total_size += 1 +
       ::_pbi::WireFormatLite::EnumSize(this->_internal_entry_status());
   }
 
-  // uint32 last_use = 7;
+  // uint32 last_use = 6;
   if (this->_internal_last_use() != 0) {
     total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_last_use());
   }

@@ -250,7 +250,7 @@ public:
             auto hashOpt = policyJson.getString(jsonpolicy::PATH_KEY_HASH);
             if (!hashOpt.has_value() || hashOpt->empty())
             {
-                throw std::runtime_error("Policy JSON must have a non-empty 'hash' field");
+                return "";
             }
             return hashOpt.value();
         }();
@@ -273,6 +273,7 @@ public:
         policyJson.setString(m_title, jsonpolicy::PATH_KEY_TITLE);
         policyJson.setString(m_rootDecoder, jsonpolicy::PATH_KEY_ROOT_PARENT);
         policyJson.setString(m_originSpace, jsonpolicy::PATH_KEY_ORIGIN_SPACE);
+        policyJson.setString(m_hash, jsonpolicy::PATH_KEY_HASH);
 
         policyJson.setArray(jsonpolicy::PATH_KEY_INTEGRATIONS);
         for (const auto& uuid : m_integrations)
@@ -296,11 +297,6 @@ public:
         for (const auto& output : m_outputs)
         {
             policyJson.appendString(output, jsonpolicy::PATH_KEY_OUTPUTS);
-        }
-
-        if (!m_hash.empty())
-        {
-            policyJson.setString(m_hash, jsonpolicy::PATH_KEY_HASH);
         }
 
         return policyJson;
