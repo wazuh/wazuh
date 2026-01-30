@@ -713,6 +713,7 @@ int wdb_parse(char * input, char * output, int peer) {
             result = OS_INVALID;
         }
         wdb_pool_leave(wdb);
+        return result;
     } else if (strcmp(actor, "task") == 0) {
         cJSON *parameters_json = NULL;
         const char *json_err;
