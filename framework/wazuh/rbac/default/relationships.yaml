@@ -19,6 +19,7 @@ relationships:
         - cluster_all
         - rootcheck_run
         - syscheck_run
+        - mitre_read
         - task_status
         - events_ingest
       rule_ids:
@@ -29,6 +30,7 @@ relationships:
       policy_ids:
         - agents_read
         - cluster_read
+        - mitre_read
       rule_ids: []
 
     users_admin:

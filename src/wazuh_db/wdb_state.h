@@ -105,6 +105,11 @@ typedef struct _global_breakdown_t {
     global_labels_t labels;
 } global_breakdown_t;
 
+typedef struct _mitre_breakdown_t {
+    uint64_t sql_queries;
+    struct timeval sql_time;
+} mitre_breakdown_t;
+
 typedef struct _task_tasks_t {
     uint64_t delete_old_queries;
     uint64_t set_timeout_queries;
@@ -132,8 +137,10 @@ typedef struct _task_breakdown_t {
 
 typedef struct _queries_breakdown_t {
     uint64_t global_queries;
+    uint64_t mitre_queries;
     uint64_t task_queries;
     global_breakdown_t global_breakdown;
+    mitre_breakdown_t mitre_breakdown;
     task_breakdown_t task_breakdown;
 } queries_breakdown_t;
 
@@ -728,6 +735,25 @@ void w_inc_task_upgrade_cancel_tasks();
  * @param time Value to increment the counter.
  */
 void w_inc_task_upgrade_cancel_tasks_time(struct timeval time);
+
+/**
+ * @brief Increment mitre queries counter
+ *
+ */
+void w_inc_mitre();
+
+/**
+ * @brief Increment sql mitre queries counter
+ *
+ */
+void w_inc_mitre_sql();
+
+/**
+ * @brief Increment sql mitre time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_mitre_sql_time(struct timeval time);
 
 /**
  * @brief Create a JSON object with all the wazuh-db state information

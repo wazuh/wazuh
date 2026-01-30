@@ -892,6 +892,7 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/*
 %dir %attr(750, root, wazuh) %{_localstatedir}/var
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/db
+%attr(660, root, wazuh) %{_localstatedir}/var/db/mitre.db
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/download
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/var/multigroups
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/run
