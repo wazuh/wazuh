@@ -254,6 +254,7 @@ void free_file_time(void *data) {
 STATIC char* build_handshake_json(const module_limits_t *limits, const char *agent_id) {
     char *json_str = NULL;
     char *cluster_name = NULL;
+    char *cluster_node = NULL;
     char *agent_groups_csv = NULL;
 
     if (!limits) {
@@ -316,6 +317,15 @@ STATIC char* build_handshake_json(const module_limits_t *limits, const char *age
         os_free(cluster_name);
     } else {
         cJSON_AddStringToObject(root, "cluster_name", DEFAULT_CLUSTER_NAME);
+    }
+
+    /* Add cluster_node - get from cluster configuration */
+    cluster_node = get_node_name();  /* From cluster_utils.h, returns allocated string */
+    if (cluster_node) {
+        cJSON_AddStringToObject(root, "cluster_node", cluster_node);
+        os_free(cluster_node);
+    } else {
+        cJSON_AddStringToObject(root, "cluster_node", DEFAULT_CLUSTER_NAME);
     }
 
     /* Add agent_groups - always include field, agent can fallback to merge.mg if empty */
