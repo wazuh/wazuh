@@ -21,7 +21,6 @@
 #include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
 #include "unit_tests/wrappers/windows/fileapi_wrappers.h"
 #include "unit_tests/wrappers/windows/handleapi_wrappers.h"
-#include "unit_tests/wrappers/windows/winnetwk_wrappers.h"
 #include "unit_tests/wrappers/windows/stat64_wrappers.h"
 #include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
 #endif
@@ -31,7 +30,7 @@
 #include <regex.h>
 #else
 #include <aclapi.h>
-#include <winnetwk.h>
+#include <winreg.h>
 #endif
 
 /* Vista product information */
@@ -446,11 +445,21 @@ BOOL wCreateProcessW(LPCWSTR               lpApplicationName,
     	             LPSTARTUPINFOW        lpStartupInfo,
     	             LPPROCESS_INFORMATION lpProcessInformation) {
 
-    if (is_network_path(lpCommandLine)) {
-        errno = EACCES;
-        mwarn(NETWORK_PATH_EXECUTED, lpCommandLine);
+    // Convert wide string to narrow string for network path validation
+    char *narrow_path = convert_windows_string(lpCommandLine);
+    if (narrow_path == NULL) {
+        errno = EINVAL;
         return (false);
     }
+
+    if (is_network_path(narrow_path)) {
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, narrow_path);
+        free(narrow_path);
+        return (false);
+    }
+
+    free(narrow_path);
     return CreateProcessW(lpApplicationName,
     	                  lpCommandLine,
     	                  lpProcessAttributes,
@@ -1695,6 +1704,12 @@ char **expand_win32_wildcards(const char *path) {
     int pending_expand_index = 0;
     int expanded_index = 0;
     size_t glob_pos = 0;
+
+    if (is_network_path(path)) {
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, path);
+        return NULL;
+    }
 
     os_calloc(2, sizeof(char *), pending_expand);
     os_strdup(path, pending_expand[0]);
@@ -2954,15 +2969,32 @@ bool is_network_path(const char *path) {
 
     // Check for mapped network drives
     if (strlen(path) >= 2 && path[1] == ':') {
-        char root[] = "X:";
-        root[0] = toupper(path[0]);
+        char drive_letter = toupper(path[0]);
+        char device[] = "X:";
+        device[0] = drive_letter;
 
-        char remoteName[MAX_PATH] = {0};
-        DWORD bufferSize = sizeof(remoteName);
+        char target[MAX_PATH] = {0};
+        DWORD result = QueryDosDeviceA(device, target, sizeof(target));
 
-        DWORD result = WNetGetConnectionA(root, remoteName, &bufferSize);
+        if (result > 0) {
+            if (strncmp(target, "\\Device\\Mup\\", 12) == 0 ||
+                strncmp(target, "\\Device\\LanmanRedirector\\", 25) == 0 ||
+                strncmp(target, "\\DosDevices\\UNC\\", 16) == 0) {
+                return true;
+            }
 
-        if (result == NO_ERROR || result == ERROR_CONNECTION_UNAVAIL) {
+            if (strncmp(target, "\\Device\\", 8) == 0) {
+                return false;
+            }
+        }
+
+        // Fallback: check registry
+        char registry_path[64];
+        snprintf(registry_path, sizeof(registry_path), "Network\\%c", drive_letter);
+
+        HKEY hkey;
+        if (RegOpenKeyExA(HKEY_CURRENT_USER, registry_path, 0, KEY_READ, &hkey) == ERROR_SUCCESS) {
+            RegCloseKey(hkey);
             return true;
         }
     }

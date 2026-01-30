@@ -348,7 +348,7 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
 
     const auto onError = [&](const std::string& error, const long statusCode, const std::string& errorBody)
     {
-        logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+        logError(IC_NAME, "%s, status code: %ld, response body: %s.", error.c_str(), statusCode, errorBody.c_str());
         // print payload
         logError(IC_NAME, "Url: %s", deleteScrollUrl.c_str());
     };
@@ -450,7 +450,8 @@ void IndexerConnector::sendBulkReactive(const std::vector<std::pair<std::string,
             }
             else
             {
-                logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+                logError(
+                    IC_NAME, "%s, status code: %ld, response body: %s.", error.c_str(), statusCode, errorBody.c_str());
                 throw std::runtime_error(error);
             }
         };
@@ -1139,7 +1140,11 @@ IndexerConnector::IndexerConnector(
                     }
                     else
                     {
-                        logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+                        logError(IC_NAME,
+                                 "%s, status code: %ld, response body: %s.",
+                                 error.c_str(),
+                                 statusCode,
+                                 errorBody.c_str());
                         throw std::runtime_error(error);
                     }
                 };
