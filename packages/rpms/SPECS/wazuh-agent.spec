@@ -241,7 +241,6 @@ fi
 
 %post
 
-echo "VERSION=\"$(%{_localstatedir}/bin/wazuh-control info -v)\"" > /etc/ossec-init.conf
 if [ $1 = 2 ]; then
   if [ -d %{_localstatedir}/logs/ossec ]; then
     rm -rf %{_localstatedir}/logs/wazuh
@@ -623,18 +622,12 @@ if [ -d %{_localstatedir}/queue/ossec ]; then
   rm -rf %{_localstatedir}/queue/ossec/
 fi
 
-if [ -f %{_sysconfdir}/ossec-init.conf ]; then
-  rm -f %{_sysconfdir}/ossec-init.conf
-  rm -f %{_localstatedir}/etc/ossec-init.conf
-fi
-
 %clean
 rm -fr %{buildroot}
 
 %files
 %defattr(-,root,root)
 %config(missingok) %{_initrddir}/wazuh-agent
-%attr(640, root, wazuh) %verify(not md5 size mtime) %ghost %{_sysconfdir}/ossec-init.conf
 /usr/lib/systemd/system/wazuh-agent.service
 %dir %attr(750, root, wazuh) %{_localstatedir}
 %attr(440, wazuh, wazuh) %{_localstatedir}/VERSION.json

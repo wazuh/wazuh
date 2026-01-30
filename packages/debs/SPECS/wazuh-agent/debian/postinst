@@ -179,11 +179,6 @@ case "$1" in
         fi
     fi
 
-    #Delete obsolete files
-    if [ -f /etc/ossec-init.conf ]; then
-        rm -f /etc/ossec-init.conf
-    fi
-
     # Delete installation scripts
     if [ -d ${SCRIPTS_DIR} ]; then
         rm -rf ${SCRIPTS_DIR}
