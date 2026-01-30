@@ -143,6 +143,12 @@ size_t agcom_gethandshake(char **output) {
         return strlen(*output);
     }
 
+    if (agent_cluster_node[0] == '\0') {
+        mdebug1("Cluster node not received yet from manager.");
+        os_strdup("err Cluster node not received yet from manager", *output);
+        return strlen(*output);
+    }
+
     /* Empty agent_groups is allowed - fallback to merge.mg will be used */
 
     char *json_str = NULL;
@@ -150,6 +156,7 @@ size_t agcom_gethandshake(char **output) {
 
     if (root) {
         cJSON_AddStringToObject(root, "cluster_name", agent_cluster_name);
+        cJSON_AddStringToObject(root, "cluster_node", agent_cluster_node);
         cJSON_AddStringToObject(root, "agent_groups", agent_agent_groups);
         json_str = cJSON_PrintUnformatted(root);
         cJSON_Delete(root);

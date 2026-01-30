@@ -163,6 +163,26 @@ STATIC bool parse_cluster_name(const cJSON *root, char *cluster_name, size_t clu
 }
 
 /**
+ * @brief Parse cluster_node from JSON
+ * @return true on success, false on error
+ */
+STATIC bool parse_cluster_node(const cJSON *root, char *cluster_node, size_t cluster_node_size) {
+    if (!cluster_node || cluster_node_size == 0) {
+        return true;
+    }
+
+    cJSON *node = cJSON_GetObjectItem(root, "cluster_node");
+    if (!node || !cJSON_IsString(node) || !node->valuestring || node->valuestring[0] == '\0') {
+        mdebug1("Missing or empty 'cluster_node' in handshake JSON");
+        return false;
+    }
+
+    strncpy(cluster_node, node->valuestring, cluster_node_size - 1);
+    cluster_node[cluster_node_size - 1] = '\0';
+    return true;
+}
+
+/**
  * @brief Parse agent_groups array from JSON and convert to CSV
  * @return true on success (at least one group present), false on error
  */
@@ -213,12 +233,15 @@ STATIC bool parse_agent_groups(const cJSON *root, char *agent_groups, size_t age
  * @param limits Pointer to module limits structure to populate
  * @param cluster_name Buffer to store cluster name
  * @param cluster_name_size Size of cluster_name buffer
+ * @param cluster_node Buffer to store cluster node (min 256 bytes)
+ * @param cluster_node_size Size of cluster_node buffer
  * @param agent_groups Buffer to store agent groups as CSV
  * @param agent_groups_size Size of agent_groups buffer
  * @return 0 on success, -1 on error (all fields are required)
  */
 STATIC int parse_handshake_json(const char *json_str, module_limits_t *limits,
                                 char *cluster_name, size_t cluster_name_size,
+                                char *cluster_node, size_t cluster_node_size,
                                 char *agent_groups, size_t agent_groups_size) {
     if (!json_str || !limits) {
         return -1;
@@ -232,6 +255,7 @@ STATIC int parse_handshake_json(const char *json_str, module_limits_t *limits,
 
     if (!parse_limits(root, limits) ||
         !parse_cluster_name(root, cluster_name, cluster_name_size) ||
+        !parse_cluster_node(root, cluster_node, cluster_node_size) ||
         !parse_agent_groups(root, agent_groups, agent_groups_size)) {
         cJSON_Delete(root);
         return -1;
@@ -542,9 +566,11 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                         const char *json_start = strchr(tmp_msg, '{');
                         if (json_start) {
                             char cluster_name_buffer[256] = {0};
+                            char cluster_node_buffer[256] = {0};
                             char agent_groups_buffer[OS_SIZE_65536] = {0};
                             if (parse_handshake_json(json_start, &agent_module_limits,
                                                       cluster_name_buffer, sizeof(cluster_name_buffer),
+                                                      cluster_node_buffer, sizeof(cluster_node_buffer),
                                                       agent_groups_buffer, sizeof(agent_groups_buffer)) == 0) {
                                 minfo("Module limits received from manager");
 
@@ -573,6 +599,11 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                 strncpy(agent_cluster_name, cluster_name_buffer, sizeof(agent_cluster_name) - 1);
                                 agent_cluster_name[sizeof(agent_cluster_name) - 1] = '\0';
                                 minfo("Connected to cluster: %s", agent_cluster_name);
+
+                                /* Store cluster_node in global for agent-info module to query via agcom */
+                                strncpy(agent_cluster_node, cluster_node_buffer, sizeof(agent_cluster_node) - 1);
+                                agent_cluster_node[sizeof(agent_cluster_node) - 1] = '\0';
+                                minfo("Connected to node: %s", agent_cluster_node);
 
                                 /* Store agent_groups in global for agent-info module to query via agcom */
                                 strncpy(agent_agent_groups, agent_groups_buffer, sizeof(agent_agent_groups) - 1);

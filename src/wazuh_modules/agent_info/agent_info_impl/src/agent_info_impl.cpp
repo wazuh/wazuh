@@ -25,6 +25,7 @@
 // Forward declarations for handshake data getters (implemented in agent_info.cpp)
 extern "C" {
     const char* agent_info_get_cluster_name(void);
+    const char* agent_info_get_cluster_node(void);
     const char* agent_info_get_agent_groups(void);
     void agent_info_clear_agent_groups(void);
 }
@@ -106,7 +107,8 @@ const char* AGENT_METADATA_SQL_STATEMENT =
     "host_os_type      TEXT,"
     "host_os_platform  TEXT,"
     "host_os_version   TEXT,"
-    "cluster_name      TEXT);";
+    "cluster_name      TEXT,"
+    "cluster_node      TEXT);";
 
 const char* AGENT_GROUPS_SQL_STATEMENT =
     "CREATE TABLE IF NOT EXISTS agent_groups ("
@@ -434,6 +436,18 @@ void AgentInfoImpl::populateAgentMetadata()
         agentMetadata["cluster_name"] = "";
     }
 
+    // Get cluster_node from handshake (set by agentd during connection via agent_info_set_cluster_node)
+    const char* cluster_node = agent_info_get_cluster_node();
+
+    if (m_isAgent && cluster_node && cluster_node[0] != '\0')
+    {
+        agentMetadata["cluster_node"] = std::string(cluster_node);
+    }
+    else
+    {
+        agentMetadata["cluster_node"] = "";
+    }
+
     // Get agent groups (only for agents)
     // Priority: 1) Groups from handshake, 2) Groups from merged.mg
     std::vector<std::string> groups;
@@ -543,6 +557,7 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     copyField(metadata.os_platform, sizeof(metadata.os_platform), agentMetadata, "host_os_platform");
     copyField(metadata.os_version, sizeof(metadata.os_version), agentMetadata, "host_os_version");
     copyField(metadata.cluster_name, sizeof(metadata.cluster_name), agentMetadata, "cluster_name");
+    copyField(metadata.cluster_node, sizeof(metadata.cluster_node), agentMetadata, "cluster_node");
 
     // Copy groups
     if (!groups.empty())

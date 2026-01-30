@@ -65,6 +65,7 @@ agent_info_set_report_function_func agent_info_set_report_function_ptr = NULL;
 agent_info_init_sync_protocol_func agent_info_init_sync_protocol_ptr = NULL;
 agent_info_set_query_module_function_func agent_info_set_query_module_function_ptr = NULL;
 agent_info_set_cluster_name_func agent_info_set_cluster_name_ptr = NULL;
+agent_info_set_cluster_node_func agent_info_set_cluster_node_ptr = NULL;
 agent_info_set_agent_groups_func agent_info_set_agent_groups_ptr = NULL;
 
 // Sync protocol function pointers
@@ -272,11 +273,16 @@ extern size_t agcom_dispatch(char * command, char ** output);
 // On Windows: calls agcom_dispatch directly (same process)
 // On Unix: connects to agcom socket (AG_LOCAL_SOCK)
 static bool wm_agent_info_query_agentd_handshake(char* cluster_name, size_t cluster_name_size,
+                                                  char* cluster_node, size_t cluster_node_size,
                                                   char* agent_groups, size_t agent_groups_size)
 {
     if (cluster_name && cluster_name_size > 0)
     {
         cluster_name[0] = '\0';
+    }
+    if (cluster_node && cluster_node_size > 0)
+    {
+        cluster_node[0] = '\0';
     }
     if (agent_groups && agent_groups_size > 0)
     {
@@ -349,6 +355,16 @@ static bool wm_agent_info_query_agentd_handshake(char* cluster_name, size_t clus
         }
     }
 
+    cJSON* node = cJSON_GetObjectItem(root, "cluster_node");
+    if (node && cJSON_IsString(node) && node->valuestring)
+    {
+        if (cluster_node && cluster_node_size > 0)
+        {
+            strncpy(cluster_node, node->valuestring, cluster_node_size - 1);
+            cluster_node[cluster_node_size - 1] = '\0';
+        }
+    }
+
     cJSON* groups = cJSON_GetObjectItem(root, "agent_groups");
     if (groups && cJSON_IsString(groups) && groups->valuestring)
     {
@@ -361,8 +377,8 @@ static bool wm_agent_info_query_agentd_handshake(char* cluster_name, size_t clus
 
     cJSON_Delete(root);
 
-    mdebug1("Received handshake data from agentd: cluster_name=%s, agent_groups=%s",
-            cluster_name ? cluster_name : "", agent_groups ? agent_groups : "");
+    mdebug1("Received handshake data from agentd: cluster_name=%s, cluster_node=%s, agent_groups=%s",
+            cluster_name ? cluster_name : "", cluster_node ? cluster_node : "", agent_groups ? agent_groups : "");
     return true;
 }
 
@@ -589,6 +605,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_init_sync_protocol_ptr = so_get_function_sym(agent_info_module, "agent_info_init_sync_protocol");
         agent_info_set_query_module_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_query_module_function");
         agent_info_set_cluster_name_ptr = so_get_function_sym(agent_info_module, "agent_info_set_cluster_name");
+        agent_info_set_cluster_node_ptr = so_get_function_sym(agent_info_module, "agent_info_set_cluster_node");
         agent_info_set_agent_groups_ptr = so_get_function_sym(agent_info_module, "agent_info_set_agent_groups");
 
         // Get sync protocol function pointers
@@ -624,16 +641,18 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_init_sync_protocol_ptr(AGENT_INFO_WM_NAME, &mq_funcs);
     }
 
-    // Query agentd for handshake data (cluster_name, agent_groups) via agcom - only on agents
+    // Query agentd for handshake data (cluster_name, cluster_node, agent_groups) via agcom - only on agents
     if (agent_info->is_agent)
     {
         char cluster_name[256] = {0};
+        char cluster_node[256] = {0};
         char agent_groups[OS_SIZE_65536] = {0};
         bool handshake_success = false;
 
         while (!handshake_success && !g_shutting_down)
         {
             if (wm_agent_info_query_agentd_handshake(cluster_name, sizeof(cluster_name),
+                                                      cluster_node, sizeof(cluster_node),
                                                       agent_groups, sizeof(agent_groups)))
             {
                 handshake_success = true;
@@ -641,6 +660,11 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
                 {
                     agent_info_set_cluster_name_ptr(cluster_name);
                     minfo("Cluster name received from agentd: %s", cluster_name);
+                }
+                if (cluster_node[0] != '\0' && agent_info_set_cluster_node_ptr)
+                {
+                    agent_info_set_cluster_node_ptr(cluster_node);
+                    mdebug1("Cluster node received from agentd: %s", cluster_node);
                 }
                 if (agent_groups[0] != '\0' && agent_info_set_agent_groups_ptr)
                 {

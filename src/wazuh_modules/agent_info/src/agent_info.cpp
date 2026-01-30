@@ -47,6 +47,9 @@ static const MQ_Functions* g_mq_functions = nullptr;
 // Global cluster name storage (set from handshake, used by agent_info_impl)
 static char g_cluster_name[256] = {0};
 
+// Global cluster node storage (set from handshake, used by agent_info_impl)
+static char g_cluster_node[256] = {0};
+
 // Global agent groups storage (set from handshake, used by agent_info_impl)
 // Uses OS_SIZE_65536 to accommodate multiple groups
 static char g_agent_groups[65536] = {0};
@@ -128,6 +131,29 @@ void agent_info_set_cluster_name(const char* cluster_name)
 const char* agent_info_get_cluster_name()
 {
     return g_cluster_name;
+}
+
+void agent_info_set_cluster_node(const char* cluster_node)
+{
+    if (cluster_node)
+    {
+        strncpy(g_cluster_node, cluster_node, sizeof(g_cluster_node) - 1);
+        g_cluster_node[sizeof(g_cluster_node) - 1] = '\0';
+
+        if (g_log_callback)
+        {
+            g_log_callback(LOG_DEBUG, "Cluster node set", "agent-info");
+        }
+    }
+    else
+    {
+        g_cluster_node[0] = '\0';
+    }
+}
+
+const char* agent_info_get_cluster_node()
+{
+    return g_cluster_node;
 }
 
 void agent_info_set_agent_groups(const char* agent_groups)

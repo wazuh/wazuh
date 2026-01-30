@@ -64,6 +64,24 @@ EXPORTED void agent_info_set_cluster_name(const char* cluster_name);
 EXPORTED const char* agent_info_get_cluster_name(void);
 
 /**
+ * @brief Set the cluster node received from the manager during handshake
+ *
+ * This function stores the cluster node (manager node name) that will be used when populating
+ * agent metadata. Should be called from start_agent.c after parsing the
+ * handshake response.
+ *
+ * @param cluster_node The cluster node string (will be copied internally)
+ */
+EXPORTED void agent_info_set_cluster_node(const char* cluster_node);
+
+/**
+ * @brief Get the cluster node received from the manager during handshake
+ *
+ * @return The cluster node string (empty string if not set)
+ */
+EXPORTED const char* agent_info_get_cluster_node(void);
+
+/**
  * @brief Set the agent groups received from the manager during handshake
  *
  * This function stores the agent groups (as CSV) that will be used when populating
@@ -104,6 +122,8 @@ typedef bool (*agent_info_parse_response_func)(const uint8_t* data, size_t data_
 typedef void (*agent_info_set_query_module_function_func)(query_module_callback_t query_module_callback);
 typedef void (*agent_info_set_cluster_name_func)(const char* cluster_name);
 typedef const char* (*agent_info_get_cluster_name_func)(void);
+typedef void (*agent_info_set_cluster_node_func)(const char* cluster_node);
+typedef const char* (*agent_info_get_cluster_node_func)(void);
 typedef void (*agent_info_set_agent_groups_func)(const char* agent_groups);
 typedef const char* (*agent_info_get_agent_groups_func)(void);
 typedef void (*agent_info_clear_agent_groups_func)(void);
