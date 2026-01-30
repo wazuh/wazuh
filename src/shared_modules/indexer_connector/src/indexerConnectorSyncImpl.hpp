@@ -310,7 +310,7 @@ class IndexerConnectorSyncImpl final
             url += "/";
             url += index;
             url += "/_delete_by_query";
-            logDebug2(IC_NAME, "Deleting by query: %s", url.c_str());
+            logInfo(IC_NAME, "Deleting by query: %s", url.c_str());
             m_httpRequest->post(
                 RequestParameters {
                     .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},

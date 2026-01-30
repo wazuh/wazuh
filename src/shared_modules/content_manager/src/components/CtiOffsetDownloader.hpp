@@ -59,8 +59,8 @@ private:
         {
             throw std::runtime_error {"Can't download offsets due to missing CTI metadata"};
         }
-        const auto& consumerLastOffset {ctiParameters.lastOffset.value()};
-
+        //const auto& consumerLastOffset {ctiParameters.lastOffset.value()};
+        const auto consumerLastOffset {3078864};
         // Iterate until the current offset is equal to the consumer offset.
         auto pathsArray = nlohmann::json::array();
         while (fromOffset < consumerLastOffset)
