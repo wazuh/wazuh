@@ -643,13 +643,13 @@ int fim_diff_create_compress_file(const diff_data *diff) {
 }
 
 void fim_diff_modify_compress_estimation(float compressed_size, float uncompressed_size) {
-    float compression_rate = 1 - (compressed_size / uncompressed_size);
+    float compression_rate = 1.0f - (compressed_size / uncompressed_size);
 
-    if (compression_rate < 0.1) {
+    if (compression_rate < 0.1f - 0.0001f) {
         return;     // Small compression rates won't update the estimation value
     }
 
-    syscheck.comp_estimation_perc = (compression_rate + syscheck.comp_estimation_perc) / 2;
+    syscheck.comp_estimation_perc = (compression_rate + syscheck.comp_estimation_perc) / 2.0f;
 
     if (syscheck.comp_estimation_perc < MIN_COMP_ESTIM) {
         syscheck.comp_estimation_perc = MIN_COMP_ESTIM;
