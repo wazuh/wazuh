@@ -1783,11 +1783,16 @@ def test_as_wazuh_object_ok(mock_chmod, mock_chown, mock_gid, mock_uid):
     # Test the first condition and nested if
     assert cluster_common.as_wazuh_object({"__callable__": {"__name__": "type", "__wazuh__": "version"}}) == "server"
 
-    # Test the first condition - non-internal callable must be blocked
+    # Test the first condition and nested else
     with pytest.raises(exception.WazuhInternalError) as err:
-        cluster_common.as_wazuh_object({"__callable__": {"__name__": "path", "__qualname__": "__loader__.value",
-                                                        "__module__": "os"}})
-    assert "Decoding callable from module" in str(err.value)
+        cluster_common.as_wazuh_object({
+            "__callable__": {
+                "__name__": "join",
+                "__qualname__": "path.join",
+                "__module__": "os"
+            }
+        })
+    assert "Decoding callable from module 'os' is not allowed" in str(err.value)
 
     with pytest.raises(exception.WazuhInternalError) as err:
         cluster_common.as_wazuh_object({"__callable__": {"__name__": "__name__", "__qualname__": "value",

@@ -639,7 +639,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Agent-info sync']
         logger.info('Starting.')
-        start_time = datetime.utcnow().replace(tzinfo=timezone.utc)
+        start_time = datetime.now(timezone.utc)
 
         data = await self.get_chunks_in_task_id(task_id, b'syn_m_a_err')
         result = await self.update_chunks_wdb(data, 'agent-info', logger, b'syn_m_a_err',
@@ -647,7 +647,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Send result to worker.
         response = await self.send_request(command=b'syn_m_a_e', data=json.dumps(result).encode())
-        end_time = datetime.utcnow().replace(tzinfo=timezone.utc)
+        end_time = datetime.now(timezone.utc)
         self.sync_agent_info_status.update({'date_start_master': start_time.strftime(DECIMALS_DATE_FORMAT),
                                             'date_end_master': end_time.strftime(DECIMALS_DATE_FORMAT),
                                             'n_synced_chunks': result['updated_chunks']})

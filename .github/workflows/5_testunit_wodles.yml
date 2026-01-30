@@ -36,12 +36,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
-          cache-dependency-path: 'framework/requirements-dev.txt'
+          cache-dependency-path: 'framework/requirements-wodles-dev.txt'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip wheel
-          pip install -r framework/requirements-dev.txt --no-build-isolation
+          pip install -r framework/requirements-wodles-dev.txt --no-build-isolation
 
       - name: Run Wodles tests
         run: |

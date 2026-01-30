@@ -1099,7 +1099,7 @@ async def test_master_handler_sync_extra_valid(sync_worker_files_mock, set_date_
 def test_set_date_end_master(info_mock):
     """Check if set_date_end_master works as expected."""
     master_handler = get_master_handler()
-    master_handler.integrity_sync_status['tmp_date_start_master'] = datetime.utcnow().replace(tzinfo=timezone.utc)
+    master_handler.integrity_sync_status['tmp_date_start_master'] = datetime.now(timezone.utc)
     master_handler.set_date_end_master(logging.getLogger("wazuh"))
 
     assert master_handler.integrity_sync_status['date_end_master'] == "1970-01-01T00:00:00.000000Z"

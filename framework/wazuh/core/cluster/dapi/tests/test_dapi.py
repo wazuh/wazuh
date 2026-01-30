@@ -745,7 +745,7 @@ def test_APIRequestQueue_init(queue_mock):
 
 
 @patch("wazuh.core.cluster.common.import_module", return_value="os.path")
-@patch("asyncio.get_event_loop")
+@patch("asyncio.get_running_loop")
 async def test_APIRequestQueue_run(loop_mock, import_module_mock):
     """Test `APIRequestQueue.run` function."""
 
@@ -802,7 +802,7 @@ async def test_APIRequestQueue_run(loop_mock, import_module_mock):
 
 
 @patch("wazuh.core.cluster.dapi.dapi.contextlib.suppress", side_effect=Exception())
-@patch("asyncio.get_event_loop")
+@patch("asyncio.get_running_loop")
 async def test_SendSyncRequestQueue_run(loop_mock, contexlib_mock):
     """Test `SendSyncRequestQueue.run` function."""
 

@@ -95,7 +95,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libgcc_s.so.1,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libindexer_connector.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libjemalloc.so.2,root,wazuh,750,file,-rwxr-x---,,
-/var/ossec/lib/libpython3.10.so.1.0,root,wazuh,750,file,-rwxr-x---,,
+/var/ossec/lib/libpython3.12.so.1.0,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/librocksdb.so.8,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/librouter.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,,
