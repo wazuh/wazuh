@@ -374,10 +374,9 @@ SCASyncManager::LimitResult SCASyncManager::enforceLimitLocked()
 
     if (m_syncLimit == 0)
     {
-        LoggingHelper::getInstance().log(
-            LOG_INFO,
-            "SCA sync limit disabled; syncing " + std::to_string(m_syncedCount) +
-            " check(s) for cluster '" + clusterNameForLog() + "'");
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "SCA sync limit disabled; syncing " + std::to_string(m_syncedCount) +
+                                         " check(s) for cluster '" + clusterNameForLog() + "'");
     }
     else
     {
