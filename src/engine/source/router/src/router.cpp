@@ -230,7 +230,7 @@ void Router::ingest(base::Event&& event)
 
     if (!processed && event)
     {
-        LOG_WARNING("Event not processed: {}", event->str());
+        //LOG_WARNING("Event not processed: {}", event->str());
     }
 }
 
