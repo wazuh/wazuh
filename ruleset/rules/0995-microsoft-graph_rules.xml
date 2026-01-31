@@ -39,7 +39,7 @@
         <if_sid>99501,99502</if_sid>
         <options>no_full_log</options>
         <field name="ms-graph.status" negate="yes">resolved</field>
-        <field name="ms-graph.classification" negate="yes">falsePositive</field>
+        <regex type="pcre2" negate="yes">"classification"\:\s*"falsePositive"</regex>
         <description>MS Graph message: The alert/incident has not been resolved and is not a false positive.</description>
     </rule>
 
