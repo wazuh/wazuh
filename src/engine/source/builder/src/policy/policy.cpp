@@ -63,6 +63,8 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
     auto enrichmentExp = [&]() -> base::Expression
     {
         auto enrichmentExp = base::Chain::create("enrichment", {});
+        /*
+        TODO: Re-enable when multiple enrichment plugins are supported
         for (const auto& enrichPlugin : policyData.getEnrichments())
         {
             auto builderIt = registry->get<builders::EnrichmentBuilder>(enrichPlugin);
@@ -77,7 +79,7 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
             enrichmentExp->getOperands().push_back(exp);
             m_assets.insert(base::Name(traceable));
         }
-
+        */
         auto [exp, traceable] = builders::enrichment::getSpaceEnrichment(policyData, trace);
         enrichmentExp->getOperands().push_back(exp);
         m_assets.insert(base::Name(traceable));
