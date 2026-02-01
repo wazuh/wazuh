@@ -910,6 +910,7 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/*
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/var
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/db
+%attr(660, root, wazuh-manager) %{_localstatedir}/var/db/mitre.db
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/download
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/var/multigroups
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/run
@@ -918,7 +919,7 @@ rm -fr %{buildroot}
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/upgrade
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/wodles
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/wodles
-%attr(750,root, wazuh-manager) %{_localstatedir}/wodles/*
+%attr(750, root, wazuh-manager) %{_localstatedir}/wodles/*
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/wodles/aws
 %attr(750, root, wazuh-manager) %{_localstatedir}/wodles/aws/*
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/wodles/azure
