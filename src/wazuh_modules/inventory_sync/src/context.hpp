@@ -36,6 +36,8 @@ struct Context final
     std::string osversion;
     std::vector<std::string> groups;
     uint64_t globalVersion;
+    std::string clusterName;
+    std::string clusterNode;
     bool transactionDispatched = false;
     bool ownsAgentLock = false;
     std::string checksum;

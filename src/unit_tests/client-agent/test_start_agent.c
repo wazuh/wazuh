@@ -26,11 +26,16 @@
 #endif
 
 #include "../client-agent/agentd.h"
+#include "../headers/module_limits.h"
 
 extern void send_msg_on_startup(void);
 extern bool agent_handshake_to_server(int server_id, bool is_startup);
 extern void send_agent_stopped_message();
 extern int _s_verify_counter;
+extern int parse_handshake_json(const char *json_str, module_limits_t *limits,
+                                char *cluster_name, size_t cluster_name_size,
+                                char *cluster_node, size_t cluster_node_size,
+                                char *agent_groups, size_t agent_groups_size);
 
 int __wrap_send_msg(const char *msg, ssize_t msg_length) {
     check_expected(msg);
@@ -247,7 +252,7 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 3);
+    expect_any_count(__wrap__minfo, formatted_msg, 4);
 
     handshaked = agent_handshake_to_server(0, false);
     assert_true(handshaked);
@@ -273,7 +278,7 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 6);
+    expect_any_count(__wrap__minfo, formatted_msg, 7);
 
     handshaked = agent_handshake_to_server(1, false);
     assert_true(handshaked);
@@ -300,7 +305,7 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 3);
+    expect_any_count(__wrap__minfo, formatted_msg, 4);
 
     handshaked = agent_handshake_to_server(1, true);
     assert_true(handshaked);
@@ -458,6 +463,380 @@ static void test_send_msg_on_startup(void **state) {
     return;
 }
 
+/* parse_handshake_json tests */
+static void test_parse_handshake_json_full_payload(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":200000,\"registry_key\":150000,\"registry_value\":100000},"
+            "\"syscollector\":{"
+                "\"hotfixes\":2000,\"packages\":60000,\"processes\":70000,"
+                "\"ports\":80000,\"network_iface\":200,\"network_protocol\":300,"
+                "\"network_address\":400,\"hardware\":2,\"os_info\":3,"
+                "\"users\":100,\"groups\":200,\"services\":20000,\"browser_extensions\":500"
+            "},"
+            "\"sca\":{\"checks\":15000}"
+        "},"
+        "\"cluster_name\":\"test-cluster\","
+        "\"cluster_node\":\"test-node\","
+        "\"agent_groups\":[\"default\",\"webservers\"]"
+        "}";
+
+    module_limits_init(&limits);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups));
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(limits.fim.file, 200000);
+    assert_int_equal(limits.fim.registry_key, 150000);
+    assert_int_equal(limits.fim.registry_value, 100000);
+    assert_int_equal(limits.syscollector.hotfixes, 2000);
+    assert_int_equal(limits.syscollector.packages, 60000);
+    assert_int_equal(limits.syscollector.processes, 70000);
+    assert_int_equal(limits.syscollector.ports, 80000);
+    assert_int_equal(limits.syscollector.network_iface, 200);
+    assert_int_equal(limits.syscollector.network_protocol, 300);
+    assert_int_equal(limits.syscollector.network_address, 400);
+    assert_int_equal(limits.syscollector.hardware, 2);
+    assert_int_equal(limits.syscollector.os_info, 3);
+    assert_int_equal(limits.syscollector.users, 100);
+    assert_int_equal(limits.syscollector.groups, 200);
+    assert_int_equal(limits.syscollector.services, 20000);
+    assert_int_equal(limits.syscollector.browser_extensions, 500);
+    assert_int_equal(limits.sca.checks, 15000);
+    assert_true(limits.limits_received);
+    assert_string_equal(cluster_name, "test-cluster");
+    assert_string_equal(cluster_node, "test-node");
+    assert_string_equal(agent_groups, "default,webservers");
+}
+
+static void test_parse_handshake_json_missing_syscollector(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    /* Missing syscollector - should fail since all fields are required */
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":50000,\"registry_key\":25000,\"registry_value\":20000},"
+            "\"sca\":{\"checks\":15000}"
+        "},"
+        "\"cluster_name\":\"test-cluster\","
+        "\"cluster_node\":\"test-node\","
+        "\"agent_groups\":[\"default\"]"
+        "}";
+
+    module_limits_init(&limits);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups));
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_parse_handshake_json_with_cluster_name(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":100000,\"registry_key\":50000,\"registry_value\":50000},"
+            "\"syscollector\":{"
+                "\"hotfixes\":1000,\"packages\":50000,\"processes\":50000,"
+                "\"ports\":50000,\"network_iface\":100,\"network_protocol\":100,"
+                "\"network_address\":100,\"hardware\":1,\"os_info\":1,"
+                "\"users\":100,\"groups\":100,\"services\":10000,\"browser_extensions\":100"
+            "},"
+            "\"sca\":{\"checks\":10000}"
+        "},"
+        "\"cluster_name\":\"wazuh-cluster\","
+        "\"cluster_node\":\"wazuh-node\","
+        "\"agent_groups\":[\"default\"]"
+        "}";
+
+    module_limits_init(&limits);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups));
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(cluster_name, "wazuh-cluster");
+}
+
+static void test_parse_handshake_json_no_cluster_name(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    /* Missing cluster_name - should fail since it's required */
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":100000,\"registry_key\":50000,\"registry_value\":50000},"
+            "\"syscollector\":{"
+                "\"hotfixes\":1000,\"packages\":50000,\"processes\":50000,"
+                "\"ports\":50000,\"network_iface\":100,\"network_protocol\":100,"
+                "\"network_address\":100,\"hardware\":1,\"os_info\":1,"
+                "\"users\":100,\"groups\":100,\"services\":10000,\"browser_extensions\":100"
+            "},"
+            "\"sca\":{\"checks\":10000}"
+        "},"
+        "\"cluster_node\":\"wazuh-node\","
+        "\"agent_groups\":[\"default\"]"
+        "}";
+
+    module_limits_init(&limits);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups));
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_parse_handshake_json_invalid_json(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    const char *json_str = "not valid json {{{";
+
+    module_limits_init(&limits);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups));
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_parse_handshake_json_no_limits_object(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    const char *json_str = "{\"cluster_name\":\"test\"}";
+
+    module_limits_init(&limits);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups));
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_parse_handshake_json_null_params(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    const char *json_str = "{\"limits\":{\"fim\":{\"file\":100000}}}";
+
+    /* Test with NULL json_str */
+    ret = parse_handshake_json(NULL, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups));
+    assert_int_equal(ret, -1);
+
+    /* Test with NULL limits */
+    ret = parse_handshake_json(json_str, NULL, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups));
+    assert_int_equal(ret, -1);
+}
+
+static void test_parse_handshake_json_empty_string(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    const char *json_str = "";
+
+    module_limits_init(&limits);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups));
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_parse_handshake_json_with_cluster_node(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":100000,\"registry_key\":50000,\"registry_value\":50000},"
+            "\"syscollector\":{"
+                "\"hotfixes\":1000,\"packages\":50000,\"processes\":50000,"
+                "\"ports\":50000,\"network_iface\":100,\"network_protocol\":100,"
+                "\"network_address\":100,\"hardware\":1,\"os_info\":1,"
+                "\"users\":100,\"groups\":100,\"services\":10000,\"browser_extensions\":100"
+            "},"
+            "\"sca\":{\"checks\":10000}"
+        "},"
+        "\"cluster_name\":\"wazuh-cluster\","
+        "\"cluster_node\":\"wazuh-node-01\","
+        "\"agent_groups\":[\"default\"]"
+        "}";
+
+    module_limits_init(&limits);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups));
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(cluster_name, "wazuh-cluster");
+    assert_string_equal(cluster_node, "wazuh-node-01");
+}
+
+static void test_parse_handshake_json_no_cluster_node(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    /* Missing cluster_node - should fail since it's required */
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":100000,\"registry_key\":50000,\"registry_value\":50000},"
+            "\"syscollector\":{"
+                "\"hotfixes\":1000,\"packages\":50000,\"processes\":50000,"
+                "\"ports\":50000,\"network_iface\":100,\"network_protocol\":100,"
+                "\"network_address\":100,\"hardware\":1,\"os_info\":1,"
+                "\"users\":100,\"groups\":100,\"services\":10000,\"browser_extensions\":100"
+            "},"
+            "\"sca\":{\"checks\":10000}"
+        "},"
+        "\"cluster_name\":\"wazuh-cluster\","
+        "\"agent_groups\":[\"default\"]"
+        "}";
+
+    module_limits_init(&limits);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups));
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_parse_handshake_json_no_agent_groups(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    /* Missing agent_groups - should fail since it's required */
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":100000,\"registry_key\":50000,\"registry_value\":50000},"
+            "\"syscollector\":{"
+                "\"hotfixes\":1000,\"packages\":50000,\"processes\":50000,"
+                "\"ports\":50000,\"network_iface\":100,\"network_protocol\":100,"
+                "\"network_address\":100,\"hardware\":1,\"os_info\":1,"
+                "\"users\":100,\"groups\":100,\"services\":10000,\"browser_extensions\":100"
+            "},"
+            "\"sca\":{\"checks\":10000}"
+        "},"
+        "\"cluster_name\":\"wazuh-cluster\","
+        "\"cluster_node\":\"wazuh-node\""
+        "}";
+
+    module_limits_init(&limits);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups));
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_parse_handshake_json_empty_agent_groups(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    /* Empty agent_groups array - allowed, agent can fallback to merge.mg */
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":100000,\"registry_key\":50000,\"registry_value\":50000},"
+            "\"syscollector\":{"
+                "\"hotfixes\":1000,\"packages\":50000,\"processes\":50000,"
+                "\"ports\":50000,\"network_iface\":100,\"network_protocol\":100,"
+                "\"network_address\":100,\"hardware\":1,\"os_info\":1,"
+                "\"users\":100,\"groups\":100,\"services\":10000,\"browser_extensions\":100"
+            "},"
+            "\"sca\":{\"checks\":10000}"
+        "},"
+        "\"cluster_name\":\"wazuh-cluster\","
+        "\"cluster_node\":\"wazuh-node\","
+        "\"agent_groups\":[]"
+        "}";
+
+    module_limits_init(&limits);
+    /* Debug message logged for empty array */
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups));
+
+    /* Empty agent_groups is now allowed - returns success */
+    assert_int_equal(ret, 0);
+    /* agent_groups should be empty string */
+    assert_string_equal(agent_groups, "");
+}
+
 /* send_agent_stopped_message */
 static void test_send_agent_stopped_message(void **state) {
 
@@ -476,6 +855,19 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_agent_handshake_to_server_error_getting_msg2, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_send_msg_on_startup, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_send_agent_stopped_message, setup_test, teardown_test),
+        /* parse_handshake_json tests */
+        cmocka_unit_test(test_parse_handshake_json_full_payload),
+        cmocka_unit_test(test_parse_handshake_json_missing_syscollector),
+        cmocka_unit_test(test_parse_handshake_json_with_cluster_name),
+        cmocka_unit_test(test_parse_handshake_json_with_cluster_node),
+        cmocka_unit_test(test_parse_handshake_json_no_cluster_node),
+        cmocka_unit_test(test_parse_handshake_json_no_cluster_name),
+        cmocka_unit_test(test_parse_handshake_json_no_agent_groups),
+        cmocka_unit_test(test_parse_handshake_json_empty_agent_groups),
+        cmocka_unit_test(test_parse_handshake_json_invalid_json),
+        cmocka_unit_test(test_parse_handshake_json_no_limits_object),
+        cmocka_unit_test(test_parse_handshake_json_null_params),
+        cmocka_unit_test(test_parse_handshake_json_empty_string),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

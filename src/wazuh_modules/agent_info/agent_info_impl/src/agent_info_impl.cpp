@@ -19,7 +19,16 @@
 #include <map>
 #include <mutex>
 #include <set>
+#include <sstream>
 #include <thread>
+
+// Forward declarations for handshake data getters (implemented in agent_info.cpp)
+extern "C" {
+    const char* agent_info_get_cluster_name(void);
+    const char* agent_info_get_cluster_node(void);
+    const char* agent_info_get_agent_groups(void);
+    void agent_info_clear_agent_groups(void);
+}
 
 constexpr auto QUEUE_SIZE = 4096;
 constexpr auto AGENT_METADATA_TABLE = "agent_metadata";
@@ -97,7 +106,9 @@ const char* AGENT_METADATA_SQL_STATEMENT =
     "host_os_name      TEXT,"
     "host_os_type      TEXT,"
     "host_os_platform  TEXT,"
-    "host_os_version   TEXT);";
+    "host_os_version   TEXT,"
+    "cluster_name      TEXT,"
+    "cluster_node      TEXT);";
 
 const char* AGENT_GROUPS_SQL_STATEMENT =
     "CREATE TABLE IF NOT EXISTS agent_groups ("
@@ -413,12 +424,65 @@ void AgentInfoImpl::populateAgentMetadata()
         agentMetadata["host_os_version"] = osInfo["os_version"];
     }
 
-    // Read agent groups from merged.mg (only for agents)
+    // Get cluster_name from handshake (set by agentd during connection via agent_info_set_cluster_name)
+    const char* cluster_name = agent_info_get_cluster_name();
+
+    if (m_isAgent && cluster_name && cluster_name[0] != '\0')
+    {
+        agentMetadata["cluster_name"] = std::string(cluster_name);
+    }
+    else
+    {
+        agentMetadata["cluster_name"] = "";
+    }
+
+    // Get cluster_node from handshake (set by agentd during connection via agent_info_set_cluster_node)
+    const char* cluster_node = agent_info_get_cluster_node();
+
+    if (m_isAgent && cluster_node && cluster_node[0] != '\0')
+    {
+        agentMetadata["cluster_node"] = std::string(cluster_node);
+    }
+    else
+    {
+        agentMetadata["cluster_node"] = "";
+    }
+
+    // Get agent groups (only for agents)
+    // Priority: 1) Groups from handshake, 2) Groups from merged.mg
     std::vector<std::string> groups;
 
     if (m_isAgent)
     {
-        groups = readAgentGroups();
+        // First, try to get groups from handshake (received from manager)
+        const char* handshake_groups = agent_info_get_agent_groups();
+
+        if (handshake_groups && handshake_groups[0] != '\0')
+        {
+            // Parse CSV groups from handshake
+            std::string groups_str(handshake_groups);
+            std::istringstream iss(groups_str);
+            std::string group;
+
+            while (std::getline(iss, group, ','))
+            {
+                if (!group.empty())
+                {
+                    groups.push_back(group);
+                }
+            }
+
+            m_logFunction(LOG_DEBUG, "Using " + std::to_string(groups.size()) + " groups from manager handshake");
+
+            // Clear handshake groups after consuming them
+            // Subsequent calls will read from merged.mg
+            agent_info_clear_agent_groups();
+        }
+        else
+        {
+            // Fall back to reading from merged.mg
+            groups = readAgentGroups();
+        }
     }
 
     // Update the global metadata provider BEFORE updateChanges
@@ -492,6 +556,8 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     copyField(metadata.os_type, sizeof(metadata.os_type), agentMetadata, "host_os_type");
     copyField(metadata.os_platform, sizeof(metadata.os_platform), agentMetadata, "host_os_platform");
     copyField(metadata.os_version, sizeof(metadata.os_version), agentMetadata, "host_os_version");
+    copyField(metadata.cluster_name, sizeof(metadata.cluster_name), agentMetadata, "cluster_name");
+    copyField(metadata.cluster_node, sizeof(metadata.cluster_node), agentMetadata, "cluster_node");
 
     // Copy groups
     if (!groups.empty())

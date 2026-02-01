@@ -283,11 +283,6 @@ case "$1" in
         rm -f ${DIR}/bin/manage_agents
     fi
 
-    # Delete obsolete files
-    if [ -f /etc/ossec-init.conf ]; then
-        rm -f /etc/ossec-init.conf
-    fi
-
     # Delete installation scripts
     if [ -d ${SCRIPTS_DIR} ]; then
         rm -rf ${SCRIPTS_DIR}

@@ -14,7 +14,7 @@ build_wazuh_test_flags() {
     echo "Building Wazuh for target: $target"
     cd "$GITHUB_WORKSPACE"
     make deps -C src TARGET=${target} -j$(nproc)
-    make -C src TARGET=${target} DEBUG=1 TEST=1 -j$(nproc)
+    make -C src TARGET=${target} TEST=1 -j$(nproc)
 }
 
 build_wazuh_unit_tests() {

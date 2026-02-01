@@ -29,10 +29,22 @@ target_link_libraries(
   extended_sources_services_unit_test
   services
   FilesystemWrapper
+  debug
   gtestd
+  debug
   gmockd
+  debug
   gtest_maind
-  gmock_maind)
+  debug
+  gmock_maind
+  optimized
+  gtest
+  optimized
+  gmock
+  optimized
+  gtest_main
+  optimized
+  gmock_main)
 
 add_test(NAME ServicesTests COMMAND extended_sources_services_unit_test)
 

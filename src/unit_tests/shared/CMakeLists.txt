@@ -364,6 +364,9 @@ endif()
 list(APPEND shared_tests_names "test_rwlock_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
+list(APPEND shared_tests_names "test_module_limits")
+list(APPEND shared_tests_flags " ")
+
 # Compiling tests
 list(LENGTH shared_tests_names count)
 math(EXPR count "${count} - 1")

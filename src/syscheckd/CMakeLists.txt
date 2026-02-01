@@ -77,6 +77,7 @@ set_target_properties(syscheckd_lib PROPERTIES LINKER_LANGUAGE CXX)
 # Enable WAZUH_UNIT_TESTING to export static functions for unit tests
 if(UNIT_TEST)
   target_compile_definitions(syscheckd_lib PRIVATE WAZUH_UNIT_TESTING)
+  target_compile_definitions(syscheckd_lib PRIVATE _FORTIFY_SOURCE=0)
 endif()
 
 # Enable EVENTCHANNEL_SUPPORT for Windows builds

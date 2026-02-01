@@ -197,12 +197,6 @@ WazuhUpgrade()
     rm -f $PREINSTALLEDDIR/active-response/bin/ossec-slack.sh
     rm -f $PREINSTALLEDDIR/active-response/bin/ossec-tweeter.sh
 
-    # Remove deprecated ossec-init.conf file and its link
-    if [ -f /etc/ossec-init.conf ]; then
-        rm -f $PREINSTALLEDDIR/etc/ossec-init.conf
-        rm -f /etc/ossec-init.conf
-    fi
-
     # Remove old databases if upgrading from pre 5.X to 5.X
     if [ $MAJOR -lt 5 ]; then
         if [ -f $PREINSTALLEDDIR/queue/syscollector/db/local.db ]; then

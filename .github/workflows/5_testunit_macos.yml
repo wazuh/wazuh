@@ -28,7 +28,7 @@ jobs:
             CMAKE_POLICY_VERSION_MINIMUM: 3.5
         run: |
           make deps -C src TARGET=agent -j3
-          C_INCLUDE_PATH=$C_INCLUDE_PATH:/opt/homebrew/include LIBRARY_PATH=/usr/local/lib:/opt/homebrew/lib make -C src TARGET=agent -j3 DEBUG=1 TEST=1
+          C_INCLUDE_PATH=$C_INCLUDE_PATH:/opt/homebrew/include LIBRARY_PATH=/usr/local/lib:/opt/homebrew/lib make -C src TARGET=agent -j3 TEST=1
       - name: Run wazuh unit tests for macOS 14
         run: |
           export DYLD_LIBRARY_PATH=/usr/local/lib:$DYLD_LIBRARY_PATH

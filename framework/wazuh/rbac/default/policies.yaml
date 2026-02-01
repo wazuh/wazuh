@@ -117,6 +117,16 @@ default_policies:
           - '*:*:*'
         effect: allow
 
+  mitre_read:
+    description: Allow read MITRE database information.
+    policies:
+      mitre:
+        actions:
+          - mitre:read
+        resources:
+          - '*:*:*'
+        effect: allow
+
   rootcheck_run:
     description: Allow run rootcheck.
     policies:

@@ -38,6 +38,234 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup);
 STATIC void send_msg_on_startup(void);
 
 /**
+ * @brief Get a required integer field from a JSON object
+ * @param parent Parent JSON object
+ * @param name Field name
+ * @param value Pointer to store the value
+ * @return true on success, false if field is missing or not a number
+ */
+STATIC bool get_required_int(const cJSON *parent, const char *name, int *value) {
+    cJSON *field = cJSON_GetObjectItem(parent, name);
+    if (!field || !cJSON_IsNumber(field)) {
+        mdebug1("Missing or invalid required field '%s' in handshake JSON", name);
+        return false;
+    }
+    *value = field->valueint;
+    return true;
+}
+
+/**
+ * @brief Parse FIM limits from JSON
+ * @param root Root JSON object
+ * @param fim Pointer to FIM limits structure
+ * @return true on success, false on error
+ */
+STATIC bool parse_fim_limits(const cJSON *root, fim_limits_t *fim) {
+    cJSON *module = cJSON_GetObjectItem(root, "fim");
+    if (!module || !cJSON_IsObject(module)) {
+        mdebug1("Missing or invalid 'fim' object in handshake JSON");
+        return false;
+    }
+
+    return get_required_int(module, "file", &fim->file) &&
+           get_required_int(module, "registry_key", &fim->registry_key) &&
+           get_required_int(module, "registry_value", &fim->registry_value);
+}
+
+/**
+ * @brief Parse Syscollector limits from JSON
+ * @param root Root JSON object
+ * @param syscollector Pointer to Syscollector limits structure
+ * @return true on success, false on error
+ */
+STATIC bool parse_syscollector_limits(const cJSON *root, syscollector_limits_t *syscollector) {
+    cJSON *module = cJSON_GetObjectItem(root, "syscollector");
+    if (!module || !cJSON_IsObject(module)) {
+        mdebug1("Missing or invalid 'syscollector' object in handshake JSON");
+        return false;
+    }
+
+    return get_required_int(module, "hotfixes", &syscollector->hotfixes) &&
+           get_required_int(module, "packages", &syscollector->packages) &&
+           get_required_int(module, "processes", &syscollector->processes) &&
+           get_required_int(module, "ports", &syscollector->ports) &&
+           get_required_int(module, "network_iface", &syscollector->network_iface) &&
+           get_required_int(module, "network_protocol", &syscollector->network_protocol) &&
+           get_required_int(module, "network_address", &syscollector->network_address) &&
+           get_required_int(module, "hardware", &syscollector->hardware) &&
+           get_required_int(module, "os_info", &syscollector->os_info) &&
+           get_required_int(module, "users", &syscollector->users) &&
+           get_required_int(module, "groups", &syscollector->groups) &&
+           get_required_int(module, "services", &syscollector->services) &&
+           get_required_int(module, "browser_extensions", &syscollector->browser_extensions);
+}
+
+/**
+ * @brief Parse SCA limits from JSON
+ * @param root Root JSON object
+ * @param sca Pointer to SCA limits structure
+ * @return true on success, false on error
+ */
+STATIC bool parse_sca_limits(const cJSON *root, sca_limits_t *sca) {
+    cJSON *module = cJSON_GetObjectItem(root, "sca");
+    if (!module || !cJSON_IsObject(module)) {
+        mdebug1("Missing or invalid 'sca' object in handshake JSON");
+        return false;
+    }
+
+    return get_required_int(module, "checks", &sca->checks);
+}
+
+/**
+ * @brief Parse all module limits from JSON
+ * @param root Root JSON object
+ * @param limits Pointer to module limits structure
+ * @return true on success, false on error
+ */
+STATIC bool parse_limits(const cJSON *root, module_limits_t *limits) {
+    cJSON *limits_obj = cJSON_GetObjectItem(root, "limits");
+    if (!limits_obj || !cJSON_IsObject(limits_obj)) {
+        mdebug1("Missing or invalid 'limits' object in handshake JSON");
+        return false;
+    }
+
+    if (!parse_fim_limits(limits_obj, &limits->fim) ||
+        !parse_syscollector_limits(limits_obj, &limits->syscollector) ||
+        !parse_sca_limits(limits_obj, &limits->sca)) {
+        return false;
+    }
+
+    limits->limits_received = true;
+    return true;
+}
+
+/**
+ * @brief Parse cluster_name from JSON
+ * @param root Root JSON object
+ * @param cluster_name Buffer to store cluster name
+ * @param cluster_name_size Size of buffer
+ * @return true on success, false on error
+ */
+STATIC bool parse_cluster_name(const cJSON *root, char *cluster_name, size_t cluster_name_size) {
+    if (!cluster_name || cluster_name_size == 0) {
+        return true;
+    }
+
+    cJSON *cluster = cJSON_GetObjectItem(root, "cluster_name");
+    if (!cluster || !cJSON_IsString(cluster) || !cluster->valuestring || cluster->valuestring[0] == '\0') {
+        mdebug1("Missing or empty 'cluster_name' in handshake JSON");
+        return false;
+    }
+
+    strncpy(cluster_name, cluster->valuestring, cluster_name_size - 1);
+    cluster_name[cluster_name_size - 1] = '\0';
+    return true;
+}
+
+/**
+ * @brief Parse cluster_node from JSON
+ * @return true on success, false on error
+ */
+STATIC bool parse_cluster_node(const cJSON *root, char *cluster_node, size_t cluster_node_size) {
+    if (!cluster_node || cluster_node_size == 0) {
+        return true;
+    }
+
+    cJSON *node = cJSON_GetObjectItem(root, "cluster_node");
+    if (!node || !cJSON_IsString(node) || !node->valuestring || node->valuestring[0] == '\0') {
+        mdebug1("Missing or empty 'cluster_node' in handshake JSON");
+        return false;
+    }
+
+    strncpy(cluster_node, node->valuestring, cluster_node_size - 1);
+    cluster_node[cluster_node_size - 1] = '\0';
+    return true;
+}
+
+/**
+ * @brief Parse agent_groups array from JSON and convert to CSV
+ * @return true on success (at least one group present), false on error
+ */
+STATIC bool parse_agent_groups(const cJSON *root, char *agent_groups, size_t agent_groups_size) {
+    if (!agent_groups || agent_groups_size == 0) {
+        return true;
+    }
+
+    agent_groups[0] = '\0';
+
+    cJSON *groups_array = cJSON_GetObjectItem(root, "agent_groups");
+    if (!groups_array || !cJSON_IsArray(groups_array)) {
+        mdebug1("Missing or invalid 'agent_groups' array in handshake JSON");
+        return false;
+    }
+
+    size_t offset = 0;
+    int valid_groups = 0;
+    cJSON *group_item = NULL;
+
+    cJSON_ArrayForEach(group_item, groups_array) {
+        if (cJSON_IsString(group_item) && group_item->valuestring && group_item->valuestring[0] != '\0') {
+            size_t group_len = strlen(group_item->valuestring);
+            /* Check if there's space: group + comma + null terminator */
+            if (offset + group_len + 2 < agent_groups_size) {
+                if (offset > 0) {
+                    agent_groups[offset++] = ',';
+                }
+                strcpy(agent_groups + offset, group_item->valuestring);
+                offset += group_len;
+                valid_groups++;
+            }
+        }
+    }
+    agent_groups[offset] = '\0';
+
+    /* Empty agent_groups is allowed - fallback to merge.mg will be used */
+    if (valid_groups == 0) {
+        mdebug1("Empty 'agent_groups' array, will use fallback");
+    }
+
+    return true;
+}
+
+/**
+ * @brief Parse JSON payload from handshake ACK response
+ * @param json_str JSON string to parse
+ * @param limits Pointer to module limits structure to populate
+ * @param cluster_name Buffer to store cluster name
+ * @param cluster_name_size Size of cluster_name buffer
+ * @param cluster_node Buffer to store cluster node (min 256 bytes)
+ * @param cluster_node_size Size of cluster_node buffer
+ * @param agent_groups Buffer to store agent groups as CSV
+ * @param agent_groups_size Size of agent_groups buffer
+ * @return 0 on success, -1 on error (all fields are required)
+ */
+STATIC int parse_handshake_json(const char *json_str, module_limits_t *limits,
+                                char *cluster_name, size_t cluster_name_size,
+                                char *cluster_node, size_t cluster_node_size,
+                                char *agent_groups, size_t agent_groups_size) {
+    if (!json_str || !limits) {
+        return -1;
+    }
+
+    cJSON *root = cJSON_Parse(json_str);
+    if (!root) {
+        mdebug1("Failed to parse handshake JSON");
+        return -1;
+    }
+
+    if (!parse_limits(root, limits) ||
+        !parse_cluster_name(root, cluster_name, cluster_name_size) ||
+        !parse_cluster_node(root, cluster_node, cluster_node_size) ||
+        !parse_agent_groups(root, agent_groups, agent_groups_size)) {
+        cJSON_Delete(root);
+        return -1;
+    }
+
+    cJSON_Delete(root);
+    return 0;
+}
+
+/**
  * @brief Connects to a specified server
  * @param server_id index of the specified server from agt servers list
  * @param verbose Be verbose or not.
@@ -331,8 +559,63 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                 /* Check for commands */
                 if (IsValidHeader(tmp_msg)) {
                     /* If it is an ack reply */
-                    if (strcmp(tmp_msg, HC_ACK) == 0) {
+                    if (strncmp(tmp_msg, HC_ACK, strlen(HC_ACK)) == 0) {
                         available_server = time(0);
+
+                        /* Check for JSON payload after HC_ACK */
+                        const char *json_start = strchr(tmp_msg, '{');
+                        if (json_start) {
+                            char cluster_name_buffer[256] = {0};
+                            char cluster_node_buffer[256] = {0};
+                            char agent_groups_buffer[OS_SIZE_65536] = {0};
+                            if (parse_handshake_json(json_start, &agent_module_limits,
+                                                      cluster_name_buffer, sizeof(cluster_name_buffer),
+                                                      cluster_node_buffer, sizeof(cluster_node_buffer),
+                                                      agent_groups_buffer, sizeof(agent_groups_buffer)) == 0) {
+                                minfo("Module limits received from manager");
+
+                                mdebug2("Received FIM limits: file=%d, registry_key=%d, registry_value=%d",
+                                        agent_module_limits.fim.file, agent_module_limits.fim.registry_key,
+                                        agent_module_limits.fim.registry_value);
+                                mdebug2("Received Syscollector limits: hotfixes=%d, packages=%d, processes=%d, ports=%d",
+                                        agent_module_limits.syscollector.hotfixes,
+                                        agent_module_limits.syscollector.packages,
+                                        agent_module_limits.syscollector.processes,
+                                        agent_module_limits.syscollector.ports);
+                                mdebug2("Received Syscollector limits: net_iface=%d, net_proto=%d, net_addr=%d",
+                                        agent_module_limits.syscollector.network_iface,
+                                        agent_module_limits.syscollector.network_protocol,
+                                        agent_module_limits.syscollector.network_address);
+                                mdebug2("Received Syscollector limits: hw=%d, os=%d, users=%d, groups=%d, services=%d, browser_ext=%d",
+                                        agent_module_limits.syscollector.hardware,
+                                        agent_module_limits.syscollector.os_info,
+                                        agent_module_limits.syscollector.users,
+                                        agent_module_limits.syscollector.groups,
+                                        agent_module_limits.syscollector.services,
+                                        agent_module_limits.syscollector.browser_extensions);
+                                mdebug2("Received SCA limits: checks=%d", agent_module_limits.sca.checks);
+
+                                /* Store cluster_name in global for agent-info module to query via agcom */
+                                strncpy(agent_cluster_name, cluster_name_buffer, sizeof(agent_cluster_name) - 1);
+                                agent_cluster_name[sizeof(agent_cluster_name) - 1] = '\0';
+                                minfo("Connected to cluster: %s", agent_cluster_name);
+
+                                /* Store cluster_node in global for agent-info module to query via agcom */
+                                strncpy(agent_cluster_node, cluster_node_buffer, sizeof(agent_cluster_node) - 1);
+                                agent_cluster_node[sizeof(agent_cluster_node) - 1] = '\0';
+                                minfo("Connected to node: %s", agent_cluster_node);
+
+                                /* Store agent_groups in global for agent-info module to query via agcom */
+                                strncpy(agent_agent_groups, agent_groups_buffer, sizeof(agent_agent_groups) - 1);
+                                agent_agent_groups[sizeof(agent_agent_groups) - 1] = '\0';
+                                minfo("Agent groups: %s", agent_agent_groups);
+                            } else {
+                                mwarn("Error parsing handshake JSON, will retry handshake");
+                                return false;
+                            }
+                        } else {
+                            minfo("No handshake JSON after ACK, using defaults");
+                        }
 
                         minfo(AG_CONNECTED, agt->server[server_id].rip,
                                 agt->server[server_id].port, "tcp");
