@@ -1605,19 +1605,6 @@ cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id
 cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, const char *sync_status, wdbc_result* status);
 
 /**
- * @brief Check the agent 0 status in the global database
- *
- * The table "agent" must have a tuple with id=0 and last_keepalive=1999/12/31 23:59:59 UTC.
- * Otherwise, the database is either corrupt or old.
- *
- * @return Number of tuples matching that condition.
- * @retval 1 The agent 0 status is OK.
- * @retval 0 No tuple matching conditions exists.
- * @retval -1 The table "agent" is missing or an error occurred.
- */
-int wdb_global_check_manager_keepalive(wdb_t *wdb);
-
-/**
  * @brief Returns a JSON array containing the group and group_hash assigned to all agents,
  *        if two agents have the same group assigned it is only included once
  *
