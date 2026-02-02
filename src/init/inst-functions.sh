@@ -458,14 +458,8 @@ WriteManager()
       echo "" >> $NEWCONFIG
     fi
 
-    # Write rootcheck
-    WriteRootcheck "manager"
-
     # Syscollector configuration
     WriteSyscollector "manager"
-
-    # Configuration assessment
-    WriteConfigurationAssessment
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
@@ -474,9 +468,6 @@ WriteManager()
     # Indexer
     cat ${INDEXER_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
-
-    # Write syscheck
-    WriteSyscheck "manager"
 
     # Active response
     if [ "$SET_WHITE_LIST"="true" ]; then
@@ -572,9 +563,6 @@ WriteLocal()
     cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    # Write rootcheck
-    WriteRootcheck "manager"
-
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
@@ -582,9 +570,6 @@ WriteLocal()
     # Indexer
     cat ${INDEXER_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
-
-    # Write syscheck
-    WriteSyscheck "manager"
 
     # Active response
     if [ "$SET_WHITE_LIST"="true" ]; then
@@ -923,9 +908,12 @@ InstallCommon()
         fi
     fi
 
-  ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${INSTALLDIR}/bin
-  ${INSTALL} -m 0750 -o root -g 0 wazuh-syscheckd ${INSTALLDIR}/bin
-  ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${INSTALLDIR}/bin
+  if [ ${INSTYPE} = 'agent' ]; then
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-syscheckd ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${INSTALLDIR}/bin
+  fi
+
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
   ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${INSTALLDIR}/bin/
 
@@ -941,7 +929,10 @@ InstallCommon()
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sca/db
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/agent_info
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/agent_info/db
-  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/logcollector
+
+  if [ ${INSTYPE} = 'agent' ]; then
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/logcollector
+  fi
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset/sca
@@ -1088,7 +1079,6 @@ installEngineStore()
 
 InstallLocal()
 {
-
     InstallCommon
 
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/var/multigroups
@@ -1113,12 +1103,7 @@ InstallLocal()
     generateSchemaFiles
 
     installEngineStore
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tzdb
-
-    # TODO Deletes old ruleset and stats, rootcheck and SCA?
-
-    InstallSecurityConfigurationAssessmentFiles "manager"
-
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tzdbs
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/db
 
     if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
@@ -1292,10 +1277,6 @@ InstallServer()
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/buckets/access_logs.py ${INSTALLDIR}/wodles/gcloud/buckets/access_logs.py
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/pubsub/subscriber.py ${INSTALLDIR}/wodles/gcloud/pubsub/subscriber.py
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/gcloud/gcloud
-
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/docker
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/docker-listener/DockerListener.py ${INSTALLDIR}/wodles/docker/DockerListener.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/docker/DockerListener
 
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/azure
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/azure/azure_services
