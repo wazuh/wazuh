@@ -389,15 +389,7 @@ ConfigureServer()
     echo ""
     echo "3- ${configuring} $NAME."
 
-    # Checking if syscheck should run
-    UseSyscheck
-
-    # Checking if rootcheck should run
-    UseRootcheck
-
     UseSyscollector
-
-    UseSecurityConfigurationAssessment
 
     # Active response
     catMsg "0x107-ar"
