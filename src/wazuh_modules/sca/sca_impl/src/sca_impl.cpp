@@ -913,7 +913,7 @@ bool SecurityConfigurationAssessment::performRecovery()
             return false;
         }
 
-        m_dBSync->increaseEachEntryVersion("sca_check");
+        m_dBSync->increaseEachEntryVersion("sca_check", "WHERE sync = 1");
 
         // Get all synced checks from database (now with incremented versions)
         std::vector<nlohmann::json> checks;
