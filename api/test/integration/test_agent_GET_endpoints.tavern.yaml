@@ -29,7 +29,6 @@ stages:
         error: 0
         data:
           affected_items:
-            - id: '000'
             - id: '001'
             - id: '002'
             - id: '003'
@@ -94,8 +93,6 @@ stages:
               version: 'Wazuh v{wazuh_version:s}'
             - id: '001'
               version: 'Wazuh v{wazuh_version:s}'
-            - id: '000'
-              version: 'Wazuh v{wazuh_version:s}'
             - id: '008'
               version: 'Wazuh v4.14.1'
             - id: '007'
@@ -141,8 +138,6 @@ stages:
               version: 'Wazuh v4.14.1'
             - id: '008'
               version: 'Wazuh v4.14.1'
-            - id: '000'
-              version: 'Wazuh v{wazuh_version:s}'
             - id: '001'
               version: 'Wazuh v{wazuh_version:s}'
             - id: '002'
@@ -167,7 +162,7 @@ stages:
           extra_kwargs:
             key: "status"
       status_code: 200
-  
+
   - name: Get all agents sorted by status_code
     request:
       verify: False
@@ -204,8 +199,6 @@ stages:
         error: 0
         data:
           affected_items:
-            - status: active
-              id: '000'
             - status: active
               id: '001'
           failed_items: []
@@ -287,7 +280,7 @@ stages:
       status_code: 400
       json:
         error: 1403
-  
+
   - name: Try to sort agents by internal key
     request:
       verify: False
@@ -367,9 +360,6 @@ stages:
         error: 0
         data:
           affected_items:
-            - id: '000'
-              os:
-                platform: !anystr
             - id: '001'
               os:
                 platform: !anystr
@@ -510,7 +500,7 @@ stages:
         error: 0
         data:
           affected_items:
-            - id: '000'
+            - id: '001'
               os:
                 platform: "{expected_os_platform:s}"
           failed_items: []
@@ -554,7 +544,7 @@ stages:
         error: 0
         data:
           affected_items:
-            - id: '000'
+            - id: '001'
               os:
                 version: "{expected_os_version:s}"
           failed_items: []
@@ -598,7 +588,7 @@ stages:
         error: 0
         data:
           affected_items:
-            - id: '000'
+            - id: '001'
               os:
                 name: "{expected_os_name:s}"
           failed_items: []
@@ -642,7 +632,7 @@ stages:
         error: 0
         data:
           affected_items:
-            - id: '000'
+            - id: '001'
               node_name: "{expected_node_name:s}"
           failed_items: []
           total_failed_items: 0
@@ -683,7 +673,7 @@ stages:
         error: 0
         data:
           affected_items:
-            - id: '000'
+            - id: '001'
               name: "{expected_name:s}"
           failed_items: []
           total_affected_items: 1
@@ -725,7 +715,7 @@ stages:
         error: 0
         data:
           affected_items:
-            - id: '000'
+            - id: '001'
               ip: "{expected_ip:s}"
           failed_items: []
           total_affected_items: 1
@@ -920,7 +910,6 @@ stages:
         error: 0
         data:
           affected_items:
-            - id: '000'
             - id: '001'
             - id: '002'
             - id: '003'
@@ -1142,7 +1131,6 @@ stages:
         error: 0
         data:
           affected_items:
-            - id: '000'
             - id: '001'
             - id: '003'
             - id: '004'
@@ -1170,7 +1158,7 @@ stages:
           failed_items: []
           total_affected_items: 5
           total_failed_items: 0
-  
+
   - name: Filter agents by nested queries (second)
     request:
       verify: False
@@ -1201,7 +1189,7 @@ stages:
       status_code: 400
       json:
         error: 1408
-  
+
   - name: Try to filter agents by internal key
     request:
       verify: False
@@ -1282,7 +1270,7 @@ test_name: GET /agents with single agent id
 
 stages:
 
-  # GET /agents?agents_list=000
+  # GET /agents?agents_list=001
   - name: Basic response agent
     request: &get_agent
       verify: False
@@ -1291,7 +1279,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '000'
+        agents_list: '001'
     response:
       status_code: 200
       json:
@@ -1299,7 +1287,7 @@ stages:
         data:
           affected_items:
             - dateAdd: !anystr
-              id: "000"
+              id: "001"
               ip: !anystr
               lastKeepAlive: !anystr
               manager: !anystr
@@ -1361,14 +1349,14 @@ stages:
       json:
         <<: *error_spec
 
-  # GET /agents?agents_list=000&select=os.platform
+  # GET /agents?agents_list=001&select=os.platform
   - name: Filter select one field
     request:
       verify: False
       <<: *get_agent
       params:
         select: 'os.platform'
-        agents_list: '000'
+        agents_list: '001'
     response:
       verify_response_with:
         # Check response item keys are the selected keys
@@ -1380,21 +1368,21 @@ stages:
         error: 0
         data:
           affected_items:
-            - id: '000'
+            - id: '001'
               os:
                 platform: !anystr
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
 
-  # GET /agents?agents_list=000&select=dateAdd,status
+  # GET /agents?agents_list=001&select=dateAdd,status
   - name: Filter select multiple fields
     request:
       verify: False
       <<: *get_agent
       params:
         select: 'dateAdd,status'
-        agents_list: '000'
+        agents_list: '001'
     response:
       verify_response_with:
         # Check response item keys are the selected keys
@@ -1406,7 +1394,7 @@ stages:
         error: 0
         data:
           affected_items:
-            - id: '000'
+            - id: '001'
               dateAdd: !anystr
               status: !anystr
           failed_items: []
@@ -1429,27 +1417,27 @@ stages:
           key: 'disconnection_time'
       status_code: 200
 
-  # GET /agents?agents_list=000&select=param_test
+  # GET /agents?agents_list=001&select=param_test
   - name: Try show agents with not allowed selector
     request:
       verify: False
       <<: *get_agent
       params:
         select: param_test
-        agents_list: '000'
+        agents_list: '001'
     response:
       status_code: 400
       json:
         error: 1724
 
-  # GET /agents?agents_list=000&select=param_%_test
+  # GET /agents?agents_list=001&select=param_%_test
   - name: Try show agents with not allowed selector (invalid character)
     request:
       verify: False
       <<: *get_agent
       params:
         select: param_%_test
-        agents_list: '000'
+        agents_list: '001'
     response:
       status_code: 400
       json:
@@ -1553,7 +1541,7 @@ stages:
   - name: Get auth configuration from auth component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/auth/auth"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/auth/auth"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1575,21 +1563,6 @@ stages:
             use_password: !anystr
             use_source_ip: !anystr
 
-  - name: Get active-response configuration from com component (Manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/active-response"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          active-response:
-            disabled: !anystr
-
   - name: Get active-response configuration from com component (Agent)
     request:
       verify: False
@@ -1604,23 +1577,6 @@ stages:
         data:
           active-response:
             disabled: !anystr
-
-  - name: Get internal configuration from com component (Manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/internal"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          internal:
-            execd:
-              request_timeout: !anyint
-              max_restart_lock: !anyint
 
   - name: Get internal configuration from com component (Agent)
     request:
@@ -1639,20 +1595,6 @@ stages:
               request_timeout: !anyint
               max_restart_lock: !anyint
 
-  - name: Get localfile configuration from logcollector component (Manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/localfile"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          localfile: !anything
-
   - name: Get localfile configuration from logcollector component (Agent)
     request:
       verify: False
@@ -1667,16 +1609,6 @@ stages:
         data:
           localfile: !anything
 
-  - name: Get socket configuration from logcollector component (Manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/socket"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-
   - name: Get socket configuration from logcollector component (Agent)
     request:
       verify: False
@@ -1686,36 +1618,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-
-  - name: Get internal configuration from logcollector component (Manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/internal"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          internal:
-            logcollector:
-              debug: !anyint
-              force_reload: !anyint
-              input_threads: !anyint
-              loop_timeout: !anyint
-              max_files: !anyint
-              max_lines: !anyint
-              open_attempts: !anyint
-              queue_size: !anyint
-              reload_delay: !anyint
-              reload_interval: !anyint
-              remote_commands: !anyint
-              rlimit_nofile: !anyint
-              sample_log_length: !anyint
-              sock_fail_time: !anyint
-              vcheck_files: !anyint
 
   - name: Get internal configuration from logcollector component (Agent)
     request:
@@ -1750,7 +1652,7 @@ stages:
   - name: Get internal configuration from monitor component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/monitor/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/monitor/internal"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1773,7 +1675,7 @@ stages:
   - name: Get remote configuration from request component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/request/remote"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/request/remote"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1792,7 +1694,7 @@ stages:
   - name: Get internal configuration from request component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/request/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/request/internal"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1822,27 +1724,6 @@ stages:
               shared_reload: !anyint
               verify_msg_id: !anyint
 
-  - name: Get syscheck configuration from syscheck component (Manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/syscheck"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          syscheck:
-            directories: !anything
-            disabled: !anystr
-            frequency: !anyint
-            ignore: !anything
-            nodiff: !anything
-            skip_nfs: !anystr
-            whodata: !anything
-
   - name: Get syscheck configuration from syscheck component (Agent)
     request:
       verify: False
@@ -1863,29 +1744,6 @@ stages:
             nodiff: !anything
             skip_nfs: !anystr
             whodata: !anything
-
-  - name: Get rootcheck configuration from syscheck component (Manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/rootcheck"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          rootcheck:
-            check_dev: !anystr
-            check_if: !anystr
-            check_pids: !anystr
-            check_ports: !anystr
-            check_sys: !anystr
-            disabled: !anystr
-            frequency: !anyint
-            scanall: !anystr
-            skip_nfs: !anystr
 
   - name: Get rootcheck configuration from syscheck component (Agent)
     request:
@@ -1910,29 +1768,6 @@ stages:
             scanall: !anystr
             skip_nfs: !anystr
 
-  - name: Get internal configuration from syscheck component (Manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/internal"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          internal:
-            rootcheck:
-              sleep: !anyint
-            syscheck:
-              debug: !anyint
-              default_max_depth: !anyint
-              max_audit_entries: !anyint
-              rt_delay: !anyint
-              file_max_size: !anyint
-              symlink_scan_interval: !anyint
-
   - name: Get internal configuration from syscheck component (Agent)
     request:
       verify: False
@@ -1955,57 +1790,6 @@ stages:
               max_audit_entries: !anyint
             rootcheck:
               sleep: !anyint
-
-  - name: Get internal configuration from wazuh-manager-db component
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/wazuh-manager-db/internal"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          wazuh_db:
-            commit_time_max: !anyint
-            commit_time_min: !anyint
-            open_db_limit: !anyint
-            worker_pool_size: !anyint
-
-  - name: Get wdb configuration from wazuh-manager-db component
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/wazuh-manager-db/wdb"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          wdb:
-            backup:
-              - database: !anystr
-                enabled: !anybool
-                interval: !anyint
-                max_files: !anyint
-
-  - name: Get wmodules configuration from wmodules component (Manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/wmodules/wmodules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          wmodules: !anything
 
   - name: Get wmodules configuration from wmodules component (Agent)
     request:
@@ -2094,59 +1878,9 @@ stages:
         error: 1128
 
 ---
-test_name: GET /agents/{agent_id}/config/{component}/{configuration} (only cluster configuration)
-
-marks:
-  - cluster
-
-stages:
-
-- name: Get cluster configuration from com component (Manager)
-  request:
-    verify: False
-    url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/cluster"
-    method: GET
-    headers:
-      Authorization: "Bearer {test_login_token}"
-  response:
-    status_code: 200
-    json:
-      error: 0
-      data:
-        bind_addr: !anystr
-        hidden: !anystr
-        key: !anystr
-        name: !anystr
-        node_name: !anystr
-        node_type: !anystr
-        nodes: !anything
-        port: !anyint
-
----
 test_name: GET /agents/{agent_id}/group/is_sync
 
 stages:
-
-  - name: Try to get sync of agent 000 (manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group/is_sync"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: []
-          failed_items:
-            - id:
-                - '000'
-              error:
-                code: 1703
-          total_affected_items: 0
-          total_failed_items: 1
 
   - name: Try to get sync of a non existing agent
     request:
@@ -2205,27 +1939,6 @@ test_name: GET /agents/{agent_id}/key
 
 stages:
 
-  - name: Try get key agent 000 (manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/key"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: []
-          failed_items:
-            - id:
-                - '000'
-              error:
-                code: 1703
-          total_affected_items: 0
-          total_failed_items: 1
-
   - name: Try get key not existing agent
     request:
       verify: False
@@ -2282,27 +1995,6 @@ test_name: GET /agents/{agent_id}/daemons/stats
 
 stages:
 
-  - name: Try to get daemon stats from agent 000 (manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/daemons/stats"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1703
-              id:
-                - "000"
-          total_affected_items: 0
-          total_failed_items: 1
-
   - name: Get all daemons' stats from agent 001
     request:
       verify: False
@@ -2326,7 +2018,7 @@ stages:
             - id: [ wazuh-manager-analysisd ]
           total_affected_items: 1
           total_failed_items: 1
-          
+
 
   - name: Try to get all daemons' stats from agent 001 with a wrong daemons list
     request:
@@ -2394,52 +2086,6 @@ test_name: GET /agents/{agent_id}/stats/{component}
 
 stages:
 
-  - name: Get logcollector stats from agent 000 (manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/stats/logcollector"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: &stats_response
-            - global:
-                start: !anystr
-                end: !anystr
-                files: !anything
-              interval:
-                start: !anystr
-                end: !anystr
-                files: !anything
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Get wazuh-agentd stats from agent 000 (manager, not allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/stats/agent"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1310
-              id:
-                - "000"
-          total_affected_items: 0
-          total_failed_items: 1
-
   - name: Get logcollector stats from agent 002
     request:
       verify: False
@@ -2503,7 +2149,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
-  - name: Try to get invalid component stats from agent 000
+  - name: Try to get invalid component stats from agent 017
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/017/stats/invalid_component"
@@ -2772,7 +2418,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-    
+
   - name: Try to get groups using an invalid query
     request:
       verify: False
@@ -3705,7 +3351,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    
+
   - name: Try to get files of a group using an invalid query
     request:
       verify: False
@@ -3716,7 +3362,7 @@ stages:
       status_code: 400
       json:
         error: 1407
-  
+
   - name: Get groups using valid select
     request:
       verify: False
@@ -3830,7 +3476,7 @@ stages:
       status_code: 200
       headers:
         content-type: application/xml; charset=utf-8
-  
+
   - name: Get one file of a group (plain text)
     request:
       verify: False
@@ -4423,7 +4069,7 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-  
+
   - name: Filter agents by id
     request:
       verify: False
@@ -4911,29 +4557,6 @@ stages:
           total_failed_items: 0
         message: !anystr
 
-  - name: Try to get upgrade result from agent 000 (manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: '000'
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: []
-          failed_items:
-            - id:
-                - '000'
-              error:
-                code: 1703
-          total_affected_items: 0
-          total_failed_items: 1
-
   - name: Try to get upgrade result from a not existing agent
     request:
       verify: False
@@ -4972,7 +4595,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try to get upgrade results from a list of agents that cannot be upgraded (000, not existing and non active agents)
+  - name: Try to get upgrade results from a list of agents that cannot be upgraded (not existing and non active agents)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
@@ -4980,7 +4603,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '000,009,010,011,012,998,999'
+        agents_list: '009,010,011,012,998,999'
     response:
       status_code: 200
       json:
@@ -4997,12 +4620,6 @@ stages:
               id:
                 - '998'
                 - '999'
-            - error: # Agent 000
-                code: 1703
-                message: !anystr
-                remediation: !anything
-              id:
-                - '000'
             - error: # Non active agents
                 code: 1707
                 message: !anystr

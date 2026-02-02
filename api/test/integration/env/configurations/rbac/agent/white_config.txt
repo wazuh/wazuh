@@ -7,7 +7,6 @@
 
 | Agent | Name          | Groups                       | Status          |
 |-------|---------------|------------------------------|-----------------|
-| 000   | wazuh-master  |                              | active          |
 | 001   | wazuh-agent1  | default,group1               | active          |
 | 002   | wazuh-agent2  | default,group2               | active          |
 | 003   | wazuh-agent3  | default,group3               | active          |
@@ -23,18 +22,18 @@
 
 | Resource    | List                                                |
 |-------------|-----------------------------------------------------|
-| agent:id    | 000,001,002,003,004,005,006,007,008,009,010,011,012 |
+| agent:id    | 001,002,003,004,005,006,007,008,009,010,011,012 |
 | group:id    | default,group1,group2,group3                        |
 
 
 | Actions                  | Resources | Allow                                   | Deny                |
 |--------------------------|-----------|-----------------------------------------|---------------------|
-| agent:read               | agent:id  | 000,002,004,006,008,010,012             |                     |
+| agent:read               | agent:id  | 002,004,006,008,010,012             |                     |
 | agent:delete             | agent:id  | 001,003,005,007,009,011                 |                     |
 | agent:reconnect          | agent:id  | *                                       | 002,005,006,008,010 |
 | agent:restart            | agent:id  | *                                       | 002,005,006,008,010 |
 | agent:upgrade            | agent:id  | 005,006,007,008                         |                     |
-| agent:modify_group       | agent:id  | 000,001,002,003,005,006,007,008,011,999 |                     |
+| agent:modify_group       | agent:id  | 001,002,003,005,006,007,008,011,999 |                     |
 | agent:create             | *         |                                         | *                   |
 | agent:uninstall          | *         | *                                       |                     |
 | group:read               | group:id  | *                                       | group3              |
