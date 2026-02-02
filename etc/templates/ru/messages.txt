@@ -49,12 +49,12 @@ addingip="Добавляется IP адрес сервера"
 addingname="Добавляется IP (host) адрес сервера"
 
 
-# Part 3.2
+# Part 3.2/agent
 runsyscheck="Запустить сервис проверки целостности системы?"
 nosyscheck="syscheck (сервис проверки целостности системы) не запущен"
 yessyscheck="Запускается syscheck (сервис проверки целостности системы)"
 
-# Part 3.3
+# Part 3.3/agent
 runrootcheck="Активировать сервис обнаружения руткитов?"
 norootcheck="Сервис обнаружения руткитов (rootcheck) не запущен "
 yesrootcheck="Запускается rootcheck (обнаружение руткитов)"

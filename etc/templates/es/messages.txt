@@ -48,12 +48,12 @@ serveraddr="¿Cuál es la dirección o nombre del servidor Wazuh?"
 addingip="Agregando la IP del servidor"
 addingname="Agregando el nombre del servidor"
 
-# Part 3.2
+# Part 3.2/agent
 runsyscheck="¿Desea agregar el servidor de integridad del sistema?"
 nosyscheck="No se ejecutará syscheck (servidor de integridad del sistema)"
 yessyscheck="Ejecutando syscheck (servidor de integridad del sistema)"
 
-# Part 3.3
+# Part 3.3/agent
 runrootcheck="¿Desea agregar el sistema de detección de rootkit?"
 norootcheck="No se ejecutará rootcheck (sistema de detección de rootkit)"
 yesrootcheck="Ejecutando rootcheck (sistema de detección de rootkit)"

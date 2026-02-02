@@ -52,12 +52,12 @@ addingip="サーバの IP を加えています"
 addingname="サーバの hostname を加えています"
 
 
-# Part 3.2
+# Part 3.2/agent
 runsyscheck="整合性検査を行うデーモンを実行させますか?"
 nosyscheck="syscheck (整合性検査デーモン) は実行させません"
 yessyscheck="syscheck (整合性検査デーモン) を実行させます"
 
-# Part 3.3
+# Part 3.3/agent
 runrootcheck="rootkit 検知エンジンを実行させますか?"
 norootcheck="rootcheck (rootkit 検知) は実行させません"
 yesrootcheck="rootcheck (rootkit 検知) を実行させます"

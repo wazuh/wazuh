@@ -49,12 +49,12 @@ addingip="Προστέθηκε η διεύθυνση διακομιστή"
 addingname="Προστέθηκε η διεύθυνση διακομιστή"
 
 
-# Part 3.2
+# Part 3.2/agent
 runsyscheck="Θέλετε να εκτελέσετε τον δαίμονα ελέγχου ακεραιότητας (integrity check daemon);"
 nosyscheck="Ο δαίμονας ελέγχου ακεραιότητας (integrity check daemon) δεν εκτελέστηκε"
 yessyscheck="Ο δαίμονας ελέγχου ακεραιότητας (integrity check daemon) ξεκίνησε"
 
-# Part 3.3
+# Part 3.3/agent
 runrootcheck="Θέλετε να εκτελέσετε την μηχανή ανίχνευσης rootkit;"
 norootcheck="Η μηχανή ανίχνευσης rootkit δεν εκτελέστηκε"
 yesrootcheck="Η μηχανή ανίχνευσης rootkit ξεκίνησε"

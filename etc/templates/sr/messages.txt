@@ -49,12 +49,12 @@ addingip="Dodaje serverov IP"
 addingname="Dodaje serverov hostname"
 
 
-# Part 3.2
+# Part 3.2/agent
 runsyscheck="Da li želiš da pustiš daemon provere integriteta?"
 nosyscheck="Ne obavlja syscheck (daemon provere integriteta)"
 yessyscheck="Obavlja syscheck (daemon provere integriteta)"
 
-# Part 3.3
+# Part 3.3/agent
 runrootcheck="Da li želiš da pustiš engine za otkrivanje rootkit-a?"
 norootcheck="Ne obavlja rootcheck (otkrivanje rootkit-a )"
 yesrootcheck="Obavlja rootcheck (otkrivanje rootkit-a)"

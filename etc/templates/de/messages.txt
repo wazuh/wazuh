@@ -50,12 +50,12 @@ addingip="Server IP hinzugefügt"
 addingname="Server Host hinzugefügt"
 
 
-# Part 3.2
+# Part 3.2/agent
 runsyscheck="Möchten Sie den syscheck (integrity check daemon) benutzen?"
 nosyscheck="Syscheck (integrity check daemon) wird nicht benutzt"
 yessyscheck="Syscheck (integrity check daemon) wird gestartet"
 
-# Part 3.3
+# Part 3.3/agent
 runrootcheck="Möchten Sie die rootkit detection engine benutzen?"
 norootcheck="Rootcheck (rootkit detection) wird nicht benutzt"
 yesrootcheck="Rootcheck (rootkit detection) wird gestartet"

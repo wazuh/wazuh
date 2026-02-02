@@ -49,12 +49,12 @@ addingip="Toevoegen van server IP"
 addingname="Toevoegen van server host"
 
 
-# Part 3.2
+# Part 3.2/agent
 runsyscheck="Wilt u de integriteits controle proces?"
 nosyscheck="Geen syscheck (integriteits controle proces)"
 yessyscheck="Starten van syscheck (integriteits controle proces)"
 
-# Part 3.3
+# Part 3.3/agent
 runrootcheck="Wilt u de rootkit detectie engine?"
 norootcheck="Geen rootcheck (rootkit detectie)"
 yesrootcheck="Starten van rootcheck (rootkit detectie)"

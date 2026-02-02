@@ -50,12 +50,12 @@ configprofile="Enter the agent's config profile name (default: blank)"
 addingcfg="Setting agent's config profile name"
 
 
-# Part 3.2
+# Part 3.2/agent
 runsyscheck="Do you want to run the integrity check daemon?"
 nosyscheck="Not running syscheck (integrity check daemon)"
 yessyscheck="Running syscheck (integrity check daemon)"
 
-# Part 3.3
+# Part 3.3/agent
 runrootcheck="Do you want to run the rootkit detection engine?"
 norootcheck="Not running rootcheck (rootkit detection)"
 yesrootcheck="Running rootcheck (rootkit detection)"

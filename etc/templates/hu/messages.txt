@@ -49,12 +49,12 @@ addingip="Szerver IP hozzáadása"
 addingname="Szerver hoszt neve hozzáadása"
 
 
-# Part 3.2
+# Part 3.2/agent
 runsyscheck="Szeretné futtatni az integritás ellenőrző démont?"
 nosyscheck="Rendszerellenőrzés mellőzése (integritás ellenőrző démon)"
 yessyscheck="Rendszerellenőrzés futtatása (integritás ellenőrző démon)"
 
-# Part 3.3
+# Part 3.3/agent
 runrootcheck="Szeretné futtatni a rootkit detektáló motort?"
 norootcheck="Gyökérellenőrzés mellőzése (rootkit detektálás)"
 yesrootcheck="Gyökérellenőrzés futtatása (rootkit detektálás)"

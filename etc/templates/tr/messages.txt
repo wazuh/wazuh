@@ -49,12 +49,12 @@ addingip="Sunucu IP adresi ekleniyor"
 addingname="Sunucu ismi ekleniyor"
 
 
-# Part 3.2
+# Part 3.2/agent
 runsyscheck="Güvenilirlik/bütünlük kontrol programının çalıştırılmasını ister misiniz?"
 nosyscheck="syscheck çalıştırılmıyor (güvenilirlik/bütünlük kontrol programı)"
 yessyscheck="syscheck çalıştırılıyor (güvenilirlik/bütünlük kontrol programı)"
 
-# Part 3.3
+# Part 3.3/agent
 runrootcheck="rootkit tespit etme motorunun çalışmasını ister misiniz?"
 norootcheck="rootcheck çalıştırılmıyor (rootkit tespit etme)"
 yesrootcheck="rootcheck çalıştırılıyor (rootkit tespit etme)"

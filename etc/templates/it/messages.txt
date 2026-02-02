@@ -48,12 +48,12 @@ serveraddr="Qual'è l'indirizzo IP/host del server Wazuh?"
 addingip="Aggiungo l'IP del Server"
 addingname="Aggiunta di host nome del Server"
 
-# Part 3.2
+# Part 3.2/agent
 runsyscheck="Vuoi attivare il demone di controllo dell'integrità?"
 nosyscheck="Syscheck (demone di controllo dell'integrità) disattivato"
 yessyscheck="Syscheck (demone di controllo dell'integrità) attivato"
 
-# Part 3.3
+# Part 3.3/agent
 runrootcheck="Vuoi attivare il sistema di rilevamento dei rootkit?"
 norootcheck="Rootcheck (Sistema di rilevamento dei rootkit) disattivato"
 yesrootcheck="Rootcheck (Sistema di rilevamento dei rootkit) attivato"
