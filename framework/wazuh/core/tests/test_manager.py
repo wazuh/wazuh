@@ -185,9 +185,9 @@ def test_validation_ko(mock_exists):
                     with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
                         validate_ossec_conf()
 
-                # _parse_execd_output raise KeyError
+                # parse_wcom_output raise KeyError
                 with patch('wazuh.core.manager.WazuhSocket'):
-                    with patch('wazuh.core.manager.parse_execd_output', side_effect=KeyError):
+                    with patch('wazuh.core.manager.parse_wcom_output', side_effect=KeyError):
                         with pytest.raises(WazuhInternalError, match='.* 1904 .*'):
                             validate_ossec_conf()
 
@@ -200,8 +200,8 @@ def test_validation_ko(mock_exists):
         "'use_source_i'.\n2019/02/27 11:30:24 wazuh-manager-authd: ERROR: (1202): Configuration error at "
         "'/var/wazuh-manage/etc/wazuh-manager.conf'.")
 ])
-def test_parse_execd_output(error_flag, error_msg):
-    """Test parse_execd_output function works and returns expected message.
+def test_parse_wcom_output(error_flag, error_msg):
+    """Test parse_wcom_output function works and returns expected message.
 
     Parameters
     ----------
@@ -212,11 +212,11 @@ def test_parse_execd_output(error_flag, error_msg):
     """
     json_response = json.dumps({'error': error_flag, 'message': error_msg}).encode()
     if not error_flag:
-        result = parse_execd_output(json_response)
+        result = parse_wcom_output(json_response)
         assert result['status'] == 'OK'
     else:
         with pytest.raises(WazuhException, match=f'.* 1908 .*'):
-            parse_execd_output(json_response)
+            parse_wcom_output(json_response)
 
 
 @patch('wazuh.core.manager.configuration.api_conf', new={'max_upload_size': 0})

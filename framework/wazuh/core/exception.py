@@ -255,9 +255,9 @@ class WazuhException(Exception):
                },
 
         # Manager:
-        1901: {'message': '\'execq\' socket has not been created'
+        1901: {'message': 'Required socket has not been created'
                },
-        1902: {'message': 'Connection to \'execq\' socket failed'
+        1902: {'message': 'Connection to socket failed'
                },
         1904: {'message': 'Bad data from \'wcom\''
                },
