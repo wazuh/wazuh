@@ -245,6 +245,45 @@ if ($normalizedWazuhDir -ne $currentDir) {
 $current_version = get-version
 write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
 
+# Validate upgrade constraints - block upgrades from versions < 4.14.0
+$version_parts = $current_version -split '\.'
+$major = [int]$version_parts[0]
+$minor = if ($version_parts.Length -gt 1) { [int]$version_parts[1] } else { 0 }
+
+$upgrade_blocked = $false
+$block_message = ""
+
+if ($major -lt 4 -or ($major -eq 4 -and $minor -lt 14)) {
+    $upgrade_blocked = $true
+    $block_message = @"
+═════════════════════════════════════════════════════════════════
+  UPGRADE BLOCKED: Incompatible version detected
+═════════════════════════════════════════════════════════════════
+
+Current version: $current_version
+Target version:  5.0.0
+
+Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later.
+
+Required action:
+  1. Upgrade to version 4.14.0 or later first
+  2. Then upgrade to 5.0.0
+
+For more information, visit:
+  https://documentation.wazuh.com/current/upgrade-guide/
+═════════════════════════════════════════════════════════════════
+"@
+}
+
+if ($upgrade_blocked) {
+    Write-Output $block_message
+    Write-Output "$(Get-Date -format u) - $block_message" >> .\upgrade\upgrade.log
+    Write-Output "3" | Out-File ".\upgrade\upgrade_result" -Encoding ascii
+    Remove-Item -Path ".\upgrade\upgrade_in_progress" -ErrorAction SilentlyContinue
+    remove_upgrade_files
+    exit 1
+}
+
 # Get new msi version
 $msi_new_version = get_msi_version
 if ($msi_new_version -ne $null) {
