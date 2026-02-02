@@ -898,6 +898,11 @@ std::string DBSync::calculateTableChecksum(const std::string& tableName, const s
 
 void DBSync::increaseEachEntryVersion(const std::string& tableName)
 {
+    increaseEachEntryVersion(tableName, "");
+}
+
+void DBSync::increaseEachEntryVersion(const std::string& tableName, const std::string& rowFilter)
+{
     std::vector<nlohmann::json> rows;
     auto callback {[&rows](ReturnTypeCallback type, const nlohmann::json & jsonResult)
     {
@@ -910,7 +915,7 @@ void DBSync::increaseEachEntryVersion(const std::string& tableName)
     auto selectQuery {SelectQuery::builder()
                       .table(tableName)
                       .columnList({"*"})
-                      .rowFilter("")
+                      .rowFilter(rowFilter)
                       .orderByOpt("")
                       .distinctOpt(false)
                       .build()};
