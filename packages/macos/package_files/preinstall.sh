@@ -48,8 +48,49 @@ if [ -d "${DIR}" ]; then
     fi
 
     # Get version information
-    OLD_VERSION=`${DIR}/bin/wazuh-control info -v`
-    MAJOR=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f1)
+    if [ -f "${DIR}/bin/wazuh-control" ]; then
+        OLD_VERSION=`${DIR}/bin/wazuh-control info -v 2>/dev/null`
+        MAJOR=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f1)
+        MINOR=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f2)
+    elif [ -f ${DIR}/VERSION.json ]; then
+        OLD_VERSION=`grep -oP '(?<="version": ")[^"]*' ${DIR}/VERSION.json 2>/dev/null`
+        MAJOR=$(echo $OLD_VERSION | cut -d. -f1)
+        MINOR=$(echo $OLD_VERSION | cut -d. -f2)
+    fi
+
+    # Validate upgrade constraints for Agent
+    ERROR_TYPE=""
+
+    # Determine if upgrade should be blocked
+    if [ -z "$MAJOR" ] || [ -z "$MINOR" ]; then
+        ERROR_TYPE="no_version"
+        ERROR_TITLE="Cannot detect current version"
+        ERROR_MESSAGE="Unable to detect the currently installed Wazuh version."
+    elif [ "$MAJOR" -lt 4 ] || ([ "$MAJOR" -eq 4 ] && [ "$MINOR" -lt 14 ]); then
+        ERROR_TYPE="unsupported"
+        ERROR_TITLE="Incompatible version detected"
+        ERROR_MESSAGE="Current version: $OLD_VERSION\nTarget version:  5.0.0\n\nUpgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later."
+    fi
+
+    # If any error was detected, show message and block
+    if [ -n "$ERROR_TYPE" ]; then
+        cat <<EOF >&2
+═════════════════════════════════════════════════════════════════
+  UPGRADE BLOCKED: $ERROR_TITLE
+═════════════════════════════════════════════════════════════════
+
+$ERROR_MESSAGE
+
+Required action:
+  1. Upgrade to version 4.14.0 or later first
+  2. Then upgrade to 5.0.0
+
+For more information, visit:
+  https://documentation.wazuh.com/current/upgrade-guide/
+═════════════════════════════════════════════════════════════════
+EOF
+        exit 1
+    fi
 
     # Stops the agent before upgrading it
     if ${DIR}/bin/wazuh-control status | grep "is running" > /dev/null 2>&1; then
