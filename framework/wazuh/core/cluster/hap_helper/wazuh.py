@@ -169,7 +169,6 @@ class WazuhDAPI:
             'select': ['node_name', 'version'],
             'sort': {'fields': ['version', 'id'], 'order': 'desc'},
             'filters': {'status': 'active'},
-            'q': 'id!=000',
             'limit': self.AGENTS_MAX_LIMIT,
         }
 
@@ -203,7 +202,6 @@ class WazuhDAPI:
             'select': ['version'],
             'sort': {'fields': ['version', 'id'], 'order': 'desc'},
             'filters': {'status': 'active', 'node_name': node_name},
-            'q': 'id!=000',
             'limit': limit or self.AGENTS_MAX_LIMIT,
         }
 

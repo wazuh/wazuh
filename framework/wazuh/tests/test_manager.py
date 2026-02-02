@@ -272,7 +272,7 @@ def test_get_config(mock_act_conf):
     get_config('component', 'config')
 
     # Assert whether get_active_configuration() method receives the expected parameters.
-    mock_act_conf.assert_called_once_with(agent_id='000', component='component', configuration='config')
+    mock_act_conf.assert_called_once_with(component='component', configuration='config')
 
 
 def test_get_config_ko():
