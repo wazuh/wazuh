@@ -56,7 +56,7 @@ STATIC void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
     #ifdef CLIENT
         wm_agent_upgrade_start_agent_module(&upgrade_config->agent_config, upgrade_config->enabled);
     #else
-        wm_agent_upgrade_start_manager_module(&upgrade_config->manager_config, upgrade_config->enabled);
+        wm_agent_upgrade_start_manager_module(&upgrade_config->manager_config, 0);
     #endif
 
 #ifdef WIN32
