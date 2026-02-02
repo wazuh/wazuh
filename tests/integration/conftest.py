@@ -139,7 +139,7 @@ def pytest_html_results_summary(prefix, summary, postfix):
 @pytest.fixture(scope='session')
 def load_wazuh_basic_configuration():
     """Load a new basic configuration to the manager"""
-    # Load ossec.conf with all disabled settings
+    # Load wazuh configuration file with all disabled settings
     minimal_configuration = configuration.get_minimal_configuration()
 
     # Make a backup from current configuration
@@ -150,7 +150,7 @@ def load_wazuh_basic_configuration():
 
     yield
 
-    # Restore the ossec.conf backup
+    # Restore the wazuh configuration file backup
     configuration.write_wazuh_conf(backup_ossec_configuration)
 
 

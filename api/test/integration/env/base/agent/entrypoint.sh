@@ -6,7 +6,7 @@ echo 'wazuh_modules.debug=2' >> /var/ossec/etc/local_internal_options.conf
 # Apply test.keys
 cp /tmp_volume/configuration_files/test.keys /var/ossec/etc/test.keys
 
-# Modify ossec.conf
+# Modify wazuh configuration file
 for conf_file in /tmp_volume/configuration_files/*.conf; do
   # Do not apply 5.x configuration changes to agents with version 4.x
   if [ "$3" == "agent_old" ]; then
