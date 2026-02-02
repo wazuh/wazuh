@@ -206,7 +206,7 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         config_cluster = get_ossec_conf(section='cluster', conf_file=config_file, from_import=from_import)['cluster']
     except WazuhException as e:
             if e.code == 1106:
-                # If no cluster configuration is present in ossec.conf, return the default configuration.
+                # If no cluster configuration is present in wazuh configuration file, return the default configuration.
                 return cluster_default_configuration
 
             raise WazuhError(3006, extra_message=e.message)

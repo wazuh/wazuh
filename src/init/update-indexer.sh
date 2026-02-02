@@ -10,9 +10,9 @@
 # Foundation.
 
 # Function: isConfigPresent
-# Description: Function that checks if a 'configuration' is present in the 'ossec.conf' file.
+# Description: Function that checks if a 'configuration' is present in the 'wazuh-manager.conf' file.
 # Parameters:
-#   $1: Path to the ossec.conf file.
+#   $1: Path to the wazuh-manager.conf file.
 #   $2: Configuration pattern.
 isConfigPresent()
 {
@@ -27,9 +27,9 @@ isConfigPresent()
 }
 
 # Function: updateIndexerTemplate
-# Description: Function that appends the 'Indexer' template to the 'ossec.conf' file if it does not exist.
+# Description: Function that appends the 'Indexer' template to the 'wazuh-manager.conf' file if it does not exist.
 # Parameters:
-#   $1: Path to the ossec.conf file.
+#   $1: Path to the wazuh-manager.conf file.
 #   $2: Path to the Indexer template file.
 updateIndexerTemplate()
 {
