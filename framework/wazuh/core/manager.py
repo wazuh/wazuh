@@ -181,9 +181,9 @@ def validate_ossec_conf() -> str:
     WazuhInternalError(1013)
         If it is unable to connect to socket.
     WazuhInternalError(1901)
-        If 'execq' socket cannot be created.
+        If 'wcom' socket cannot be created.
     WazuhInternalError(1904)
-        If there is bad data received from 'execq'.
+        If there is bad data received from 'wcom'.
 
     Returns
     -------
@@ -220,20 +220,20 @@ def validate_ossec_conf() -> str:
         wcom_socket.close()
 
     try:
-        response = parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
+        response = parse_wcom_output(buffer.decode('utf-8').rstrip('\0'))
     except (KeyError, json.decoder.JSONDecodeError) as e:
         raise WazuhInternalError(1904, extra_message=str(e))
 
     return response
 
 
-def parse_execd_output(output: str) -> Dict:
-    """Parse output from execd socket to fetch log message and remove log date, log daemon, log level, etc.
+def parse_wcom_output(output: str) -> Dict:
+    """Parse output from WCOM socket to fetch log message and remove log date, log daemon, log level, etc.
 
     Parameters
     ----------
     output : str
-        Raw output from execd.
+        Raw output from WCOM socket (handled by modulesd).
 
     Returns
     -------

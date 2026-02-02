@@ -651,7 +651,6 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-analysisd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-authd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-control
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-execd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-logcollector
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-monitord
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-remoted
