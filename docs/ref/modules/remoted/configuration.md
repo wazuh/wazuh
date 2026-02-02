@@ -4,7 +4,7 @@ Configuration options for remoted module.
 
 ## XML Configuration
 
-File: `/var/ossec/etc/ossec.conf`
+File: `/var/wazuh-manager/etc/wazuh-manager.conf`
 
 ### Key Options
 

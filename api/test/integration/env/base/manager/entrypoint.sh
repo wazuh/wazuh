@@ -3,7 +3,7 @@
 # Apply API configuration
 cp -rf /tmp_volume/config/* /var/ossec/ && chown -R wazuh:wazuh /var/ossec/api
 
-# Modify ossec.conf
+# Modify wazuh configuration file
 for conf_file in /tmp_volume/configuration_files/*.conf; do
   python3 /tools/xml_parser.py /var/ossec/etc/ossec.conf $conf_file
 done
