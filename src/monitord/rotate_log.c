@@ -67,14 +67,14 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
     localtime_r(&now, &tm);
 
 #ifdef WIN32
-    // ossec.log
+    // wazuh log file
     snprintf(old_path, PATH_MAX, "%s", LOGFILE);
     // ossec.json
     snprintf(old_path_json, PATH_MAX, "%s", LOGJSONFILE);
     // logs
     strcpy(base_dir, "logs");
 #else
-    // /var/ossec/logs/ossec.log
+    // WAZUH_HOME/logs/<wazuh log file>
     snprintf(old_path, PATH_MAX, "%s", LOGFILE);
     // /var/ossec/logs/ossec.json
     snprintf(old_path_json, PATH_MAX, "%s", LOGJSONFILE);

@@ -83,7 +83,7 @@ class DisconnectedAgentGroupSyncTask:
         # Allow injecting an indexer client for tests
         self._indexer_client_override = indexer_client
 
-        # Use from_import=True to avoid raising during tests when ossec.conf
+        # Use from_import=True to avoid raising during tests when wazuh configuration file
         # does not contain the indexer section. The config is only used for
         # informational purposes here.
         try:

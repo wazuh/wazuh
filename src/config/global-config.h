@@ -64,7 +64,7 @@ typedef struct __Config {
     /* Vector of targets forwarder */
     char** forwarders_list;
 
-    /* Vector of socket configuration from ossec.conf <socket/> */
+    /* Vector of socket configuration from wazuh configuration file <socket/> */
     socket_forwarder *socket_list;
 
 

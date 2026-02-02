@@ -102,6 +102,7 @@ The following workspace settings are recommended for consistency with Wazuh codi
     "editor.acceptSuggestionOnEnter": "off",
     "workbench.editor.enablePreview": false,
     "files.associations": {
+        "wazuh-manager.conf": "xml",
         "ossec.conf": "xml",
         "agent.conf": "xml"
     },

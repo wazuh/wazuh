@@ -2,7 +2,7 @@
 
 The **Inventory Sync** module is designed to run with minimal configuration, working out of the box with default settings. It acts as a synchronization intermediary, relying primarily on the **Indexer Connector** configuration for indexing operations.
 
-The module itself does not expose dedicated options in **`ossec.conf`**. Instead, it inherits operational parameters from the Indexer Connector.
+The module itself does not expose dedicated options in **`wazuh-manager.conf`**. Instead, it inherits operational parameters from the Indexer Connector.
 
 ---
 

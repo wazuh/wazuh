@@ -57,7 +57,7 @@ def configure_local_rules(request, test_configuration):
 @pytest.fixture()
 def configure_remove_tags(request, test_metadata):
     """Configure a custom settting for testing. Restart Wazuh is needed for applying the configuration. """
-    # Remove test case tags from ossec.conf
+    # Remove test case tags from wazuh configuration file
     file.replace_regex_in_file(test_metadata['remove_tags'], [''] * len(test_metadata['remove_tags']), WAZUH_CONF_PATH)
 
 

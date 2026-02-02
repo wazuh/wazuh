@@ -159,7 +159,7 @@ Get-Service -Name wazuh
 The main server configuration file is located at:
 
 ```
-/var/ossec/etc/ossec.conf
+/var/wazuh-manager/etc/wazuh-manager.conf
 ```
 
 After modifying the configuration, restart the server:
@@ -203,7 +203,21 @@ Stop-Service -Name wazuh
 
 ## Logs
 
-### Server/Agent Logs on UNIX
+### Server Logs on UNIX
+
+Logs are located in `/var/wazuh-manager/logs/`:
+
+- `wazuh-manager.log` - Main Wazuh log
+- `alerts/alerts.log` - Security alerts
+- Individual component logs in `/var/wazuh-manager/logs/`
+
+To monitor logs in real-time:
+
+```bash
+tail -f /var/wazuh-manager/logs/wazuh-manager.log
+```
+
+### Agent Logs on UNIX
 
 Logs are located in `/var/ossec/logs/`:
 
