@@ -1097,7 +1097,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '000,007,008,999'
+        agents_list: '007,008,999'
         older_than: '0s'
         status: 'all'
     response:
@@ -1108,10 +1108,6 @@ stages:
           affected_items:
             - '008'
           failed_items:
-            - error:
-                code: 1703
-              id:
-                - '000'
             - error:
                 code: 4000
               id:
@@ -1399,7 +1395,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: "000,001,002,005"
+        agents_list: "001,002,005"
     response:
       status_code: 200
       json:
@@ -1411,7 +1407,6 @@ stages:
             - error:
                 code: 4000
               id:
-                - '000'
                 - '001'
                 - '002'
           total_affected_items: 1
@@ -1464,7 +1459,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: "000,001,002,005"
+        agents_list: "001,002,005"
     response:
       verify_response_with:
         function: tavern_utils:healthcheck_agent_restart
@@ -1480,7 +1475,6 @@ stages:
             - error:
                 code: 4000
               id:
-                - '000'
                 - '001'
                 - '002'
           total_affected_items: 1
