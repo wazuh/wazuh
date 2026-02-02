@@ -21,6 +21,50 @@ case "$1" in
     install|upgrade)
 
         if [ "$1" = "upgrade" ]; then
+            # Get version information
+            if [ -f "${DIR}/bin/wazuh-control" ]; then
+                OLD_VERSION=`${DIR}/bin/wazuh-control info -v 2>/dev/null`
+                MAJOR_VER=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f1)
+            elif [ -f ${DIR}/VERSION.json ]; then
+                OLD_VERSION=`grep -oP '(?<="version": ")[^"]*' ${DIR}/VERSION.json 2>/dev/null`
+                MAJOR_VER=$(echo $OLD_VERSION | cut -d. -f1)
+            fi
+
+            # Validate upgrade constraints for Manager
+            ERROR_TYPE=""
+
+            # Determine if upgrade should be blocked
+            if [ -z "$MAJOR_VER" ]; then
+                ERROR_TYPE="no_version"
+                ERROR_TITLE="Cannot detect current version"
+                ERROR_MESSAGE="Unable to detect the currently installed Wazuh version."
+            elif [ "$MAJOR_VER" -lt 5 ]; then
+                ERROR_TYPE="old_version"
+                ERROR_TITLE="Clean installation required"
+                ERROR_MESSAGE="Current version: $OLD_VERSION\nTarget version:  5.0.0\n\nDirect upgrade from 4.x to 5.0.0 is NOT supported for Wazuh Manager\ndue to breaking changes in database schema and architecture."
+            fi
+
+            # If any error was detected, show message and block
+            if [ -n "$ERROR_TYPE" ]; then
+                cat <<EOF >&2
+═════════════════════════════════════════════════════════════════
+  UPGRADE BLOCKED: $ERROR_TITLE
+═════════════════════════════════════════════════════════════════
+
+$ERROR_MESSAGE
+
+Required action:
+  1. Backup your configuration and data
+  2. Perform a clean installation of Wazuh 5.0.0
+  3. Restore configuration as needed
+
+For migration guide, visit:
+  https://documentation.wazuh.com/current/migration-guide/
+═════════════════════════════════════════════════════════════════
+EOF
+                exit 1
+            fi
+
             if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
                 systemctl stop wazuh-manager.service > /dev/null 2>&1
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
@@ -50,15 +94,8 @@ case "$1" in
                 rm -rf ${DIR}/~api
             fi
 
-            # Get old package version
-            VERSION=$(${DIR}/bin/wazuh-control info -v)
-
-            # Get the major and minor version
-            MAJOR=$(echo $VERSION | cut -dv -f2 | cut -d. -f1)
-            MINOR=$(echo $VERSION | cut -d. -f2)
-
             # Delete 3.X Wazuh API service
-            if [ "$MAJOR" = "3" ] && [ -d ${DIR}/api ]; then
+            if [ "$MAJOR_VER" = "3" ] && [ -d ${DIR}/api ]; then
                 if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && \
                   systemctl list-unit-files --type service | grep wazuh-api; then
                     systemctl stop wazuh-api.service > /dev/null 2>&1
