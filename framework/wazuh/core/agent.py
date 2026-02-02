@@ -1492,7 +1492,7 @@ def core_upgrade_agents(agents_chunk: list, command: str = 'upgrade_result', wpk
     data = loads(s.receive().decode())
     s.close()
 
-    [agent_info.update((k, get_utc_strptime(v, "%Y/%m/%d %H:%M:%S").strftime(DATE_FORMAT))
+    [agent_info.update((k, get_utc_strptime(v, "%Y/%m/%d %H:%M:%S", date_is_at_utc=False).strftime(DATE_FORMAT))
                        for k, v in agent_info.items() if k in {'create_time', 'update_time'})
      for agent_info in data['data']]
 
