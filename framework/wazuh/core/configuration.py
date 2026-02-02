@@ -14,7 +14,7 @@ from io import StringIO
 from os import path as os_path
 from os import remove
 from types import MappingProxyType
-from typing import List, Union
+from typing import List, Optional, Union
 
 from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
@@ -999,17 +999,17 @@ def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.con
         raise WazuhError(1111)
 
 
-def get_active_configuration(agent_id: str, component: str, configuration: str) -> dict:
-    """Get an agent's component active configuration.
+def get_active_configuration(component: str, configuration: str, agent_id: Optional[str] = None) -> dict:
+    """Get server or agent component active configuration.
 
     Parameters
     ----------
-    agent_id : str
-        Agent ID. All possible values from 000 onwards.
     component : str
         Selected agent's component.
     configuration : str
         Configuration to get, written on disk.
+    agent_id : Optional[str], default None
+        Agent ID. If None, gets manager configuration.
 
     Raises
     ------
@@ -1146,7 +1146,7 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
 
         return rec_msg_ok, rec_msg
 
-    rec_error, rec_data = get_active_configuration_agent() if agent_id != '000' else get_active_configuration_manager()
+    rec_error, rec_data = get_active_configuration_agent() if agent_id is not None else get_active_configuration_manager()
 
     if rec_error == 'ok' or rec_error == 0:
         data = json.loads(rec_data) if isinstance(rec_data, str) else rec_data

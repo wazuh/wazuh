@@ -159,7 +159,6 @@ class WazuhDBConnection:
         """Check input queries have the correct format
 
         Accepted query formats:
-        - agent 000 sql sql_sentence
         - global sql sql_sentence
 
         Parameters
@@ -197,7 +196,7 @@ class WazuhDBConnection:
                 (query_elements[sql_first_index + 1] == 'select' or query_elements[sql_first_index + 1] == 'delete' or
                  query_elements[sql_first_index + 1] == 'update', 'Only "select", "delete" or "update" requests can be '
                                                                   'sent to WDB'),
-                (not ';' in query, "Found a not valid symbol in database query: ;")
+                (';' not in query, "Found a not valid symbol in database query: ;")
             ]
 
         for check, error_text in input_val_errors:

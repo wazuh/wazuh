@@ -8,7 +8,7 @@ from os.path import exists
 from wazuh import Wazuh
 from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.utils import manager_restart, read_cluster_config, running_in_master_node
+from wazuh.core.cluster.utils import manager_restart, running_in_master_node
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_update_information_template, get_ossec_logs, \
@@ -251,7 +251,7 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
                                       )
 
     try:
-        data = configuration.get_active_configuration(agent_id='000', component=component, configuration=config)
+        data = configuration.get_active_configuration(component=component, configuration=config)
         len(data.keys()) > 0 and result.affected_items.append(data)
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)

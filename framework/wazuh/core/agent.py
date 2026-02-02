@@ -8,7 +8,6 @@ import re
 import threading
 from base64 import b64encode
 from datetime import datetime, timezone
-from functools import lru_cache
 from json import dumps, loads
 from os import listdir, path
 from shutil import rmtree
@@ -593,17 +592,9 @@ class Agent:
         -------
         str
             Agent key.
-
-        Raises
-        ------
-        WazuhError(1703)
-            Action not available for manager (000).
         """
         self.load_info_from_db()
-        if self.id != "000":
-            self.key = self.compute_key()
-        else:
-            raise WazuhError(1703)
+        self.key = self.compute_key()
 
         return self.key
 
@@ -1091,8 +1082,6 @@ class Agent:
 
         Raises
         ------
-        WazuhError(1703)
-            Action not available for manager.
         WazuhResourceNotFound(1710)
             The group was not found.
         WazuhError(1734)
@@ -1106,11 +1095,8 @@ class Agent:
             Confirmation message.
         """
         if not force:
-            # Check if agent exists, it is not 000 and the group exists
+            # Check if agent exists and the group exists
             Agent(agent_id).get_basic_information()
-
-            if agent_id == "000":
-                raise WazuhError(1703)
 
             if not Agent.group_exists(group_id):
                 raise WazuhResourceNotFound(1710)
@@ -1159,7 +1145,7 @@ class Agent:
         if WazuhVersion(agent_version) < WazuhVersion(common.ACTIVE_CONFIG_VERSION):
             raise WazuhInternalError(1735, extra_message=f"Minimum required version is {common.ACTIVE_CONFIG_VERSION}")
 
-        return configuration.get_active_configuration(self.id, component, config)
+        return configuration.get_active_configuration(agent_id=self.id, component=component, configuration=config)
 
     def get_stats(self, component: str) -> dict:
         """Read the agent's component stats.
@@ -1287,7 +1273,6 @@ def get_agents_info() -> set:
         file_content = f.read()
 
     result = set(agent_regex.findall(file_content))
-    result.add('000')
 
     return result
 
@@ -1346,22 +1331,6 @@ def expand_group(group_name: str) -> set:
 
     system_agents = get_agents_info()
     return set(agents_ids) & system_agents
-
-
-@lru_cache()
-def get_manager_name() -> str:
-    """This function read the manager name from global.db.
-
-    Returns
-    -------
-    str
-        Manager name.
-    """
-    wdb_conn = WazuhDBConnection()
-    manager_name = wdb_conn.execute("global sql SELECT name FROM agent WHERE (id = 0)")[0]['name']
-    wdb_conn.close()
-
-    return manager_name
 
 
 def get_rbac_filters(system_resources: set = None, permitted_resources: list = None, filters: dict = None) -> dict:
