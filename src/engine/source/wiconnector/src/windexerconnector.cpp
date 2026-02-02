@@ -21,8 +21,7 @@ namespace
 /**
  * @brief List of policy resource aliases in the indexer
  */
-const std::vector<std::string> POLICY_ALIASES = {
-    ".cti-kvdbs", ".cti-decoders", ".cti-integration-decoders", ".cti-policies"};
+const std::vector<std::string> POLICY_ALIASES = {".cti-kvdbs", ".cti-decoders", ".cti-integrations", ".cti-policies"};
 
 constexpr std::string_view PIT_KEEP_ALIVE {"5m"};          ///< Keep alive duration for Point In Time
 constexpr std::string_view POLICY_INDEX {".cti-policies"}; ///< Policy index name
@@ -42,10 +41,10 @@ IndexResourceType fromIndexName(std::string_view indexName)
 {
     // Static regex patterns compiled once
     static const std::array<std::pair<std::regex, IndexResourceType>, 4> patterns = {
-        {{std::regex(R"(.*-kvdb$)"), IndexResourceType::KVDB},
-         {std::regex(R"(.*-decoder$)"), IndexResourceType::DECODER},
-         {std::regex(R"(.*-integration$)"), IndexResourceType::INTEGRATION_DECODER},
-         {std::regex(R"(.*-policy$)"), IndexResourceType::POLICY}}};
+        {{std::regex(R"(.*-kvdbs$)"), IndexResourceType::KVDB},
+         {std::regex(R"(.*-decoders$)"), IndexResourceType::DECODER},
+         {std::regex(R"(.*-integrations$)"), IndexResourceType::INTEGRATION_DECODER},
+         {std::regex(R"(.*-policies$)"), IndexResourceType::POLICY}}};
 
     for (const auto& [pattern, resourceType] : patterns)
     {
@@ -357,7 +356,7 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
     }
 
     // Enrich policy with origin_space if not present
-    if(policyMap.policy.isObject() && policyMap.policy.size() > 0)
+    if (policyMap.policy.isObject() && policyMap.policy.size() > 0)
     {
         policyMap.policy.setString(space, "/origin_space");
     }
