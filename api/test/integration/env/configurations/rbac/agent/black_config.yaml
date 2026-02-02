@@ -24,7 +24,6 @@
 - actions:
   - agent:delete
   resources:
-  - agent:id:000
   - agent:id:002
   - agent:id:004
   - agent:id:006

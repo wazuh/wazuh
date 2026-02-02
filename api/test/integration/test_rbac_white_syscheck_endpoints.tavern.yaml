@@ -28,7 +28,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '000,003,001,004,008'
+        agents_list: '003,001,004,008'
     response:
       status_code: 200
       json:
