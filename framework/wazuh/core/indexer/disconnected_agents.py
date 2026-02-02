@@ -460,10 +460,7 @@ class DisconnectedAgentGroupSyncTask:
 
         invalid_agents = []
         for agent_id in agent_list:
-            if agent_id == "000":
-                result.add_failed_item(id_="000", error=WazuhError(1703))
-                invalid_agents.append(agent_id)
-            elif agent_id not in system_agents:
+            if agent_id not in system_agents:
                 result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
                 invalid_agents.append(agent_id)
 
