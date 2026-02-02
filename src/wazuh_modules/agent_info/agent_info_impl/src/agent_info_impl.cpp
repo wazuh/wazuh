@@ -375,15 +375,21 @@ void AgentInfoImpl::populateAgentMetadata()
     }
     else
     {
-        // For server/manager, use default values
-        agentId = "000";
-
-        if (osInfo.contains("hostname"))
+        // For server/manager, read from client.keys like agents
+        // Manager workflows should not rely on implicit local agent identity
+        if (!readClientKeys(agentId, agentName))
         {
-            agentName = osInfo["hostname"];
+            // If client.keys doesn't exist or is empty, use hostname
+            if (osInfo.contains("hostname"))
+            {
+                agentName = osInfo["hostname"];
+            }
+            m_logFunction(LOG_DEBUG, "Using agent data from system, Name=" + agentName);
         }
-
-        m_logFunction(LOG_DEBUG, "Using default server/manager agent data: ID=000, Name=" + agentName);
+        else
+        {
+            m_logFunction(LOG_DEBUG, "Using agent data from client.keys, ID=" + agentId + ", Name=" + agentName);
+        }
     }
 
     // Build the agent metadata JSON
