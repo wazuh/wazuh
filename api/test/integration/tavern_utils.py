@@ -443,7 +443,7 @@ def check_agent_active_status(agents_list):
     while tries < 25:
         try:
             # Get active agents
-            output = subprocess.check_output(f"docker exec env-wazuh-master-1 /var/ossec/framework/python/bin/python3 "
+            output = subprocess.check_output(f"docker exec env-wazuh-master-1 /var/wazuh-manager/framework/python/bin/python3 "
                                              f"{active_agents_script_path}".split()).decode().strip()
         except subprocess.SubprocessError as exc:
             raise subprocess.SubprocessError("Error while trying to get agents") from exc
