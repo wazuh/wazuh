@@ -19,7 +19,7 @@
 #include "../wrappers/wazuh/syscheckd/fim_sync_wrappers.h"
 #include "../wrappers/wazuh/shared_modules/agent_sync_protocol_wrappers.h"
 #include "../../syscheckd/include/syscheck.h"
-#include "../../config/syscheck-config.h"
+#include "syscheck-config.h"
 
 
 /* redefinitons/wrapping */

@@ -13,7 +13,7 @@
 #include "os_regex/os_regex.h"
 #include "os_net/os_net.h"
 #include "remoted.h"
-#include "config/config.h"
+#include "config.h"
 #include "module_limits.h"
 
 /* Global variables */

@@ -2,7 +2,7 @@
 #define w_journal_H
 
 #include <shared.h>
-#include "../config/localfile-config.h"
+#include "localfile-config.h"
 
 #include "cJSON.h"
 #include "expression.h"

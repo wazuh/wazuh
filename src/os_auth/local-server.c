@@ -14,7 +14,7 @@
 #include <sys/wait.h>
 #include "auth.h"
 #include "os_err.h"
-#include <config/authd-config.h>
+#include "authd-config.h"
 
 typedef enum auth_local_err {
     EINTERNAL = 0,

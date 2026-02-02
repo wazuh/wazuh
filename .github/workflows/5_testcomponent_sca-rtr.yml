@@ -7,7 +7,7 @@ on:
       - "src/ci/**"
       - "src/build.py"
       - "src/wazuh_modules/sca/**"
-      - "src/config/wmodules-sca.c"
+      - "src/config/src/wmodules-sca.c"
       - "src/Makefile"
       - ".github/workflows/5_testcomponent_sca-rtr.yml"
       - ".github/actions/**"

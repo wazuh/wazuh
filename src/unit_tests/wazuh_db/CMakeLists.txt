@@ -144,6 +144,9 @@ link_directories(${SRC_FOLDER}/build/lib)
 FILE(GLOB wazuh_db_objects ${SRC_FOLDER}/wazuh_db/*.o)
 list(REMOVE_ITEM wazuh_db_objects ${SRC_FOLDER}/wazuh_db/main.o ${SRC_FOLDER}/wazuh_db/wdb_shared.o)
 
+# Add wazuh_modules object files needed by wazuh_db
+list(APPEND wazuh_db_objects ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/wm_task_general.c.o)
+
 # Compilig tests
 list(LENGTH wdb_tests_names count)
 math(EXPR count "${count} - 1")

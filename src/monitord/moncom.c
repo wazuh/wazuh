@@ -10,7 +10,7 @@
 
 #include <shared.h>
 #include "os_net/os_net.h"
-#include "wazuh_modules/wmodules.h"
+#include "wmodules.h"
 #include "monitord.h"
 
 size_t moncom_dispatch(char * command, char ** output) {

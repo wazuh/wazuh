@@ -10,7 +10,7 @@
  */
 
 #include "wdb.h"
-#include "wazuh_modules/wmodules.h"
+#include "wmodules.h"
 #include "wazuhdb_op.h"
 
 #ifdef WAZUH_UNIT_TESTING

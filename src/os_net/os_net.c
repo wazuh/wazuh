@@ -15,7 +15,7 @@
 #include <errno.h>
 #include "shared.h"
 #include "os_net.h"
-#include "wazuh_modules/wmodules.h"
+#include "wmodules.h"
 
 #ifdef WIN32
 #pragma GCC diagnostic push

@@ -10,9 +10,9 @@ extern "C"
 {
 #endif
 
-#include "../../module_query_errors.h"
-#include "../../wm_sca.h"
-#include "../wazuh_modules/wmodules_def.h"
+#include "module_query_errors.h"
+#include "wm_sca.h"
+#include "wmodules_def.h"
 
 #include "logging_helper.hpp"
 

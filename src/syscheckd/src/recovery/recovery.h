@@ -40,7 +40,7 @@ extern "C"
 #include <stdint.h>
 #include <cJSON.h>
 #include "logging_helper.h"
-#include "../../../headers/list_op.h"
+#include "list_op.h"
 
 #ifdef __cplusplus
 // Callback type for testing synchronizeModule: allows mocking sync behavior

@@ -11,7 +11,7 @@
 #ifndef SYSCHECK_H
 #define SYSCHECK_H
 
-#include "../../config/syscheck-config.h"
+#include "syscheck-config.h"
 #include "agent_sync_protocol_c_interface_types.h"
 #include "commonDefs.h"
 #include "syscheck_op.h"

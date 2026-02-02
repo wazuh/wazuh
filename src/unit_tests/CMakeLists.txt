@@ -13,23 +13,57 @@ get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 
 message(Source folder: ${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/headers)
+include_directories(${SRC_FOLDER}/config/include)
+include_directories(${SRC_FOLDER}/os_crypto/md5)
+include_directories(${SRC_FOLDER}/os_crypto/sha1)
+include_directories(${SRC_FOLDER}/os_crypto/sha256)
+include_directories(${SRC_FOLDER}/os_crypto/md5_sha1_sha256)
+include_directories(${SRC_FOLDER}/os_net)
+include_directories(${SRC_FOLDER}/os_regex)
+include_directories(${SRC_FOLDER}/os_xml)
 include_directories(${SRC_FOLDER}/shared_modules)
 include_directories(${SRC_FOLDER}/external/openssl/include)
 include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
 include_directories(${SRC_FOLDER}/external/bzip2)
+include_directories(${SRC_FOLDER}/external/sqlite/)
 include_directories(${SRC_FOLDER}/external/cJSON)
 include_directories(${SRC_FOLDER}/external/msgpack/include)
 include_directories(${SRC_FOLDER}/shared_modules/common)
 include_directories(${SRC_FOLDER}/shared_modules/router/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
 include_directories(${SRC_FOLDER}/shared_modules/agent_metadata/include/)
+include_directories(${SRC_FOLDER}/wazuh_modules/include/)
+include_directories(${SRC_FOLDER}/wazuh_modules/src/)
+include_directories(${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/)
+include_directories(${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent/)
+include_directories(${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/manager/)
+include_directories(${SRC_FOLDER}/wazuh_modules/src/task_manager/)
 add_definitions(-DWAZUH_UNIT_TESTING)
 
-# Wazuh libraries
-find_library(WAZUHLIB NAMES libwazuh.a HINTS "${SRC_FOLDER}")
-if(NOT WAZUHLIB)
-  message(FATAL_ERROR "libwazuh.a not found in ${SRC_FOLDER} Aborting...")
+# Find libwazuh
+find_library(WAZUHLIB_WAZUH NAMES wazuh libwazuh.a HINTS "${SRC_FOLDER}")
+if(NOT WAZUHLIB_WAZUH)
+  message(FATAL_ERROR "libwazuh.a not found in ${SRC_FOLDER}. Aborting...")
 endif()
+
+# Find libconfig
+find_library(WAZUHLIB_CONFIG NAMES config libconfig.a HINTS "${SRC_FOLDER}/build/lib")
+if(NOT WAZUHLIB_CONFIG)
+  message(FATAL_ERROR "libconfig.a not found in ${SRC_FOLDER}. Aborting...")
+endif()
+
+# Find libwazuh_modules
+find_library(WAZUHLIB_WM NAMES wazuh_modulesd_lib libwazuh_modulesd_lib.a HINTS "${SRC_FOLDER}/build/lib")
+if(NOT WAZUHLIB_WM)
+  message(FATAL_ERROR "libwazuh_modulesd_lib.a not found in ${SRC_FOLDER}. Aborting...")
+endif()
+
+# Store both in WAZUHLIB (list)
+set(WAZUHLIB
+  ${WAZUHLIB_CONFIG}
+  ${WAZUHLIB_WAZUH}
+  ${WAZUHLIB_WM}
+)
 
 # Enable testing
 enable_testing()

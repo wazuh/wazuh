@@ -37,8 +37,8 @@ if(FSANITIZE)
   set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
 endif(FSANITIZE)
 
-# Function to link coverage libraries for unit tests
-# Uses plain signature for compatibility with existing plain signature usage
+# Function to link coverage libraries for unit tests Uses plain signature for
+# compatibility with existing plain signature usage
 function(add_coverage_libraries target_name)
   if(UNIT_TEST)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -230,18 +230,14 @@ if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   add_subdirectory(shared_modules/router)
 endif()
 
+# Config
+add_subdirectory(config)
+
 # Syscheckd
 add_subdirectory(syscheckd)
 
-# Wazuh Modules
-add_subdirectory(wazuh_modules/agent_info)
-add_subdirectory(wazuh_modules/sca)
-if(ENABLE_SYSC)
-  add_subdirectory(wazuh_modules/syscollector)
-endif()
+# Rootcheck
+add_subdirectory(rootcheck)
 
-# Wazuh Modules - Server only
-if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
-  add_subdirectory(wazuh_modules/inventory_sync)
-  add_subdirectory(wazuh_modules/vulnerability_scanner)
-endif()
+# Wazuh modulesd
+add_subdirectory(wazuh_modules)

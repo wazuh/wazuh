@@ -9,10 +9,10 @@
  */
 #include "shared.h"
 #include "execd.h"
-#include "wazuh_modules/wmodules.h"
+#include "wmodules.h"
 #include "client-agent/agentd.h"
 #include "logcollector/logcollector.h"
-#include "rootcheck/rootcheck.h"
+#include "rootcheck.h"
 #include "os_net/os_net.h"
 
 int is_disabled;

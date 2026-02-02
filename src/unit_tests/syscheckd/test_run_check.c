@@ -29,7 +29,7 @@
 
 #include "../syscheckd/include/syscheck.h"
 #include "../syscheckd/src/db/include/db.h"
-#include "../config/syscheck-config.h"
+#include "syscheck-config.h"
 
 #ifdef TEST_WINAGENT
 #include "../wrappers/windows/processthreadsapi_wrappers.h"

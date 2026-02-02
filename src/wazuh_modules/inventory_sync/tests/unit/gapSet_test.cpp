@@ -11,7 +11,7 @@
 
 #include <gtest/gtest.h>
 
-#include "../../src/gapSet.hpp"
+#include "gapSet.hpp"
 #include <random>
 #include <thread>
 

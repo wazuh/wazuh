@@ -17,12 +17,12 @@ list(APPEND tests_flags "-Wl,--wrap,wm_exec \
 list(APPEND use_shared_libs 0)
 
 list(APPEND tests_names "test_wmodules_gcp")
-list(APPEND tests_flags "-Wl,--wrap,sched_scan_read,--wrap,realpath,--wrap,IsFile,--wrap,atexit -Wl,--wrap,wfopen ${DEBUG_OP_WRAPPERS}")
+list(APPEND tests_flags "-Wl,--wrap,sched_scan_read,--wrap,realpath,--wrap,__realpath_chk,--wrap,IsFile,--wrap,atexit -Wl,--wrap,wfopen ${DEBUG_OP_WRAPPERS}")
 list(APPEND use_shared_libs 0)
 
 # Generate wazuh modules library
-file(GLOB gcp ../../../wazuh_modules/*.o ../../../config/*.o)
-list(REMOVE_ITEM gcp ../../../wazuh_modules/main.o)
+file(GLOB_RECURSE gcp ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o ../../../config/*.o)
+list(REMOVE_ITEM gcp ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
 
 add_library(GCP_O STATIC ${gcp})
 
@@ -51,16 +51,31 @@ foreach(counter RANGE ${count})
 
     add_executable(${test_name} ${test_name}.c)
 
-    target_link_libraries(
-        ${test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        GCP_O
-        -ldl
-        -lcmocka
-        -fprofile-arcs
-        -ftest-coverage
-    )
+    # Use linker groups for Linux/BSD to resolve circular dependencies, macOS doesn't support it
+    if(NOT APPLE)
+        target_link_libraries(
+            ${test_name}
+            -Wl,--start-group
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            GCP_O
+            -Wl,--end-group
+            -lcmocka
+            -ldl
+            -fprofile-arcs
+            -ftest-coverage
+        )
+    else()
+        target_link_libraries(
+            ${test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            GCP_O
+            -lcmocka
+            -fprofile-arcs
+            -ftest-coverage
+        )
+    endif()
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(
             ${test_name}

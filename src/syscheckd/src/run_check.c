@@ -21,15 +21,15 @@
 
 #include "shared.h"
 #include "syscheck.h"
-#include "../os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
-#include "../rootcheck/rootcheck.h"
-#include "file/file.h"
-#include "db/include/db.h"
-#include "ebpf/include/ebpf_whodata.h"
+#include "md5_sha1_sha256_op.h"
+#include "rootcheck.h"
+#include "file.h"
+#include "db.h"
+#include "ebpf_whodata.h"
 #include "agent_sync_protocol_c_interface.h"
 #include "schemaValidator_c.h"
 #ifdef WIN32
-#include "registry/registry.h"
+#include "registry.h"
 #endif
 
 #ifdef WAZUH_UNIT_TESTING

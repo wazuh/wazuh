@@ -16,7 +16,7 @@
 #include "../../headers/shared.h"
 #include "../../logcollector/state.h"
 #include "../../logcollector/logcollector.h"
-#include "../../wazuh_modules/wmodules.h"
+#include "wmodules.h"
 #include "../../os_net/os_net.h"
 
 #include "../wrappers/common.h"

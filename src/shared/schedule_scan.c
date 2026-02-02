@@ -1,5 +1,5 @@
 #include "shared.h"
-#include "wazuh_modules/wmodules.h"
+#include "wmodules.h"
 
 
 static const char *XML_INTERVAL = "interval";

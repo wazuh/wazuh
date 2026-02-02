@@ -10,9 +10,9 @@ on:
   pull_request:
     paths:
         - ".github/workflows/5_testintegration_sca-tier-0-1-win.yml"
-        - "src/config/wmodules-sca.c"
-        - "src/wazuh_modules/wm_sca.c"
-        - "src/wazuh_modules/wm_sca.h"
+        - "src/config/src/wmodules-sca.c"
+        - "src/wazuh_modules/src/wm_sca.c"
+        - "src/wazuh_modules/src/wm_sca.h"
         - "src/win32/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"

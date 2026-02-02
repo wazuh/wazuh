@@ -17,8 +17,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "../../wm_syscollector.h"
-#include "../../module_query_errors.h"
+#include "wm_syscollector.h"
+#include "module_query_errors.h"
 
 void syscollector_init(const unsigned int inverval,
                        send_data_callback_t callbackDiff,

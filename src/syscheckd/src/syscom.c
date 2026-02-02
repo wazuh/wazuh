@@ -10,11 +10,11 @@
 
 #include <shared.h>
 #include "syscheck.h"
-#include "../rootcheck/rootcheck.h"
-#include "../os_net/os_net.h"
-#include "../wazuh_modules/wmodules.h"
-#include "../wazuh_modules/module_query_errors.h"
-#include "db/include/db.h"
+#include "rootcheck.h"
+#include "os_net.h"
+#include "wmodules.h"
+#include "module_query_errors.h"
+#include "db.h"
 #include "agent_sync_protocol_c_interface.h"
 
 #ifdef WAZUH_UNIT_TESTING

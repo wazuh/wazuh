@@ -15,7 +15,7 @@
 
 #include "../../headers/shared.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../../config/wazuh_db-config.h"
+#include "wazuh_db-config.h"
 #include "../../wazuh_db/wdb.h"
 
 /* setup/teardown */

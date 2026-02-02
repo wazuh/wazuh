@@ -11,10 +11,10 @@
 #ifdef WIN32
 
 #include "shared.h"
-#include "wazuh_modules/wmodules.h"
+#include "wmodules.h"
 #include "client-agent/agentd.h"
 #include "logcollector/logcollector.h"
-#include "wazuh_modules/wmodules.h"
+#include "wmodules.h"
 #include "os_win.h"
 #include "os_net/os_net.h"
 #include "os_execd/execd.h"

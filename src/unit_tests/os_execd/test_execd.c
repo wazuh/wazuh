@@ -18,7 +18,7 @@
 #include "list_op.h"
 #include "../os_regex/os_regex.h"
 #include "../os_net/os_net.h"
-#include "../wazuh_modules/wmodules.h"
+#include "wmodules.h"
 #include "../external/cJSON/cJSON.h"
 #include "../os_execd/execd.h"
 

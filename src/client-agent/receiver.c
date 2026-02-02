@@ -14,8 +14,8 @@
 #endif
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
-#include "wazuh_modules/wmodules.h"
-#include "wazuh_modules/wm_sca.h"
+#include "wmodules.h"
+#include "wm_sca.h"
 #include "syscheck_op.h"
 #include "agentd.h"
 

@@ -11,7 +11,7 @@
 
 #include "shared.h"
 #include "auth.h"
-#include "config/config.h"
+#include "config.h"
 
 // Read configuration
 int authd_read_config(const char *path) {

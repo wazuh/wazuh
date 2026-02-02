@@ -15,8 +15,8 @@ list(APPEND use_shared_libs 1)
 
 
 # Generate wazuh modules library
-file(GLOB control ../../../wazuh_modules/*.o)
-list(REMOVE_ITEM control ../../../wazuh_modules/main.o)
+file(GLOB_RECURSE control ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+list(REMOVE_ITEM control ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
 
 add_library(CONTROL_O STATIC ${control})
 
@@ -53,9 +53,11 @@ foreach(counter RANGE ${count})
     if(${TARGET} STREQUAL "server")
         target_link_libraries(
             ${test_name}
+            -Wl,--start-group
             ${WAZUHLIB}
             ${WAZUHEXT}
             CONTROL_O
+            -Wl,--end-group
             -lcmocka
             -ldl
             -fprofile-arcs

@@ -20,7 +20,7 @@
 #include "wazuhdb_op.h"
 #include "regex_op.h"
 #include "router.h"
-#include "../config/global-config.h"
+#include "global-config.h"
 
 #define WDB_MAX_COMMAND_SIZE    512
 #define WDB_MAX_RESPONSE_SIZE   OS_MAXSTR-WDB_MAX_COMMAND_SIZE

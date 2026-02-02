@@ -14,7 +14,7 @@
 /* ******************  INCLUDES  ****************** */
 
 #include "shared.h"
-#include "../config/localfile-config.h"
+#include "localfile-config.h"
 #include "sysinfo_utils.h"
 
 /* ******************  DEFINES  ****************** */

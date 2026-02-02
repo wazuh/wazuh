@@ -20,7 +20,7 @@
 #include "os_err.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "config/authd-config.h"
+#include "authd-config.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuh_db/wdb.h"
 

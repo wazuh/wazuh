@@ -11,7 +11,7 @@
 /* Syscheck
  * Copyright (C) 2003 Daniel B. Cid <daniel@underlinux.com.br>
  */
-#include "../rootcheck/rootcheck.h"
+#include "rootcheck.h"
 #include "agent_sync_protocol_c_interface.h"
 #include "db.h"
 #include "shared.h"

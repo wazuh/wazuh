@@ -16,8 +16,8 @@
 
 #include "../../headers/shared.h"
 #include "../../os_xml/os_xml.h"
-#include "../../wazuh_modules/wmodules.h"
-#include "../../wazuh_modules/wm_gcp.h"
+#include "wmodules.h"
+#include "wm_gcp.h"
 #include "../../wrappers/libc/stdlib_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/file_op_wrappers.h"

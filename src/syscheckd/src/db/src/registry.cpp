@@ -22,7 +22,7 @@
 #include "dbRegistryKey.hpp"
 #include "dbRegistryValue.hpp"
 #include "fimCommonDefs.h"
-#include "../../config/syscheck-config.h"
+#include "syscheck-config.h"
 
 #ifdef __cplusplus
 extern "C"

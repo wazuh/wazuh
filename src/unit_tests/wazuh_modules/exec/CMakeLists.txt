@@ -6,7 +6,13 @@
 # Foundation.
 
 # Generate wazuh modules library
-file(GLOB wm_exec ../../../wazuh_modules/wm_exec.o)
+if(${TARGET} STREQUAL "winagent")
+    file(GLOB_RECURSE wm_exec ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.obj)
+    list(REMOVE_ITEM wm_exec ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.obj)
+else()
+    file(GLOB_RECURSE wm_exec ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+    list(REMOVE_ITEM wm_exec ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
+endif()
 
 add_library(WM_EXEC_O STATIC ${wm_exec})
 

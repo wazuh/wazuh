@@ -106,7 +106,6 @@ USE_AUDIT=no
 MINGW_HOST=unknown
 USE_MSGPACK_OPT=yes
 DISABLE_JEMALLOC?=no
-DISABLE_SYSC?=no
 IMAGE_TRUST_CHECKS?=1
 CA_NAME?=DigiCert Assured ID Root CA
 HTTP_REQUEST_BRANCH?=1a98c1aa40df0fe82136d790043c2f9cbf1a24c4
@@ -122,8 +121,8 @@ endif
 ifneq (,$(filter ${FSANITIZE},YES yes y Y 1))
 CMAKE_OPTS+=-DFSANITIZE=ON
 endif
-ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
-CMAKE_OPTS+=-DENABLE_SYSC=ON
+ifneq (,$(filter ${DISABLE_JEMALLOC},YES yes y Y 1))
+CMAKE_OPTS+=-DDISABLE_JEMALLOC=ON
 endif
 ifneq (${TARGET},winagent)
 ifneq (,$(filter ${USE_INOTIFY},YES auto yes y Y 1))
@@ -264,10 +263,6 @@ else
 	DEFINES+=-DCA_NAME='${CA_NAME}'
 endif
 
-ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
-	DEFINES+=-DENABLE_SYSC
-endif
-
 
 # Check if symbol table should be included in release
 ifeq (${uname_S},Linux)
@@ -327,12 +322,24 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I./data_provider/include/ -I./shared_modules/ -I./shared_modules/agent_metadata/include -I./shared_modules/common/ -I./shared_modules/content_manager/include -I./shared_modules/router/include -I./shared_modules/sync_protocol/include -I./syscheckd/include -I./wazuh_modules/syscollector/include -I./wazuh_modules/vulnerability_scanner/include
+WAZUH_MODULES_INC := $(shell find ./wazuh_modules -type d -name include)
+WAZUH_MODULES_SRC := $(shell find ./wazuh_modules -type d -name src)
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_SQLITE} -I${EXTERNAL_RPM}/builddir/output/include -I./config/include -I./os_crypto/md5 -I./os_crypto/sha1 -I./os_crypto/sha256 -I./os_crypto/md5_sha1_sha256 -I./os_net -I./os_regex -I./os_xml -I./data_provider/include/ -I./shared_modules/ -I./shared_modules/agent_metadata/include -I./shared_modules/common/ -I./shared_modules/content_manager/include -I./shared_modules/router/include -I./shared_modules/sync_protocol/include -I./syscheckd/include -I./rootcheck/include $(addprefix -I,$(WAZUH_MODULES_INC)) $(addprefix -I,$(WAZUH_MODULES_SRC)) -I./wazuh_modules/src/agent_upgrade -I./wazuh_modules/src/agent_upgrade/agent -I./wazuh_modules/src/agent_upgrade/manager -I./wazuh_modules/src/task_manager
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
 AR_LDFLAGS += ${LDFLAGS}
 OSSEC_LIBS += $(LIBS)
+
+# Linker group flags for resolving circular dependencies
+# macOS linker doesn't support --start-group/--end-group, just list libraries multiple times if needed
+ifeq (${uname_S},Darwin)
+	LINKER_START_GROUP :=
+	LINKER_END_GROUP :=
+else
+	LINKER_START_GROUP := -Wl,--start-group
+	LINKER_END_GROUP := -Wl,--end-group
+endif
 
 CCCOLOR="\033[34m"
 LINKCOLOR="\033[34;1m"
@@ -491,7 +498,6 @@ help: failtarget
 	@echo "   make USE_MSGPACK_OPT=yes     						Use default architecture for building msgpack library. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DISABLE_JEMALLOC=yes    						Not to build the JEMalloc library. Allowed values are 1, yes, YES, y, and Y, otherwise, the flag is ignored"
 	@echo "   make OFLAGS=-Ox              						Overrides optimization level"
-	@echo "   make DISABLE_SYSC=yes        						Not to build the Syscollector module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make OPTIMIZE_CPYTHON=yes    						Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make PYTHON_SOURCE=yes       						Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make IMAGE_TRUST_CHECKS=1     					This flag controls the dll and exe files signature verification mechanism. Allowed values are 0 (disabled), 1 (warning only) and 2 (full enforce). The default value is 1."
@@ -527,7 +533,6 @@ settings:
 	@echo "    USE_BIG_ENDIAN:     ${USE_BIG_ENDIAN}"
 	@echo "    USE_SELINUX:        ${USE_SELINUX}"
 	@echo "    USE_AUDIT:          ${USE_AUDIT}"
-	@echo "    DISABLE_SYSC:       ${DISABLE_SYSC}"
 	@echo "    IMAGE_TRUST_CHECKS: ${IMAGE_TRUST_CHECKS}"
 	@echo "    CA_NAME:            ${CA_NAME}"
 	@echo "Mysql settings:"
@@ -554,7 +559,6 @@ BUILD_SERVER+=active-responses
 endif
 BUILD_SERVER+=wazuh-monitord
 BUILD_SERVER+=wazuh-authd
-BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
 
 BUILD_AGENT+=wazuh-agentd
@@ -564,7 +568,6 @@ BUILD_AGENT+=manage_agents
 ifeq (,$(filter ${TEST},YES yes y Y 1))
 BUILD_AGENT+=active-responses
 endif
-BUILD_AGENT+=wazuh-modulesd
 
 BUILD_CMAKE_PROJECTS+=build_wazuh_cmake
 
@@ -1661,38 +1664,11 @@ wazuh_db/%.o: wazuh_db/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-db\" -c $^ -o $@
 
 wazuh-db: ${wdb_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter ${OSSEC_LIBS} -o $@
-
-#### Config ##########
-
-config_c := $(wildcard config/*.c)
-config_o := $(config_c:.c=.o)
-
-config/%.o: config/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter -lconfig -lwazuh_modulesd_lib libwazuh.a ${OSSEC_LIBS} -o $@
 
 #### Wazuh cmake ###
-build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) libwazuh.a librootcheck.a
+build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) libwazuh.a
 	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${WIN_RESOURCE_OBJ} ${CMAKE_ENGINE_OPTS} && ${MAKE}
-
-#### Wazuh modules ##
-wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
-
-ifeq (${TARGET},agent)
-	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/agent/*.c)
-else ifeq (${TARGET},winagent)
-	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/agent/*.c)
-else
-	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/task_manager/*.c)
-	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/manager/*.c)
-endif
-
-wmodules_o := $(wmodules_c:.c=.o)
-
-wazuh_modules/%.o: wazuh_modules/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
-wmodules_dep := ${wmodules_o} ${wdbhelpers_c:.c=.o} wazuh_db/wdb_shared.o
 
 #### crypto ##########
 
@@ -1770,7 +1746,9 @@ crypto_o :=	${crypto_blowfish_o} \
 
 #### libwazuh #########
 
-libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o} ${UNIT_TEST_WRAPPERS} os_auth/ssl.o os_auth/check_cert.o addagent/validate.o ${manage_agents}
+wmodules_dep := ${wdbhelpers_c:.c=.o} wazuh_db/wdb_shared.o
+
+libwazuh.a: ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o} ${UNIT_TEST_WRAPPERS} os_auth/ssl.o os_auth/check_cert.o addagent/validate.o ${manage_agents}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
@@ -1805,7 +1783,7 @@ os_execd/%.o: os_execd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-execd\" -c $^ -o $@
 
 wazuh-execd: ${os_execd_o} active-response/active_responses.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${LINKER_START_GROUP} -lconfig -lwazuh_modulesd_lib libwazuh.a ${LINKER_END_GROUP} ${OSSEC_LIBS} -o $@
 
 
 #### logcollectord ####
@@ -1821,7 +1799,7 @@ logcollector/%-event.o: logcollector/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DEVENTCHANNEL_SUPPORT -DARGV0=\"wazuh-logcollector\" -c $^ -o $@
 
 wazuh-logcollector: ${os_logcollector_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lconfig -lwazuh_modulesd_lib libwazuh.a ${OSSEC_LIBS} -o $@
 
 #### remoted #########
 
@@ -1832,7 +1810,7 @@ remoted/%.o: remoted/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS}  -DPORTABLE_UNALIGNED_ACCESS=0 -I./remoted -DARGV0=\"wazuh-remoted\" -c $^ -o $@
 
 wazuh-remoted: ${remoted_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter -lconfig -lwazuh_modulesd_lib libwazuh.a ${OSSEC_LIBS} -o $@
 
 #### wazuh-agentd ####
 
@@ -1843,7 +1821,7 @@ client-agent/%.o: client-agent/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./client-agent -DARGV0=\"wazuh-agentd\" -c $^ -o $@
 
 wazuh-agentd: ${client_agent_o} monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lagent_metadata ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lagent_metadata -lconfig -lwazuh_modulesd_lib libwazuh.a ${OSSEC_LIBS} -o $@
 
 #### addagent ######
 
@@ -1961,22 +1939,7 @@ util/%.o: util/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./util -DARGV0=\"utils\" -c $^ -o $@
 
 verify-agent-conf: util/verify-agent-conf.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-#### rootcheck #####
-
-rootcheck_c := $(wildcard rootcheck/*.c)
-rootcheck_o := $(rootcheck_c:.c=.o)
-rootcheck_o_lib := $(filter-out rootcheck/rootcheck-config.o, ${rootcheck_o})
-rootcheck_o_cmd := $(filter-out rootcheck/config.o, ${rootcheck_o})
-
-
-rootcheck/%.o: rootcheck/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"rootcheck\" -c $^ -o $@
-
-librootcheck.a: ${rootcheck_o_lib} ${shared_o}
-	${OSSEC_LINK} $@ $^
-	${OSSEC_RANLIB} $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lconfig -lwazuh_modulesd_lib libwazuh.a ${OSSEC_LIBS} -o $@
 
 
 #### Monitor #######
@@ -1988,7 +1951,7 @@ monitord/%.o: monitord/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-monitord\" -c $< -o $@
 
 wazuh-monitord: ${monitor_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lconfig -lwazuh_modulesd_lib libwazuh.a ${OSSEC_LIBS} -o $@
 
 
 #### os_auth #######
@@ -2000,21 +1963,7 @@ os_auth/%.o: os_auth/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./os_auth -DARGV0=\"wazuh-authd\" -c $^ -o $@
 
 wazuh-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o os_auth/authcom.o os_auth/auth.o os_auth/key_request.o os_auth/generate_cert.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter ${OSSEC_LIBS} -o $@
-
-### wazuh-modulesd ##
-
-wmodulesd_c := wazuh_modules/main.c
-wmodulesd_o := $(wmodulesd_c:.c=.o)
-
-ifeq (${TARGET},server)
-ifeq (,$(filter ${DISABLE_JEMALLOC},YES yes y Y 1))
-	MODULESD_LDFLAGS=-L${EXTERNAL_JEMALLOC}lib -ljemalloc
-endif
-endif
-
-wazuh-modulesd: ${wmodulesd_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${MODULESD_LDFLAGS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter -lconfig -lwazuh_modulesd_lib libwazuh.a ${OSSEC_LIBS} -o $@
 
 ### wazuh-gtest-gmock ###
 
@@ -2256,11 +2205,11 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
 
-win32/wazuh-agent.exe: win32/wazuh_agent_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.o ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ -ldbsync -lwazuh-syscheckd -l:libfimdb.lib libwazuh.a -lagent_metadata -llibagent_sync_protocol -lschema_validator ${OSSEC_LIBS} -o $@
+win32/wazuh-agent.exe: win32/wazuh_agent_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.o $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ -ldbsync -lwazuh-syscheckd -l:libfimdb.lib -lagent_metadata -llibagent_sync_protocol -lschema_validator -lconfig -lwazuh-modulesd libwazuh.a libwazuhext.lib -lrootcheck ${OSSEC_LIBS} -o $@
 
-win32/wazuh-agent-eventchannel.exe: win32/wazuh_agent_eventchannel_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.o ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ -ldbsync -lwazuh-syscheckd-event -l:libfimdb.lib libwazuh.a -lagent_metadata -llibagent_sync_protocol -lschema_validator ${OSSEC_LIBS} -lwevtapi -o $@
+win32/wazuh-agent-eventchannel.exe: win32/wazuh_agent_eventchannel_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.o $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ -ldbsync -lwazuh-syscheckd-event -l:libfimdb.lib -lagent_metadata -llibagent_sync_protocol -lschema_validator -lconfig -lwazuh-modulesd libwazuh.a libwazuhext.lib -lrootcheck ${OSSEC_LIBS} -lwevtapi -o $@
 
 win32/manage_agents.exe: win32/manage_agents_resource.o win32/version-app.o win32/win_service_rk.o ${addagent_o}
 	${OSSEC_CCBIN} -DARGV0=\"manage-agents\" -DMA ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
@@ -2377,7 +2326,6 @@ clean-internals: clean-unit-tests
 	rm -f ${os_regex_o}
 	rm -f ${os_net_o}
 	rm -f ${shared_o} shared/debug_op_proc.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o
-	rm -f ${config_o}
 	rm -f ${crypto_o}
 	rm -f ${os_execd_o}
 	rm -f ${os_logcollector_o} ${os_logcollector_eventchannel_o}
@@ -2386,10 +2334,8 @@ clean-internals: clean-unit-tests
 	rm -f ${addagent_o}
 	rm -f ${active_response_o} ${active_response_programs} firewall-drop
 	rm -f ${util_o} ${util_programs}
-	rm -f ${rootcheck_o} librootcheck.a
 	rm -f ${monitor_o}
 	rm -f ${os_auth_o}
-	rm -f ${wmodulesd_o} ${wmodules_o} $(wildcard wazuh_modules/agent_upgrade/agent/*.o)
 	rm -f ${wdb_o}
 	rm -f wazuh_db/*.o
 	rm -f wazuh_db/helpers/*.o
@@ -2403,7 +2349,10 @@ clean-internals: clean-unit-tests
 	rm -f libwazuh.a
 	rm -f wazuh-keystore
 	rm -f wazuh-syscheckd
+	rm -f wazuh-modulesd
 	rm -f shared/*.o
+	rm -rf shared_modules/utils/flatbuffers/build
+	rm -rf shared_modules/utils/flatbuffers/include
 
 
 clean-unit-tests:
@@ -2456,9 +2405,6 @@ clean-windows:
 	rm -f libwazuh.a
 	rm -f libwazuhshared.*
 	rm -f libwazuhext.*
-	rm -f wazuh_modules/syscollector/*.o wazuh_modules/syscollector/*.obj
-	rm -f wazuh_modules/sca/*.o wazuh_modules/sca/*.obj
-	rm -f wazuh_modules/agent_info/*.o wazuh_modules/agent_info/*.obj
 	rm -f win32/LICENSE.txt
 	rm -f win32/help_win.txt
 	rm -f win32/internal_options.conf

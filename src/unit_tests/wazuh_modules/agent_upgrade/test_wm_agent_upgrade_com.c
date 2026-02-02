@@ -14,10 +14,10 @@
 #include <stdio.h>
 
 #include "../../headers/shared.h"
-#include "../../wazuh_modules/wm_task_general.h"
-#include "../../wazuh_modules/wmodules.h"
-#include "../../wazuh_modules/agent_upgrade/wm_agent_upgrade.h"
-#include "../../wazuh_modules/agent_upgrade/agent/wm_agent_upgrade_agent.h"
+#include "wm_task_general.h"
+#include "wmodules.h"
+#include "wm_agent_upgrade.h"
+#include "wm_agent_upgrade_agent.h"
 
 #include "../../wrappers/common.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"

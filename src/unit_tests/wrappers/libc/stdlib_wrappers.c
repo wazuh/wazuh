@@ -39,6 +39,11 @@ char *__wrap_realpath(const char *path, char *resolved_path) {
     return mock_type(char *);
 }
 
+// Wrapper for fortified version used with -O2
+char *__wrap___realpath_chk(const char *path, char *resolved_path, size_t resolved_len __attribute__((unused))) {
+    return __wrap_realpath(path, resolved_path);
+}
+
 int __wrap_system(__attribute__((unused))const char *__command) {
     return mock();
 }

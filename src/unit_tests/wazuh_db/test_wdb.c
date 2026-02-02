@@ -30,7 +30,7 @@
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
-#include "../../config/wazuh_db-config.h"
+#include "wazuh_db-config.h"
 
 
 int wdb_execute_non_select_query(wdb_t * wdb, const char *query);

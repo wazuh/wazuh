@@ -8,16 +8,16 @@
 #include "debug_op.h"
 #include "shared.h"
 #include "recovery.h"
-#include "../../config/syscheck-config.h"
+#include "syscheck-config.h"
 #include "time_op.h"
 #include "db.h"
 #include "agent_sync_protocol_c_interface.h"
-#include "../os_crypto/sha1/sha1_op.h"
-#include "../file/file.h"
+#include "sha1_op.h"
+#include "file.h"
 #include "schemaValidator_c.h"
 #ifdef WIN32
 #include "utf8_winapi_wrapper.h"
-#include "../registry/registry.h"
+#include "registry.h"
 #endif
 
 /**

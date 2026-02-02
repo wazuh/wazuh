@@ -9,8 +9,8 @@
  */
 
 #include "shared.h"
-#include "config/localfile-config.h"
-#include "config/config.h"
+#include "localfile-config.h"
+#include "config.h"
 #include "logcollector/logcollector.h"
 
 #undef ARGV0
