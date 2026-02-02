@@ -71,7 +71,7 @@ WriteSyscheck()
 ##########
 DisableAuthd()
 {
-    echo "  <!-- Configuration for wazuh-authd -->" >> $NEWCONFIG
+    echo "  <!-- Configuration for wazuh-manager-authd -->" >> $NEWCONFIG
     echo "  <auth>" >> $NEWCONFIG
     echo "    <disabled>yes</disabled>" >> $NEWCONFIG
     echo "    <port>1515</port>" >> $NEWCONFIG
@@ -191,8 +191,8 @@ GenerateAuthCert()
         # Generation auto-signed certificate if not exists
         if [ ! -f "${INSTALLDIR}/etc/sslmanager.key" ] && [ ! -f "${INSTALLDIR}/etc/sslmanager.cert" ]; then
             if [ ! "X${USER_GENERATE_AUTHD_CERT}" = "Xn" ]; then
-                    echo "Generating self-signed certificate for wazuh-authd..."
-                    ${INSTALLDIR}/bin/wazuh-authd -C 365 -B 2048 -K ${INSTALLDIR}/etc/sslmanager.key -X ${INSTALLDIR}/etc/sslmanager.cert -S "/C=US/ST=California/CN=wazuh/"
+                    echo "Generating self-signed certificate for wazuh-manager-authd..."
+                    ${INSTALLDIR}/bin/wazuh-manager-authd -C 365 -B 2048 -K ${INSTALLDIR}/etc/sslmanager.key -X ${INSTALLDIR}/etc/sslmanager.cert -S "/C=US/ST=California/CN=wazuh/"
                     chmod 640 ${INSTALLDIR}/etc/sslmanager.key
                     chmod 640 ${INSTALLDIR}/etc/sslmanager.cert
             fi
@@ -637,10 +637,11 @@ InstallCommon()
   WAZUH_GROUP='wazuh'
   WAZUH_USER='wazuh'
   INSTALL="install"
-
+  DAEMON_NAME_PREFIX="wazuh-"
   if [ ${INSTYPE} = 'server' ]; then
       OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
       OSSEC_CONF_SRC='../etc/ossec-server.conf'
+      DAEMON_NAME_PREFIX='wazuh-manager-'
   elif [ ${INSTYPE} = 'agent' ]; then
       OSSEC_CONTROL_SRC='./init/wazuh-client.sh'
       OSSEC_CONF_SRC='../etc/ossec-agent.conf'
@@ -914,8 +915,8 @@ InstallCommon()
     ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${INSTALLDIR}/bin
   fi
 
-  ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
-  ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${INSTALLDIR}/bin/
+  ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/${DAEMON_NAME_PREFIX}control
+  ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${INSTALLDIR}/bin/${DAEMON_NAME_PREFIX}modulesd
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue
   ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/alerts
@@ -998,7 +999,7 @@ InstallCommon()
   ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} restart-wazuh ${INSTALLDIR}/active-response/bin/
   ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} route-null ${INSTALLDIR}/active-response/bin/
   ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} kaspersky ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-slack ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-slack ${INSTALLDIR}/active-response/bin/${DAEMON_NAME_PREFIX}wazuh-slack
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/run
@@ -1088,12 +1089,11 @@ InstallLocal()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/alerts
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/firewall
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/api
-    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/rootcheck
 
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-monitord ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-monitord ${INSTALLDIR}/bin/${DAEMON_NAME_PREFIX}monitord
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} verify-agent-conf ${INSTALLDIR}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${INSTALLDIR}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin/wazuh-analysisd
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${INSTALLDIR}/bin/${DAEMON_NAME_PREFIX}db
+    ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin/${DAEMON_NAME_PREFIX}analysisd
 
     ### Install Python
     ${MAKEBIN} wpython INSTALLDIR=${INSTALLDIR} TARGET=${INSTYPE}
@@ -1213,8 +1213,8 @@ InstallServer()
 
     TransferShared
 
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-remoted ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-authd ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-remoted ${INSTALLDIR}/bin/${DAEMON_NAME_PREFIX}remoted
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-authd ${INSTALLDIR}/bin/${DAEMON_NAME_PREFIX}authd
 
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/router
@@ -1296,7 +1296,7 @@ InstallServer()
 
     # Keystore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-keystore ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-keystore ${INSTALLDIR}/bin/${DAEMON_NAME_PREFIX}keystore
 }
 
 InstallAgent()
