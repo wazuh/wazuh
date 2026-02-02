@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Copyright (C) 2015, Wazuh Inc.
-# wazuh-control        This shell script takes care of starting
+# wazuh-manager-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
@@ -27,7 +27,7 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-analysisd wazuh-execd wazuh-db wazuh-authd wazuh-apid"
+DAEMONS="wazuh-manager-clusterd wazuh-manager-modulesd wazuh-manager-monitord wazuh-manager-logcollector wazuh-manager-remoted wazuh-manager-analysisd wazuh-manager-db wazuh-manager-authd wazuh-manager-apid"
 DEPRECATED_DAEMONS="ossec-authd"
 
 # Reverse order of daemons
@@ -244,10 +244,10 @@ get_wazuh_engine_pid()
     local ticks=0
     local pidfile
 
-    ${DIR}/bin/wazuh-analysisd
+    ${DIR}/bin/wazuh-manager-analysisd
 
     while [ $ticks -lt $max_ticks ]; do
-        pidfile=$(ls ${DIR}/var/run/wazuh-analysisd-*.pid 2>/dev/null | head -n1)
+        pidfile=$(ls ${DIR}/var/run/wazuh-manager-analysisd-*.pid 2>/dev/null | head -n1)
         if [ -n "$pidfile" ]; then
             echo "${pidfile##*-}" | sed 's/\.pid$//'
             return 0
@@ -266,7 +266,7 @@ wait_for_wazuh_engine_ready()
 
     ENGINE_PID=$(get_wazuh_engine_pid)
     if [ $? -ne 0 ]; then
-        echo "Failed to obtain PID for wazuh-analysisd"
+        echo "Failed to obtain PID for wazuh-manager-analysisd"
         return 1
     fi
 
@@ -281,7 +281,7 @@ wait_for_wazuh_engine_ready()
         fi
 
         if ! kill -0 "$ENGINE_PID" 2>/dev/null; then
-            echo "wazuh-analysisd died during route check."
+            echo "wazuh-manager-analysisd died during route check."
             return 1
         fi
 
@@ -289,7 +289,7 @@ wait_for_wazuh_engine_ready()
         sleep 1
     done
 
-    echo "wazuh-analysisd did not respond correctly after $max_attempts attempts."
+    echo "wazuh-manager-analysisd did not respond correctly after $max_attempts attempts."
     kill $ENGINE_PID
     return 1
 }
@@ -332,12 +332,12 @@ start_service()
     fi
     for i in ${SDAEMONS}; do
         ## Only start the API daemon on the master node
-        if [ X"$i" = "Xwazuh-apid" ] && [ "$node_type" != "master" ]; then
+        if [ X"$i" = "Xwazuh-manager-apid" ] && [ "$node_type" != "master" ]; then
             continue
         fi
 
-        ## If wazuh-authd is disabled, don't try to start it.
-        if [ X"$i" = "Xwazuh-authd" ]; then
+        ## If wazuh-manager-authd is disabled, don't try to start it.
+        if [ X"$i" = "Xwazuh-manager-authd" ]; then
              start_config="$(grep -n "<auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
              end_config="$(grep -n "</auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
              if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
@@ -364,7 +364,7 @@ start_service()
             if [ $USE_JSON = true ]; then
                 ${DIR}/bin/${i} ${DEBUG_CLI} > /dev/null 2>&1;
             else
-                if [ "$i" = "wazuh-analysisd" ]; then
+                if [ "$i" = "wazuh-manager-analysisd" ]; then
                     wait_for_wazuh_engine_ready
                 else
                     ${DIR}/bin/${i} ${DEBUG_CLI};
@@ -592,7 +592,7 @@ restart)
     restart_service
     ;;
 reload)
-    DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
+    DAEMONS=$(echo $DAEMONS | sed 's/wazuh-manager-execd//')
     restart_service
     ;;
 status)
