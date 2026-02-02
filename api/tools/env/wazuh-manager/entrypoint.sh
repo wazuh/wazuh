@@ -35,7 +35,7 @@ sed -i "s:remoted.debug=0:remoted.debug=2:g" /var/ossec/etc/internal_options.con
 # Set proper permissions
 chmod 500 /var/ossec/etc/certs
 chmod 400 /var/ossec/etc/certs/*
-chown -R wazuh:wazuh /var/ossec/etc/certs
+chown -R wazuh-manager:wazuh-manager /var/ossec/etc/certs
 
 echo "Starting Wazuh..."
 /var/ossec/bin/wazuh-control start
