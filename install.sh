@@ -656,6 +656,12 @@ main()
     . ./src/init/shared.sh
     . ./src/init/functions.sh
 
+
+    DAEMON_NAME_PREFIX='wazuh'
+
+    if [ ${INSTYPE} = 'server' ]; then
+        DAEMON_NAME_PREFIX='wazuh-manager'
+    fi
     # Reading pre-defined file
     if [ ! `isFile ${PREDEF_FILE}` = "${FALSE}" ]; then
         . ${PREDEF_FILE}
@@ -887,10 +893,10 @@ main()
     echo " - ${configurationdone}."
     echo ""
     echo " - ${tostart}:"
-    echo "      $INSTALLDIR/bin/wazuh-control start"
+    echo "      $INSTALLDIR/bin/$DAEMON_NAME_PREFIX-control start"
     echo ""
     echo " - ${tostop}:"
-    echo "      $INSTALLDIR/bin/wazuh-control stop"
+    echo "      $INSTALLDIR/bin/$DAEMON_NAME_PREFIX-control stop"
     echo ""
     echo " - ${configat} $INSTALLDIR/etc/ossec.conf"
     echo ""
