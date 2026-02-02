@@ -216,6 +216,52 @@ if ! getent passwd wazuh > /dev/null 2>&1; then
   useradd -g wazuh -G wazuh -d %{_localstatedir} -r -s /sbin/nologin wazuh
 fi
 
+# Validate upgrade constraints for Manager (only during upgrade)
+if [ $1 = 2 ]; then
+  # Get version information
+  if [ -f "%{_localstatedir}/bin/wazuh-control" ]; then
+    OLD_VERSION=`%{_localstatedir}/bin/wazuh-control info -v 2>/dev/null`
+    MAJOR=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f1)
+  elif [ -f %{_localstatedir}/VERSION.json ]; then
+    OLD_VERSION=`grep -oP '(?<="version": ")[^"]*' %{_localstatedir}/VERSION.json 2>/dev/null`
+    MAJOR=$(echo $OLD_VERSION | cut -d. -f1)
+  fi
+
+  ERROR_TYPE=""
+
+  # Determine if upgrade should be blocked
+  if [ -z "$MAJOR" ]; then
+    ERROR_TYPE="no_version"
+    ERROR_TITLE="Cannot detect current version"
+    ERROR_MESSAGE="Unable to detect the currently installed Wazuh version."
+  elif [ "$MAJOR" -lt 5 ]; then
+    ERROR_TYPE="old_version"
+    ERROR_TITLE="Clean installation required"
+    ERROR_MESSAGE="Current version: $OLD_VERSION\\nTarget version:  5.0.0\\n\\nDirect upgrade from 4.x to 5.0.0 is NOT supported for Wazuh Manager\\ndue to breaking changes in database schema and architecture."
+  fi
+
+  # If any error was detected, show message and block
+  if [ -n "$ERROR_TYPE" ]; then
+    cat <<EOF >&2
+═════════════════════════════════════════════════════════════════
+  UPGRADE BLOCKED: $ERROR_TITLE
+═════════════════════════════════════════════════════════════════
+
+$ERROR_MESSAGE
+
+Required action:
+  1. Backup your configuration and data
+  2. Perform a clean installation of Wazuh 5.0.0
+  3. Restore configuration as needed
+
+For migration guide, visit:
+  https://documentation.wazuh.com/current/migration-guide/
+═════════════════════════════════════════════════════════════════
+EOF
+    exit 1
+  fi
+fi
+
 # Stop the services to upgrade the package
 if [ $1 = 2 ]; then
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
