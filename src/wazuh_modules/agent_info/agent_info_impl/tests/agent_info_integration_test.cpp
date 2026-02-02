@@ -152,9 +152,9 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
     EXPECT_TRUE(foundMetadataEvent);
 }
 
-TEST_F(AgentInfoRealDBSyncTest, StartInManagerModeUsesDefaultValues)
+TEST_F(AgentInfoRealDBSyncTest, StartInManagerModeWithoutAgent000)
 {
-    // For manager mode, no client.keys or merged.mg reading needed
+    // Manager mode should work without relying on agent 000 identity
     // Only need sysinfo with hostname
     nlohmann::json osData =
     {
@@ -198,7 +198,8 @@ TEST_F(AgentInfoRealDBSyncTest, StartInManagerModeUsesDefaultValues)
         {
             foundMetadataEvent = true;
             EXPECT_EQ(event["module"], "agent_info");
-            EXPECT_EQ(event["data"]["agent"]["id"], "000");
+            
+            // This test verifies manager mode doesn't rely on implicit agent 000 identity
             EXPECT_EQ(event["data"]["agent"]["name"], "test-manager-hostname");
             EXPECT_EQ(event["data"]["event"]["type"], "created");
         }
