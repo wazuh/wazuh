@@ -181,7 +181,7 @@ def test_is_safe_path():
     """Verify that is_safe_path() works as expected"""
     assert is_safe_path("/api/configuration/api.yaml")
     assert is_safe_path("c:\\api\\configuration\\api.yaml")
-    assert is_safe_path("etc/ossec.conf", relative=True)
+    assert is_safe_path("etc/wazuh-manager.conf", relative=True)
     assert not is_safe_path("/api/configuration/api.yaml", basedir="non-existent", relative=False)
     assert not is_safe_path("/..")
     assert not is_safe_path("\\..")

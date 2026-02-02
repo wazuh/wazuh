@@ -1984,7 +1984,7 @@ def test_delete_file_with_backup_ko(mock_copyfile):
 
 def test_to_relative_path():
     """Test to_relative_path function."""
-    path = 'etc/ossec.conf'
+    path = 'etc/wazuh-manager.conf'
     assert utils.to_relative_path(os.path.join(WAZUH_PATH, path)) == path
 
     assert utils.to_relative_path(path, prefix='etc') == os.path.basename(path)
@@ -2139,19 +2139,19 @@ def test_get_localtime(mock_gettz, wazuh_localtime, system_localtime):
     ({'eps': {'allow': False}})
 ])
 def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_conf, limits_conf):
-    """Test if ossec.conf limits are protected by the API.
+    """Test if wazuh-manager.conf limits are protected by the API.
 
-    When 'eps': {'allow': False} is set in the API configuration, the limits in ossec.conf cannot be changed.
+    When 'eps': {'allow': False} is set in the API configuration, the limits in wazuh-manager.conf cannot be changed.
     However, other configuration sections can be added, removed or modified.
 
     Parameters
     ----------
     new_conf : str
-        New ossec.conf to be uploaded.
+        New wazuh-manager.conf to be uploaded.
     unchanged_limits_conf : bool
-        Whether the limits section in ossec.conf is the same as the original one.
+        Whether the limits section in wazuh-manager.conf is the same as the original one.
     original_conf : str
-        Original ossec.conf to be uploaded.
+        Original wazuh-manager.conf to be uploaded.
     limits_conf : dict
         API configuration for the limits section.
     """
@@ -2189,7 +2189,7 @@ def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_
      False),
 ])
 def test_check_agents_allow_higher_versions(new_conf, original_conf, agents_conf, should_raise):
-    """Check if ossec.conf agents versions are protected by the API."""
+    """Check if wazuh-manager.conf agents versions are protected by the API."""
     api_conf = utils.configuration.api_conf.copy()
     api_conf['upload_configuration']['agents'].update(agents_conf)
 
@@ -2250,14 +2250,14 @@ def test_check_agents_allow_higher_versions(new_conf, original_conf, agents_conf
     False,
 ])
 def test_check_indexer(new_conf, original_conf, indexer_changed, indexer_allowed):
-    """Check if the ossec.conf indexer section is protected by the API.
+    """Check if the wazuh-manager.conf indexer section is protected by the API.
 
     Parameters
     ----------
     new_conf : str
-        New ossec.conf to be uploaded.
+        New wazuh-manager.conf to be uploaded.
     original_conf : str
-        Original ossec.conf.
+        Original wazuh-manager.conf.
     indexer_changed : bool
         Whether the indexer section of the original and new configurations is equal or not.
     indexer_allowed : bool

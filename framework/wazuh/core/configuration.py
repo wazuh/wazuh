@@ -287,7 +287,7 @@ def _conf2json(src_xml: str, dst_json: dict):
 
 
 def _ossecconf2json(xml_conf: str) -> dict:
-    """Return ossec.conf in JSON from XML.
+    """Return wazuh-manager.conf in JSON from XML.
 
     Parameters
     ----------
@@ -297,7 +297,7 @@ def _ossecconf2json(xml_conf: str) -> dict:
     Returns
     -------
     dict
-        Final JSON with the ossec.conf content.
+        Final JSON with the wazuh-manager.conf content.
     """
     final_json = {}
 
@@ -516,7 +516,7 @@ def _merged_mg2json(file_path: str) -> List[dict]:
 # Main functions
 def get_ossec_conf(section: str = None, field: str = None, conf_file: str = common.OSSEC_CONF,
                    from_import: bool = False, distinct: bool = False) -> dict:
-    """Return ossec.conf (manager) as dictionary.
+    """Return wazuh-manager.conf (manager) as dictionary.
 
     Parameters
     ----------
@@ -545,7 +545,7 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
     Returns
     -------
     dict
-        ossec.conf (manager) as dictionary.
+        wazuh-manager.conf (manager) as dictionary.
     """
     try:
         # Read XML
@@ -557,7 +557,7 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
         if not from_import:
             raise WazuhError(1101, extra_message=str(e))
         else:
-            print(f"wazuh-manager-apid: There is an error in the ossec.conf file: {str(e)}")
+            print(f"wazuh-manager-apid: There is an error in the wazuh-manager.conf file: {str(e)}")
             sys.exit(0)
 
     if section:
@@ -1166,7 +1166,7 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
 
 
 def write_ossec_conf(new_conf: str):
-    """Replace the current wazuh configuration (ossec.conf) with the provided configuration.
+    """Replace the current wazuh configuration (wazuh-manager.conf) with the provided configuration.
 
     Parameters
     ----------
@@ -1186,7 +1186,7 @@ def write_ossec_conf(new_conf: str):
 
 
 def update_check_is_enabled() -> bool:
-    """Read the ossec.conf and check UPDATE_CHECK_OSSEC_FIELD value.
+    """Read the wazuh-manager.conf and check UPDATE_CHECK_OSSEC_FIELD value.
 
     Returns
     -------

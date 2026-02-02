@@ -48,7 +48,7 @@ def status() -> dict:
 
 
 def get_ossec_log_fields(log: str, log_format: LoggingFormat = LoggingFormat.plain) -> Union[tuple, None]:
-    """Get ossec.log log fields.
+    """Get wazuh-manager.log log fields.
 
     Parameters
     ----------
@@ -110,7 +110,7 @@ def get_wazuh_active_logging_format() -> LoggingFormat:
 
 
 def get_ossec_logs(limit: int = 2000) -> list:
-    """Return last <limit> lines of ossec.log file.
+    """Return last <limit> lines of wazuh-manager.log file.
 
     Parameters
     ----------

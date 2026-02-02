@@ -7778,7 +7778,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
       requestBody:
-        description: "Content of the ossec.conf to be uploaded"
+        description: "Content of the wazuh-manager.conf to be uploaded"
         required: true
         content:
           application/octet-stream:

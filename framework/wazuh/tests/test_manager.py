@@ -81,7 +81,7 @@ def test_get_status(mock_status):
 @patch("wazuh.core.manager.get_wazuh_active_logging_format", return_value=LoggingFormat.plain)
 @patch("wazuh.core.manager.exists", return_value=True)
 def test_ossec_log(mock_exists, mock_active_logging_format, tag, level, total_items, sort_by, sort_ascending):
-    """Test reading ossec.log file contents.
+    """Test reading wazuh-manager.log file contents.
 
     Parameters
     ----------
@@ -220,7 +220,7 @@ def test_restart_ko_socket(mock_exists, mock_fcntl, mock_open):
         "Unspecified key"),
     (1, "2019/02/27 11:30:24 wazuh-manager-authd: ERROR: (1230): Invalid element in the configuration: "
         "'use_source_i'.\n2019/02/27 11:30:24 wazuh-manager-authd: ERROR: (1202): Configuration error at "
-        "'/var/ossec/etc/ossec.conf'.")
+        "'/var/ossec/etc/wazuh-manager.conf'.")
 ])
 @patch("wazuh.core.manager.exists", return_value=True)
 def test_validation(mock_exists, error_flag, error_msg):

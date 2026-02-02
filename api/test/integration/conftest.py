@@ -292,7 +292,7 @@ def save_logs(test_name: str):
     logs_path = '/var/ossec/logs'
 
     # Save cluster nodes' logs
-    logs = ['api.log', 'cluster.log', 'ossec.log']
+    logs = ['api.log', 'cluster.log', 'wazuh-manager.log']
     for node in env_cluster_nodes:
         for log in logs:
             try:
