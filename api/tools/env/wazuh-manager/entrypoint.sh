@@ -19,7 +19,7 @@ echo "Certificates found."
 echo 'admin' | /var/ossec/bin/wazuh-keystore -f indexer -k username
 echo 'admin' | /var/ossec/bin/wazuh-keystore -f indexer -k password
 
-# Configure ossec.conf and api.yaml based on the Master role
+# Configure wazuh configuration file and api.yaml based on the Master role
 if [ "$ROLE" == "master" ]; then
     python3 /scripts/xml_parser.py /var/ossec/etc/ossec.conf /scripts/master_ossec_conf.xml
     sed -i "s:# access:access:g" /var/ossec/api/configuration/api.yaml

@@ -35,14 +35,14 @@ void Monitord()
 
     /* Set internal log path to rotate them */
 #ifdef WIN32
-    /* ossec.log */
+    /* wazuh log file */
     snprintf(path, PATH_MAX, "%s", LOGFILE);
     /* ossec.json */
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #else
-    /* /var/wazuh-manager/logs/ossec.log */
+    /* /var/wazuh-manager/logs/wazuh-manager.log */
     snprintf(path, PATH_MAX, "%s", LOGFILE);
-    /* /var/wazuh-manager/logs/ossec.json */
+    /* /var/wazuh-manager/logs/wazuh-manager.json */
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #endif
 

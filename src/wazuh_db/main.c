@@ -111,7 +111,7 @@ int main(int argc, char ** argv)
     modules |= WAZUHDB;
     modules |= CCLUSTER;
 
-    // Read ossec.conf
+    // Read wazuh configuration file
     if (ReadConfig(modules, OSSECCONF, &gconfig, NULL) < 0) {
         merror_exit("Invalid configuration block for Wazuh-DB.");
     }

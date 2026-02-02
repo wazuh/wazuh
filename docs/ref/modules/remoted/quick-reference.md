@@ -31,7 +31,7 @@ Wazuh 5.0+ automatically enriches all events with agent metadata (OS, version, g
 ### Check Metadata Collection
 
 ```bash
-tail -f /var/ossec/logs/ossec.log | grep -i "keepalive\|metadata"
+tail -f `/var/wazuh-manager/logs/wazuh-manager.log` | grep -i "keepalive\|metadata"
 ```
 
 ## Configuration Quick Start

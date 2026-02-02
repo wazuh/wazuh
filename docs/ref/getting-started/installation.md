@@ -57,7 +57,7 @@ sudo /var/wazuh-manager/bin/wazuh-keystore -f indexer -k username -v admin
 sudo /var/wazuh-manager/bin/wazuh-keystore -f indexer -k password -v admin
 ```
 
-Update the indexer configuration in `/var/wazuh-manager/etc/ossec.conf` to specify the indexer IP address:
+Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` to specify the indexer IP address:
 
 ```xml
 <indexer>
@@ -94,7 +94,7 @@ sudo systemctl status wazuh-manager
 
 ### Cluster configuration
 
-The Wazuh server cluster allows you to scale horizontally by distributing the load across multiple nodes. The cluster comes enabled by default with the following configuration in `/var/wazuh-manager/etc/ossec.conf`:
+The Wazuh server cluster allows you to scale horizontally by distributing the load across multiple nodes. The cluster comes enabled by default with the following configuration in `/var/wazuh-manager/etc/wazuh-manager.conf`:
 
 ```xml
 <cluster>
@@ -115,7 +115,7 @@ The Wazuh server cluster allows you to scale horizontally by distributing the lo
 
 For a multi-node cluster deployment, you need to configure one master node and one or more worker nodes. Follow these steps on each node:
 
-1. **On the master node**, edit `/var/wazuh-manager/etc/ossec.conf`:
+1. **On the master node**, edit `/var/wazuh-manager/etc/wazuh-manager.conf`:
 
 ```xml
 <cluster>
@@ -134,7 +134,7 @@ For a multi-node cluster deployment, you need to configure one master node and o
 
 Replace `MASTER_NODE_IP` with the actual IP address of the master node.
 
-2. **On each worker node**, edit `/var/wazuh-manager/etc/ossec.conf`:
+2. **On each worker node**, edit `/var/wazuh-manager/etc/wazuh-manager.conf`:
 
 ```xml
 <cluster>

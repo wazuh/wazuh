@@ -49,10 +49,10 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
 #ifdef WIN32
     // ossec.log
     snprintf(path, PATH_MAX, "%s", LOGFILE);
-    // ossec.json
+    // /var/ossec/logs/ossec.json
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #else
-    // /var/ossec/logs/ossec.log
+    // WAZUH_HOME/logs/<wazuh log file>
     snprintf(path, PATH_MAX, "%s", LOGFILE);
     // /var/ossec/logs/ossec.json
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);

@@ -219,7 +219,7 @@ int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_i
  **/
 int w_get_key_hash(keyentry *key_entry, os_sha1 output);
 
-/* Set the agent crypto method read from the ossec.conf file */
+/* Set the agent crypto method read from the wazuh configuration file */
 void os_set_agent_crypto_method(keystore * keys,const int method);
 
 /** Remote IDs directories and internal definitions */
