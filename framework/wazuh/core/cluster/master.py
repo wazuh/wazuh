@@ -736,7 +736,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Integrity check']
         date_start_master = utils.get_utc_now()
-        logger.info(f"Starting.")
+        logger.info("Starting.")
 
         await self.wait_for_file(file=received_file, task_id=task_id)
 
@@ -1133,7 +1133,7 @@ class Master(server.AbstractServer):
         # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():
             active_agents = Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name}, limit=None,
-                                                      count=True, get_data=False, q="id!=000").get('totalItems', 0)
+                                                      count=True, get_data=False).get('totalItems', 0)
             workers_info[node_name]["info"]["n_active_agents"] = active_agents
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(

@@ -7,7 +7,6 @@ import datetime
 import os
 from collections.abc import KeysView
 from io import StringIO
-from requests import exceptions
 from shutil import copyfile, Error
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import call, MagicMock, Mock, mock_open, patch, ANY, sentinel
@@ -101,16 +100,12 @@ class ClassTest(object):
         return {'name': self.name, 'job': self.job}
 
 
-mock_array = [{'rx': {'bytes': 4005, 'packets': 30}, 'scan': {'id': 1999992193, 'time': '2019/05/29 07:25:26'},
-               'mac': '02:42:ac:14:00:05', 'agent_id': '000'},
-              {'rx': {'bytes': 447914, 'packets': 1077}, 'scan': {'id': 396115592, 'time': '2019/05/29 07:26:26'},
+mock_array = [{'rx': {'bytes': 447914, 'packets': 1077}, 'scan': {'id': 396115592, 'time': '2019/05/29 07:26:26'},
                'mac': '02:42:ac:14:00:01', 'agent_id': '003'}]
 mock_sort_by = ['mac']
 mock_array_order_by_mac = [
     {'rx': {'bytes': 447914, 'packets': 1077}, 'scan': {'id': 396115592, 'time': '2019/05/29 07:26:26'},
-     'mac': '02:42:ac:14:00:01', 'agent_id': '003'},
-    {'rx': {'bytes': 4005, 'packets': 30}, 'scan': {'id': 1999992193, 'time': '2019/05/29 07:25:26'},
-     'mac': '02:42:ac:14:00:05', 'agent_id': '000'}]
+     'mac': '02:42:ac:14:00:01', 'agent_id': '003'}]
 mock_array_class = [ClassTest("Payne", "coach")]
 mock_array_missing_key = [
     {
@@ -1135,19 +1130,16 @@ def test_WazuhDBQuery_protected_add_select_to_query(mock_parse, mock_socket_conn
          {"value": "registry_key", "operator": "=", "field": "type$1", "separator": "", "level": 0}
      ]),
     # Nested queries
-    ('id!=000;(status=active;(group=default2,group=default3))',
-     [{'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 0},
-      {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': 'AND', 'level': 1},
+    ('(status=active;(group=default2,group=default3))',
+     [{'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': 'AND', 'level': 1},
       {'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 2},
       {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': '', 'level': 0}]),
-    ('((group=default2,group=default3);id!=000);status=active',
+    ('((group=default2,group=default3));status=active',
      [{'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 2},
-      {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': 'AND', 'level': 1},
-      {'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 0},
+      {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': 'AND', 'level': 0},
       {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': '', 'level': 0}]),
-    ('(status=active,(id!=000;(group=default,group=default3)))',
+    ('(status=active,((group=default,group=default3)))',
      [{'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': 'OR', 'level': 1},
-      {'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 2},
       {'value': 'default', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 3},
       {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': '', 'level': 0}]),
 ])
@@ -1306,7 +1298,7 @@ def test_WazuhDBQuery_protected_add_filters_to_query(mock_process, mock_socket_c
 @pytest.mark.parametrize('filters, expected_query', [
     (
         [
-            {'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 0},
+            {'value': '001', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 0},
             {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': 'AND', 'level': 1},
             {'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 2},
             {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': '', 'level': 0}
@@ -1318,7 +1310,7 @@ def test_WazuhDBQuery_protected_add_filters_to_query(mock_process, mock_socket_c
         [
             {'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 2},
             {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': 'AND', 'level': 1},
-            {'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 0},
+            {'value': '001', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 0},
             {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': '', 'level': 0}
         ],
         'SELECT {0} FROM agent WHERE (((group = :group$0 COLLATE NOCASE) OR (group = :group$1 COLLATE ' + \
@@ -1329,7 +1321,7 @@ def test_WazuhDBQuery_protected_add_filters_to_query(mock_process, mock_socket_c
             {'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 3},
             {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': 'OR', 'level': 2},
             {'value': '001', 'operator': '=', 'field': 'id$0', 'separator': 'OR', 'level': 1},
-            {'value': '000', 'operator': '!=', 'field': 'id$1', 'separator': 'AND', 'level': 0},
+            {'value': '002', 'operator': '!=', 'field': 'id$1', 'separator': 'AND', 'level': 0},
             {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': '', 'level': 0}
         ],
         'SELECT {0} FROM agent WHERE ((((group = :group$0 COLLATE NOCASE) OR (group = :group$1 COLLATE ' + \
@@ -1346,7 +1338,7 @@ def test_WazuhDBQuery_protected_add_filters_to_query(mock_process, mock_socket_c
     (
         [
             {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': 'OR', 'level': 1},
-            {'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 2},
+            {'value': '001', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 2},
             {'value': 'default', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 3},
             {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': '', 'level': 0}
         ],

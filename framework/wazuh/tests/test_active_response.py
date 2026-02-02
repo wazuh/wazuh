@@ -26,7 +26,7 @@ with patch('wazuh.core.common.wazuh_uid'):
 
 test_data = InitAgent()
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'etc', 'shared', 'ar.conf')
-full_agent_list = {'000', '001', '002', '003', '004', '005', '006', '007', '008'}
+full_agent_list = {'001', '002', '003', '004', '005', '006', '007', '008'}
 
 
 def send_msg_to_wdb(msg, raw=False):
@@ -90,5 +90,5 @@ def test_run_command(socket_mock, send_mock, mock_get_agents_info, mock_close, m
                 message = 'AR command was not sent to some agents'
             else:
                 message = 'AR command was sent to all agents'
-        
+
         assert render['message'] == message

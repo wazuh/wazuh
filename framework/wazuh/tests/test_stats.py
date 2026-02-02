@@ -94,15 +94,15 @@ def side_effect_test_get_daemons_stats(daemon_path, agents_list):
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-@patch('wazuh.stats.get_agents_info', return_value={'000', '001', '002', '003', '004', '005'})
+@patch('wazuh.stats.get_agents_info', return_value={'001', '002', '003', '004', '005'})
 @patch('wazuh.core.common.REMOTED_SOCKET', '/var/wazuh-manager/queue/sockets/remote')
 @patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/analysis')
 @patch('wazuh.stats.get_daemons_stats_socket', side_effect=side_effect_test_get_daemons_stats)
 def test_get_daemons_stats_agents(mock_get_daemons_stats_socket, mock_get_agents_info, mock_socket_connect,
                                   mock_send_wdb, daemons_list, expected_daemons_list):
     """Makes sure get_daemons_stats_agents() fit with the expected."""
-    agents_list = ['000', '001', '004', '999']  # Only stats from 001 are obtained
-    expected_errors_and_items = {'1703': {'000'}, '1701': {'999'}, '1707': {'004'}}
+    agents_list = ['001', '004', '999']  # Only stats from 001 are obtained
+    expected_errors_and_items = {'1701': {'999'}, '1707': {'004'}}
     result = stats.get_daemons_stats_agents(daemons_list, agents_list)
 
     # get_daemons_stats_socket called with the expected parameters
@@ -176,7 +176,7 @@ def test_deprecated_get_daemons_stats(mock_daemons_stats_):
     'logcollector', 'test'
 ])
 @patch('wazuh.core.agent.Agent.get_stats')
-@patch('wazuh.stats.get_agents_info', return_value=['000', '001'])
+@patch('wazuh.stats.get_agents_info', return_value=['001', '002'])
 def test_get_agents_component_stats_json(mock_agents_info, mock_getstats, component):
     """Test `get_agents_component_stats_json` function from agent module."""
     response = stats.get_agents_component_stats_json(agent_list=['001'], component=component)
@@ -185,7 +185,7 @@ def test_get_agents_component_stats_json(mock_agents_info, mock_getstats, compon
 
 
 @patch('wazuh.core.agent.Agent.get_stats')
-@patch('wazuh.stats.get_agents_info', return_value=['000', '001'])
+@patch('wazuh.stats.get_agents_info', return_value=['001', '002'])
 def test_get_agents_component_stats_json_ko(mock_agents_info, mock_getstats):
     """Test `get_agents_component_stats_json` function from agent module."""
     response = stats.get_agents_component_stats_json(agent_list=['003'], component='logcollector')
