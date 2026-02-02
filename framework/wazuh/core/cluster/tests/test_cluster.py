@@ -223,7 +223,7 @@ def test_walk_dir_ko(mock_path_join, mock_walk):
         },
         "excluded_files": [
             "ar.conf",
-            "ossec.conf"
+            "wazuh-manager.conf"
         ],
         "excluded_extensions": [
             "~",
