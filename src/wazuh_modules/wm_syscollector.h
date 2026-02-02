@@ -63,4 +63,17 @@ typedef struct wm_sys_t {
 // Parse XML configuration
 int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module);
 
+// Query function type for agentd communication (cross-platform)
+// Fills output_buffer with JSON response on success
+// Returns true on success, false on error
+typedef bool (*agentd_query_func_t)(const char* command, char* output_buffer, size_t buffer_size);
+
+// Query agentd with a command and fill output_buffer with JSON response
+// Returns true on success (output_buffer contains JSON), false on error
+// Works on both Unix/Linux (socket) and Windows (agcom_dispatch)
+bool wm_sys_query_agentd(const char* command, char* output_buffer, size_t buffer_size);
+
+// Set agentd query function (must be called before syscollector_start)
+void syscollector_set_agentd_query_func(agentd_query_func_t queryFunc);
+
 #endif
