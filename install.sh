@@ -656,7 +656,6 @@ main()
     . ./src/init/shared.sh
     . ./src/init/functions.sh
 
-
     DAEMON_NAME_PREFIX='wazuh'
 
     if [ ${INSTYPE} = 'server' ]; then
@@ -957,7 +956,7 @@ main()
 
     if [ "X$notmodified" = "Xyes" ]; then
         catMsg "0x105-noboot"
-        echo "      $INSTALLDIR/bin/wazuh-control start"
+        echo "      $INSTALLDIR/bin/$DAEMON_NAME_PREFIX-control start"
         echo ""
     fi
 }
