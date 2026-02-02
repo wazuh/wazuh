@@ -1050,7 +1050,7 @@ def test_handler_receive_file_rejects_invalid_and_disallowed_paths():
     handler = cluster_common.Handler(fernet_key, cluster_items)
 
     # Disallowed path (attempt to write into /etc)
-    assert handler.receive_file(b"/etc/ossec.conf") == (b"err", b"Write path not allowed")
+    assert handler.receive_file(b"/etc/wazuh-manager.conf") == (b"err", b"Write path not allowed")
 
 
 def test_handler_update_file():
