@@ -192,7 +192,7 @@ else()
                            -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \
                            -Wl,--wrap,fim_db_update_last_sync_time \
                            -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
-                           ${DEBUG_OP_WRAPPERS}")
+                           -Wl,--wrap=QueryDosDeviceA ${DEBUG_OP_WRAPPERS}")
     target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS} fimdb)
 
     target_link_libraries(test_win_whodata "${WIN_WHODATA_FLAGS}")

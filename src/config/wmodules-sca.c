@@ -373,6 +373,10 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         mwarn("File '%s' not found.", relative_path);
                         continue;
                     }
+                    if (is_network_path(realpath_buffer)) {
+                        mwarn(NETWORK_PATH_CONFIGURED, "policy", realpath_buffer);
+                        continue;
+                    }
                     #else
                     const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
                     if (!realpath_buffer_ref) {

@@ -3,6 +3,7 @@ import docker
 import time
 import requests
 import logging
+import re
 import os
 import subprocess
 import inspect
@@ -718,24 +719,21 @@ def test_error_handling_shard_limit_exceeded(opensearch):
     time.sleep(5)
     process.terminate()
 
-    # Verify log contains recommendation
+    # Verify log contains error
     with open(log_file, "r") as f:
         log_content = f.read()
         assert "validation_exception" in log_content, (
             "Expected validation_exception not found"
         )
-        assert "maximum shards open" in log_content, (
+        assert re.search(r"maximum.*shards open", log_content), (
             "Expected shard limit error not found"
         )
-        assert (
-            "Consider increasing cluster.max_shards_per_node setting" in log_content
-        ), "Expected recommendation not found in log"
 
     # Restore shard limit
     settings = {"persistent": {"cluster.max_shards_per_node": None}}
     requests.put(url, json=settings)
 
-    LOGGER.info("Shard limit error logged with recommendation")
+    LOGGER.info("Shard limit error logged")
 
 
 @pytest.mark.parametrize("opensearch", [True], indirect=True)

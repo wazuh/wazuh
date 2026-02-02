@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 - Added query size checks for syscollector delta sync SQL generation to prevent buffer overflows. ([#33803](https://github.com/wazuh/wazuh/pull/33803))
 - Replaced unsafe `sprintf` calls in the SCA decoder to prevent buffer overflows. ([#33756](https://github.com/wazuh/wazuh/pull/33756))
 - Fixed a memory leak in the CIS-CAT decoder when database operations fail. ([#33739](https://github.com/wazuh/wazuh/pull/33739))
+- Fixed ruleset hot reload on workers by awaiting `send_reload_ruleset_msg`. ([#34184](https://github.com/wazuh/wazuh/pull/34184))
 
 ### Agent
 
@@ -40,6 +41,8 @@ All notable changes to this project will be documented in this file.
 - Fixed label formatting edge cases in keep-alive notify messages. ([#33708](https://github.com/wazuh/wazuh/pull/33708))
 - Fixed a false positive in vulnerability detection for Oracle Linux 8. ([#33583](https://github.com/wazuh/wazuh/pull/33583))
 - Extended Windows network path restrictions to block extended-length UNC paths. ([#34115](https://github.com/wazuh/wazuh/pull/34115))
+- Fixed crash in network path detection on Windows. ([#34162](https://github.com/wazuh/wazuh/pull/34162))
+- Fixed Agent reload failure on Linux systems with systemd version 219 or lower. ([#34064](https://github.com/wazuh/wazuh/pull/34064))
 
 ### RESTful API
 
@@ -57,6 +60,10 @@ All notable changes to this project will be documented in this file.
 #### Added
 
 - Added a CIS SCA policy for macOS 26 Tahoe. ([#33492](https://github.com/wazuh/wazuh/pull/33492))
+
+#### Fixed
+
+- Fixed SCA policy execution on Windows Server 2019 by using the correct PowerShell path. ([#34141](https://github.com/wazuh/wazuh/pull/34141))
 
 ### Other
 
