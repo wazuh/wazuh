@@ -218,7 +218,6 @@ def test_remove_agents_database(send_mock, connect_mock, content):
     'Agent sql select test',
     'error sql select test',
     'agent bad_digit sql select test',
-    'agent 000 sql sql_sentence',
     'global sql delete test ;'
 ])
 @patch("socket.socket.connect")
@@ -245,12 +244,12 @@ def test_execute(send_mock, socket_send_mock, connect_mock):
         return ['ok', '{"total": 5}'] if raw else [{"total": 5}]
 
     mywdb = WazuhDBConnection()
-    mywdb.execute('agent 000 sql delete from test', delete=True)
-    mywdb.execute("agent 000 sql update test set value = 'test' where key = 'test'", update=True)
+    mywdb.execute('agent 001 sql delete from test', delete=True)
+    mywdb.execute("agent 001 sql update test set value = 'test' where key = 'test'", update=True)
     with patch("wazuh.core.wdb.WazuhDBConnection._send", new=send_mock):
-        mywdb.execute("agent 000 sql select test from test offset 1 limit 1")
-        mywdb.execute("agent 000 sql select test from test offset 1 limit 1", count=True)
-        mywdb.execute("agent 000 sql select test from test offset 1 count")
+        mywdb.execute("agent 001 sql select test from test offset 1 limit 1")
+        mywdb.execute("agent 001 sql select test from test offset 1 limit 1", count=True)
+        mywdb.execute("agent 001 sql select test from test offset 1 count")
 
 
 @patch("socket.socket.connect")
@@ -262,20 +261,20 @@ def test_execute_pagination(socket_send_mock, connect_mock):
     with patch("wazuh.core.wdb.WazuhDBConnection._send",
                side_effect=[[{'total': 5}], exception.WazuhInternalError(2009), ['ok', '{"total": 5}'],
                             ['ok', '{"total": 5}']]):
-        mywdb.execute("agent 000 sql select test from test offset 1 limit 500")
+        mywdb.execute("agent 001 sql select test from test offset 1 limit 500")
 
     # Test pagination error
     with patch("wazuh.core.wdb.WazuhDBConnection._send",
                side_effect=[[{'total': 5}], exception.WazuhInternalError(2009)]):
         with pytest.raises(exception.WazuhInternalError, match=".* 2009 .*"):
-            mywdb.execute("agent 000 sql select test from test offset 1 limit 1")
+            mywdb.execute("agent 001 sql select test from test offset 1 limit 1")
 
 
 @pytest.mark.parametrize('error_query, error_type, expected_exception, delete, update', [
-    ('agent 000 sql delete test', None, 2004, True, False),
-    ('agent 000 sql update test', None, 2004, False, True),
-    ('agent 000 sql select test from test offset 1 limit 1', ValueError, 2006, False, False),
-    ('agent 000 sql select test from test offset 1 limit 1', Exception, 2007, False, False)
+    ('agent 001 sql delete test', None, 2004, True, False),
+    ('agent 001 sql update test', None, 2004, False, True),
+    ('agent 001 sql select test from test offset 1 limit 1', ValueError, 2006, False, False),
+    ('agent 001 sql select test from test offset 1 limit 1', Exception, 2007, False, False)
 ])
 @patch("socket.socket.connect")
 @patch("socket.socket.send")

@@ -121,11 +121,8 @@ def test_BaseQueue_close(mock_close, mock_conn):
 
 
 @pytest.mark.parametrize('msg, agent_id, msg_type', [
-    ('test_msg', '000', 'ar-message'),
     ('test_msg', '001', 'ar-message'),
     ('test_msg', None, 'ar-message'),
-    ('syscheck restart', '000', None),
-    ('force_reconnect', '000', None),
     ('restart-ossec0', '001', None),
     ('syscheck restart', None, None),
     ('force_reconnect', None, None),
@@ -155,7 +152,6 @@ def test_WazuhQueue_send_msg_to_agent(mock_send, mock_conn, msg, agent_id, msg_t
 
 
 @pytest.mark.parametrize('msg, agent_id, msg_type, expected_exception', [
-    ('test_msg', '000', None, 1012),
     ('syscheck restart', None, None, 1014),
 ])
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
