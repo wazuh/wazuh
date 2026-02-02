@@ -458,14 +458,8 @@ WriteManager()
       echo "" >> $NEWCONFIG
     fi
 
-    # Write rootcheck
-    WriteRootcheck "manager"
-
     # Syscollector configuration
     WriteSyscollector "manager"
-
-    # Configuration assessment
-    WriteConfigurationAssessment
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
@@ -474,9 +468,6 @@ WriteManager()
     # Indexer
     cat ${INDEXER_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
-
-    # Write syscheck
-    WriteSyscheck "manager"
 
     # Active response
     if [ "$SET_WHITE_LIST"="true" ]; then
@@ -509,33 +500,6 @@ WriteManager()
     echo "" >> $NEWCONFIG
     cat ${AR_DEFINITIONS_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
-
-    # Write the log files
-    if [ "X${NO_LOCALFILES}" = "X" ]; then
-      echo "  <!-- Log analysis -->" >> $NEWCONFIG
-      WriteLogs "add"
-    else
-      echo "  <!-- Log analysis -->" >> $NEWCONFIG
-    fi
-
-    # Localfile commands
-    LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.manager.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$LOCALFILE_COMMANDS_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-      LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Localfile extra
-    LOCALFILE_EXTRA_TEMPLATE=$(GetTemplate "localfile-extra.manager.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-      LOCALFILE_EXTRA_TEMPLATE=$(GetTemplate "localfile-extra.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    if [ ! "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-      cat ${LOCALFILE_EXTRA_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
-
 
     # Writting auth configuration
     if [ "X${AUTHD}" = "Xyes" ]; then
