@@ -38,8 +38,8 @@
 
 
 #include "shared.h"
-#include "../config/localfile-config.h"
-#include "../config/config.h"
+#include "localfile-config.h"
+#include "config.h"
 #include "../os_crypto/sha1/sha1_op.h"
 #include "macos_log.h"
 

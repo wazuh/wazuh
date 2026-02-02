@@ -22,8 +22,8 @@
 #include "../../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
 
-#include "../../wazuh_modules/wmodules.h"
-#include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_tasks.h"
+#include "wmodules.h"
+#include "wm_agent_upgrade_tasks.h"
 #include "../../headers/shared.h"
 
 extern OSHash *task_table_by_agent_id;

@@ -10,8 +10,8 @@
  */
 
 #include "shared.h"
-#include "../config/config.h"
-#include "../config/global-config.h"
+#include "config.h"
+#include "global-config.h"
 
 int w_is_worker(void) {
     OS_XML xml;

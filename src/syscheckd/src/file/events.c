@@ -7,7 +7,7 @@
  * Foundation.
  */
 
-#include "../../include/syscheck.h"
+#include "syscheck.h"
 
 void fim_calculate_dbsync_difference(const directory_t *configuration,
                                      const cJSON* old_data,

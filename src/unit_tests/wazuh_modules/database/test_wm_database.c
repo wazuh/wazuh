@@ -16,8 +16,8 @@
 #include <stdlib.h>
 
 #include <shared.h>
-#include "../../../wazuh_modules/wmodules_def.h"
-#include "../../../wazuh_modules/wm_database.h"
+#include "wmodules_def.h"
+#include "wm_database.h"
 
 #include "../../wrappers/common.h"
 #include "../../wrappers/wazuh/os_crypto/keys_wrappers.h"

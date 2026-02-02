@@ -12,11 +12,11 @@
 #include "headers/defs.h"
 #include "os_execd/execd.h"
 #include "os_net/os_net.h"
-#include "config/syscheck-config.h"
-#include "config/rootcheck-config.h"
-#include "config/localfile-config.h"
-#include "config/client-config.h"
-#include "wazuh_modules/wmodules.h"
+#include "syscheck-config.h"
+#include "rootcheck-config.h"
+#include "localfile-config.h"
+#include "client-config.h"
+#include "wmodules.h"
 #include "agentd.h"
 
 static const char AG_IN_RCON[] = "wazuh: Invalid remote configuration";

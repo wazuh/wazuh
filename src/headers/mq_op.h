@@ -11,7 +11,7 @@
 #ifndef MQ_H
 #define MQ_H
 
-#include "../config/localfile-config.h"
+#include "localfile-config.h"
 #include <sys/types.h>
 
 #ifdef WIN32

@@ -10,9 +10,9 @@ on:
   pull_request:
     paths:
         - ".github/workflows/5_testintegration_msgraph-tier-0-1-lin.yml"
-        - "src/config/wmodules-ms-graph.c"
-        - "src/wazuh_modules/wm_ms_graph.h"
-        - "src/wazuh_modules/wm_ms_graph.c"
+        - "src/config/src/wmodules-ms-graph.c"
+        - "src/wazuh_modules/src/wm_ms_graph.h"
+        - "src/wazuh_modules/src/wm_ms_graph.c"
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_msgraph/**"
@@ -34,7 +34,7 @@ jobs:
       # Setup MSGraph Proxy
       - name: Download m365proxy and config http for msgraph module
         run: |
-          sed -i 's/https:\/\/%s\/%s/http:\/\/%s\/%s/g' src/wazuh_modules/wm_ms_graph.h
+          sed -i 's/https:\/\/%s\/%s/http:\/\/%s\/%s/g' src/wazuh_modules/src/wm_ms_graph.h
           curl -L http://packages.wazuh.com/utils/m365proxy/m365proxy.tar.gz | \
           tar zvx -C /tmp/
       - name: "Install a compatible CMake"

@@ -13,20 +13,31 @@ include_directories(${SRC_FOLDER}/external/sqlite/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
+include_directories(${SRC_FOLDER}/external/procps/)
+include_directories(${SRC_FOLDER}/external/flatbuffers/include/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
-include_directories(${CMAKE_BINARY_DIR}/shared_modules/sync_protocol)
-include_directories(${SRC_FOLDER}/external/flatbuffers/include/)
+include_directories(${SRC_FOLDER}/shared_modules/sync_protocol)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/schema_validator/include/)
+include_directories(${SRC_FOLDER}/config/include)
+include_directories(${SRC_FOLDER}/rootcheck/include)
+include_directories(${SRC_FOLDER}/os_crypto/md5)
+include_directories(${SRC_FOLDER}/os_crypto/md5_sha1_sha256)
+include_directories(${SRC_FOLDER}/os_crypto/sha1)
+include_directories(${SRC_FOLDER}/os_net)
+include_directories(${SRC_FOLDER}/os_regex)
+include_directories(${SRC_FOLDER}/os_xml)
+include_directories(${SRC_FOLDER}/wazuh_modules/include)
+include_directories(${SRC_FOLDER}/wazuh_modules/src)
+include_directories(${SRC_FOLDER}/wazuh_modules/src/agent_upgrade)
+include_directories(${SRC_FOLDER}/wazuh_modules/src/task_manager)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/db/include/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/ebpf/include/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/file/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/recovery/)
-
-link_directories(${CMAKE_BINARY_DIR}/lib)
-link_directories(${SRC_FOLDER}/shared_modules/schema_validator/build/lib)
-link_directories(${SRC_FOLDER}/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/registry/)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -82,36 +93,21 @@ endif()
 
 # Enable EVENTCHANNEL_SUPPORT for Windows builds
 if(EVENTCHANNEL_SUPPORT)
-  target_compile_definitions(syscheckd_lib PUBLIC EVENTCHANNEL_SUPPORT _WIN32_WINNT=0x600)
+  target_compile_definitions(syscheckd_lib PUBLIC EVENTCHANNEL_SUPPORT
+                                                  _WIN32_WINNT=0x600)
 endif()
 
-if(NOT APPLE)
-  # Use --start-group/--end-group for GNU ld (Linux, MinGW/Windows)
-  target_link_libraries(
-    syscheckd_lib
-    PUBLIC fimdb
-           wazuhext
-           pthread
-           -Wl,--start-group
-           wazuh
-           rootcheck
-           -Wl,--end-group
-           agent_sync_protocol
-           dbsync
-           schema_validator)
-else()
-  # Apple ld doesn't support --start-group/--end-group
-  target_link_libraries(
-    syscheckd_lib
-    PUBLIC fimdb
-           wazuhext
-           pthread
-           wazuh
-           rootcheck
-           agent_sync_protocol
-           dbsync
-           schema_validator)
-endif()
+target_link_libraries(
+  syscheckd_lib
+  PUBLIC fimdb
+         wazuhext
+         pthread
+         config
+         wazuh
+         rootcheck
+         agent_sync_protocol
+         dbsync
+         schema_validator)
 
 if(UNIX)
   target_link_libraries(syscheckd_lib PUBLIC dl)
@@ -126,16 +122,14 @@ endif(UNIX)
 
 # Build Windows libraries always (needed by Makefile for final executables)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  add_library(wazuh-syscheckd STATIC ${SYSCHECKD_SRC}
-                                     "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
-  add_library(wazuh-syscheckd-event STATIC
-              ${SYSCHECKD_SRC} "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
+  add_library(wazuh-syscheckd STATIC ${SYSCHECKD_SRC})
+  add_library(wazuh-syscheckd-event STATIC ${SYSCHECKD_SRC})
   target_compile_definitions(wazuh-syscheckd PUBLIC -D_WIN32_WINNT=0x600)
   if(UNIT_TEST)
     target_compile_definitions(wazuh-syscheckd PRIVATE WAZUH_UNIT_TESTING)
   endif()
-  target_compile_definitions(
-    wazuh-syscheckd-event PUBLIC -D_WIN32_WINNT=0x600 -DEVENTCHANNEL_SUPPORT)
+  target_compile_definitions(wazuh-syscheckd-event
+                             PUBLIC -D_WIN32_WINNT=0x600 -DEVENTCHANNEL_SUPPORT)
   if(UNIT_TEST)
     target_compile_definitions(wazuh-syscheckd-event PRIVATE WAZUH_UNIT_TESTING)
   endif()
@@ -144,6 +138,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     PRIVATE fimdb
             wazuhext
             pthread
+            config
             wazuh
             rootcheck
             agent_sync_protocol
@@ -154,17 +149,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     PRIVATE fimdb
             wazuhext
             pthread
+            config
             wazuh
             rootcheck
             agent_sync_protocol
             dbsync
             schema_validator)
-# Only build Linux executable when not running unit tests
+  # Only build Linux executable when not running unit tests
 elseif(NOT UNIT_TEST)
   add_executable(wazuh-syscheckd "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
-  set_target_properties(wazuh-syscheckd PROPERTIES
-    LINKER_LANGUAGE CXX
-    RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER})
+  set_target_properties(
+    wazuh-syscheckd PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY
+                                                   ${SRC_FOLDER})
   target_link_libraries(wazuh-syscheckd PRIVATE syscheckd_lib)
 
   if(APPLE)

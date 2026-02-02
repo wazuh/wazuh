@@ -13,7 +13,7 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include "../os_net/os_net.h"
 #include "../addagent/manage_agents.h"
-#include "config/authd-config.h"
+#include "authd-config.h"
 #include "os_auth/auth.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 

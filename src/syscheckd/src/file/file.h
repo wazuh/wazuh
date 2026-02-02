@@ -10,7 +10,7 @@
 #ifndef FILE_H
 #define FILE_H
 
-#include "../../include/syscheck.h"
+#include "syscheck.h"
 
 #ifdef WIN32
 #define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })

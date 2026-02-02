@@ -10,11 +10,11 @@
 #include <cJSON.h>
 #include "file.h"
 #include "shared.h"
-#include "../../include/syscheck.h"
-#include "../../config/syscheck-config.h"
-#include "../db/include/db.h"
-#include "../os_crypto/md5/md5_op.h"
-#include "../os_crypto/sha1/sha1_op.h"
+#include "syscheck.h"
+#include "syscheck-config.h"
+#include "db.h"
+#include "md5_op.h"
+#include "sha1_op.h"
 #include "agent_sync_protocol_c_interface.h"
 #include "schemaValidator_c.h"
 

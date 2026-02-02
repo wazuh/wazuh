@@ -9,7 +9,7 @@
  */
 
 #include "shared.h"
-#include "config/config.h"
+#include "config.h"
 #include "os_net/os_net.h"
 
 #ifdef WAZUH_UNIT_TESTING

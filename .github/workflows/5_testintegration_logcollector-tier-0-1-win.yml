@@ -10,8 +10,8 @@ on:
   pull_request:
     paths:
         - ".github/workflows/5_testintegration_logcollector-tier-0-1-win.yml"
-        - "src/config/localfile-config.c"
-        - "src/config/localfile-config.h"
+        - "src/config/src/localfile-config.c"
+        - "src/config/include/localfile-config.h"
         - "src/logcollector/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"

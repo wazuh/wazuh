@@ -19,9 +19,9 @@
 #include "../../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
 
-#include "../../wazuh_modules/wmodules.h"
-#include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_manager.h"
-#include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_tasks.h"
+#include "wmodules.h"
+#include "wm_agent_upgrade_manager.h"
+#include "wm_agent_upgrade_tasks.h"
 #include "../../headers/shared.h"
 
 int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task);

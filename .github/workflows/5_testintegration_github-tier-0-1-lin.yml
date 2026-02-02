@@ -10,9 +10,9 @@ on:
   pull_request:
     paths:
         - ".github/workflows/5_testintegration_github-tier-0-1-lin.yml"
-        - "src/config/wmodules-github.c"
-        - "src/wazuh_modules/wm_github.h"
-        - "src/wazuh_modules/wm_github.c"
+        - "src/config/src/wmodules-github.c"
+        - "src/wazuh_modules/src/wm_github.h"
+        - "src/wazuh_modules/src/wm_github.c"
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_github/**"

@@ -12,7 +12,7 @@
 
 #ifdef WIN32
 
-#include "../../include/syscheck.h"
+#include "syscheck.h"
 
 // Structure to hold failed registry key information for deferred deletion
 typedef struct failed_registry_key_s {

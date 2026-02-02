@@ -13,9 +13,9 @@
 #include <cmocka.h>
 #include <memory.h>
 
-#include "../../config/config.h"
+#include "config.h"
 #include "../../headers/shared.h"
-#include "../../config/global-config.h"
+#include "global-config.h"
 
 typedef struct {
     OS_XML xml;

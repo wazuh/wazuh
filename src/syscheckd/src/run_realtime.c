@@ -16,7 +16,7 @@
 #include "debug_op.h"
 #include "syscheck.h"
 #include "syscheck_op.h"
-#include "file/file.h"
+#include "file.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32

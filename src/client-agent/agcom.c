@@ -11,7 +11,7 @@
 #include <shared.h>
 #include "agentd.h"
 #include "os_net/os_net.h"
-#include "wazuh_modules/wmodules.h"
+#include "wmodules.h"
 
 
 size_t agcom_dispatch(char * command, char ** output){

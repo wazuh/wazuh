@@ -15,9 +15,9 @@
 #define ARGV0 "wazuh-remoted"
 #endif
 
-#include "../config/config.h"
-#include "../config/remote-config.h"
-#include "../config/global-config.h"
+#include "config.h"
+#include "remote-config.h"
+#include "global-config.h"
 #include "../os_crypto/md5/md5_op.h"
 #include "sec.h"
 #include "indexed_queue_op.h"

@@ -20,7 +20,7 @@
 #define EXPORTED
 #endif
 
-#include <external/cJSON/cJSON.h>
+#include <cJSON.h>
 
 #ifdef __cplusplus
 extern "C"

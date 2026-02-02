@@ -26,7 +26,7 @@
 #include "../monitord/monitord.h"
 #include "../headers/defs.h"
 #include "../headers/shared.h"
-#include "../config/config.h"
+#include "config.h"
 #include "os_err.h"
 
 /* redefinitons/wrapping */
