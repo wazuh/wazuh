@@ -2929,7 +2929,7 @@ components:
           type: object
         syscheck:
           type: object
-        #Wodle sections inside WazuhConfiguration(ossec.conf)
+        #Wodle sections inside WazuhConfiguration(wazuh configuration file)
         aws-s3:
           type: object
         azure-logs:
