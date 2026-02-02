@@ -26,7 +26,7 @@ class WazuhException(Exception):
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
         1000: {'message': 'Wazuh Internal Error',
-               'remediation': 'Please, check `WAZUH_HOME/logs/ossec.log`, `WAZUH_HOME/logs/cluster.log` and '
+               'remediation': 'Please, check `WAZUH_HOME/logs/wazuh-manager.log`, `WAZUH_HOME/logs/cluster.log` and '
                               '`WAZUH_HOME/logs/api.log` to get more information about the error'},
         1001: 'Error importing module',
         1002: 'Error executing command',
@@ -107,7 +107,7 @@ class WazuhException(Exception):
                'remediation': 'Please, provide a valid ossec configuration'
                },
         1126: {'message': 'Error updating ossec configuration',
-               'remediation': 'Please, ensure `WAZUH_PATH/etc/ossec.conf` has the proper permissions and ownership.'
+               'remediation': 'Please, ensure `WAZUH_PATH/etc/wazuh-manager.conf` has the proper permissions and ownership.'
                },
         1127: {'message': 'Protected section was modified',
                'remediation': 'To solve this, either revert the changes made to this section or disable the protection '
@@ -248,7 +248,7 @@ class WazuhException(Exception):
         1743: 'Error running Wazuh syntax validator',
         1745: "Agent only belongs to 'default' and it cannot be unassigned from this group.",
         1750: {'message': 'Could not send restart command, active-response is disabled in the agent',
-               'remediation': "You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`"},
+               'remediation': "You can activate it in agents' `WAZUH_HOME/etc/wazuh-manager.conf`"},
         1751: {'message': 'Could not assign agent to group',
                'remediation': 'Agent already belongs to specified group, please select another agent'},
         1752: {'message': 'Could not force single group for the agent'},
@@ -349,7 +349,7 @@ class WazuhException(Exception):
         3024: "Length of command exceeds limit defined in wazuh.cluster.common.Handler.cmd_len.",
         3025: {'message': "Could not decrypt message",
                'remediation': "Check the cluster key is correct in the worker's "
-                              f"[ossec.conf](https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/reference/"
+                              f"[wazuh-manager.conf](https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/reference/"
                               f"ossec-conf/cluster.html#key)"
                               ", ensure it is the same that the master's."},
         3026: "Error sending request: Memory error. Request chunk size divided by 2.",
