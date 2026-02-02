@@ -29,7 +29,7 @@ static int test_setup(void **state) {
     test_struct_t *init_data = NULL;
     os_calloc(1,sizeof(test_struct_t),init_data);
     os_calloc(1,sizeof(wdb_t),init_data->wdb);
-    os_strdup("000",init_data->wdb->id);
+    os_strdup("001",init_data->wdb->id);
     os_calloc(256,sizeof(char),init_data->output);
     os_calloc(1,sizeof(sqlite3 *),init_data->wdb->db);
     *state = init_data;
@@ -54,7 +54,7 @@ void test_wdb_count_tables_with_name_prepare_fail(void **state)
     will_return(__wrap_sqlite3_prepare_v2, NULL);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_prepare_v2(): ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(001) sqlite3_prepare_v2(): ERROR MESSAGE");
 
     int count = 0;
     ret = wdb_count_tables_with_name(data->wdb, "metadata", &count);
@@ -76,7 +76,7 @@ void test_wdb_count_tables_with_name_bind_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
-    expect_string(__wrap__merror, formatted_msg, "DB(000) sqlite3_bind_text(): ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(001) sqlite3_bind_text(): ERROR MESSAGE");
 
     int count = 0;
     ret = wdb_count_tables_with_name(data->wdb, "metadata", &count);
@@ -100,7 +100,7 @@ void test_wdb_count_tables_with_name_step_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(001) SQLite: ERROR MESSAGE");
 
     int count = 0;
     ret = wdb_count_tables_with_name(data->wdb, "metadata", &count);

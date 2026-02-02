@@ -48,13 +48,7 @@ int* __wrap_wdb_get_agents_ids_of_current_node(const char* status, __attribute__
     return mock_ptr_type(int*);
 }
 
-int* __wrap_wdb_get_all_agents(bool include_manager, __attribute__((unused)) int *sock) {
-    check_expected(include_manager);
-    return mock_ptr_type(int*);
-}
-
-rb_tree* __wrap_wdb_get_all_agents_rbtree(bool include_manager, __attribute__((unused)) int *sock) {
-    check_expected(include_manager);
+rb_tree* __wrap_wdb_get_all_agents_rbtree(__attribute__((unused)) int *sock) {
     return mock_ptr_type(rb_tree*);
 }
 

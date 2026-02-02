@@ -32,7 +32,7 @@ static int test_setup(void **state) {
     test_struct_t *init_data = NULL;
     os_calloc(1,sizeof(test_struct_t),init_data);
     os_calloc(1,sizeof(wdb_t),init_data->wdb);
-    os_strdup("000",init_data->wdb->id);
+    os_strdup("001",init_data->wdb->id);
     os_calloc(256,sizeof(char),init_data->output);
     os_calloc(1,sizeof(sqlite3 *),init_data->wdb->db);
     *state = init_data;

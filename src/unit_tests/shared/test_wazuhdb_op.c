@@ -25,7 +25,7 @@ void test_ok_query(void **state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "agent 000 syscheck save file 0:0:0:0:0:0:0:0:0:0:0:0:0!0:0 /tmp/test.file";
+    char *query = "agent 001 syscheck save file 0:0:0:0:0:0:0:0:0:0:0:0:0!0:0 /tmp/test.file";
     char response[OS_SIZE_6144];
     char *message;
 
@@ -52,7 +52,7 @@ void test_ok2_query(void **state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "agent 000 syscheck delete /tmp/test.file";
+    char *query = "agent 001 syscheck delete /tmp/test.file";
     char response[OS_SIZE_6144];
     char *message;
 
@@ -79,7 +79,7 @@ void test_okmsg_query(void **state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "agent 000 syscheck scan_info_get start_scan";
+    char *query = "agent 001 syscheck scan_info_get start_scan";
     char response[OS_SIZE_6144];
     char *message;
 
@@ -106,7 +106,7 @@ void test_err_query(void **state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "agent 000";
+    char *query = "agent 001";
     char response[OS_SIZE_6144];
     char *message;
 

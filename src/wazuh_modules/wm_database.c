@@ -344,7 +344,7 @@ void sync_keys_with_wdb(keystore *keys) {
     char **ids = NULL;
     unsigned int i;
 
-    agents = wdb_get_all_agents_rbtree(FALSE, &wdb_wmdb_sock);
+    agents = wdb_get_all_agents_rbtree(&wdb_wmdb_sock);
 
     if (agents == NULL) {
         mterror(WM_DATABASE_LOGTAG, "Couldn't synchronize the keystore with the DB.");
