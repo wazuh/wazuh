@@ -12,6 +12,11 @@ This folder contains the development environment for the Wazuh 4.x versions. It 
 - **wazuh-agent**: Agent.
 - **wazuh-indexer**: Indexer
 
+### Create GH TOKEN
+To create a **GH_TOKEN**,
+ follow the instructions in the following [document](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
+When you have a new GH_TOKEN, you will need to add it to the .env file:
+`GH_TOKEN=<your_new_token>`
 ### Working with docker environment
 The following commands runs a cluster:
 1. Run `docker compose build`
@@ -42,8 +47,3 @@ If we need more agents we can use:
 - Use option **-no-cache** when you have building issues.
 
 `docker compose build --no-cache`
-
-- To completely clean the environment (including volumes), run:
-  ```bash
-  docker compose down -v
-  ```

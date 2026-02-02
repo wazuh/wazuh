@@ -1,7 +1,7 @@
 FROM dev-wazuh-base
 
 COPY preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
-RUN THREADS=$(nproc) /wazuh/install.sh
+RUN /wazuh/install.sh
 
 ADD entrypoint.sh /scripts/entrypoint.sh
 

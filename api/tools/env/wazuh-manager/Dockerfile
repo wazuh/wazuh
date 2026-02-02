@@ -1,7 +1,7 @@
 FROM dev-wazuh-base AS builder
 
 COPY preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
-RUN THREADS=$(nproc) /wazuh/install.sh
+RUN /wazuh/install.sh
 
 # Install pip libraries for development
 RUN /var/ossec/framework/python/bin/pip3 install \
