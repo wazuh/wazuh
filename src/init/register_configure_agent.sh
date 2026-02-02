@@ -19,7 +19,7 @@ WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_envs"
 # Set default sed alias
 sed="sed -ri"
 
-# Update the value of a XML tag inside the ossec.conf
+# Update the value of a XML tag inside the wazuh configuration file
 edit_value_tag() {
 
     file=""
@@ -64,7 +64,7 @@ delete_auto_enrollment_tag() {
 
 }
 
-# Change address block of the ossec.conf
+# Change address block of the wazuh configuration file
 add_adress_block() {
 
     # Remove the server configuration
@@ -287,7 +287,7 @@ main () {
         chown root:wazuh "${INSTALLDIR}"/"${WAZUH_REGISTRATION_PASSWORD_PATH}"
     fi
 
-    # Options to be modified in ossec.conf
+    # Options to be modified in wazuh configuration file
     edit_value_tag "notify_time" "${WAZUH_KEEP_ALIVE_INTERVAL}"
     edit_value_tag "time-reconnect" "${WAZUH_TIME_RECONNECT}"
 

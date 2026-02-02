@@ -237,18 +237,18 @@ jobs:
           # Install the package
           sudo dpkg -i "$PACKAGE_FILE" || sudo apt-get -f install -y
 
-          # Replace https://127.0.0.1:9200 with http://127.0.0.1:9200 in /var/wazuh-manager/etc/ossec.conf
-          sudo sed -i 's/https:\/\/127\.0\.0\.1:9200/http:\/\/127.0.0.1:9200/g' /var/wazuh-manager/etc/ossec.conf
+          # Replace https://127.0.0.1:9200 with http://127.0.0.1:9200 in /var/wazuh-manager/etc/wazuh-manager.conf
+          sudo sed -i 's/https:\/\/127\.0\.0\.1:9200/http:\/\/127.0.0.1:9200/g' /var/wazuh-manager/etc/wazuh-manager.conf
 
           sudo mkdir -p /var/wazuh-manager/etc/certs
           sudo touch /var/wazuh-manager/etc/certs/root-ca.pem
           sudo touch /var/wazuh-manager/etc/certs/server.pem
           sudo touch /var/wazuh-manager/etc/certs/server-key.pem
 
-          # Print ossec.conf content for verification
-          echo "[>] Current ossec.conf content:"
+          # Print wazuh configuration file content for verification
+          echo "[>] Current wazuh-manager.conf content:"
           echo "=========================================="
-          sudo cat /var/wazuh-manager/etc/ossec.conf
+          sudo cat /var/wazuh-manager/etc/wazuh-manager.conf
           echo "=========================================="
 
           # Start Wazuh manager
@@ -339,16 +339,16 @@ jobs:
           dpkg -l | grep wazuh || echo "[-] No Wazuh packages found"
 
           # Collect Wazuh logs if they exist
-          if [ -f /var/wazuh-manager/logs/ossec.log ]; then
+          if [ -f /var/wazuh-manager/logs/wazuh-manager.log ]; then
             echo "[*] Wazuh logs (last 50 lines):"
-            sudo tail -50 /var/wazuh-manager/logs/ossec.log
+            sudo tail -50 /var/wazuh-manager/logs/wazuh-manager.log
 
-            # Copy ossec.log to workspace for artifact upload
-            sudo cp /var/wazuh-manager/logs/ossec.log ./ossec.log
-            sudo chown $USER:$USER ./ossec.log
-            echo "[+] Copied ossec.log to workspace"
+            # Copy wazuh-manager.log to workspace for artifact upload
+            sudo cp /var/wazuh-manager/logs/wazuh-manager.log ./wazuh-manager.log
+            sudo chown $USER:$USER ./wazuh-manager.log
+            echo "[+] Copied wazuh-manager.log to workspace"
           else
-            echo "[-] ossec.log not found at /var/wazuh-manager/logs/ossec.log"
+            echo "[-] wazuh-manager.log not found at /var/wazuh-manager/logs/wazuh-manager.log"
 
             # Try to find any log files that might exist
             echo "[*] Searching for any log files in the system:"
