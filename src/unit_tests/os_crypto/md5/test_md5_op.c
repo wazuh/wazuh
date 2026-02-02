@@ -77,7 +77,7 @@ void test_md5_file_fail(void **state) {
 }
 
 /* Test robustness against NULL path in OS_MD5_File */
-void test_OS_MD5_File_null_path(void **state) {
+void test_md5_file_null_path(void **state) {
     os_md5 output;
 
     /* Initialize output for safety */
@@ -95,7 +95,7 @@ int main(void) {
         cmocka_unit_test(test_md5_string),
         cmocka_unit_test_setup_teardown(test_md5_file, setup_group, teardown_group),
         cmocka_unit_test_setup_teardown(test_md5_file_fail, setup_group, teardown_group),
-	cmocka_unit_test(test_OS_MD5_File_null_path)
+        cmocka_unit_test(test_md5_file_null_path)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
