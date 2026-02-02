@@ -173,9 +173,9 @@ def parse_haproxy_helper_config(helper_config: dict) -> dict:
 
 
 def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typing.Dict:
-    """Read cluster configuration from ossec.conf.
+    """Read cluster configuration from wazuh-manager.conf.
 
-    If some fields are missing in the ossec.conf cluster configuration, they are replaced
+    If some fields are missing in the wazuh-manager.conf cluster configuration, they are replaced
     with default values.
     If there is no cluster configuration at all, the default configuration is marked as disabled.
 

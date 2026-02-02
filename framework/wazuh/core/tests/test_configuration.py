@@ -195,23 +195,23 @@ def test_get_ossec_conf():
 
     with pytest.raises(WazuhError, match=".* 1102 .*"):
         configuration.get_ossec_conf(section='noexists',
-                                     conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'))
+                                     conf_file=os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.conf'))
 
     with pytest.raises(WazuhError, match=".* 1106 .*"):
         configuration.get_ossec_conf(section='remote',
-                                     conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'))
+                                     conf_file=os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.conf'))
 
     assert configuration.get_ossec_conf(conf_file=os.path.join(
-        parent_directory, tmp_path, 'configuration/ossec.conf'))['cluster']['name'] == 'wazuh'
+        parent_directory, tmp_path, 'configuration/wazuh-manager.conf'))['cluster']['name'] == 'wazuh'
 
     assert configuration.get_ossec_conf(
         section='cluster',
         conf_file=os.path.join(parent_directory, tmp_path,
-                               'configuration/ossec.conf'))['cluster']['name'] == 'wazuh'
+                               'configuration/wazuh-manager.conf'))['cluster']['name'] == 'wazuh'
 
     assert configuration.get_ossec_conf(
         section='cluster', field='name',
-        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf')
+        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.conf')
     )['cluster']['name'] == 'wazuh'
 
 
@@ -253,7 +253,7 @@ def test_get_agent_conf_multigroup():
 def test_get_file_conf():
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'noexists')):
         with pytest.raises(WazuhError, match=".* 1710 .*"):
-            configuration.get_file_conf(filename='ossec.conf', group_id='default', type_conf='conf',
+            configuration.get_file_conf(filename='wazuh-manager.conf', group_id='default', type_conf='conf',
                                         raw=True)
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
