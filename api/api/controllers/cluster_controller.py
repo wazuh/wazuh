@@ -295,7 +295,7 @@ async def get_info_node(node_id: str, pretty: bool = False, wait_for_complete: b
 async def get_configuration_node(node_id: str, pretty: bool = False, wait_for_complete: bool = False,
                                  section: str = None, field: str = None,
                                  raw: bool = False) -> ConnexionResponse:
-    """Get a specified node's configuration (ossec.conf).
+    """Get a specified node's configuration (wazuh-manager.conf).
 
     Parameters
     ----------
@@ -859,14 +859,14 @@ async def get_node_config(node_id: str, component: str, wait_for_complete: bool 
 
 async def update_configuration(node_id: str, body: bytes, pretty: bool = False,
                                wait_for_complete: bool = False) -> ConnexionResponse:
-    """Update Wazuh configuration (ossec.conf) in node node_id.
+    """Update Wazuh configuration (wazuh-manager.conf) in node node_id.
 
     Parameters
     ----------
     node_id : str
         Node ID.
     body : bytes
-        New content for the Wazuh configuration (ossec.conf).
+        New content for the Wazuh configuration (wazuh-manager.conf).
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
