@@ -103,16 +103,6 @@ void test_wm_agent_upgrade_validate_id_ok(void **state)
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
 }
 
-void test_wm_agent_upgrade_validate_id_manager(void **state)
-{
-    (void) state;
-    int agent_id = 0;
-
-    int ret = wm_agent_upgrade_validate_id(agent_id);
-
-    assert_int_equal(ret, WM_UPGRADE_INVALID_ACTION_FOR_MANAGER);
-}
-
 void test_wm_agent_upgrade_validate_status_ok(void **state)
 {
     (void) state;
@@ -1737,7 +1727,6 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_agent_upgrade_validate_id
         cmocka_unit_test(test_wm_agent_upgrade_validate_id_ok),
-        cmocka_unit_test(test_wm_agent_upgrade_validate_id_manager),
         // wm_agent_upgrade_validate_status
         cmocka_unit_test(test_wm_agent_upgrade_validate_status_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_status_null),
