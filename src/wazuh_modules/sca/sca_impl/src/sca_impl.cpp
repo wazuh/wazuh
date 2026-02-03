@@ -65,11 +65,11 @@ SecurityConfigurationAssessment::SecurityConfigurationAssessment(std::string dbP
                                                                  std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
     : m_dBSync(
           dbSync ? std::move(dbSync)
-                 : std::make_shared<DBSync>(
-                       HostType::AGENT, DbEngineType::SQLITE3, dbPath, GetCreateStatement(), DbManagement::PERSISTENT))
+          : std::make_shared<DBSync>(
+              HostType::AGENT, DbEngineType::SQLITE3, dbPath, GetCreateStatement(), DbManagement::PERSISTENT))
     , m_syncManager(std::make_shared<SCASyncManager>(m_dBSync))
     , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
-                                            : std::make_shared<file_system::FileSystemWrapper>())
+                          : std::make_shared<file_system::FileSystemWrapper>())
 {
     LoggingHelper::getInstance().log(LOG_INFO, "SCA initialized.");
 }

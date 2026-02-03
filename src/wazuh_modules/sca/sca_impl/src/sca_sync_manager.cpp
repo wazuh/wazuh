@@ -113,6 +113,7 @@ void SCASyncManager::prepareBatchAllowedIds()
         if (returnTypeCallback == SELECTED)
         {
             const auto id = extractId(resultData);
+
             if (!id.empty())
             {
                 windowIds.insert(id);
@@ -162,32 +163,32 @@ bool SCASyncManager::shouldSyncInsert(const nlohmann::json& checkData)
         }
         else
         {
-        if (!m_dBSync)
-        {
-            LoggingHelper::getInstance().log(LOG_ERROR, "SCA sync manager: DBSync not available on insert");
-            return false;
-        }
-
-        const std::string escapedId = escapeSqlString(checkId);
-        uint64_t rowRank = 0;
-
-        auto countQuery = SelectQuery::builder()
-                          .table("sca_check")
-                          .columnList({"COUNT(*) AS count"})
-                          .rowFilter("WHERE rowid <= (SELECT rowid FROM sca_check WHERE id = '" + escapedId + "')")
-                          .build();
-
-        const auto countCallback = [&rowRank](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
-        {
-            if (returnTypeCallback == SELECTED && resultData.contains("count") && resultData["count"].is_number())
+            if (!m_dBSync)
             {
-                rowRank = resultData["count"].get<uint64_t>();
+                LoggingHelper::getInstance().log(LOG_ERROR, "SCA sync manager: DBSync not available on insert");
+                return false;
             }
-        };
 
-        m_dBSync->selectRows(countQuery.query(), countCallback);
+            const std::string escapedId = escapeSqlString(checkId);
+            uint64_t rowRank = 0;
 
-        shouldSync = (rowRank != 0 && rowRank <= m_syncLimit);
+            auto countQuery = SelectQuery::builder()
+                              .table("sca_check")
+                              .columnList({"COUNT(*) AS count"})
+                              .rowFilter("WHERE rowid <= (SELECT rowid FROM sca_check WHERE id = '" + escapedId + "')")
+                              .build();
+
+            const auto countCallback = [&rowRank](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+            {
+                if (returnTypeCallback == SELECTED && resultData.contains("count") && resultData["count"].is_number())
+                {
+                    rowRank = resultData["count"].get<uint64_t>();
+                }
+            };
+
+            m_dBSync->selectRows(countQuery.query(), countCallback);
+
+            shouldSync = (rowRank != 0 && rowRank <= m_syncLimit);
         }
     }
 
