@@ -28,7 +28,7 @@ class SCASyncManager
         explicit SCASyncManager(std::shared_ptr<IDBSync> dbSync);
 
         void initialize();
-        LimitResult updateHandshake(uint64_t syncLimit, const std::string& clusterName);
+        LimitResult updateHandshake(uint64_t syncLimit);
 
         // Precompute the first N check ids (ORDER BY rowid LIMIT N) once per batch so
         // shouldSyncInsert/shouldSyncModify avoid per-event DB queries.
@@ -55,7 +55,6 @@ class SCASyncManager
         void deferSyncFlagUpdate(const std::string& checkId, uint64_t version, int syncValue);
         void setBatchAllowedIdsLocked(std::unordered_set<std::string> windowIds);
         std::vector<nlohmann::json> selectChecks(const std::string& filter, uint32_t limit) const;
-        std::string clusterNameForLog() const;
 
         std::shared_ptr<IDBSync> m_dBSync;
         mutable std::mutex m_mutex;
@@ -67,5 +66,4 @@ class SCASyncManager
         std::unordered_set<std::string> m_batchAllowedIds;
         bool m_hasBatchAllowedIds {false};
         std::vector<PendingUpdate> m_pendingUpdates;
-        std::string m_clusterName;
 };

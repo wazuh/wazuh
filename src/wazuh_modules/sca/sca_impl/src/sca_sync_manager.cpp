@@ -49,7 +49,7 @@ void SCASyncManager::initialize()
     m_initialized = true;
 }
 
-SCASyncManager::LimitResult SCASyncManager::updateHandshake(uint64_t syncLimit, const std::string& clusterName)
+SCASyncManager::LimitResult SCASyncManager::updateHandshake(uint64_t syncLimit)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -58,11 +58,6 @@ SCASyncManager::LimitResult SCASyncManager::updateHandshake(uint64_t syncLimit, 
     m_syncLimit = syncLimit;
     m_hasBatchAllowedIds = false;
     m_batchAllowedIds.clear();
-
-    if (!clusterName.empty())
-    {
-        m_clusterName = clusterName;
-    }
 
     if (!m_initialized)
     {
@@ -266,7 +261,7 @@ bool SCASyncManager::shouldSyncModify(const nlohmann::json& checkData)
 
         LoggingHelper::getInstance().log(
             LOG_INFO,
-            "SCA sync limit promotion: promoted check " + checkId + " on modify for cluster '" + clusterNameForLog() + "'");
+            "SCA sync limit promotion: promoted check " + checkId + " on modify");
 
         return true;
     }
@@ -318,7 +313,7 @@ bool SCASyncManager::shouldSyncModify(const nlohmann::json& checkData)
 
     LoggingHelper::getInstance().log(
         LOG_INFO,
-        "SCA sync limit promotion: promoted check " + checkId + " on modify for cluster '" + clusterNameForLog() + "'");
+        "SCA sync limit promotion: promoted check " + checkId + " on modify");
 
     return true;
 }
@@ -395,7 +390,7 @@ SCASyncManager::DeleteResult SCASyncManager::handleDelete(const nlohmann::json& 
         LoggingHelper::getInstance().log(
             LOG_INFO,
             "SCA sync limit promotion: promoted " + std::to_string(result.promotedIds.size()) +
-            " check(s) for cluster '" + clusterNameForLog() + "'");
+            " check(s)");
     }
 
     return result;
@@ -474,7 +469,7 @@ SCASyncManager::LimitResult SCASyncManager::enforceLimitLocked()
     {
         LoggingHelper::getInstance().log(LOG_DEBUG,
                                          "SCA sync limit disabled; syncing " + std::to_string(m_syncedCount) +
-                                         " check(s) for cluster '" + clusterNameForLog() + "'");
+                                         " check(s)");
     }
     else
     {
@@ -482,8 +477,7 @@ SCASyncManager::LimitResult SCASyncManager::enforceLimitLocked()
             LOG_INFO,
             "SCA sync limit enforced: limit=" + std::to_string(m_syncLimit) +
             " synced=" + std::to_string(m_syncedCount) +
-            " total=" + std::to_string(m_totalCount) +
-            " cluster='" + clusterNameForLog() + "'");
+            " total=" + std::to_string(m_totalCount));
     }
 
     return result;
@@ -577,9 +571,4 @@ std::vector<nlohmann::json> SCASyncManager::selectChecks(const std::string& filt
     m_dBSync->selectRows(query.query(), callback);
 
     return rows;
-}
-
-std::string SCASyncManager::clusterNameForLog() const
-{
-    return m_clusterName.empty() ? "unknown" : m_clusterName;
 }

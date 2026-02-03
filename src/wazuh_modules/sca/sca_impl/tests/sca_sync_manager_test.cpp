@@ -109,7 +109,7 @@ TEST_F(SCASyncManagerTest, InitializeEnforcesLimitAndInsert)
     insertCheck(m_dbSync, "check-3");
 
     SCASyncManager manager(m_dbSync);
-    manager.updateHandshake(2, "cluster-a");
+    manager.updateHandshake(2);
     manager.initialize();
 
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-1"), 1);
@@ -131,7 +131,7 @@ TEST_F(SCASyncManagerTest, DeletePromotesOldestUnsynced)
     insertCheck(m_dbSync, "check-3");
 
     SCASyncManager manager(m_dbSync);
-    manager.updateHandshake(2, "cluster-a");
+    manager.updateHandshake(2);
     manager.initialize();
 
     deleteCheck(m_dbSync, "check-1");
@@ -152,7 +152,7 @@ TEST_F(SCASyncManagerTest, UnlimitedModeSyncsAllChecks)
     insertCheck(m_dbSync, "check-2");
 
     SCASyncManager manager(m_dbSync);
-    manager.updateHandshake(0, "cluster-a");
+    manager.updateHandshake(0);
     manager.initialize();
 
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-1"), 1);
@@ -172,7 +172,7 @@ TEST_F(SCASyncManagerTest, ModifyRespectsSyncedSet)
     insertCheck(m_dbSync, "check-2");
 
     SCASyncManager manager(m_dbSync);
-    manager.updateHandshake(1, "cluster-a");
+    manager.updateHandshake(1);
     manager.initialize();
 
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-1"), 1);
@@ -188,7 +188,7 @@ TEST_F(SCASyncManagerTest, ModifyPromotesWhenSpaceAvailable)
     insertCheck(m_dbSync, "check-1");
 
     SCASyncManager manager(m_dbSync);
-    manager.updateHandshake(2, "cluster-a");
+    manager.updateHandshake(2);
     manager.initialize();
 
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-1"), 1);
@@ -210,7 +210,7 @@ TEST_F(SCASyncManagerTest, UpdateHandshakeReappliesLimit)
     insertCheck(m_dbSync, "check-4");
 
     SCASyncManager manager(m_dbSync);
-    manager.updateHandshake(3, "cluster-a");
+    manager.updateHandshake(3);
     manager.initialize();
 
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-1"), 1);
@@ -218,21 +218,21 @@ TEST_F(SCASyncManagerTest, UpdateHandshakeReappliesLimit)
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-3"), 1);
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-4"), 0);
 
-    manager.updateHandshake(1, "cluster-a");
+    manager.updateHandshake(1);
 
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-1"), 1);
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-2"), 0);
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-3"), 0);
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-4"), 0);
 
-    manager.updateHandshake(3, "cluster-a");
+    manager.updateHandshake(3);
 
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-1"), 1);
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-2"), 1);
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-3"), 1);
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-4"), 0);
 
-    manager.updateHandshake(0, "cluster-a");
+    manager.updateHandshake(0);
 
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-1"), 1);
     EXPECT_EQ(getSyncFlag(m_dbSync, "check-2"), 1);
@@ -246,7 +246,7 @@ TEST_F(SCASyncManagerTest, DeleteUnsyncedCheckDoesNotPromote)
     insertCheck(m_dbSync, "check-2");
 
     SCASyncManager manager(m_dbSync);
-    manager.updateHandshake(1, "cluster-a");
+    manager.updateHandshake(1);
     manager.initialize();
 
     deleteCheck(m_dbSync, "check-2");
@@ -264,7 +264,7 @@ TEST_F(SCASyncManagerTest, DeleteAllChecksStopsPromotion)
     insertCheck(m_dbSync, "check-2");
 
     SCASyncManager manager(m_dbSync);
-    manager.updateHandshake(1, "cluster-a");
+    manager.updateHandshake(1);
     manager.initialize();
 
     deleteCheck(m_dbSync, "check-1");
@@ -286,7 +286,7 @@ TEST_F(SCASyncManagerTest, DeleteAllChecksStopsPromotion)
 TEST_F(SCASyncManagerTest, EmptyDatabaseDoesNotPromote)
 {
     SCASyncManager manager(m_dbSync);
-    manager.updateHandshake(2, "cluster-a");
+    manager.updateHandshake(2);
     manager.initialize();
 
     EXPECT_FALSE(manager.shouldSyncModify(makeCheckData("missing-check", 1, 0)));
