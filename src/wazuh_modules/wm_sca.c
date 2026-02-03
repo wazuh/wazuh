@@ -24,6 +24,9 @@
 #include "defs.h"
 #include "logging_helper.h"
 #include <limits.h>
+#ifndef WIN32
+#include <unistd.h>
+#endif
 
 #include "sca/include/sca.h"
 #include "yaml2json.h"
@@ -464,14 +467,34 @@ void * wm_sca_main(wm_sca_t * data) {
         sca_init_ptr();
     }
 
+#ifdef CLIENT
+    // On agents, document limits are owned by agentd (it receives them from the manager during handshake).
+    // SCA must not start until agentd can provide them, otherwise we may start with wrong defaults.
     if (sca_set_sync_limit_ptr)
     {
         uint64_t sync_limit = 0;
-        if (wm_sca_query_agentd_doclimits(&sync_limit))
+
+        while (!wm_sca_is_shutting_down() && !wm_sca_query_agentd_doclimits(&sync_limit))
         {
-            sca_set_sync_limit_ptr(sync_limit);
+#ifdef WIN32
+            Sleep(1000);
+#else
+            sleep(1);
+#endif
         }
+
+        if (wm_sca_is_shutting_down())
+        {
+#ifdef WIN32
+            return 0;
+#else
+            return NULL;
+#endif
+        }
+
+        sca_set_sync_limit_ptr(sync_limit);
     }
+#endif
 
     minfo("Starting SCA module...");
 
