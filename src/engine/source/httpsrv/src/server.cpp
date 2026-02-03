@@ -86,7 +86,7 @@ Server::Server(const std::string& id, size_t payloadMaxBytes)
                                     req.path,
                                     truncateBody(req.body),
                                     res.status,
-                                    truncateBody(res.body)));
+                                    res.body));
         });
 }
 

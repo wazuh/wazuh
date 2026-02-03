@@ -1642,7 +1642,7 @@ components:
       type: object
       properties:
         output:
-          type: string
+          type: object
           description: "JSON output of the event"
         asset_traces:
           type: array
