@@ -25,6 +25,7 @@ POLICY_NS = "testing"
 DECODER_TEST_NAME = "decoder/test-message/0"
 DECODER_OTHER_NAME = "decoder/other-test-message/0"
 FILTER_ALLOW_ALL_NAME = "filter/allow-all/0"
+FILTER_ALLOW_ALL_UUID = "b540db06-a761-4c02-8880-1d3e3b964063"
 
 # Valid v4 UUIDs (must match those used in steps.py)
 DECODER_TEST_UUID = "2faeea8b-672b-4b42-8f91-657d7810d636"
@@ -186,7 +187,26 @@ def build_allow_all_filter_yaml() -> str:
     """
     Minimal filter for router tests, same as before.
     """
-    return f"name: {FILTER_ALLOW_ALL_NAME}\ntype: pre-filter\nenabled: true\n"
+    return f"""\
+name: {FILTER_ALLOW_ALL_NAME}
+id: {FILTER_ALLOW_ALL_UUID}
+enabled: true
+type: pre-filter
+metadata:
+  module: wazuh
+  title: Allow all filter
+  description: Default filter to allow all events (for default ruleset)
+  compatibility: Wazuh 5.*
+  versions:
+    - Wazuh 5.*
+  author:
+    name: Wazuh, Inc.
+    url: https://wazuh.com
+    date: 2022/11/08
+  references:
+    - https://documentation.wazuh.com/
+check: exists($event.original)
+"""
 
 
 # ===================================================================

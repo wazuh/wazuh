@@ -128,6 +128,7 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
         }
 
         // Parse stage
+        if (!objDoc.empty())
         {
             const auto& [key, value] = *objDoc.begin();
             size_t keySize = strlen(syntax::asset::PARSE_KEY);
@@ -282,9 +283,8 @@ Asset AssetBuilder::operator()(const json::Json& document) const
     // Helper to find and remove optional keys from the document
     auto eraseIfExists = [&objDoc](const std::string& key)
     {
-        auto it = std::find_if(objDoc.begin(),
-                               objDoc.end(),
-                               [&key](const auto& elem) { return std::get<0>(elem) == key; });
+        auto it =
+            std::find_if(objDoc.begin(), objDoc.end(), [&key](const auto& elem) { return std::get<0>(elem) == key; });
         if (it != objDoc.end())
         {
             objDoc.erase(it);
