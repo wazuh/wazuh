@@ -10,7 +10,7 @@
 #include <thread>
 #include <vector>
 
-using namespace kvdb;
+using namespace kvdbioc;
 using ::testing::_;
 using ::testing::NiceMock;
 using ::testing::Return;
@@ -41,9 +41,10 @@ TEST_F(HandlerUnitTest, GetReturnsValidJson)
 
     auto result = mockHandler.get("user:100");
 
-    EXPECT_TRUE(result.isObject());
-    EXPECT_EQ(result.getString("/name").value(), "TestUser");
-    EXPECT_TRUE(result.getBool("/active").value());
+    EXPECT_TRUE(result.has_value());
+    EXPECT_TRUE(result->isObject());
+    EXPECT_EQ(result->getString("/name").value(), "TestUser");
+    EXPECT_TRUE(result->getBool("/active").value());
 }
 
 TEST_F(HandlerUnitTest, GetReturnsErrorForMissingKey)
@@ -51,11 +52,7 @@ TEST_F(HandlerUnitTest, GetReturnsErrorForMissingKey)
     EXPECT_CALL(mockHandler, get("missing:key"))
         .WillOnce(::testing::Throw(std::runtime_error("Key 'missing:key' not found")));
 
-    EXPECT_THROW(
-        {
-            auto result = mockHandler.get("missing:key");
-        },
-        std::runtime_error);
+    EXPECT_THROW({ auto result = mockHandler.get("missing:key"); }, std::runtime_error);
 }
 
 TEST_F(HandlerUnitTest, GetCanReturnDifferentValuesForDifferentKeys)
@@ -69,8 +66,8 @@ TEST_F(HandlerUnitTest, GetCanReturnDifferentValuesForDifferentKeys)
     auto result1 = mockHandler.get("user:1");
     auto result2 = mockHandler.get("user:2");
 
-    EXPECT_EQ(result1.getString("/name").value(), "Alice");
-    EXPECT_EQ(result2.getString("/name").value(), "Bob");
+    EXPECT_EQ(result1->getString("/name").value(), "Alice");
+    EXPECT_EQ(result2->getString("/name").value(), "Bob");
 }
 
 TEST_F(HandlerUnitTest, GetCalledMultipleTimesWithSameKey)
@@ -82,7 +79,8 @@ TEST_F(HandlerUnitTest, GetCalledMultipleTimesWithSameKey)
     for (int i = 0; i < 3; ++i)
     {
         auto result = mockHandler.get("config");
-        EXPECT_TRUE(result.isObject());
+        EXPECT_TRUE(result.has_value());
+        EXPECT_TRUE(result->isObject());
     }
 }
 
@@ -111,21 +109,17 @@ TEST_F(HandlerUnitTest, GetReturnsComplexNestedJson)
 
     auto result = mockHandler.get("config:app");
 
-    EXPECT_EQ(result.getString("/settings/database/host").value(), "localhost");
-    EXPECT_EQ(result.getInt("/settings/database/port").value(), 5432);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(result->getString("/settings/database/host").value(), "localhost");
+    EXPECT_EQ(result->getInt("/settings/database/port").value(), 5432);
 }
 
 // Test error scenarios
 TEST_F(HandlerUnitTest, GetReturnsErrorForDatabaseError)
 {
-    EXPECT_CALL(mockHandler, get("any:key"))
-        .WillOnce(::testing::Throw(std::runtime_error("RocksDB error: IO Error")));
+    EXPECT_CALL(mockHandler, get("any:key")).WillOnce(::testing::Throw(std::runtime_error("RocksDB error: IO Error")));
 
-    EXPECT_THROW(
-        {
-            auto result = mockHandler.get("any:key");
-        },
-        std::runtime_error);
+    EXPECT_THROW({ auto result = mockHandler.get("any:key"); }, std::runtime_error);
 }
 
 TEST_F(HandlerUnitTest, GetReturnsErrorForNoInstancePublished)
@@ -133,11 +127,7 @@ TEST_F(HandlerUnitTest, GetReturnsErrorForNoInstancePublished)
     EXPECT_CALL(mockHandler, get("key"))
         .WillOnce(::testing::Throw(std::runtime_error("KVDB 'testdb': no instance published")));
 
-    EXPECT_THROW(
-        {
-            auto result = mockHandler.get("key");
-        },
-        std::runtime_error);
+    EXPECT_THROW({ auto result = mockHandler.get("key"); }, std::runtime_error);
 }
 
 // Strict mock test - ensures only expected calls are made
@@ -190,7 +180,7 @@ TEST_F(HandlerMultiThreadTest, ConcurrentReadsSameKey)
                     try
                     {
                         auto result = mockHandler.get("user:100");
-                        if (result.getString("/name").value() == "TestUser")
+                        if (result.has_value() && result->getString("/name").value() == "TestUser")
                         {
                             successCount++;
                         }
@@ -248,7 +238,7 @@ TEST_F(HandlerMultiThreadTest, ConcurrentReadsDifferentKeys)
                         auto result = mockHandler.get(key);
                         totalReads++;
 
-                        if (result.getString("/name").value() != expectedName)
+                        if (!result.has_value() || result->getString("/name").value() != expectedName)
                         {
                             std::lock_guard<std::mutex> lock(resultsMutex);
                             threadResults[threadId] = false;
@@ -284,8 +274,7 @@ TEST_F(HandlerMultiThreadTest, ConcurrentReadsWithErrors)
 
     EXPECT_CALL(mockHandler, get("valid:key")).WillRepeatedly(Return(successData));
 
-    EXPECT_CALL(mockHandler, get("invalid:key"))
-        .WillRepeatedly(::testing::Throw(std::runtime_error("Key not found")));
+    EXPECT_CALL(mockHandler, get("invalid:key")).WillRepeatedly(::testing::Throw(std::runtime_error("Key not found")));
 
     std::vector<std::thread> threads;
     std::atomic<int> successReads {0};
@@ -449,9 +438,9 @@ TEST_F(HandlerMultiThreadTest, ConcurrentComplexJsonReads)
                         auto result = mockHandler.get("config:app");
 
                         // Validate different parts of the JSON
-                        if (result.getString("/settings/database/host").value() != "localhost"
-                            || result.getInt("/settings/database/port").value() != 5432
-                            || result.getInt("/counters/requests").value() != 12345)
+                        if (!result.has_value() || result->getString("/settings/database/host").value() != "localhost"
+                            || result->getInt("/settings/database/port").value() != 5432
+                            || result->getInt("/counters/requests").value() != 12345)
                         {
                             validationErrors++;
                         }

@@ -1,57 +1,221 @@
 #include <chrono>
 #include <stdexcept>
+#include <thread>
 
 #include <fmt/format.h>
+#include <rocksdb/convenience.h>
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
 
 #include <base/error.hpp>
+#include <base/json.hpp>
+#include <base/logging.hpp>
+#include <base/name.hpp>
+#include <store/istore.hpp>
 
 #include <kvdbioc/dbHandle.hpp>
 #include <kvdbioc/dbInstance.hpp>
 #include <kvdbioc/manager.hpp>
 
-namespace kvdb
+namespace
 {
 
-KVDBManager::KVDBManager(std::filesystem::path rootDir)
+const base::Name KVDB_STORE_NAME {"kvdb/status/0"}; ///< Store document name for KVDB state
+
+/**
+ * @brief Represents the persisted state of a KVDB instance
+ */
+class DBState
+{
+private:
+    std::string m_name;                ///< DB name
+    std::string m_currentInstancePath; ///< Path to current active instance
+    std::int64_t m_created;            ///< Creation timestamp (unix time)
+
+    static constexpr std::string_view JPATH_NAME = "/name";                   ///< JSON path for DB name
+    static constexpr std::string_view JPATH_INSTANCE_PATH = "/instance_path"; ///< JSON path for instance path
+    static constexpr std::string_view JPATH_CREATED = "/created";             ///< JSON path for created timestamp
+
+public:
+    DBState() = delete;
+    explicit DBState(std::string_view name)
+        : m_name(name)
+        , m_currentInstancePath()
+        , m_created(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()))
+    {
+    }
+
+    DBState(std::string_view name, std::string_view instancePath, std::int64_t created)
+        : m_name(name)
+        , m_currentInstancePath(instancePath)
+        , m_created(created)
+    {
+    }
+
+    /* Getters and Setters */
+    const std::string& getName() const { return m_name; }
+    const std::string& getInstancePath() const { return m_currentInstancePath; }
+    std::int64_t getCreated() const { return m_created; }
+    void setInstancePath(std::string_view path) { m_currentInstancePath = path; }
+    void updateCreated() { m_created = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()); }
+    bool hasInstance() const { return !m_currentInstancePath.empty(); }
+
+    /**
+     * @brief Serialize the DBState to a JSON object
+     */
+    json::Json toJson() const
+    {
+        json::Json j {};
+        j.setString(m_name, JPATH_NAME);
+        j.setString(m_currentInstancePath, JPATH_INSTANCE_PATH);
+        j.setInt64(m_created, JPATH_CREATED);
+        return j;
+    }
+
+    /**
+     * @brief Deserialize a DBState from a JSON object
+     */
+    static DBState fromJson(const json::Json& j)
+    {
+        auto optName = j.getString(JPATH_NAME);
+        if (!optName.has_value() || optName->empty())
+        {
+            throw std::runtime_error("DBState::fromJson: Missing/empty name field");
+        }
+
+        auto optPath = j.getString(JPATH_INSTANCE_PATH);
+        if (!optPath.has_value())
+        {
+            throw std::runtime_error("DBState::fromJson: Missing instance_path field");
+        }
+
+        auto optCreated = j.getInt64(JPATH_CREATED);
+        if (!optCreated.has_value())
+        {
+            throw std::runtime_error("DBState::fromJson: Missing created field");
+        }
+
+        return {*optName, *optPath, *optCreated};
+    }
+};
+
+} // anonymous namespace
+
+namespace kvdbioc
+{
+
+KVDBManager::KVDBManager(std::filesystem::path rootDir, std::shared_ptr<store::IStore> storePtr)
     : m_root(std::move(rootDir))
+    , m_store(std::move(storePtr))
 {
-}
+    if (!m_store)
+    {
+        throw std::runtime_error("KVDBManager: store pointer cannot be null");
+    }
 
-KVDBManager::~KVDBManager() = default;
+    // Create root directory if it doesn't exist
+    std::error_code ec;
+    std::filesystem::create_directories(m_root, ec);
+    if (ec)
+    {
+        throw std::runtime_error(fmt::format("Failed to create KVDB root directory: {}", ec.message()));
+    }
+
+    if (!m_store->existsDoc(KVDB_STORE_NAME))
+    {
+        return;
+    }
+
+    // Load persisted state if available
+    loadStateFromStore();
+}
 
 std::filesystem::path KVDBManager::makeNextInstancePath(std::string_view name)
 {
-    // Use timestamp for unique version directory
+    // Use 4-char hex hash derived from current timestamp for uniqueness
     auto now = std::chrono::system_clock::now();
     auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
 
-    char buf[32];
-    std::snprintf(buf, sizeof(buf), "v-%019lld", static_cast<long long>(nanos));
+    // Generate 4-char hex hash from timestamp
+    uint16_t hash = static_cast<uint16_t>(nanos ^ (nanos >> 16) ^ (nanos >> 32) ^ (nanos >> 48));
+    char buf[5];
+    std::snprintf(buf, sizeof(buf), "%04x", hash);
     return m_root / std::string(name) / buf;
+}
+
+std::shared_ptr<DbHandle> KVDBManager::getOrCreateHandle(std::string_view dbName, bool createIfMissing)
+{
+    const std::string key(dbName);
+    std::shared_ptr<DbHandle> handle;
+
+    // Try read-only access first (concurrent with other readers)
+    {
+        std::shared_lock<std::shared_mutex> lk(m_registryMutex);
+        auto it = m_handles.find(key);
+        if (it != m_handles.end())
+        {
+            return it->second;
+        }
+    }
+
+    // Not found - need exclusive lock to create
+    if (createIfMissing)
+    {
+        std::unique_lock<std::shared_mutex> lk(m_registryMutex);
+        // Double-check: another thread might have created it
+        auto it = m_handles.find(key);
+        if (it != m_handles.end())
+        {
+            return it->second;
+        }
+
+        // Create new handle
+        handle = std::make_shared<DbHandle>(std::string(dbName));
+        m_handles.emplace(key, handle);
+        return handle;
+    }
+
+    return nullptr;
 }
 
 void KVDBManager::add(std::string_view name)
 {
     const std::string key(name);
-    std::shared_ptr<DbHandle> handle;
 
-    // Get or create handle (only need manager lock for registry access)
+    // Check if handle already exists - add() is NOT idempotent
     {
-        std::unique_lock<std::shared_mutex> lk(m_mutex);
+        std::shared_lock<std::shared_mutex> lk(m_registryMutex);
         auto it = m_handles.find(key);
         if (it != m_handles.end())
         {
-            handle = it->second;
-        }
-        else
-        {
-            handle = std::make_shared<DbHandle>(key);
-            m_handles.emplace(key, handle);
+            throw std::runtime_error(fmt::format("KVDB '{}': already exists, cannot add again", key));
         }
     }
-    // Manager lock released - other operations can proceed
+
+    // Create new handle (exclusive lock)
+    std::shared_ptr<DbHandle> handle;
+    {
+        std::unique_lock<std::shared_mutex> lk(m_registryMutex);
+        // Double-check: another thread might have created it
+        auto it = m_handles.find(key);
+        if (it != m_handles.end())
+        {
+            throw std::runtime_error(fmt::format("KVDB '{}': already exists, cannot add again", key));
+        }
+
+        handle = std::make_shared<DbHandle>(std::string(name));
+        m_handles.emplace(key, handle);
+    }
+
+    // Lock structural operations for this DB (serializes add/swap/delete)
+    std::lock_guard<std::mutex> structuralLock(handle->structuralMutex());
+
+    // Check state - if DELETING, reject (shouldn't happen with new handle)
+    auto currentState = handle->state();
+    if (currentState == DbState::DELETING)
+    {
+        throw std::runtime_error(fmt::format("KVDB '{}': cannot add while being deleted", key));
+    }
 
     // Create path for new version
     const auto instancePath = makeNextInstancePath(name);
@@ -64,7 +228,7 @@ void KVDBManager::add(std::string_view name)
         throw std::runtime_error(fmt::format("KVDB '{}': failed to create directory: {}", key, ec.message()));
     }
 
-    // Open new RocksDB for writing
+    // Open new RocksDB in READ/WRITE mode
     rocksdb::Options options;
     options.create_if_missing = true;
     options.error_if_exists = true;
@@ -76,55 +240,89 @@ void KVDBManager::add(std::string_view name)
         throw std::runtime_error(fmt::format("KVDB '{}': failed to create RocksDB: {}", key, status.ToString()));
     }
 
-    // Store build state in handle (handle's mutex protects this)
-    BuildState buildState;
-    buildState.dbPath = instancePath;
-    buildState.db.reset(rawDb);
+    // Create instance and publish directly to m_current
+    // DB is created in r/w mode - immediately queryable and writable
+    auto newInstance = std::make_shared<DbInstance>(instancePath.string(), rawDb);
+    handle->exchange(newInstance);
 
-    // startBuild() throws if build already in progress (thread-safe)
-    handle->startBuild(std::move(buildState));
-}
-
-std::shared_ptr<IReadOnlyKVDBHandler> KVDBManager::openReadOnly(std::string_view name)
-{
-    const std::string key(name);
-
-    // Try read-only access first (fast path - doesn't block other readers)
+    // Persist state to store
+    try
     {
-        std::shared_lock<std::shared_mutex> lk(m_mutex);
-        auto it = m_handles.find(key);
-        if (it != m_handles.end())
-        {
-            return it->second;
-        }
+        saveStateToStore();
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("Failed to persist state after add: {}.", e.what());
     }
 
-    // Need to create new handle (slow path - exclusive lock)
-    {
-        std::unique_lock<std::shared_mutex> lk(m_mutex);
-        // Double-check: another thread might have created it
-        auto it = m_handles.find(key);
-        if (it != m_handles.end())
-        {
-            return it->second;
-        }
+    // Opportunistic cleanup of retired instances
+    tryCleanRetired();
+}
 
-        auto h = std::make_shared<DbHandle>(std::string(name));
-        m_handles.emplace(key, h);
-        // Return the shared DbHandle directly
-        // All handlers for same DB share the same DbHandle for hot-swap to work atomically
-        return h;
+std::optional<json::Json> KVDBManager::get(std::string_view dbName, std::string_view key) const
+{
+    const std::string db(dbName);
+
+    // Get handle from registry (only need shared lock)
+    std::shared_ptr<DbHandle> handle;
+    {
+        std::shared_lock<std::shared_mutex> lk(m_registryMutex);
+        auto it = m_handles.find(db);
+        if (it == m_handles.end())
+        {
+            throw std::runtime_error(fmt::format("KVDB '{}': not found, call add() first", db));
+        }
+        handle = it->second;
+    }
+    // Registry lock released - handle kept alive via shared_ptr
+
+    // Delegate to handle (lock-free read via atomic load)
+    try
+    {
+        return handle->get(key);
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format("KVDB '{}': {}", db, e.what()));
+    }
+}
+
+std::vector<std::optional<json::Json>> KVDBManager::multiGet(std::string_view dbName,
+                                                             const std::vector<std::string_view>& keys) const
+{
+    const std::string db(dbName);
+
+    // Get handle from registry
+    std::shared_ptr<DbHandle> handle;
+    {
+        std::shared_lock<std::shared_mutex> lk(m_registryMutex);
+        auto it = m_handles.find(db);
+        if (it == m_handles.end())
+        {
+            throw std::runtime_error(fmt::format("KVDB '{}': not found, call add() first", db));
+        }
+        handle = it->second;
+    }
+
+    // Delegate to handle (captures instance ONCE → consistent reads)
+    try
+    {
+        return handle->multiGet(keys);
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format("KVDB '{}': {}", db, e.what()));
     }
 }
 
 void KVDBManager::put(std::string_view name, std::string_view key, std::string_view value)
 {
     const std::string dbKey(name);
-    std::shared_ptr<DbHandle> handle;
 
-    // Get handle from registry (only need manager lock for this)
+    // Get handle from registry
+    std::shared_ptr<DbHandle> handle;
     {
-        std::shared_lock<std::shared_mutex> lk(m_mutex);
+        std::shared_lock<std::shared_mutex> lk(m_registryMutex);
         auto it = m_handles.find(dbKey);
         if (it == m_handles.end())
         {
@@ -132,9 +330,19 @@ void KVDBManager::put(std::string_view name, std::string_view key, std::string_v
         }
         handle = it->second;
     }
-    // Manager lock released
 
-    // putValue() is thread-safe and handles locking internally
+    // Lock structural mutex to serialize with swap
+    // Design decision: serialize puts with swap to avoid "write lost" during swap
+    std::lock_guard<std::mutex> structuralLock(handle->structuralMutex());
+
+    // Check state
+    auto currentState = handle->state();
+    if (currentState == DbState::DELETING)
+    {
+        throw std::runtime_error(fmt::format("KVDB '{}': cannot put while being deleted", dbKey));
+    }
+
+    // Perform write
     try
     {
         handle->putValue(key, value);
@@ -145,86 +353,296 @@ void KVDBManager::put(std::string_view name, std::string_view key, std::string_v
     }
 }
 
-void KVDBManager::hotSwap(std::string_view name)
+void KVDBManager::hotSwap(std::string_view sourceDb, std::string_view targetDb)
 {
-    const std::string key(name);
-    std::shared_ptr<DbHandle> handle;
+    const std::string sourceKey(sourceDb);
+    const std::string targetKey(targetDb);
 
-    // Get handle from registry (only need manager lock for this)
+    // Prevent swapping to itself
+    if (sourceKey == targetKey)
     {
-        std::shared_lock<std::shared_mutex> lk(m_mutex);
-        auto it = m_handles.find(key);
-        if (it == m_handles.end())
-        {
-            throw std::runtime_error(fmt::format("KVDB '{}': not found, call add() first", key));
-        }
-        handle = it->second;
+        throw std::runtime_error(fmt::format("KVDB '{}': cannot hot-swap to itself", sourceKey));
     }
-    // Manager lock released
 
-    // extractBuild() throws if no build in progress (thread-safe via handle's mutex)
-    BuildState buildState = handle->extractBuild();
-    buildState.db.reset();
-    // TODO: Commented section for viewing RC due to rocksdb threads that have not yet been closed
-    // Properly close the writable DB:
-    // 1. Flush all memtables to disk
-    // 2. Wait for background jobs to complete
-    // 3. Then close the DB handle
-    // if (buildState.db)
-    // {
-    //     rocksdb::FlushOptions flush_opts;
-    //     flush_opts.wait = true;  // Wait for flush to complete
-    //     auto status = buildState.db->Flush(flush_opts);
-    //     if (!status.ok())
-    //     {
-    //         // Log warning but continue - data should be recoverable
-    //     }
+    // Get both handles from registry
+    std::shared_ptr<DbHandle> targetHandle;
+    std::shared_ptr<DbHandle> sourceHandle;
+    {
+        std::shared_lock<std::shared_mutex> lk(m_registryMutex);
 
-    //     // Close DB (this waits for background jobs to complete)
-    //     buildState.db.reset();
-    // }
+        auto targetIt = m_handles.find(targetKey);
+        if (targetIt == m_handles.end())
+        {
+            throw std::runtime_error(fmt::format("KVDB target '{}': not found, call add() first", targetKey));
+        }
+        targetHandle = targetIt->second;
 
-    // Open as read-only DbInstance
-    auto instance = std::make_shared<const DbInstance>(buildState.dbPath);
+        auto sourceIt = m_handles.find(sourceKey);
+        if (sourceIt == m_handles.end())
+        {
+            throw std::runtime_error(fmt::format("KVDB source '{}': not found, call add() first", sourceKey));
+        }
+        sourceHandle = sourceIt->second;
+    }
 
-    // Perform hot-swap (atomic, doesn't block reads)
-    handle->store(instance);
+    // Lock BOTH structural mutexes atomically to avoid deadlock
+    std::unique_lock<std::mutex> targetLock(targetHandle->structuralMutex(), std::defer_lock);
+    std::unique_lock<std::mutex> sourceLock(sourceHandle->structuralMutex(), std::defer_lock);
+    std::lock(targetLock, sourceLock);
+
+    // Validate states
+    if (targetHandle->state() == DbState::DELETING)
+    {
+        throw std::runtime_error(fmt::format("KVDB target '{}': cannot swap, database is being deleted", targetKey));
+    }
+    if (sourceHandle->state() == DbState::DELETING)
+    {
+        throw std::runtime_error(fmt::format("KVDB source '{}': cannot swap, database is being deleted", sourceKey));
+    }
+
+    // Source must have an instance
+    if (!sourceHandle->hasInstance())
+    {
+        throw std::runtime_error(fmt::format("KVDB source '{}': no instance available for hot-swap", sourceKey));
+    }
+
+    // HOT-SWAP STRATEGY (zero-copy):
+    // 1. Transfer instance ownership from source to target
+    // 2. Directory stays at its original physical location (no move/copy)
+    // 3. Target now owns and serves from source's directory
+    // 4. Retire old target instance
+    // This avoids filesystem operations and is instantaneous
+
+    // Step 1: Atomically transfer instance from source to target
+    auto sourceInstance = sourceHandle->exchange(nullptr);
+    auto oldTargetInstance = targetHandle->exchange(sourceInstance);
+
+    // Step 2: Enqueue old target instance for safe deletion
+    // Capture path before moving the instance
+    if (oldTargetInstance)
+    {
+        auto oldPath = oldTargetInstance->getPath();
+        enqueueRetired(std::move(oldTargetInstance), std::move(oldPath));
+        // oldTargetInstance is now null, our reference is released
+        // GC will clean when all readers finish
+    }
+
+    // Remove source from registry since it no longer has an instance
+    {
+        std::unique_lock<std::shared_mutex> lk(m_registryMutex);
+        m_handles.erase(sourceKey);
+    }
+
+    // Persist state
+    try
+    {
+        saveStateToStore();
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("Failed to persist state after hot-swap: {}.", e.what());
+    }
+
+    // Opportunistic cleanup of retired instances
+    tryCleanRetired();
 }
 
 void KVDBManager::remove(std::string_view name)
 {
+    const std::string key(name);
     std::shared_ptr<DbHandle> handle;
+
+    // Remove from registry (exclusive lock)
     {
-        std::unique_lock<std::shared_mutex> lk(m_mutex);
-        auto it = m_handles.find(std::string(name));
+        std::unique_lock<std::shared_mutex> lk(m_registryMutex);
+        auto it = m_handles.find(key);
         if (it == m_handles.end())
         {
-            throw std::runtime_error(fmt::format("KVDB '{}': not found", std::string(name)));
+            throw std::runtime_error(fmt::format("KVDB '{}': not found", key));
         }
         handle = it->second;
 
-        // Remove from registry first
+        // Remove from registry immediately (new operations will fail)
         m_handles.erase(it);
     }
+    // Registry lock released
 
-    // If someone else holds the handle (handlers), forbid delete.
-    // After removing from map, use_count == 1 means only our local copy exists (no handlers)
-    // use_count > 1 means at least one read-only handler still holds a reference
-    if (handle.use_count() > 1)
+    // Lock handle's structural mutex (serialize with swap/add)
+    std::lock_guard<std::mutex> structuralLock(handle->structuralMutex());
+
+    // Try to transition to DELETING state
+    if (!handle->tryEnterDeleting())
     {
-        // Restore the handle to the map since we can't delete
-        std::unique_lock<std::shared_mutex> lk(m_mutex);
-        m_handles[std::string(name)] = handle;
-        throw std::runtime_error(fmt::format("KVDB '{}': cannot delete while in use", std::string(name)));
+        throw std::runtime_error(fmt::format("KVDB '{}': already being deleted", key));
     }
 
-    // Remove on-disk directory (best effort)
-    std::error_code ec;
-    std::filesystem::remove_all(m_root / std::string(name), ec);
-    if (ec)
+    // Phase 1: Unpublish instance
+    auto oldInstance = handle->exchange(nullptr);
+
+    // Phase 2: Enqueue for safe deletion
+    if (oldInstance)
     {
-        throw std::runtime_error(fmt::format("KVDB '{}': delete failed: {}", std::string(name), ec.message()));
+        enqueueRetired(oldInstance, oldInstance->getPath());
+    }
+
+    // Persist state to store
+    try
+    {
+        saveStateToStore();
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("Failed to persist state after removal: {}.", e.what());
+    }
+
+    // Opportunistic cleanup of retired instances
+    tryCleanRetired();
+
+    // Note: handle will be destroyed when this function returns (last shared_ptr)
+    // Retired instances will be cleaned opportunistically in future operations
+}
+
+// === Retired Queue (Opportunistic Cleanup) ===
+
+void KVDBManager::enqueueRetired(std::shared_ptr<const DbInstance> instance, std::filesystem::path path)
+{
+    // Mark this instance for deletion when destroyed
+    const_cast<DbInstance*>(instance.get())->markForDeletion();
+    
+    std::lock_guard<std::mutex> lk(m_retiredMutex);
+    m_retiredQueue.push_back({std::move(instance), std::move(path)});
+    // Note: Will be cleaned opportunistically during next structural operation
+}
+
+size_t KVDBManager::tryCleanRetired()
+{
+    std::lock_guard<std::mutex> lk(m_retiredMutex);
+
+    size_t cleaned = 0;
+    auto it = m_retiredQueue.begin();
+
+    while (it != m_retiredQueue.end())
+    {
+        // Check if only we hold the reference (use_count == 1)
+        if (it->instance.use_count() == 1)
+        {
+            // Safe to delete: no readers remain
+            // Destructor will close DB and delete directory
+            it->instance.reset();
+
+            // Remove from queue
+            it = m_retiredQueue.erase(it);
+            ++cleaned;
+        }
+        else
+        {
+            // Still in use by readers, skip for now
+            ++it;
+        }
+    }
+
+    return cleaned;
+}
+
+// === Persistence ===
+
+void KVDBManager::loadStateFromStore()
+{
+    try
+    {
+        auto optDoc = m_store->readDoc(KVDB_STORE_NAME);
+        if (base::isError(optDoc))
+        {
+            throw std::runtime_error(
+                fmt::format("Failed to read KVDB state from store: {}", base::getError(optDoc).message));
+        }
+
+        const auto& j = base::getResponse(optDoc);
+        auto optArray = j.getArray();
+        if (!optArray.has_value())
+        {
+            throw std::runtime_error("Invalid KVDB state: expected JSON array");
+        }
+
+        for (const auto& jState : *optArray)
+        {
+            auto dbState = DBState::fromJson(jState);
+
+            try
+            {
+                auto handle = std::make_shared<DbHandle>(dbState.getName());
+
+                // Convert relative path to absolute
+                auto absPath = m_root / dbState.getInstancePath();
+
+                // Load instance if it exists on disk
+                if (dbState.hasInstance() && std::filesystem::exists(absPath))
+                {
+                    // Open DB in READ/WRITE mode
+                    rocksdb::DB* rawDb = nullptr;
+                    auto status = rocksdb::DB::Open(rocksdb::Options {}, absPath.string(), &rawDb);
+                    if (status.ok())
+                    {
+                        auto instance = std::make_shared<DbInstance>(absPath.string(), rawDb);
+                        handle->exchange(instance);
+                    }
+                    else
+                    {
+                        LOG_WARNING("Failed to open DB '{}': {}.",
+                                    dbState.getName(),
+                                    status.ToString());
+                    }
+                }
+
+                // Add to registry
+                m_handles.emplace(dbState.getName(), handle);
+            }
+            catch (const std::exception& e)
+            {
+                LOG_WARNING("Failed to restore DB '{}' from '{}': {}.",
+                            dbState.getName(),
+                            dbState.getInstancePath(),
+                            e.what());
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("Failed to load persisted state: {}. Starting fresh.", e.what());
     }
 }
 
-} // namespace kvdb
+void KVDBManager::saveStateToStore()
+{
+    json::Json j {};
+    j.setArray();
+
+    {
+        std::shared_lock<std::shared_mutex> lk(m_registryMutex);
+        for (const auto& [name, handle] : m_handles)
+        {
+            DBState dbState(name);
+
+            if (handle->hasInstance())
+            {
+                auto instance = handle->load();
+                if (instance)
+                {
+                    auto absPath = std::filesystem::path(instance->path());
+                    auto relPath = std::filesystem::relative(absPath, m_root);
+                    dbState.setInstancePath(relPath.string());
+                }
+            }
+
+            dbState.updateCreated();
+            j.appendJson(dbState.toJson());
+        }
+    }
+
+    if (auto optErr = m_store->upsertDoc(KVDB_STORE_NAME, j); base::isError(optErr))
+    {
+        throw std::runtime_error(fmt::format("Failed to save KVDB state to store: {}", base::getError(optErr).message));
+    }
+}
+
+} // namespace kvdbioc

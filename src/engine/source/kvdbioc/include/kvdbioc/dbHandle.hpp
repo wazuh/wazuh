@@ -12,94 +12,149 @@
 #include <rocksdb/db.h>
 
 #include <kvdbioc/iReadOnlyHandler.hpp>
+#include <kvdbioc/types.hpp>
 
-namespace kvdb
+namespace kvdbioc
 {
 class DbInstance;
-
-struct BuildState
-{
-    std::filesystem::path dbPath;
-    std::unique_ptr<rocksdb::DB> db;
-};
 
 /**
  * Stable indirection point for hot swap (RCU-like).
  * Implements IReadOnlyKVDBHandler directly.
- * Also holds optional build state during add->put->hotSwap cycle.
- * C++17: use atomic_load/atomic_store free functions on shared_ptr storage.
+ *
+ * Concurrency Model:
+ * - Readers: lock-free atomic load of m_current (never block)
+ * - Structural ops (swap/delete/build): serialized via m_structuralMutex
+ * - State transitions: protected by m_structuralMutex
+ * - Lifecycle: shared_ptr ensures no UAF (use-after-free)
+ *
+ * Key Design Principles:
+ * 1. Readers never take m_structuralMutex → wait-free reads
+ * 2. atomic load/store for m_current → RCU-like publication
+ * 3. State machine prevents conflicting operations
+ * 4. Old instances auto-delete when last reader releases shared_ptr
  */
 class DbHandle : public IReadOnlyKVDBHandler
 {
 public:
     explicit DbHandle(DbName name)
         : m_name(std::move(name))
+        , m_state(DbState::READY)
     {
     }
 
-    // IReadOnlyKVDBHandler interface
+    // === IReadOnlyKVDBHandler interface ===
+
+    /**
+     * @brief Get the database name this handle is bound to.
+     * @return Reference to the database name.
+     */
     const DbName& name() const noexcept override { return m_name; }
 
-    json::Json get(std::string_view key) const override;
+    /**
+     * @brief Get a single value from the database.
+     * @param key Key to retrieve
+     * @return Optional JSON value if key exists, std::nullopt otherwise
+     * @throws std::runtime_error if no instance available or on read errors
+     */
+    std::optional<json::Json> get(std::string_view key) const override;
 
-    std::shared_ptr<const DbInstance> load() const noexcept override { return std::atomic_load(&m_current); }
+    /**
+     * @brief Get multiple values from the database in a single operation.
+     * @param keys Vector of keys to retrieve
+     * @return Vector of optional JSON values, one per key
+     * @throws std::runtime_error if no instance available or on read errors
+     */
+    std::vector<std::optional<json::Json>> multiGet(const std::vector<std::string_view>& keys) const override;
 
-    void store(std::shared_ptr<const DbInstance> next) noexcept override { std::atomic_store(&m_current, next); }
-
+    /**
+     * @brief Check if this handle has an active database instance.
+     * @return true if instance is loaded, false otherwise
+     */
     bool hasInstance() const noexcept override { return load() != nullptr; }
 
-    // Build state management (thread-safe, internal mutex)
-    // These methods are safe to call concurrently
+    // === Lifecycle Management (RCU-like, lock-free for readers) ===
 
     /**
-     * @brief Check if there is a build in progress.
-     * @return true if a build is currently in progress, false otherwise.
-     * @note Thread-safe.
+     * @brief Atomically load current published instance (lock-free).
+     * @return Shared pointer to current instance (nullptr if unpublished).
+     * @note Thread-safe. Readers use this exclusively (no locks).
      */
-    bool hasBuild() const;
+    std::shared_ptr<DbInstance> load() const noexcept
+    {
+        return std::atomic_load_explicit(&m_current, std::memory_order_acquire);
+    }
 
     /**
-     * @brief Get reference to the current build state.
-     * @return Reference to the BuildState.
-     * @throws std::runtime_error if no build is in progress.
-     * @note Thread-safe. Caller must hold the reference while using it.
+     * @brief Get instance (for hotSwap to copy).
+     * @return Current instance.
+     * @note Must be called under m_structuralMutex.
      */
-    BuildState& getBuild();
+    std::shared_ptr<DbInstance> getInstance() const noexcept { return load(); }
 
     /**
-     * @brief Start a new build process.
-     * @param state The build state containing DB handle and path.
-     * @throws std::runtime_error if a build is already in progress.
-     * @note Thread-safe.
+     * @brief Atomically publish new instance (RCU swap).
+     * @param next New instance to publish (can be nullptr to unpublish).
+     * @return Previous instance (for retirement/cleanup).
+     * @note Must be called under m_structuralMutex.
+     * @note Old instance auto-deletes when last reader releases it.
      */
-    void startBuild(BuildState state);
+    std::shared_ptr<DbInstance> exchange(std::shared_ptr<DbInstance> next) noexcept
+    {
+        return std::atomic_exchange_explicit(&m_current, next, std::memory_order_acq_rel);
+    }
+
+    // === State Machine (protected by structural mutex) ===
 
     /**
-     * @brief Extract the build state, marking build as complete.
-     * @return The extracted BuildState.
-     * @throws std::runtime_error if no build is in progress.
-     * @note Thread-safe. After extraction, no build is in progress.
+     * @brief Get current state.
+     * @note Not thread-safe alone; use under m_structuralMutex for consistency.
      */
-    BuildState extractBuild();
+    DbState state() const noexcept { return m_state.load(std::memory_order_acquire); }
 
     /**
-     * @brief Write a key-value pair to the database being built.
+     * @brief Mark as DELETING (from READY).
+     * @return true if transition successful, false if already DELETING.
+     * @note Must be called under m_structuralMutex.
+     */
+    bool tryEnterDeleting() noexcept
+    {
+        DbState expected = DbState::READY;
+        return m_state.compare_exchange_strong(expected, DbState::DELETING, std::memory_order_acq_rel);
+    }
+
+    /**
+     * @brief Write a key-value pair to the database.
      * @param key The key to write.
      * @param value The value to write.
-     * @throws std::runtime_error if no build is in progress or write fails.
-     * @note Thread-safe. Serializes concurrent writes to RocksDB.
+     * @throws std::runtime_error if no instance available or write fails.
+     * @note Thread-safe. DB is open in r/w mode.
      */
     void putValue(std::string_view key, std::string_view value);
 
+    // === Structural Operations Mutex (for Manager to use) ===
+
+    /**
+     * @brief Get mutex for serializing structural operations (add/swap/delete).
+     * @return Reference to the per-DB structural mutex.
+     * @note Manager uses this to serialize swap vs swap, delete vs add, etc.
+     */
+    std::mutex& structuralMutex() noexcept { return m_structuralMutex; }
+
 private:
     DbName m_name;
-    // Read-only access: lock-free atomic operations
-    std::shared_ptr<const DbInstance> m_current;
-    // Build state: protected by mutex (doesn't affect reads)
-    mutable std::mutex m_buildMutex;
-    std::optional<BuildState> m_buildState;
+
+    // === Published instance (RCU-like, lock-free for readers) ===
+    std::shared_ptr<DbInstance> m_current; // Use atomic_load/store/exchange
+
+    // === State machine (atomic for lock-free state checks) ===
+    std::atomic<DbState> m_state;
+
+    // === Structural operations mutex (not used by readers!) ===
+    // Protects: state transitions, swap/delete coordination
+    std::mutex m_structuralMutex;
 };
 
-} // namespace kvdb
+} // namespace kvdbioc
 
 #endif // _KVDBIOC_DBHANDLE_HPP

@@ -3,18 +3,18 @@
 
 #include <memory>
 #include <string_view>
+#include <vector>
 
 #include <base/error.hpp>
 #include <base/json.hpp>
 
 #include <kvdbioc/types.hpp>
 
-namespace kvdb
+namespace kvdbioc
 {
-class DbInstance;
-
 /**
- * Read-only KVDB handler.
+ * Read-only KVDB handler interface.
+ * - Provides read operations (get, multiget)
  * - Exclusive to a single DB name
  * - Transparently follows hot updates
  */
@@ -34,25 +34,24 @@ public:
      * - If key does not exist: throws std::runtime_error (NotFound)
      * - Other failures: throws std::runtime_error
      */
-    virtual json::Json get(std::string_view key) const = 0;
+    virtual std::optional<json::Json> get(std::string_view key) const = 0;
 
     /**
-     * @brief Atomic load of current DB instance (for hot-swap).
-     * Exposed for testing and advanced usage.
+     * @brief Get multiple values as JSON.
+     *
+     * Contract:
+     * - Returns a vector of json::Json, one per key
+     * - If a key exists: corresponding entry contains the JSON value
+     * - If a key does not exist: corresponding entry contains json::Json() (null)
+     * - Other failures: throws std::runtime_error
      */
-    virtual std::shared_ptr<const DbInstance> load() const noexcept = 0;
-
-    /**
-     * @brief Atomic store of new DB instance (for hot-swap).
-     * Exposed for testing and manager operations.
-     */
-    virtual void store(std::shared_ptr<const DbInstance> next) noexcept = 0;
+    virtual std::vector<std::optional<json::Json>> multiGet(const std::vector<std::string_view>& keys) const = 0;
 
     /**
      * @brief Check if handler has a DB instance loaded.
      */
     virtual bool hasInstance() const noexcept = 0;
 };
-} // namespace kvdb
+} // namespace kvdbioc
 
 #endif // _KVDBIOC_IREADONLY_HANDLER_HPP

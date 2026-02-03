@@ -26,6 +26,7 @@ target_link_libraries(kvdbioc_kvdb
     kvdbioc::ikvdb
     PRIVATE
     rocksdb
+    store::istore
 )
 add_library(kvdbioc::kvdb ALIAS kvdbioc_kvdb)
 
@@ -67,6 +68,7 @@ target_link_libraries(kvdbioc_ctest
         GTest::gtest_main
         GTest::gmock
         kvdbioc::kvdb
+        store::mocks
 )
 gtest_discover_tests(kvdbioc_ctest)
 

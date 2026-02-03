@@ -5,70 +5,58 @@
 #include <kvdbioc/dbHandle.hpp>
 #include <kvdbioc/dbInstance.hpp>
 
-namespace kvdb
+namespace kvdbioc
 {
 
-json::Json DbHandle::get(std::string_view key) const
+std::optional<json::Json> DbHandle::get(std::string_view key) const
 {
+    // Load published instance (lock-free atomic load)
     auto inst = load();
+
     if (!inst)
     {
-        throw std::runtime_error(fmt::format("KVDB '{}': no instance published", m_name));
+        auto currentState = state();
+        if (currentState == DbState::DELETING)
+        {
+            throw std::runtime_error(fmt::format("KVDB '{}': database is being deleted", m_name));
+        }
+        throw std::runtime_error(fmt::format("KVDB '{}': no instance available", m_name));
     }
+
+    // Read from instance (DB is open in r/w mode, reads are safe)
     return inst->get(key);
 }
 
-bool DbHandle::hasBuild() const
+std::vector<std::optional<json::Json>> DbHandle::multiGet(const std::vector<std::string_view>& keys) const
 {
-    std::lock_guard<std::mutex> lk(m_buildMutex);
-    return m_buildState.has_value();
-}
+    // Load published instance (lock-free atomic load)
+    auto inst = load();
 
-BuildState& DbHandle::getBuild()
-{
-    std::lock_guard<std::mutex> lk(m_buildMutex);
-    if (!m_buildState.has_value())
+    if (!inst)
     {
-        throw std::runtime_error("No build in progress");
+        auto currentState = state();
+        if (currentState == DbState::DELETING)
+        {
+            throw std::runtime_error(fmt::format("KVDB '{}': database is being deleted", m_name));
+        }
+        throw std::runtime_error(fmt::format("KVDB '{}': no instance available", m_name));
     }
-    return m_buildState.value();
-}
 
-void DbHandle::startBuild(BuildState state)
-{
-    std::lock_guard<std::mutex> lk(m_buildMutex);
-    if (m_buildState.has_value())
-    {
-        throw std::runtime_error("Build already in progress");
-    }
-    m_buildState = std::move(state);
-}
-
-BuildState DbHandle::extractBuild()
-{
-    std::lock_guard<std::mutex> lk(m_buildMutex);
-    if (!m_buildState.has_value())
-    {
-        throw std::runtime_error("No build to extract");
-    }
-    auto state = std::move(m_buildState.value());
-    m_buildState.reset();
-    return state;
+    // Read all keys from same instance (consistency!)
+    return inst->multiGet(keys);
 }
 
 void DbHandle::putValue(std::string_view key, std::string_view value)
 {
-    std::lock_guard<std::mutex> lk(m_buildMutex);
-    if (!m_buildState.has_value())
+    // Load current instance
+    auto inst = load();
+    if (!inst)
     {
-        throw std::runtime_error("No build in progress");
+        throw std::runtime_error(fmt::format("KVDB '{}': no instance available", m_name));
     }
-    auto status = m_buildState->db->Put(
-        rocksdb::WriteOptions {}, rocksdb::Slice(key.data(), key.size()), rocksdb::Slice(value.data(), value.size()));
-    if (!status.ok())
-    {
-        throw std::runtime_error(std::string("Put failed: ") + status.ToString());
-    }
+
+    // Write directly to the DB (open in r/w mode)
+    inst->put(key, value);
 }
 
-} // namespace kvdb
+} // namespace kvdbioc
