@@ -101,8 +101,7 @@ public:
                                   data.builder.GetBufferPointer() + data.builder.GetSize(),
                                   std::back_inserter(messageVector));
 
-                responseSocketClient->send(reinterpret_cast<const char*>(messageVector.data()),
-                                           messageVector.size());
+                responseSocketClient->send(reinterpret_cast<const char*>(messageVector.data()), messageVector.size());
             });
     }
 
