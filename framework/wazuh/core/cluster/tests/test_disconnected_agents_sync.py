@@ -17,7 +17,7 @@ with patch("wazuh.core.common.wazuh_uid"), patch("wazuh.core.common.wazuh_gid"):
 
     wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-    from wazuh.core.cluster.master import DisconnectedAgentGroupSyncTask
+    from wazuh.core.cluster.master import DisconnectedAgentSyncTasks
     from wazuh.core.results import AffectedItemsWazuhResult
 
 
@@ -66,7 +66,7 @@ def make_task(min_offline=600):
     server = MagicMock()
     server.setup_task_logger.return_value = MagicMock()
 
-    return DisconnectedAgentGroupSyncTask(
+    return DisconnectedAgentSyncTasks(
         server=server,
         cluster_items=cluster_items,
     )
@@ -89,7 +89,7 @@ def manager(logger):
 
 @pytest.fixture
 def task(manager, logger):
-    return DisconnectedAgentGroupSyncTask(
+    return DisconnectedAgentSyncTasks(
         server=manager,
         logger=logger,
         cluster_items=copy.deepcopy(CLUSTER_ITEMS),
@@ -130,7 +130,7 @@ async def test_get_max_versions_success(manager, logger):
         }
     }
 
-    task = DisconnectedAgentGroupSyncTask(
+    task = DisconnectedAgentSyncTasks(
         server=manager,
         logger=logger,
         cluster_items=CLUSTER_ITEMS,
@@ -154,7 +154,7 @@ async def test_get_max_versions_indexer_error(manager, logger):
     indexer = AsyncMock()
     indexer.search.side_effect = Exception("boom")
 
-    task = DisconnectedAgentGroupSyncTask(
+    task = DisconnectedAgentSyncTasks(
         server=manager,
         logger=logger,
         cluster_items=CLUSTER_ITEMS,
@@ -166,12 +166,14 @@ async def test_get_max_versions_indexer_error(manager, logger):
 
 
 # ============================================================
-# _get_disconnected_agents
+# _get_disconnected_agents_filter_by_time
 # ============================================================
 @pytest.mark.asyncio
 @patch("wazuh.core.indexer.disconnected_agents.WazuhDBQueryAgents")
 @patch("wazuh.core.indexer.disconnected_agents.core_utils.get_utc_now")
-async def test_get_disconnected_agents_filters_by_time(mock_now, mock_query, task):
+async def test_get_disconnected_agents_filter_by_time_filters_by_time(
+    mock_now, mock_query, task
+):
     now = datetime.now(timezone.utc)
     mock_now.return_value = now
 
@@ -194,7 +196,7 @@ async def test_get_disconnected_agents_filters_by_time(mock_now, mock_query, tas
     db_instance.run.return_value = {"items": agents}
     mock_query.return_value.__enter__.return_value = db_instance
 
-    result = await task._get_disconnected_agents(MagicMock())
+    result = await task._get_disconnected_agents_filter_by_time()
 
     assert len(result) == 1
     assert result[0]["id"] == "001"
@@ -250,7 +252,7 @@ async def test_sync_agent_batch_sync_error(task):
 @pytest.mark.asyncio
 @patch("wazuh.core.indexer.disconnected_agents.core_utils.get_utc_now")
 @patch("wazuh.core.indexer.disconnected_agents.WazuhDBQueryAgents")
-async def test_get_disconnected_agents_ok(mock_query, mock_now):
+async def test_get_disconnected_agents_filter_by_time_ok(mock_query, mock_now):
     """Returns agents disconnected longer than min_offline."""
     now = datetime.now(timezone.utc)
     mock_now.return_value = now
@@ -274,7 +276,7 @@ async def test_get_disconnected_agents_ok(mock_query, mock_now):
 
     task = make_task(min_offline=600)
 
-    result = await task._get_disconnected_agents(MagicMock())
+    result = await task._get_disconnected_agents_filter_by_time()
 
     assert len(result) == 2
     assert {a["id"] for a in result} == {"001", "002"}
@@ -301,7 +303,7 @@ async def test_filters_recently_disconnected_agents(mock_query, mock_now):
 
     task = make_task(min_offline=600)
 
-    result = await task._get_disconnected_agents(MagicMock())
+    result = await task._get_disconnected_agents_filter_by_time()
 
     assert result == []
 
@@ -335,7 +337,7 @@ async def test_filters_agents_by_connection_status(
     mock_query.return_value.__enter__.return_value = db
 
     task = make_task()
-    result = await task._get_disconnected_agents(MagicMock())
+    result = await task._get_disconnected_agents_filter_by_time()
 
     assert len(result) == expected_count
 
@@ -361,7 +363,7 @@ async def test_ignores_agents_without_last_keepalive(mock_query, mock_now):
 
     task = make_task()
 
-    result = await task._get_disconnected_agents(MagicMock())
+    result = await task._get_disconnected_agents_filter_by_time()
 
     assert result == []
 
@@ -376,7 +378,7 @@ async def test_empty_db_result(mock_query):
 
     task = make_task()
 
-    result = await task._get_disconnected_agents(MagicMock())
+    result = await task._get_disconnected_agents_filter_by_time()
 
     assert result == []
 
@@ -390,6 +392,6 @@ async def test_db_error_returns_empty_list(mock_query):
     """DB errors are handled gracefully."""
     task = make_task()
 
-    result = await task._get_disconnected_agents(MagicMock())
+    result = await task._get_disconnected_agents_filter_by_time()
 
     assert result == []
