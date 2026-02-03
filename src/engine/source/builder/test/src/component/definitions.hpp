@@ -44,6 +44,21 @@ auto constexpr DECODER_JSON = R"({
 
 auto constexpr FILTER_JSON = R"({
     "name": "filter/test/0",
+    "id": "67e004de-770d-4267-9932-56b3331c0c22",
+    "enabled": true,
+    "type": "pre-filter",
+    "metadata": {
+        "module": "wazuh",
+        "title": "Test filter",
+        "description": "Filter used for unit tests",
+        "compatibility": "Wazuh 5.*",
+        "versions": ["Wazuh 5.*"],
+        "author": {
+            "name": "Wazuh, Inc.",
+            "date": "2026/01/29"
+        },
+        "references": ["https://documentation.wazuh.com/"]
+    },
     "check": [{
         "wazuh.protocol.queue": 49
     }

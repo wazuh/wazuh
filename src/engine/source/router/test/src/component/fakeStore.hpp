@@ -9,7 +9,24 @@ constexpr auto POLICY_JSON {
     R"({"name":"policy/wazuh/0","hash":"12403460954181119054","assets":["integration/wazuh-core-fake/0"]})"};
 
 constexpr auto FILTER_JSON {R"({
-    "name": "filter/allow-all/0"
+    "name": "filter/allow-all/0",
+    "id": "b540db06-a761-4c02-8880-1d3e3b964063",
+    "enabled": true,
+    "type": "pre-filter",
+    "metadata": {
+        "module": "wazuh",
+        "title": "Allow all filter",
+        "description": "Default filter to allow all events (for default ruleset)",
+        "compatibility": "Wazuh 5.*",
+        "versions": ["Wazuh 5.*"],
+        "author": {
+            "name": "Wazuh, Inc.",
+            "url": "https://wazuh.com",
+            "date": "2022/11/08"
+        },
+        "references": ["https://documentation.wazuh.com/"]
+    },
+    "check": "exists($event.original)"
 })"};
 
 constexpr auto EPS_JSON {
