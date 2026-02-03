@@ -218,12 +218,12 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
 
         auto automapping =
             base::Term<base::EngineOp>::create("Automapping",
-                                               [integrationCategory, integrationName, name](auto e)
+                                               [integrationCategory, integrationName, assetName = newContext->context().assetName](auto e)
                                                {
                                                    {
                                                        e->setString(integrationCategory, syntax::asset::CATEGORY_PATH);
                                                        e->setString(integrationName, syntax::asset::INTEGRATION_PATH);
-                                                       e->appendString(name.parts()[1], syntax::asset::DECODERS_PATH);
+                                                       e->appendString(assetName, syntax::asset::DECODERS_PATH);
                                                    }
                                                    return base::result::makeSuccess(e, "");
                                                });
