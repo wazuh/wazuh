@@ -81,8 +81,14 @@ eTester::Result fromOutput(const ::router::test::Output& output)
 {
     eTester::Result result {};
 
-    // Set event
-    result.mutable_output()->assign(output.event()->str());
+    // Set event - Convert json::Json to google::protobuf::Struct
+    auto structOrErr = eMessage::eMessageFromJson<google::protobuf::Struct>(output.event()->str());
+    if (std::holds_alternative<base::Error>(structOrErr))
+    {
+        throw std::runtime_error(fmt::format("Error converting event JSON to protobuf Struct: {}",
+                                            std::get<base::Error>(structOrErr).message));
+    }
+    *result.mutable_output() = std::get<google::protobuf::Struct>(structOrErr);
 
     // Set traces
     for (const auto& [assetName, assetTrace] : output.traceList())

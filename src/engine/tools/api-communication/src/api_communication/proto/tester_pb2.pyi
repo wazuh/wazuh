@@ -46,8 +46,8 @@ class Result(_message.Message):
     ASSET_TRACES_FIELD_NUMBER: _ClassVar[int]
     OUTPUT_FIELD_NUMBER: _ClassVar[int]
     asset_traces: _containers.RepeatedCompositeFieldContainer[Result.AssetTrace]
-    output: str
-    def __init__(self, output: _Optional[str] = ..., asset_traces: _Optional[_Iterable[_Union[Result.AssetTrace, _Mapping]]] = ...) -> None: ...
+    output: _struct_pb2.Struct
+    def __init__(self, output: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., asset_traces: _Optional[_Iterable[_Union[Result.AssetTrace, _Mapping]]] = ...) -> None: ...
 
 class RunPost_Request(_message.Message):
     __slots__ = ["asset_trace", "event", "name", "trace_level"]

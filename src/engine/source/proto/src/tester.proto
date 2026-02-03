@@ -51,7 +51,7 @@ message Result
         bool success = 2;           // If the asset was successfully decoded
         repeated string traces = 3; // Traces of the asset
     }
-    string output = 1;                    // JSON output of the event
+    google.protobuf.Struct output = 1;    // JSON output of the event
     repeated AssetTrace asset_traces = 2; // Asset traces
 }
 
