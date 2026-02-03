@@ -60,21 +60,16 @@ constexpr auto METADATA_SQL_STATEMENT
     value INTEGER);)"
 };
 
-SecurityConfigurationAssessment::SecurityConfigurationAssessment(
-    std::string dbPath,
-    std::shared_ptr<IDBSync> dbSync,
-    std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
-    : m_dBSync(dbSync ? std::move(dbSync)
-               : std::make_shared<DBSync>(
-                   HostType::AGENT,
-                   DbEngineType::SQLITE3,
-                   dbPath,
-                   GetCreateStatement(),
-                   DbManagement::PERSISTENT,
-                   GetUpgradeStatements()))
+SecurityConfigurationAssessment::SecurityConfigurationAssessment(std::string dbPath,
+                                                                 std::shared_ptr<IDBSync> dbSync,
+                                                                 std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
+    : m_dBSync(
+          dbSync ? std::move(dbSync)
+                 : std::make_shared<DBSync>(
+                       HostType::AGENT, DbEngineType::SQLITE3, dbPath, GetCreateStatement(), DbManagement::PERSISTENT))
     , m_syncManager(std::make_shared<SCASyncManager>(m_dBSync))
     , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
-                          : std::make_shared<file_system::FileSystemWrapper>())
+                                            : std::make_shared<file_system::FileSystemWrapper>())
 {
     LoggingHelper::getInstance().log(LOG_INFO, "SCA initialized.");
 }
@@ -326,11 +321,6 @@ std::string SecurityConfigurationAssessment::GetCreateStatement() const
     ret += METADATA_SQL_STATEMENT;
 
     return ret;
-}
-
-std::vector<std::string> SecurityConfigurationAssessment::GetUpgradeStatements() const
-{
-    return {R"(ALTER TABLE sca_check ADD COLUMN sync INTEGER NOT NULL DEFAULT 0;)"};
 }
 
 std::string SecurityConfigurationAssessment::calculateSyncedChecksChecksum()
