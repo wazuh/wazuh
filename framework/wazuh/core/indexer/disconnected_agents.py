@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import time
-from datetime import timedelta, timezone
-from typing import Generator, List
+from datetime import timedelta
+from typing import Dict, Generator, List
 
 import wazuh.core.utils as core_utils
 from wazuh.core.agent import WazuhDBQueryAgents, get_agents_info
@@ -17,10 +17,9 @@ from wazuh.core.exception import (
 )
 from wazuh.core.indexer.indexer import get_indexer_client
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.wdb import AsyncWazuhDBConnection
 
 
-class DisconnectedAgentGroupSyncTask:
+class DisconnectedAgentSyncTasks:
     """
     Task to periodically synchronize group configuration for disconnected
     agents.
@@ -104,6 +103,12 @@ class DisconnectedAgentGroupSyncTask:
             "sync_disconnected_agent_groups_min_offline",
             self.DEFAULT_SYNC_DISCONNECT_AGENT_GROUPS_MIN_OFFLINE,
         )
+        self.initial_delay = master_interval.get(
+            "sync_disconnected_agent_cluster_name_delay", 300
+        )
+
+        # Flag to ensure cluster-name sync runs only once per process lifecycle
+        self._cluster_name_sync_done = False
 
     async def run(self) -> None:
         """
@@ -117,15 +122,15 @@ class DisconnectedAgentGroupSyncTask:
             f"(interval: {self.sync_interval}s, batch_size: {self.batch_size})"
         )
 
-        wdb_conn = AsyncWazuhDBConnection()
-
         while True:
             try:
                 cycle_start_time = time.time()
                 processed_agents = 0
                 failed_agents = 0
 
-                disconnected_agents = await self._get_disconnected_agents(wdb_conn)
+                disconnected_agents = (
+                    await self._get_disconnected_agents_filter_by_time()
+                )
                 disconnected_agents_count = len(disconnected_agents)
                 if disconnected_agents_count == 0:
                     self.logger.info("No disconnected agents found")
@@ -162,20 +167,13 @@ class DisconnectedAgentGroupSyncTask:
             finally:
                 await asyncio.sleep(self.sync_interval)
 
-    async def _get_disconnected_agents(
-        self, wdb_conn: AsyncWazuhDBConnection
-    ) -> List[dict]:
+    async def _get_disconnected_agents_filter_by_time(self) -> List[dict]:
         """
         Retrieve non-connected agents filtered by disconnection time at DB level.
 
         This method queries the Wazuh database for agents whose status is not
         'active', normalizes their last heartbeat timestamp to UTC, and filters
         them based on a minimum disconnection threshold.
-
-        Parameters
-        ----------
-        wdb_conn : AsyncWazuhDBConnection
-            The asynchronous connection object to the Wazuh database.
 
         Returns
         -------
@@ -186,6 +184,7 @@ class DisconnectedAgentGroupSyncTask:
             - name : str
             - status : str
             - lastKeepAlive : datetime
+            - dataAdd : datetime
             - group : list
 
         Raises
@@ -208,20 +207,13 @@ class DisconnectedAgentGroupSyncTask:
         TypeErrors when comparing naive vs aware datetimes.
         """
         try:
-            with WazuhDBQueryAgents(
-                select=["id", "name", "status", "lastKeepAlive", "group", "dateAdd"],
-                query="status!=active",
-            ) as db_query:
-                result = db_query.run()
-
-            agents_not_active = result.get("items", [])
+            agents_not_active: List[str] = await self._get_disconnected_agents()
             agents = []
-            now_utc = core_utils.get_utc_now()  
+            now_utc = core_utils.get_utc_now()
             for agent in agents_not_active:
                 disconnected_time = agent["lastKeepAlive"] or agent["dateAdd"]
                 if (
-                    disconnected_time
-                    + timedelta(seconds=self.min_disconnection_time)
+                    disconnected_time + timedelta(seconds=self.min_disconnection_time)
                     < now_utc
                 ):
                     agents.append(agent)
@@ -323,7 +315,7 @@ class DisconnectedAgentGroupSyncTask:
             A batch of agents with size less than or equal to `self.batch_size`.
         """
         for i in range(0, len(agents), self.batch_size):
-            yield agents[i : i + self.batch_size]
+            yield agents[i: i + self.batch_size]
 
     async def _sync_agent_batch(self, agents: List[dict]) -> dict:
         """
@@ -406,6 +398,108 @@ class DisconnectedAgentGroupSyncTask:
                 failed += 1
 
         return {"processed": processed, "failed": failed}
+
+    async def run_cluster_name_sync(self) -> None:
+        """
+        One-shot task to propagate the cluster name into indexed documents
+        for disconnected agents.
+
+        Responsibilities:
+        - Wait initial delay
+        - Resolve disconnected agents
+        - Resolve max document versions
+        - Resolve current cluster names from indexer
+        - Update cluster name ONLY when it differs
+        """
+        if self._cluster_name_sync_done:
+            self.logger.debug("Cluster-name sync already executed; skipping")
+            return
+
+        try:
+            self.logger.info(
+                f"Waiting {self.initial_delay}s before running disconnected cluster-name sync"
+            )
+            await asyncio.sleep(self.initial_delay)
+
+            disconnected_agents = await self._get_disconnected_agents()
+            if not disconnected_agents:
+                self.logger.info("No disconnected agents found for cluster-name sync")
+                return
+
+            agent_ids = [a["id"] for a in disconnected_agents if a.get("id")]
+            if not agent_ids:
+                self.logger.info("No valid agent IDs found for cluster-name sync")
+                return
+            # Read cluster name from ossec.conf
+            try:
+                conf = get_ossec_conf(section="cluster", from_import=True)
+                cluster_name = conf.get("cluster", {}).get("name")
+            except Exception as e:
+                self.logger.error(f"Failed reading cluster name from ossec.conf: {e}")
+                return
+
+            if not cluster_name:
+                self.logger.warning(
+                    "Cluster name not found in ossec.conf; aborting sync"
+                )
+                return
+
+            max_versions = await self._get_max_versions_batch_from_indexer(agent_ids)
+            agent_cluster_map = await self._get_cluster_name_from_indexer(agent_ids)
+
+            # Filter agents that actually need update
+            agents_to_update = [
+                agent_id
+                for agent_id in agent_ids
+                if agent_cluster_map.get(agent_id) != cluster_name
+            ]
+
+            if not agents_to_update:
+                self.logger.info(
+                    "All disconnected agents already have correct cluster name"
+                )
+                return
+
+            # Resolve indexer client once
+            if self._indexer_client_override:
+                client = self._indexer_client_override
+                context = None
+            else:
+                context = get_indexer_client()
+
+            async def _update(client):
+                for agent_id in agents_to_update:
+                    global_version = max_versions.get(agent_id, 0)
+                    try:
+                        await client.max_version_components.update_agent_cluster_name(
+                            agent_id=agent_id,
+                            cluster_name=cluster_name,
+                            global_version=global_version,
+                        )
+                        self.logger.debug(
+                            f"Updated cluster-name for agent={agent_id} "
+                            f"version={global_version}"
+                        )
+                    except Exception as e:
+                        self.logger.error(
+                            f"Failed updating cluster-name for agent={agent_id}: {e}"
+                        )
+
+            if context:
+                async with context as client:
+                    await _update(client)
+            else:
+                await _update(client)
+
+            self.logger.info(
+                f"Disconnected agents cluster-name sync completed "
+                f"({len(agents_to_update)} agents updated)"
+            )
+
+        except Exception:
+            self.logger.exception("Unexpected error in run_cluster_name_sync")
+        finally:
+            self._cluster_name_sync_done = True
 
     async def disconnected_agent_group_sync(
         self, agent_list: list = None, group_list: list = None, external_gte: int = None
@@ -514,3 +608,127 @@ class DisconnectedAgentGroupSyncTask:
         )
 
         return result
+
+    async def _get_disconnected_agents(self) -> List[str]:
+        """
+        Retrieve non-connected agents from WazuhDB.
+
+        Queries the WazuhDB for agents whose status is not `active` and
+        returns the raw list of agent dictionaries as provided by the DB
+        query. This helper does not apply time-based filtering; that is
+        performed by `_get_disconnected_agents_filter_by_time` which calls
+        this method.
+
+        Returns
+        -------
+        List[dict]
+            List of agent dictionaries with keys: ``id``, ``name``,
+            ``status``, ``lastKeepAlive``, ``group``, and ``dateAdd``.
+
+        Notes
+        -----
+        Any exception raised while querying the DB is logged and an empty
+        list is returned to allow higher-level logic to continue running.
+        """
+        try:
+            with WazuhDBQueryAgents(
+                select=["id", "name", "status", "lastKeepAlive", "group", "dateAdd"],
+                query="status!=active",
+            ) as db_query:
+                result = db_query.run()
+            return result.get("items", [])
+        except Exception as e:
+            self.logger.error(
+                f"Error retrieving non-connected agents from WazuhDB: {e}",
+                exc_info=True,
+            )
+            return []
+
+    async def _get_cluster_name_from_indexer(
+        self, agent_ids: List[str], cluster_name: str = ""
+    ) -> dict[str, str]:
+        """
+        Return a mapping of agent_id -> cluster_name for the given agents.
+
+        Only agents that have an associated wazuh.cluster.name will be returned.
+
+        Parameters
+        ----------
+        agent_ids : list[str]
+            List of agent IDs to query.
+
+        Returns
+        -------
+        dict[str, str]
+            Mapping of agent_id to cluster_name.
+        """
+        if not agent_ids:
+            return {}
+
+        query = {
+            "size": 0,
+            "query": {
+                "bool": {
+                    "filter": [
+                        {"terms": {"agent.id": agent_ids}},
+                        {"exists": {"field": "wazuh.cluster.name"}},
+                    ],
+                    "must_not": [
+                        {"term": {"wazuh.cluster.name.keyword": cluster_name}}
+                    ],
+                }
+            },
+            "aggs": {
+                "by_agent": {
+                    "terms": {"field": "agent.id", "size": len(agent_ids)},
+                    "aggs": {
+                        "cluster_name": {
+                            "terms": {"field": "wazuh.cluster.name", "size": 5}
+                        }
+                    },
+                }
+            },
+        }
+
+        try:
+            if self._indexer_client_override:
+                client = self._indexer_client_override
+                result = await client.search(query=query)
+            else:
+                async with get_indexer_client() as client:
+                    result = await client.max_version_components.search(query=query)
+            agent_cluster_map: Dict[str, str] = {}
+
+            buckets = (
+                result.get("aggregations", {}).get("by_agent", {}).get("buckets", [])
+            )
+
+            for bucket in buckets:
+                agent_id = bucket.get("key")
+                cluster_buckets = bucket["cluster_name"]["buckets"]
+
+                if not cluster_buckets:
+                    continue
+
+                if len(cluster_buckets) > 1:
+                    self.logger.warning(
+                        f"Agent {agent_id} belongs to multiple clusters: "
+                        f"{[b['key'] for b in cluster_buckets]}"
+                    )
+
+                agent_cluster_map[agent_id] = cluster_buckets[0]["key"]
+
+            self.logger.info(
+                f"Resolved cluster name for {len(agent_cluster_map)} "
+                f"out of {len(agent_ids)} requested agents"
+            )
+            self.logger.info(
+                f"{agent_cluster_map} agents " f"found with cluster name in indexer"
+            )
+            return agent_cluster_map
+
+        except Exception:
+            self.logger.exception(
+                f"Failed to resolve cluster names for agents: {agent_ids}"
+            )
+            return {}
