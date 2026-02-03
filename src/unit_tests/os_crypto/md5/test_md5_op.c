@@ -76,18 +76,37 @@ void test_md5_file_fail(void **state) {
     assert_int_equal(OS_MD5_File(path, buffer, OS_TEXT), -1);
 }
 
-/* Test robustness against NULL path in OS_MD5_File */
+/*
+ * Test that output is zeroed by the function even when wfopen fails.
+ *
+ * 1. Fill output with known non-zero data.
+ * 2. Mock wfopen to return NULL (simulates inaccessible file).
+ * 3. Assert that OS_MD5_File returns -1.
+ * 4. Assert that output was zeroed by the internal memset,
+ *    regardless of its previous value.
+ */
 void test_md5_file_null_path(void **state) {
     os_md5 output;
+    char path[] = "path/to/file";
 
-    /* Initialize output for safety */
-    memset(output, 0, sizeof(os_md5));
+    /* Fill output with known non-zero data */
+    memset(output, '1', sizeof(os_md5));
 
-    /* Act: Call function with NULL path */
-    int ret = OS_MD5_File(NULL, output, OS_TEXT);
+    /* Mock wfopen to fail */
+    expect_value(__wrap_wfopen, path, path);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, NULL);
 
-    /* Assert: Expect -1 (Error) */
+    /* Execute */
+    int ret = OS_MD5_File(path, output, OS_TEXT);
+
+    /* Assert error return */
     assert_int_equal(ret, -1);
+
+    /* Assert output was zeroed by the function's internal memset */
+    char expected[sizeof(os_md5)];
+    memset(expected, 0, sizeof(expected));
+    assert_memory_equal(output, expected, sizeof(os_md5));
 }
 
 int main(void) {
@@ -95,7 +114,7 @@ int main(void) {
         cmocka_unit_test(test_md5_string),
         cmocka_unit_test_setup_teardown(test_md5_file, setup_group, teardown_group),
         cmocka_unit_test_setup_teardown(test_md5_file_fail, setup_group, teardown_group),
-        cmocka_unit_test(test_md5_file_null_path)
+        cmocka_unit_test_setup_teardown(test_md5_file_null_path, setup_group, teardown_group)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
