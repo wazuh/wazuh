@@ -166,5 +166,15 @@ elseif(NOT UNIT_TEST)
     LINKER_LANGUAGE CXX
     RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER})
   target_link_libraries(wazuh-syscheckd PRIVATE syscheckd_lib)
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
+
+  if(APPLE)
+    # macOS
+    set_target_properties(wazuh-syscheckd PROPERTIES
+        BUILD_WITH_INSTALL_RPATH TRUE
+        INSTALL_RPATH "@executable_path/../lib"
+    )
+  else()
+    # Linux/Unix
+    string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
+  endif()
 endif()
