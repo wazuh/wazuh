@@ -49,7 +49,7 @@ void SCASyncManager::initialize()
     m_initialized = true;
 }
 
-SCASyncManager::LimitResult SCASyncManager::updateHandshake(uint64_t syncLimit)
+SCASyncManager::LimitResult SCASyncManager::updateSyncLimit(uint64_t syncLimit)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 

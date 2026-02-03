@@ -452,7 +452,7 @@ void SecurityConfigurationAssessment::setSyncLimit(uint64_t syncLimit)
 {
     if (m_syncManager)
     {
-        const auto limitResult = m_syncManager->updateHandshake(syncLimit);
+        const auto limitResult = m_syncManager->updateSyncLimit(syncLimit);
 
         if (!limitResult.demotedIds.empty())
         {

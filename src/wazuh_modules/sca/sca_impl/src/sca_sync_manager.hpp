@@ -28,7 +28,7 @@ class SCASyncManager
         explicit SCASyncManager(std::shared_ptr<IDBSync> dbSync);
 
         void initialize();
-        LimitResult updateHandshake(uint64_t syncLimit);
+        LimitResult updateSyncLimit(uint64_t syncLimit);
 
         // Precompute the first N check ids (ORDER BY rowid LIMIT N) once per batch so
         // shouldSyncInsert/shouldSyncModify avoid per-event DB queries.
