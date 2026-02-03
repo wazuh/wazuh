@@ -178,6 +178,36 @@ def test_aws_bucket_mark_complete_handles_exceptions_when_db_query_fails(mock_de
     mock_debug.assert_called_with(f'+++ Error marking log {utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1} as completed: ', 2)
 
 
+@pytest.mark.parametrize("marker, expected_called",[
+        (f"AWSLogs/{utils.TEST_ACCOUNT_ID}/CloudTrail/{utils.TEST_REGION}/2026/01/30/00/test.json.gz", True),
+        (f"AWSLogs/{utils.TEST_ACCOUNT_ID}/CloudTrail/{utils.TEST_REGION}/no-date-here/test.json.gz", False),
+    ])
+def test_aws_bucket_rewind_marker_to_day_folder(marker, expected_called):
+    """Test 'rewind_marker_to_day_folder' rewinds the marker to the day folder (YYYY/MM/DD) when applicable."""
+    bucket = utils.get_mocked_aws_bucket(bucket=utils.TEST_BUCKET)
+
+    bucket.date_regex = re.compile(r"(\d{4}/\d{2}/\d{2})")
+
+    with patch('aws_bucket.AWSBucket.marker_custom_date', return_value="rewound-marker") as mock_marker_custom_date:
+        result = bucket.rewind_marker_to_day_folder(
+            marker=marker,
+            aws_account_id=utils.TEST_ACCOUNT_ID,
+            aws_region=utils.TEST_REGION
+        )
+
+    if expected_called:
+        assert result == "rewound-marker"
+        mock_marker_custom_date.assert_called_once()
+        args, _ = mock_marker_custom_date.call_args
+        assert args[0] == utils.TEST_REGION
+        assert args[1] == utils.TEST_ACCOUNT_ID
+        assert isinstance(args[2], datetime)
+        assert args[2].strftime(aws_bucket.PATH_DATE_FORMAT) == "2026/01/29"
+    else:
+        assert result == marker
+        mock_marker_custom_date.assert_not_called()
+
+
 @pytest.mark.parametrize('region', [utils.TEST_REGION, "invalid_region"])
 def test_aws_bucket_db_count_region(custom_database, region):
     """Test 'db_count_region' method counts the number of rows in DB for a region"""
@@ -426,6 +456,14 @@ def test_aws_bucket_build_s3_filter_args(mock_get_script_arguments, mock_get_ful
     if aws_region == 'region_for_empty_db':
         filter_marker = bucket.marker_only_logs_after(aws_region, aws_account_id) if bucket.only_logs_after \
             else bucket.marker_custom_date(aws_region, aws_account_id, bucket.default_date)
+        
+    if (not bucket.reparse
+            and bucket.db_table_name in aws_bucket.LATE_ARRIVAL_LOG_TABLES
+            and aws_region != 'region_for_empty_db'):
+        if config_type != 'config':
+            filter_marker = utils.apply_expected_startafter(bucket, filter_marker, aws_account_id, aws_region)
+        else:
+            filter_marker = bucket.rewind_marker_to_day_folder(filter_marker, aws_account_id, aws_region)
 
     mock_get_script_arguments.return_value.type = config_type
 
