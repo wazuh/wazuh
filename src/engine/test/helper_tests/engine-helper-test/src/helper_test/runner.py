@@ -224,8 +224,8 @@ class Evaluator:
         """
         self.field_mapping = field_mapping
         request = build_run_post_request(self.input, api_tester.ALL)
-        response = send_recv(api_client, request, api_tester.RunPost_Response())
-        output = extract_output_from_response(response)
+        response, raw_output = send_recv(api_client, request, api_tester.RunPost_Response())
+        output = raw_output
 
         if not self.skipped:
             if (self.should_pass and field_mapping in output) or (
@@ -249,8 +249,8 @@ class Evaluator:
         """
         self.field_mapping = field_mapping
         request = build_run_post_request(self.input, api_tester.ALL)
-        response = send_recv(api_client, request, api_tester.RunPost_Response())
-        output = extract_output_from_response(response)
+        response, raw_output = send_recv(api_client, request, api_tester.RunPost_Response())
+        output = raw_output
 
         if not self.skipped:
             if (self.should_pass and field_mapping in output) or (
@@ -270,8 +270,8 @@ class Evaluator:
         """
         self.field_mapping = field_mapping
         request = build_run_post_request(self.input, api_tester.ALL)
-        response = send_recv(api_client, request, api_tester.RunPost_Response())
-        output = extract_output_from_response(response)
+        response, raw_output = send_recv(api_client, request, api_tester.RunPost_Response())
+        output = raw_output
         result = extract_transformation_result_from_response(
             response, self.helper_name
         )
@@ -303,15 +303,25 @@ def run_command(command: str):
     assert result.returncode == 0, f"{result.stderr}"
 
 
-def send_recv(api_client: APIClient, request: Message, expected_response_type: Message) -> Message:
+def send_recv(api_client: APIClient, request: Message, expected_response_type: Message):
     """
     Send a request through APIClient and parse the response into expected_response_type.
     Raises on transport or parsing errors.
+    
+    Returns:
+      - For RunPost_Response: tuple (Message, dict) where dict is raw_output with preserved types
+      - For other types: Message
     """
     try:
         error, response = api_client.send_recv(request)
         assert error is None, f"{error}"
         parse_response: Message = ParseDict(response, expected_response_type)
+        
+        # Preserve raw output with correct integer types for RunPost_Response
+        if isinstance(parse_response, api_tester.RunPost_Response):
+            raw_output = response.get('result', {}).get('output', {})
+            return parse_response, raw_output
+        
         return parse_response
     except Exception as e:
         raise Exception(f"Error parsing response: {e}")
