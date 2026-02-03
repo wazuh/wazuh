@@ -3,6 +3,7 @@
 #include <dbsync.hpp>
 
 #include <algorithm>
+#include <limits>
 
 #include "logging_helper.hpp"
 #include "stringHelper.h"
@@ -55,6 +56,8 @@ SCASyncManager::LimitResult SCASyncManager::updateHandshake(uint64_t syncLimit, 
     const bool limitChanged = (syncLimit != m_syncLimit);
 
     m_syncLimit = syncLimit;
+    m_hasPolicyDeltaWindow = false;
+    m_policyDeltaWindowIds.clear();
 
     if (!clusterName.empty())
     {
@@ -72,6 +75,66 @@ SCASyncManager::LimitResult SCASyncManager::updateHandshake(uint64_t syncLimit, 
     }
 
     return {};
+}
+
+void SCASyncManager::preparePolicyDeltaWindow()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    m_policyDeltaWindowIds.clear();
+    m_hasPolicyDeltaWindow = false;
+
+    if (m_syncLimit == 0)
+    {
+        return;
+    }
+
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "SCA sync manager: DBSync not available to prepare window");
+        return;
+    }
+
+    const auto limit =
+        static_cast<uint32_t>(std::min<uint64_t>(m_syncLimit, std::numeric_limits<uint32_t>::max()));
+
+    std::unordered_set<std::string> windowIds;
+    windowIds.reserve(limit);
+
+    auto query = SelectQuery::builder()
+                 .table("sca_check")
+                 .columnList({"id"})
+                 .orderByOpt("rowid")
+                 .countOpt(limit)
+                 .build();
+
+    const auto callback = [&windowIds](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+    {
+        if (returnTypeCallback == SELECTED)
+        {
+            const auto id = extractId(resultData);
+            if (!id.empty())
+            {
+                windowIds.insert(id);
+            }
+        }
+    };
+
+    m_dBSync->selectRows(query.query(), callback);
+    setPolicyDeltaWindowLocked(std::move(windowIds));
+}
+
+void SCASyncManager::clearPolicyDeltaWindow()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_policyDeltaWindowIds.clear();
+    m_hasPolicyDeltaWindow = false;
+}
+
+void SCASyncManager::setPolicyDeltaWindowLocked(std::unordered_set<std::string> windowIds)
+{
+    m_policyDeltaWindowIds = std::move(windowIds);
+    m_hasPolicyDeltaWindow = true;
 }
 
 bool SCASyncManager::shouldSyncInsert(const nlohmann::json& checkData)
@@ -93,6 +156,12 @@ bool SCASyncManager::shouldSyncInsert(const nlohmann::json& checkData)
 
     if (m_syncLimit != 0)
     {
+        if (m_hasPolicyDeltaWindow)
+        {
+            shouldSync = (m_policyDeltaWindowIds.find(checkId) != m_policyDeltaWindowIds.end());
+        }
+        else
+        {
         if (!m_dBSync)
         {
             LoggingHelper::getInstance().log(LOG_ERROR, "SCA sync manager: DBSync not available on insert");
@@ -119,6 +188,7 @@ bool SCASyncManager::shouldSyncInsert(const nlohmann::json& checkData)
         m_dBSync->selectRows(countQuery.query(), countCallback);
 
         shouldSync = (rowRank != 0 && rowRank <= m_syncLimit);
+        }
     }
 
     const int desiredSync = shouldSync ? 1 : 0;
@@ -172,6 +242,31 @@ bool SCASyncManager::shouldSyncModify(const nlohmann::json& checkData)
 
     if (m_syncedIds.find(checkId) != m_syncedIds.end())
     {
+        return true;
+    }
+
+    if (m_hasPolicyDeltaWindow)
+    {
+        if (m_policyDeltaWindowIds.find(checkId) == m_policyDeltaWindowIds.end())
+        {
+            return false;
+        }
+
+        if (!checkData.contains("version"))
+        {
+            LoggingHelper::getInstance().log(LOG_ERROR,
+                                             "SCA sync manager: modify without version for check " + checkId);
+            return false;
+        }
+
+        deferSyncFlagUpdate(checkId, checkData["version"].get<uint64_t>(), 1);
+        m_syncedIds.insert(checkId);
+        ++m_syncedCount;
+
+        LoggingHelper::getInstance().log(
+            LOG_INFO,
+            "SCA sync limit promotion: promoted check " + checkId + " on modify for cluster '" + clusterNameForLog() + "'");
+
         return true;
     }
 
@@ -327,6 +422,8 @@ SCASyncManager::LimitResult SCASyncManager::enforceLimitLocked()
     m_syncedIds.clear();
     m_totalCount = 0;
     m_syncedCount = 0;
+    m_hasPolicyDeltaWindow = false;
+    m_policyDeltaWindowIds.clear();
 
     const auto rows = selectChecks("", 0);
     const bool unlimited = (m_syncLimit == 0);

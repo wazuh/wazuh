@@ -52,6 +52,11 @@ void SCAEventHandler::ReportPoliciesDelta(
     // Vector to accumulate checks that fail validation for deferred deletion
     std::vector<nlohmann::json> failedChecks;
 
+    if (m_syncManager)
+    {
+        m_syncManager->preparePolicyDeltaWindow();
+    }
+
     const auto extractCheckData = [](const nlohmann::json & event)
     {
         nlohmann::json checkData;
@@ -150,6 +155,7 @@ void SCAEventHandler::ReportPoliciesDelta(
     if (m_syncManager)
     {
         m_syncManager->applyDeferredUpdates();
+        m_syncManager->clearPolicyDeltaWindow();
     }
 }
 
