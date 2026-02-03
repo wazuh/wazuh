@@ -32,8 +32,8 @@ class SCASyncManager
 
         // Precompute the first N check ids (ORDER BY rowid LIMIT N) once per batch so
         // shouldSyncInsert/shouldSyncModify avoid per-event DB queries.
-        void preparePolicyDeltaWindow();
-        void clearPolicyDeltaWindow();
+        void prepareBatchAllowedIds();
+        void clearBatchAllowedIds();
 
         bool shouldSyncInsert(const nlohmann::json& checkData);
         bool shouldSyncModify(const nlohmann::json& checkData);
@@ -53,7 +53,7 @@ class SCASyncManager
         LimitResult enforceLimitLocked();
         void updateSyncFlag(const std::string& checkId, uint64_t version, int syncValue);
         void deferSyncFlagUpdate(const std::string& checkId, uint64_t version, int syncValue);
-        void setPolicyDeltaWindowLocked(std::unordered_set<std::string> windowIds);
+        void setBatchAllowedIdsLocked(std::unordered_set<std::string> windowIds);
         std::vector<nlohmann::json> selectChecks(const std::string& filter, uint32_t limit) const;
         std::string clusterNameForLog() const;
 
@@ -64,8 +64,8 @@ class SCASyncManager
         uint64_t m_totalCount {0};
         uint64_t m_syncedCount {0};
         std::unordered_set<std::string> m_syncedIds;
-        std::unordered_set<std::string> m_policyDeltaWindowIds;
-        bool m_hasPolicyDeltaWindow {false};
+        std::unordered_set<std::string> m_batchAllowedIds;
+        bool m_hasBatchAllowedIds {false};
         std::vector<PendingUpdate> m_pendingUpdates;
         std::string m_clusterName;
 };

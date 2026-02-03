@@ -54,7 +54,7 @@ void SCAEventHandler::ReportPoliciesDelta(
 
     if (m_syncManager)
     {
-        m_syncManager->preparePolicyDeltaWindow();
+        m_syncManager->prepareBatchAllowedIds();
     }
 
     const auto extractCheckData = [](const nlohmann::json & event)
@@ -155,7 +155,7 @@ void SCAEventHandler::ReportPoliciesDelta(
     if (m_syncManager)
     {
         m_syncManager->applyDeferredUpdates();
-        m_syncManager->clearPolicyDeltaWindow();
+        m_syncManager->clearBatchAllowedIds();
     }
 }
 

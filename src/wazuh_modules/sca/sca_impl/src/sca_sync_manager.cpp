@@ -56,8 +56,8 @@ SCASyncManager::LimitResult SCASyncManager::updateHandshake(uint64_t syncLimit, 
     const bool limitChanged = (syncLimit != m_syncLimit);
 
     m_syncLimit = syncLimit;
-    m_hasPolicyDeltaWindow = false;
-    m_policyDeltaWindowIds.clear();
+    m_hasBatchAllowedIds = false;
+    m_batchAllowedIds.clear();
 
     if (!clusterName.empty())
     {
@@ -77,12 +77,12 @@ SCASyncManager::LimitResult SCASyncManager::updateHandshake(uint64_t syncLimit, 
     return {};
 }
 
-void SCASyncManager::preparePolicyDeltaWindow()
+void SCASyncManager::prepareBatchAllowedIds()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    m_policyDeltaWindowIds.clear();
-    m_hasPolicyDeltaWindow = false;
+    m_batchAllowedIds.clear();
+    m_hasBatchAllowedIds = false;
 
     if (m_syncLimit == 0)
     {
@@ -121,20 +121,20 @@ void SCASyncManager::preparePolicyDeltaWindow()
     };
 
     m_dBSync->selectRows(query.query(), callback);
-    setPolicyDeltaWindowLocked(std::move(windowIds));
+    setBatchAllowedIdsLocked(std::move(windowIds));
 }
 
-void SCASyncManager::clearPolicyDeltaWindow()
+void SCASyncManager::clearBatchAllowedIds()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    m_policyDeltaWindowIds.clear();
-    m_hasPolicyDeltaWindow = false;
+    m_batchAllowedIds.clear();
+    m_hasBatchAllowedIds = false;
 }
 
-void SCASyncManager::setPolicyDeltaWindowLocked(std::unordered_set<std::string> windowIds)
+void SCASyncManager::setBatchAllowedIdsLocked(std::unordered_set<std::string> windowIds)
 {
-    m_policyDeltaWindowIds = std::move(windowIds);
-    m_hasPolicyDeltaWindow = true;
+    m_batchAllowedIds = std::move(windowIds);
+    m_hasBatchAllowedIds = true;
 }
 
 bool SCASyncManager::shouldSyncInsert(const nlohmann::json& checkData)
@@ -156,9 +156,9 @@ bool SCASyncManager::shouldSyncInsert(const nlohmann::json& checkData)
 
     if (m_syncLimit != 0)
     {
-        if (m_hasPolicyDeltaWindow)
+        if (m_hasBatchAllowedIds)
         {
-            shouldSync = (m_policyDeltaWindowIds.find(checkId) != m_policyDeltaWindowIds.end());
+            shouldSync = (m_batchAllowedIds.find(checkId) != m_batchAllowedIds.end());
         }
         else
         {
@@ -245,9 +245,9 @@ bool SCASyncManager::shouldSyncModify(const nlohmann::json& checkData)
         return true;
     }
 
-    if (m_hasPolicyDeltaWindow)
+    if (m_hasBatchAllowedIds)
     {
-        if (m_policyDeltaWindowIds.find(checkId) == m_policyDeltaWindowIds.end())
+        if (m_batchAllowedIds.find(checkId) == m_batchAllowedIds.end())
         {
             return false;
         }
@@ -422,8 +422,8 @@ SCASyncManager::LimitResult SCASyncManager::enforceLimitLocked()
     m_syncedIds.clear();
     m_totalCount = 0;
     m_syncedCount = 0;
-    m_hasPolicyDeltaWindow = false;
-    m_policyDeltaWindowIds.clear();
+    m_hasBatchAllowedIds = false;
+    m_batchAllowedIds.clear();
 
     const auto rows = selectChecks("", 0);
     const bool unlimited = (m_syncLimit == 0);
