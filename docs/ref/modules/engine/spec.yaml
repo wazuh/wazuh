@@ -293,7 +293,7 @@ paths:
                   value:
                     status: "OK"
                     result:
-                      output: "{\"wazuh\":{\"protocol\":{\"queue\":1,\"location\":\"syscheck\"},\"integration\":{\"category\":\"Security\",\"name\":\"integration/wazuh-core/0\",\"decoders\":[\"core-wazuh-message\",\"integrations\"]}},\"name\":\"nahuel\",\"event\":{\"original\":\"File /etc/passwd modified\"},\"@timestamp\":\"2025-12-26T17:33:22Z\"}"
+                      output: {"wazuh":{"protocol":{"queue":1,"location":"syscheck"},"integration":{"category":"Security","name":"integration/wazuh-core/0","decoders":["core-wazuh-message","integrations"]}},"name":"nahuel","event":{"original":"File /etc/passwd modified"},"@timestamp":"2025-12-26T17:33:22Z"}
                       asset_traces:
                         - asset: "decoder/core-wazuh-message/0"
                           success: true
@@ -305,7 +305,7 @@ paths:
                   value:
                     status: "OK"
                     result:
-                      output: "{\"wazuh\":{\"protocol\":{\"queue\":1,\"location\":\"syscheck\"},\"integration\":{\"category\":\"Security\",\"name\":\"integration/wazuh-core/0\",\"decoders\":[\"core-wazuh-message\",\"integrations\"]}},\"event\":{\"kind\":\"test\",\"original\":\"File /etc/passwd modified\"},\"@timestamp\":\"2025-12-26T17:34:18Z\"}"
+                      output: {"wazuh":{"protocol":{"queue":1,"location":"syscheck"},"integration":{"category":"Security","name":"integration/wazuh-core/0","decoders":["core-wazuh-message","integrations"]}},"event":{"kind":"test","original":"File /etc/passwd modified"},"@timestamp":"2025-12-26T17:34:18Z"}
                       asset_traces:
                         - asset: "decoder/core-wazuh-message/0"
                           success: true
@@ -1642,7 +1642,7 @@ components:
       type: object
       properties:
         output:
-          type: string
+          type: object
           description: "JSON output of the event"
         asset_traces:
           type: array

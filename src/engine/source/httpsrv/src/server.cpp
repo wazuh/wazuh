@@ -69,23 +69,47 @@ Server::Server(const std::string& id, size_t payloadMaxBytes)
         });
 
     // TODO: Add Metrics
-    auto loggerFnName = fmt::format("Server::Server({})::set_logger", id);
-    m_srv->set_logger([id, loggerFnName](const auto& /*req*/, const auto& /*res*/)
-                      { LOG_TRACE_L(loggerFnName.c_str(), "Server {} request received", id); });
+    auto afterFnName = fmt::format("Server::Server({})::after_processing", id);
+    m_srv->set_logger(
+        [id, afterFnName](const auto& req, const auto& res)
+        {
+            auto truncateBody = [](const std::string& body, size_t maxLen = 128) -> std::string
+            {
+                if (body.size() <= maxLen)
+                    return body;
+                return body.substr(0, maxLen) + "...";
+            };
+
+            LOG_TRACE_L(afterFnName.c_str(),
+                        fmt::format("Request: {} {} '{}' - Response: {} '{}'",
+                                    req.method,
+                                    req.path,
+                                    truncateBody(req.body),
+                                    res.status,
+                                    res.body));
+        });
 }
 
 void Server::addRoute(Method method,
                       const std::string& route,
                       const std::function<void(const httplib::Request&, httplib::Response&)>& handler)
 {
+    auto beforeFnName = fmt::format("Server::Server({})::before_processing", m_id);
+
+    auto wrapped = [this, handler, beforeFnName](const httplib::Request& req, httplib::Response& res)
+    {
+        LOG_TRACE_L(beforeFnName.c_str(), fmt::format("Request: {} {} '{}'", req.method, req.path, req.body));
+        handler(req, res);
+    };
+
     try
     {
         switch (method)
         {
-            case Method::GET: m_srv->Get(route, handler); break;
-            case Method::POST: m_srv->Post(route, handler); break;
-            case Method::PUT: m_srv->Put(route, handler); break;
-            case Method::DELETE: m_srv->Delete(route, handler); break;
+            case Method::GET: m_srv->Get(route, wrapped); break;
+            case Method::POST: m_srv->Post(route, wrapped); break;
+            case Method::PUT: m_srv->Put(route, wrapped); break;
+            case Method::DELETE: m_srv->Delete(route, wrapped); break;
             default: throw std::runtime_error("Invalid method");
         }
     }

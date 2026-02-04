@@ -52,8 +52,13 @@ class ApiConnector:
             if response_post.status != api_engine.OK:
                 print("\033[91mRun error: {}\033[0m".format(response_post.error))
                 exit(1)
+            # Preserve integer types in output
+            raw_output = response.get('result', {}).get('output')
+            if raw_output is None:
+                print("\033[91mError: Missing output in response\033[0m")
+                exit(1)
 
-            return response_post
+            return (response_post, raw_output)
         except Exception as ex:
             print('Could not send event to TEST api. Error: {}'.format(ex))
             exit(1)

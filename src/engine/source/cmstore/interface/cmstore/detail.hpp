@@ -5,13 +5,52 @@
 #include <cctype>
 #include <functional>
 #include <optional>
+#include <stdexcept>
 #include <string>
+#include <string_view>
 #include <unordered_set>
 
 #include <base/json.hpp>
+#include <base/name.hpp>
 #include <base/utils/generator.hpp>
 
-#include <cmstore/detail.hpp>
+
+namespace
+{
+/**
+ * @brief Check asset name validity according to its type.
+ *
+ * TODO: This function will be remove when support traceable for any name.
+ * @param name Name to check
+ * @param prefix Expected prefix for the asset type
+ * @throw std::logic_error if the type is not supported for name validation
+ */
+inline void checkAssetName(const std::string& name, std::string_view prefix)
+{
+    const auto assetName = [&]() -> base::Name
+    {
+        try
+        {
+            return base::Name{name};
+        }
+        catch (const std::runtime_error& e)
+        {
+            throw std::runtime_error(fmt::format("Invalid {} name '{}': {}", prefix, name, e.what()));
+        }
+    }();
+
+    if (assetName.parts().size() != 3)
+    {
+        throw std::runtime_error(fmt::format("Asset name '{}' must have exactly 3 parts '{}/<name>/<version>'", name, prefix));
+    }
+
+    if (assetName.parts()[0] != prefix)
+    {
+        throw std::runtime_error(fmt::format("Asset name '{}' must start with prefix '{}'", name, prefix));
+    }
+}
+
+} // namespace
 
 namespace cm::store::detail
 {
@@ -65,6 +104,8 @@ inline json::Json adaptDecoder(const json::Json& document)
         {
             throw std::runtime_error("Decoder document /name is not a string");
         }
+
+        checkAssetName(*nameOpt, "decoder");
     }
 
     // parents
@@ -222,6 +263,7 @@ inline json::Json adaptFilter(const json::Json& document)
         {
             throw std::runtime_error("Filter document /name is not a string");
         }
+        checkAssetName(*nameOpt, "filter");
     }
 
     // 2. type
@@ -282,6 +324,7 @@ inline json::Json adaptOutput(const json::Json& document)
         {
             throw std::runtime_error("Output document /name is not a string");
         }
+        checkAssetName(*nameOpt, "output");
     }
 
     // 2. outputs array (contains the first_of logic with check and then blocks)

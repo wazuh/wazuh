@@ -44,12 +44,13 @@ def run_command(command):
     assert result.returncode == 0, f"{result.stderr}"
 
 
-def send_recv(request, expected_response_type) -> Tuple[Optional[str], object]:
+def send_recv(request, expected_response_type) -> Tuple[Optional[str], object, dict]:
     """
     Generic helper for engine-api:
-      - Returns (error_string, parsed_response)
+      - Returns (error_string, parsed_response, raw_output_dict)
       - error_string is None if status != ERROR
       - If status == ERROR, error_string = parsed_response.error
+      - raw_output_dict preserves integer types from the original response (only for RunPost_Response)
     """
     error, response = api_client.send_recv(request)
     print(f"Request: {request}")
@@ -60,8 +61,14 @@ def send_recv(request, expected_response_type) -> Tuple[Optional[str], object]:
     parsed = ParseDict(response, expected_response_type)
     status = getattr(parsed, "status", None)
     if status == api_engine.ERROR:
-        return parsed.error, parsed
-    return None, parsed
+        return parsed.error, parsed, {}
+
+    # Preserve raw output with correct integer types for RunPost_Response
+    raw_output = {}
+    if isinstance(parsed, api_tester.RunPost_Response):
+        raw_output = response.get('result', {}).get('output', {})
+
+    return None, parsed, raw_output
 
 
 # ===================================================================
@@ -95,7 +102,7 @@ def cm_policy_upsert(space: str, yml: str):
     req = api_crud.policyPost_Request()
     req.space = space
     req.ymlContent = yml
-    err, resp = send_recv(req, api_engine.GenericStatus_Response())
+    err, resp, _ = send_recv(req, api_engine.GenericStatus_Response())
     assert err is None, f"Error upserting policy in '{space}': {err}"
     assert resp.status == api_engine.OK, f"{resp}"
 
@@ -103,7 +110,7 @@ def cm_policy_upsert(space: str, yml: str):
 def cm_policy_delete(space: str):
     req = api_crud.policyDelete_Request()
     req.space = space
-    err, resp = send_recv(req, api_engine.GenericStatus_Response())
+    err, resp, _ = send_recv(req, api_engine.GenericStatus_Response())
     assert err is None, f"Error deleting policy '{space}': {err}"
     assert resp.status == api_engine.OK, f"{resp}"
 
@@ -143,21 +150,21 @@ def create_session(session_name: str, policy_name: str) -> api_engine.GenericSta
     request = api_tester.SessionPost_Request()
     request.session.name = session_name
     request.session.namespaceId = policy_name
-    _, response = send_recv(request, api_engine.GenericStatus_Response())
+    _, response, _ = send_recv(request, api_engine.GenericStatus_Response())
     return response
 
 
 def get_session(context, session_name: str):
     request = api_tester.SessionGet_Request()
     request.name = session_name
-    error, context.result = send_recv(request, api_tester.SessionGet_Response())
+    error, context.result, _ = send_recv(request, api_tester.SessionGet_Response())
     assert error is None, f"{error}"
 
 
 def session_tear_down():
     # Check if there are sessions to delete
     request = api_tester.TableGet_Request()
-    error, response = send_recv(request, api_tester.TableGet_Response())
+    error, response, _ = send_recv(request, api_tester.TableGet_Response())
     assert error is None, f"{error}"
     if len(response.sessions) == 0:
         return
@@ -166,7 +173,7 @@ def session_tear_down():
     for session in response.sessions:
         req = api_tester.SessionDelete_Request()
         req.name = session.name
-        _, _ = send_recv(req, api_engine.GenericStatus_Response())
+        _, _, _ = send_recv(req, api_engine.GenericStatus_Response())
 
 
 # ===================================================================
@@ -236,7 +243,7 @@ def step_impl(context, sessions: str, session_name: str, policy_name: str):
 def step_impl(context, session_name: str):
     request = api_tester.SessionDelete_Request()
     request.name = session_name
-    error, context.result = send_recv(request, api_engine.GenericStatus_Response())
+    error, context.result, _ = send_recv(request, api_engine.GenericStatus_Response())
 
 
 @when('I send a request to the tester to get the session "{session_name}"')
@@ -270,7 +277,7 @@ def step_impl(context, message: str, session_name: str, debug_level: str, agent_
     QUEUE = 1
     request.event = f"{QUEUE}:{LOCATION}:{message}"
     request.asset_trace.extend([asset_trace])
-    error, context.result = send_recv(request, api_tester.RunPost_Response())
+    error, context.result, context.raw_output = send_recv(request, api_tester.RunPost_Response())
     assert error is None, f"{error}"
 
 
@@ -294,7 +301,7 @@ def step_impl(context, status: str):
 @then('I should receive a size list of {size}')
 def step_impl(context, size: str):
     request = api_tester.TableGet_Request()
-    error, response = send_recv(request, api_tester.TableGet_Response())
+    error, response, _ = send_recv(request, api_tester.TableGet_Response())
     assert error is None, f"{error}"
     assert len(response.sessions) == int(size), f"{response.sessions}"
 
@@ -321,7 +328,7 @@ def step_impl(context, policy_sync: str):
 def step_impl(context, session_name: str, policy_sync: str):
     request = api_tester.SessionReload_Request()
     request.name = session_name
-    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    error, response, _ = send_recv(request, api_engine.GenericStatus_Response())
     assert error is None, f"{error}"
 
     get_session(context, session_name)
@@ -341,7 +348,7 @@ def step_impl(context, session_name: str, policy_sync: str):
 def step_impl(context, session_name: str):
     request = api_tester.SessionReload_Request()
     request.name = session_name
-    error, context.result = send_recv(
+    error, context.result, _ = send_recv(
         request, api_engine.GenericStatus_Response()
     )
 
@@ -356,33 +363,35 @@ def step_impl(context, response: str):
     """
     Compare the expected and actual JSON, ensuring:
       - the full wrapper is validated (e.g., assetTraces + output)
-      - the output field is normalized (parsed, manager_name removed, re-serialized)
+      - the output field uses raw dict to preserve integer types
     """
-    # 1. Parse the expected and actual wrappers
+    # 1. Parse the expected wrapper
     expected_wrapper = json.loads(response)
-    actual_wrapper   = json.loads(MessageToJson(context.result.result))
 
-    # 2. Helper to extract and parse the 'output' field (which comes as a JSON string)
-    def parse_output(wrapper):
-        raw = wrapper.get('output')
-        if isinstance(raw, str):
-            return json.loads(raw)
-        return raw or {}
+    # 2. Build actual wrapper manually to preserve types
+    from google.protobuf.json_format import MessageToDict
+    actual_wrapper = {
+        'output': context.raw_output  # Use raw dict instead of Struct
+    }
+    # Only include assetTraces if they exist
+    if context.result.result.asset_traces:
+        actual_wrapper['assetTraces'] = [MessageToDict(trace) for trace in context.result.result.asset_traces]
 
-    expected_output = parse_output(expected_wrapper)
-    actual_output   = parse_output(actual_wrapper)
+    # 3. Extract outputs
+    expected_output = expected_wrapper.get('output', {})
+    actual_output = actual_wrapper.get('output', {})
 
-    # 3. Remove manager_name from both outputs
+    # 4. Remove manager_name from both outputs
     expected_output.get('agent', {}).pop('manager_name', None)
-    actual_output.get('agent',   {}).pop('manager_name', None)
+    actual_output.get('agent', {}).pop('manager_name', None)
 
-    # 4. Re-serialize the output with sorted keys and no extra spaces
-    normalize = lambda obj: json.dumps(obj, sort_keys=True, separators=(",", ":"))
+    # 5. Re-serialize with sorted keys
+    def normalize(obj): return json.dumps(obj, sort_keys=True, separators=(",", ":"))
     expected_wrapper['output'] = normalize(expected_output)
-    actual_wrapper['output']   = normalize(actual_output)
+    actual_wrapper['output'] = normalize(actual_output)
 
-    # 5. Normalize and compare the whole wrapper
+    # 6. Compare
     norm_expected = normalize(expected_wrapper)
-    norm_actual   = normalize(actual_wrapper)
+    norm_actual = normalize(actual_wrapper)
 
     assert norm_actual == norm_expected, f"Responses do not match: {norm_actual} != {norm_expected}"

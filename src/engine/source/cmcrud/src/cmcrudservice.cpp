@@ -184,16 +184,58 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
                 "Namespace '{}' already exists. Import is only allowed into a new namespace.", nsId.toStr()));
         }
 
-        // Parse input JSON
-        json::Json nsJson;
-        try
+        // Parse and validate input JSON structure
+        json::Json nsJson = [&jsonDocument]() -> json::Json
         {
-            nsJson = json::Json {jsonDocument.data()};
-        }
-        catch (const std::exception& e)
-        {
-            throw std::runtime_error(fmt::format("Invalid JSON document for namespace import: {}", e.what()));
-        }
+            // Parse input JSON
+            json::Json parsed;
+            try
+            {
+                parsed = json::Json {jsonDocument.data()};
+            }
+            catch (const std::exception& e)
+            {
+                throw std::runtime_error(fmt::format("Invalid JSON document for namespace import: {}", e.what()));
+            }
+
+            // Validate required structure: must have "policy" and "resources" keys
+            if (!parsed.exists("/policy"))
+            {
+                throw std::runtime_error("Invalid namespace import JSON: missing required '/policy' key");
+            }
+
+            if (!parsed.exists("/resources"))
+            {
+                throw std::runtime_error("Invalid namespace import JSON: missing required '/resources' key");
+            }
+
+            // Validate that both are objects
+            auto policyOpt = parsed.getObject("/policy");
+            if (!policyOpt.has_value())
+            {
+                throw std::runtime_error("Invalid namespace import JSON: '/policy' must be an object");
+            }
+
+            auto resourcesOpt = parsed.getObject("/resources");
+            if (!resourcesOpt.has_value())
+            {
+                throw std::runtime_error("Invalid namespace import JSON: '/resources' must be an object");
+            }
+
+            // Validate that only "policy" and "resources" keys exist (no additional keys)
+            auto rootObj = parsed.getObject();
+            if (rootObj.has_value())
+            {
+                const auto& root = rootObj.value();
+                if (root.size() != 2)
+                {
+                    throw std::runtime_error("Invalid namespace import JSON: root object must contain exactly 2 keys: "
+                                             "'policy' and 'resources'");
+                }
+            }
+
+            return parsed;
+        }();
 
         // Create empty destination namespace
         store->createNamespace(nsId);
@@ -246,15 +288,13 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
                         case cm::store::ResourceType::OUTPUT:
                         case cm::store::ResourceType::DECODER:
                         {
-                            auto assetJson = [&item, type]() -> json::Json {
+                            auto assetJson = [&item, type]() -> json::Json
+                            {
                                 switch (type)
                                 {
-                                    case cm::store::ResourceType::DECODER:
-                                        return cm::store::detail::adaptDecoder(item);
-                                    case cm::store::ResourceType::FILTER:
-                                        return cm::store::detail::adaptFilter(item);
-                                    case cm::store::ResourceType::OUTPUT:
-                                        return cm::store::detail::adaptOutput(item);
+                                    case cm::store::ResourceType::DECODER: return cm::store::detail::adaptDecoder(item);
+                                    case cm::store::ResourceType::FILTER: return cm::store::detail::adaptFilter(item);
+                                    case cm::store::ResourceType::OUTPUT: return cm::store::detail::adaptOutput(item);
                                 }
                                 __builtin_unreachable();
                             }();
@@ -559,15 +599,13 @@ void CrudService::upsertResource(const cm::store::NamespaceId& nsId,
             case cm::store::ResourceType::FILTER:
             {
                 json::Json assetJson = yamlToJson(document);
-                auto adaptedPayload = [&assetJson, type]() -> json::Json {
+                auto adaptedPayload = [&assetJson, type]() -> json::Json
+                {
                     switch (type)
                     {
-                        case cm::store::ResourceType::DECODER:
-                            return cm::store::detail::adaptDecoder(assetJson);
-                        case cm::store::ResourceType::FILTER:
-                            return cm::store::detail::adaptFilter(assetJson);
-                        case cm::store::ResourceType::OUTPUT:
-                            return cm::store::detail::adaptOutput(assetJson);
+                        case cm::store::ResourceType::DECODER: return cm::store::detail::adaptDecoder(assetJson);
+                        case cm::store::ResourceType::FILTER: return cm::store::detail::adaptFilter(assetJson);
+                        case cm::store::ResourceType::OUTPUT: return cm::store::detail::adaptOutput(assetJson);
                     }
                     __builtin_unreachable();
                 }();
