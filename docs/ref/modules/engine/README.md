@@ -1470,12 +1470,6 @@ kanban
 
 - **Definitions** (optional): Defines symbols that will be replaced throughout the document in its occurrences.
 
-#### Forbidden Stages
-
-Filters must not include the following stages:
-- `parse|*`: Parsing is not allowed in filters.
-- `normalize`: Normalization is not allowed in filters.
-
 #### Example Filter
 
 ```yaml

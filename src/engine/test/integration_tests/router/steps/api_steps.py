@@ -132,19 +132,6 @@ name: {FILTER_ALLOW_ALL_NAME}
 id: {FILTER_ALLOW_ALL_UUID}
 enabled: true
 type: pre-filter
-metadata:
-  module: wazuh
-  title: Allow all filter
-  description: Default filter to allow all events (for default ruleset)
-  compatibility: Wazuh 5.*
-  versions:
-    - Wazuh 5.*
-  author:
-    name: Wazuh, Inc.
-    url: https://wazuh.com
-    date: 2022/11/08
-  references:
-    - https://documentation.wazuh.com/
 check: exists($event.original)
 """
 
