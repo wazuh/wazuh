@@ -4,7 +4,7 @@ set -euo pipefail
 # Save current directory
 OLD_DIR=$(pwd)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-DEST_DIR="/var/ossec/etc/certs"
+DEST_DIR="${INSTALLDIR}/etc/certs"
 ORIG_DIR="${SCRIPT_DIR}/certs"
 WAZUH_USER="wazuh"
 WAZUH_GROUP="wazuh"
