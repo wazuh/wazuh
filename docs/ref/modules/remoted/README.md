@@ -30,7 +30,7 @@ The remoted module serves as the primary entry point for all agent communication
 
 ## Related Modules
 
-- **wazuh-db**: Stores agent information and connection status
-- **analysisd**: Consumes enriched events for rule evaluation
+- **wazuh-manager-db**: Stores agent information and connection status
+- **wazuh-manager-analysisd**: Consumes enriched events for rule evaluation
 - **agent-upgrade**: Handles agent update notifications
 - **inventory-sync**: Synchronizes agent inventory data

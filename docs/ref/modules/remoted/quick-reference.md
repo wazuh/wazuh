@@ -43,7 +43,7 @@ No changes needed. Defaults work well.
 ### High Throughput (>50K events/sec)
 
 ```conf
-# /var/ossec/etc/internal_options.conf
+# /var/wazuh-manager/etc/internal_options.conf
 remoted.control_msg_queue_size=32768
 remoted.batch_events_capacity=262144
 remoted.worker_pool=8
@@ -53,7 +53,7 @@ remoted.sender_pool=16
 ### Large Agent Count (>10K agents)
 
 ```conf
-# /var/ossec/etc/internal_options.conf
+# /var/wazuh-manager/etc/internal_options.conf
 remoted.control_msg_queue_size=32768
 ```
 
@@ -83,7 +83,7 @@ E	{"log":"Authentication successful"}
 ### Statistics File
 
 ```bash
-cat /var/ossec/var/run/wazuh-remoted.state
+cat /var/wazuh-manager/var/run/wazuh-manager-remoted.state
 ```
 
 ### Key Metrics

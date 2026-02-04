@@ -736,64 +736,6 @@ main()
     fi
 
     . ./src/init/update.sh
-    # Is this an update?
-    if getPreinstalledDir && [ "X${USER_CLEANINSTALL}" = "X" ]; then
-        echo ""
-        ct="1"
-        while [ $ct = "1" ]; do
-            ct="0"
-            $ECHO " - ${wanttoupdate} ($yes/$no): "
-            if [ "X${USER_UPDATE}" = "X" ]; then
-                read ANY
-            else
-                ANY=$yes
-            fi
-
-            case $ANY in
-                $yes)
-                    update_only="yes"
-                    break;
-                    ;;
-                $no)
-                    echo ""
-                    echo "${mustuninstall}"
-                    exit 0;
-                    ;;
-                  *)
-                    ct="1"
-                    ;;
-            esac
-        done
-
-
-        # Do some of the update steps.
-        if [ "X${update_only}" = "Xyes" ]; then
-            . ./src/init/update.sh
-
-            if [ "`doUpdatecleanup`" = "${FALSE}" ]; then
-                # Disabling update
-                echo ""
-                echo "${unabletoupdate}"
-                sleep 5;
-                update_only=""
-            else
-                # Get update
-                USER_DIR="$PREINSTALLEDDIR"
-                USER_INSTALL_TYPE=`getPreinstalledType`
-                USER_OLD_VERSION=`getPreinstalledVersion`
-                USER_OLD_NAME=`getPreinstalledName`
-                USER_DELETE_DIR="$nomatch"
-            fi
-
-            ct="1"
-
-            # We dont need to update the rules on agent installs
-            if [ "X${USER_INSTALL_TYPE}" = "Xagent" ]; then
-                ct="0"
-            fi
-
-        fi
-    fi
 
     # Setting up the installation type
     hybrid="hybrid"
@@ -854,9 +796,80 @@ main()
         INSTYPE=${USER_INSTALL_TYPE}
     fi
 
-    # Adjust default install dir for manager when not overridden
-    if [ -z "${USER_DIR}" ] && [ "X$INSTYPE" = "Xserver" ] && [ "X$INSTALLDIR" = "X/var/ossec" ]; then
-        INSTALLDIR="/var/wazuh-manager"
+    # Is this an update? (only for the selected installation type)
+    if [ "X${USER_CLEANINSTALL}" = "X" ]; then
+        if [ "X$INSTYPE" = "Xagent" ]; then
+            pidir_service_name="wazuh-agent"
+        else
+            pidir_service_name="wazuh-manager"
+        fi
+
+        if getPreinstalledDirByType && isWazuhInstalled "$PREINSTALLEDDIR"; then
+            echo ""
+            ct="1"
+            while [ $ct = "1" ]; do
+                ct="0"
+                $ECHO " - ${wanttoupdate} ($yes/$no): "
+                if [ "X${USER_UPDATE}" = "X" ]; then
+                    read ANY
+                else
+                    ANY=$yes
+                fi
+
+                case $ANY in
+                    $yes)
+                        update_only="yes"
+                        break;
+                        ;;
+                    $no)
+                        echo ""
+                        echo "${mustuninstall}"
+                        exit 0;
+                        ;;
+                      *)
+                        ct="1"
+                        ;;
+                esac
+            done
+
+
+            # Do some of the update steps.
+            if [ "X${update_only}" = "Xyes" ]; then
+                . ./src/init/update.sh
+
+                if [ "`doUpdatecleanup`" = "${FALSE}" ]; then
+                    # Disabling update
+                    echo ""
+                    echo "${unabletoupdate}"
+                    sleep 5;
+                    update_only=""
+                else
+                    # Get update
+                    USER_DIR="$PREINSTALLEDDIR"
+                    USER_INSTALL_TYPE=`getPreinstalledType`
+                    USER_OLD_VERSION=`getPreinstalledVersion`
+                    USER_OLD_NAME=`getPreinstalledName`
+                    USER_DELETE_DIR="$nomatch"
+                fi
+
+                ct="1"
+
+                # We dont need to update the rules on agent installs
+                if [ "X${USER_INSTALL_TYPE}" = "Xagent" ]; then
+                    ct="0"
+                fi
+
+            fi
+        fi
+    fi
+
+    # Adjust default install dir by installation type when not overridden
+    if [ -z "${USER_DIR}" ]; then
+        if [ "X$INSTYPE" = "Xagent" ]; then
+            INSTALLDIR="/var/ossec"
+        else
+            INSTALLDIR="/var/wazuh-manager"
+        fi
     fi
 
     # Setting up the installation directory
