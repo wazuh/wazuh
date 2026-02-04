@@ -145,8 +145,8 @@ json::Json extractDocumentFromHit(const nlohmann::json& hit)
  *   ],
  *   "ssl": {
  *     "certificate_authorities": [
- *       "/var/ossec/",
- *       "/var/ossec_cert/"
+ *       "/var/wazuh-manager/",
+ *       "/var/wazuh-manager_cert/"
  *     ],
  *     "certificate": "cert",
  *     "key": "key_example"

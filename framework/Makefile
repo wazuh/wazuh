@@ -5,7 +5,7 @@
 # Syntax: make [ all | build | install | examples | clean ]
 
 WAZUH_GROUP       = wazuh
-INSTALLDIR       ?= /var/ossec
+INSTALLDIR       ?= /var/wazuh-manager
 
 CC           = gcc
 CFLAGS       = -pipe -Wall -Wextra
