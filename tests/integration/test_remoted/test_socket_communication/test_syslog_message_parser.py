@@ -43,7 +43,7 @@ def test_syslog_message_parser(test_configuration, test_metadata, configure_loca
                             set_wazuh_configuration, restart_wazuh_expect_error):
 
     '''
-    description: Check if 'wazuh-remoted' can receive syslog messages through the socket.
+    description: Check if 'wazuh-manager-remoted' can receive syslog messages through the socket.
 
     parameters:
         - test_configuration

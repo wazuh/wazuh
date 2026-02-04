@@ -7,7 +7,7 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: These tests will check if the 'wazuh-authd' daemon correctly responds to the enrollment requests
+brief: These tests will check if the 'wazuh-manager-authd' daemon correctly responds to the enrollment requests
        messages respecting the valid option values used in the force configuration block.
 
 components:
@@ -19,8 +19,8 @@ targets:
     - manager
 
 daemons:
-    - wazuh-authd
-    - wazuh-db
+    - wazuh-manager-authd
+    - wazuh-manager-db
 
 os_platform:
     - linux

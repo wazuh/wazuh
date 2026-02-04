@@ -7,8 +7,8 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: These tests will check if the 'remote enrollment' option of the 'wazuh-authd' daemon
-       settings is working properly. The 'wazuh-authd' daemon can automatically add
+brief: These tests will check if the 'remote enrollment' option of the 'wazuh-manager-authd' daemon
+       settings is working properly. The 'wazuh-manager-authd' daemon can automatically add
        a Wazuh agent to a Wazuh manager and provide the key to the agent.
 
 components:
@@ -18,9 +18,9 @@ targets:
     - manager
 
 daemons:
-    - wazuh-authd
-    - wazuh-db
-    - wazuh-modulesd
+    - wazuh-manager-authd
+    - wazuh-manager-db
+    - wazuh-manager-modulesd
 
 os_platform:
     - linux
@@ -115,7 +115,7 @@ def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configur
                            truncate_monitored_files, daemons_handler):
     '''
     description:
-        Checks if the 'wazuh-authd' daemon remote enrollment is enabled/disabled according
+        Checks if the 'wazuh-manager-authd' daemon remote enrollment is enabled/disabled according
         to the configuration. By default, remote enrollment is enabled. When disabled,
         the 'authd' 'TLS' port (1515 by default) won't be listening to new connections,
         but requests to the local socket will still be attended.
@@ -152,7 +152,7 @@ def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configur
         to be made, and the expected result.
 
     expected_output:
-        - r'Accepting connections on port 1515. No password required.' (When the 'wazuh-authd' daemon)
+        - r'Accepting connections on port 1515. No password required.' (When the 'wazuh-manager-authd' daemon)
         - r'OSSEC K:' (When the agent has enrolled in the manager)
         - r'.*Port 1515 was set as disabled.*' (When remote enrollment is disabled)
         - r'ERROR: Cannot communicate with the master'

@@ -1446,7 +1446,7 @@ void *dispach_events_thread(void *arg) {
         .unix_socket_path   = ANLSYS_ENRICH_SOCK,           // analysisd unix socket
         .url                = "http://localhost/events/enriched",
         .content_type       = "application/x-wev1",
-        .user_agent         = "wazuh-remoted/1.0",
+        .user_agent         = "wazuh-manager-remoted/1.0",
         .timeout_ms         = 5000,
         .connect_timeout_ms = 2000,
         .keepalive          = true

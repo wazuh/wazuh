@@ -8,7 +8,7 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 type: integration
 
 brief: These tests will check if the Syscollector events, which are processed by
-       the `wazuh-analysisd` daemon, generates appropriate alerts based on the
+       the `wazuh-manager-analysisd` daemon, generates appropriate alerts based on the
        information contained in the delta.
 
 
@@ -21,7 +21,7 @@ targets:
     - manager
 
 daemons:
-    - wazuh-analysisd
+    - wazuh-manager-analysisd
 
 os_platform:
     - linux
