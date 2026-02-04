@@ -20,7 +20,7 @@ targets:
     - manager
 
 daemons:
-    - wazuh-db
+    - wazuh-manager-db
 
 os_platform:
     - linux
@@ -37,7 +37,7 @@ os_version:
     - Ubuntu Bionic
 
 references:
-    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-db.html
+    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-manager-db.html
 
 tags:
     - wazuh_db
@@ -80,8 +80,8 @@ WAZUH_DB_CHECKSUM_CALCULUS_TIMEOUT = 20
 # List items -> (wazuh_daemon: str,(
 #                mitm: ManInTheMiddle
 #                daemon_first: bool))
-# Example1 -> ('wazuh-clusterd', None)              Only start wazuh-clusterd with no MITM
-# Example2 -> ('wazuh-clusterd', (my_mitm, True))   Start MITM and then wazuh-clusterd
+# Example1 -> ('wazuh-manager-clusterd', None)              Only start wazuh-manager-clusterd with no MITM
+# Example2 -> ('wazuh-manager-clusterd', (my_mitm, True))   Start MITM and then wazuh-manager-clusterd
 monitored_sockets_params = [(WAZUH_DB_DAEMON, None, True)]
 
 receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
@@ -130,7 +130,7 @@ def validate_wazuh_db_response(expected_output, response):
 def test_wazuh_db_messages_agent(test_metadata, configure_sockets_environment_module, connect_to_sockets_module,
                                  clean_databases, clean_registered_agents, insert_agents_test):
     '''
-    description: Check that every input agent message in wazuh-db socket generates the proper output to wazuh-db
+    description: Check that every input agent message in wazuh-manager-db socket generates the proper output to wazuh-manager-db
                  socket. To do this, it performs a query to the socket with a command taken from the input list of
                  stages (test_case, input field) and compare the result with the input list of stages (test_case,
                  output field).
@@ -196,7 +196,7 @@ def test_wazuh_db_messages_agent(test_metadata, configure_sockets_environment_mo
 def test_wazuh_db_messages_global(test_metadata, daemons_handler_module, connect_to_sockets_module,
                                   clean_databases, clean_registered_agents):
     '''
-    description: Check that every global input message in wazuh-db socket generates the proper output to wazuh-db
+    description: Check that every global input message in wazuh-manager-db socket generates the proper output to wazuh-manager-db
                  socket. To do this, it performs a query to the socket with a command taken from the input list of
                  stages (test_case, input field) and compare the result with the input list of stages (test_case,
                  output field).
@@ -320,7 +320,7 @@ def test_wazuh_db_range_checksum(configure_sockets_environment_module, connect_t
 def test_wazuh_db_messages_tasks(test_metadata, daemons_handler_module, connect_to_sockets_module,
                                   clean_databases, clean_registered_agents):
     '''
-    description: Check that every global input message in wazuh-db socket generates the proper output to wazuh-db
+    description: Check that every global input message in wazuh-manager-db socket generates the proper output to wazuh-manager-db
                  socket. To do this, it performs a query to the socket with a command taken from the input list of
                  stages (test_case, input field) and compare the result with the input list of stages (test_case,
                  output field).

@@ -19,6 +19,9 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 {
     wmodule **wmodules = (wmodule**)d1;
     int agent_cfg = d2 ? *(int *)d2 : 0;
+#ifndef CLIENT
+    (void)agent_cfg;
+#endif
     wmodule *cur_wmodule;
     xml_node **children = NULL;
     wmodule *cur_wmodule_exists;
@@ -80,37 +83,59 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     else if (!strcmp(node->values[0], "open-scap")) {
         mwarn("Deprecated module 'open-scap' is no longer available.");
     }
-    else if (!strcmp(node->values[0], SYSCOLLECTOR_WM_NAME)) {
+#ifdef ENABLE_SYSC
+#ifdef CLIENT
+    else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)) {
         if (wm_syscollector_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
     }
-    else if (!strcmp(node->values[0], "command")) {
+#else
+    else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)) {
+        mwarn("The '%s' module only works for the agent", node->values[0]);
+    }
+#endif
+#endif
+#ifdef CLIENT
+    else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name)) {
         if (wm_command_read(children, cur_wmodule, agent_cfg) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
     }
+#else
+    else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name)) {
+        mwarn("The '%s' module only works for the agent", node->values[0]);
+    }
+#endif
     else if (!strcmp(node->values[0], "cis-cat")) {
         mwarn("Deprecated module 'cis-cat' is no longer available.");
     }
-    else if (!strcmp(node->values[0], "aws-s3") || !strcmp(node->values[0], "aws-cloudtrail")) {
+    else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name) || !strcmp(node->values[0], "aws-cloudtrail")) {
 #ifndef WIN32
-        if (!strcmp(node->values[0], "aws-cloudtrail")) mwarn("Module name 'aws-cloudtrail' is deprecated. Change it to '%s'", "aws-s3");
+#ifdef CLIENT
+        if (!strcmp(node->values[0], "aws-cloudtrail")) mwarn("Module name 'aws-cloudtrail' is deprecated. Change it to '%s'", WM_AWS_CONTEXT.name);
         if (wm_aws_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
 #else
+        mwarn("The '%s' module only works for the agent", node->values[0]);
+#endif
+#else
         mwarn("The '%s' module is not available on Windows systems. Ignoring.", node->values[0]);
 #endif
     } else if (!strcmp(node->values[0], "docker-listener")) {
 #ifndef WIN32
+#ifdef CLIENT
         if (wm_docker_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
+#else
+        mwarn("The '%s' module only works for the agent", node->values[0]);
+#endif
 #else
         mwarn("The '%s' module is not available on Windows systems. Ignoring it.", node->values[0]);
 #endif
@@ -124,16 +149,21 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
         }
     }
 #endif
-    else if (!strcmp(node->values[0], AZ_WM_NAME)) {
+#ifdef CLIENT
+    else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
         if (wm_azure_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
     }
+#else
+    else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
+        mwarn("The '%s' module only works for the agent", node->values[0]);
+    }
+#endif
 #endif
     else {
-        if (!strcmp(node->values[0], VU_WM_NAME) || !strcmp(node->values[0], AZ_WM_NAME) ||
-            !strcmp(node->values[0], KEY_WM_NAME)) {
+        if (!strcmp(node->values[0], VU_WM_NAME) || !strcmp(node->values[0], KEY_WM_NAME)) {
             mwarn("The '%s' module only works for the manager", node->values[0]);
         } else {
             merror("Unknown module '%s'", node->values[0]);
@@ -188,11 +218,15 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
     }
 
     //Policy Monitoring Module
-    if (!strcmp(node->element, SCA_WM_NAME)) {
+    if (!strcmp(node->element, WM_SCA_CONTEXT.name)) {
+#ifdef CLIENT
         if (wm_sca_read(xml,children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
+#else
+        mwarn("The '%s' module only works for the agent", node->element);
+#endif
     }
 
     OS_ClearNode(children);
@@ -264,7 +298,7 @@ int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1)
     }
 
     // Agent Info Module
-    if (!strcmp(node->element, AGENT_INFO_WM_NAME))
+    if (!strcmp(node->element, WM_AGENT_INFO_CONTEXT.name))
     {
         mdebug1("Read_AGENT_INFO: Calling wm_agent_info_read for module '%s'", node->element);
         if (wm_agent_info_read(xml, children, cur_wmodule) < 0)
@@ -325,7 +359,8 @@ int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1) {
     }
 
     //Google Cloud module
-    if (!strcmp(node->element, GCP_PUBSUB_WM_NAME)) {
+    if (!strcmp(node->element, WM_GCP_PUBSUB_CONTEXT.name)) {
+#ifdef CLIENT
 #ifndef WIN32
         if (wm_gcp_pubsub_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
@@ -333,6 +368,9 @@ int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1) {
         }
 #else
         mwarn("The '%s' module is not available on Windows systems. Ignoring it.", node->element);
+#endif
+#else
+        mwarn("The '%s' module only works for the agent", node->element);
 #endif
     }
 
@@ -384,7 +422,8 @@ int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1) {
     }
 
     //Google Cloud module
-    if (!strcmp(node->element, GCP_BUCKET_WM_NAME)) {
+    if (!strcmp(node->element, WM_GCP_BUCKET_CONTEXT.name)) {
+#ifdef CLIENT
 #ifndef WIN32
         if (wm_gcp_bucket_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
@@ -392,6 +431,9 @@ int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1) {
         }
 #else
         mwarn("The '%s' module is not available on Windows systems. Ignoring it.", node->element);
+#endif
+#else
+        mwarn("The '%s' module only works for the agent", node->element);
 #endif
     }
 
@@ -443,7 +485,7 @@ int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1) {
     }
 
     //Agent Upgrade module
-    if (!strcmp(node->element, AGENT_UPGRADE_WM_NAME)) {
+    if (!strcmp(node->element, WM_AGENT_UPGRADE_CONTEXT.name)) {
         if (wm_agent_upgrade_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
@@ -499,7 +541,7 @@ int Read_TaskManager(const OS_XML *xml, xml_node *node, void *d1) {
     }
 
     //Task Manager module
-    if (!strcmp(node->element, TASK_MANAGER_WM_NAME)) {
+    if (!strcmp(node->element, WM_TASK_MANAGER_CONTEXT.name)) {
         if (wm_task_manager_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
@@ -556,11 +598,15 @@ int Read_Github(const OS_XML *xml, xml_node *node, void *d1) {
     }
 
     //GitHub module
-    if (!strcmp(node->element, GITHUB_WM_NAME)) {
+    if (!strcmp(node->element, WM_GITHUB_CONTEXT.name)) {
+#ifdef CLIENT
         if (wm_github_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
+#else
+        mwarn("The '%s' module only works for the agent", node->element);
+#endif
     }
 
     OS_ClearNode(children);
@@ -611,11 +657,15 @@ int Read_Office365(const OS_XML *xml, xml_node *node, void *d1) {
     }
 
     //Office365 module
-    if (!strcmp(node->element, OFFICE365_WM_NAME)) {
+    if (!strcmp(node->element, WM_OFFICE365_CONTEXT.name)) {
+#ifdef CLIENT
         if (wm_office365_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
+#else
+        mwarn("The '%s' module only works for the agent", node->element);
+#endif
     }
 
     OS_ClearNode(children);
@@ -666,11 +716,15 @@ int Read_MS_Graph(const OS_XML *xml, xml_node *node, void *d1) {
     }
 
     //MS Graph module
-    if (!strcmp(node->element, MS_GRAPH_WM_NAME)) {
+    if (!strcmp(node->element, WM_MS_GRAPH_CONTEXT.name)) {
+#ifdef CLIENT
         if (wm_ms_graph_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
+#else
+        mwarn("The '%s' module only works for the agent", node->element);
+#endif
     }
 
     OS_ClearNode(children);

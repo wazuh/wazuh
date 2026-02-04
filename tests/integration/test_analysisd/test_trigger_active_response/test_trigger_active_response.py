@@ -20,7 +20,7 @@ components:
     - manager
 
 daemons:
-    - wazuh-analysisd
+    - wazuh-manager-analysisd
 
 os_platform:
     - linux

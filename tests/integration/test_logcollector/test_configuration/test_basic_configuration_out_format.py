@@ -25,7 +25,7 @@ targets:
 
 daemons:
     - wazuh-logcollector
-    - wazuh-apid
+    - wazuh-manager-apid
 
 os_platform:
     - linux

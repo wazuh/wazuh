@@ -1,5 +1,5 @@
 - name: NO CERT - Verify Host NO
-  description: 'Checks wazuh-authd can manage SSL connections'
+  description: 'Checks wazuh-manager-authd can manage SSL connections'
   configuration_parameters:
     SSL_VERIFY_HOST: 'no'
   metadata:
@@ -7,7 +7,7 @@
     verify_host: 'no'
 
 - name: VALID CERT - Verify Host NO
-  description: 'Checks wazuh-authd can manage SSL connections'
+  description: 'Checks wazuh-manager-authd can manage SSL connections'
   configuration_parameters:
     SSL_VERIFY_HOST: 'no'
   metadata:
@@ -15,7 +15,7 @@
     verify_host: 'no'
 
 - name: INCORRECT CERT - Verify Host NO
-  description: 'Checks wazuh-authd can manage SSL connections'
+  description: 'Checks wazuh-manager-authd can manage SSL connections'
   configuration_parameters:
     SSL_VERIFY_HOST: 'no'
   metadata:
@@ -23,7 +23,7 @@
     verify_host: 'no'
 
 - name: INCORRECT HOST - Verify Host NO
-  description: 'Checks wazuh-authd can manage SSL connections'
+  description: 'Checks wazuh-manager-authd can manage SSL connections'
   configuration_parameters:
     SSL_VERIFY_HOST: 'no'
   metadata:
@@ -31,7 +31,7 @@
     verify_host: 'no'
 
 - name: NO CERT - Verify Host YES
-  description: 'Checks wazuh-authd can manage SSL connections'
+  description: 'Checks wazuh-manager-authd can manage SSL connections'
   configuration_parameters:
     SSL_VERIFY_HOST: 'yes'
   metadata:
@@ -39,7 +39,7 @@
     verify_host: 'yes'
 
 - name: VALID CERT - Verify Host YES
-  description: 'Checks wazuh-authd can manage SSL connections'
+  description: 'Checks wazuh-manager-authd can manage SSL connections'
   configuration_parameters:
     SSL_VERIFY_HOST: 'yes'
   metadata:
@@ -47,7 +47,7 @@
     verify_host: 'yes'
 
 - name: INCORRECT CERT - Verify Host YES
-  description: 'Checks wazuh-authd can manage SSL connections'
+  description: 'Checks wazuh-manager-authd can manage SSL connections'
   configuration_parameters:
     SSL_VERIFY_HOST: 'yes'
   metadata:
@@ -55,7 +55,7 @@
     verify_host: 'yes'
 
 - name: INCORRECT HOST - Verify Host YES
-  description: 'Checks wazuh-authd can manage SSL connections'
+  description: 'Checks wazuh-manager-authd can manage SSL connections'
   configuration_parameters:
     SSL_VERIFY_HOST: 'yes'
   metadata:

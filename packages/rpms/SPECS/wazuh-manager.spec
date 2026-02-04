@@ -72,9 +72,10 @@ echo 'USER_INSTALL_TYPE="server"' >> ./etc/preloaded-vars.conf
 echo 'USER_DIR="%{_localstatedir}"' >> ./etc/preloaded-vars.conf
 echo 'USER_DELETE_DIR="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_ACTIVE_RESPONSE="y"' >> ./etc/preloaded-vars.conf
-echo 'USER_ENABLE_SYSCHECK="y"' >> ./etc/preloaded-vars.conf
-echo 'USER_ENABLE_ROOTCHECK="y"' >> ./etc/preloaded-vars.conf
-echo 'USER_ENABLE_SYSCOLLECTOR="y"' >> ./etc/preloaded-vars.conf
+echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
+echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
+echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
+echo 'USER_ENABLE_SCA="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_WHITE_LIST="n"' >> ./etc/preloaded-vars.conf
@@ -401,7 +402,7 @@ fi
 
 # Generation auto-signed certificate if not exists
 if [ ! -f "%{_localstatedir}/etc/sslmanager.key" ] && [ ! -f "%{_localstatedir}/etc/sslmanager.cert" ]; then
-  %{_localstatedir}/bin/wazuh-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/sslmanager.key -X %{_localstatedir}/etc/sslmanager.cert 2>/dev/null
+  %{_localstatedir}/bin/wazuh-manager-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/sslmanager.key -X %{_localstatedir}/etc/sslmanager.cert 2>/dev/null
   chmod 640 %{_localstatedir}/etc/sslmanager.key
   chmod 640 %{_localstatedir}/etc/sslmanager.cert
 fi
@@ -478,47 +479,9 @@ else
   DIST_VER=""
 fi
 
-SCA_DIR="${DIST_NAME}/${DIST_VER}"
+# SCA is agent-only; ensure manager doesn't install policies
 SCA_BASE_DIR="%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp"
-mkdir -p %{_localstatedir}/ruleset/sca
-
-SCA_TMP_DIR="${SCA_BASE_DIR}/${SCA_DIR}"
-
-# Install the configuration files needed for this hosts
-if [ -r "${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}/${DIST_SUBVER}/sca.files" ]; then
-  SCA_TMP_DIR="${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}/${DIST_SUBVER}"
-elif [ -r "${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}/sca.files" ]; then
-  SCA_TMP_DIR="${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}"
-elif [ -r "${SCA_BASE_DIR}/${DIST_NAME}/sca.files" ]; then
-  SCA_TMP_DIR="${SCA_BASE_DIR}/${DIST_NAME}"
-else
-  SCA_TMP_DIR="${SCA_BASE_DIR}/generic"
-fi
-
-SCA_TMP_FILE="${SCA_TMP_DIR}/sca.files"
-
-if [ -r ${SCA_TMP_FILE} ] && [ -r ${SCA_BASE_DIR}/generic/sca.manager.files ]; then
-
-  rm -f %{_localstatedir}/ruleset/sca/* || true
-
-  for sca_file in $(cat ${SCA_TMP_FILE}); do
-    if [ -f ${SCA_BASE_DIR}/${sca_file} ]; then
-      mv ${SCA_BASE_DIR}/${sca_file} %{_localstatedir}/ruleset/sca
-    fi
-  done
-
-  for sca_file in $(cat ${SCA_BASE_DIR}/generic/sca.manager.files); do
-    filename=$(basename ${sca_file})
-    if [ -f "${SCA_BASE_DIR}/${sca_file}" ] && [ ! -f "%{_localstatedir}/ruleset/sca/${filename}" ]; then
-      mv ${SCA_BASE_DIR}/${sca_file} %{_localstatedir}/ruleset/sca/${filename}.disabled
-    fi
-  done
-fi
-
-# Fix sca permissions, group and owner
-chmod 640 %{_localstatedir}/ruleset/sca/*
-chown root:wazuh %{_localstatedir}/ruleset/sca/*
-# Delete the temporary directory
+rm -rf %{_localstatedir}/ruleset/sca
 rm -rf ${SCA_BASE_DIR}
 
 # Add the SELinux policy
@@ -698,19 +661,17 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/bin/agent_groups
 %attr(750, root, wazuh) %{_localstatedir}/bin/agent_upgrade
 %attr(750, root, wazuh) %{_localstatedir}/bin/cluster_control
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-analysisd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-authd
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-analysisd
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-authd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-control
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-execd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-logcollector
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-monitord
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-remoted
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-syscheckd
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-execd
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-monitord
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-remoted
 %attr(750, root, wazuh) %{_localstatedir}/bin/verify-agent-conf
-%attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-apid
-%attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-clusterd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-db
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-modulesd
+%attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-manager-apid
+%attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-manager-clusterd
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-db
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-modulesd
 %attr(750, root, wazuh) %{_localstatedir}/bin/rbac_control
 %attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-keystore
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc
@@ -815,26 +776,17 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/cluster
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/db
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/diff
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/fim
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/fim/db
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/syscollector
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/syscollector/db
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/sca
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/sca/db
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agent_info
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agent_info/db
-%attr(640, root, wazuh) %{_localstatedir}/queue/syscollector/norm_config.json
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/rids
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/tasks
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/sockets
 %dir %attr(660, root, wazuh) %{_localstatedir}/queue/vd
 %dir %attr(660, root, wazuh) %{_localstatedir}/queue/indexer
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/router
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/logcollector
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/keystore
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/tzdb
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset
-%dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/sca
 %dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset
 %dir %attr(770, root, wazuh) %{_localstatedir}/.ssh
 %dir %attr(1770, root, wazuh) %{_localstatedir}/tmp
@@ -941,17 +893,6 @@ rm -fr %{buildroot}
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/selinux
 %attr(640, root, wazuh) %{_localstatedir}/var/selinux/*
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/upgrade
-%dir %attr(770, root, wazuh) %{_localstatedir}/var/wodles
-%dir %attr(750, root, wazuh) %{_localstatedir}/wodles
-%attr(750,root, wazuh) %{_localstatedir}/wodles/*
-%dir %attr(750, root, wazuh) %{_localstatedir}/wodles/aws
-%attr(750, root, wazuh) %{_localstatedir}/wodles/aws/*
-%dir %attr(750, root, wazuh) %{_localstatedir}/wodles/azure
-%attr(750, root, wazuh) %{_localstatedir}/wodles/azure/*
-%dir %attr(750, root, wazuh) %{_localstatedir}/wodles/docker
-%attr(750, root, wazuh) %{_localstatedir}/wodles/docker/*
-%dir %attr(750, root, wazuh) %{_localstatedir}/wodles/gcloud
-%attr(750, root, wazuh) %{_localstatedir}/wodles/gcloud/*
 
 %files -n wazuh-manager-debuginfo -f debugfiles.list
 

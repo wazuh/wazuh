@@ -7,7 +7,7 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: These tests will check if the 'wazuh-authd' daemon correctly handles the key requests
+brief: These tests will check if the 'wazuh-manager-authd' daemon correctly handles the key requests
        from agents with pre-existing IP addresses or IDs.
 
 tier: 0
@@ -19,7 +19,7 @@ components:
     - manager
 
 daemons:
-    - wazuh-authd
+    - wazuh-manager-authd
 
 os_platform:
     - linux

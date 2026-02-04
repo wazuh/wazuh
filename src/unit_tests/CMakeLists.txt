@@ -140,7 +140,9 @@ endif()
 
 if((CMAKE_SYSTEM_NAME STREQUAL "Linux") OR (CMAKE_SYSTEM_NAME STREQUAL "Windows"
                                            ))
-  add_subdirectory(syscheckd)
+  if(NOT ${TARGET} STREQUAL "server")
+    add_subdirectory(syscheckd)
+  endif()
   add_subdirectory(shared)
   add_subdirectory(os_xml)
   add_subdirectory(os_regex)
