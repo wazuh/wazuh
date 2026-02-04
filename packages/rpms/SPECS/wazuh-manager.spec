@@ -237,7 +237,11 @@ if [ $1 = 2 ]; then
   elif [ "$MAJOR" -lt 5 ]; then
     ERROR_TYPE="old_version"
     ERROR_TITLE="Clean installation required"
-    ERROR_MESSAGE="Current version: $OLD_VERSION\\nTarget version:  5.0.0\\n\\nDirect upgrade from 4.x to 5.0.0 is NOT supported for Wazuh Manager\\ndue to breaking changes in database schema and architecture."
+    ERROR_MESSAGE="Current version: $OLD_VERSION
+Target version:  5.0.0
+
+Direct upgrade from 4.x to 5.0.0 is NOT supported for Wazuh Manager
+due to breaking changes in database schema and architecture."
   fi
 
   # If any error was detected, show message and block
