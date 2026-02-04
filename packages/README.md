@@ -33,7 +33,7 @@ wazuh# cd packages
 | -j, --jobs           | Number of parallel jobs (optional)                                  | 2                       |
 | -r, --revision       | Package revision (optional)                                         | 0                       |
 | -s, --store          | Destination path for the package (optional)                         | (output folder created) |
-| -p, --path           | Installation path for the package (optional)                        | /var/ossec              |
+| -p, --path           | Installation path for the package (optional)                        | /var/wazuh-manager (manager) or /var/ossec (agent) |
 | -d, --debug          | Build binaries with debug symbols (optional)                        | no                      |
 | -c, --checksum       | Generate checksum on the same directory (optional)                  | no                      |
 | --dont-build-docker  | Use a locally built Docker image (optional)                         | no                      |
@@ -42,11 +42,18 @@ wazuh# cd packages
 | **--is_stage         | Use release name in package (optional)                              | no                      |
 | --src                | Generate the source package (optional)                              | no                      |
 | --system             | Package format to build (optional): rpm, deb (default)              | deb                     |
+| --force              | Force building manager package with /var/ossec path (not recommended) | no                    |
 | -h, --help           | Show this help message                                              | -                       |
 
 ***Note1:** If we don't use this flag, will the script use the current directory where *generate_package.sh* is located.
 
 ****Note 2:** If the package is not a release package, a short hash commit based on the git command `git rev-parse --short HEAD` will be appended to the end of the name. The default length of the short hash is determined by the Git command [git rev-parse --short[=length]](https://git-scm.com/docs/git-rev-parse#Documentation/git-rev-parse.txt---shortlength:~:text=interpreted%20as%20usual.-,%2D%2Dshort%5B%3Dlength%5D,-Same%20as%20%2D%2Dverify).
+
+**Manager Package Notes:**
+
+- **Default installation path:** Manager packages install to `/var/wazuh-manager` by default.
+- **Soft block:** Building a manager package with `-p /var/ossec` requires the `--force` flag.
+- **Hard block:** Installing a 5.x manager package will fail if a 4.x manager is already installed. Direct upgrades from 4.x to 5.x are not supported.
 
 
 **Example Usage:**
