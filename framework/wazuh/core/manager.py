@@ -137,7 +137,7 @@ def get_ossec_logs(limit: int = 2000) -> list:
         if log_fields:
             date, tag, level, description = log_fields
 
-            # We transform local time (ossec.log) to UTC with ISO8601 maintaining time integrity
+            # We transform local time (wazuh log file) to UTC with ISO8601 maintaining time integrity
             timestamp = date.astimezone(timezone.utc).strftime(common.DATE_FORMAT)
             log_line = {'timestamp': timestamp, 'tag': tag, 'level': level, 'description': description}
             logs.append(log_line)
