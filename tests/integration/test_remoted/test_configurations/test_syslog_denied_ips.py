@@ -41,7 +41,7 @@ def test_denied_ips_syslog(test_configuration, test_metadata, configure_local_in
                             set_wazuh_configuration, restart_wazuh_expect_error, get_real_configuration):
 
     '''
-    description: Check that 'wazuh-remoted' denied connection to the specified 'denied-ips'.
+    description: Check that 'wazuh-manager-remoted' denied connection to the specified 'denied-ips'.
                  For this purpose, it uses the configuration from test cases, check if the different errors are
                  logged correctly and check if the API retrieves the expected configuration.UJHBJJJJJJJJJJJJKKKKKKKKKKKKKKKKKKKKKK
 
