@@ -1316,12 +1316,14 @@ static int append_header(dispatch_ctx_t *ctx) {
     cJSON *root = cJSON_CreateObject();
     if (!root) goto fail;
 
+    cJSON *wazuh = cJSON_CreateObject();
     cJSON *agent = cJSON_CreateObject();
     cJSON *host  = cJSON_CreateObject();
     cJSON *os    = cJSON_CreateObject();
     if (!agent || !host || !os) { cJSON_Delete(root); goto fail; }
 
-    cJSON_AddItemToObject(root, "agent", agent);
+    cJSON_AddItemToObject(root, "wazuh", wazuh);
+    cJSON_AddItemToObject(wazuh, "agent", agent);
     cJSON_AddItemToObject(agent, "host", host);
     cJSON_AddItemToObject(host, "os",    os);
 
@@ -1368,7 +1370,6 @@ static int append_header(dispatch_ctx_t *ctx) {
 
     // Add wazuh.cluster.name and wazuh.cluster.node from manager
     if (cluster_name || node_name) {
-        cJSON *wazuh = cJSON_CreateObject();
         cJSON *cluster = cJSON_CreateObject();
         if (wazuh && cluster) {
             if (cluster_name && strcmp(cluster_name, "undefined") != 0) {
@@ -1378,7 +1379,6 @@ static int append_header(dispatch_ctx_t *ctx) {
                 cJSON_AddStringToObject(cluster, "node", node_name);
             }
             cJSON_AddItemToObject(wazuh, "cluster", cluster);
-            cJSON_AddItemToObject(root, "wazuh", wazuh);
         }
     }
 

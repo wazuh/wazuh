@@ -503,7 +503,7 @@ TEST_F(IndexerConnectorTest, PublishDeletedByQuery)
     // Define the agent IDs
     std::vector<std::string> agentIds {INDEX_ID_A};
     nlohmann::json expectedMetadata;
-    expectedMetadata["query"]["bool"]["filter"]["terms"]["agent.id"] = agentIds;
+    expectedMetadata["query"]["bool"]["filter"]["terms"]["wazuh.agent.id"] = agentIds;
 
     // Callback that checks the expected data to be published.
     // The format of the data published is divided in two lines:

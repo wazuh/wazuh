@@ -949,16 +949,16 @@ public:
 
                                     // Build metadata using nlohmann::json for automatic escaping
                                     nlohmann::json metadata;
-                                    metadata["agent"]["id"] = res.context->agentId;
-                                    metadata["agent"]["name"] = res.context->agentName;
-                                    metadata["agent"]["version"] = res.context->agentVersion;
-                                    metadata["agent"]["groups"] = res.context->groups;
-                                    metadata["agent"]["host"]["architecture"] = res.context->architecture;
-                                    metadata["agent"]["host"]["hostname"] = res.context->hostname;
-                                    metadata["agent"]["host"]["os"]["name"] = res.context->osname;
-                                    metadata["agent"]["host"]["os"]["platform"] = res.context->osplatform;
-                                    metadata["agent"]["host"]["os"]["type"] = res.context->ostype;
-                                    metadata["agent"]["host"]["os"]["version"] = res.context->osversion;
+                                    metadata["wazuh"]["agent"]["id"] = res.context->agentId;
+                                    metadata["wazuh"]["agent"]["name"] = res.context->agentName;
+                                    metadata["wazuh"]["agent"]["version"] = res.context->agentVersion;
+                                    metadata["wazuh"]["agent"]["groups"] = res.context->groups;
+                                    metadata["wazuh"]["agent"]["host"]["architecture"] = res.context->architecture;
+                                    metadata["wazuh"]["agent"]["host"]["hostname"] = res.context->hostname;
+                                    metadata["wazuh"]["agent"]["host"]["os"]["name"] = res.context->osname;
+                                    metadata["wazuh"]["agent"]["host"]["os"]["platform"] = res.context->osplatform;
+                                    metadata["wazuh"]["agent"]["host"]["os"]["type"] = res.context->ostype;
+                                    metadata["wazuh"]["agent"]["host"]["os"]["version"] = res.context->osversion;
                                     metadata["wazuh"]["cluster"]["name"] = m_clusterName;
 
                                     // Serialize metadata to string and append FlatBuffer inventory data

@@ -697,7 +697,7 @@ public:
     void deleteByQuery(const std::string& index, const std::string& agentId)
     {
         auto [it, success] = m_deleteByQuery.try_emplace(index, nlohmann::json::object());
-        it->second["query"]["bool"]["filter"]["terms"]["agent.id"].push_back(agentId);
+        it->second["query"]["bool"]["filter"]["terms"]["wazuh.agent.id"].push_back(agentId);
     }
 
     void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery)

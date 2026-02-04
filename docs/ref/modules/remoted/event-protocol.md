@@ -43,23 +43,23 @@ The header is a JSON object conforming to Elastic Common Schema (ECS):
 
 ```json
 {
-  "agent": {
-    "id": "string",
-    "name": "string",
-    "version": "string",
-    "groups": ["string"],
-    "host": {
-      "architecture": "string",
-      "hostname": "string",
-      "os": {
-        "name": "string",
-        "version": "string",
-        "platform": "string",
-        "type": "string"
-      }
-    }
-  },
   "wazuh": {
+    "agent": {
+      "id": "string",
+      "name": "string",
+      "version": "string",
+      "groups": ["string"],
+      "host": {
+        "architecture": "string",
+        "hostname": "string",
+        "os": {
+          "name": "string",
+          "version": "string",
+          "platform": "string",
+          "type": "string"
+        }
+      }
+    },
     "cluster": {
       "name": "string",
       "node": "string"
@@ -72,16 +72,16 @@ The header is a JSON object conforming to Elastic Common Schema (ECS):
 
 | Field | Type | Required | Description | Example |
 |-------|------|----------|-------------|---------|
-| `agent.id` | string | **Yes** | Agent numeric ID | `"001"` |
-| `agent.name` | string | No | Agent name | `"web-server-01"` |
-| `agent.version` | string | No | Wazuh agent version | `"v5.0.0"` |
-| `agent.groups` | array[string] | No | Agent groups | `["web", "production"]` |
-| `agent.host.architecture` | string | No | CPU architecture | `"x86_64"` |
-| `agent.host.hostname` | string | No | System hostname | `"web-server-01"` |
-| `agent.host.os.name` | string | No | OS name | `"Ubuntu"` |
-| `agent.host.os.version` | string | No | OS version | `"22.04"` |
-| `agent.host.os.platform` | string | No | OS platform | `"ubuntu"` |
-| `agent.host.os.type` | string | No | ECS OS type | `"linux"` |
+| `wazuh.agent.id` | string | **Yes** | Agent numeric ID | `"001"` |
+| `wazuh.agent.name` | string | No | Agent name | `"web-server-01"` |
+| `wazuh.agent.version` | string | No | Wazuh agent version | `"v5.0.0"` |
+| `wazuh.agent.groups` | array[string] | No | Agent groups | `["web", "production"]` |
+| `wazuh.agent.host.architecture` | string | No | CPU architecture | `"x86_64"` |
+| `wazuh.agent.host.hostname` | string | No | System hostname | `"web-server-01"` |
+| `wazuh.agent.host.os.name` | string | No | OS name | `"Ubuntu"` |
+| `wazuh.agent.host.os.version` | string | No | OS version | `"22.04"` |
+| `wazuh.agent.host.os.platform` | string | No | OS platform | `"ubuntu"` |
+| `wazuh.agent.host.os.type` | string | No | ECS OS type | `"linux"` |
 | `wazuh.cluster.name` | string | No | Cluster name | `"production"` |
 | `wazuh.cluster.node` | string | No | Manager node | `"master-node"` |
 
