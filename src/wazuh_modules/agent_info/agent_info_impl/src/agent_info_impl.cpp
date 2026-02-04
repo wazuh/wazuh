@@ -916,13 +916,13 @@ nlohmann::json AgentInfoImpl::ecsData(const nlohmann::json& data, const std::str
     {
         // Map agent_metadata fields to ECS format
         if (data.contains("agent_id"))
-            ecsFormatted["agent"]["id"] = data["agent_id"];
+            ecsFormatted["wazuh"]["agent"]["id"] = data["agent_id"];
 
         if (data.contains("agent_name"))
-            ecsFormatted["agent"]["name"] = data["agent_name"];
+            ecsFormatted["wazuh"]["agent"]["name"] = data["agent_name"];
 
         if (data.contains("agent_version"))
-            ecsFormatted["agent"]["version"] = data["agent_version"];
+            ecsFormatted["wazuh"]["agent"]["version"] = data["agent_version"];
 
         if (data.contains("host_architecture"))
             ecsFormatted["host"]["architecture"] = data["host_architecture"];
@@ -949,10 +949,10 @@ nlohmann::json AgentInfoImpl::ecsData(const nlohmann::json& data, const std::str
     {
         // Map agent_groups fields to ECS format
         if (data.contains("agent_id"))
-            ecsFormatted["agent"]["id"] = data["agent_id"];
+            ecsFormatted["wazuh"]["agent"]["id"] = data["agent_id"];
 
         if (data.contains("group_name"))
-            ecsFormatted["agent"]["groups"] = nlohmann::json::array({data["group_name"]});
+            ecsFormatted["wazuh"]["agent"]["groups"] = nlohmann::json::array({data["group_name"]});
     }
 
     return ecsFormatted;

@@ -80,9 +80,9 @@ TEST_F(AgentInfoHelperFunctionsTest, EcsDataFormatsMetadataCorrectly)
 
     nlohmann::json ecsFormatted = m_agentInfo->ecsData(data, "agent_metadata");
 
-    EXPECT_EQ(ecsFormatted["agent"]["id"], "001");
-    EXPECT_EQ(ecsFormatted["agent"]["name"], "test-agent");
-    EXPECT_EQ(ecsFormatted["agent"]["version"], "4.5.0");
+    EXPECT_EQ(ecsFormatted["wazuh"]["agent"]["id"], "001");
+    EXPECT_EQ(ecsFormatted["wazuh"]["agent"]["name"], "test-agent");
+    EXPECT_EQ(ecsFormatted["wazuh"]["agent"]["version"], "4.5.0");
     EXPECT_EQ(ecsFormatted["host"]["architecture"], "x86_64");
     EXPECT_EQ(ecsFormatted["host"]["hostname"], "test-host");
     EXPECT_EQ(ecsFormatted["host"]["os"]["name"], "Ubuntu");
@@ -99,9 +99,9 @@ TEST_F(AgentInfoHelperFunctionsTest, EcsDataFormatsGroupsCorrectly)
 
     nlohmann::json ecsFormatted = m_agentInfo->ecsData(data, "agent_groups");
 
-    EXPECT_EQ(ecsFormatted["agent"]["id"], "002");
-    EXPECT_TRUE(ecsFormatted["agent"]["groups"].is_array());
-    EXPECT_EQ(ecsFormatted["agent"]["groups"][0], "database");
+    EXPECT_EQ(ecsFormatted["wazuh"]["agent"]["id"], "002");
+    EXPECT_TRUE(ecsFormatted["wazuh"]["agent"]["groups"].is_array());
+    EXPECT_EQ(ecsFormatted["wazuh"]["agent"]["groups"][0], "database");
 }
 
 TEST_F(AgentInfoHelperFunctionsTest, EcsDataHandlesPartialMetadata)
@@ -112,7 +112,7 @@ TEST_F(AgentInfoHelperFunctionsTest, EcsDataHandlesPartialMetadata)
 
     nlohmann::json ecsFormatted = m_agentInfo->ecsData(data, "agent_metadata");
 
-    EXPECT_EQ(ecsFormatted["agent"]["id"], "003");
-    EXPECT_FALSE(ecsFormatted["agent"].contains("name"));
+    EXPECT_EQ(ecsFormatted["wazuh"]["agent"]["id"], "003");
+    EXPECT_FALSE(ecsFormatted["wazuh"]["agent"].contains("name"));
     EXPECT_FALSE(ecsFormatted.contains("host"));
 }

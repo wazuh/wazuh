@@ -73,7 +73,7 @@ OSHash_setSize(agent_meta_map, 4096);
 ## Protocol Example
 
 ```
-H	{"agent":{"id":"001","name":"web-01","groups":["web"]}}
+H	{"wazuh":{"agent":{"id":"001","name":"web-01","groups":["web"]}}}
 E	{"log":"Connection from 192.168.1.100"}
 E	{"log":"Authentication successful"}
 ```

@@ -119,8 +119,8 @@ TEST_F(AgentInfoEventProcessingTest, ProcessInsertedEvent)
     EXPECT_EQ(m_reportedEvents[0]["module"], "agent_info");
     EXPECT_EQ(m_reportedEvents[0]["type"], "agent_metadata");
     EXPECT_EQ(m_reportedEvents[0]["data"]["event"]["type"], "created");
-    EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["id"], "001");
-    EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["name"], "test-agent");
+    EXPECT_EQ(m_reportedEvents[0]["data"]["wazuh"]["agent"]["id"], "001");
+    EXPECT_EQ(m_reportedEvents[0]["data"]["wazuh"]["agent"]["name"], "test-agent");
 
     // Note: Persist callback verification removed as per PR feedback
     // New implementation uses synchronizeMetadataOrGroups without persist callbacks
@@ -152,7 +152,7 @@ TEST_F(AgentInfoEventProcessingTest, ProcessModifiedEvent)
     // Verify report callback was invoked
     ASSERT_EQ(m_reportedEvents.size(), 1u);
     EXPECT_EQ(m_reportedEvents[0]["data"]["event"]["type"], "modified");
-    EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["name"], "updated-agent");
+    EXPECT_EQ(m_reportedEvents[0]["data"]["wazuh"]["agent"]["name"], "updated-agent");
 
     // Verify changed_fields tracking
     EXPECT_TRUE(m_reportedEvents[0]["data"]["event"].contains("changed_fields"));
@@ -183,7 +183,7 @@ TEST_F(AgentInfoEventProcessingTest, ProcessDeletedEvent)
     // Verify report callback was invoked
     ASSERT_EQ(m_reportedEvents.size(), 1u);
     EXPECT_EQ(m_reportedEvents[0]["data"]["event"]["type"], "deleted");
-    EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["id"], "001");
+    EXPECT_EQ(m_reportedEvents[0]["data"]["wazuh"]["agent"]["id"], "001");
 
     // Note: Persist callback verification removed as per PR feedback
 }
@@ -208,9 +208,9 @@ TEST_F(AgentInfoEventProcessingTest, ProcessAgentGroupsEvent)
 
     // Verify ECS format for groups
     ASSERT_EQ(m_reportedEvents.size(), 1u);
-    EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["id"], "002");
-    EXPECT_TRUE(m_reportedEvents[0]["data"]["agent"]["groups"].is_array());
-    EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["groups"][0], "web-servers");
+    EXPECT_EQ(m_reportedEvents[0]["data"]["wazuh"]["agent"]["id"], "002");
+    EXPECT_TRUE(m_reportedEvents[0]["data"]["wazuh"]["agent"]["groups"].is_array());
+    EXPECT_EQ(m_reportedEvents[0]["data"]["wazuh"]["agent"]["groups"][0], "web-servers");
 }
 
 TEST_F(AgentInfoEventProcessingTest, ProcessEventWithExceptionInCallback)

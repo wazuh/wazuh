@@ -76,11 +76,28 @@ void test_md5_file_fail(void **state) {
     assert_int_equal(OS_MD5_File(path, buffer, OS_TEXT), -1);
 }
 
+void test_OS_MD5_File_null_path(void **state) {
+    os_md5 output;
+
+    memset(output, '1', sizeof(output));
+
+    const char *volatile null_path = NULL;
+
+    int ret = OS_MD5_File(null_path, output, OS_BINARY);
+
+    assert_int_equal(ret, -1);
+
+    char expected[sizeof(output)];
+    memset(expected, 0, sizeof(expected));
+    assert_memory_equal(output, expected, sizeof(output));
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_md5_string),
         cmocka_unit_test_setup_teardown(test_md5_file, setup_group, teardown_group),
-        cmocka_unit_test_setup_teardown(test_md5_file_fail, setup_group, teardown_group)
+        cmocka_unit_test_setup_teardown(test_md5_file_fail, setup_group, teardown_group),
+        cmocka_unit_test(test_OS_MD5_File_null_path)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -144,7 +144,7 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
         {
             foundMetadataEvent = true;
             EXPECT_EQ(event["module"], "agent_info");
-            EXPECT_EQ(event["data"]["agent"]["id"], "456");
+            EXPECT_EQ(event["data"]["wazuh"]["agent"]["id"], "456");
             break;
         }
     }
@@ -198,8 +198,8 @@ TEST_F(AgentInfoRealDBSyncTest, StartInManagerModeUsesDefaultValues)
         {
             foundMetadataEvent = true;
             EXPECT_EQ(event["module"], "agent_info");
-            EXPECT_EQ(event["data"]["agent"]["id"], "000");
-            EXPECT_EQ(event["data"]["agent"]["name"], "test-manager-hostname");
+            EXPECT_EQ(event["data"]["wazuh"]["agent"]["id"], "000");
+            EXPECT_EQ(event["data"]["wazuh"]["agent"]["name"], "test-manager-hostname");
             EXPECT_EQ(event["data"]["event"]["type"], "created");
         }
         else if (event["type"] == "agent_groups")
