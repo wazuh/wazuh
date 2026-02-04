@@ -38,7 +38,7 @@ def test_queue_size_syslog(test_configuration, test_metadata, configure_local_in
                             set_wazuh_configuration, restart_wazuh_expect_error, get_real_configuration):
 
     '''
-    description: Check that when 'wazuh-remoted' sets a valid queue size. For this purpose, it uses the configuration
+    description: Check that when 'wazuh-manager-remoted' sets a valid queue size. For this purpose, it uses the configuration
                  from test cases, check if the warning has been logged and the configuration is the same as the API
                  response.
 

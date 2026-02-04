@@ -19,7 +19,7 @@ targets:
     - manager
 
 daemons:
-    - wazuh-authd
+    - wazuh-manager-authd
 
 os_platform:
     - linux

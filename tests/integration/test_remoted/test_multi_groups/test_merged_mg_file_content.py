@@ -60,7 +60,7 @@ def test_merged_mg_file_content(test_configuration, test_metadata, configure_loc
                             set_wazuh_configuration, daemons_handler, prepare_environment):
 
     '''
-    description: Check the content of the merged.mg file that wazuh-remoted compiles for multi-groups.
+    description: Check the content of the merged.mg file that wazuh-manager-remoted compiles for multi-groups.
 
     parameters:
         - test_configuration

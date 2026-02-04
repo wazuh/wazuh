@@ -268,7 +268,7 @@ int main(int argc, char* argv[])
         if (!base::process::isStandaloneModeEnable())
         {
             // Get executable file name
-            std::string exePath {"wazuh-analysisd"};
+            std::string exePath {"wazuh-manager-analysisd"};
 
             const auto pidError =
                 base::process::createPID(confManager.get<std::string>(conf::key::PID_FILE_PATH), exePath, getpid());

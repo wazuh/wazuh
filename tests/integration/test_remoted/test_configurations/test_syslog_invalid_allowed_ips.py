@@ -37,7 +37,7 @@ def test_invalid_allowed_ips(test_configuration, test_metadata, configure_local_
                             set_wazuh_configuration, restart_wazuh_expect_error):
 
     '''
-    description: Check that 'wazuh-remoted' fails when 'allowed-ips' has invalid values.
+    description: Check that 'wazuh-manager-remoted' fails when 'allowed-ips' has invalid values.
                  For this purpose, it uses the configuration from test cases and check if the different errors are
                  logged correctly.
 

@@ -27,7 +27,7 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-DAEMONS="wazuh-manager-clusterd wazuh-manager-modulesd wazuh-manager-monitord wazuh-manager-remoted wazuh-manager-analysisd wazuh-manager-db wazuh-manager-authd wazuh-manager-apid"
+DAEMONS="wazuh-manager-clusterd wazuh-manager-modulesd wazuh-manager-monitord wazuh-manager-remoted wazuh-manager-analysisd wazuh-manager-execd wazuh-manager-db wazuh-manager-authd wazuh-manager-apid"
 DEPRECATED_DAEMONS="ossec-authd"
 
 # Reverse order of daemons
@@ -44,33 +44,10 @@ MAX_ITERATION="60"
 
 MAX_KILL_TRIES=30
 
-resolve_daemon_name()
-{
-    daemon="$1"
-
-    if [ -x "${DIR}/bin/${daemon}" ]; then
-        echo "${daemon}"
-        return 0
-    fi
-
-    case "${daemon}" in
-        wazuh-manager-*)
-            alt="wazuh-${daemon#wazuh-manager-}"
-            if [ -x "${DIR}/bin/${alt}" ]; then
-                echo "${alt}"
-                return 0
-            fi
-            ;;
-    esac
-
-    echo "${daemon}"
-    return 0
-}
-
 checkpid()
 {
     for i in ${CDAEMONS}; do
-        daemon_name=$(resolve_daemon_name "$i")
+        daemon_name="$i"
         for j in `cat ${DIR}/var/run/${daemon_name}-*.pid 2>/dev/null`; do
             ps -p $j >/dev/null 2>&1
             if [ ! $? = 0 ]; then
@@ -243,7 +220,7 @@ testconfig()
 {
     # We first loop to check the config.
     for i in ${SDAEMONS}; do
-        daemon_name=$(resolve_daemon_name "$i")
+        daemon_name="$i"
         ${DIR}/bin/${daemon_name} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
             if [ $USE_JSON = true ]; then
@@ -269,7 +246,7 @@ is_systemd() {
 # Add daemons to execd cgroup if systemd is used in legacy systems
 add_to_cgroup()
 {
-    EXECD_PID=$(head -n 1 ${DIR}/var/run/wazuh-execd-*.pid 2>/dev/null)
+    EXECD_PID=$(head -n 1 ${DIR}/var/run/wazuh-manager-execd-*.pid 2>/dev/null)
     CGROUP_PATH="/sys/fs/cgroup/systemd/system.slice/wazuh-manager.service/cgroup.procs"
 
     # Check if cgroup path exists
@@ -295,12 +272,11 @@ get_wazuh_engine_pid()
     local max_ticks=100
     local ticks=0
     local pidfile
-    daemon_name=$(resolve_daemon_name "wazuh-manager-analysisd")
 
-    ${DIR}/bin/${daemon_name}
+    ${DIR}/bin/wazuh-manager-analysisd
 
     while [ $ticks -lt $max_ticks ]; do
-        pidfile=$(ls ${DIR}/var/run/${daemon_name}-*.pid 2>/dev/null | head -n1)
+        pidfile=$(ls ${DIR}/var/run/wazuh-manager-analysisd-*.pid 2>/dev/null | head -n1)
         if [ -n "$pidfile" ]; then
             echo "${pidfile##*-}" | sed 's/\.pid$//'
             return 0
@@ -414,7 +390,7 @@ start_service()
             failed=false
             rm -f ${DIR}/var/run/${i}.failed
             touch ${DIR}/var/run/${i}.start
-            daemon_name=$(resolve_daemon_name "$i")
+            daemon_name="$i"
 
             if [ ! -z "$LEGACY_SYSTEMD_VERSION" ]; then
                 if command -v systemd-run >/dev/null 2>&1; then
@@ -493,7 +469,7 @@ pstatus()
         return 0;
     fi
 
-    daemon_name=$(resolve_daemon_name "$pfile")
+    daemon_name="$pfile"
     ls ${DIR}/var/run/${daemon_name}-*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
         for pid in `cat ${DIR}/var/run/${daemon_name}-*.pid 2>/dev/null`; do
@@ -539,7 +515,7 @@ stop_service()
 
     # First pass: send kill signal to all running daemons
     for i in ${DAEMONS}; do
-        daemon_name=$(resolve_daemon_name "$i")
+        daemon_name="$i"
         pstatus ${i};
         if [ $? = 1 ]; then
             if [ $USE_JSON != true ]
@@ -562,7 +538,7 @@ stop_service()
         echo -n '{"error":0,"data":['
     fi
     for i in ${DAEMONS}; do
-        daemon_name=$(resolve_daemon_name "$i")
+        daemon_name="$i"
         if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','
         else

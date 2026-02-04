@@ -7,7 +7,7 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: The 'wazuh-analysisd' daemon uses a series of decoders and rules to analyze and interpret logs and events and
+brief: The 'wazuh-manager-analysisd' daemon uses a series of decoders and rules to analyze and interpret logs and events and
        generate alerts when the decoded information matches the established rules. There is a feature to limit the
        number of events that the manager can process, in order to allow the correct functioning of the daemon. These
        tests validate that this feature works as expected.
@@ -21,7 +21,7 @@ targets:
     - manager
 
 daemons:
-    - wazuh-analysisd
+    - wazuh-manager-analysisd
 
 os_platform:
     - linux

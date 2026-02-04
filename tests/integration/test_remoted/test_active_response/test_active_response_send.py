@@ -42,7 +42,7 @@ def test_active_response_ar_sending(test_configuration, test_metadata, configure
                             set_wazuh_configuration, daemons_handler, simulate_agents):
 
     '''
-    description: Check if the 'wazuh-remoted' daemon sends active response commands to the Wazuh agent.
+    description: Check if the 'wazuh-manager-remoted' daemon sends active response commands to the Wazuh agent.
                  For this purpose, the test will establish a connection with a simulated agent using
                  different ports and transport protocols. Then, it will send an active response to that
                  agent, and finally, the test will verify that the events indicating that the active

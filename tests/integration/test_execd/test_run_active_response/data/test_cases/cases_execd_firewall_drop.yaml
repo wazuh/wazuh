@@ -2,7 +2,7 @@
   description: Checks the firewall-drop5 command succeed
   configuration_parameters:
   metadata:
-    input: '#!-execd {"version":1,"origin":{"name":"","module":"wazuh-analysisd"},"command":"firewall-drop5",
+    input: '#!-execd {"version":1,"origin":{"name":"","module":"wazuh-manager-analysisd"},"command":"firewall-drop5",
             "parameters":{"extra_args":[],"alert":{"rule":{"level":5,"description":"Test.","id":5715},
             "data":{"dstuser":"Test.","srcip":"3.3.3.3"}}}}'
 
@@ -10,7 +10,7 @@
   description: Checks the firewall-drop command does not succeed because the 'srcip' is not sent.
   configuration_parameters:
   metadata:
-    input: '#!-execd {"version":1,"origin":{"name":"","module":"wazuh-analysisd"},"command":"firewall-drop5",
+    input: '#!-execd {"version":1,"origin":{"name":"","module":"wazuh-manager-analysisd"},"command":"firewall-drop5",
             "parameters":{"extra_args":[],"alert":{"rule":{"level":5,"description":"Test.","id":5715},
             "data":{"dstuser":"Test."}}}}'
     expected_error: .*Cannot read 'srcip' from data
@@ -19,7 +19,7 @@
   description: Checks the firewall-drop command does not succeed because the input is invalid.
   configuration_parameters:
   metadata:
-    input: '#!-execd {"origin":{"name":"","module":"wazuh-analysisd"},"command":"firewall-drop5",
+    input: '#!-execd {"origin":{"name":"","module":"wazuh-manager-analysisd"},"command":"firewall-drop5",
             "parameters":{"extra_args":[],"alert":{"rule":{"level":5,"description":"Test.","id":5715},
             "data":{"dstuser":"Test."}}}}'
     expected_error: .*Invalid input format
@@ -28,6 +28,6 @@
   description: Checks the firewall-drop command does not succeed because the 'srcip' is not sent.
   configuration_parameters:
   metadata:
-    input: '#!-execd {"version":1,"origin":{"name":"","module":"wazuh-analysisd"},"command":"firewall-drop5",
+    input: '#!-execd {"version":1,"origin":{"name":"","module":"wazuh-manager-analysisd"},"command":"firewall-drop5",
             "data":{"dstuser":"Test.","srcip":"3.3.3.3"}}}}'
     expected_error: .*Invalid input format
