@@ -250,12 +250,22 @@ def test_manager_restart():
                     utils.manager_restart()
 
                 with patch('socket.socket.connect', side_effect=None):
+                    # Test when send/recv fails (socket error)
                     with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
                         utils.manager_restart()
 
                     with patch('socket.socket.send', side_effect=None):
-                        status = utils.manager_restart()
-                        assert WazuhResult({'message': 'Restart request sent'}) == status
+                        # Test when response doesn't start with 'ok'
+                        with patch('socket.socket.recv', return_value=b'error: invalid command\n'):
+                            with patch('socket.socket.close', side_effect=None):
+                                with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
+                                    utils.manager_restart()
+
+                        # Test successful restart (response starts with 'ok')
+                        with patch('socket.socket.recv', return_value=b'ok\n'):
+                            with patch('socket.socket.close', side_effect=None):
+                                status = utils.manager_restart()
+                                assert WazuhResult({'message': 'Restart request sent'}) == status
 
 
 def test_get_cluster_items():
