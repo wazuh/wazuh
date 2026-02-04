@@ -167,7 +167,13 @@ static bool wm_sca_query_agentd(const char* command, char* output_buffer, size_t
     response_buffer[response_length] = '\0';
 #else
     char* output = NULL;
-    size_t result = agcom_dispatch((char*)command, &output);
+    // agcom_dispatch() mutates the command buffer (it splits "cmd args" in-place).
+    // Copy to a writable buffer since callers typically pass string literals.
+    char command_buffer[OS_MAXSTR];
+    strncpy(command_buffer, command, sizeof(command_buffer) - 1);
+    command_buffer[sizeof(command_buffer) - 1] = '\0';
+
+    size_t result = agcom_dispatch(command_buffer, &output);
 
     if (result == 0 || !output)
     {
