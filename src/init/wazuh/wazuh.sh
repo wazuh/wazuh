@@ -71,6 +71,14 @@ CheckModuleIsEnabled(){
 
 WazuhUpgrade()
 {
+    file_permissions=""
+    #Check installation type
+    if [ "X$1" = "Xserver" ]; then
+        file_permissions="wazuh-manager"
+    else
+        file_permissions="wazuh"
+    fi
+
     # Encode Agentd passlist if not encoded
 
     passlist=$PREINSTALLEDDIR/agentless/.passlist
@@ -97,7 +105,7 @@ WazuhUpgrade()
         cp $PREINSTALLEDDIR/var/db/global.db $PREINSTALLEDDIR/queue/db/
         if [ -f "$PREINSTALLEDDIR/queue/db/global.db" ]; then
             chmod 640 $PREINSTALLEDDIR/queue/db/global.db
-            chown wazuh:wazuh $PREINSTALLEDDIR/queue/db/global.db
+            chown $file_permissions:$file_permissions $PREINSTALLEDDIR/queue/db/global.db
             rm -f $PREINSTALLEDDIR/var/db/global.db*
         else
             echo "Unable to move global.db during the upgrade"
@@ -211,11 +219,11 @@ WazuhUpgrade()
     OSSEC_GROUP=ossec
     if (grep "^ossec:" /etc/group > /dev/null 2>&1) || (dscl . -read /Groups/ossec > /dev/null 2>&1)  ; then
         if [ "X$1" = "Xserver" ]; then
-            find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -print0 | xargs -0 chown root:wazuh
-            find $PREINSTALLEDDIR -group $OSSEC_GROUP -print0 | xargs -0 chown wazuh:wazuh
+            find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -print0 | xargs -0 chown root:$file_permissions
+            find $PREINSTALLEDDIR -group $OSSEC_GROUP -print0 | xargs -0 chown $file_permissions:$file_permissions
         else
-            find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -exec chown root:wazuh {} \;
-            find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown wazuh:wazuh {} \;
+            find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -exec chown root:$file_permissions {} \;
+            find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown $file_permissions:$file_permissions {} \;
         fi
     fi
     ./src/init/delete-oldusers.sh $OSSEC_GROUP

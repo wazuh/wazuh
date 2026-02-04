@@ -94,8 +94,13 @@ EXTERNAL_LIBBPF=external/libbpf-bootstrap/
 EXTERNAL_DBUS=external/dbus/
 endif
 # XXX Becareful NO EXTRA Spaces here
-WAZUH_GROUP?=wazuh
+ifeq ($(TARGET),server)
+WAZUH_USER?=wazuh-manager
+WAZUH_GROUP?=wazuh-manager
+else
 WAZUH_USER?=wazuh
+WAZUH_GROUP?=wazuh
+endif
 SHARED=so
 SELINUX_MODULE=selinux/wazuh.mod
 SELINUX_ENFORCEMENT=selinux/wazuh.te
