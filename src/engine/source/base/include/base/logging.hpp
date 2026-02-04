@@ -245,7 +245,7 @@ extern "C"
 
 constexpr inline const char* default_tag()
 {
-    return "wazuh-analysisd";
+    return "wazuh-manager-analysisd";
 }
 
 /**

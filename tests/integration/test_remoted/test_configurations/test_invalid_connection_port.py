@@ -38,7 +38,7 @@ def test_invalid_connection_port(test_configuration, test_metadata, configure_lo
                             set_wazuh_configuration, restart_wazuh_expect_error):
 
     '''
-    description: Check if 'wazuh-remoted' fails using invalid 'port' values and shows the expected error message
+    description: Check if 'wazuh-manager-remoted' fails using invalid 'port' values and shows the expected error message
                  to inform about it. For this purpose, the test will set a configuration from the module test cases and
                  check if is correct using a FileMonitor catching the errors.
 

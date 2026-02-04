@@ -9,8 +9,8 @@ type: integration
 
 brief: The 'wazuh-agentd' program is the client-side daemon that communicates with the server.
        The objective is to check that, with different states in the 'clients.keys' file,
-       the agent successfully enrolls after losing connection with the 'wazuh-remoted' daemon.
-       The wazuh-remoted program is the server side daemon that communicates with the agents.
+       the agent successfully enrolls after losing connection with the 'wazuh-manager-remoted' daemon.
+       The wazuh-manager-remoted program is the server side daemon that communicates with the agents.
 
 components:
     - agentd
@@ -20,8 +20,8 @@ targets:
 
 daemons:
     - wazuh-agentd
-    - wazuh-authd
-    - wazuh-remoted
+    - wazuh-manager-authd
+    - wazuh-manager-remoted
 
 os_platform:
     - linux
@@ -89,8 +89,8 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
     '''
     description: Check how the agent behaves when it makes multiple enrollment attempts
                  before getting its key. For this, the agent starts without keys and
-                 performs multiple enrollment requests to the 'wazuh-authd' daemon before
-                 getting the new key to communicate with the 'wazuh-remoted' daemon.
+                 performs multiple enrollment requests to the 'wazuh-manager-authd' daemon before
+                 getting the new key to communicate with the 'wazuh-manager-remoted' daemon.
 
                  This test covers and check the scenario of Agent starting without keys
                  and multiple retries are required until the new key is obtained to start

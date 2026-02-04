@@ -38,7 +38,7 @@ def test_invalid_connection_protocol(test_configuration, test_metadata, configur
                             set_wazuh_configuration, restart_wazuh_expect_error, protocols_list_to_str_upper_case, get_real_configuration):
 
     '''
-    description: Check if 'wazuh-remoted' sets properly prococol values.
+    description: Check if 'wazuh-manager-remoted' sets properly prococol values.
                  First of all, it selects a valid protocol to be used. If a pair of protocols is provided, in case one
                  of them is invalid, it should be used the valid protocol. Otherwise, if none of them is valid, TCP
                  should be used(For a syslog connection if more than one protocol is provided only TCP should be used).

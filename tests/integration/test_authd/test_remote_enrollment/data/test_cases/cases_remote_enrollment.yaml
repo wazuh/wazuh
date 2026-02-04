@@ -1,5 +1,5 @@
 - name: No remote enrollment standalone
-  description: Checks if the 'wazuh-authd' remote enrollment is enabled/disabled
+  description: Checks if the 'wazuh-manager-authd' remote enrollment is enabled/disabled
   configuration_parameters:
     REMOTE_ENROLLMENT: 'no'
     CLUSTER_DISABLED: 'yes'
@@ -10,7 +10,7 @@
     id: 'no_remote_enrollment_standalone'
 
 - name: Yes remote enrollment standalone
-  description: Checks if the 'wazuh-authd' remote enrollment is enabled/disabled
+  description: Checks if the 'wazuh-manager-authd' remote enrollment is enabled/disabled
   configuration_parameters:
     REMOTE_ENROLLMENT: 'yes'
     CLUSTER_DISABLED: 'yes'
@@ -21,7 +21,7 @@
     id: 'yes_remote_enrollment_standalone'
 
 - name: No remote enrollment cluster master
-  description: Checks if the 'wazuh-authd' remote enrollment is enabled/disabled
+  description: Checks if the 'wazuh-manager-authd' remote enrollment is enabled/disabled
   configuration_parameters:
     REMOTE_ENROLLMENT: 'no'
     CLUSTER_DISABLED: 'no'
@@ -32,7 +32,7 @@
     id: 'no_remote_enrollment_cluster_master'
 
 - name: Yes remote enrollment cluster master
-  description: Checks if the 'wazuh-authd' remote enrollment is enabled/disabled
+  description: Checks if the 'wazuh-manager-authd' remote enrollment is enabled/disabled
   configuration_parameters:
     REMOTE_ENROLLMENT: 'yes'
     CLUSTER_DISABLED: 'no'
@@ -43,7 +43,7 @@
     id: 'yes_remote_enrollment_cluster_master'
 
 - name: No remote enrollment cluster worker
-  description: Checks if the 'wazuh-authd' remote enrollment is enabled/disabled
+  description: Checks if the 'wazuh-manager-authd' remote enrollment is enabled/disabled
   configuration_parameters:
     REMOTE_ENROLLMENT: 'no'
     CLUSTER_DISABLED: 'no'
@@ -54,7 +54,7 @@
     id: 'no_remote_enrollment_cluster_worker'
 
 - name: Yes remote enrollment cluster worker
-  description: Checks if the 'wazuh-authd' remote enrollment is enabled/disabled
+  description: Checks if the 'wazuh-manager-authd' remote enrollment is enabled/disabled
   configuration_parameters:
     REMOTE_ENROLLMENT: 'yes'
     CLUSTER_DISABLED: 'no'

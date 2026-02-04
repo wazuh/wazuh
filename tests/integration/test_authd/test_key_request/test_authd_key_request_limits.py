@@ -18,7 +18,7 @@ components:
     - manager
 
 daemons:
-    - wazuh-authd
+    - wazuh-manager-authd
 
 os_platform:
     - linux
@@ -82,7 +82,7 @@ receiver_sockets_params = [(MODULESD_KREQUEST_SOCKET_PATH, 'AF_UNIX', 'UDP')]
 script_path = SCRIPTS_FOLDER_PATH
 script_filename = 'fetch_keys.py'
 
-monitored_sockets_params = [('wazuh-authd', None, True)]
+monitored_sockets_params = [('wazuh-manager-authd', None, True)]
 receiver_sockets, monitored_sockets = None, None
 
 daemons_handler_configuration = {'all_daemons': True}

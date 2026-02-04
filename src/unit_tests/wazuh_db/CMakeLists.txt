@@ -142,7 +142,10 @@ link_directories(${SRC_FOLDER}/build/lib)
 
 # Wazuh-DB objects
 FILE(GLOB wazuh_db_objects ${SRC_FOLDER}/wazuh_db/*.o)
-list(REMOVE_ITEM wazuh_db_objects ${SRC_FOLDER}/wazuh_db/main.o ${SRC_FOLDER}/wazuh_db/wdb_shared.o)
+list(REMOVE_ITEM wazuh_db_objects
+    ${SRC_FOLDER}/wazuh_db/main.o
+    ${SRC_FOLDER}/wazuh_db/wdb_shared.o
+)
 
 # Compilig tests
 list(LENGTH wdb_tests_names count)

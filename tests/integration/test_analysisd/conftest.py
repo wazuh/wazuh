@@ -21,7 +21,7 @@ from wazuh_testing.utils import callbacks, file
 @pytest.fixture()
 def prepare_custom_rules_file(request, test_metadata):
     """Configure a syscollector custom rules for testing.
-    Restarting wazuh-analysisd is required to apply this changes.
+    Restarting wazuh-manager-analysisd is required to apply this changes.
     """
     data_dir = getattr(request.module, 'RULES_SAMPLE_PATH')
     source_rule = os.path.join(data_dir, test_metadata['rules_file'])
