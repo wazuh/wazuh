@@ -73,10 +73,10 @@ func main() {
 	flag.IntVar(&concurrent, "c", 1, "Number of concurrent connections")
 	// IO Files
 	flag.StringVar(&datasetFile, "i", "./test_logs.txt", "Path to dataset of logs. The input File")
-	flag.StringVar(&watchedFile, "o", "/var/ossec/logs/alerts/alerts.json", "Watched file. The Output file")
+	flag.StringVar(&watchedFile, "o", "/var/wazuh-manager/logs/alerts/alerts.json", "Watched file. The Output file")
 	flag.BoolVar(&truncateWatched, "T", false, "Truncate the output file")
 	// Protocol
-	flag.StringVar(&sockPath, "s", "/var/ossec/queue/sockets/queue", "Path/Adress to the sockets")
+	flag.StringVar(&sockPath, "s", "/var/wazuh-manager/queue/sockets/queue", "Path/Adress to the sockets")
 	flag.StringVar(&sockProto, "p", "unixgram", `Known networks are "tcp", "tcp4" (IPv4-only), `+
 		`"tcp6" (IPv6-only), "udp", "udp4" (IPv4-only), `+
 		`"udp6" (IPv6-only), "ip", "ip4" (IPv4-only),`+

@@ -11,7 +11,7 @@ class Constants:
         DEFAULT_API_TIMEOUT (int): Default timeout (in microseconds) configured on the server
                                    for API requests.
     """
-    SOCKET_PATH: str = '/var/ossec/queue/sockets/analysis'
+    SOCKET_PATH: str = '/var/wazuh-manager/queue/sockets/analysis'
     DEFAULT_NAMESPACE: str = 'testing'
     DEFAULT_SESSION: str = 'default'
     DEFAULT_NS: str = 'draft'

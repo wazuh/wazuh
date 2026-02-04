@@ -11,7 +11,7 @@
 # Example:
 #   sudo ./toggle_archive.sh enable
 
-ANALYSISD_SOCKET="/var/ossec/queue/sockets/analysis"
+ANALYSISD_SOCKET="/var/wazuh-manager/queue/sockets/analysis"
 ENDPOINT_ACTIVATE="http://localhost/archiver/activate"
 ENDPOINT_STATUS="http://localhost/archiver/status"
 ENDPOINT_DISABLE="http://localhost/archiver/deactivate"
