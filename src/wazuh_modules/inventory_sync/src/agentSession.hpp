@@ -112,12 +112,7 @@ public:
         auto clusterName = data->cluster_name() ? data->cluster_name()->string_view() : std::string_view();
         auto clusterNode = data->cluster_node() ? data->cluster_node()->string_view() : std::string_view();
 
-        auto agentIdString = std::string(agentId.data(), agentId.size());
-
-        if (agentIdString.length() < 3)
-        {
-            agentIdString.insert(0, 3 - agentIdString.length(), '0');
-        }
+        std::string agentIdString = std::string(agentId.data(), agentId.size());
 
         // Extract groups
         std::vector<std::string> groups;
