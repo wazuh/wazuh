@@ -62,7 +62,7 @@ usage: engine-test [-h] [-c CONFIG_FILE] [-v] {run,add,get,list,delete} ...
 options:
   -h, --help            show this help message and exit
   -c CONFIG_FILE, --config CONFIG_FILE
-                        Configuration file. Default: /var/ossec/etc/engine-test.conf
+                        Configuration file. Default: /var/wazuh-manager/etc/engine-test.conf
   -v, --version         show program's version number and exit
 
 subcommands:

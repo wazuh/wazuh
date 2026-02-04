@@ -21,6 +21,7 @@ WAZUH_HOME=$(pwd)
 
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking execution path." >> ./logs/upgrade.log
 
+
 if [[ "$OS" == "Darwin" ]]; then
     if [ "${WAZUH_HOME}" != "/Library/Ossec" ]; then
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Execution path is wrong (it should be /Library/Ossec), interrupting upgrade." >> ./logs/upgrade.log
@@ -29,8 +30,8 @@ if [[ "$OS" == "Darwin" ]]; then
         exit 1
     fi
 elif [[ "$OS" == "Linux" ]]; then
-    if [ "${WAZUH_HOME}" != "/var/ossec" ]; then
-        echo "$(date +"%Y/%m/%d %H:%M:%S") - Execution path is wrong (it should be /var/ossec), interrupting upgrade." >> ./logs/upgrade.log
+    if [ "${WAZUH_HOME}" != "${INSTALLDIR}" ]; then
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Execution path is wrong (it should be ${INSTALLDIR}), interrupting upgrade." >> ./logs/upgrade.log
         echo -ne "2" > ./var/upgrade/upgrade_result
         rm -f $LOCK
         exit 1

@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 # ------------------------ Tests configuration section ------------------------
 
 # Useful variables
@@ -10,7 +9,7 @@ STATS_MONITOR_POLL_TIME_SECS=0.1
 : "${BT_TIME:=10}"
 BT_RATE=0
 BT_INPUT=./utils/test_logs.txt
-BT_OUTPUT=/var/ossec/logs/alerts/alerts-ECS.json
+BT_OUTPUT=${WAZUH_HOME}/logs/alerts/alerts-ECS.json
 
 # Engine Configurations
 : "${ORCHESTRATOR_THREADS:=1}"
@@ -22,11 +21,11 @@ TEST_NAME="engine-bench-${ORCHESTRATOR_THREADS}-threads-${RANDOM}"
 # check engine is running
 if pgrep -x "wazuh-manager-analysisd" > /dev/null; then
     echo "wazuh-manager-analysisd will be restarted."
-    pkill -f /var/ossec/bin/wazuh-manager-analysisd
+    pkill -f ${WAZUH_HOME}/bin/wazuh-manager-analysisd
     sleep 1
 fi
 
-WAZUH_ORCHESTRATOR_THREADS="${ORCHESTRATOR_THREADS}" /var/ossec/bin/wazuh-manager-analysisd &
+WAZUH_ORCHESTRATOR_THREADS="${ORCHESTRATOR_THREADS}" ${WAZUH_HOME}/bin/wazuh-manager-analysisd &
 
 sleep 5
 

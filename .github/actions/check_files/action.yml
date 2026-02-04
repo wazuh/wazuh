@@ -16,7 +16,7 @@ inputs:
   installation_directory:
     required: false
     description: "Path to the wazuh Installation directory"
-    default: "/var/ossec"
+    default: "/var/wazuh-manager"
   wazuh_uid:
     required: true
     description: "Wazuh user ID"
