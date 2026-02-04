@@ -103,7 +103,7 @@ class MaxVersionIndex:
         body = {
             "query": {
                 "bool": {
-                    "must": [{"term": {"agent.id": agent_id}}],
+                    "must": [{"term": {"wazuh.agent.id": agent_id}}],
                     "should": [
                         {
                             "bool": {

@@ -45,7 +45,7 @@ namespace InventorySyncQueryBuilder
         nlohmann::json updateQuery;
 
         // Build the query: match agent.id AND only update if version <= globalVersion (external_gte behavior)
-        updateQuery["query"]["bool"]["must"][0]["term"]["agent.id"] = agentId;
+        updateQuery["query"]["bool"]["must"][0]["term"]["wazuh.agent.id"] = agentId;
         // Only update documents where version is null OR version <= globalVersion
         updateQuery["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"] = "state.document_version";
         updateQuery["query"]["bool"]["should"][1]["range"]["state.document_version"]["lte"] = globalVersion;
@@ -106,7 +106,7 @@ namespace InventorySyncQueryBuilder
     {
         nlohmann::json updateQuery;
 
-        updateQuery["query"]["bool"]["must"][0]["term"]["agent.id"] = agentId;
+        updateQuery["query"]["bool"]["must"][0]["term"]["wazuh.agent.id"] = agentId;
 
         const auto timestamp = Utils::getCurrentISO8601();
 
@@ -158,7 +158,7 @@ namespace InventorySyncQueryBuilder
         nlohmann::json updateQuery;
 
         // Build the query: match agent.id AND only update if version <= globalVersion (external_gte behavior)
-        updateQuery["query"]["bool"]["must"][0]["term"]["agent.id"] = agentId;
+        updateQuery["query"]["bool"]["must"][0]["term"]["wazuh.agent.id"] = agentId;
         // Only update documents where version is null OR version <= globalVersion
         updateQuery["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"] = "state.document_version";
         updateQuery["query"]["bool"]["should"][1]["range"]["state.document_version"]["lte"] = globalVersion;
@@ -208,7 +208,7 @@ namespace InventorySyncQueryBuilder
         nlohmann::json updateQuery;
 
         // Build the query: match agent.id only
-        updateQuery["query"]["bool"]["must"][0]["term"]["agent.id"] = agentId;
+        updateQuery["query"]["bool"]["must"][0]["term"]["wazuh.agent.id"] = agentId;
 
         // Build the Painless script that compares fields and only updates if different
         // Note: Does NOT update document_version or timestamp - this is disaster recovery
@@ -263,7 +263,7 @@ namespace InventorySyncQueryBuilder
         nlohmann::json updateQuery;
 
         // Build the query: match agent.id only
-        updateQuery["query"]["bool"]["must"][0]["term"]["agent.id"] = agentId;
+        updateQuery["query"]["bool"]["must"][0]["term"]["wazuh.agent.id"] = agentId;
 
         // Build the Painless script that compares groups and only updates if different
         // Note: Does NOT update document_version or timestamp - this is disaster recovery
@@ -324,7 +324,7 @@ namespace InventorySyncQueryBuilder
 
         auto& must = query["query"]["bool"]["must"];
 
-        must.push_back({{"term", {{"agent.id", agentId}}}});
+        must.push_back({{"term", {{"wazuh.agent.id", agentId}}}});
         must.push_back({{"term", {{"package.name", packageName}}}});
         must.push_back({{"term", {{"package.version", packageVersion}}}});
         must.push_back({{"term", {{"package.path", packagePath}}}});
@@ -356,7 +356,7 @@ namespace InventorySyncQueryBuilder
     buildContextGetQuery(const std::string& agentId, std::size_t size, const std::string& searchAfter = "")
     {
         nlohmann::json query = {{"_source", nlohmann::json::array({"vulnerability.id"})},
-                                {"query", {{"term", {{"agent.id", agentId}}}}},
+                                {"query", {{"term", {{"wazuh.agent.id", agentId}}}}},
                                 {"size", size},
                                 {"sort", {{{"_id", {{"order", "asc"}}}}}}};
 

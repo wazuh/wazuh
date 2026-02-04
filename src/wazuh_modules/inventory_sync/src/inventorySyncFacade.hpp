@@ -325,7 +325,7 @@ class InventorySyncFacadeImpl final
         while (true)
         {
             nlohmann::json searchQuery;
-            searchQuery["query"]["term"]["agent.id"] = agentId;
+            searchQuery["query"]["term"]["wazuh.agent.id"] = agentId;
             searchQuery["_source"] = nlohmann::json::array({"checksum.hash.sha1"});
             searchQuery["sort"] = nlohmann::json::array({nlohmann::json::object({{"checksum.hash.sha1", "asc"}})});
             searchQuery["size"] = BATCH_SIZE;
