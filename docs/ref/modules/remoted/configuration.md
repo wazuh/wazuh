@@ -30,7 +30,7 @@ File: `/var/wazuh-manager/etc/wazuh-manager.conf`
 
 ## Internal Options
 
-File: `/var/ossec/etc/internal_options.conf` or `/var/ossec/etc/local_internal_options.conf`
+File: `/var/wazuh-manager/etc/internal_options.conf` or `/var/wazuh-manager/etc/local_internal_options.conf`
 
 ### Key Settings
 
@@ -120,13 +120,13 @@ remoted.sender_pool=4
 
 ## Monitoring
 
-Enable statistics in `/var/ossec/etc/internal_options.conf`:
+Enable statistics in `/var/wazuh-manager/etc/internal_options.conf`:
 
 ```conf
 remoted.state_interval=5
 ```
 
-View statistics: `cat /var/ossec/var/run/wazuh-remoted.state`
+View statistics: `cat /var/wazuh-manager/var/run/wazuh-manager-remoted.state`
 
 Enable debug logging:
 

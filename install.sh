@@ -736,121 +736,6 @@ main()
     fi
 
     . ./src/init/update.sh
-    # Is this an update?
-    if getPreinstalledDir && [ "X${USER_CLEANINSTALL}" = "X" ]; then
-        echo ""
-        ct="1"
-        while [ $ct = "1" ]; do
-            ct="0"
-            $ECHO " - ${wanttoupdate} ($yes/$no): "
-            if [ "X${USER_UPDATE}" = "X" ]; then
-                read ANY
-            else
-                ANY=$yes
-            fi
-
-            case $ANY in
-                $yes)
-                    update_only="yes"
-                    break;
-                    ;;
-                $no)
-                    echo ""
-                    echo "${mustuninstall}"
-                    exit 0;
-                    ;;
-                  *)
-                    ct="1"
-                    ;;
-            esac
-        done
-
-
-        # Do some of the update steps.
-        if [ "X${update_only}" = "Xyes" ]; then
-            . ./src/init/update.sh
-
-            if [ "`doUpdatecleanup`" = "${FALSE}" ]; then
-                # Disabling update
-                echo ""
-                echo "${unabletoupdate}"
-                sleep 5;
-                update_only=""
-            else
-                # Get update
-                USER_DIR="$PREINSTALLEDDIR"
-                USER_INSTALL_TYPE=`getPreinstalledType`
-                USER_OLD_VERSION=`getPreinstalledVersion`
-                USER_OLD_NAME=`getPreinstalledName`
-                USER_DELETE_DIR="$nomatch"
-
-                # Validate upgrade constraints for Wazuh 5.0.0
-                if [ -n "$USER_OLD_VERSION" ]; then
-                    OLD_MAJOR=$(echo "$USER_OLD_VERSION" | sed 's/^v//' | cut -d. -f1)
-                    OLD_MINOR=$(echo "$USER_OLD_VERSION" | sed 's/^v//' | cut -d. -f2)
-
-                    UPGRADE_BLOCKED="no"
-                    ERROR_MESSAGE=""
-
-                    if [ "$USER_INSTALL_TYPE" = "agent" ]; then
-                        # Agent: Block upgrades from < 4.14.0
-                        if [ -n "$OLD_MAJOR" ] && [ -n "$OLD_MINOR" ]; then
-                            if [ "$OLD_MAJOR" -lt 4 ] || { [ "$OLD_MAJOR" -eq 4 ] && [ "$OLD_MINOR" -lt 14 ]; }; then
-                                UPGRADE_BLOCKED="yes"
-                                ERROR_MESSAGE="Current version: $USER_OLD_VERSION
-Target version:  5.0.0
-
-Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later."
-                            fi
-                        fi
-                    else
-                        # Manager: Block all upgrades from 4.x
-                        if [ -n "$OLD_MAJOR" ] && [ "$OLD_MAJOR" -lt 5 ]; then
-                            UPGRADE_BLOCKED="yes"
-                            ERROR_MESSAGE="Current version: $USER_OLD_VERSION
-Target version:  5.0.0
-
-Upgrade to Wazuh 5.0.0 is not supported from version 4.x.
-A clean installation is required for managers."
-                        fi
-                    fi
-
-                    if [ "$UPGRADE_BLOCKED" = "yes" ]; then
-                        echo ""
-                        echo "═════════════════════════════════════════════════════════════════"
-                        echo "  UPGRADE BLOCKED: Incompatible version detected"
-                        echo "═════════════════════════════════════════════════════════════════"
-                        echo ""
-                        echo "$ERROR_MESSAGE"
-                        echo ""
-                        echo "Required action:"
-                        if [ "$USER_INSTALL_TYPE" = "agent" ]; then
-                            echo "  1. Upgrade to version 4.14.0 or later first"
-                            echo "  2. Then upgrade to 5.0.0"
-                        else
-                            echo "  1. Backup your configuration"
-                            echo "  2. Perform a clean installation of 5.0.0"
-                            echo "  3. Restore your configuration"
-                        fi
-                        echo ""
-                        echo "For more information, visit:"
-                        echo "  https://documentation.wazuh.com/current/upgrade-guide/"
-                        echo "═════════════════════════════════════════════════════════════════"
-                        echo ""
-                        exit 1
-                    fi
-                fi
-            fi
-
-            ct="1"
-
-            # We dont need to update the rules on agent installs
-            if [ "X${USER_INSTALL_TYPE}" = "Xagent" ]; then
-                ct="0"
-            fi
-
-        fi
-    fi
 
     # Setting up the installation type
     hybrid="hybrid"
@@ -911,9 +796,136 @@ A clean installation is required for managers."
         INSTYPE=${USER_INSTALL_TYPE}
     fi
 
-    # Adjust default install dir for manager when not overridden
-    if [ -z "${USER_DIR}" ] && [ "X$INSTYPE" = "Xserver" ] && [ "X$INSTALLDIR" = "X/var/ossec" ]; then
-        INSTALLDIR="/var/wazuh-manager"
+    # Is this an update? (only for the selected installation type)
+    if [ "X${USER_CLEANINSTALL}" = "X" ]; then
+        if [ "X$INSTYPE" = "Xagent" ]; then
+            pidir_service_name="wazuh-agent"
+        else
+            pidir_service_name="wazuh-manager"
+        fi
+
+        if getPreinstalledDirByType && isWazuhInstalled "$PREINSTALLEDDIR"; then
+            echo ""
+            ct="1"
+            while [ $ct = "1" ]; do
+                ct="0"
+                $ECHO " - ${wanttoupdate} ($yes/$no): "
+                if [ "X${USER_UPDATE}" = "X" ]; then
+                    read ANY
+                else
+                    ANY=$yes
+                fi
+
+                case $ANY in
+                    $yes)
+                        update_only="yes"
+                        break;
+                        ;;
+                    $no)
+                        echo ""
+                        echo "${mustuninstall}"
+                        exit 0;
+                        ;;
+                      *)
+                        ct="1"
+                        ;;
+                esac
+            done
+
+
+            # Do some of the update steps.
+            if [ "X${update_only}" = "Xyes" ]; then
+                . ./src/init/update.sh
+
+                if [ "`doUpdatecleanup`" = "${FALSE}" ]; then
+                    # Disabling update
+                    echo ""
+                    echo "${unabletoupdate}"
+                    sleep 5;
+                    update_only=""
+                else
+                    # Get update
+                    USER_DIR="$PREINSTALLEDDIR"
+                    USER_INSTALL_TYPE=`getPreinstalledType`
+                    USER_OLD_VERSION=`getPreinstalledVersion`
+                    USER_OLD_NAME=`getPreinstalledName`
+
+
+                # Validate upgrade constraints for Wazuh 5.0.0
+                if [ -n "$USER_OLD_VERSION" ]; then
+                    OLD_MAJOR=$(echo "$USER_OLD_VERSION" | sed 's/^v//' | cut -d. -f1)
+                    OLD_MINOR=$(echo "$USER_OLD_VERSION" | sed 's/^v//' | cut -d. -f2)
+
+                    UPGRADE_BLOCKED="no"
+                    ERROR_MESSAGE=""
+
+                    if [ "$USER_INSTALL_TYPE" = "agent" ]; then
+                        # Agent: Block upgrades from < 4.14.0
+                        if [ -n "$OLD_MAJOR" ] && [ -n "$OLD_MINOR" ]; then
+                            if [ "$OLD_MAJOR" -lt 4 ] || { [ "$OLD_MAJOR" -eq 4 ] && [ "$OLD_MINOR" -lt 14 ]; }; then
+                                UPGRADE_BLOCKED="yes"
+                                ERROR_MESSAGE="Current version: $USER_OLD_VERSION
+Target version:  5.0.0
+
+Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later."
+                            fi
+                        fi
+                    else
+                        # Manager: Block all upgrades from 4.x
+                        if [ -n "$OLD_MAJOR" ] && [ "$OLD_MAJOR" -lt 5 ]; then
+                            UPGRADE_BLOCKED="yes"
+                            ERROR_MESSAGE="Current version: $USER_OLD_VERSION
+Target version:  5.0.0
+
+Upgrade to Wazuh 5.0.0 is not supported from version 4.x.
+A clean installation is required for managers."
+                        fi
+                    fi
+
+                    if [ "$UPGRADE_BLOCKED" = "yes" ]; then
+                        echo ""
+                        echo "═════════════════════════════════════════════════════════════════"
+                        echo "  UPGRADE BLOCKED: Incompatible version detected"
+                        echo "═════════════════════════════════════════════════════════════════"
+                        echo ""
+                        echo "$ERROR_MESSAGE"
+                        echo ""
+                        echo "Required action:"
+                        if [ "$USER_INSTALL_TYPE" = "agent" ]; then
+                            echo "  1. Upgrade to version 4.14.0 or later first"
+                            echo "  2. Then upgrade to 5.0.0"
+                        else
+                            echo "  1. Backup your configuration"
+                            echo "  2. Perform a clean installation of 5.0.0"
+                            echo "  3. Restore your configuration"
+                        fi
+                        echo ""
+                        echo "For more information, visit:"
+                        echo "  https://documentation.wazuh.com/current/upgrade-guide/"
+                        echo "═════════════════════════════════════════════════════════════════"
+                        echo ""
+                        exit 1
+                    fi
+                fi
+
+                ct="1"
+
+                # We dont need to update the rules on agent installs
+                if [ "X${USER_INSTALL_TYPE}" = "Xagent" ]; then
+                    ct="0"
+                fi
+
+            fi
+        fi
+    fi
+
+    # Adjust default install dir by installation type when not overridden
+    if [ -z "${USER_DIR}" ]; then
+        if [ "X$INSTYPE" = "Xagent" ]; then
+            INSTALLDIR="/var/ossec"
+        else
+            INSTALLDIR="/var/wazuh-manager"
+        fi
     fi
 
     # Setting up the installation directory
