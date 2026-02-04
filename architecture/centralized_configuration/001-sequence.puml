@@ -7,12 +7,12 @@
 hide footbox
 
 box "**Wazuh Master Node**"
-participant "wazuh-remoted" as masterremote
-participant "wazuh-clusterd" as mclusterd
+participant "wazuh-manager-remoted" as masterremote
+participant "wazuh-manager-clusterd" as mclusterd
 end box
 box "**Wazuh Worker Node**"
-participant "wazuh-clusterd" as wclusterd
-participant "wazuh-remoted" as workerremote
+participant "wazuh-manager-clusterd" as wclusterd
+participant "wazuh-manager-remoted" as workerremote
 end box
 participant "**Wazuh Agent**\nwazuh-agentd" as agent
 

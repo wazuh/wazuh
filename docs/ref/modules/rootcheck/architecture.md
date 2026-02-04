@@ -257,7 +257,7 @@ ossec: output: 'rootcheck' message: <detection_details>
 **No Persistent State (5.0):**
 - Alerts processed through rules engine
 - Logged to `alerts.log` and `alerts.json`
-- Not stored in wazuh-db
+- Not stored in wazuh-manager-db
 - No `/rootcheck` API data persistence
 
 ## Performance Characteristics

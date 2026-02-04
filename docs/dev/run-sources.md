@@ -71,7 +71,7 @@ Alternatively, use environment variables for unattended installation:
 USER_LANGUAGE="en" \
 USER_NO_STOP="y" \
 USER_INSTALL_TYPE="agent" \
-USER_DIR="/var/wazuh-manager" \
+USER_DIR="/var/ossec" \
 USER_AGENT_SERVER_IP="10.0.0.2" \
 USER_ENABLE_SYSCHECK="y" \
 USER_ENABLE_ROOTCHECK="y" \
@@ -165,7 +165,7 @@ The main server configuration file is located at:
 After modifying the configuration, restart the server:
 
 ```bash
-/var/ossec/bin/wazuh-control restart
+/var/wazuh-manager/bin/wazuh-control restart
 ```
 
 ### Agent Configuration
@@ -189,7 +189,13 @@ Restart-Service -Name wazuh
 
 ## Stopping Services
 
-### Server/Agent on UNIX
+### Server on UNIX
+
+```bash
+/var/wazuh-manager/bin/wazuh-control stop
+```
+
+### Agent on UNIX
 
 ```bash
 /var/ossec/bin/wazuh-control stop

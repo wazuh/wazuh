@@ -1119,7 +1119,7 @@ InstallLocal()
     ### Install Python
     ${MAKEBIN} wpython INSTALLDIR=${INSTALLDIR} TARGET=${INSTYPE}
 
-    ${MAKEBIN} --quiet -C ../framework install INSTALLDIR=${INSTALLDIR}
+    ${MAKEBIN} --quiet -C ../framework install INSTALLDIR=${INSTALLDIR} WAZUH_GROUP=${WAZUH_GROUP}
 
     generateSchemaFiles
 
@@ -1147,15 +1147,15 @@ InstallLocal()
 
     ### Backup old API
     if [ "X${update_only}" = "Xyes" ]; then
-      ${MAKEBIN} --quiet -C ../api backup INSTALLDIR=${INSTALLDIR} REVISION=${REVISION}
+      ${MAKEBIN} --quiet -C ../api backup INSTALLDIR=${INSTALLDIR} REVISION=${REVISION} WAZUH_GROUP=${WAZUH_GROUP}
     fi
 
     ### Install API
-    ${MAKEBIN} --quiet -C ../api install INSTALLDIR=${INSTALLDIR}
+    ${MAKEBIN} --quiet -C ../api install INSTALLDIR=${INSTALLDIR} WAZUH_GROUP=${WAZUH_GROUP}
 
     ### Restore old API
     if [ "X${update_only}" = "Xyes" ]; then
-      ${MAKEBIN} --quiet -C ../api restore INSTALLDIR=${INSTALLDIR} REVISION=${REVISION}
+      ${MAKEBIN} --quiet -C ../api restore INSTALLDIR=${INSTALLDIR} REVISION=${REVISION} WAZUH_GROUP=${WAZUH_GROUP}
     fi
 
     ### Install router library
