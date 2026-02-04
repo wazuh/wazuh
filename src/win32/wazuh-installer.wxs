@@ -135,6 +135,9 @@
             <Publish Dialog="CustomCheckDialog" Control="Back" Event="NewDialog" Value="InstallDirDlg" />
         </UI>
         <InstallExecuteSequence>
+            <!-- Prevent upgrades from unsupported versions -->
+            <Custom Action="PreventUnsupportedUpgrade" After="FindRelatedProducts">IS_UPGRADING_FROM_UNSUPPORTED_VERSION</Custom>
+
             <!-- Set OS VERSION -->
             <Custom Action="SetOSVersion0" Before="SetCustomActionDataValue">( VersionNT = 600 OR VersionNT64 = 600 ) AND  MsiNTProductType &gt; 1</Custom>
             <Custom Action="SetOSVersion1" Before="SetCustomActionDataValue">( VersionNT = 601 OR VersionNT64 = 601 ) AND  MsiNTProductType = 1</Custom>
@@ -685,7 +688,11 @@
         </Feature>
         <MajorUpgrade Schedule="afterInstallInitialize" AllowDowngrades="yes" />
         <Upgrade Id="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
+        <UpgradeVersion Minimum="4.14.0" Maximum="5.0.0" IncludeMinimum="yes" IncludeMaximum="no" Property="IS_UPGRADING_FROM_SUPPORTED_VERSION" />
+        <UpgradeVersion Maximum="4.14.0" IncludeMaximum="no" Property="IS_UPGRADING_FROM_UNSUPPORTED_VERSION" />
         <UpgradeVersion Maximum="5.0.0" IncludeMaximum="no" Property="IS_UPGRADING_FROM_PRIOR_TO_5X" /></Upgrade>
+
+        <CustomAction Id="PreventUnsupportedUpgrade" Error="Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later.&#x0A;&#x0A;Your current version is not supported for direct upgrade to 5.0.0&#x0A;&#x0A;Required action:&#x0A;  1. Upgrade to version 4.14.0 or later first&#x0A;  2. Then upgrade to 5.0.0&#x0A;&#x0A;For more information, visit:&#x0A;  https://documentation.wazuh.com/current/upgrade-guide/" />
     </Product>
     <Fragment>
         <Binary Id="CustomImage" SourceFile="ui\bannrbmp.jpg" />
