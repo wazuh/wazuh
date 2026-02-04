@@ -420,6 +420,7 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromLibRPM)
 
 
     EXPECT_CALL(wrapper, callbackMock(expectedPackage1)).Times(1);
+    EXPECT_CALL(*rpm_mock, rpmtsSetVSFlags(ts, RPMVSF_MASK_NOSIGNATURES)).Times(1).WillOnce(Return(0));
 
     getRpmInfo([&wrapper](nlohmann::json & data)
     {
