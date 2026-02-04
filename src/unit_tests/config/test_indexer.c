@@ -438,7 +438,7 @@ void test_fail_non_existent_certificate_file(void **state) {
             "</hosts>"
             "<ssl>"
                 "<certificate_authorities>"
-                    "<ca>/var/ossec/cacert1.pem</ca>"
+                    "<ca>/var/wazuh-manager/cacert1.pem</ca>"
                 "</certificate_authorities>"
                 "<certificate>cert.pem</certificate>"
                 "<key>key.pem</key>"
@@ -453,7 +453,7 @@ void test_fail_non_existent_certificate_file(void **state) {
     expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
-    expect_string(__wrap__merror, formatted_msg, "File '/var/ossec/cacert1.pem' not found for 'indexer.ssl.certificate_authorities' in module 'indexer'. Check configuration");
+    expect_string(__wrap__merror, formatted_msg, "File '/var/wazuh-manager/cacert1.pem' not found for 'indexer.ssl.certificate_authorities' in module 'indexer'. Check configuration");
     assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
     assert_null(indexer_config);
 }

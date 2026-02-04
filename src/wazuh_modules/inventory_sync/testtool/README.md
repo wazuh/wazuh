@@ -106,10 +106,10 @@ The test tool requires valid SSL certificates for secure communication with the 
     "hosts": ["https://ChangeMe:9200"],
     "ssl": {
       "certificate_authorities": [
-        "/var/ossec/etc/certs/root-ca.pem"
+        "/var/wazuh-manager/etc/certs/root-ca.pem"
       ],
-      "certificate": "/var/ossec/etc/certs/server.pem",
-      "key": "/var/ossec/etc/certs/server-key.pem"
+      "certificate": "/var/wazuh-manager/etc/certs/server.pem",
+      "key": "/var/wazuh-manager/etc/certs/server-key.pem"
     }
   }
 }

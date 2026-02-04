@@ -7,7 +7,7 @@ import socket
 import sys
 
 DUMP_FILE_NAME = 'test_logs_base.txt'
-DEFAULT_ENGINE_SOCKET = '/var/ossec/queue/sockets/queue'
+DEFAULT_ENGINE_SOCKET = '/var/wazuh-manager/queue/sockets/queue'
 JSON_BASE_EVENT = '{"event" : {"original" : {}}}'
 
 
