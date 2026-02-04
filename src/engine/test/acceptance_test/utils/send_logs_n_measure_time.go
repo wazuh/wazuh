@@ -15,8 +15,8 @@ import (
 
 func main() {
 	var srcLogsFilePath string = "./test_logs.txt"
-	var archivesFilePath string = "/var/ossec/logs/archives/archives.json"
-	var sockPath string = "/var/ossec/queue/sockets/queue" // Path to unix socket
+	var archivesFilePath string = "/var/wazuh-manager/logs/archives/archives.json"
+	var sockPath string = "/var/wazuh-manager/queue/sockets/queue" // Path to unix socket
 	var conn net.Conn
 	var logFile string
 	var logMessage string

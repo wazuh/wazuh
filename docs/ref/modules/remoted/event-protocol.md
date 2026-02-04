@@ -13,7 +13,7 @@ The Wazuh Event Protocol version 1 (x-wev1) defines how enriched events are tran
 
 ## Transport
 
-HTTP POST over Unix socket at `/var/ossec/queue/sockets/queue` with content-type `application/x-wev1`.
+HTTP POST over Unix socket at `/var/wazuh-manager/queue/sockets/queue` with content-type `application/x-wev1`.
 
 ## Message Format
 
