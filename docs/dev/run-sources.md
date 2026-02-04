@@ -28,7 +28,7 @@ Alternatively, configure environment variables as described in `etc/preloaded-va
 USER_LANGUAGE="en" \
 USER_NO_STOP="y" \
 USER_INSTALL_TYPE="server" \
-USER_DIR="/var/ossec" \
+USER_DIR="/var/wazuh-manager" \
 USER_ENABLE_SYSCHECK="y" \
 USER_ENABLE_ROOTCHECK="y" \
 USER_WHITE_LIST="n" \
@@ -44,13 +44,13 @@ USER_AUTO_START="n" \
 After installation, start the manager:
 
 ```bash
-/var/ossec/bin/wazuh-control start
+/var/wazuh-manager/bin/wazuh-control start
 ```
 
 To verify the server is running:
 
 ```bash
-/var/ossec/bin/wazuh-control status
+/var/wazuh-manager/bin/wazuh-control status
 ```
 
 ## Agent for UNIX
@@ -71,7 +71,7 @@ Alternatively, use environment variables for unattended installation:
 USER_LANGUAGE="en" \
 USER_NO_STOP="y" \
 USER_INSTALL_TYPE="agent" \
-USER_DIR="/var/ossec" \
+USER_DIR="/var/wazuh-manager" \
 USER_AGENT_SERVER_IP="10.0.0.2" \
 USER_ENABLE_SYSCHECK="y" \
 USER_ENABLE_ROOTCHECK="y" \

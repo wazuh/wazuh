@@ -2,7 +2,7 @@ import os
 import json
 from engine_test.conf.integration import IntegrationConf
 
-DEFAULT_CONFIG_FILE = "/var/ossec/etc/engine-test.conf"
+DEFAULT_CONFIG_FILE = "/var/wazuh-manager/etc/engine-test.conf"
 
 
 class ConfigDatabase:

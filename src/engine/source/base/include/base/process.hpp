@@ -104,9 +104,9 @@ void privSepSetGroup(gid_t gid);
  * This function determines the Wazuh home directory by reading the current
  * executable's path from /proc/self/exe and deriving the installation root.
  * It assumes the executable is located in the "bin" subdirectory of the
- * Wazuh installation (e.g., /var/ossec/bin/executable).
+ * Wazuh installation (e.g., /var/wazuh-manager/bin/executable).
  *
- * @return std::filesystem::path The path to the Wazuh home directory ("/var/ossec").
+ * @return std::filesystem::path The path to the Wazuh home directory ("/var/wazuh-manager").
  *
  */
 std::filesystem::path getWazuhHome();

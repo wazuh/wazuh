@@ -7,8 +7,8 @@ namespace conf
 {
 
 using OptionMap = std::unordered_map<std::string, std::string>; // (full_key, value)
-constexpr auto OSSEC_DEFINES = "/var/ossec/etc/internal_options.conf";
-constexpr auto OSSEC_LDEFINES = "/var/ossec/etc/local_internal_options.conf";
+constexpr auto OSSEC_DEFINES = "/var/wazuh-manager/etc/internal_options.conf";
+constexpr auto OSSEC_LDEFINES = "/var/wazuh-manager/etc/local_internal_options.conf";
 
 struct IFileLoader
 {

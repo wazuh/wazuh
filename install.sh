@@ -911,6 +911,11 @@ A clean installation is required for managers."
         INSTYPE=${USER_INSTALL_TYPE}
     fi
 
+    # Adjust default install dir for manager when not overridden
+    if [ -z "${USER_DIR}" ] && [ "X$INSTYPE" = "Xserver" ] && [ "X$INSTALLDIR" = "X/var/ossec" ]; then
+        INSTALLDIR="/var/wazuh-manager"
+    fi
+
     # Setting up the installation directory
     setInstallDir
 
