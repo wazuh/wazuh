@@ -231,12 +231,13 @@ jobs:
           expected_files: manager_base.csv
           wazuh_uid: ${{ env.WAZUH_UID }}
           wazuh_gid: ${{ env.WAZUH_GID }}
+          installation_directory: "/var/wazuh-manager"
           size_check: "false"
-          ignore: "site-packages,/var/ossec/framework/python"
+          ignore: "site-packages,/var/wazuh-manager/framework/python"
 
       - name: Check embedded Python version
         run: |
-          EMBEDDED_PYTHON_VERSION=$(sudo docker exec $CONTAINER_ID /var/ossec/framework/python/bin/python3 --version | awk '{print $2}')
+          EMBEDDED_PYTHON_VERSION=$(sudo docker exec $CONTAINER_ID /var/wazuh-manager/framework/python/bin/python3 --version | awk '{print $2}')
           echo "Embedded Python version: $EMBEDDED_PYTHON_VERSION"
           EXPECTED_PYTHON_VERSION=$(cat $GITHUB_WORKSPACE/framework/.python-version)
           echo "Expected Python version: $EXPECTED_PYTHON_VERSION"

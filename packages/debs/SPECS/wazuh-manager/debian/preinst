@@ -1,10 +1,9 @@
 #!/bin/sh
 # preinst script for Wazuh
-
 set -e
 
 # configuration variables
-DIR="/var/ossec"
+DIR="/var/wazuh-manager"
 WAZUH_TMP_DIR="${DIR}/packages_files/manager_config_files"
 VERSION="$2"
 MAJOR=$(echo "$VERSION" | cut -dv -f2 | cut -d. -f1)
@@ -19,6 +18,24 @@ fi
 
 case "$1" in
     install|upgrade)
+
+        # HARD BLOCK: Prevent upgrade from 4.X to 5.X
+        if [ "$1" = "upgrade" ] && [ -n "$2" ]; then
+            # $2 contains the old version in upgrade scenarios
+            OLD_VERSION="$2"
+            OLD_MAJOR=$(echo "$OLD_VERSION" | cut -d. -f1)
+
+            if [ "$OLD_MAJOR" = "4" ]; then
+                cat <<EOF
+==============================================================
+ERROR: Direct upgrade from Wazuh Manager 4.X to 5.X is not supported.
+
+Detected installed version: $OLD_VERSION
+==============================================================
+EOF
+                exit 1
+            fi
+        fi
 
         if [ "$1" = "upgrade" ]; then
             if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
