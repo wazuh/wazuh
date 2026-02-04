@@ -1037,7 +1037,7 @@ installEngineStore()
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${OUTPUTS_PATH}
     find ${OUTPUTS_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 
-    # Create /var/ossec/etc/ruleset
+    # Create /var/wazuh-manager/etc/ruleset
     install -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/ruleset
 
     echo "Engine output configuration files installed successfully."

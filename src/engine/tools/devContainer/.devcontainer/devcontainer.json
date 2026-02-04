@@ -61,7 +61,7 @@
 	"remoteEnv": {
 		// Set the workspace folder to the container workspace folder.
 		"WAZUH_REPO": "${containerWorkspaceFolder}/wazuh",
-		"WAZUH_HOME": "/var/ossec",
+		"WAZUH_HOME": "/var/wazuh-manager",
 		"WAZUH_DEV_SCRIPTS": "${containerWorkspaceFolder}/wazuh/src/engine/tools/devContainer/scripts/",
 		"ENGINE_SRC": "${containerWorkspaceFolder}/wazuh/src/engine",
 		"ENGINE_BUILD": "${containerWorkspaceFolder}/wazuh/src/build/engine",
