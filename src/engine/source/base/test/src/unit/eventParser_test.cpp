@@ -49,14 +49,12 @@ TEST_P(EventParserRawLocationParamTest, ParseLegacyEvent)
         ASSERT_TRUE(eventQueueId.has_value()) << "Expected queue ID to be present";
         ASSERT_TRUE(eventLocation.has_value()) << "Expected location to be present";
         ASSERT_TRUE(eventMessage.has_value()) << "Expected message to be present";
-        ASSERT_TRUE(eventAgentId.has_value()) << "Expected agent ID to be present";
-        ASSERT_TRUE(eventAgentName.has_value()) << "Expected agent name to be present";
+        ASSERT_FALSE(eventAgentId.has_value()) << "Expected agent ID is not present";
+        ASSERT_FALSE(eventAgentName.has_value()) << "Expected agent name is not present";
 
         ASSERT_EQ(eventQueueId.value(), std::get<0>(expected.value())) << "Queue ID does not match expected value";
         ASSERT_EQ(eventLocation.value(), std::get<1>(expected.value())) << "Location does not match expected value";
         ASSERT_EQ(eventMessage.value(), std::get<2>(expected.value())) << "Message does not match expected value";
-        ASSERT_EQ(eventAgentId.value(), "000") << "Agent ID does not match expected value";
-        ASSERT_EQ(eventAgentName.value(), hostNameStr) << "Agent name does not match expected value";
     }
     catch (const std::runtime_error& e)
     {
