@@ -11,6 +11,8 @@ services:
     ports:
       - "55000:55000"
     volumes:
+      - api_security:/var/ossec/api/configuration/security
+      - api_ssl:/var/ossec/api/configuration/ssl
       - ./configurations/tmp/manager:/tmp_volume
       - ./tools/:/tools
     entrypoint:
@@ -28,6 +30,8 @@ services:
     ports:
       - "55001:55000"
     volumes:
+      - api_security:/var/ossec/api/configuration/security
+      - api_ssl:/var/ossec/api/configuration/ssl
       - ./configurations/tmp/manager:/tmp_volume
       - ./tools/:/tools
     entrypoint:
@@ -46,6 +50,8 @@ services:
     ports:
       - "55002:55000"
     volumes:
+      - api_security:/var/ossec/api/configuration/security
+      - api_ssl:/var/ossec/api/configuration/ssl
       - ./configurations/tmp/manager:/tmp_volume
       - ./tools/:/tools
     entrypoint:
@@ -208,6 +214,10 @@ services:
     build:
       context: ./base/haproxy-lb
     image: integration_test_haproxy-lb
+    ports:
+      - "1514:1514"
+      - "1515:1515"
+      - "55010:55000"
     entrypoint:
       - /scripts/entrypoint.sh
       - ${ENV_MODE}
@@ -226,3 +236,7 @@ services:
     restart: always
     environment:
       - PORT=4041
+
+volumes:
+  api_ssl:
+  api_security:
