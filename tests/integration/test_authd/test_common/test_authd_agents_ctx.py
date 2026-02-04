@@ -7,8 +7,8 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: These tests will check if the 'wazuh-authd' daemon correctly handles the enrollment requests
-       from agents with pre-existing IP addresses or names. The 'wazuh-authd' daemon can automatically
+brief: These tests will check if the 'wazuh-manager-authd' daemon correctly handles the enrollment requests
+       from agents with pre-existing IP addresses or names. The 'wazuh-manager-authd' daemon can automatically
        add a Wazuh agent to a Wazuh manager and provide the key to the agent. 
 
 components:
@@ -18,9 +18,9 @@ targets:
     - manager
 
 daemons:
-    - wazuh-authd
-    - wazuh-db
-    - wazuh-modulesd
+    - wazuh-manager-authd
+    - wazuh-manager-db
+    - wazuh-manager-modulesd
 
 os_platform:
     - linux
@@ -37,7 +37,7 @@ os_version:
     - Ubuntu Bionic
 
 references:
-    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-authd.html
+    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-manager-authd.html
     - https://documentation.wazuh.com/current/user-manual/reference/tools/agent_groups.html
 
 tags:
@@ -126,7 +126,7 @@ def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_con
                                 clean_agents_ctx, daemons_handler, wait_for_authd_startup, connect_to_sockets, set_up_groups):
     '''
     description:
-        Check if when the 'wazuh-authd' daemon receives an enrollment request from an agent
+        Check if when the 'wazuh-manager-authd' daemon receives an enrollment request from an agent
         that has an IP address or name that is already registered, 'authd' creates a record
         for the new agent and deletes the old one. In this case, the enrollment requests
         are sent to an IP v4 network socket.
@@ -171,10 +171,10 @@ def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_con
 
     input_description:
         Different test cases are contained in an external YAML file (wazuh_conf.yaml)
-        which includes configuration settings for the 'wazuh-authd' daemon.
+        which includes configuration settings for the 'wazuh-manager-authd' daemon.
 
     expected_output:
-        - r'Accepting connections on port 1515' (When the 'wazuh-authd' daemon is ready to accept enrollments)
+        - r'Accepting connections on port 1515' (When the 'wazuh-manager-authd' daemon is ready to accept enrollments)
         - r'OSSEC K:' (When the agent has enrolled in the manager)
     tags:
         - keys

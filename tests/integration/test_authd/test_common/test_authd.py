@@ -7,9 +7,9 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: These tests will check if the 'wazuh-authd' daemon correctly handles the enrollment requests,
+brief: These tests will check if the 'wazuh-manager-authd' daemon correctly handles the enrollment requests,
        generating consistent responses to the requests received on its IP v4 network socket.
-       The 'wazuh-authd' daemon can automatically add a Wazuh agent to a Wazuh manager and provide
+       The 'wazuh-manager-authd' daemon can automatically add a Wazuh agent to a Wazuh manager and provide
        the key to the agent. 
 
 components:
@@ -19,9 +19,9 @@ targets:
     - manager
 
 daemons:
-    - wazuh-authd
-    - wazuh-db
-    - wazuh-modulesd
+    - wazuh-manager-authd
+    - wazuh-manager-db
+    - wazuh-manager-modulesd
 
 os_platform:
     - linux
@@ -38,7 +38,7 @@ os_version:
     - Ubuntu Bionic
 
 references:
-    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-authd.html
+    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-manager-authd.html
     - https://documentation.wazuh.com/current/user-manual/reference/tools/agent_groups.html
 
 tags:
@@ -84,7 +84,7 @@ def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_config
                              wait_for_authd_startup, connect_to_sockets, set_up_groups):
     '''
     description:
-        Checks if when the `wazuh-authd` daemon receives different types of enrollment requests,
+        Checks if when the `wazuh-manager-authd` daemon receives different types of enrollment requests,
         it responds appropriately to them. In this case, the enrollment requests are sent to
         an IP v4 network socket.
 

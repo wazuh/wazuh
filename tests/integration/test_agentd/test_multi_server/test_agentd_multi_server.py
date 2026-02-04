@@ -19,8 +19,8 @@ targets:
 
 daemons:
     - wazuh-agentd
-    - wazuh-authd
-    - wazuh-remoted
+    - wazuh-manager-authd
+    - wazuh-manager-remoted
 
 os_platform:
     - linux
@@ -132,10 +132,10 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
             brief: Handler of Wazuh daemons.
 
     assertions:
-        - Agent without keys. Verify that all servers will refuse the connection to the 'wazuh-remoted' daemon
+        - Agent without keys. Verify that all servers will refuse the connection to the 'wazuh-manager-remoted' daemon
           but will accept enrollment. The agent should try to connect and enroll each of them.
         - Agent without keys. Verify that the first server only has enrollment available, and the third server
-          only has the 'wazuh-remoted' daemon available. The agent should enroll in the first server and
+          only has the 'wazuh-manager-remoted' daemon available. The agent should enroll in the first server and
           connect to the third one.
         - Agent without keys. Verify that the agent should enroll and connect to the first server, and then
           the first server will disconnect. The agent should connect to the second server with the same key.

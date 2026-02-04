@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Copyright (C) 2015, Wazuh Inc.
-# wazuh-control        This shell script takes care of starting
+# wazuh-manager-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
@@ -26,7 +26,7 @@ if [ $? = 0 ]; then
 fi
 
 AUTHOR="Wazuh Inc."
-DAEMONS="wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-syscheckd wazuh-analysisd wazuh-execd wazuh-db"
+DAEMONS="wazuh-manager-modulesd wazuh-manager-monitord wazuh-manager-analysisd wazuh-manager-execd wazuh-manager-db"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
@@ -393,7 +393,7 @@ restart)
     restart_service
     ;;
 reload)
-    DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
+    DAEMONS=$(echo $DAEMONS | sed 's/wazuh-manager-execd//')
     restart_service
     ;;
 status)
