@@ -38,7 +38,7 @@ def test_local_ip_invalid(test_configuration, test_metadata, configure_local_int
                             set_wazuh_configuration, restart_wazuh_expect_error):
 
     '''
-    description: Check if 'wazuh-remoted' fails when 'local_ip' is configured with invalid values.
+    description: Check if 'wazuh-manager-remoted' fails when 'local_ip' is configured with invalid values.
                  For this purpose, it uses the configuration from test cases and monitor the logs
                  to find the error message produced.
 

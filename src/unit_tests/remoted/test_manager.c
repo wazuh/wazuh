@@ -4682,7 +4682,7 @@ void test_validate_control_msg_shutdown_success(void** state)
     expect_value(__wrap_OSHash_Delete_ex, self, agent_data_hash);
 
     // Now expect SendMSG calls in validate_control_msg
-    expect_string(__wrap_SendMSG, message, "1:wazuh-remoted:ossec: Agent stopped: 'agent1->192.168.1.1'.");
+    expect_string(__wrap_SendMSG, message, "1:wazuh-manager-remoted:ossec: Agent stopped: 'agent1->192.168.1.1'.");
     expect_string(__wrap_SendMSG, locmsg, "[001] (agent1) 192.168.1.1");
     expect_any(__wrap_SendMSG, loc);
     will_return(__wrap_SendMSG, -1);
@@ -4696,7 +4696,7 @@ void test_validate_control_msg_shutdown_success(void** state)
 
     expect_string(__wrap__minfo, formatted_msg, "Successfully reconnected to 'queue/sockets/queue'");
 
-    expect_string(__wrap_SendMSG, message, "1:wazuh-remoted:ossec: Agent stopped: 'agent1->192.168.1.1'.");
+    expect_string(__wrap_SendMSG, message, "1:wazuh-manager-remoted:ossec: Agent stopped: 'agent1->192.168.1.1'.");
     expect_string(__wrap_SendMSG, locmsg, "[001] (agent1) 192.168.1.1");
     expect_any(__wrap_SendMSG, loc);
     will_return(__wrap_SendMSG, -1);
@@ -4876,7 +4876,7 @@ void test_validate_control_msg_get_agent_version_fail(void** state)
     int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
 
     // We store the message for later processing, if the version cannot be retrieved
-    // but we need to queue it for wazuh-db processing
+    // but we need to queue it for wazuh-manager-db processing
     assert_int_equal(result, 1);
     assert_int_equal(is_startup, 1);
     assert_int_equal(is_shutdown, 0);

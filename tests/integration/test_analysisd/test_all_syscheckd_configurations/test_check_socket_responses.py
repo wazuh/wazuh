@@ -7,9 +7,9 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: The 'wazuh-analysisd' daemon receives the log messages and compares them to the rules.
+brief: The 'wazuh-manager-analysisd' daemon receives the log messages and compares them to the rules.
        It then creates an alert when a log message matches an applicable rule.
-       Specifically, these tests will verify if the 'wazuh-analysisd' daemon correctly handles
+       Specifically, these tests will verify if the 'wazuh-manager-analysisd' daemon correctly handles
        'syscheck' common events.
 
 components:
@@ -21,8 +21,8 @@ targets:
     - manager
 
 daemons:
-    - wazuh-analysisd
-    - wazuh-db
+    - wazuh-manager-analysisd
+    - wazuh-manager-db
 
 os_platform:
     - linux
@@ -39,7 +39,7 @@ os_version:
     - Ubuntu Bionic
 
 references:
-    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-analysisd.html
+    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-manager-analysisd.html
 
 tags:
     - events
@@ -85,8 +85,8 @@ receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 def test_validate_socket_responses(test_metadata, configure_local_internal_options, configure_sockets_environment_module,
                                    connect_to_sockets_module, wait_for_analysisd_startup):
     '''
-    description: Validate every response from the 'wazuh-analysisd' daemon socket
-                 to the 'wazuh-db' daemon socket using 'syscheck' common events.
+    description: Validate every response from the 'wazuh-manager-analysisd' daemon socket
+                 to the 'wazuh-manager-db' daemon socket using 'syscheck' common events.
 
     wazuh_min_version: 4.2.0
 
@@ -107,7 +107,7 @@ def test_validate_socket_responses(test_metadata, configure_local_internal_optio
             brief: Module scope version of 'connect_to_sockets_module' fixture.
         - wait_for_analysisd_startup:
             type: fixture
-            brief: Wait until the 'wazuh-analysisd' has begun and the 'alerts.json' file is created.
+            brief: Wait until the 'wazuh-manager-analysisd' has begun and the 'alerts.json' file is created.
         - test_case:
             type: list
             brief: List of tests to be performed.

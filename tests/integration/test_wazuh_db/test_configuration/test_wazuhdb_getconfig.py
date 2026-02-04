@@ -17,7 +17,7 @@ components:
     - manager
 
 daemons:
-    - wazuh-db
+    - wazuh-manager-db
 
 os_platform:
     - linux
@@ -42,7 +42,7 @@ os_version:
     - Red Hat 6
 
 references:
-    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-db.html
+    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-manager-db.html
 
 tags:
     - wazuh_db

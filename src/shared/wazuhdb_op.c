@@ -142,7 +142,7 @@ int wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
             return retval;
         } else if (errno == EPIPE) {
             // Retry to connect
-            merror("Connection with wazuh-db lost. Reconnecting.");
+            merror("Connection with wazuh-manager-db lost. Reconnecting.");
             close(*sock);
             if (*sock = wdbc_connect(), *sock < 0) {
                 return retval;
@@ -221,7 +221,7 @@ cJSON * wdbc_query_parse_json(int *sock, const char *query, char *response, cons
         merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
         return NULL;
     case -1:
-        merror("No response from wazuh-db.");
+        merror("No response from wazuh-manager-db.");
         return NULL;
     }
 
@@ -229,7 +229,7 @@ cJSON * wdbc_query_parse_json(int *sock, const char *query, char *response, cons
     case WDBC_OK:
         break;
     case WDBC_ERROR:
-        merror("Bad response from wazuh-db: %s", arg);
+        merror("Bad response from wazuh-manager-db: %s", arg);
         // Fallthrough
     default:
         return NULL;
@@ -258,14 +258,14 @@ wdbc_result wdbc_query_parse(int *sock, const char *query, char *response, const
     if (OS_SUCCESS == result) {
         status = wdbc_parse_result(response, &_payload);
         if (status == WDBC_ERROR){
-            merror("Bad response from wazuh-db: %s", _payload);
+            merror("Bad response from wazuh-manager-db: %s", _payload);
         }
     }
     else if (-2 == result) {
         merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
     }
     else if (-1 == result) {
-        merror("No response from wazuh-db.");
+        merror("No response from wazuh-manager-db.");
     }
 
     if (payload) {
