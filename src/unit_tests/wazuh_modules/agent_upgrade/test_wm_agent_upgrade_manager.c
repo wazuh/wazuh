@@ -117,7 +117,7 @@ void test_wm_agent_upgrade_listen_messages_upgrade_command(void **state)
     will_return(__wrap_OS_RecvSecureTCP, input);
     will_return(__wrap_OS_RecvSecureTCP, input_size);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8155): Incomming message: '{"
                                                                                "   \"command\": \"upgrade\","
                                                                                "   \"parameters\": {"
@@ -136,7 +136,7 @@ void test_wm_agent_upgrade_listen_messages_upgrade_command(void **state)
     expect_value(__wrap_wm_agent_upgrade_process_upgrade_command, task, upgrade_task);
     will_return(__wrap_wm_agent_upgrade_process_upgrade_command, response);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8156): Response message: '{"
                                                                               "    \"error\":0,"
                                                                               "    \"data\":["
@@ -218,7 +218,7 @@ void test_wm_agent_upgrade_listen_messages_upgrade_custom_command(void **state)
     will_return(__wrap_OS_RecvSecureTCP, input);
     will_return(__wrap_OS_RecvSecureTCP, input_size);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8155): Incomming message: '{"
                                                                                "   \"command\": \"upgrade_custom\","
                                                                                "   \"parameters\": {"
@@ -237,7 +237,7 @@ void test_wm_agent_upgrade_listen_messages_upgrade_custom_command(void **state)
     expect_value(__wrap_wm_agent_upgrade_process_upgrade_custom_command, task, upgrade_custom_task);
     will_return(__wrap_wm_agent_upgrade_process_upgrade_custom_command, response);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8156): Response message: '{"
                                                                               "    \"error\":0,"
                                                                               "    \"data\":["
@@ -320,7 +320,7 @@ void test_wm_agent_upgrade_listen_messages_agent_update_status_command(void **st
     will_return(__wrap_OS_RecvSecureTCP, input);
     will_return(__wrap_OS_RecvSecureTCP, input_size);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8155): Incomming message: '{"
                                                                                "   \"command\": \"upgrade_update_status\","
                                                                                "   \"parameters\": {"
@@ -341,7 +341,7 @@ void test_wm_agent_upgrade_listen_messages_agent_update_status_command(void **st
     expect_value(__wrap_wm_agent_upgrade_process_agent_result_command, task, upgrade_agent_status_task);
     will_return(__wrap_wm_agent_upgrade_process_agent_result_command, response);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8156): Response message: '{"
                                                                               "    \"error\":0,"
                                                                               "    \"data\":["
@@ -424,7 +424,7 @@ void test_wm_agent_upgrade_listen_messages_upgrade_result_command(void **state)
     will_return(__wrap_OS_RecvSecureTCP, input);
     will_return(__wrap_OS_RecvSecureTCP, input_size);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8155): Incomming message: '{"
                                                                                "   \"command\": \"upgrade_result\","
                                                                                "   \"parameters\": {"
@@ -441,7 +441,7 @@ void test_wm_agent_upgrade_listen_messages_upgrade_result_command(void **state)
     expect_value(__wrap_wm_agent_upgrade_process_upgrade_result_command, agent_ids, agents);
     will_return(__wrap_wm_agent_upgrade_process_upgrade_result_command, response);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8156): Response message: '{"
                                                                               "    \"error\":0,"
                                                                               "    \"data\":["
@@ -503,7 +503,7 @@ void test_wm_agent_upgrade_listen_messages_parse_error(void **state)
     will_return(__wrap_OS_RecvSecureTCP, input);
     will_return(__wrap_OS_RecvSecureTCP, input_size);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8155): Incomming message: 'Bad JSON'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_message, buffer, input);
@@ -515,7 +515,7 @@ void test_wm_agent_upgrade_listen_messages_parse_error(void **state)
     expect_value(__wrap_wm_agent_upgrade_parse_response, error_id, WM_UPGRADE_UNKNOWN_ERROR);
     will_return(__wrap_wm_agent_upgrade_parse_response, response_json);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8156): Response message: '{\"error\":26,\"message\":\"Upgrade procedure could not start\",\"data\":[{\"error\":26,\"message\":\"Upgrade procedure could not start\"}]}'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, peer);
@@ -560,7 +560,7 @@ void test_wm_agent_upgrade_listen_messages_parse_error_with_message(void **state
     will_return(__wrap_OS_RecvSecureTCP, input);
     will_return(__wrap_OS_RecvSecureTCP, input_size);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8155): Incomming message: 'Bad JSON'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_message, buffer, input);
@@ -569,7 +569,7 @@ void test_wm_agent_upgrade_listen_messages_parse_error_with_message(void **state
     will_return(__wrap_wm_agent_upgrade_parse_message, response);
     will_return(__wrap_wm_agent_upgrade_parse_message, OS_INVALID);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8156): Response message: '{\"error\":1,\"data\":[{\"error\":1,\"message\":\"Could not parse message JSON\"}],\"message\":\"Could not parse message JSON\"}'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, peer);
@@ -608,7 +608,7 @@ void test_wm_agent_upgrade_listen_messages_receive_empty(void **state)
     will_return(__wrap_OS_RecvSecureTCP, input);
     will_return(__wrap_OS_RecvSecureTCP, 0);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8159): Empty message from local client.");
 
     wm_agent_upgrade_listen_messages(config);
@@ -642,7 +642,7 @@ void test_wm_agent_upgrade_listen_messages_receive_error(void **state)
     will_return(__wrap_OS_RecvSecureTCP, input);
     will_return(__wrap_OS_RecvSecureTCP, -1);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8111): Error in recv(): 'Success'");
 
     wm_agent_upgrade_listen_messages(config);
@@ -676,7 +676,7 @@ void test_wm_agent_upgrade_listen_messages_receive_sock_error(void **state)
     will_return(__wrap_OS_RecvSecureTCP, input);
     will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8112): Response size is bigger than expected.");
 
     wm_agent_upgrade_listen_messages(config);
@@ -715,7 +715,7 @@ void test_wm_agent_upgrade_listen_messages_accept_error_eintr(void **state)
     will_return(__wrap_OS_RecvSecureTCP, input);
     will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8112): Response size is bigger than expected.");
 
     wm_agent_upgrade_listen_messages(config);
@@ -745,7 +745,7 @@ void test_wm_agent_upgrade_listen_messages_accept_error(void **state)
 
     will_return(__wrap_accept, -1);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8110): Error in accept(): 'Operation not permitted'");
 
     will_return(__wrap_select, 1);
@@ -757,7 +757,7 @@ void test_wm_agent_upgrade_listen_messages_accept_error(void **state)
     will_return(__wrap_OS_RecvSecureTCP, input);
     will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8112): Response size is bigger than expected.");
 
     wm_agent_upgrade_listen_messages(config);
@@ -793,7 +793,7 @@ void test_wm_agent_upgrade_listen_messages_select_zero(void **state)
     will_return(__wrap_OS_RecvSecureTCP, input);
     will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8112): Response size is bigger than expected.");
 
     wm_agent_upgrade_listen_messages(config);
@@ -830,7 +830,7 @@ void test_wm_agent_upgrade_listen_messages_select_error_eintr(void **state)
     will_return(__wrap_OS_RecvSecureTCP, input);
     will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8112): Response size is bigger than expected.");
 
     wm_agent_upgrade_listen_messages(config);
@@ -856,7 +856,7 @@ void test_wm_agent_upgrade_listen_messages_select_error(void **state)
 
     will_return(__wrap_select, -1);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8109): Error in select(): 'Operation not permitted'. Exiting...");
 
     wm_agent_upgrade_listen_messages(config);
@@ -874,7 +874,7 @@ void test_wm_agent_upgrade_listen_messages_bind_error(void **state)
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, -1);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket 'queue/tasks/upgrade': 'Operation not permitted'");
 
     wm_agent_upgrade_listen_messages(config);
@@ -884,7 +884,7 @@ void test_wm_agent_upgrade_start_manager_module_enabled(void **state)
 {
     wm_manager_configs *config = *state;
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
 
     expect_string(__wrap_OS_BindUnixDomainWithPerms, path, WM_UPGRADE_SOCK);
@@ -895,7 +895,7 @@ void test_wm_agent_upgrade_start_manager_module_enabled(void **state)
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, -1);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket 'queue/tasks/upgrade': 'Operation not permitted'");
 
     wm_agent_upgrade_start_manager_module(config, 1);
@@ -905,12 +905,12 @@ void test_wm_agent_upgrade_start_manager_module_disabled(void **state)
 {
     wm_manager_configs *config = *state;
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8152): Module Agent Upgrade disabled. Exiting...");
 
     will_return(__wrap_pthread_exit, OS_INVALID);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
 
     expect_string(__wrap_OS_BindUnixDomainWithPerms, path, WM_UPGRADE_SOCK);
@@ -921,7 +921,7 @@ void test_wm_agent_upgrade_start_manager_module_disabled(void **state)
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, -1);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket 'queue/tasks/upgrade': 'Operation not permitted'");
 
     wm_agent_upgrade_start_manager_module(config, 0);
@@ -938,7 +938,7 @@ void test_wm_agent_upgrade_router_callback_failed_connection(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, -6);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "Could not connect to upgrade module socket at 'queue/tasks/upgrade'. Error: Operation not permitted");
 
     wm_agent_upgrade_router_callback(input_message);
@@ -955,7 +955,7 @@ void test_wm_agent_upgrade_router_callback_success(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, 5);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "Sending router-triggered upgrade message: '{\"command\":\"upgrade_update_status\",\"parameters\":{\"agents\":[1],\"error\":0,\"message\":\"Success\",\"status\":\"Done\"}}'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 5);
@@ -968,7 +968,7 @@ void test_wm_agent_upgrade_router_callback_success(void **state)
 
 void test_wm_agent_upgrade_router_callback_null_message(void **state)
 {
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "Empty router message received");
 
     wm_agent_upgrade_router_callback(NULL);
@@ -983,7 +983,7 @@ void test_wm_agent_upgrade_router_callback_socket_error(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, OS_SOCKTERR);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "Could not connect to upgrade module socket at 'queue/tasks/upgrade'. Error: Operation not permitted");
 
     wm_agent_upgrade_router_callback(input_message);
@@ -1023,7 +1023,7 @@ void test_initialize_router_functions_module_load_failure(void **state)
     expect_string(__wrap_so_get_module_handle, so, "router");
     will_return(__wrap_so_get_module_handle, NULL);
 
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:router");
+    expect_string(__wrap__mtwarn, tag, ARGV0 ":router");
     expect_string(__wrap__mtwarn, formatted_msg, "Unable to load router module.");
 
     bool result = initialize_router_functions();
@@ -1035,7 +1035,7 @@ void test_wm_agent_upgrade_router_subscriber_thread_success(void **state)
     void *mock_handle = (void*)0x12345;
     void *mock_subscriber = (void*)0xABCDE;
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "Starting router subscriber thread for upgrade notifications");
 
     // Mock initialize_router_functions success
@@ -1068,7 +1068,7 @@ void test_wm_agent_upgrade_router_subscriber_thread_success(void **state)
     expect_value(__wrap_router_subscriber_subscribe, handle, mock_subscriber);
     will_return(__wrap_router_subscriber_subscribe, 0);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "Successfully subscribed to router topic 'upgrade_notifications'");
 
     will_return(__wrap_FOREVER, 1);
@@ -1081,7 +1081,7 @@ void test_wm_agent_upgrade_router_subscriber_thread_success(void **state)
     expect_value(__wrap_router_subscriber_destroy, handle, mock_subscriber);
     will_return(__wrap_router_subscriber_destroy, 0);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "Router subscriber thread stopped");
 
     void* result = wm_agent_upgrade_router_subscriber_thread();
@@ -1090,17 +1090,17 @@ void test_wm_agent_upgrade_router_subscriber_thread_success(void **state)
 
 void test_wm_agent_upgrade_router_subscriber_thread_init_failure(void **state)
 {
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "Starting router subscriber thread for upgrade notifications");
 
     // Mock initialize_router_functions failure
     expect_string(__wrap_so_get_module_handle, so, "router");
     will_return(__wrap_so_get_module_handle, NULL);
 
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:router");
+    expect_string(__wrap__mtwarn, tag, ARGV0 ":router");
     expect_string(__wrap__mtwarn, formatted_msg, "Unable to load router module.");
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "Failed to initialize router functions");
 
     void* result = wm_agent_upgrade_router_subscriber_thread();
@@ -1111,7 +1111,7 @@ void test_wm_agent_upgrade_router_subscriber_thread_create_failure(void **state)
 {
     void *mock_handle = (void*)0x12345;
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "Starting router subscriber thread for upgrade notifications");
 
     // Mock initialize_router_functions success
@@ -1140,7 +1140,7 @@ void test_wm_agent_upgrade_router_subscriber_thread_create_failure(void **state)
     expect_value(__wrap_router_subscriber_create, is_local, false);
     will_return(__wrap_router_subscriber_create, NULL);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "Failed to create router subscriber for topic 'upgrade_notifications'");
 
     void* result = wm_agent_upgrade_router_subscriber_thread();
@@ -1152,7 +1152,7 @@ void test_wm_agent_upgrade_router_subscriber_thread_subscribe_failure(void **sta
     void *mock_handle = (void*)0x12345;
     void *mock_subscriber = (void*)0xABCDE;
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "Starting router subscriber thread for upgrade notifications");
 
     // Mock initialize_router_functions success
@@ -1185,7 +1185,7 @@ void test_wm_agent_upgrade_router_subscriber_thread_subscribe_failure(void **sta
     expect_value(__wrap_router_subscriber_subscribe, handle, mock_subscriber);
     will_return(__wrap_router_subscriber_subscribe, -1);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "Failed to subscribe to router topic 'upgrade_notifications'");
 
     // Mock cleanup function

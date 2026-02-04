@@ -27,6 +27,13 @@ endif(${TARGET} STREQUAL "winagent")
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
+# Match the execd ARGV0 used by the target build
+if(${TARGET} STREQUAL "server")
+    set(EXECD_TEST_ARGV0 "wazuh-manager-execd")
+else()
+    set(EXECD_TEST_ARGV0 "wazuh-execd")
+endif()
+
 # Generate Execd tests
 if(${TARGET} STREQUAL "winagent")
     list(APPEND execd_names "test_win_execd")
@@ -60,6 +67,7 @@ foreach(counter RANGE ${count})
     list(GET execd_flags ${counter} execd_test_flags)
 
     add_executable(${execd_test_name} ${execd_test_name}.c)
+    target_compile_definitions(${execd_test_name} PRIVATE ARGV0="${EXECD_TEST_ARGV0}")
 
     target_link_libraries(
         ${execd_test_name}
