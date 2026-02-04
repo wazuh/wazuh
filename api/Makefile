@@ -5,7 +5,7 @@
 # Syntax: make [ all | backup | install | restore | service ]
 
 WAZUH_GROUP       = wazuh
-INSTALLDIR       ?= /var/ossec
+INSTALLDIR       ?= /var/wazuh-manager
 
 MV_FILE        = mv -f
 RM_FILE        = rm -f

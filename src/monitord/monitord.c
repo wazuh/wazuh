@@ -40,9 +40,9 @@ void Monitord()
     /* ossec.json */
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #else
-    /* /var/ossec/logs/ossec.log */
+    /* /var/wazuh-manager/logs/ossec.log */
     snprintf(path, PATH_MAX, "%s", LOGFILE);
-    /* /var/ossec/logs/ossec.json */
+    /* /var/wazuh-manager/logs/ossec.json */
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #endif
 
