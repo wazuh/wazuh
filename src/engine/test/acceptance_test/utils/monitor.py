@@ -32,9 +32,9 @@ else:
 
 
 wazuh_binaries = {
-    "manager": set(["wazuh-analysisd", "wazuh-authd", "wazuh-execd",
-                "wazuh-logcollector", "wazuh-monitord", "wazuh-syscheckd",
-                "wazuh-remoted", "wazuh-modulesd", "wazuh-clusterd", "wazuh-db", ]),
+    "manager": set(["wazuh-manager-analysisd", "wazuh-manager-authd", "wazuh-manager-execd",
+                "wazuh-manager-monitord", "wazuh-manager-remoted", "wazuh-manager-modulesd",
+                "wazuh-manager-clusterd", "wazuh-manager-db", ]),
     "agent": set(["wazuh-agentd", "wazuh-execd", "wazuh-logcollector",
               "wazuh-syscheckd", "wazuh-modulesd", ]),
     "winagent": set(["wazuh-agent.exe", ])

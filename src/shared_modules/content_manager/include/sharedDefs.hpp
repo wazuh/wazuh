@@ -17,7 +17,7 @@
 #include <functional>
 #include <string>
 
-#define WM_CONTENTUPDATER "wazuh-modulesd:content-updater"
+#define WM_CONTENTUPDATER "wazuh-manager-modulesd:content-updater"
 
 #include "loggerHelper.h"
 

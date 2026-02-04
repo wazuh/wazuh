@@ -545,17 +545,16 @@ settings:
 	@echo "    CC                ${CC}"
 	@echo "    MAKE              ${MAKE}"
 
-BUILD_SERVER+=wazuh-execd -
-BUILD_SERVER+=wazuh-logcollector -
-BUILD_SERVER+=wazuh-remoted
 ifeq (,$(filter ${TEST},YES yes y Y 1))
 BUILD_SERVER+=utils
 BUILD_SERVER+=active-responses
 endif
-BUILD_SERVER+=wazuh-monitord
-BUILD_SERVER+=wazuh-authd
-BUILD_SERVER+=wazuh-modulesd
-BUILD_SERVER+=wazuh-db
+BUILD_SERVER+=wazuh-manager-execd
+BUILD_SERVER+=wazuh-manager-remoted
+BUILD_SERVER+=wazuh-manager-monitord
+BUILD_SERVER+=wazuh-manager-authd
+BUILD_SERVER+=wazuh-manager-modulesd
+BUILD_SERVER+=wazuh-manager-db
 
 BUILD_AGENT+=wazuh-agentd
 BUILD_AGENT+=wazuh-logcollector
@@ -1653,14 +1652,18 @@ wdbhelpers_c := $(wildcard wazuh_db/helpers/*.c)
 wdbshared_c := wazuh_db/wdb_shared.c
 wdblib_o := $(wdblib_c:.c=.o) $(wdb_sql:.sql=.o)
 wdb_o := wazuh_db/main.o $(wdblib_o:.c=.o) $(wdb_c:.c=.o) $(wdb_sql:.sql=.o) $(wdbshared_c:.c=.o)
+WDB_ARGV0 := -DARGV0=\"wazuh-db\"
+ifneq (,$(filter ${TARGET},server local hybrid))
+	WDB_ARGV0 := -DARGV0=\"wazuh-manager-db\"
+endif
 
 wazuh_db/schema_%.o: wazuh_db/schema_%.sql
 	${QUIET_CC}echo 'const char *'$(word 2, $(subst /, ,$(subst .,_,$<))) '= "'"`cat $< | tr -d \"\n\"`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
 
 wazuh_db/%.o: wazuh_db/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-db\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${WDB_ARGV0} -c $^ -o $@
 
-wazuh-db: ${wdb_o}
+wazuh-manager-db: ${wdb_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter ${OSSEC_LIBS} -o $@
 
 #### Config ##########
@@ -1689,8 +1692,13 @@ endif
 
 wmodules_o := $(wmodules_c:.c=.o)
 
+WMODULES_ARGV0 := -DARGV0=\"wazuh-modulesd\"
+ifneq (,$(filter ${TARGET},server local hybrid))
+	WMODULES_ARGV0 := -DARGV0=\"wazuh-manager-modulesd\"
+endif
+
 wazuh_modules/%.o: wazuh_modules/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${WMODULES_ARGV0} -c $^ -o $@
 
 wmodules_dep := ${wmodules_o} ${wdbhelpers_c:.c=.o} wazuh_db/wdb_shared.o
 
@@ -1800,11 +1808,18 @@ endif
 
 os_execd_c := $(wildcard os_execd/*.c)
 os_execd_o := $(os_execd_c:.c=.o)
+EXECD_ARGV0 := -DARGV0=\"wazuh-execd\"
+ifneq (,$(filter ${TARGET},server local hybrid))
+	EXECD_ARGV0 := -DARGV0=\"wazuh-manager-execd\"
+endif
 
 os_execd/%.o: os_execd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-execd\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${EXECD_ARGV0} -c $^ -o $@
 
 wazuh-execd: ${os_execd_o} active-response/active_responses.o
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+wazuh-manager-execd: ${os_execd_o} active-response/active_responses.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 
@@ -1827,11 +1842,18 @@ wazuh-logcollector: ${os_logcollector_o}
 
 remoted_c := $(wildcard remoted/*.c)
 remoted_o := $(remoted_c:.c=.o)
+REMOTED_ARGV0 := -DARGV0=\"wazuh-remoted\"
+ifneq (,$(filter ${TARGET},server local hybrid))
+	REMOTED_ARGV0 := -DARGV0=\"wazuh-manager-remoted\"
+endif
 
 remoted/%.o: remoted/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS}  -DPORTABLE_UNALIGNED_ACCESS=0 -I./remoted -DARGV0=\"wazuh-remoted\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS}  -DPORTABLE_UNALIGNED_ACCESS=0 -I./remoted ${REMOTED_ARGV0} -c $^ -o $@
 
 wazuh-remoted: ${remoted_o}
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter ${OSSEC_LIBS} -o $@
+
+wazuh-manager-remoted: ${remoted_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter ${OSSEC_LIBS} -o $@
 
 #### wazuh-agentd ####
@@ -1983,11 +2005,18 @@ librootcheck.a: ${rootcheck_o_lib} ${shared_o}
 
 monitor_c := $(wildcard monitord/*.c)
 monitor_o := $(monitor_c:.c=.o)
+MONITORD_ARGV0 := -DARGV0=\"wazuh-monitord\"
+ifneq (,$(filter ${TARGET},server local hybrid))
+	MONITORD_ARGV0 := -DARGV0=\"wazuh-manager-monitord\"
+endif
 
 monitord/%.o: monitord/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-monitord\" -c $< -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${MONITORD_ARGV0} -c $< -o $@
 
 wazuh-monitord: ${monitor_o}
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+wazuh-manager-monitord: ${monitor_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 
@@ -1995,11 +2024,18 @@ wazuh-monitord: ${monitor_o}
 
 os_auth_c := ${wildcard os_auth/*.c}
 os_auth_o := $(os_auth_c:.c=.o)
+AUTHD_ARGV0 := -DARGV0=\"wazuh-authd\"
+ifneq (,$(filter ${TARGET},server local hybrid))
+	AUTHD_ARGV0 := -DARGV0=\"wazuh-manager-authd\"
+endif
 
 os_auth/%.o: os_auth/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -I./os_auth -DARGV0=\"wazuh-authd\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -I./os_auth ${AUTHD_ARGV0} -c $^ -o $@
 
-wazuh-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o os_auth/authcom.o os_auth/auth.o os_auth/key_request.o os_auth/generate_cert.o
+wazuh-authd: addagent/validate.o ${os_auth_o}
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter ${OSSEC_LIBS} -o $@
+
+wazuh-manager-authd: addagent/validate.o ${os_auth_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter ${OSSEC_LIBS} -o $@
 
 ### wazuh-modulesd ##
@@ -2014,6 +2050,9 @@ endif
 endif
 
 wazuh-modulesd: ${wmodulesd_o}
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${MODULESD_LDFLAGS} -o $@
+
+wazuh-manager-modulesd: ${wmodulesd_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${MODULESD_LDFLAGS} -o $@
 
 ### wazuh-gtest-gmock ###

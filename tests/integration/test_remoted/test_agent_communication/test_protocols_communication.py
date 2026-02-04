@@ -88,7 +88,7 @@ def test_protocols_communication(test_configuration, test_metadata, configure_lo
             brief: Connect to a given list of sockets.
         - waiting_for_analysisd_startup:
             type: fixture
-            brief: Wait until the 'wazuh-analysisd' has begun and the 'alerts.json' file is created.
+            brief: Wait until the 'wazuh-manager-analysisd' has begun and the 'alerts.json' file is created.
 
     '''
     agent = simulate_agents[0]

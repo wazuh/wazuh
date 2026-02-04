@@ -1932,7 +1932,7 @@ void * w_output_thread(void * args){
 #ifdef CLIENT
                     mdebug1("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #else
-                    mdebug1("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
+                    mdebug1("Unable to send message to '%s' (wazuh-manager-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #endif
                 }
                 // Retry to connect infinitely.

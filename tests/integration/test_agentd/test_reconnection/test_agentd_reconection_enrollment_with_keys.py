@@ -9,8 +9,8 @@ type: integration
 
 brief: The 'wazuh-agentd' program is the client-side daemon that communicates with the server.
        The objective is to check that, with different states in the 'clients.keys' file,
-       the agent successfully enrolls after losing connection with the 'wazuh-remoted' daemon.
-       The wazuh-remoted program is the server side daemon that communicates with the agents.
+       the agent successfully enrolls after losing connection with the 'wazuh-manager-remoted' daemon.
+       The wazuh-manager-remoted program is the server side daemon that communicates with the agents.
 
 components:
     - agentd
@@ -20,8 +20,8 @@ targets:
 
 daemons:
     - wazuh-agentd
-    - wazuh-authd
-    - wazuh-remoted
+    - wazuh-manager-authd
+    - wazuh-manager-remoted
 
 os_platform:
     - linux
@@ -85,8 +85,8 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
                                                  truncate_monitored_files, clean_keys, add_keys, daemons_handler):
     '''
        description: Check how the agent behaves when losing communication with
-                 the 'wazuh-remoted' daemon and a new enrollment is sent to
-                 the 'wazuh-authd' daemon.
+                 the 'wazuh-manager-remoted' daemon and a new enrollment is sent to
+                 the 'wazuh-manager-authd' daemon.
                  In this case, the agent starts with keys.
 
     wazuh_min_version: 4.2.0

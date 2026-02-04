@@ -81,7 +81,7 @@ def test_invalid_protocols_communication(test_configuration, test_metadata, conf
             brief: Connect to a given list of sockets.
         - waiting_for_analysisd_startup:
             type: fixture
-            brief: Wait until the 'wazuh-analysisd' has begun and the 'alerts.json' file is created.
+            brief: Wait until the 'wazuh-manager-analysisd' has begun and the 'alerts.json' file is created.
         - validate_agent_manager_protocol_communication
             type: fixture
             brief: connect agent , launch thread and send events

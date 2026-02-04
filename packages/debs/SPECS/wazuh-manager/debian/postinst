@@ -5,8 +5,17 @@ set -e
 case "$1" in
     configure)
 
-    OS=$(lsb_release -si)
-    VER=$(lsb_release -sr)
+    if command -v lsb_release > /dev/null 2>&1; then
+        OS=$(lsb_release -si)
+        VER=$(lsb_release -sr)
+    elif [ -r /etc/os-release ]; then
+        . /etc/os-release
+        OS=${ID:-linux}
+        VER=${VERSION_ID:-0}
+    else
+        OS="linux"
+        VER="0"
+    fi
     DIR="/var/ossec"
     USER="wazuh"
     GROUP="wazuh"
@@ -94,7 +103,7 @@ case "$1" in
 
     # Generation auto-signed certificate if not exists
     if [ ! -f "${DIR}/etc/sslmanager.key" ] && [ ! -f "${DIR}/etc/sslmanager.cert" ]; then
-        ${DIR}/bin/wazuh-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/sslmanager.key -X ${DIR}/etc/sslmanager.cert 2>/dev/null
+        ${DIR}/bin/wazuh-manager-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/sslmanager.key -X ${DIR}/etc/sslmanager.cert 2>/dev/null
     fi
 
     chmod 640 ${DIR}/etc/sslmanager.cert ${DIR}/etc/sslmanager.key > /dev/null 2>&1 || true
@@ -179,54 +188,9 @@ case "$1" in
         fi
     fi
 
-    # Install the SCA files
-    if [ -d "${SCA_BASE_DIR}" ]; then
-
-        . ${SCRIPTS_DIR}/src/init/dist-detect.sh
-
-        SCA_DIR="${DIST_NAME}/${DIST_VER}"
-
-        SCA_TMP_DIR="${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}"
-        mkdir -p ${DIR}/ruleset/sca
-
-        # Install the configuration files needed for this hosts
-        if [ -r "${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}/${DIST_SUBVER}/sca.files" ]; then
-            SCA_TMP_DIR="${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}/${DIST_SUBVER}"
-        elif [ -r "${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}/sca.files" ]; then
-            SCA_TMP_DIR="${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}"
-        elif [ -r "${SCA_BASE_DIR}/${DIST_NAME}/sca.files" ]; then
-            SCA_TMP_DIR="${SCA_BASE_DIR}/${DIST_NAME}"
-        else
-            SCA_TMP_DIR="${SCA_BASE_DIR}/generic"
-        fi
-
-        SCA_TMP_FILE="${SCA_TMP_DIR}/sca.files"
-
-        if [ -r ${SCA_TMP_FILE} ] && [ -r ${SCA_BASE_DIR}/generic/sca.manager.files ]; then
-
-            rm -f ${DIR}/ruleset/sca/* || true
-
-            for sca_file in $(cat ${SCA_TMP_FILE}); do
-                mv ${SCA_BASE_DIR}/${sca_file} ${DIR}/ruleset/sca
-            done
-
-            for sca_file in $(cat ${SCA_BASE_DIR}/generic/sca.manager.files); do
-                filename=$(basename ${sca_file})
-                if [ -f "${SCA_BASE_DIR}/${sca_file}" ] && [ ! -f "${DIR}/ruleset/sca/${filename}" ]; then
-                    mv ${SCA_BASE_DIR}/${sca_file} ${DIR}/ruleset/sca/${filename}.disabled
-                fi
-            done
-        fi
-
-        # Set correct permissions, owner and group. ruleset directory may be empty.
-        if [ -n "$(ls -A ${DIR}/ruleset/sca/)" ]; then
-            chmod --recursive u=rwX,g=rX,o= ${DIR}/ruleset/sca/
-            chown --recursive root:${GROUP} ${DIR}/ruleset/sca/
-        fi
-        # Delete the temporary directory
-        rm -rf ${SCA_BASE_DIR}
-
-    fi
+    # SCA is agent-only; ensure manager doesn't install policies
+    rm -rf ${DIR}/ruleset/sca
+    rm -rf ${SCA_BASE_DIR}
 
     # Ensure that the 'Indexer' is configured
     CONFIG_INDEXER_TEMPLATE="${SCRIPTS_DIR}/etc/templates/config/generic/wodle-indexer.manager.template"

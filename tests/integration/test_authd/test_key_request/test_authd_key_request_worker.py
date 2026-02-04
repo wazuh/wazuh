@@ -19,8 +19,8 @@ components:
     - manager
 
 daemons:
-    - wazuh-authd
-    - wazuh-clusterd
+    - wazuh-manager-authd
+    - wazuh-manager-clusterd
 
 os_platform:
     - linux
@@ -71,7 +71,7 @@ script_filename = 'fetch_keys.py'
 # Variables
 receiver_sockets_params = [(MODULESD_KREQUEST_SOCKET_PATH, 'AF_UNIX', 'UDP')]
 mitm_master = WorkerMID(address=MODULESD_C_INTERNAL_SOCKET_PATH, family='AF_UNIX', connection_protocol='TCP')
-monitored_sockets_params = [('wazuh-clusterd', mitm_master, True), ('wazuh-authd', None, True)]
+monitored_sockets_params = [('wazuh-manager-clusterd', mitm_master, True), ('wazuh-manager-authd', None, True)]
 receiver_sockets, monitored_sockets = None, None
 
 

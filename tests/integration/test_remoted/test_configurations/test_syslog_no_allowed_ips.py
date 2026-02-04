@@ -39,7 +39,7 @@ def test_syslog_no_allowed_ips(test_configuration, test_metadata, configure_loca
                             set_wazuh_configuration, restart_wazuh_expect_error):
 
     '''
-    description: Check that 'wazuh-remoted' fails when 'allowed-ips' is not provided but syslog connection is used.
+    description: Check that 'wazuh-manager-remoted' fails when 'allowed-ips' is not provided but syslog connection is used.
                  For this purpose, it uses the configuration from test cases, and check that fail info message has been
                  logged in 'ossec.log'.
 

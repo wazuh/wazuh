@@ -19,7 +19,7 @@ targets:
 
 daemons:
     - wazuh-agentd
-    - wazuh-remoted
+    - wazuh-manager-remoted
 
 os_platform:
     - linux
@@ -134,7 +134,7 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
     assertions:
         - Verify that the 'wazuh-agentd.state' statistics file has been created.
         - Verify that the information stored in the 'wazuh-agentd.state' statistics file
-          is consistent with the connection status to the 'wazuh-remoted' daemon.
+          is consistent with the connection status to the 'wazuh-manager-remoted' daemon.
 
     input_description: An external YAML file (wazuh_conf.yaml) includes configuration settings for the agent.
                        Different test cases that are contained in an external YAML file (wazuh_state_tests.yaml)

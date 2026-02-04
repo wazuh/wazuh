@@ -38,7 +38,7 @@ def test_queue_size_syslog(test_configuration, test_metadata, configure_local_in
                             set_wazuh_configuration, restart_wazuh_expect_error):
 
     '''
-    description: Check if 'wazuh-remoted' fails when 'queue_size' tag is used at the same time as a syslog connection.
+    description: Check if 'wazuh-manager-remoted' fails when 'queue_size' tag is used at the same time as a syslog connection.
                  For this purpose, it uses the configuration from test cases and check if the error has ben logged.
 
     parameters:

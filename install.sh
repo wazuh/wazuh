@@ -389,8 +389,6 @@ ConfigureServer()
     echo ""
     echo "3- ${configuring} $NAME."
 
-    UseSyscollector
-
     # Active response
     catMsg "0x107-ar"
 
