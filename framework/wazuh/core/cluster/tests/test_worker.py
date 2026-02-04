@@ -672,7 +672,7 @@ async def test_worker_check_agent_groups_checksums(send_request_mock, event_loop
 async def test_worker_handler_recv_agent_groups_information(get_chunks_in_task_id_mock, update_chunks_wdb_mock,
                                                             send_request_mock, check_agent_groups_checksums_mock,
                                                             recalculate_group_hash_mock, event_loop):
-    """Check that the wazuh-db data reception task is created."""
+    """Check that the wazuh-manager-db data reception task is created."""
 
     class LoggerMock:
         """Auxiliary class."""

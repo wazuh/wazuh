@@ -39,7 +39,7 @@ class TestWazuhDBHTTPClient:
         response.text = 'Service Unavailable: failure'
         client_mock.get.return_value = response
 
-        expected_error_msg = 'Error 2012 - Invalid wazuh-db HTTP request: Service Unavailable: failure'
+        expected_error_msg = 'Error 2012 - Invalid wazuh-manager-db HTTP request: Service Unavailable: failure'
         with pytest.raises(WazuhError, match=expected_error_msg):
             await module_instance._get('/agents')
     
@@ -66,7 +66,7 @@ class TestWazuhDBHTTPClient:
         response.text = 'Service Unavailable: failure'
         client_mock.post.return_value = response
 
-        expected_error_msg = 'Error 2012 - Invalid wazuh-db HTTP request: Service Unavailable: failure'
+        expected_error_msg = 'Error 2012 - Invalid wazuh-manager-db HTTP request: Service Unavailable: failure'
         with pytest.raises(WazuhError, match=expected_error_msg):
             await module_instance._post('/agents', b'')
 

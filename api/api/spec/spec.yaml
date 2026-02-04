@@ -1192,7 +1192,7 @@ components:
           type: string
           description: "Daemon name"
           enum:
-            - wazuh-remoted
+            - wazuh-manager-remoted
         agents:
           type: array
           items:
@@ -1277,7 +1277,7 @@ components:
           type: string
           description: "Daemon name"
           enum:
-            - wazuh-analysisd
+            - wazuh-manager-analysisd
         agents:
           type: array
           items:
@@ -1906,7 +1906,7 @@ components:
           type: string
           description: "Daemon name"
           enum:
-            - wazuh-remoted
+            - wazuh-manager-remoted
         metrics:
           type: object
           properties:
@@ -2031,7 +2031,7 @@ components:
           type: string
           description: "Daemon name"
           enum:
-            - wazuh-analysisd
+            - wazuh-manager-analysisd
         metrics:
           type: object
           properties:
@@ -2496,7 +2496,7 @@ components:
           type: string
           description: "Daemon name"
           enum:
-            - wazuh-db
+            - wazuh-manager-db
         metrics:
           type: object
           properties:
@@ -2836,27 +2836,23 @@ components:
     WazuhDaemonsStatus:
       type: object
       properties:
-        wazuh-analysisd:
+        wazuh-manager-analysisd:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-authd:
+        wazuh-manager-authd:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-execd:
+        wazuh-manager-execd:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-logcollector:
+        wazuh-manager-monitord:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-monitord:
+        wazuh-manager-remoted:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-remoted:
+        wazuh-manager-apid:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-syscheckd:
+        wazuh-manager-clusterd:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-apid:
+        wazuh-manager-db:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-clusterd:
-          $ref: '#/components/schemas/DaemonStatus'
-        wazuh-db:
-          $ref: '#/components/schemas/DaemonStatus'
-        wazuh-modulesd:
+        wazuh-manager-modulesd:
           $ref: '#/components/schemas/DaemonStatus'
 
     WazuhInfo:
@@ -3282,53 +3278,33 @@ components:
       properties:
           indexer-connector:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-analysisd:
+          wazuh-manager-analysisd:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-authd:
+          wazuh-manager-authd:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-execd:
+          wazuh-manager-execd:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-monitord:
+          wazuh-manager-monitord:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-logcollector:
+          wazuh-manager-remoted:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-remoted:
+          wazuh-manager-db:
             $ref: '#/components/schemas/LogSummary'
-          rootcheck:
+          wazuh-manager-modulesd:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-syscheckd:
+          wazuh-manager-modulesd:agent-upgrade:
             $ref: '#/components/schemas/LogSummary'
-          sca:
+          wazuh-manager-modulesd:control:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-db:
+          wazuh-manager-modulesd:content_manager:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:
+          wazuh-manager-modulesd:database:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:agent-upgrade:
+          wazuh-manager-modulesd:download:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:aws-s3:
+          wazuh-manager-modulesd:vulnerability-scanner:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:azure-logs:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:control:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:command:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:content_manager:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:database:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:docker-listener:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:download:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:oscap:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:syscollector:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:vulnerability-scanner:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:task-manager:
+          wazuh-manager-modulesd:task-manager:
             $ref: '#/components/schemas/LogSummary'
 
     ConfirmationMessage:
@@ -3566,7 +3542,7 @@ components:
         - monitor
         - request
         - syscheck
-        - wazuh-db
+        - wazuh-manager-db
         - wmodules
     configuration:
       in: path
@@ -3724,12 +3700,12 @@ components:
         <td><code>&lt;syscheck&gt;</code>, <code>&lt;rootcheck&gt;</code></td>
         </tr>
         <tr>
-        <td>wazuh-db</td>
+        <td>wazuh-manager-db</td>
         <td>internal</td>
         <td><code>&lt;wazuh_db&gt;</code></td>
         </tr>
         <tr>
-        <td>wazuh-db</td>
+        <td>wazuh-manager-db</td>
         <td>wdb</td>
         <td><code>&lt;wdb&gt;</code></td>
         </tr>
@@ -3774,9 +3750,9 @@ components:
         items:
           type: string
           enum:
-            - wazuh-analysisd
-            - wazuh-remoted
-            - wazuh-db
+            - wazuh-manager-analysisd
+            - wazuh-manager-remoted
+            - wazuh-manager-db
     daemons_list_agents:
       in: query
       name: daemons_list
@@ -3786,8 +3762,8 @@ components:
         items:
           type: string
           enum:
-            - wazuh-analysisd
-            - wazuh-remoted
+            - wazuh-manager-analysisd
+            - wazuh-manager-remoted
     fields:
       in: query
       name: fields
@@ -4058,7 +4034,7 @@ components:
       in: query
       name: purge
       description: |
-        Permanently delete an agent from the key store. The wazuh-authd `purge` configuration option has
+        Permanently delete an agent from the key store. The wazuh-manager-authd `purge` configuration option has
         precedence over this parameter, when enabled, agents will be permanently deleted regardless of this value.
       schema:
         type: boolean
@@ -5280,7 +5256,7 @@ paths:
                 data:
                   affected_items:
                     - timestamp: 2022-07-27T14:09:20+00:00
-                      name: wazuh-remoted
+                      name: wazuh-manager-remoted
                       agents:
                         - uptime: 2022-07-27T14:09:20+00:00
                           id: 1
@@ -5301,7 +5277,7 @@ paths:
                                 request: 0
                                 shared: 0
                     - timestamp: 2022-07-27T14:09:20+00:00
-                      name: wazuh-analysisd
+                      name: wazuh-manager-analysisd
                       agents:
                         - uptime: 2022-07-27T14:09:20+00:00
                           id: 1
@@ -7503,17 +7479,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - wazuh-analysisd: running
-                      wazuh-authd: stopped
-                      wazuh-monitord: running
-                      wazuh-execd: running
-                      wazuh-logcollector: running
-                      wazuh-remoted: running
-                      wazuh-syscheckd: running
-                      wazuh-apid: running
-                      wazuh-clusterd: running
-                      wazuh-db: running
-                      wazuh-modulesd: running
+                    - wazuh-manager-analysisd: running
+                      wazuh-manager-authd: stopped
+                      wazuh-manager-monitord: running
+                      wazuh-manager-execd: running
+                      wazuh-manager-remoted: running
+                      wazuh-manager-apid: running
+                      wazuh-manager-clusterd: running
+                      wazuh-manager-db: running
+                      wazuh-manager-modulesd: running
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -7869,7 +7843,7 @@ paths:
                   affected_items:
                     - uptime: 2022-07-21T10:09:20+00:00
                       timestamp: 2022-07-21T10:48:32+00:00
-                      name: wazuh-remoted
+                      name: wazuh-manager-remoted
                       metrics:
                         bytes:
                           received: 0
@@ -8482,15 +8456,15 @@ paths:
                 data:
                   affected_items:
                     - timestamp: '2021-05-27T12:18:08Z'
-                      tag: wazuh-remoted
+                      tag: wazuh-manager-remoted
                       level: debug
                       description: " TCP socket 20 already in keystore. Updating..."
                     - timestamp: '2021-05-27T12:18:08Z'
-                      tag: wazuh-remoted
+                      tag: wazuh-manager-remoted
                       level: debug
                       description: " Agent '003' group is 'default'"
                     - timestamp: '2021-05-27T12:18:08Z'
-                      tag: wazuh-remoted
+                      tag: wazuh-manager-remoted
                       level: debug
                       description: " Agent '003' with group 'default' file 'merged.mg' MD5
                         '9a016508cea1e997ab8569f5cfab30f5'"
@@ -8545,28 +8519,28 @@ paths:
                         critical: 0
                         warning: 24
                         debug: 0
-                    - wazuh-db:
+                    - wazuh-manager-db:
                         info: 1
                         all: 4
                         critical: 0
                         debug: 0
                         error: 3
                         warning: 0
-                    - wazuh-modulesd:content_manager:
+                    - wazuh-manager-modulesd:content_manager:
                         info: 1
                         all: 1
                         critical: 0
                         debug: 0
                         error: 0
                         warning: 0
-                    - wazuh-modulesd:router:
+                    - wazuh-manager-modulesd:router:
                         info: 1
                         all: 1
                         critical: 0
                         debug: 0
                         error: 0
                         warning: 0
-                    - wazuh-remoted:
+                    - wazuh-manager-remoted:
                         info: 744
                         all: 0
                         critical: 0

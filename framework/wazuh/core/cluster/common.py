@@ -587,7 +587,7 @@ class Handler(asyncio.Protocol):
         Parameters
         ----------
         data : dict
-            Dict containing command and list of chunks to be sent to wazuh-db.
+            Dict containing command and list of chunks to be sent to wazuh-manager-db.
         info_type : str
             Information type handled.
         logger : Logger object
@@ -619,7 +619,7 @@ class Handler(asyncio.Protocol):
             logger.debug2(f'Chunk {error[0] + 1}/{len(data["chunks"])}: {data["chunks"][error[0]]}')
             logger.error(f'Wazuh-db response for chunk {error[0] + 1}/{len(data["chunks"])} was not "ok": {error[1]}')
 
-        logger.debug(f'{result["updated_chunks"]}/{len(data["chunks"])} chunks updated in wazuh-db '
+        logger.debug(f'{result["updated_chunks"]}/{len(data["chunks"])} chunks updated in wazuh-manager-db '
                      f'in {result["time_spent"]:.3f}s.')
         result['error_messages'] = [error[1] for error in result['error_messages']['chunks']]
 
@@ -1532,7 +1532,7 @@ class SyncFiles(SyncTask):
 
 class SyncWazuhdb(SyncTask):
     """
-    Define methods to send information to the master/worker node (wazuh-db) through send_string protocol.
+    Define methods to send information to the master/worker node (wazuh-manager-db) through send_string protocol.
     """
 
     def __init__(self, manager, logger, data_retriever: Callable, cmd: bytes = b'', get_data_command: str = '',
@@ -1546,9 +1546,9 @@ class SyncWazuhdb(SyncTask):
         cmd : bytes
             Request command to send to the master/worker.
         get_data_command : str
-            Command to retrieve data from local wazuh-db.
+            Command to retrieve data from local wazuh-manager-db.
         set_data_command : str
-            Command to set data in master/worker's wazuh-db.
+            Command to set data in master/worker's wazuh-manager-db.
         logger : Logger object
             Logger to use during synchronization process.
         data_retriever : Callable
@@ -1592,7 +1592,7 @@ class SyncWazuhdb(SyncTask):
             self.get_payload[self.pivot_key] = last_pivot_value
 
         try:
-            # Retrieve information from local wazuh-db
+            # Retrieve information from local wazuh-manager-db
             start_time = time.perf_counter()
             while status != 'ok':
                 command = self.get_data_command + json.dumps(self.get_payload)
@@ -1607,7 +1607,7 @@ class SyncWazuhdb(SyncTask):
                     except (IndexError, KeyError):
                         pass
         except exception.WazuhException as e:
-            self.logger.error(f"Could not obtain data from wazuh-db: {e}")
+            self.logger.error(f"Could not obtain data from wazuh-manager-db: {e}")
             return []
 
         self.logger.debug(f"Obtained {len(chunks)} chunks of data in {(time.perf_counter() - start_time):.3f}s.")
@@ -1626,7 +1626,7 @@ class SyncWazuhdb(SyncTask):
             async with get_wdb_http_client() as wdb_client:
                 agents_sync = await wdb_client.get_agents_sync()
         except exception.WazuhException as e:
-            self.logger.error(f"Could not obtain data from wazuh-db: {e}")
+            self.logger.error(f"Could not obtain data from wazuh-manager-db: {e}")
             return
 
         now = time.perf_counter()
@@ -1731,7 +1731,7 @@ async def send_data_to_wdb(data, timeout, info_type='agent-info'):
     Parameters
     ----------
     data : dict
-        Dict containing command and list of chunks to be sent to wazuh-db.
+        Dict containing command and list of chunks to be sent to wazuh-manager-db.
     timeout : int
         Seconds to wait before stopping the task.
     info_type : str
