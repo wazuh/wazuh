@@ -325,7 +325,6 @@ target_link_libraries(wazuh-engine
     streamlogger::streamlogger
     wIndexerConnector::wIndexerConnector
     httpsrv
-    udgramsrv::udgramsrv
     api::event
     queue
     archiver::archive
