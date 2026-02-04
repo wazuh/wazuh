@@ -69,7 +69,10 @@ if [ -d "${DIR}" ]; then
     elif [ "$MAJOR" -lt 4 ] || ([ "$MAJOR" -eq 4 ] && [ "$MINOR" -lt 14 ]); then
         ERROR_TYPE="unsupported"
         ERROR_TITLE="Incompatible version detected"
-        ERROR_MESSAGE="Current version: $OLD_VERSION\nTarget version:  5.0.0\n\nUpgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later."
+        ERROR_MESSAGE="Current version: $OLD_VERSION
+Target version:  5.0.0
+
+Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later."
     fi
 
     # If any error was detected, show message and block
