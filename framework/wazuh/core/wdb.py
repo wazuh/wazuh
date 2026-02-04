@@ -50,19 +50,19 @@ class AsyncWazuhDBConnection:
         self.close()
 
     async def _send(self, msg, raw=False):
-        """Format and send message to wazuh-db socket without blocking event loop.
+        """Format and send message to wazuh-manager-db socket without blocking event loop.
 
         Parameters
         ----------
         msg : str
-            Message to be sent to wazuh-db.
+            Message to be sent to wazuh-manager-db.
         raw : bool
-            If `True`, the status message from wazuh-db is included in the response.
+            If `True`, the status message from wazuh-manager-db is included in the response.
 
         Returns
         -------
         str, list
-            Result for the request sent to wazuh-db.
+            Result for the request sent to wazuh-manager-db.
         """
         try:
             if None in [self._writer, self._reader]:
@@ -106,7 +106,7 @@ class AsyncWazuhDBConnection:
         Parameters
         ----------
         command : str
-            Command to be executed inside wazuh-db
+            Command to be executed inside wazuh-manager-db
 
         Returns
         -------
@@ -139,7 +139,7 @@ class WazuhDBConnection:
         Parameters
         ----------
         request_slice : int
-            Maximum number of items to request from wazuh-db on the first call.
+            Maximum number of items to request from wazuh-manager-db on the first call.
         """
         self.socket_path = common.WDB_SOCKET
         self.request_slice = request_slice
@@ -217,7 +217,7 @@ class WazuhDBConnection:
         Raises
         ------
         WazuhInternalError(2009)
-            Pagination error. Response from wazuh-db was over the maximum socket buffer size.
+            Pagination error. Response from wazuh-manager-db was over the maximum socket buffer size.
         WazuhError(2003)
             Error in wdb request.
 
@@ -278,7 +278,7 @@ class WazuhDBConnection:
         Parameters
         ----------
         string : str
-            String response from `wazuh-db`. It must be a dumped JSON.
+            String response from `wazuh-manager-db`. It must be a dumped JSON.
 
         Returns
         -------
@@ -324,7 +324,7 @@ class WazuhDBConnection:
         return new_query
 
     def delete_agents_db(self, agents_id: List[str]) -> dict:
-        """Delete agents db through wazuh-db service.
+        """Delete agents db through wazuh-manager-db service.
 
         Parameters
         ----------
@@ -349,7 +349,7 @@ class WazuhDBConnection:
         Parameters
         ----------
         query : str
-            Query to be executed in wazuh-db.
+            Query to be executed in wazuh-manager-db.
         raw : bool
             Whether to process the response.
 

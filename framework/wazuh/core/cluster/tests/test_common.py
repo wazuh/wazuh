@@ -664,7 +664,7 @@ async def test_handler_update_chunks_wdb(send_request_mock):
                                                                                'generic_errors': ['ERR'],
                                                                                'time_spent': 6,
                                                                                'total_updated': 0, 'updated_chunks': 2}
-                    logger_debug_mock.assert_has_calls([call('2/5 chunks updated in wazuh-db in 6.000s.')])
+                    logger_debug_mock.assert_has_calls([call('2/5 chunks updated in wazuh-manager-db in 6.000s.')])
                     logger_debug2_mock.assert_has_calls([call('Chunk 1/5: 0'), call('Chunk 2/5: 1')])
                     logger_error_mock.assert_has_calls([call('other1'), call('other2'),
                                                         call('Wazuh-db response for chunk 1/5 was not "ok": 0'),
@@ -1517,7 +1517,7 @@ async def test_sync_wazuh_db_retrieve_information(socket_mock):
         with patch.object(sync_object.logger, 'error') as logger_error_mock:
             assert await sync_object.retrieve_information() == []
             logger_error_mock.assert_called_with(
-                'Could not obtain data from wazuh-db: Error 1000 - Wazuh Internal Error')
+                'Could not obtain data from wazuh-manager-db: Error 1000 - Wazuh Internal Error')
 
 
 @patch('wazuh.core.wdb_http.WazuhDBHTTPClient')
@@ -1551,7 +1551,7 @@ async def test_sync_wazuh_db_retrieve_agents_information_ko():
         with patch.object(sync_object.logger, 'error') as logger_error_mock:
             assert await sync_object.retrieve_agents_information() is None
             logger_error_mock.assert_called_with(
-                'Could not obtain data from wazuh-db: Error 1000 - Wazuh Internal Error')
+                'Could not obtain data from wazuh-manager-db: Error 1000 - Wazuh Internal Error')
 
 
 @pytest.mark.asyncio

@@ -35,12 +35,12 @@ install:
 	$(INSTALL_CONFIG_FILE) api/configuration/api.yaml ${INSTALLDIR}/api/configuration
 
 	$(INSTALL_DIR) $(INSTALLDIR)/api/scripts
-	$(INSTALL_FILE) scripts/wazuh_apid.py ${INSTALLDIR}/api/scripts
+	$(INSTALL_FILE) scripts/wazuh_manager_apid.py ${INSTALLDIR}/api/scripts
 
     # Install scripts/%.py on $(INSTALLDIR)/bin/%
 	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(INSTALLDIR)/bin/%,$(script));)
 	
-	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_apid $(INSTALLDIR)/bin/wazuh-apid
+	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_manager_apid $(INSTALLDIR)/bin/wazuh-manager-apid
 
 restore:
     # Restore old API config
