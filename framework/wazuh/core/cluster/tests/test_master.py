@@ -900,7 +900,7 @@ def test_master_handler_end_receiving_integrity_checksums(end_receiving_file_moc
 @patch('wazuh.core.cluster.common.Handler.update_chunks_wdb', return_value={'updated_chunks': 1})
 @patch('wazuh.core.cluster.common.Handler.get_chunks_in_task_id', return_value='chunks')
 async def test_master_handler_sync_wazuh_db_info(get_chunks_mock, update_chunks_mock, send_request_mock):
-    """Check that the wazuh-db data reception task is created and chunks are obtained and updated in DB."""
+    """Check that the wazuh-manager-db data reception task is created and chunks are obtained and updated in DB."""
     class LoggerMock:
         """Auxiliary class."""
 
