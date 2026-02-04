@@ -100,8 +100,8 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
         Dictionary with daemon's statistical information of the specified agents.
     """
     agent_list = agent_list or ["all"]
-    daemon_socket_mapping = {'wazuh-remoted': common.REMOTED_SOCKET,
-                             'wazuh-analysisd': common.ANALYSISD_SOCKET}
+    daemon_socket_mapping = {'wazuh-manager-remoted': common.REMOTED_SOCKET,
+                             'wazuh-manager-analysisd': common.ANALYSISD_SOCKET}
     result = AffectedItemsWazuhResult(all_msg='Statistical information for each daemon was successfully read',
                                       some_msg='Could not read statistical information for some daemons',
                                       none_msg='Could not read statistical information for any daemon',
@@ -204,9 +204,9 @@ def get_daemons_stats(daemons_list: list = None) -> AffectedItemsWazuhResult:
     AffectedItemsWazuhResult
         Dictionary with the stats of the input file.
     """
-    daemon_socket_mapping = {'wazuh-remoted': common.REMOTED_SOCKET,
-                             'wazuh-analysisd': common.ANALYSISD_SOCKET,
-                             'wazuh-db': common.WDB_SOCKET}
+    daemon_socket_mapping = {'wazuh-manager-remoted': common.REMOTED_SOCKET,
+                             'wazuh-manager-analysisd': common.ANALYSISD_SOCKET,
+                             'wazuh-manager-db': common.WDB_SOCKET}
     result = AffectedItemsWazuhResult(all_msg='Statistical information for each daemon was successfully read',
                                       some_msg='Could not read statistical information for some daemons',
                                       none_msg='Could not read statistical information for any daemon')

@@ -373,7 +373,7 @@ if __name__ == '__main__':
     for handler in uvicorn_params['log_config']['handlers'].values():
         if 'filename' in handler:
             assign_wazuh_ownership(handler['filename'])
-            os.chmod(handler['filename'], 0o660)
+            os.chmod(handler['filename'], 0o660)  # nosec B103
 
     # Configure and create the wazuh-api logger
     add_debug2_log_level_and_error()

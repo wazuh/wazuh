@@ -96,7 +96,7 @@ class TestingLogger:
 
 @pytest.mark.parametrize('kwargs', [
     {'f_kwargs': {'select': ['id']}, 'rbac_permissions': {'mode': 'black'}, 'nodes': ['worker1'],
-     'basic_services': ('wazuh-modulesd', 'wazuh-db'), 'request_type': 'local_master'},
+     'basic_services': ('wazuh-manager-modulesd', 'wazuh-manager-db'), 'request_type': 'local_master'},
     {'request_type': 'local_master'},
     {'api_timeout': 15},
     {'api_timeout': 5}
