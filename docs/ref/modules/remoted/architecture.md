@@ -34,9 +34,9 @@ The remoted module is the communication gateway between Wazuh agents and the man
 │  │         │              └──────┬──────────┘          │    │     │  │
 │  │         │                     │                     │    │     │  │
 │  │         │                     │                     │    │     │  │
-│  │         │            ┌────────▼─────────┐           │    │     │  │
-│  │         │            │   wazuh-db       │◀──────────┘    │     │  │
-│  │         │            │   (Agent Info)   │                │     │  │
+│  │         │            ┌────────▼────────────────┐         │    │     │  │
+│  │         │            │   wazuh-manager-db      │◀────────┘    │     │  │
+│  │         │            │   (Agent Info)          │              │     │  │
 │  │         │            └──────────────────┘                │     │  │
 │  │         │                                                │     │  │
 │  │         │              ┌─────────────────┐               │     │  │
@@ -58,7 +58,7 @@ The remoted module is the communication gateway between Wazuh agents and the man
 └────────────────────────────────────┼─────────────────────────────────┘
                                      │
                             ┌────────▼────────┐
-                            │   Analysisd     │
+                            │   wazuh-manager-analysisd │
                             │  /events/       │
                             │   enriched      │
                             └─────────────────┘
@@ -92,20 +92,20 @@ In-memory cache storing agent metadata extracted from keep-alive messages:
 
 - Round-robin queue buffers events from all agents
 - Dispatcher thread batches events and enriches them with metadata
-- Sends batched events via HTTP POST to analysisd
+- Sends batched events via HTTP POST to wazuh-manager-analysisd
 
 ### 5. HTTP Client
 
 Forwards enriched event batches to analysisd:
 - **Transport**: HTTP over Unix domain socket
-- **Socket Path**: `/var/ossec/queue/sockets/queue`
+- **Socket Path**: `/var/wazuh-manager/queue/sockets/queue`
 - **Protocol**: x-wev1 (custom event framing)
 
 ## Data Flow
 
 Agent sends event → Network Listener → Decrypt & Validate → Message Classification:
-- **Control Message** → Parse Keep-Alive → Update Metadata Cache → Update wazuh-db
-- **Event Message** → Event Queue → Batch & Enrich with Metadata → HTTP POST to Analysisd
+- **Control Message** → Parse Keep-Alive → Update Metadata Cache → Update wazuh-manager-db
+- **Event Message** → Event Queue → Batch & Enrich with Metadata → HTTP POST to wazuh-manager-analysisd
 
 ## Key Configuration Options
 

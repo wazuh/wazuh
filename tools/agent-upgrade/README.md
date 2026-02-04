@@ -109,7 +109,7 @@ cp /path/to/certificate etc/wpk_root.pem
 
 ```
 <active-response>
-  <ca_store>/var/ossec/etc/wpk_root.pem</ca_store>
+  <ca_store>/var/wazuh-manager/etc/wpk_root.pem</ca_store>
   <ca_store>/path/to/certificate</ca_store>
 </active-response>
 ```
