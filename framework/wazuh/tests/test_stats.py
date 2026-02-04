@@ -23,10 +23,10 @@ with patch('wazuh.core.common.wazuh_uid'):
         from api.util import remove_nones_to_dict
         from wazuh.core.tests.test_agent import InitAgent
 
-SOCKET_PATH_DAEMONS_MAPPING = {'/var/ossec/queue/sockets/remote': 'wazuh-remoted',
-                               '/var/ossec/queue/sockets/analysis': 'wazuh-analysisd'}
-DAEMON_SOCKET_PATHS_MAPPING = {'wazuh-remoted': '/var/ossec/queue/sockets/remote',
-                               'wazuh-analysisd': '/var/ossec/queue/sockets/analysis'}
+SOCKET_PATH_DAEMONS_MAPPING = {'/var/ossec/queue/sockets/remote': 'wazuh-manager-remoted',
+                               '/var/ossec/queue/sockets/analysis': 'wazuh-manager-analysisd'}
+DAEMON_SOCKET_PATHS_MAPPING = {'wazuh-manager-remoted': '/var/ossec/queue/sockets/remote',
+                               'wazuh-manager-analysisd': '/var/ossec/queue/sockets/analysis'}
 
 test_data = InitAgent()
 
@@ -65,7 +65,7 @@ def test_weekly():
 @patch('wazuh.stats.get_daemons_stats_socket')
 def test_get_daemons_stats(mock_get_daemons_stats_socket):
     """Makes sure get_daemons_stats() fit with the expected."""
-    response = stats.get_daemons_stats(['wazuh-remoted', 'wazuh-analysisd', 'wazuh-db'])
+    response = stats.get_daemons_stats(['wazuh-manager-remoted', 'wazuh-manager-analysisd', 'wazuh-manager-db'])
 
     calls = [call('/var/ossec/queue/sockets/remote'), call('/var/ossec/queue/sockets/analysis'),
              call('/var/ossec/queue/db/wdb')]
@@ -77,7 +77,7 @@ def test_get_daemons_stats(mock_get_daemons_stats_socket):
 @patch('wazuh.core.common.REMOTED_SOCKET', '/var/ossec/queue/sockets/wrong_socket_name')
 def test_get_daemons_stats_ko():
     """Makes sure get_daemons_stats() fit with the expected."""
-    response = stats.get_daemons_stats(['wazuh-remoted'])
+    response = stats.get_daemons_stats(['wazuh-manager-remoted'])
 
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
     assert response.render()['data']['failed_items'][0]['error']['code'] == 1121, 'Expected error code was not returned'
@@ -88,9 +88,9 @@ def side_effect_test_get_daemons_stats(daemon_path, agents_list):
 
 
 @pytest.mark.parametrize('daemons_list, expected_daemons_list', [
-    ([], ['wazuh-remoted', 'wazuh-analysisd']),
-    (['wazuh-remoted'], ['wazuh-remoted']),
-    (['wazuh-remoted', 'wazuh-analysisd'], ['wazuh-remoted', 'wazuh-analysisd'])
+    ([], ['wazuh-manager-remoted', 'wazuh-manager-analysisd']),
+    (['wazuh-manager-remoted'], ['wazuh-manager-remoted']),
+    (['wazuh-manager-remoted', 'wazuh-manager-analysisd'], ['wazuh-manager-remoted', 'wazuh-manager-analysisd'])
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
@@ -134,9 +134,9 @@ def side_effect_test_get_daemons_stats_all(daemon_path, agents_list, last_id):
 
 
 @pytest.mark.parametrize('daemons_list, expected_daemons_list', [
-    ([], ['wazuh-remoted', 'wazuh-analysisd']),
-    (['wazuh-remoted'], ['wazuh-remoted']),
-    (['wazuh-remoted', 'wazuh-analysisd'], ['wazuh-remoted', 'wazuh-analysisd'])
+    ([], ['wazuh-manager-remoted', 'wazuh-manager-analysisd']),
+    (['wazuh-manager-remoted'], ['wazuh-manager-remoted']),
+    (['wazuh-manager-remoted', 'wazuh-manager-analysisd'], ['wazuh-manager-remoted', 'wazuh-manager-analysisd'])
 ])
 @patch('wazuh.core.common.REMOTED_SOCKET', '/var/ossec/queue/sockets/remote')
 @patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/ossec/queue/sockets/analysis')
