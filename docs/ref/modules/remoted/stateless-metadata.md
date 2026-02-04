@@ -34,7 +34,7 @@ Group changes propagate automatically:
 
 No configuration required - enabled by default.
 
-For tuning: `remoted.control_msg_queue_size` and `remoted.batch_events_capacity` in `/var/ossec/etc/internal_options.conf`.
+For tuning: `remoted.control_msg_queue_size` and `remoted.batch_events_capacity` in `/var/wazuh-manager/etc/internal_options.conf`.
 
 See [Configuration Guide](configuration.md) for details.
 

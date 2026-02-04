@@ -110,7 +110,7 @@ void test_wm_task_manager_destroy(void **state)
     wm_task_manager *config = NULL;
     os_calloc(1, sizeof(wm_task_manager), config);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8201): Module Task Manager finished.");
 
     wm_task_manager_destroy(config);
@@ -152,7 +152,7 @@ void test_wm_task_manager_init_bind_err(void **state)
 
     will_return(__wrap_OS_BindUnixDomainWithPerms, OS_INVALID);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8251): Queue 'queue/tasks/task' not accessible: 'Success'. Exiting...");
 
     expect_assert_failure(wm_task_manager_init(config));
@@ -165,7 +165,7 @@ void test_wm_task_manager_init_disabled(void **state)
 
     config->enabled = 0;
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8202): Module disabled. Exiting...");
 
     expect_assert_failure(wm_task_manager_init(config));
@@ -218,7 +218,7 @@ void test_wm_task_manager_dispatch_ok(void **state)
 
     char *result = "{\"error\":0,\"data\":[{\"error\":0,\"message\":\"Success\",\"agent\":1},{\"error\":0,\"message\":\"Success\",\"agent\":2}],\"message\":\"Success\"}";
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
                                                                                "  \"origin\": {"
                                                                                "      \"name\": \"node05\","
@@ -237,7 +237,7 @@ void test_wm_task_manager_dispatch_ok(void **state)
     will_return(__wrap_wm_task_manager_process_task, WM_TASK_SUCCESS);
     will_return(__wrap_wm_task_manager_process_task, data_array);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":0,\"message\":\"Success\",\"agent\":1},{\"error\":0,\"message\":\"Success\",\"agent\":2}],\"message\":\"Success\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
@@ -272,7 +272,7 @@ void test_wm_task_manager_dispatch_command_err(void **state)
 
     char *result = "{\"error\":2,\"data\":[{\"error\":2,\"message\":\"Invalid command\"}],\"message\":\"Invalid command\"}";
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
                                                                                "  \"origin\": {"
                                                                                "      \"name\": \"node05\","
@@ -291,7 +291,7 @@ void test_wm_task_manager_dispatch_command_err(void **state)
     will_return(__wrap_wm_task_manager_process_task, WM_TASK_INVALID_COMMAND);
     will_return(__wrap_wm_task_manager_process_task, NULL);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8258): No action defined for command provided.");
 
     expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_INVALID_COMMAND);
@@ -299,7 +299,7 @@ void test_wm_task_manager_dispatch_command_err(void **state)
     expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
     will_return(__wrap_wm_task_manager_parse_data_response, response_error);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":2,\"data\":[{\"error\":2,\"message\":\"Invalid command\"}],\"message\":\"Invalid command\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
@@ -346,7 +346,7 @@ void test_wm_task_manager_dispatch_db_err(void **state)
 
     char *result = "{\"error\":4,\"data\":[{\"error\":4,\"message\":\"Database error\"}],\"message\":\"Database error\"}";
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
                                                                                "  \"origin\": {"
                                                                                "      \"name\": \"node05\","
@@ -365,7 +365,7 @@ void test_wm_task_manager_dispatch_db_err(void **state)
     will_return(__wrap_wm_task_manager_process_task, WM_TASK_DATABASE_ERROR);
     will_return(__wrap_wm_task_manager_process_task, NULL);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8261): Database error.");
 
     expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_DATABASE_ERROR);
@@ -373,7 +373,7 @@ void test_wm_task_manager_dispatch_db_err(void **state)
     expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
     will_return(__wrap_wm_task_manager_parse_data_response, response_error);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":4,\"data\":[{\"error\":4,\"message\":\"Database error\"}],\"message\":\"Database error\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
@@ -420,7 +420,7 @@ void test_wm_task_manager_dispatch_db_parse_err(void **state)
 
     char *result = "{\"error\":5,\"data\":[{\"error\":5,\"message\":\"Parse DB response error\"}],\"message\":\"Parse DB response error\"}";
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
                                                                                "  \"origin\": {"
                                                                                "      \"name\": \"node05\","
@@ -439,7 +439,7 @@ void test_wm_task_manager_dispatch_db_parse_err(void **state)
     will_return(__wrap_wm_task_manager_process_task, WM_TASK_DATABASE_PARSE_ERROR);
     will_return(__wrap_wm_task_manager_process_task, NULL);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8261): Database error.");
 
     expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_DATABASE_PARSE_ERROR);
@@ -447,7 +447,7 @@ void test_wm_task_manager_dispatch_db_parse_err(void **state)
     expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
     will_return(__wrap_wm_task_manager_parse_data_response, response_error);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":5,\"data\":[{\"error\":5,\"message\":\"Parse DB response error\"}],\"message\":\"Parse DB response error\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
@@ -494,7 +494,7 @@ void test_wm_task_manager_dispatch_db_request_err(void **state)
 
     char *result = "{\"error\":6,\"data\":[{\"error\":6,\"message\":\"Error in DB request\"}],\"message\":\"Error in DB request\"}";
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
                                                                                "  \"origin\": {"
                                                                                "      \"name\": \"node05\","
@@ -513,7 +513,7 @@ void test_wm_task_manager_dispatch_db_request_err(void **state)
     will_return(__wrap_wm_task_manager_process_task, WM_TASK_DATABASE_REQUEST_ERROR);
     will_return(__wrap_wm_task_manager_process_task, NULL);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8261): Database error.");
 
     expect_value(__wrap_wm_task_manager_parse_data_response, error_code, WM_TASK_DATABASE_REQUEST_ERROR);
@@ -521,7 +521,7 @@ void test_wm_task_manager_dispatch_db_request_err(void **state)
     expect_value(__wrap_wm_task_manager_parse_data_response, task_id, OS_INVALID);
     will_return(__wrap_wm_task_manager_parse_data_response, response_error);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":6,\"data\":[{\"error\":6,\"message\":\"Error in DB request\"}],\"message\":\"Error in DB request\"}'");
 
     int ret = wm_task_manager_dispatch(message, &response);
@@ -543,7 +543,7 @@ void test_wm_task_manager_dispatch_parse_err(void **state)
 
     char *result = "{\"error\":1,\"data\":[{\"error\":1,\"message\":\"Invalid message\"}],\"message\":\"Invalid message\"}";
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: 'unknown json'");
 
     expect_string(__wrap_wm_task_manager_parse_message, msg, message);
@@ -627,7 +627,7 @@ void test_wm_task_manager_main_ok(void **state)
 
     will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
 
     will_return(__wrap_select, 1);
@@ -641,7 +641,7 @@ void test_wm_task_manager_main_ok(void **state)
 
     // wm_task_manager_dispatch
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8204): Incomming message: '{"
                                                                                "  \"origin\": {"
                                                                                "      \"name\": \"node05\","
@@ -660,7 +660,7 @@ void test_wm_task_manager_main_ok(void **state)
     will_return(__wrap_wm_task_manager_process_task, WM_TASK_SUCCESS);
     will_return(__wrap_wm_task_manager_process_task, data_array);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8205): Response to message: '{\"error\":0,\"data\":[{\"error\":0,\"message\":\"Success\",\"agent\":1},{\"error\":0,\"message\":\"Success\",\"agent\":2}],\"message\":\"Success\"}'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, peer);
@@ -703,7 +703,7 @@ void test_wm_task_manager_main_recv_max_err(void **state)
 
     will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
 
     will_return(__wrap_select, 1);
@@ -715,7 +715,7 @@ void test_wm_task_manager_main_recv_max_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, message);
     will_return(__wrap_OS_RecvSecureTCP, OS_MAXLEN);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8256): Received message > '4194304'");
 
     wm_task_manager_main(config);
@@ -753,7 +753,7 @@ void test_wm_task_manager_main_recv_empty_err(void **state)
 
     will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
 
     will_return(__wrap_select, 1);
@@ -765,7 +765,7 @@ void test_wm_task_manager_main_recv_empty_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, message);
     will_return(__wrap_OS_RecvSecureTCP, 0);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtdebug1, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8203): Empty message from local client.");
 
     wm_task_manager_main(config);
@@ -803,7 +803,7 @@ void test_wm_task_manager_main_recv_err(void **state)
 
     will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
 
     will_return(__wrap_select, 1);
@@ -815,7 +815,7 @@ void test_wm_task_manager_main_recv_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, message);
     will_return(__wrap_OS_RecvSecureTCP, -1);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8254): Error in recv(): 'Success'");
 
     wm_task_manager_main(config);
@@ -853,7 +853,7 @@ void test_wm_task_manager_main_sockterr_err(void **state)
 
     will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
 
     will_return(__wrap_select, 1);
@@ -865,7 +865,7 @@ void test_wm_task_manager_main_sockterr_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, message);
     will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8255): Response size is bigger than expected.");
 
     wm_task_manager_main(config);
@@ -903,14 +903,14 @@ void test_wm_task_manager_main_accept_err(void **state)
 
     will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
 
     will_return(__wrap_select, 1);
 
     will_return(__wrap_accept, -1);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8253): Error in accept(): 'Success'");
 
     will_return(__wrap_select, 1);
@@ -922,7 +922,7 @@ void test_wm_task_manager_main_accept_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, message);
     will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8255): Response size is bigger than expected.");
 
     wm_task_manager_main(config);
@@ -960,7 +960,7 @@ void test_wm_task_manager_main_select_empty_err(void **state)
 
     will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
 
     will_return(__wrap_select, 0);
@@ -974,7 +974,7 @@ void test_wm_task_manager_main_select_empty_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, message);
     will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8255): Response size is bigger than expected.");
 
     wm_task_manager_main(config);
@@ -1012,12 +1012,12 @@ void test_wm_task_manager_main_select_err(void **state)
 
     will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
 
     will_return(__wrap_select, -1);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8252): Error in select(): 'Success'. Exiting...");
 
     expect_assert_failure(wm_task_manager_main(config));
@@ -1042,7 +1042,7 @@ void test_wm_task_manager_main_worker_err(void **state)
 
     will_return(__wrap_w_is_worker, 1);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, tag, ARGV0 ":task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8207): Module Task Manager only runs on Master nodes in cluster configuration.");
 
     wm_task_manager_main(config);
