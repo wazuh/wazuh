@@ -623,7 +623,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         return super().end_receiving_file(task_and_file_names=task_and_file_names, logger_tag='Integrity check')
 
     async def sync_wazuh_db_info(self, task_id: bytes, info_type: str):
-        """Create a process to send to the local wazuh-db the chunks of data received from a worker.
+        """Create a process to send to the local wazuh-manager-db the chunks of data received from a worker.
 
         Parameters
         ----------

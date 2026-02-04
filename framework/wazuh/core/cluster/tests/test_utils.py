@@ -354,7 +354,7 @@ def test_ClusterFilter():
 
 
 def test_ClusterLogger():
-    """Verify that ClusterLogger defines the logger used by wazuh-clusterd."""
+    """Verify that ClusterLogger defines the logger used by wazuh-manager-clusterd."""
     current_logger_path = os.path.join(os.path.dirname(__file__), 'testing.log')
     cluster_logger = utils.ClusterLogger(foreground_mode=False, log_path=current_logger_path,
                                          tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s',
@@ -395,7 +395,7 @@ def test_process_spawn_sleep(pyDaemon_create_pid_mock, get_pid_mock):
     child = 1
     utils.process_spawn_sleep(child)
 
-    pyDaemon_create_pid_mock.assert_called_once_with(f'wazuh-clusterd_child_{child}', get_pid_mock.return_value)
+    pyDaemon_create_pid_mock.assert_called_once_with(f'wazuh-manager-clusterd_child_{child}', get_pid_mock.return_value)
 
 
 @pytest.mark.asyncio

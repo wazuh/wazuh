@@ -476,7 +476,7 @@ def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, fi
     ('a' * 129, '002', 'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d', None)
 ])
 @patch('wazuh.core.agent.WazuhSocketJSON')
-@patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-authd': 'running'})
+@patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-manager-authd': 'running'})
 def test_agent_add_agent(manager_status_mock, socket_mock, name, agent_id, key, force):
     """Test `add_agent` from agent module.
 

@@ -11,7 +11,7 @@ sock.connect(ADDR)
 
 
 def send_msg(msg):
-    """Send message to wazuh-db socket
+    """Send message to wazuh-manager-db socket
 
     Parameters
     ----------

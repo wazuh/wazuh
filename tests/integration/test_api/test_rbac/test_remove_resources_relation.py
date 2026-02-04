@@ -21,12 +21,12 @@ targets:
     - manager
 
 daemons:
-    - wazuh-apid
-    - wazuh-db
-    - wazuh-execd
-    - wazuh-analysisd
-    - wazuh-remoted
-    - wazuh-modulesd
+    - wazuh-manager-apid
+    - wazuh-manager-db
+    - wazuh-manager-execd
+    - wazuh-manager-analysisd
+    - wazuh-manager-remoted
+    - wazuh-manager-modulesd
 
 os_platform:
     - linux
