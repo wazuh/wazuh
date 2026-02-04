@@ -49,11 +49,10 @@ def test_manager():
     return test_manager
 
 
-manager_status = {'wazuh-analysisd': 'running', 'wazuh-authd': 'running',
- 'wazuh-monitord': 'running', 'wazuh-remoted': 'running',
- 'wazuh-execd': 'running', 'wazuh-logcollector': 'running',
- 'wazuh-syscheckd': 'running', 'wazuh-clusterd': 'running', 'wazuh-modulesd': 'running',
- 'wazuh-db': 'running', 'wazuh-apid': 'running'}
+manager_status = {'wazuh-manager-analysisd': 'running', 'wazuh-manager-authd': 'running',
+ 'wazuh-manager-monitord': 'running', 'wazuh-manager-remoted': 'running',
+ 'wazuh-manager-execd': 'running', 'wazuh-manager-clusterd': 'running', 'wazuh-manager-modulesd': 'running',
+ 'wazuh-manager-db': 'running', 'wazuh-manager-apid': 'running'}
 
 
 @patch('wazuh.core.manager.status', return_value=manager_status)
@@ -67,17 +66,15 @@ def test_get_status(mock_status):
 
 
 @pytest.mark.parametrize('tag, level, total_items, sort_by, sort_ascending', [
-    (None, None, 11, None, None),
-    ('wazuh-modulesd:database', None, 2, None, None),
-    ('wazuh-modulesd:syscollector', None, 2, None, None),
-    ('wazuh-modulesd:syscollector', None, 2, None, None),
-    ('wazuh-modulesd:aws-s3', None, 5, None, None),
-    ('wazuh-execd', None, 1, None, None),
+    (None, None, 8, None, None),
+    ('wazuh-manager-modulesd:database', None, 2, None, None),
+    ('wazuh-manager-modulesd:aws-s3', None, 5, None, None),
+    ('wazuh-manager-execd', None, 1, None, None),
     ('random', None, 0, ['timestamp'], True),
-    (None, 'info', 5, ['timestamp'], False),
+    (None, 'info', 2, ['timestamp'], False),
     (None, 'error', 2, ['level'], True),
     (None, 'debug', 2, ['level'], False),
-    (None, None, 11, ['tag'], True),
+    (None, None, 8, ['tag'], True),
     (None, 'random', 0, None, True),
     (None, 'warning', 2, None, False)
 ])
@@ -91,7 +88,7 @@ def test_ossec_log(mock_exists, mock_active_logging_format, tag, level, total_it
     level : str
         Filters by log type: all, error or info.
     tag : str
-        Filters by log category (i.e. wazuh-remoted).
+        Filters by log category (i.e. wazuh-manager-remoted).
     total_items : int
         Expected items to be returned after calling ossec_log.
     sort_by : list
@@ -110,7 +107,7 @@ def test_ossec_log(mock_exists, mock_active_logging_format, tag, level, total_it
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         assert result.render()['data']['total_affected_items'] == total_items
         assert all(log['description'][-1] != '\n' for log in result.render()['data']['affected_items'])
-        if tag is not None and level != 'wazuh-modulesd:syscollector':
+        if tag is not None:
             assert all('\n' not in log['description'] for log in result.render()['data']['affected_items'])
         if sort_by:
             reversed_result = ossec_log(level=level, tag=tag, sort_by=sort_by, sort_ascending=not sort_ascending)
@@ -158,11 +155,9 @@ def test_ossec_log_q(mock_exists, mock_active_logging_format, q, field, operatio
 def test_ossec_log_summary(mock_exists, mock_active_logging_format):
     """Tests ossec_log_summary function works and returned data match with expected"""
     expected_result = {
-        'wazuh-execd': {'all': 1, 'info': 0, 'error': 1, 'critical': 0, 'warning': 0, 'debug': 0},
-        'wazuh-modulesd:aws-s3': {'all': 5, 'info': 2, 'error': 1, 'critical': 0, 'warning': 2, 'debug': 0},
-        'wazuh-modulesd:database': {'all': 2, 'info': 0, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 2},
-        'wazuh-modulesd:syscollector': {'all': 2, 'info': 2, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0},
-        'wazuh-rootcheck': {'all': 1, 'info': 1, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0}
+        'wazuh-manager-execd': {'all': 1, 'info': 0, 'error': 1, 'critical': 0, 'warning': 0, 'debug': 0},
+        'wazuh-manager-modulesd:aws-s3': {'all': 5, 'info': 2, 'error': 1, 'critical': 0, 'warning': 2, 'debug': 0},
+        'wazuh-manager-modulesd:database': {'all': 2, 'info': 0, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 2}
     }
 
     logs = get_logs().splitlines()
@@ -221,10 +216,10 @@ def test_restart_ko_socket(mock_exists, mock_fcntl, mock_open):
 
 @pytest.mark.parametrize('error_flag, error_msg', [
     (0, ""),
-    (1, "2019/02/27 11:30:07 wazuh-clusterd: ERROR: [Cluster] [Main] Error 3004 - Error in cluster configuration: "
+    (1, "2019/02/27 11:30:07 wazuh-manager-clusterd: ERROR: [Cluster] [Main] Error 3004 - Error in cluster configuration: "
         "Unspecified key"),
-    (1, "2019/02/27 11:30:24 wazuh-authd: ERROR: (1230): Invalid element in the configuration: "
-        "'use_source_i'.\n2019/02/27 11:30:24 wazuh-authd: ERROR: (1202): Configuration error at "
+    (1, "2019/02/27 11:30:24 wazuh-manager-authd: ERROR: (1230): Invalid element in the configuration: "
+        "'use_source_i'.\n2019/02/27 11:30:24 wazuh-manager-authd: ERROR: (1202): Configuration error at "
         "'/var/ossec/etc/ossec.conf'.")
 ])
 @patch("wazuh.core.manager.exists", return_value=True)

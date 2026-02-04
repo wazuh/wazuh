@@ -114,4 +114,4 @@ async def lifespan_handler(_: ConnexionMiddleware):
         task.cancel()
         await task
 
-    logger.info('Shutdown wazuh-apid server.')
+    logger.info('Shutdown wazuh-manager-apid server.')
