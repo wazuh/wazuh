@@ -28,7 +28,7 @@ struct Mocks
 {
     std::shared_ptr<defs::mocks::MockDefinitionsBuilder> m_mockDefBuilder;
     std::shared_ptr<defs::mocks::MockDefinitions> m_mockDefs;
-    std::shared_ptr<MockMetaRegistry<OpBuilderEntry, StageBuilder>> m_mockRegistry;
+    std::shared_ptr<MockMetaRegistry<OpBuilderEntry, StageBuilder, EnrichmentBuilder>> m_mockRegistry;
 };
 
 template<typename T>
@@ -45,7 +45,7 @@ protected:
         m_buildCtx = std::make_shared<BuildCtx>();
         m_mocks.m_mockDefBuilder = std::make_shared<defs::mocks::MockDefinitionsBuilder>();
         m_mocks.m_mockDefs = std::make_shared<defs::mocks::MockDefinitions>();
-        m_mocks.m_mockRegistry = MockMetaRegistry<OpBuilderEntry, StageBuilder>::createMock();
+        m_mocks.m_mockRegistry = MockMetaRegistry<OpBuilderEntry, StageBuilder, EnrichmentBuilder>::createMock();
 
         m_buildCtx->setDefinitions(m_mocks.m_mockDefs);
         m_buildCtx->setRegistry(m_mocks.m_mockRegistry);

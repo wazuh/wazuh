@@ -41,7 +41,14 @@ using OpBuilderEntry = std::tuple<ValidationInfo, OpBuilder>;
 
 using StageBuilder = std::function<base::Expression(const json::Json&, const std::shared_ptr<const IBuildCtx>&)>;
 
-using RegistryType = MetaRegistry<OpBuilderEntry, StageBuilder>;
+/**
+ * @brief Function type to build an enrichment expression.
+ * @param bool Indicates if the enrichment need generate a trace or not.
+ * @return std::tuple<base::Expression, std::string> The built enrichment expression and its traceable name.
+ */
+using EnrichmentBuilder = std::function<std::tuple<base::Expression, std::string>(bool)>;
+
+using RegistryType = MetaRegistry<OpBuilderEntry, StageBuilder, EnrichmentBuilder>;
 
 } // namespace builder::builders
 
