@@ -597,6 +597,8 @@ InstallCommon()
   INSTALL="install"
 
   if [ ${INSTYPE} = 'server' ]; then
+      WAZUH_GROUP='wazuh-manager'
+      WAZUH_USER='wazuh-manager'
       OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
       OSSEC_CONF_SRC='../etc/ossec-server.conf'
   elif [ ${INSTYPE} = 'agent' ]; then
@@ -929,7 +931,7 @@ InstallCommon()
         if [ ${INSTYPE} = 'agent' ]; then
             ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
         else
-            ${INSTALL} -m 0640 -o wazuh -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
+            ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
         fi
     fi
 
