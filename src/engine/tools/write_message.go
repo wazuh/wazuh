@@ -17,11 +17,13 @@ func main() {
 	var logMessage string
 	var isRawMessage bool
 	var loops uint
+	var agentid uint
 
 	flag.StringVar(&logFile, "f", "test_logs_base.txt", "Path to dataset of logs")
 	flag.StringVar(&logMessage, "m", "", "Only log")
 	flag.BoolVar(&isRawMessage, "r", false, "Use raw message")
-	flag.UintVar(&loops, "l", 1, "Number of times we send all the logs of the file")
+	flag.UintVar(&loops, "l", 1, "Number of agents where to send all the logs of the file")
+	flag.UintVar(&agentid, "a", 1, "Agent ID to use with single log message, defaults to 1")
 	flag.Parse()
 
 	conn = connectSockunix(sockPath)
@@ -40,7 +42,7 @@ func main() {
 			}
 		}
 	} else {
-		sockQuery(conn, logMessage, 000, isRawMessage)
+		sockQuery(conn, logMessage, int(agentid), isRawMessage)
 	}
 
 }

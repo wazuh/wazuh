@@ -28,10 +28,12 @@ func main() {
 	var t_o time.Time
 	var acc int = 0
 	var err error
+	var agentId int
 
 	flag.StringVar(&logFile, "f", srcLogsFilePath, "Path to dataset of logs")
 	flag.StringVar(&logMessage, "m", "", "Only log")
 	flag.IntVar(&loops, "l", 1, "Number of times we send all the logs of the file")
+	flag.IntVar(&agentId, "a", 1, "Agent ID to use with single log message, defaults to 1")
 	flag.Parse()
 
 	conn = connectSockunix(sockPath)
@@ -69,7 +71,7 @@ func main() {
 		t_g = time.Now()
 
 	} else {
-		sockQuery(conn, logMessage, 000)
+		sockQuery(conn, logMessage, agentId)
 	}
 
 	r, err := os.Open(archivesFilePath)
@@ -144,7 +146,7 @@ func readLines(path string) ([]string, error) {
 	return lines, scanner.Err()
 }
 
-//Counts the lines of a file ('\n')
+// Counts the lines of a file ('\n')
 func lineCounter(r io.Reader) (int, error) {
 	buf := make([]byte, 32*1024)
 	count := 0
