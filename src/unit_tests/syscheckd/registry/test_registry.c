@@ -696,7 +696,7 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     will_return(__wrap_fim_db_transaction_sync_row, -1);
     expect_string(__wrap__merror, formatted_msg, "Dbsync registry transaction failed due to -1");
     will_return(__wrap_fim_db_transaction_sync_row, -1);
-    expect_RegEnumValue_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
+    expect_RegEnumValueW_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
 
     expect_fim_registry_value_diff("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\FirstSubKey", "test_value",
                                    (const char *)&value_data, 4, REG_DWORD, NULL);
@@ -758,7 +758,7 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     will_return(__wrap_fim_db_transaction_sync_row, -1);
     will_return(__wrap_fim_db_transaction_sync_row, -1);
 
-    expect_RegEnumValue_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
+    expect_RegEnumValueW_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
 
 
     expect_fim_registry_value_diff("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\FirstSubKey", "test_value",
@@ -1110,6 +1110,83 @@ static void test_fim_registry_free_entry(){
     fim_registry_free_entry(entry);
 }
 
+static void test_fim_read_values_unterminated_string_value(void **state) {
+    HKEY key_handle = (HKEY)123;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    int arch = ARCH_64BIT;
+    DWORD value_count = 1;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    syscheck.registry = one_entry_config;
+    syscheck.registry[0].opts = CHECK_MD5SUM;
+
+    wchar_t *value_name = L"UnterminatedString";
+    WCHAR value_data[256];
+    const WCHAR *test_str = L"test_unterminated";
+    size_t str_len = wcslen(test_str);
+    memcpy(value_data, test_str, str_len * sizeof(WCHAR));
+    memset(value_data + str_len, 0xFF, sizeof(value_data) - (str_len * sizeof(WCHAR)));
+
+    DWORD value_type = REG_SZ;
+    DWORD value_size = str_len * sizeof(WCHAR);
+
+    expect_RegEnumValueW_call(value_name, value_type, (LPBYTE)value_data, value_size, ERROR_SUCCESS);
+    will_return(__wrap_fim_db_transaction_sync_row, 0);
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_non_null(txn_ctx.data);
+    assert_int_equal(txn_ctx.data->type, REG_SZ);
+    assert_int_equal(txn_ctx.data->size, value_size);
+}
+
+static void test_fim_read_values_unterminated_multi_string_value(void **state) {
+    HKEY key_handle = (HKEY)123;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    int arch = ARCH_64BIT;
+    DWORD value_count = 1;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    syscheck.registry = one_entry_config;
+    syscheck.registry[0].opts = CHECK_MD5SUM;
+
+    wchar_t *value_name = L"UnterminatedMultiString";
+    WCHAR value_data[256];
+    const WCHAR *first_str = L"FirstValue";
+    const WCHAR *second_str = L"SecondValue";
+    size_t first_len = wcslen(first_str);
+    size_t second_len = wcslen(second_str);
+
+    memcpy(value_data, first_str, first_len * sizeof(WCHAR));
+    value_data[first_len] = L'\0';
+    memcpy(value_data + first_len + 1, second_str, second_len * sizeof(WCHAR));
+    memset((BYTE *)(value_data + first_len + 1 + second_len), 0xFF,
+           sizeof(value_data) - ((first_len + 1 + second_len) * sizeof(WCHAR)));
+
+    DWORD value_type = REG_MULTI_SZ;
+    DWORD value_size = (first_len + 1 + second_len) * sizeof(WCHAR);
+
+    expect_RegEnumValueW_call(value_name, value_type, (LPBYTE)value_data, value_size, ERROR_SUCCESS);
+    will_return(__wrap_fim_db_transaction_sync_row, 0);
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_non_null(txn_ctx.data);
+    assert_int_equal(txn_ctx.data->type, REG_MULTI_SZ);
+    assert_int_equal(txn_ctx.data->size, value_size);
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* fim_set_root_key test */
@@ -1183,7 +1260,10 @@ int main(void) {
         cmocka_unit_test(test_fim_registry_value_transaction_callback_max_rows),
 
         /* fim_registry_free_entry */
-        cmocka_unit_test(test_fim_registry_free_entry)
+        cmocka_unit_test(test_fim_registry_free_entry),
+        /* fim_read_values unterminated string tests (backport from 4.14.x) */
+        cmocka_unit_test(test_fim_read_values_unterminated_string_value),
+        cmocka_unit_test(test_fim_read_values_unterminated_multi_string_value),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

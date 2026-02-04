@@ -842,7 +842,7 @@ void fim_read_values(HKEY key_handle,
                      TXN_HANDLE regval_txn_handler,
                      fim_val_txn_context_t *txn_ctx_regval) {
     fim_registry_value_data value_data;
-    TCHAR *value_buffer;
+    WCHAR *value_name_buffer;
     BYTE *data_buffer;
     DWORD i;
     fim_entry new;
@@ -858,8 +858,8 @@ void fim_read_values(HKEY key_handle,
     new.registry_entry.value = &value_data;
     new.registry_entry.key = NULL;
 
-    os_calloc(max_value_length + 1, sizeof(TCHAR), value_buffer);
-    os_calloc(max_value_data_length, sizeof(BYTE), data_buffer);
+    os_calloc(max_value_length + 1, sizeof(WCHAR), value_name_buffer);
+    os_calloc(max_value_data_length + 4, sizeof(BYTE), data_buffer);
 
     for (i = 0; i < value_count; i++) {
         DWORD value_size = max_value_length + 1;
@@ -871,12 +871,12 @@ void fim_read_values(HKEY key_handle,
             return;
         }
 
-        if (RegEnumValue(key_handle, i, value_buffer, &value_size, NULL, &data_type, data_buffer, &data_size) !=
+        if (RegEnumValueW(key_handle, i, value_name_buffer, &value_size, NULL, &data_type, data_buffer, &data_size) !=
             ERROR_SUCCESS) {
             break;
         }
 
-        new.registry_entry.value->name = value_buffer;
+        new.registry_entry.value->name = value_name_buffer;
         new.registry_entry.value->type = data_type <= REG_QWORD ? data_type : REG_UNKNOWN;
         new.registry_entry.value->size = data_size;
         new.registry_entry.value->last_event = time(NULL);
