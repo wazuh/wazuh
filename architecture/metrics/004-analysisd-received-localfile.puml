@@ -28,7 +28,7 @@
                 analysisd -> state: dropped->agentless++
             else Is wazuh-monitord module
                 analysisd -> state: dropped->monitor++
-            else Is wazuh-remoted module
+            else Is wazuh-manager-remoted module
                 analysisd -> state: dropped->remote++
             else Is virustotal module
                 analysisd -> state: dropped->integrations->virustotal++
@@ -75,7 +75,7 @@
                     analysisd -> state: decoded->agentless++
                 else Is wazuh-monitord module
                     analysisd -> state: decoded->monitor++
-                else Is wazuh-remoted module
+                else Is wazuh-manager-remoted module
                     analysisd -> state: decoded->remote++
                 else Is virustotal module
                     analysisd -> state: decoded->integrations->virustotal++
