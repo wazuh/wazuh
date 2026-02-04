@@ -19,7 +19,7 @@ namespace geo
 class DbHandle;
 
 auto constexpr MAX_RETRIES = 3;
-static const std::string INTERNAL_NAME = "geo";
+static const std::string INTERNAL_NAME = "geo/mmdb/0";
 static const std::string PATH_PATH = "/path";
 static const std::string HASH_PATH = "/hash";
 static const std::string TYPE_PATH = "/type";
@@ -32,8 +32,8 @@ private:
     std::map<Type, std::string> m_dbTypes;  ///< Map by Types for quick access to the db name. (only one db per type)
     mutable std::shared_mutex m_rwMapMutex; ///< Mutex to avoid simultaneous updates on the db map
 
-    std::shared_ptr<store::IStore> m_store; ///< The store used to store the MMDB hash.
-    std::shared_ptr<IDownloader> m_downloader;      ///< The downloader used to download the MMDB database.
+    std::shared_ptr<store::IStore> m_store;    ///< The store used to store the MMDB hash.
+    std::shared_ptr<IDownloader> m_downloader; ///< The downloader used to download the MMDB database.
 
     /**
      * @brief Upsert the internal store entry for a local database (computes hash from file).
@@ -52,9 +52,10 @@ private:
      *
      * @param name The name of the database.
      * @param remoteHash The remote hash to compare against.
+     * @param type The type of the database.
      * @return bool True if the database needs to be updated, false otherwise.
      */
-    bool needsUpdate(const std::string& name, const std::string& remoteHash) const;
+    bool needsUpdate(const std::string& name, const std::string& remoteHash, Type type) const;
 
     /**
      * @brief Add a database to the manager without any thread safety checks.
@@ -65,8 +66,7 @@ private:
      * @param type Type of the database.
      * @return base::OptError An error if the database could not be added.
      */
-    base::OptError
-    addDbUnsafe(const std::string& path, const std::string& hash, const int64_t createdAt, Type type);
+    base::OptError addDbUnsafe(const std::string& path, const std::string& hash, const int64_t createdAt, Type type);
 
     /**
      * @brief Write the MMDB database to the filesystem.
