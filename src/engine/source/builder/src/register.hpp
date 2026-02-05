@@ -40,6 +40,8 @@
 namespace builder::detail
 {
 
+const base::Name STORE_GEO_CONFIG_DOC_NAME {"enrichment/geo/0"};
+
 /**
  * @brief Register all operation (helper) builders in the registry.
  *
@@ -438,7 +440,7 @@ void registerEnrichmentBuilders(const std::shared_ptr<Registry>& registry,
     };
 
     registry->template add<builders::EnrichmentBuilder>(
-        "geo", builders::enrichment::getGeoEnrichmentBuilder(deps.geoManager, getConfFn("enrichment/geo/0", "geo")));
+        "geo", builders::enrichment::getGeoEnrichmentBuilder(deps.geoManager, getConfFn(STORE_GEO_CONFIG_DOC_NAME, "geo")));
 }
 
 } // namespace builder::detail

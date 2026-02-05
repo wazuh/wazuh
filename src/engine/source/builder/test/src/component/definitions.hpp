@@ -359,6 +359,16 @@ public:
 
         auto emptyAllowedFields = std::make_shared<builder::AllowedFields>();
 
+        // Configure MockStore to return a valid GeoIP configuration for enrichment/geo/0
+        auto geoConfig = json::Json(R"({
+            "/source/ip": {
+                "geo_field": "/source/geo",
+                "as_field": "/source/as"
+            }
+        })");
+        EXPECT_CALL(*m_spMocks->m_spMockStore, readDoc(base::Name("enrichment/geo/0")))
+            .WillRepeatedly(testing::Return(base::RespOrError<store::Doc>(geoConfig)));
+
         m_spBuilder = std::make_shared<builder::Builder>(
             m_spMocks->m_spStore, m_spMocks->m_spSchemf, m_spMocks->m_spDefBuilder, emptyAllowedFields, builderDeps, m_spMocks->m_spMockStore);
     }

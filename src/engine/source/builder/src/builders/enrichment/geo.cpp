@@ -60,13 +60,13 @@ std::vector<MappingConfig> loadMappingConfigs(const json::Json& config)
         config.originIpPath = json::Json::formatJsonPath(key);
 
         // geo_field
-        if (auto geoFieldOpt = value.getString("geo_field"); geoFieldOpt.has_value())
+        if (auto geoFieldOpt = value.getString("/geo_field"); geoFieldOpt.has_value())
         {
             config.geoEcsPath = json::Json::formatJsonPath(geoFieldOpt.value(), true);
         }
 
         // as_ecs_path
-        if (auto asFieldOpt = value.getString("as_field"); asFieldOpt.has_value())
+        if (auto asFieldOpt = value.getString("/as_field"); asFieldOpt.has_value())
         {
             config.asEcsPath = json::Json::formatJsonPath(asFieldOpt.value(), true);
         }
