@@ -9,6 +9,7 @@
 #include <logpar/logpar.hpp>
 #include <schemf/ivalidator.hpp>
 #include <schemf/mockSchema.hpp>
+#include <store/mockStore.hpp>
 
 using namespace base::test;
 using namespace cm::store;
@@ -321,6 +322,7 @@ struct Mocks
     std::shared_ptr<MockSchema> m_spSchemf;
     std::shared_ptr<MockDefinitionsBuilder> m_spDefBuilder;
     std::shared_ptr<MockDefinitions> m_spDef;
+    std::shared_ptr<store::mocks::MockStore> m_spMockStore;
 };
 
 template<typename T>
@@ -338,6 +340,7 @@ public:
         m_spMocks->m_spSchemf = std::make_shared<MockSchema>();
         m_spMocks->m_spDefBuilder = std::make_shared<MockDefinitionsBuilder>();
         m_spMocks->m_spDef = std::make_shared<MockDefinitions>();
+        m_spMocks->m_spMockStore = std::make_shared<store::mocks::MockStore>();
         initializeBuilder();
     }
 
@@ -357,7 +360,7 @@ public:
         auto emptyAllowedFields = std::make_shared<builder::AllowedFields>();
 
         m_spBuilder = std::make_shared<builder::Builder>(
-            m_spMocks->m_spStore, m_spMocks->m_spSchemf, m_spMocks->m_spDefBuilder, emptyAllowedFields, builderDeps);
+            m_spMocks->m_spStore, m_spMocks->m_spSchemf, m_spMocks->m_spDefBuilder, emptyAllowedFields, builderDeps, m_spMocks->m_spMockStore);
     }
 };
 
