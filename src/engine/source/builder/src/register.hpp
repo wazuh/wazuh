@@ -411,11 +411,34 @@ void registerStageBuilders(const std::shared_ptr<Registry>& registry, const Buil
                                                    builders::getIndexerOutputBuilder(deps.iConnector));
 }
 
+/**
+ * @brief Register all enrichment builders in the registry.
+ *
+ * @tparam Registry
+ * @param registry Registry instance
+ * @param deps Builders dependencies for enrichment builders
+ * @param store Store instance to read enrichment builder configurations, not stored in the registry due to potential
+ * circular dependencies
+ */
 template<typename Registry>
-void registerEnrichmentBuilders(const std::shared_ptr<Registry>& registry, const BuilderDeps& deps)
+void registerEnrichmentBuilders(const std::shared_ptr<Registry>& registry,
+                                const BuilderDeps& deps,
+                                const std::shared_ptr<::store::IStore>& store)
 {
-    registry->template add<builders::EnrichmentBuilder>("geo",
-                                                        builders::enrichment::getGeoEnrichmentBuilder(deps.geoManager));
+
+    const auto getConfFn = [&](const base::Name& name, std::string_view builderName) -> json::Json
+    {
+        auto doc = store->readDoc(name);
+        if (base::isError(doc))
+        {
+            throw std::runtime_error("Failed to register enrichment builder '" + std::string(builderName)
+                                     + "': unable to read configuration: " + base::getError(doc).message);
+        }
+        return base::getResponse(doc);
+    };
+
+    registry->template add<builders::EnrichmentBuilder>(
+        "geo", builders::enrichment::getGeoEnrichmentBuilder(deps.geoManager, getConfFn("enrichment/geo/0", "geo")));
 }
 
 } // namespace builder::detail
