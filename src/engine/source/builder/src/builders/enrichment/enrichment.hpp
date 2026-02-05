@@ -42,9 +42,10 @@ std::pair<base::Expression, std::string> getSpaceEnrichment(const cm::store::dat
  * @brief Get the Geo Enrichment Builder
  *
  * @param geoManager Geo manager instance, used to create 1 locator per enrichment.
+ * @param configDoc Configuration document to load mapping configurations.
  * @return EnrichmentBuilder
  */
-EnrichmentBuilder getGeoEnrichmentBuilder(const std::shared_ptr<geo::IManager>& geoManager);
+EnrichmentBuilder getGeoEnrichmentBuilder(const std::shared_ptr<geo::IManager>& geoManager, const json::Json& configDoc);
 
 } // namespace builder::builders::enrichment
 

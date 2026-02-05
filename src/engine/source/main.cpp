@@ -475,7 +475,7 @@ int main(int argc, char* argv[])
                     std::make_shared<builder::AllowedFields>(base::getResponse<store::Doc>(allowedFieldsDoc));
             }
 
-            builder = std::make_shared<builder::Builder>(cmStore, schema, defs, allowedFields, builderDeps);
+            builder = std::make_shared<builder::Builder>(cmStore, schema, defs, allowedFields, builderDeps, store);
             LOG_INFO("Builder initialized.");
         }
 

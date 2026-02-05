@@ -1,5 +1,7 @@
 #include <fmt/format.h>
 
+#include <store/istore.hpp>
+
 #include "enrichment.hpp"
 
 namespace builder::builders::enrichment
@@ -9,6 +11,7 @@ namespace
 {
 
 const std::string GEO_ENRICHMENT_TRACEABLE_NAMES {"enrichment/Geo"};
+const base::Name DOCUMENT_GEOIP_MAPPING_COLLECTION {"enrichment/geo_mapping/0"};
 
 // Format strings for tracing
 
@@ -37,6 +40,43 @@ struct MappingConfig
     std::optional<std::string> geoEcsPath; ///< Path to map GeoIP city data in ECS format
     std::optional<std::string> asEcsPath;  ///< Path to map GeoIP AS data in ECS format
 };
+
+std::vector<MappingConfig> loadMappingConfigs(const json::Json& config)
+{
+    if (!config.isObject())
+    {
+        throw std::runtime_error("GeoIP mapping configuration must be a JSON object");
+    }
+
+    const auto collection = config.getObject().value();
+
+    std::vector<MappingConfig> mappingConfigs {};
+    mappingConfigs.reserve(collection.size());
+
+    for (const auto& [key, value] : collection)
+    {
+
+        MappingConfig config {};
+        config.originIpPath = json::Json::formatJsonPath(key);
+
+        // geo_field
+        if (auto geoFieldOpt = value.getString("geo_field"); geoFieldOpt.has_value())
+        {
+            config.geoEcsPath = json::Json::formatJsonPath(geoFieldOpt.value(), true);
+        }
+
+        // as_ecs_path
+        if (auto asFieldOpt = value.getString("as_field"); asFieldOpt.has_value())
+        {
+            config.asEcsPath = json::Json::formatJsonPath(asFieldOpt.value(), true);
+        }
+
+        mappingConfigs.push_back(std::move(config));
+    }
+
+    return mappingConfigs;
+}
+
 
 /**
  * @brief Maps GeoIP data to ECS format.
@@ -208,26 +248,13 @@ getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& locator, const MappingCo
 };
 
 std::pair<base::Expression, std::string> geoEnrichmentBuilder(const std::shared_ptr<geo::IManager>& geoManager,
+                                                              const std::vector<MappingConfig>& mappingConfigs,
                                                               bool trace)
 {
 
     // Get locators
     auto as = geoManager->getLocator(geo::Type::ASN);
     auto city = geoManager->getLocator(geo::Type::CITY);
-
-    // Testing configuration
-    std::vector<MappingConfig> mappingConfigs = {
-        {
-            .originIpPath = "/tmp_json/src/ip",
-            .geoEcsPath = "/tmp/src/geo",
-            .asEcsPath = "/tmp/src/as",
-        },
-        {
-            .originIpPath = "/tmp_json/dst/ip",
-            .geoEcsPath = "/tmp/dst/geo",
-            .asEcsPath = "/tmp/dst/as",
-        },
-    };
 
     if (base::isError(as))
     {
@@ -257,11 +284,12 @@ std::pair<base::Expression, std::string> geoEnrichmentBuilder(const std::shared_
 
 } // namespace
 
-EnrichmentBuilder getGeoEnrichmentBuilder(const std::shared_ptr<geo::IManager>& geoManager)
+EnrichmentBuilder getGeoEnrichmentBuilder(const std::shared_ptr<geo::IManager>& geoManager, const json::Json& configDoc)
 {
-    return [geoManager](bool trace) -> std::pair<base::Expression, std::string>
+    const auto mappingConfigs = loadMappingConfigs(configDoc);
+    return [geoManager, mappingConfigs](bool trace) -> std::pair<base::Expression, std::string>
     {
-        return geoEnrichmentBuilder(geoManager, trace);
+        return geoEnrichmentBuilder(geoManager, mappingConfigs, trace);
     };
 }
 
