@@ -254,7 +254,6 @@ class ResourceSummary final :
   enum : int {
     kUuidFieldNumber = 1,
     kNameFieldNumber = 2,
-    kHashFieldNumber = 3,
   };
   // optional string uuid = 1;
   bool has_uuid() const;
@@ -292,24 +291,6 @@ class ResourceSummary final :
   std::string* _internal_mutable_name();
   public:
 
-  // optional string hash = 3;
-  bool has_hash() const;
-  private:
-  bool _internal_has_hash() const;
-  public:
-  void clear_hash();
-  const std::string& hash() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_hash(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_hash();
-  PROTOBUF_NODISCARD std::string* release_hash();
-  void set_allocated_hash(std::string* hash);
-  private:
-  const std::string& _internal_hash() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_hash(const std::string& value);
-  std::string* _internal_mutable_hash();
-  public:
-
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.content.ResourceSummary)
  private:
   class _Internal;
@@ -322,7 +303,6 @@ class ResourceSummary final :
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr uuid_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr hash_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_crud_2eproto;
@@ -3020,74 +3000,6 @@ inline void ResourceSummary::set_allocated_name(std::string* name) {
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.ResourceSummary.name)
-}
-
-// optional string hash = 3;
-inline bool ResourceSummary::_internal_has_hash() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
-  return value;
-}
-inline bool ResourceSummary::has_hash() const {
-  return _internal_has_hash();
-}
-inline void ResourceSummary::clear_hash() {
-  _impl_.hash_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000004u;
-}
-inline const std::string& ResourceSummary::hash() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.content.ResourceSummary.hash)
-  return _internal_hash();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void ResourceSummary::set_hash(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000004u;
- _impl_.hash_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.content.ResourceSummary.hash)
-}
-inline std::string* ResourceSummary::mutable_hash() {
-  std::string* _s = _internal_mutable_hash();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.content.ResourceSummary.hash)
-  return _s;
-}
-inline const std::string& ResourceSummary::_internal_hash() const {
-  return _impl_.hash_.Get();
-}
-inline void ResourceSummary::_internal_set_hash(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000004u;
-  _impl_.hash_.Set(value, GetArenaForAllocation());
-}
-inline std::string* ResourceSummary::_internal_mutable_hash() {
-  _impl_._has_bits_[0] |= 0x00000004u;
-  return _impl_.hash_.Mutable(GetArenaForAllocation());
-}
-inline std::string* ResourceSummary::release_hash() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.content.ResourceSummary.hash)
-  if (!_internal_has_hash()) {
-    return nullptr;
-  }
-  _impl_._has_bits_[0] &= ~0x00000004u;
-  auto* p = _impl_.hash_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.hash_.IsDefault()) {
-    _impl_.hash_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
-}
-inline void ResourceSummary::set_allocated_hash(std::string* hash) {
-  if (hash != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000004u;
-  } else {
-    _impl_._has_bits_[0] &= ~0x00000004u;
-  }
-  _impl_.hash_.SetAllocated(hash, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.hash_.IsDefault()) {
-    _impl_.hash_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.ResourceSummary.hash)
 }
 
 // -------------------------------------------------------------------

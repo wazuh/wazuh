@@ -45,14 +45,6 @@ public:
     virtual std::tuple<std::string, ResourceType> resolveNameFromUUID(const std::string& uuid) const = 0;
 
     /**
-     * @brief Resolve resource hash from its UUID
-     * @param uuid UUID of the resource
-     * @return std::string Hash of the resource
-     * @throw std::runtime_error if the UUID does not exist
-     */
-    virtual std::string resolveHashFromUUID(const std::string& uuid) const = 0;
-
-    /**
      * @brief Resolve resource UUID from its name and type
      * @param name Name of the resource
      * @param type ResourceType of the resource

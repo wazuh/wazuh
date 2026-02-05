@@ -7,7 +7,6 @@
 
 #include <base/json.hpp>
 #include <base/utils/generator.hpp>
-#include <base/utils/hash.hpp>
 
 /**
  * @brief DataKVDB class to represent a content manager data key-value database. Its the definition of a KVDB.
@@ -49,14 +48,6 @@ private:
     json::Json m_data;
     bool m_enabled;
 
-    std::string m_hash;
-
-    void updateHash()
-    {
-        // Create a hash based on the KVDB content
-        std::string toHash = m_data.str() + (m_enabled ? "1" : "0");
-        m_hash = base::utils::hash::sha256(toHash);
-    }
 
 public:
     KVDB() = delete;
@@ -90,7 +81,6 @@ public:
         }
         m_data = std::move(data);
 
-        updateHash();
     }
 
     static KVDB fromJson(const json::Json& kvdbJson, bool requireUUID)
@@ -156,7 +146,6 @@ public:
     const json::Json& getData() const { return m_data; }
     const std::string& getUUID() const { return m_uuid; }
     const std::string& getName() const { return m_name; }
-    const std::string& getHash() const { return m_hash; }
     bool isEnabled() const { return m_enabled; }
 
     ~KVDB() = default;

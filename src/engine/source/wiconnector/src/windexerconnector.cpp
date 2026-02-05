@@ -285,6 +285,9 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
     size_t retrievedSoFar = 0;
     bool moreHits = true;
 
+    // Organize resources into PolicyResources structure
+    PolicyResources policyMap {};
+
     do
     {
         nlohmann::json hits = m_indexerConnectorAsync->search(pit, m_maxHitsPerRequest, query, sort, searchAfter);
@@ -311,7 +314,26 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
             auto indexName = hit["_index"].get<std::string>();
             auto sourceData = extractDocumentFromHit(hit);
             IndexResourceType resourceType = fromIndexName(indexName);
-            resourceList.emplace_back(resourceType, std::move(sourceData));
+
+            if (resourceType == IndexResourceType::POLICY)
+            {
+                policyMap.policy = std::move(sourceData);
+
+                try
+                {
+                    const auto& source = hit["_source"];
+                    const auto hash = source["space"]["hash"]["sha256"].get<std::string>();
+                    policyMap.policy.setString(hash, "/hash");
+                }
+                catch (const std::exception&)
+                {
+                    throw IndexerConnectorException("space.hash.sha256 field not found for policy");
+                }
+            }
+            else
+            {
+                resourceList.emplace_back(resourceType, std::move(sourceData));
+            }
         }
 
         moreHits = retrievedSoFar < total_hits;
@@ -319,9 +341,6 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
         LOG_TRACE("[indexer-connector] Retrieved {} / {} hits so far", retrievedSoFar, total_hits);
 
     } while (moreHits);
-
-    // Organize resources into PolicyResources structure
-    PolicyResources policyMap {};
 
     // Avoid memory reallocations
     {
@@ -351,7 +370,6 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
             case IndexResourceType::KVDB: policyMap.kvdbs.emplace_back(std::move(data)); break;
             case IndexResourceType::DECODER: policyMap.decoders.emplace_back(std::move(data)); break;
             case IndexResourceType::INTEGRATION_DECODER: policyMap.integration.emplace_back(std::move(data)); break;
-            case IndexResourceType::POLICY: policyMap.policy = std::move(data); break;
         }
     }
 

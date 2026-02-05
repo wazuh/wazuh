@@ -7,9 +7,6 @@
 #include <vector>
 
 #include <base/json.hpp>
-#include <base/name.hpp>
-#include <base/utils/generator.hpp>
-#include <base/utils/hash.hpp>
 
 #include <cmstore/detail.hpp>
 
@@ -17,7 +14,7 @@
  * @brief DataPolicy class to represent a content manager data policy. Its the definition of a policy.
  *
  * This class encapsulates the data and operations related to a content manager data policy,
- * including its integrations, default parent, root decoder, and hash.
+ * including its integrations, default parent, root decoder, and optional hash.
  *
  * Expexted JSON format:
  * {
@@ -51,6 +48,7 @@ constexpr std::string_view PATH_KEY_ENRICHMENTS = "/enrichments";
 constexpr std::string_view PATH_KEY_OUTPUTS = "/outputs";
 constexpr std::string_view PATH_KEY_TITLE = "/title";
 constexpr std::string_view PATH_KEY_ORIGIN_SPACE = "/origin_space";
+constexpr std::string_view PATH_KEY_HASH = "/hash";
 
 } // namespace jsonpolicy
 
@@ -75,19 +73,7 @@ private:
     std::vector<std::string> m_enrichments;  ///< Enrichments plugins defined in the policy
     std::vector<std::string> m_outputs;      ///< Outputs defined in the policy (optional)
 
-    std::string m_hash;
-
-    void updateHash()
-    {
-        // Create a hash based on the integrations UUIDs and defaults decoders
-        std::string toHash = m_rootDecoder;
-        toHash.reserve(toHash.length() + m_integrations.size() * base::utils::generators::UUID_V4_LENGTH);
-        for (const auto& uuid : m_integrations)
-        {
-            toHash += uuid;
-        }
-        m_hash = base::utils::hash::sha256(toHash);
-    }
+    std::string m_hash;                      ///< Hash of the policy for integrity verification
 
 public:
     ~Policy() = default;
@@ -99,8 +85,8 @@ public:
            std::vector<std::string> filters,
            std::vector<std::string> enrichments,
            std::vector<std::string> outputs,
-           std::string_view originSpace = DEFAULT_ORIGIN_SPACE
-        )
+           std::string_view originSpace = DEFAULT_ORIGIN_SPACE,
+           std::string_view hash = "")
         : m_title(policyTitle)
         , m_rootDecoder(rootDecoder)
         , m_integrations(std::move(integrationsUUIDs))
@@ -108,12 +94,11 @@ public:
         , m_enrichments(std::move(enrichments))
         , m_outputs(std::move(outputs))
         , m_originSpace(originSpace)
+        , m_hash(hash)
     {
         cm::store::detail::findDuplicateOrInvalidUUID(m_integrations, "Integration");
         cm::store::detail::findDuplicateOrInvalidUUID(m_outputs, "Output");
         cm::store::detail::findDuplicateOrInvalidUUID(m_filters, "Filter");
-
-        updateHash();
     }
 
     // Dumper and loader
@@ -261,13 +246,24 @@ public:
             return originSpaceOpt.value();
         }();
 
+        auto policyHash = [&]() -> std::string {
+            auto hashOpt = policyJson.getString(jsonpolicy::PATH_KEY_HASH);
+            if (!hashOpt.has_value() || hashOpt->empty())
+            {
+                return "";
+            }
+            return hashOpt.value();
+        }();
+
         return {title,
                 rootDecoder,
                 std::move(integrations),
                 std::move(filters),
                 std::move(enrichments),
                 std::move(outputs),
-                originSpace};
+                originSpace,
+                policyHash};
+
     }
 
     json::Json toJson() const
@@ -277,6 +273,7 @@ public:
         policyJson.setString(m_title, jsonpolicy::PATH_KEY_TITLE);
         policyJson.setString(m_rootDecoder, jsonpolicy::PATH_KEY_ROOT_PARENT);
         policyJson.setString(m_originSpace, jsonpolicy::PATH_KEY_ORIGIN_SPACE);
+        policyJson.setString(m_hash, jsonpolicy::PATH_KEY_HASH);
 
         policyJson.setArray(jsonpolicy::PATH_KEY_INTEGRATIONS);
         for (const auto& uuid : m_integrations)
@@ -305,6 +302,7 @@ public:
         return policyJson;
     }
 
+    //Setters
     // Getters
     const std::string& getTitle() const { return m_title; }
     const std::vector<std::string>& getFiltersUUIDs() const { return m_filters; }

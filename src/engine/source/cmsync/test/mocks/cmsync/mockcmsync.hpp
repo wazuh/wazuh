@@ -20,7 +20,6 @@ public:
                 resolveNameFromUUID,
                 (const std::string& uuid),
                 (const, override));
-    MOCK_METHOD(std::string, resolveHashFromUUID, (const std::string& uuid), (const, override));
     MOCK_METHOD(std::string, resolveUUIDFromName, (const std::string& name, ResourceType type), (const, override));
     MOCK_METHOD(bool, assetExistsByName, (const base::Name& name), (const, override));
     MOCK_METHOD(bool, assetExistsByUUID, (const std::string& uuid), (const, override));
@@ -47,7 +46,6 @@ public:
                 resolveNameFromUUID,
                 (const std::string& uuid),
                 (const, override));
-    MOCK_METHOD(std::string, resolveHashFromUUID, (const std::string& uuid), (const, override));
     MOCK_METHOD(std::string, resolveUUIDFromName, (const std::string& name, ResourceType type), (const, override));
     MOCK_METHOD(bool, assetExistsByName, (const base::Name& name), (const, override));
     MOCK_METHOD(bool, assetExistsByUUID, (const std::string& uuid), (const, override));

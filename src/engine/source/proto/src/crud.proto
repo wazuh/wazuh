@@ -10,7 +10,6 @@ message ResourceSummary
 {
     optional string uuid = 1; // Resource UUID (unique within namespace)
     optional string name = 2; // Logical name (e.g. decoder/apache_access)
-    optional string hash = 3; // Content hash (YAML or canonical representation)
 }
 
 /******************** Namespace operations ********************/

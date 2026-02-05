@@ -11,7 +11,6 @@
 
 #include <base/json.hpp>
 #include <base/utils/generator.hpp>
-#include <base/utils/hash.hpp>
 
 #include <cmstore/categories.hpp>
 #include <cmstore/detail.hpp>
@@ -60,29 +59,6 @@ private:
     std::optional<std::string> m_defaultParent;
     std::vector<std::string> m_kvdbsByUUID;
     std::vector<std::string> m_decodersByUUID;
-
-    std::string m_hash;
-
-    void updateHash()
-    {
-        // Create a hash based on the name, category, decoders and kvdbs UUIDs
-        std::string toHash = m_name + m_category + (m_enabled ? "1" : "0")
-                             + (m_defaultParent.has_value() ? m_defaultParent.value() : "");
-
-        auto len = toHash.length() + 1
-                   + base::utils::generators::UUID_V4_LENGTH * (m_decodersByUUID.size() + m_kvdbsByUUID.size());
-        toHash.reserve(len);
-        for (const auto& uuid : m_decodersByUUID)
-        {
-            toHash += uuid;
-        }
-        for (const auto& uuid : m_kvdbsByUUID)
-        {
-            toHash += uuid;
-        }
-
-        m_hash = base::utils::hash::sha256(toHash);
-    }
 
 public:
     ~Integration() = default;
@@ -142,8 +118,6 @@ public:
         cm::store::detail::findDuplicateOrInvalidUUID(m_decodersByUUID, "Decoder");
 
         cm::store::detail::findDuplicateOrInvalidUUID(m_kvdbsByUUID, "KVDB");
-
-        updateHash();
     }
 
     static Integration fromJson(const json::Json& integrationJson, bool requireUUID)
@@ -279,7 +253,6 @@ public:
     const bool hasDefaultParent() const { return m_defaultParent.has_value(); }
     const std::vector<std::string>& getKVDBsByUUID() const { return m_kvdbsByUUID; }
     const std::vector<std::string>& getDecodersByUUID() const { return m_decodersByUUID; }
-    const std::string& getHash() const { return m_hash; }
     const std::string& getName() const { return m_name; }
     const std::string& getUUID() const { return m_uuid; }
     bool isEnabled() const { return m_enabled; }

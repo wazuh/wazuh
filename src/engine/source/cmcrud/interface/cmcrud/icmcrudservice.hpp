@@ -14,13 +14,12 @@ namespace cm::crud
 /**
  * @brief Small summary of a resource in a namespace.
  *
- * Mirrors the logical catalog view: UUID, logical name and content hash.
+ * Mirrors the logical catalog view: UUID and logical name.
  */
 struct ResourceSummary
 {
     std::string uuid; ///< Resource UUID (unique within namespace).
     std::string name; ///< Logical name, e.g. "decoder/apache_access".
-    std::string hash; ///< Content hash (YAML or canonical representation).
 };
 
 /**
@@ -161,8 +160,7 @@ public:
     /**
      * @brief List resources in a namespace by type.
      *
-     * The result is a lightweight catalog view including UUID, logical
-     * name and a content hash suitable for change tracking.
+     * The result is a lightweight catalog view including UUID and logical name.
      *
      * @param nsId   Target namespace identifier.
      * @param type   Resource type to list.

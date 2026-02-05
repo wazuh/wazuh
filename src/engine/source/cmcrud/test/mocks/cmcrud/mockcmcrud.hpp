@@ -1,7 +1,6 @@
 #ifndef _MOCKS_CMCRUD_CRUD_SERVICE_HPP
 #define _MOCKS_CMCRUD_CRUD_SERVICE_HPP
 #include <gmock/gmock.h>
-
 #include <cmcrud/icmcrudservice.hpp>
 namespace cm::crud
 {

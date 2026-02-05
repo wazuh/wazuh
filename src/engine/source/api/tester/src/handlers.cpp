@@ -22,28 +22,6 @@ using TesterAndRequest = std::pair<std::shared_ptr<::router::ITesterAPI>, Reques
 namespace
 {
 
-eTester::Sync getHashStatus(const ::router::test::Entry& entry, const std::weak_ptr<cm::store::ICMStore>& wStore)
-{
-    auto store = wStore.lock();
-    if (!store)
-    {
-        return eTester::Sync::SYNC_UNKNOWN;
-    }
-
-    std::string hash;
-    try
-    {
-        auto nsId = store->getNSReader(entry.namespaceId());
-        hash = nsId->getPolicy().getHash();
-    }
-    catch (const std::exception& e)
-    {
-        return eTester::Sync::ERROR;
-    }
-
-    return hash == entry.hash() ? eTester::Sync::UPDATED : eTester::Sync::OUTDATED;
-}
-
 /**
  * @brief Transform a router::test::Entry to a eTester::Session
  *
@@ -65,7 +43,6 @@ eTester::Session toSession(const ::router::test::Entry& entry, const std::weak_p
                            : ::router::env::State::DISABLED == entry.status() ? eTester::State::DISABLED
                                                                               : eTester::State::STATE_UNKNOWN;
 
-    session.set_namespace_sync(getHashStatus(entry, wStore));
     session.set_entry_status(state);
     session.set_last_use(static_cast<uint32_t>(entry.lastUse()));
     return session;

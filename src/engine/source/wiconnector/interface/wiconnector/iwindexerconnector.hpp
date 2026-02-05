@@ -21,7 +21,6 @@ namespace wiconnector
  *
  * This structure encapsulates the various components of a policy,
  * including KVDBs, decoders, integration decoders, and the policy itself.
- * All resources are stored as strings.
  */
 struct PolicyResources
 {

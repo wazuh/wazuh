@@ -24,28 +24,6 @@ inline int64_t currentTime()
     return std::chrono::duration_cast<std::chrono::seconds>(startTime.time_since_epoch()).count();
 }
 
-eRouter::Sync getHashStatus(const ::router::prod::Entry& entry, const std::weak_ptr<cm::store::ICMStore>& wStore)
-{
-    auto store = wStore.lock();
-    if (!store)
-    {
-        return eRouter::Sync::SYNC_UNKNOWN;
-    }
-
-    std::string hash;
-    try
-    {
-        auto nsId = store->getNSReader(entry.namespaceId());
-        hash = nsId->getPolicy().getHash();
-    }
-    catch(const std::exception& e)
-    {
-        return eRouter::Sync::ERROR;
-    }
-
-    return hash == entry.hash() ? eRouter::Sync::UPDATED : eRouter::Sync::OUTDATED;
-}
-
 /**
  * @brief Convert a router entry to a api entry
  *
@@ -68,7 +46,6 @@ eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry, const st
                            : ::router::env::State::DISABLED == entry.status() ? eRouter::State::DISABLED
                                                                               : eRouter::State::STATE_UNKNOWN;
 
-    eEntry.set_namespace_sync(getHashStatus(entry,  wStore));
     eEntry.set_entry_status(state);
 
     // Calculate the uptime

@@ -148,33 +148,6 @@ inline bool State_Parse(
   return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<State>(
     State_descriptor(), name, value);
 }
-enum Sync : int {
-  SYNC_UNKNOWN = 0,
-  UPDATED = 1,
-  OUTDATED = 2,
-  ERROR = 3,
-  Sync_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
-  Sync_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
-};
-bool Sync_IsValid(int value);
-constexpr Sync Sync_MIN = SYNC_UNKNOWN;
-constexpr Sync Sync_MAX = ERROR;
-constexpr int Sync_ARRAYSIZE = Sync_MAX + 1;
-
-const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* Sync_descriptor();
-template<typename T>
-inline const std::string& Sync_Name(T enum_t_value) {
-  static_assert(::std::is_same<T, Sync>::value ||
-    ::std::is_integral<T>::value,
-    "Incorrect type passed to function Sync_Name.");
-  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
-    Sync_descriptor(), enum_t_value);
-}
-inline bool Sync_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, Sync* value) {
-  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<Sync>(
-    Sync_descriptor(), name, value);
-}
 enum TraceLevel : int {
   NONE = 0,
   ASSET_ONLY = 1,
@@ -529,9 +502,8 @@ class Session final :
     kNamespaceIdFieldNumber = 2,
     kDescriptionFieldNumber = 4,
     kLifetimeFieldNumber = 3,
-    kNamespaceSyncFieldNumber = 6,
-    kEntryStatusFieldNumber = 7,
-    kLastUseFieldNumber = 8,
+    kEntryStatusFieldNumber = 5,
+    kLastUseFieldNumber = 6,
   };
   // string name = 1;
   void clear_name();
@@ -588,16 +560,7 @@ class Session final :
   void _internal_set_lifetime(uint32_t value);
   public:
 
-  // .com.wazuh.api.engine.tester.Sync namespace_sync = 6;
-  void clear_namespace_sync();
-  ::com::wazuh::api::engine::tester::Sync namespace_sync() const;
-  void set_namespace_sync(::com::wazuh::api::engine::tester::Sync value);
-  private:
-  ::com::wazuh::api::engine::tester::Sync _internal_namespace_sync() const;
-  void _internal_set_namespace_sync(::com::wazuh::api::engine::tester::Sync value);
-  public:
-
-  // .com.wazuh.api.engine.tester.State entry_status = 7;
+  // .com.wazuh.api.engine.tester.State entry_status = 5;
   void clear_entry_status();
   ::com::wazuh::api::engine::tester::State entry_status() const;
   void set_entry_status(::com::wazuh::api::engine::tester::State value);
@@ -606,7 +569,7 @@ class Session final :
   void _internal_set_entry_status(::com::wazuh::api::engine::tester::State value);
   public:
 
-  // uint32 last_use = 8;
+  // uint32 last_use = 6;
   void clear_last_use();
   uint32_t last_use() const;
   void set_last_use(uint32_t value);
@@ -629,7 +592,6 @@ class Session final :
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr namespaceid_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr description_;
     uint32_t lifetime_;
-    int namespace_sync_;
     int entry_status_;
     uint32_t last_use_;
   };
@@ -3120,27 +3082,7 @@ inline void Session::set_allocated_description(std::string* description) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.Session.description)
 }
 
-// .com.wazuh.api.engine.tester.Sync namespace_sync = 6;
-inline void Session::clear_namespace_sync() {
-  _impl_.namespace_sync_ = 0;
-}
-inline ::com::wazuh::api::engine::tester::Sync Session::_internal_namespace_sync() const {
-  return static_cast< ::com::wazuh::api::engine::tester::Sync >(_impl_.namespace_sync_);
-}
-inline ::com::wazuh::api::engine::tester::Sync Session::namespace_sync() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.Session.namespace_sync)
-  return _internal_namespace_sync();
-}
-inline void Session::_internal_set_namespace_sync(::com::wazuh::api::engine::tester::Sync value) {
-  
-  _impl_.namespace_sync_ = value;
-}
-inline void Session::set_namespace_sync(::com::wazuh::api::engine::tester::Sync value) {
-  _internal_set_namespace_sync(value);
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.Session.namespace_sync)
-}
-
-// .com.wazuh.api.engine.tester.State entry_status = 7;
+// .com.wazuh.api.engine.tester.State entry_status = 5;
 inline void Session::clear_entry_status() {
   _impl_.entry_status_ = 0;
 }
@@ -3160,7 +3102,7 @@ inline void Session::set_entry_status(::com::wazuh::api::engine::tester::State v
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.Session.entry_status)
 }
 
-// uint32 last_use = 8;
+// uint32 last_use = 6;
 inline void Session::clear_last_use() {
   _impl_.last_use_ = 0u;
 }
@@ -4716,11 +4658,6 @@ template <> struct is_proto_enum< ::com::wazuh::api::engine::tester::State> : ::
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::com::wazuh::api::engine::tester::State>() {
   return ::com::wazuh::api::engine::tester::State_descriptor();
-}
-template <> struct is_proto_enum< ::com::wazuh::api::engine::tester::Sync> : ::std::true_type {};
-template <>
-inline const EnumDescriptor* GetEnumDescriptor< ::com::wazuh::api::engine::tester::Sync>() {
-  return ::com::wazuh::api::engine::tester::Sync_descriptor();
 }
 template <> struct is_proto_enum< ::com::wazuh::api::engine::tester::TraceLevel> : ::std::true_type {};
 template <>

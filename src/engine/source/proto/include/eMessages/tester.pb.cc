@@ -50,7 +50,6 @@ PROTOBUF_CONSTEXPR Session::Session(
   , /*decltype(_impl_.namespaceid_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.description_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.lifetime_)*/0u
-  , /*decltype(_impl_.namespace_sync_)*/0
   , /*decltype(_impl_.entry_status_)*/0
   , /*decltype(_impl_.last_use_)*/0u} {}
 struct SessionDefaultTypeInternal {
@@ -242,7 +241,7 @@ PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORIT
 }  // namespace wazuh
 }  // namespace com
 static ::_pb::Metadata file_level_metadata_tester_2eproto[14];
-static const ::_pb::EnumDescriptor* file_level_enum_descriptors_tester_2eproto[3];
+static const ::_pb::EnumDescriptor* file_level_enum_descriptors_tester_2eproto[2];
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_tester_2eproto = nullptr;
 
 const uint32_t TableStruct_tester_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
@@ -270,14 +269,12 @@ const uint32_t TableStruct_tester_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::Session, _impl_.namespaceid_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::Session, _impl_.lifetime_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::Session, _impl_.description_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::Session, _impl_.namespace_sync_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::Session, _impl_.entry_status_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::Session, _impl_.last_use_),
   ~0u,
   ~0u,
   ~0u,
   0,
-  ~0u,
   ~0u,
   ~0u,
   ~0u,  // no _has_bits_
@@ -392,19 +389,19 @@ const uint32_t TableStruct_tester_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, 10, -1, sizeof(::com::wazuh::api::engine::tester::SessionPost)},
-  { 14, 27, -1, sizeof(::com::wazuh::api::engine::tester::Session)},
-  { 34, -1, -1, sizeof(::com::wazuh::api::engine::tester::Result_AssetTrace)},
-  { 43, -1, -1, sizeof(::com::wazuh::api::engine::tester::Result)},
-  { 51, 58, -1, sizeof(::com::wazuh::api::engine::tester::SessionPost_Request)},
-  { 59, -1, -1, sizeof(::com::wazuh::api::engine::tester::SessionDelete_Request)},
-  { 66, -1, -1, sizeof(::com::wazuh::api::engine::tester::SessionGet_Request)},
-  { 73, 82, -1, sizeof(::com::wazuh::api::engine::tester::SessionGet_Response)},
-  { 85, -1, -1, sizeof(::com::wazuh::api::engine::tester::SessionReload_Request)},
-  { 92, -1, -1, sizeof(::com::wazuh::api::engine::tester::TableGet_Request)},
-  { 98, 107, -1, sizeof(::com::wazuh::api::engine::tester::TableGet_Response)},
-  { 110, -1, -1, sizeof(::com::wazuh::api::engine::tester::RunPost_Request)},
-  { 120, 129, -1, sizeof(::com::wazuh::api::engine::tester::RunPost_Response)},
-  { 132, -1, -1, sizeof(::com::wazuh::api::engine::tester::PublicRunPost_Request)},
+  { 14, 26, -1, sizeof(::com::wazuh::api::engine::tester::Session)},
+  { 32, -1, -1, sizeof(::com::wazuh::api::engine::tester::Result_AssetTrace)},
+  { 41, -1, -1, sizeof(::com::wazuh::api::engine::tester::Result)},
+  { 49, 56, -1, sizeof(::com::wazuh::api::engine::tester::SessionPost_Request)},
+  { 57, -1, -1, sizeof(::com::wazuh::api::engine::tester::SessionDelete_Request)},
+  { 64, -1, -1, sizeof(::com::wazuh::api::engine::tester::SessionGet_Request)},
+  { 71, 80, -1, sizeof(::com::wazuh::api::engine::tester::SessionGet_Response)},
+  { 83, -1, -1, sizeof(::com::wazuh::api::engine::tester::SessionReload_Request)},
+  { 90, -1, -1, sizeof(::com::wazuh::api::engine::tester::TableGet_Request)},
+  { 96, 105, -1, sizeof(::com::wazuh::api::engine::tester::TableGet_Response)},
+  { 108, -1, -1, sizeof(::com::wazuh::api::engine::tester::RunPost_Request)},
+  { 118, 127, -1, sizeof(::com::wazuh::api::engine::tester::RunPost_Response)},
+  { 130, -1, -1, sizeof(::com::wazuh::api::engine::tester::PublicRunPost_Request)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -429,48 +426,45 @@ const char descriptor_table_protodef_tester_2eproto[] PROTOBUF_SECTION_VARIABLE(
   "ter\032\014engine.proto\032\034google/protobuf/struc"
   "t.proto\"l\n\013SessionPost\022\014\n\004name\030\001 \001(\t\022\023\n\013"
   "namespaceId\030\002 \001(\t\022\020\n\010lifetime\030\003 \001(\r\022\030\n\013d"
-  "escription\030\004 \001(\tH\000\210\001\001B\016\n\014_description\"\357\001"
+  "escription\030\004 \001(\tH\000\210\001\001B\016\n\014_description\"\264\001"
   "\n\007Session\022\014\n\004name\030\001 \001(\t\022\023\n\013namespaceId\030\002"
   " \001(\t\022\020\n\010lifetime\030\003 \001(\r\022\030\n\013description\030\004 "
-  "\001(\tH\000\210\001\001\0229\n\016namespace_sync\030\006 \001(\0162!.com.w"
-  "azuh.api.engine.tester.Sync\0228\n\014entry_sta"
-  "tus\030\007 \001(\0162\".com.wazuh.api.engine.tester."
-  "State\022\020\n\010last_use\030\010 \001(\rB\016\n\014_description\""
-  "\265\001\n\006Result\022\'\n\006output\030\001 \001(\0132\027.google.prot"
-  "obuf.Struct\022D\n\014asset_traces\030\002 \003(\0132..com."
-  "wazuh.api.engine.tester.Result.AssetTrac"
-  "e\032<\n\nAssetTrace\022\r\n\005asset\030\001 \001(\t\022\017\n\007succes"
-  "s\030\002 \001(\010\022\016\n\006traces\030\003 \003(\t\"a\n\023SessionPost_R"
-  "equest\022>\n\007session\030\001 \001(\0132(.com.wazuh.api."
-  "engine.tester.SessionPostH\000\210\001\001B\n\n\010_sessi"
-  "on\"%\n\025SessionDelete_Request\022\014\n\004name\030\001 \001("
-  "\t\"\"\n\022SessionGet_Request\022\014\n\004name\030\001 \001(\t\"\257\001"
-  "\n\023SessionGet_Response\0222\n\006status\030\001 \001(\0162\"."
-  "com.wazuh.api.engine.ReturnStatus\022\022\n\005err"
-  "or\030\002 \001(\tH\000\210\001\001\022:\n\007session\030\003 \001(\0132$.com.waz"
-  "uh.api.engine.tester.SessionH\001\210\001\001B\010\n\006_er"
-  "rorB\n\n\010_session\"%\n\025SessionReload_Request"
-  "\022\014\n\004name\030\001 \001(\t\"\022\n\020TableGet_Request\"\235\001\n\021T"
-  "ableGet_Response\0222\n\006status\030\001 \001(\0162\".com.w"
-  "azuh.api.engine.ReturnStatus\022\022\n\005error\030\002 "
-  "\001(\tH\000\210\001\001\0226\n\010sessions\030\003 \003(\0132$.com.wazuh.a"
-  "pi.engine.tester.SessionB\010\n\006_error\"\201\001\n\017R"
-  "unPost_Request\022\014\n\004name\030\001 \001(\t\022\r\n\005event\030\002 "
-  "\001(\t\022<\n\013trace_level\030\005 \001(\0162\'.com.wazuh.api"
-  ".engine.tester.TraceLevel\022\023\n\013asset_trace"
-  "\030\006 \003(\t\"\251\001\n\020RunPost_Response\0222\n\006status\030\001 "
-  "\001(\0162\".com.wazuh.api.engine.ReturnStatus\022"
-  "\022\n\005error\030\002 \001(\tH\000\210\001\001\0228\n\006result\030\003 \001(\0132#.co"
-  "m.wazuh.api.engine.tester.ResultH\001\210\001\001B\010\n"
-  "\006_errorB\t\n\007_result\"\215\001\n\025PublicRunPost_Req"
-  "uest\022\r\n\005queue\030\001 \001(\r\022\020\n\010location\030\002 \001(\t\022/\n"
-  "\016agent_metadata\030\003 \001(\0132\027.google.protobuf."
-  "Struct\022\r\n\005event\030\004 \001(\t\022\023\n\013trace_level\030\005 \001"
-  "(\t*5\n\005State\022\021\n\rSTATE_UNKNOWN\020\000\022\014\n\010DISABL"
-  "ED\020\001\022\013\n\007ENABLED\020\002*>\n\004Sync\022\020\n\014SYNC_UNKNOW"
-  "N\020\000\022\013\n\007UPDATED\020\001\022\014\n\010OUTDATED\020\002\022\t\n\005ERROR\020"
-  "\003*/\n\nTraceLevel\022\010\n\004NONE\020\000\022\016\n\nASSET_ONLY\020"
-  "\001\022\007\n\003ALL\020\002b\006proto3"
+  "\001(\tH\000\210\001\001\0228\n\014entry_status\030\005 \001(\0162\".com.waz"
+  "uh.api.engine.tester.State\022\020\n\010last_use\030\006"
+  " \001(\rB\016\n\014_description\"\265\001\n\006Result\022\'\n\006outpu"
+  "t\030\001 \001(\0132\027.google.protobuf.Struct\022D\n\014asse"
+  "t_traces\030\002 \003(\0132..com.wazuh.api.engine.te"
+  "ster.Result.AssetTrace\032<\n\nAssetTrace\022\r\n\005"
+  "asset\030\001 \001(\t\022\017\n\007success\030\002 \001(\010\022\016\n\006traces\030\003"
+  " \003(\t\"a\n\023SessionPost_Request\022>\n\007session\030\001"
+  " \001(\0132(.com.wazuh.api.engine.tester.Sessi"
+  "onPostH\000\210\001\001B\n\n\010_session\"%\n\025SessionDelete"
+  "_Request\022\014\n\004name\030\001 \001(\t\"\"\n\022SessionGet_Req"
+  "uest\022\014\n\004name\030\001 \001(\t\"\257\001\n\023SessionGet_Respon"
+  "se\0222\n\006status\030\001 \001(\0162\".com.wazuh.api.engin"
+  "e.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022:\n\007se"
+  "ssion\030\003 \001(\0132$.com.wazuh.api.engine.teste"
+  "r.SessionH\001\210\001\001B\010\n\006_errorB\n\n\010_session\"%\n\025"
+  "SessionReload_Request\022\014\n\004name\030\001 \001(\t\"\022\n\020T"
+  "ableGet_Request\"\235\001\n\021TableGet_Response\0222\n"
+  "\006status\030\001 \001(\0162\".com.wazuh.api.engine.Ret"
+  "urnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0226\n\010session"
+  "s\030\003 \003(\0132$.com.wazuh.api.engine.tester.Se"
+  "ssionB\010\n\006_error\"\201\001\n\017RunPost_Request\022\014\n\004n"
+  "ame\030\001 \001(\t\022\r\n\005event\030\002 \001(\t\022<\n\013trace_level\030"
+  "\005 \001(\0162\'.com.wazuh.api.engine.tester.Trac"
+  "eLevel\022\023\n\013asset_trace\030\006 \003(\t\"\251\001\n\020RunPost_"
+  "Response\0222\n\006status\030\001 \001(\0162\".com.wazuh.api"
+  ".engine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001"
+  "\0228\n\006result\030\003 \001(\0132#.com.wazuh.api.engine."
+  "tester.ResultH\001\210\001\001B\010\n\006_errorB\t\n\007_result\""
+  "\215\001\n\025PublicRunPost_Request\022\r\n\005queue\030\001 \001(\r"
+  "\022\020\n\010location\030\002 \001(\t\022/\n\016agent_metadata\030\003 \001"
+  "(\0132\027.google.protobuf.Struct\022\r\n\005event\030\004 \001"
+  "(\t\022\023\n\013trace_level\030\005 \001(\t*5\n\005State\022\021\n\rSTAT"
+  "E_UNKNOWN\020\000\022\014\n\010DISABLED\020\001\022\013\n\007ENABLED\020\002*/"
+  "\n\nTraceLevel\022\010\n\004NONE\020\000\022\016\n\nASSET_ONLY\020\001\022\007"
+  "\n\003ALL\020\002b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_tester_2eproto_deps[2] = {
   &::descriptor_table_engine_2eproto,
@@ -478,7 +472,7 @@ static const ::_pbi::DescriptorTable* const descriptor_table_tester_2eproto_deps
 };
 static ::_pbi::once_flag descriptor_table_tester_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_tester_2eproto = {
-    false, false, 1818, descriptor_table_protodef_tester_2eproto,
+    false, false, 1695, descriptor_table_protodef_tester_2eproto,
     "tester.proto",
     &descriptor_table_tester_2eproto_once, descriptor_table_tester_2eproto_deps, 2, 14,
     schemas, file_default_instances, TableStruct_tester_2eproto::offsets,
@@ -511,25 +505,9 @@ bool State_IsValid(int value) {
   }
 }
 
-const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* Sync_descriptor() {
-  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_tester_2eproto);
-  return file_level_enum_descriptors_tester_2eproto[1];
-}
-bool Sync_IsValid(int value) {
-  switch (value) {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-      return true;
-    default:
-      return false;
-  }
-}
-
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* TraceLevel_descriptor() {
   ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_tester_2eproto);
-  return file_level_enum_descriptors_tester_2eproto[2];
+  return file_level_enum_descriptors_tester_2eproto[1];
 }
 bool TraceLevel_IsValid(int value) {
   switch (value) {
@@ -913,7 +891,6 @@ Session::Session(const Session& from)
     , decltype(_impl_.namespaceid_){}
     , decltype(_impl_.description_){}
     , decltype(_impl_.lifetime_){}
-    , decltype(_impl_.namespace_sync_){}
     , decltype(_impl_.entry_status_){}
     , decltype(_impl_.last_use_){}};
 
@@ -959,7 +936,6 @@ inline void Session::SharedCtor(
     , decltype(_impl_.namespaceid_){}
     , decltype(_impl_.description_){}
     , decltype(_impl_.lifetime_){0u}
-    , decltype(_impl_.namespace_sync_){0}
     , decltype(_impl_.entry_status_){0}
     , decltype(_impl_.last_use_){0u}
   };
@@ -1061,27 +1037,18 @@ const char* Session::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) 
         } else
           goto handle_unusual;
         continue;
-      // .com.wazuh.api.engine.tester.Sync namespace_sync = 6;
-      case 6:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 48)) {
-          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
-          CHK_(ptr);
-          _internal_set_namespace_sync(static_cast<::com::wazuh::api::engine::tester::Sync>(val));
-        } else
-          goto handle_unusual;
-        continue;
-      // .com.wazuh.api.engine.tester.State entry_status = 7;
-      case 7:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 56)) {
+      // .com.wazuh.api.engine.tester.State entry_status = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 40)) {
           uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
           _internal_set_entry_status(static_cast<::com::wazuh::api::engine::tester::State>(val));
         } else
           goto handle_unusual;
         continue;
-      // uint32 last_use = 8;
-      case 8:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 64)) {
+      // uint32 last_use = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 48)) {
           _impl_.last_use_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else
@@ -1153,24 +1120,17 @@ uint8_t* Session::_InternalSerialize(
         4, this->_internal_description(), target);
   }
 
-  // .com.wazuh.api.engine.tester.Sync namespace_sync = 6;
-  if (this->_internal_namespace_sync() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteEnumToArray(
-      6, this->_internal_namespace_sync(), target);
-  }
-
-  // .com.wazuh.api.engine.tester.State entry_status = 7;
+  // .com.wazuh.api.engine.tester.State entry_status = 5;
   if (this->_internal_entry_status() != 0) {
     target = stream->EnsureSpace(target);
     target = ::_pbi::WireFormatLite::WriteEnumToArray(
-      7, this->_internal_entry_status(), target);
+      5, this->_internal_entry_status(), target);
   }
 
-  // uint32 last_use = 8;
+  // uint32 last_use = 6;
   if (this->_internal_last_use() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(8, this->_internal_last_use(), target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(6, this->_internal_last_use(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -1216,19 +1176,13 @@ size_t Session::ByteSizeLong() const {
     total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_lifetime());
   }
 
-  // .com.wazuh.api.engine.tester.Sync namespace_sync = 6;
-  if (this->_internal_namespace_sync() != 0) {
-    total_size += 1 +
-      ::_pbi::WireFormatLite::EnumSize(this->_internal_namespace_sync());
-  }
-
-  // .com.wazuh.api.engine.tester.State entry_status = 7;
+  // .com.wazuh.api.engine.tester.State entry_status = 5;
   if (this->_internal_entry_status() != 0) {
     total_size += 1 +
       ::_pbi::WireFormatLite::EnumSize(this->_internal_entry_status());
   }
 
-  // uint32 last_use = 8;
+  // uint32 last_use = 6;
   if (this->_internal_last_use() != 0) {
     total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_last_use());
   }
@@ -1262,9 +1216,6 @@ void Session::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOB
   }
   if (from._internal_lifetime() != 0) {
     _this->_internal_set_lifetime(from._internal_lifetime());
-  }
-  if (from._internal_namespace_sync() != 0) {
-    _this->_internal_set_namespace_sync(from._internal_namespace_sync());
   }
   if (from._internal_entry_status() != 0) {
     _this->_internal_set_entry_status(from._internal_entry_status());
