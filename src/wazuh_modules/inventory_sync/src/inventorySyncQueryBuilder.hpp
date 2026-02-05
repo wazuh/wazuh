@@ -44,7 +44,7 @@ namespace InventorySyncQueryBuilder
     {
         nlohmann::json updateQuery;
 
-        // Build the query: match agent.id AND only update if version <= globalVersion (external_gte behavior)
+        // Build the query: match wazuh.agent.id AND only update if version <= globalVersion (external_gte behavior)
         updateQuery["query"]["bool"]["must"][0]["term"]["wazuh.agent.id"] = agentId;
         // Only update documents where version is null OR version <= globalVersion
         updateQuery["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"] = "state.document_version";
@@ -55,17 +55,17 @@ namespace InventorySyncQueryBuilder
         const auto timestamp = Utils::getCurrentISO8601();
 
         // Build the Painless script to update agent metadata
-        std::string script = "ctx._source.agent.id = params.id; "
-                             "ctx._source.agent.name = params.name; "
-                             "ctx._source.agent.version = params.version; "
-                             "if (ctx._source.agent.host == null) { ctx._source.agent.host = [:]; } "
-                             "ctx._source.agent.host.architecture = params.architecture; "
-                             "ctx._source.agent.host.hostname = params.hostname; "
-                             "if (ctx._source.agent.host.os == null) { ctx._source.agent.host.os = [:]; } "
-                             "ctx._source.agent.host.os.name = params.osname; "
-                             "ctx._source.agent.host.os.platform = params.osplatform; "
-                             "ctx._source.agent.host.os.type = params.ostype; "
-                             "ctx._source.agent.host.os.version = params.osversion; "
+        std::string script = "ctx._source.wazuh.agent.id = params.id; "
+                             "ctx._source.wazuh.agent.name = params.name; "
+                             "ctx._source.wazuh.agent.version = params.version; "
+                             "if (ctx._source.wazuh.agent.host == null) { ctx._source.wazuh.agent.host = [:]; } "
+                             "ctx._source.wazuh.agent.host.architecture = params.architecture; "
+                             "ctx._source.wazuh.agent.host.hostname = params.hostname; "
+                             "if (ctx._source.wazuh.agent.host.os == null) { ctx._source.wazuh.agent.host.os = [:]; } "
+                             "ctx._source.wazuh.agent.host.os.name = params.osname; "
+                             "ctx._source.wazuh.agent.host.os.platform = params.osplatform; "
+                             "ctx._source.wazuh.agent.host.os.type = params.ostype; "
+                             "ctx._source.wazuh.agent.host.os.version = params.osversion; "
                              "if (ctx._source.state == null) { ctx._source.state = [:]; } "
                              "ctx._source.state.document_version = params.globalVersion; "
                              "ctx._source.state.modified_at = params.timestamp;";
@@ -157,7 +157,7 @@ namespace InventorySyncQueryBuilder
     {
         nlohmann::json updateQuery;
 
-        // Build the query: match agent.id AND only update if version <= globalVersion (external_gte behavior)
+        // Build the query: match wazuh.agent.id AND only update if version <= globalVersion (external_gte behavior)
         updateQuery["query"]["bool"]["must"][0]["term"]["wazuh.agent.id"] = agentId;
         // Only update documents where version is null OR version <= globalVersion
         updateQuery["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"] = "state.document_version";
@@ -168,7 +168,7 @@ namespace InventorySyncQueryBuilder
         const auto timestamp = Utils::getCurrentISO8601();
 
         // Build the Painless script to update agent groups
-        std::string script = "ctx._source.agent.groups = params.groups; "
+        std::string script = "ctx._source.wazuh.agent.groups = params.groups; "
                              "if (ctx._source.state == null) { ctx._source.state = [:]; } "
                              "ctx._source.state.document_version = params.globalVersion; "
                              "ctx._source.state.modified_at = params.timestamp;";
@@ -207,34 +207,34 @@ namespace InventorySyncQueryBuilder
     {
         nlohmann::json updateQuery;
 
-        // Build the query: match agent.id only
+        // Build the query: match wazuh.agent.id only
         updateQuery["query"]["bool"]["must"][0]["term"]["wazuh.agent.id"] = agentId;
 
         // Build the Painless script that compares fields and only updates if different
         // Note: Does NOT update document_version or timestamp - this is disaster recovery
         std::string script =
             "boolean needsUpdate = false; "
-            "if (ctx._source.agent.id != params.id) { needsUpdate = true; } "
-            "if (ctx._source.agent.name != params.name) { needsUpdate = true; } "
-            "if (ctx._source.agent.version != params.version) { needsUpdate = true; } "
-            "if (ctx._source.agent?.host?.architecture != params.architecture) { needsUpdate = true; } "
-            "if (ctx._source.agent?.host?.hostname != params.hostname) { needsUpdate = true; } "
-            "if (ctx._source.agent?.host?.os?.name != params.osname) { needsUpdate = true; } "
-            "if (ctx._source.agent?.host?.os?.platform != params.osplatform) { needsUpdate = true; } "
-            "if (ctx._source.agent?.host?.os?.type != params.ostype) { needsUpdate = true; } "
-            "if (ctx._source.agent?.host?.os?.version != params.osversion) { needsUpdate = true; } "
+            "if (ctx._source.wazuh.agent.id != params.id) { needsUpdate = true; } "
+            "if (ctx._source.wazuh.agent.name != params.name) { needsUpdate = true; } "
+            "if (ctx._source.wazuh.agent.version != params.version) { needsUpdate = true; } "
+            "if (ctx._source.wazuh.agent?.host?.architecture != params.architecture) { needsUpdate = true; } "
+            "if (ctx._source.wazuh.agent?.host?.hostname != params.hostname) { needsUpdate = true; } "
+            "if (ctx._source.wazuh.agent?.host?.os?.name != params.osname) { needsUpdate = true; } "
+            "if (ctx._source.wazuh.agent?.host?.os?.platform != params.osplatform) { needsUpdate = true; } "
+            "if (ctx._source.wazuh.agent?.host?.os?.type != params.ostype) { needsUpdate = true; } "
+            "if (ctx._source.wazuh.agent?.host?.os?.version != params.osversion) { needsUpdate = true; } "
             "if (!needsUpdate) { ctx.op = 'noop'; } else { "
-            "  ctx._source.agent.id = params.id; "
-            "  ctx._source.agent.name = params.name; "
-            "  ctx._source.agent.version = params.version; "
-            "  if (ctx._source.agent.host == null) { ctx._source.agent.host = [:]; } "
-            "  ctx._source.agent.host.architecture = params.architecture; "
-            "  ctx._source.agent.host.hostname = params.hostname; "
-            "  if (ctx._source.agent.host.os == null) { ctx._source.agent.host.os = [:]; } "
-            "  ctx._source.agent.host.os.name = params.osname; "
-            "  ctx._source.agent.host.os.platform = params.osplatform; "
-            "  ctx._source.agent.host.os.type = params.ostype; "
-            "  ctx._source.agent.host.os.version = params.osversion; "
+            "  ctx._source.wazuh.agent.id = params.id; "
+            "  ctx._source.wazuh.agent.name = params.name; "
+            "  ctx._source.wazuh.agent.version = params.version; "
+            "  if (ctx._source.wazuh.agent.host == null) { ctx._source.wazuh.agent.host = [:]; } "
+            "  ctx._source.wazuh.agent.host.architecture = params.architecture; "
+            "  ctx._source.wazuh.agent.host.hostname = params.hostname; "
+            "  if (ctx._source.wazuh.agent.host.os == null) { ctx._source.wazuh.agent.host.os = [:]; } "
+            "  ctx._source.wazuh.agent.host.os.name = params.osname; "
+            "  ctx._source.wazuh.agent.host.os.platform = params.osplatform; "
+            "  ctx._source.wazuh.agent.host.os.type = params.ostype; "
+            "  ctx._source.wazuh.agent.host.os.version = params.osversion; "
             "}";
 
         updateQuery["script"]["source"] = script;
@@ -262,13 +262,13 @@ namespace InventorySyncQueryBuilder
     {
         nlohmann::json updateQuery;
 
-        // Build the query: match agent.id only
+        // Build the query: match wazuh.agent.id only
         updateQuery["query"]["bool"]["must"][0]["term"]["wazuh.agent.id"] = agentId;
 
         // Build the Painless script that compares groups and only updates if different
         // Note: Does NOT update document_version or timestamp - this is disaster recovery
         std::string script = "boolean needsUpdate = false; "
-                             "def currentGroups = ctx._source.agent?.groups; "
+                             "def currentGroups = ctx._source.wazuh.agent?.groups; "
                              "if (currentGroups == null && params.groups.size() > 0) { needsUpdate = true; } "
                              "else if (currentGroups != null) { "
                              "  if (currentGroups.size() != params.groups.size()) { needsUpdate = true; } "
@@ -283,7 +283,7 @@ namespace InventorySyncQueryBuilder
                              "  } "
                              "} "
                              "if (!needsUpdate) { ctx.op = 'noop'; } else { "
-                             "  ctx._source.agent.groups = params.groups; "
+                             "  ctx._source.wazuh.agent.groups = params.groups; "
                              "}";
 
         updateQuery["script"]["source"] = script;
@@ -344,7 +344,7 @@ namespace InventorySyncQueryBuilder
     ///   for a given agent from the wazuh-states-vulnerabilities index.
     ///
     ///   The query:
-    ///   - Filters by agent.id
+    ///   - Filters by wazuh.agent.id
     ///   - Sorts by _id ascending (for search_after pagination)
     ///   - Restricts _source to vulnerability.id only
     ///

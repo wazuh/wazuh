@@ -40,7 +40,7 @@
       "indices": ["wazuh-states-fim-files", "wazuh-states-sca", "wazuh-states-inventory-packages"],
       "agent_id": "001",
       "fields": {
-        "agent.groups": ["webservers", "production", "eu-west"],
+        "wazuh.agent.groups": ["webservers", "production", "eu-west"],
         "state.document_version": 54321
       }
     }

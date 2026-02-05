@@ -223,19 +223,21 @@ Each entry represents one **DataValue** message. The tool:
       "_id": "wazuh_001_f033cfe690b80a478fb4c832934f0fd55927c349",
       "_score": 2,
       "_source": {
-        "agent": {
-          "id": "001",
-          "name": "ubuntu22",
-          "version": "v5.0.0",
-          "groups": ["default"],
-          "host": {
-            "architecture": "aarch64",
-            "hostname": "ubuntu22",
-            "os": {
-              "name": "Ubuntu",
-              "platform": "ubuntu",
-              "type": "linux",
-              "version": "22.04.5 LTS (Jammy Jellyfish)"
+        "wazuh": {
+          "agent": {
+            "id": "001",
+            "name": "ubuntu22",
+            "version": "v5.0.0",
+            "groups": ["default"],
+            "host": {
+              "architecture": "aarch64",
+              "hostname": "ubuntu22",
+              "os": {
+                "name": "Ubuntu",
+                "platform": "ubuntu",
+                "type": "linux",
+                "version": "22.04.5 LTS (Jammy Jellyfish)"
+              }
             }
           }
         },
@@ -277,19 +279,21 @@ Each entry represents one **DataValue** message. The tool:
       "_id": "wazuh_001_f033cfe690b80a478fb4c832934f0fd55927c350",
       "_score": 2,
       "_source": {
-        "agent": {
-          "id": "001",
-          "name": "ubuntu22",
-          "version": "v5.0.0",
-          "groups": ["default"],
-          "host": {
-            "architecture": "aarch64",
-            "hostname": "ubuntu22",
-            "os": {
-              "name": "Ubuntu",
-              "platform": "ubuntu",
-              "type": "linux",
-              "version": "22.04.5 LTS (Jammy Jellyfish)"
+        "wazuh": {
+          "agent": {
+            "id": "001",
+            "name": "ubuntu22",
+            "version": "v5.0.0",
+            "groups": ["default"],
+            "host": {
+              "architecture": "aarch64",
+              "hostname": "ubuntu22",
+              "os": {
+                "name": "Ubuntu",
+                "platform": "ubuntu",
+                "type": "linux",
+                "version": "22.04.5 LTS (Jammy Jellyfish)"
+              }
             }
           }
         },
@@ -341,19 +345,21 @@ Example (OS context document):
       "_id": "wazuh_001_f033cfe690b80a478fb4c832934f0fd55927c351",
       "_score": 2,
       "_source": {
-        "agent": {
-          "id": "001",
-          "name": "ubuntu22",
-          "version": "v5.0.0",
-          "groups": ["default"],
-          "host": {
-            "architecture": "aarch64",
-            "hostname": "ubuntu22",
-            "os": {
-              "name": "Ubuntu",
-              "platform": "ubuntu",
-              "type": "linux",
-              "version": "22.04.5 LTS (Jammy Jellyfish)"
+        "wazuh": {
+          "agent": {
+            "id": "001",
+            "name": "ubuntu22",
+            "version": "v5.0.0",
+            "groups": ["default"],
+            "host": {
+              "architecture": "aarch64",
+              "hostname": "ubuntu22",
+              "os": {
+                "name": "Ubuntu",
+                "platform": "ubuntu",
+                "type": "linux",
+                "version": "22.04.5 LTS (Jammy Jellyfish)"
+              }
             }
           }
         },
