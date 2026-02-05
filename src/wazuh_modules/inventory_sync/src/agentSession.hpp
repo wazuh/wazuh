@@ -114,11 +114,6 @@ public:
 
         auto agentIdString = std::string(agentId.data(), agentId.size());
 
-        if (agentIdString.length() < 3)
-        {
-            agentIdString.insert(0, 3 - agentIdString.length(), '0');
-        }
-
         // Extract groups
         std::vector<std::string> groups;
 
