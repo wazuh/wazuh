@@ -1,7 +1,7 @@
 #include "agent_metadata_db.h"
-#include "../wazuh_db/helpers/wdb_global_helpers.h"
+#include "wazuhdb_queries_op.h"
 #include "remoted.h"
-#include "../headers/batch_queue_op.h"
+#include "batch_queue_op.h"
 
 #include <stdlib.h>
 #include <string.h>

@@ -14,7 +14,7 @@
 #include "defs.h"
 #include "os_err.h"
 #include "string_op.h"
-#include "wazuh_db/helpers/wdb_global_helpers.h"
+#include "wazuhdb_queries_op.h"
 #include "wazuh_db/wdb.h"
 
 #ifdef WAZUH_UNIT_TESTING

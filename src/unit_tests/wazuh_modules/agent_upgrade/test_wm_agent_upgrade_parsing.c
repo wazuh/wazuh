@@ -19,7 +19,7 @@
 #include "wmodules.h"
 #include "wm_agent_upgrade_parsing.h"
 #include "wm_agent_upgrade_tasks.h"
-#include "../../headers/shared.h"
+#include "shared.h"
 
 int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_message);
 wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* params, char** error_message);

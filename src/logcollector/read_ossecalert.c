@@ -9,9 +9,9 @@
  */
 
 #include "shared.h"
-#include "headers/read-alert.h"
+#include "read-alert.h"
 #include "logcollector.h"
-#include "os_crypto/sha1/sha1_op.h"
+#include "sha1_op.h"
 
 
 void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_it) {

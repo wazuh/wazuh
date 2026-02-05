@@ -24,7 +24,7 @@
 
 #include "wmodules.h"
 #include "wm_agent_upgrade_tasks.h"
-#include "../../headers/shared.h"
+#include "shared.h"
 
 extern OSHash *task_table_by_agent_id;
 

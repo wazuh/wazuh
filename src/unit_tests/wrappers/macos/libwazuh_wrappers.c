@@ -12,7 +12,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include "../common.h"
-#include "headers/defs.h"
+#include "defs.h"
 
 void wrap_mterror(const char *tag, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];

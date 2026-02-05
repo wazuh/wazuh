@@ -204,9 +204,6 @@
                     <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A">
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
                     </Component>
-                    <Component Id="LIBWAZUHSHARED_DLL" DiskId="1" Guid="A40D7FB4-8D7B-440E-B7CB-1D8CB1E277E6">
-                        <File Id="LIBWAZUHSHARED_DLL" Name="libwazuhshared.dll" Source="..\libwazuhshared.dll" />
-                    </Component>
                     <Component Id="DBSYNC_DLL" DiskId="1" Guid="E6DD27ED-1579-4369-B83D-FD618894B56C">
                         <File Id="DBSYNC_DLL" Name="dbsync.dll" Source="..\build\bin\dbsync.dll" />
                     </Component>
@@ -617,7 +614,6 @@
             <ComponentRef Id="AGENT_INFO_DLL" />
             <ComponentRef Id="FIMDB_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
-            <ComponentRef Id="LIBWAZUHSHARED_DLL" />
             <ComponentRef Id="DBSYNC_DLL" />
             <ComponentRef Id="SYSINFO_DLL" />
             <ComponentRef Id="AGENT_SYNC_PROTOCOL_DLL" />

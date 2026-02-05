@@ -30,15 +30,6 @@
 #define AGENT_CS_ACTIVE          "active"
 #define AGENT_CS_DISCONNECTED    "disconnected"
 
-/// Enumeration of agents disconected status reasons.
-typedef enum agent_status_code_t {
-        INVALID_VERSION = 1,    ///< Invalid agent version
-        ERR_VERSION_RECV,       ///< Error retrieving version
-        HC_SHUTDOWN_RECV,       ///< Shutdown message received
-        NO_KEEPALIVE,           ///< Disconnected because no keepalive received
-        RESET_BY_MANAGER,       ///< Connection reset by manager
-} agent_status_code_t;
-
 /* wdb_exec_row_stmt modes */
 #define STMT_MULTI_COLUMN 0
 #define STMT_SINGLE_COLUMN 1
@@ -169,27 +160,6 @@ typedef enum wdb_backup_db {
     WDB_GLOBAL_BACKUP,
     WDB_LAST_BACKUP
 } wdb_backup_db ;
-
-typedef struct wdb_backup_settings_node {
-    bool enabled;
-    time_t interval;
-    int max_files;
-} wdb_backup_settings_node;
-
-typedef struct wdb_config {
-    int worker_pool_size;
-    int commit_time_min;
-    int commit_time_max;
-    int open_db_limit;
-    int fragmentation_threshold;
-    int fragmentation_delta;
-    int free_pages_percentage;
-    int max_fragmentation;
-    int check_fragmentation_interval;
-    wdb_backup_settings_node** wdb_backup_settings;
-    bool is_worker_node; ///< Indicates if the node is a cluster worker node
-} wdb_config;
-
 #include "wdb_pool.h"
 
 extern char *schema_global_sql;
@@ -201,39 +171,7 @@ extern char *schema_global_upgrade_v4_sql;
 extern char *schema_global_upgrade_v5_sql;
 extern char *schema_global_upgrade_v6_sql;
 extern char *schema_global_upgrade_v7_sql;
-
-extern wdb_config wconfig;
 extern _Config gconfig;
-
-typedef struct os_data {
-    char *os_name;
-    char *os_version;
-    char *os_major;
-    char *os_minor;
-    char *os_codename;
-    char *os_platform;
-    char *os_build;
-    char *os_uname;
-    char *os_arch;
-    char *os_type;
-    char *hostname;
-} os_data;
-
-typedef struct agent_info_data {
-    int id;
-    os_data *osd;
-    char *version;
-    char *config_sum;
-    char *merged_sum;
-    char *manager_host;
-    char *node_name;
-    char *agent_ip;
-    char *labels;
-    char *connection_status;
-    char *sync_status;
-    char *group_config_status;
-    agent_status_code_t status_code;
-} agent_info_data;
 
 /**
  * @brief pointer to function for any transaction

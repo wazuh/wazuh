@@ -9,9 +9,9 @@
  */
 
 #include "shared.h"
-#include "os_xml/os_xml.h"
-#include "os_regex/os_regex.h"
-#include "os_net/os_net.h"
+#include "os_xml.h"
+#include "os_regex.h"
+#include "os_net.h"
 #include "remoted.h"
 #include "config.h"
 #include "module_limits.h"

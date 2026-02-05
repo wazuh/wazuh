@@ -13,10 +13,11 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "../../headers/shared.h"
+#include "shared.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "wazuh_db-config.h"
 #include "../../wazuh_db/wdb.h"
+#include "wazuhdb_op.h"
 
 /* setup/teardown */
 

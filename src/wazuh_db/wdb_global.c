@@ -10,6 +10,7 @@
  */
 
 #include "wdb.h"
+#include "wazuhdb_op.h"
 
 // List of agent information fields in global DB
 // The ":" is used for parameter binding

@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../../headers/shared.h"
+#include "shared.h"
 #include "../../remoted/remoted.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"

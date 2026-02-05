@@ -23,7 +23,7 @@
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/cluster_utils_wrappers.h"
-#include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
+#include "../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 
 typedef struct test_struct {
     remoted_agent_state_t *agent_state;

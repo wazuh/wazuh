@@ -14,7 +14,7 @@
 #include "shared.h"
 #include "remoted.h"
 #include "state.h"
-#include "os_net/os_net.h"
+#include "os_net.h"
 
 
 /* Start of a new thread. Only returns on unrecoverable errors. */

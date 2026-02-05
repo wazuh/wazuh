@@ -10,6 +10,7 @@
  */
 
 #include "wdb.h"
+#include "wazuhdb_op.h"
 #include "wmodules.h"
 #include "wazuhdb_op.h"
 
@@ -29,6 +30,10 @@
 
 #define BUSY_SLEEP 1
 #define MAX_ATTEMPTS 1000
+
+/* Variables */
+
+_Config gconfig;
 
 static const char *SQL_CREATE_TEMP_TABLE = "CREATE TEMP TABLE IF NOT EXISTS s(rowid INTEGER PRIMARY KEY, pageno INT);";
 static const char *SQL_TRUNCATE_TEMP_TABLE = "DELETE FROM s;";

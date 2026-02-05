@@ -822,9 +822,9 @@ void test_wdb_init_stmt_in_cache_invalid_transaction(void **state) {
 
 void test_wdb_init_stmt_in_cache_invalid_statement(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    int STR_SIZE = 48;
-    char error_message[STR_SIZE];
-    snprintf(error_message, STR_SIZE, "DB(000) SQL statement index (%d) out of bounds", WDB_STMT_SIZE);
+    int MSG_SIZE = 48;
+    char error_message[MSG_SIZE];
+    snprintf(error_message, MSG_SIZE, "DB(000) SQL statement index (%d) out of bounds", WDB_STMT_SIZE);
 
     will_return_always(__wrap_time, 0);
 

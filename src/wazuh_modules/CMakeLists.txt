@@ -8,7 +8,12 @@ endif()
 
 # Core include directories
 include_directories(
-  ${SRC_FOLDER}/headers/
+  ${SRC_FOLDER}/shared/include/
+  ${SRC_FOLDER}/shared/os_regex/
+  ${SRC_FOLDER}/external/curl/include/curl/
+  ${SRC_FOLDER}/external/libpcre2/include/
+  ${SRC_FOLDER}/external/libyaml/include
+  ${SRC_FOLDER}/external/libplist/bin/include/
   ${SRC_FOLDER}/external/cJSON/
   ${SRC_FOLDER}/external/bzip2/
   ${SRC_FOLDER}/external/sqlite/
@@ -17,13 +22,14 @@ include_directories(
   ${SRC_FOLDER}/external/zlib/
   ${SRC_FOLDER}/addagent
   ${SRC_FOLDER}/config/include
-  ${SRC_FOLDER}/os_crypto/md5
-  ${SRC_FOLDER}/os_crypto/md5_sha1_sha256
-  ${SRC_FOLDER}/os_crypto/sha1
-  ${SRC_FOLDER}/os_crypto/sha256
-  ${SRC_FOLDER}/os_crypto/signature
-  ${SRC_FOLDER}/os_net
-  ${SRC_FOLDER}/os_xml
+  ${SRC_FOLDER}/error_messages
+  ${SRC_FOLDER}/shared/os_crypto/md5
+  ${SRC_FOLDER}/shared/os_crypto/md5_sha1_sha256
+  ${SRC_FOLDER}/shared/os_crypto/sha1
+  ${SRC_FOLDER}/shared/os_crypto/sha256
+  ${SRC_FOLDER}/shared/os_crypto/signature
+  ${SRC_FOLDER}/shared/os_net
+  ${SRC_FOLDER}/shared/os_xml
   ${SRC_FOLDER}/data_provider/include
   ${SRC_FOLDER}/shared_modules/
   ${SRC_FOLDER}/shared_modules/agent_metadata/include
@@ -120,7 +126,10 @@ if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
 
   # Link jemalloc for server builds (unless explicitly disabled)
   if(NOT DEFINED DISABLE_JEMALLOC OR NOT DISABLE_JEMALLOC)
-    find_library(JEMALLOC_LIB jemalloc PATHS ${SRC_FOLDER}/external/jemalloc/lib NO_DEFAULT_PATH)
+    find_library(
+      JEMALLOC_LIB jemalloc
+      PATHS ${SRC_FOLDER}/external/jemalloc/lib
+      NO_DEFAULT_PATH)
     if(JEMALLOC_LIB)
       target_link_libraries(wazuh_modulesd_lib PUBLIC ${JEMALLOC_LIB})
     endif()

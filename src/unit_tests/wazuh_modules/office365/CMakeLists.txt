@@ -93,6 +93,7 @@ foreach(counter RANGE ${count})
     endif()
 
     if(NOT test_flags STREQUAL " ")
+        separate_arguments(test_flags)
         target_link_libraries(
             ${test_name}
             ${test_flags}

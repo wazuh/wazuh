@@ -1,6 +1,12 @@
-# Generate os_net library
-file(GLOB os_net_files
-    ${SRC_FOLDER}/os_net/*.o)
+# Generate os_xml library
+# Collect syscheckd object files from CMake build
+if(${TARGET} STREQUAL "winagent")
+  file(GLOB os_net_files
+       ${SRC_FOLDER}/build/shared/CMakeFiles/wazuh.dir/os_net/*.obj)
+else()
+  file(GLOB os_net_files
+       ${SRC_FOLDER}/build/shared/CMakeFiles/wazuh.dir/os_net/*.o)
+endif()
 
 add_library(OS_NET_O STATIC ${os_net_files})
 

@@ -21,7 +21,7 @@
 #include "wmodules.h"
 #include "wm_task_manager.h"
 #include "wm_task_manager_tasks.h"
-#include "../../headers/shared.h"
+#include "shared.h"
 
 cJSON* wm_task_manager_command_upgrade(wm_task_manager_upgrade *task, int command, int *error_code);
 cJSON* wm_task_manager_command_upgrade_get_status(wm_task_manager_upgrade_get_status *task, int *error_code);

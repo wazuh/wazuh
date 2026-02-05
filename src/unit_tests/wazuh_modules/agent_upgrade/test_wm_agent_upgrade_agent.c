@@ -26,7 +26,7 @@
 
 #include "wmodules.h"
 #include "wm_agent_upgrade_agent.h"
-#include "../../headers/shared.h"
+#include "shared.h"
 
 #ifndef TEST_WINAGENT
 void wm_agent_upgrade_listen_messages(const wm_agent_configs* agent_configs);

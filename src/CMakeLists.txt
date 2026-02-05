@@ -175,7 +175,7 @@ link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
 link_directories(${SRC_FOLDER}/external/simdjson/build/)
 
 # Wazuh headers
-include_directories(${SRC_FOLDER}/headers)
+include_directories(${SRC_FOLDER}/shared/include)
 
 # Shared modules includes
 include_directories(${SRC_FOLDER}/shared_modules/agent_metadata/include)
@@ -229,6 +229,9 @@ if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   add_subdirectory(shared_modules/keystore)
   add_subdirectory(shared_modules/router)
 endif()
+
+# Shared (libwazuh)
+add_subdirectory(shared)
 
 # Config
 add_subdirectory(config)

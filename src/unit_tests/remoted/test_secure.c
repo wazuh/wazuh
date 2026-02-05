@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <cmocka.h>
 
-#include "../../headers/shared.h"
+#include "shared.h"
 #include "../../remoted/remoted.h"
 #include "../../remoted/secure.c"
 #include "../wrappers/common.h"

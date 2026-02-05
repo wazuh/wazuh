@@ -9,9 +9,9 @@
  * Foundation.
  */
 
-#include "wdb.h"
+#include "wazuhdb_op.h"
 #include "wdb_state.h"
-#include <os_net/os_net.h>
+#include "os_net.h"
 #include "config.h"
 #include "wazuh_db-config.h"
 

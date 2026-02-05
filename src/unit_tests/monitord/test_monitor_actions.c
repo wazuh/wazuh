@@ -27,10 +27,10 @@
 #include "../wrappers/wazuh/shared/agent_op_wrappers.h"
 
 #include "client-config.h"
-#include "../headers/store_op.h"
+#include "store_op.h"
 #include "../monitord/monitord.h"
-#include "../headers/defs.h"
-#include "../headers/shared.h"
+#include "defs.h"
+#include "shared.h"
 #include "config.h"
 
 /* redefinitons/wrapping */

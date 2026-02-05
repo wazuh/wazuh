@@ -9,7 +9,7 @@
  */
 
 #include "manage_agents.h"
-#include "os_crypto/md5/md5_op.h"
+#include "md5_op.h"
 #include "external/cJSON/cJSON.h"
 #include <stdlib.h>
 #include "authd-config.h"

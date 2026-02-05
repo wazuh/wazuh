@@ -9,7 +9,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
-#include "os_crypto/sha1/sha1_op.h"
+#include "sha1_op.h"
 
 #define MAX_CACHE 16
 #define MAX_HEADER 64

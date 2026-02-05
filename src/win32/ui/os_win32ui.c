@@ -9,7 +9,7 @@
  */
 
 #include <process.h>
-#include "../../src/headers/string_op.h"
+#include "string_op.h"
 #include "os_win32ui.h"
 #include "../os_win.h"
 #include "dll_load_notify.h"

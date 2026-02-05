@@ -14,8 +14,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../headers/shared.h"
-#include "../../os_crypto/blowfish/bf_op.h"
+#include "shared.h"
+#include "bf_op.h"
 
 /* Forward declarations */
 int doEncryptByMethod(const char *input, char *output, const char *charkey,

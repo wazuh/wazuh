@@ -11,7 +11,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include "../../headers/shared.h"
+#include "shared.h"
 #include "os_net_wrappers.h"
 
 int __wrap_OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t perm) {

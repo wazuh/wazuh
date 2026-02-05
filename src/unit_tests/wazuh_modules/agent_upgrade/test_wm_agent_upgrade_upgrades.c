@@ -28,7 +28,7 @@
 #include "wmodules.h"
 #include "wm_agent_upgrade_upgrades.h"
 #include "wm_agent_upgrade_tasks.h"
-#include "../../headers/shared.h"
+#include "shared.h"
 
 extern w_linked_queue_t *upgrade_queue;
 

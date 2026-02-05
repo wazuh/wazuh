@@ -22,12 +22,16 @@ link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
 link_directories(${CMAKE_BINARY_DIR}/lib)
 include_directories(${SRC_FOLDER}/external/bzip2/)
 include_directories(${SRC_FOLDER}/external/cJSON/)
-include_directories(${SRC_FOLDER}/external/libpcre2/include)
+include_directories(${SRC_FOLDER}/external/curl/include/curl/)
+include_directories(${SRC_FOLDER}/external/libpcre2/include/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/openssl/include/) # needed for
                                                              # hash_helper
 include_directories(${SRC_FOLDER}/external/flatbuffers/include)
-include_directories(${SRC_FOLDER}/headers/)
+include_directories(${SRC_FOLDER}/external/libyaml/include/)
+include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
+include_directories(${SRC_FOLDER}/shared/include/)
+include_directories(${SRC_FOLDER}/shared/os_regex/)
 include_directories(${SRC_FOLDER}/wazuh_modules/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(
@@ -38,6 +42,7 @@ include_directories(${SRC_FOLDER}/shared_modules/agent_metadata/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
 include_directories(${CMAKE_BINARY_DIR}/shared_modules/sync_protocol/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
+include_directories(${SRC_FOLDER}/error_messages/)
 include_directories(${SRC_FOLDER}/data_provider/include/)
 
 find_library(

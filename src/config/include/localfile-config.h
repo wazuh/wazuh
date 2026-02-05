@@ -44,6 +44,7 @@
 
 /* For ino_t */
 #include <sys/types.h>
+#include <cJSON.h>
 #include "labels_op.h"
 #include "expression.h"
 #include "os_xml.h"

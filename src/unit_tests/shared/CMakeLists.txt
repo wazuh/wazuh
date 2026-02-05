@@ -185,6 +185,11 @@ else()
                                     -Wl,--wrap=fgets,--wrap=chmod,--wrap=stat,--wrap=getpid")
 endif()
 
+if(NOT ${TARGET} STREQUAL "winagent")
+    list(APPEND shared_tests_names "test_ssl_op")
+    list(APPEND shared_tests_flags "-Wl,--wrap,SSL_read -Wl,--wrap=SSL_new")
+endif()
+
 list(APPEND shared_tests_names "test_time_op")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck ${DEBUG_OP_WRAPPERS}")
@@ -264,6 +269,19 @@ list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_wazuhdb_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")
+
+list(APPEND shared_tests_names "test_wazuhdb_queries_op")
+list(APPEND shared_tests_flags "-Wl,--wrap,strerror \
+                                -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,cJSON_CreateString -Wl,--wrap,cJSON_Parse \
+                                -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddNumberToObject \
+                                -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,cJSON_GetObjectItem \
+                                -Wl,--wrap,cJSON_Delete -Wl,--wrap,time -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap=fgetc\
+                                -Wl,--wrap,fclose -Wl,--wrap,cJSON_AddArrayToObject -Wl,--wrap,remove -Wl,--wrap,opendir -Wl,--wrap,readdir -Wl,--wrap,closedir \
+                                -Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,wdbc_query_parse_json -Wl,--wrap,wdbc_query_parse \
+                                -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,chown \
+                                -Wl,--wrap,chmod -Wl,--wrap,IsDir -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek -Wl,--wrap,get_node_name \
+                                -Wl,--wrap,rbtree_insert -Wl,--wrap,wfopen \
+                                -Wl,--wrap,stat -Wl,--wrap,fgetpos ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_syscheck_op")

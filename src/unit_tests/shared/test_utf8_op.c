@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../headers/shared.h"
+#include "shared.h"
 #include "../wrappers/common.h"
 
 // Utility function for verifying the result

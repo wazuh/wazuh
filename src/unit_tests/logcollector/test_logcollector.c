@@ -13,11 +13,11 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "../../headers/shared.h"
+#include "shared.h"
 #include "../../logcollector/logcollector.h"
 #include <math.h>
 #include <pthread.h>
-#include "../../os_crypto/sha1/sha1_op.h"
+#include "sha1_op.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"

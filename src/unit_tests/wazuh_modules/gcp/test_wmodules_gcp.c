@@ -14,8 +14,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../../headers/shared.h"
-#include "../../os_xml/os_xml.h"
+#include "shared.h"
+#include "os_xml.h"
 #include "wmodules.h"
 #include "wm_gcp.h"
 #include "../../wrappers/libc/stdlib_wrappers.h"

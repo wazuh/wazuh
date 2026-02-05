@@ -25,7 +25,7 @@
 #include "../../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/rbtree_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/validate_op_wrappers.h"
-#include "../../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
+#include "../../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../../wrappers/libc/stdio_wrappers.h"
 #include "../../wrappers/libc/string_wrappers.h"

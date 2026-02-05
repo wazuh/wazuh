@@ -1,10 +1,10 @@
 # Find the wazuh shared library
-find_library(WAZUHLIB NAMES libwazuh.a HINTS "${SRC_FOLDER}")
+find_library(WAZUHLIB NAMES libwazuh_test.a HINTS "${SRC_FOLDER}")
 find_library(WAZUHEXT NAMES libwazuhext.so HINTS "${SRC_FOLDER}")
 set(uname "Linux")
 
 if(NOT WAZUHLIB)
-    message(FATAL_ERROR "libwazuh.a not found! Aborting...")
+    message(FATAL_ERROR "libwazuh_test.a not found! Aborting...")
 endif()
 
 if(NOT WAZUHEXT)

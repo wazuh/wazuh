@@ -16,7 +16,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "../headers/shared.h"
+#include "shared.h"
 
 
 /* tests */

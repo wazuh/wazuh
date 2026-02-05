@@ -9,8 +9,8 @@
  */
 
 #include "shared.h"
-#include "os_crypto/md5/md5_op.h"
-#include "os_net/os_net.h"
+#include "md5_op.h"
+#include "os_net.h"
 #include "agentd.h"
 #include "metadata_provider.h"
 #include "cJSON.h"

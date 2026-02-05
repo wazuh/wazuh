@@ -10,10 +10,10 @@
 
 #include <shared.h>
 #include <pthread.h>
-#include "os_net/os_net.h"
+#include "os_net.h"
 #include "execd.h"
-#include "os_crypto/sha1/sha1_op.h"
-#include "os_crypto/signature/signature.h"
+#include "sha1_op.h"
+#include "signature.h"
 #include "wmodules.h"
 #include "external/zlib/zlib.h"
 #include "client-agent/agentd.h"

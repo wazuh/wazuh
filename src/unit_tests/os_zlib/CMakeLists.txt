@@ -1,21 +1,19 @@
-# Generate execd library
-file(GLOB os_zlib_files
-    ${SRC_FOLDER}/os_zlib/*.o)
+# Generate os_xml library
+# Collect syscheckd object files from CMake build
+if(${TARGET} STREQUAL "winagent")
+  file(GLOB os_zlib_files
+       ${SRC_FOLDER}/build/shared/CMakeFiles/wazuh.dir/os_zlib/*.obj)
+else()
+  file(GLOB os_zlib_files
+       ${SRC_FOLDER}/build/shared/CMakeFiles/wazuh.dir/os_zlib/*.o)
+endif()
 
 add_library(OS_ZLIB_O STATIC ${os_zlib_files})
 
-set_source_files_properties(
-    ${os_zlib_files}
-    PROPERTIES
-    EXTERNAL_OBJECT true
-    GENERATED true
-)
+set_source_files_properties(${os_zlib_files} PROPERTIES EXTERNAL_OBJECT true
+                                                        GENERATED true)
 
-set_target_properties(
-    OS_ZLIB_O
-    PROPERTIES
-    LINKER_LANGUAGE C
-)
+set_target_properties(OS_ZLIB_O PROPERTIES LINKER_LANGUAGE C)
 
 target_link_libraries(OS_ZLIB_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
@@ -23,28 +21,19 @@ target_link_libraries(OS_ZLIB_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 list(APPEND os_zlib_names "test_os_zlib")
 list(APPEND os_zlib_flags " ")
 
-
 list(LENGTH os_zlib_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
-    list(GET os_zlib_names ${counter} test_name)
-    list(GET os_zlib_flags ${counter} test_flags)
+  list(GET os_zlib_names ${counter} test_name)
+  list(GET os_zlib_flags ${counter} test_flags)
 
-    add_executable(${test_name} ${test_name}.c)
+  add_executable(${test_name} ${test_name}.c)
 
-    target_link_libraries(
-        ${test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        OS_ZLIB_O
-        ${TEST_DEPS}
-    )
+  target_link_libraries(${test_name} ${WAZUHLIB} ${WAZUHEXT} OS_ZLIB_O
+                        ${TEST_DEPS})
 
-    if(NOT test_flags STREQUAL " ")
-        target_link_libraries(
-            ${test_name}
-            ${test_flags}
-        )
-    endif()
-    add_test(NAME ${test_name} COMMAND ${test_name})
+  if(NOT test_flags STREQUAL " ")
+    target_link_libraries(${test_name} ${test_flags})
+  endif()
+  add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()

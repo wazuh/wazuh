@@ -12,9 +12,9 @@
 #include <stddef.h>
 #include <cmocka.h>
 
-#include "../../os_crypto/md5/md5_op.h"
+#include "md5_op.h"
 #include "../../wrappers/common.h"
-#include "../headers/shared.h"
+#include "shared.h"
 
 /* setups/teardowns */
 static int setup_group(void **state) {

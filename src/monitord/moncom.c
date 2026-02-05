@@ -9,7 +9,7 @@
  */
 
 #include <shared.h>
-#include "os_net/os_net.h"
+#include "os_net.h"
 #include "wmodules.h"
 #include "monitord.h"
 

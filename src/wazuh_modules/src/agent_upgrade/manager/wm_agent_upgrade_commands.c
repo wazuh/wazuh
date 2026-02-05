@@ -22,7 +22,7 @@
 #include "wm_agent_upgrade_tasks.h"
 #include "wm_agent_upgrade_validate.h"
 #include "wm_agent_upgrade_upgrades.h"
-#include "wdb_global_helpers.h"
+#include "wazuhdb_queries_op.h"
 
 /**
  * Analyze agent information and returns a JSON to be sent to the task manager

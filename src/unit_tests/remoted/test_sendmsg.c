@@ -16,7 +16,7 @@
 
 #include "../remoted/remoted.h"
 #include "../remoted/state.h"
-#include "../headers/shared.h"
+#include "shared.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/posix/pthread_wrappers.h"
