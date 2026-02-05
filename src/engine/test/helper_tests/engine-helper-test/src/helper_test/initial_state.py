@@ -83,6 +83,7 @@ def md5_file(path: Path) -> str:
 def init_geo_store(env_path: Path, city_mmdb: Path, asn_mmdb: Path):
     """
     Initialize geo store structure and JSON metadata for geo databases.
+    Creates a single nested JSON document at store/geo/mmdb/0.
 
     Args:
         env_path: Environment root path
@@ -90,39 +91,49 @@ def init_geo_store(env_path: Path, city_mmdb: Path, asn_mmdb: Path):
         asn_mmdb: Path to ASN mmdb file
     """
     geo_dest_path = env_path / "geo"
-    geo_store_path = env_path / "store" / "geo"
+    geo_store_path = env_path / "store" / "geo" / "mmdb"
 
     # Create directories
     geo_dest_path.mkdir(parents=True, exist_ok=True)
     geo_store_path.mkdir(parents=True, exist_ok=True)
 
-    # Current timestamp in ISO 8601 format
-    generated_at = int(datetime.now(timezone.utc).timestamp() * 1000)
+    # Current timestamp
+    generated_at = int(datetime.now(timezone.utc).timestamp())
 
+    # Validate files
     for mmdb_file, db_type in (
         (city_mmdb, "city"),
         (asn_mmdb, "asn"),
     ):
         if not mmdb_file.exists():
             raise FileNotFoundError(f"Geo DB not found: {mmdb_file}")
-
         if mmdb_file.suffix != ".mmdb":
             raise ValueError(f"Invalid Geo DB extension (expected .mmdb): {mmdb_file}")
 
-        db_hash = md5_file(mmdb_file)
+    # Calculate hashes
+    city_hash = md5_file(city_mmdb)
+    asn_hash = md5_file(asn_mmdb)
 
-        metadata = {
-            "path": mmdb_file.resolve().as_posix(),
-            "type": db_type,
-            "hash": db_hash,
+    # Create nested metadata structure
+    metadata = {
+        "city": {
+            "path": city_mmdb.resolve().as_posix(),
+            "hash": city_hash,
+            "generated_at": generated_at
+        },
+        "asn": {
+            "path": asn_mmdb.resolve().as_posix(),
+            "hash": asn_hash,
             "generated_at": generated_at
         }
+    }
 
-        store_json_path = geo_store_path / f"{mmdb_file.name}.json"
-        with open(store_json_path, "w") as f:
-            json.dump(metadata, f, indent=2)
+    # Write single JSON file at store/geo/mmdb/0
+    store_json_path = geo_store_path / "0"
+    with open(store_json_path, "w") as f:
+        json.dump(metadata, f, indent=4)
 
-        print(f"  Initialized {mmdb_file.name} ({db_type}): hash={db_hash[:8]}...")
+    print(f"  Initialized geo store: city={city_hash[:8]}..., asn={asn_hash[:8]}...")
 
 
 def cpy_kvdb(env_path: Path):
