@@ -373,24 +373,6 @@ void AgentInfoImpl::populateAgentMetadata()
             m_logFunction(LOG_WARNING, "Failed to read agent ID and name from client.keys");
         }
     }
-    else
-    {
-        // For server/manager, read from client.keys like agents
-        // Manager workflows should not rely on implicit local agent identity
-        if (!readClientKeys(agentId, agentName))
-        {
-            // If client.keys doesn't exist or is empty, use hostname
-            if (osInfo.contains("hostname"))
-            {
-                agentName = osInfo["hostname"];
-            }
-            m_logFunction(LOG_DEBUG, "Using agent data from system, Name=" + agentName);
-        }
-        else
-        {
-            m_logFunction(LOG_DEBUG, "Using agent data from client.keys, ID=" + agentId + ", Name=" + agentName);
-        }
-    }
 
     // Build the agent metadata JSON
     nlohmann::json agentMetadata;
