@@ -883,6 +883,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_deb(void **sta
     os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtwarn, formatted_msg, "(8169): Agent '0' with platform 'centos' won't be upgraded using package 'deb' without the force option. Ignoring...");
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/rpm/x86_64/versions");
     expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
