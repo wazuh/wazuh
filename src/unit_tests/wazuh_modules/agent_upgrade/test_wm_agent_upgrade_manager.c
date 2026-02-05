@@ -25,7 +25,7 @@
 
 #include "wmodules.h"
 #include "wm_agent_upgrade_manager.h"
-#include "../../headers/shared.h"
+#include "shared.h"
 
 void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs);
 void* wm_agent_upgrade_router_subscriber_thread(void);

@@ -23,7 +23,7 @@ endif()
 include_directories(include)
 
 include_directories(${SRC_FOLDER})
-include_directories(${SRC_FOLDER}/headers)
+include_directories(${SRC_FOLDER}/shared/include)
 include_directories(${SRC_FOLDER}/external/rocksdb/include)
 include_directories(${SRC_FOLDER}/external/nlohmann)
 include_directories(${SRC_FOLDER}/external/cJSON)

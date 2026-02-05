@@ -13,7 +13,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
-#include "os_crypto/sha1/sha1_op.h"
+#include "sha1_op.h"
 #define OS_MAXSTR_BE OS_MAXSTR * 2
 
 /* Read ucs2 files */

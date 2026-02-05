@@ -12,8 +12,8 @@
 #ifdef WIN32
 #include "os_execd/execd.h"
 #endif
-#include "os_crypto/md5/md5_op.h"
-#include "os_net/os_net.h"
+#include "md5_op.h"
+#include "os_net.h"
 #include "wmodules.h"
 #include "wm_sca.h"
 #include "syscheck_op.h"

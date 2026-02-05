@@ -12,7 +12,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
-#include "os_crypto/sha1/sha1_op.h"
+#include "sha1_op.h"
 
 /* Starting last time */
 static char __mysql_last_time[36] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};

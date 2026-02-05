@@ -14,7 +14,7 @@
 #include <memory.h>
 
 #include "config.h"
-#include "../../headers/shared.h"
+#include "shared.h"
 #include "global-config.h"
 
 typedef struct {

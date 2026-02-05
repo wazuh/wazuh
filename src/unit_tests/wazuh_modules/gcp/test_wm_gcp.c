@@ -16,7 +16,7 @@
 
 #include "wmodules.h"
 #include "wm_gcp.h"
-#include "../../headers/defs.h"
+#include "defs.h"
 #include "../../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/schedule_scan_wrappers.h"

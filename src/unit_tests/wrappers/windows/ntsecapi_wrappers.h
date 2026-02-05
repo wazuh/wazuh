@@ -14,6 +14,15 @@
 #include <windows.h>
 #include <ntsecapi.h>
 
+// Define missing types for older MinGW versions
+#ifndef AUDIT_POLICY_INFORMATION
+typedef struct _AUDIT_POLICY_INFORMATION {
+    GUID SubCategoryGuid;
+    ULONG AuditingInformation;
+    GUID CategoryGuid;
+} AUDIT_POLICY_INFORMATION, *PAUDIT_POLICY_INFORMATION;
+#endif
+
 #undef LsaOpenPolicy
 #define LsaOpenPolicy wrap_LsaOpenPolicy
 #undef LsaQueryInformationPolicy

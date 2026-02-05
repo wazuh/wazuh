@@ -10,7 +10,7 @@
 #ifndef WM_TASK_MANAGER_WRAPPERS_H
 #define WM_TASK_MANAGER_WRAPPERS_H
 
-#include "../../../../headers/shared.h"
+#include "shared.h"
 #include "wmodules.h"
 
 #ifndef CLIENT

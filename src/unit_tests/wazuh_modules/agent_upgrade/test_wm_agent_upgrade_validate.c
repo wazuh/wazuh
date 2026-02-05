@@ -25,7 +25,7 @@
 #include "wmodules.h"
 #include "wm_agent_upgrade_validate.h"
 #include "wm_agent_upgrade_tasks.h"
-#include "../../headers/shared.h"
+#include "shared.h"
 
 // Setup / teardown
 

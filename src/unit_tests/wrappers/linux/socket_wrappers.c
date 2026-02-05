@@ -8,7 +8,7 @@
  */
 
 #include "socket_wrappers.h"
-#include "os_net/os_net.h"
+#include "os_net.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>

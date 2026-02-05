@@ -9,7 +9,7 @@
  */
 
 #include "shared.h"
-#include "os_regex/os_regex.h"
+#include "os_regex.h"
 #include "execd.h"
 
 static char exec_names[MAX_AR + 1][OS_FLSIZE + 1];

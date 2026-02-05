@@ -20,7 +20,7 @@
 
 #include "wmodules.h"
 #include "wm_agent_upgrade.h"
-#include "../../headers/shared.h"
+#include "shared.h"
 
 void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config);
 void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);

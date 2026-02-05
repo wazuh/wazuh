@@ -10,7 +10,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
-#include "os_crypto/sha1/sha1_op.h"
+#include "sha1_op.h"
 
 #define LABEL_PREPROCESSOR_MESSAGE  "[Classification: Preprocessor] [Priority: 3] "
 

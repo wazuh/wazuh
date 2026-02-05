@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <shared.h>
-#include <os_net/os_net.h>
+#include "os_net.h"
 #include "netbuffer_wrappers.h"
 
 void __wrap_nb_close(__attribute__((unused)) netbuffer_t * buffer, int sock) {

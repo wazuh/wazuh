@@ -17,8 +17,8 @@
 #include "os_err.h"
 #include "sym_load.h"
 #include "../../data_provider/include/sysInfo.h"
-#include "../../headers/shared.h"
-#include "../../os_net/os_net.h"
+#include "shared.h"
+#include "os_net.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/linux/socket_wrappers.h"

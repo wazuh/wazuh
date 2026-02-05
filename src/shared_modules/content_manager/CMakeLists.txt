@@ -21,7 +21,7 @@ endif()
 include_directories(include)
 
 include_directories(${SRC_FOLDER})
-include_directories(${SRC_FOLDER}/headers)
+include_directories(${SRC_FOLDER}/shared/include)
 include_directories(${SRC_FOLDER}/external/cJSON)
 include_directories(${SRC_FOLDER}/external/nlohmann)
 include_directories(${SRC_FOLDER}/external/curl/include/curl)
@@ -49,14 +49,8 @@ file(GLOB CONTENT_DOWNLOAD_SRC "src/*.cpp")
 
 add_library(content_manager SHARED ${CONTENT_DOWNLOAD_SRC})
 
-target_link_libraries(
-  content_manager PRIVATE
-  urlrequest
-  gcc_s
-  wazuhext
-  lzma
-  rocksdb
-  flatbuffers)
+target_link_libraries(content_manager PRIVATE urlrequest gcc_s wazuhext lzma
+                                              rocksdb flatbuffers)
 
 set_target_properties(content_manager PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                                  BUILD_RPATH "$ORIGIN/../lib")

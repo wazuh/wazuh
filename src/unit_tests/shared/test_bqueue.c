@@ -15,7 +15,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "../headers/bqueue_op.h"
+#include "bqueue_op.h"
 
 static const char * MESSAGE = "AB";
 

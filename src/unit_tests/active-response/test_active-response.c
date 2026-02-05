@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../headers/shared.h"
+#include "shared.h"
 #include "../../active-response/active_responses.h"
 
 #include "../wrappers/common.h"

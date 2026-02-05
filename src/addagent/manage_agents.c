@@ -15,13 +15,13 @@
 #include "manage_agents.h"
 #include "debug_op.h"
 #include "defs.h"
-#include "os_crypto/md5/md5_op.h"
+#include "md5_op.h"
 #include "external/cJSON/cJSON.h"
 #include "os_err.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include "authd-config.h"
-#include "wazuh_db/helpers/wdb_global_helpers.h"
+#include "wazuhdb_queries_op.h"
 #include "wazuh_db/wdb.h"
 
 #if defined(__hppa__)

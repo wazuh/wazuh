@@ -25,7 +25,7 @@
 #include "wmodules.h"
 #include "wm_task_manager.h"
 #include "wm_task_manager_tasks.h"
-#include "../../headers/shared.h"
+#include "shared.h"
 
 int wm_task_manager_init(wm_task_manager *task_config);
 void* wm_task_manager_main(wm_task_manager* task_config);

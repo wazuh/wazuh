@@ -17,6 +17,7 @@
 
 #define AUTHD_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT false    ///< Default allow_higher_versions value (false)
 
+#include <stdbool.h>
 #include <time.h>
 
 /**

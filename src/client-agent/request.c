@@ -12,7 +12,7 @@
 #include <shared.h>
 #include <pthread.h>
 #include <request_op.h>
-#include <os_net/os_net.h>
+#include "os_net.h"
 
 #ifdef WIN32
 #include "../os_execd/execd.h"

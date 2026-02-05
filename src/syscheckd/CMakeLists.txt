@@ -6,7 +6,11 @@ if(NOT DEFINED WAZUH_MAIN_PROJECT)
   get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 endif()
 
-include_directories(${SRC_FOLDER}/headers/)
+include_directories(${SRC_FOLDER}/shared/include/)
+include_directories(${SRC_FOLDER}/external/curl/include/curl/)
+include_directories(${SRC_FOLDER}/external/libpcre2/include/)
+include_directories(${SRC_FOLDER}/external/libyaml/include/)
+include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 include_directories(${SRC_FOLDER}/external/cJSON/)
 include_directories(${SRC_FOLDER}/external/bzip2/)
 include_directories(${SRC_FOLDER}/external/sqlite/)
@@ -21,13 +25,14 @@ include_directories(${SRC_FOLDER}/shared_modules/sync_protocol)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/schema_validator/include/)
 include_directories(${SRC_FOLDER}/config/include)
+include_directories(${SRC_FOLDER}/error_messages/)
 include_directories(${SRC_FOLDER}/rootcheck/include)
-include_directories(${SRC_FOLDER}/os_crypto/md5)
-include_directories(${SRC_FOLDER}/os_crypto/md5_sha1_sha256)
-include_directories(${SRC_FOLDER}/os_crypto/sha1)
-include_directories(${SRC_FOLDER}/os_net)
-include_directories(${SRC_FOLDER}/os_regex)
-include_directories(${SRC_FOLDER}/os_xml)
+include_directories(${SRC_FOLDER}/shared/os_crypto/md5)
+include_directories(${SRC_FOLDER}/shared/os_crypto/md5_sha1_sha256)
+include_directories(${SRC_FOLDER}/shared/os_crypto/sha1)
+include_directories(${SRC_FOLDER}/shared/os_net)
+include_directories(${SRC_FOLDER}/shared/os_regex)
+include_directories(${SRC_FOLDER}/shared/os_xml)
 include_directories(${SRC_FOLDER}/wazuh_modules/include)
 include_directories(${SRC_FOLDER}/wazuh_modules/src)
 include_directories(${SRC_FOLDER}/wazuh_modules/src/agent_upgrade)
@@ -165,10 +170,9 @@ elseif(NOT UNIT_TEST)
 
   if(APPLE)
     # macOS
-    set_target_properties(wazuh-syscheckd PROPERTIES
-        BUILD_WITH_INSTALL_RPATH TRUE
-        INSTALL_RPATH "@executable_path/../lib"
-    )
+    set_target_properties(
+      wazuh-syscheckd PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
+                                 INSTALL_RPATH "@executable_path/../lib")
   else()
     # Linux/Unix
     string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")

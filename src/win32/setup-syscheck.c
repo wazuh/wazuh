@@ -9,7 +9,7 @@
  */
 
 #include "setup-shared.h"
-#include "os_xml/os_xml.h"
+#include "os_xml.h"
 #include "../error_messages/error_messages.h"
 #include <errno.h>
 #define OSSEC_CONFIG_TMP  ".tmp.ossec.conf"

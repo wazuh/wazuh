@@ -31,23 +31,17 @@
 #endif
 
 #include "../addagent/manage_agents.h"
-#include "../os_net/os_net.h"
+#include "os_net.h"
 #include "authd-config.h"
 #include <pthread.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/bio.h>
-#include "../os_crypto/md5/md5_op.h"
-#include "../os_crypto/sha1/sha1_op.h"
+#include "ssl_op.h"
+#include "sec.h"
+#include "md5_op.h"
+#include "sha1_op.h"
 
-extern BIO *bio_err;
-#define KEYFILE  "etc/sslmanager.key"
-#define CERTFILE "etc/sslmanager.cert"
-#define DEFAULT_CIPHERS "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
 #define DEFAULT_PORT 1515
 #define DEFAULT_CENTRALIZED_GROUP "default"
 #define DEPRECATED_OPTION_WARN "Option '%s' is deprecated. Configure it in the file '%s'."
-#define MAX_SSL_PACKET_SIZE 16384
 #define MAX_SSL_MSG_SIZE (OS_SIZE_65536 + OS_SIZE_4096)
 #define SERVER_INDEX 0
 #define STOP_FD (AUTH_POOL+1)
@@ -89,24 +83,6 @@ struct keynode {
     char *raw_key;
     struct keynode *next;
 };
-
-SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *ciphers, const char *cert, const char *key, const char *ca_cert, int auto_method);
-SSL_CTX *get_ssl_context(const char *ciphers, int auto_method);
-int load_cert_and_key(SSL_CTX *ctx, const char *cert, const char *key);
-int load_ca_cert(SSL_CTX *ctx, const char *ca_cert);
-int verify_callback(int ok, X509_STORE_CTX *store);
-
-/**
- * @brief Wraps SSL_read function to read block largers than a record (16K)
- *
- * Calls SSL_read and if the return value is exactly the size of a record
- * calls again with an offset in the buffer until reading is done or until
- * reaching a reading timeout
- * @param ssl ssl connection
- * @param buf buffer to store the read information
- * @param num maximum number of bytes to read
- * */
-int wrap_SSL_read(SSL *ssl, void *buf, int num);
 
 // Thread for internal server
 void* run_local_server(void *arg);

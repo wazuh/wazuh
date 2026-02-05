@@ -14,8 +14,8 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "../../os_regex/os_regex.h"
-#include "../../os_regex/os_regex_internal.h"
+#include "os_regex.h"
+#include "os_regex_internal.h"
 #include "../wrappers/common.h"
 
 // Tests

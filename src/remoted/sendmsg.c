@@ -12,7 +12,7 @@
 #include <pthread.h>
 #include "remoted.h"
 #include "state.h"
-#include "os_net/os_net.h"
+#include "os_net.h"
 
 extern netbuffer_t netbuffer_send;
 

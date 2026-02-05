@@ -13,7 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "../../headers/shared.h"
+#include "shared.h"
 #include "wm_task_general.h"
 #include "wmodules.h"
 #include "wm_agent_upgrade.h"

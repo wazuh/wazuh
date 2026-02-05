@@ -124,6 +124,7 @@ endif
 ifneq (,$(filter ${DISABLE_JEMALLOC},YES yes y Y 1))
 CMAKE_OPTS+=-DDISABLE_JEMALLOC=ON
 endif
+CMAKE_OPTS+=-DCA_NAME='${CA_NAME}' -DIMAGE_TRUST_CHECKS=${IMAGE_TRUST_CHECKS}
 ifneq (${TARGET},winagent)
 ifneq (,$(filter ${USE_INOTIFY},YES auto yes y Y 1))
 CMAKE_OPTS+=-DINOTIFY_ENABLED=ON
@@ -324,7 +325,7 @@ OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
 WAZUH_MODULES_INC := $(shell find ./wazuh_modules -type d -name include)
 WAZUH_MODULES_SRC := $(shell find ./wazuh_modules -type d -name src)
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_SQLITE} -I${EXTERNAL_RPM}/builddir/output/include -I./config/include -I./os_crypto/md5 -I./os_crypto/sha1 -I./os_crypto/sha256 -I./os_crypto/md5_sha1_sha256 -I./os_net -I./os_regex -I./os_xml -I./data_provider/include/ -I./shared_modules/ -I./shared_modules/agent_metadata/include -I./shared_modules/common/ -I./shared_modules/content_manager/include -I./shared_modules/router/include -I./shared_modules/sync_protocol/include -I./syscheckd/include -I./rootcheck/include $(addprefix -I,$(WAZUH_MODULES_INC)) $(addprefix -I,$(WAZUH_MODULES_SRC)) -I./wazuh_modules/src/agent_upgrade -I./wazuh_modules/src/agent_upgrade/agent -I./wazuh_modules/src/agent_upgrade/manager -I./wazuh_modules/src/task_manager
+OSSEC_CFLAGS+=-I./ -I./shared/include/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include/curl -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_SQLITE} -I${EXTERNAL_RPM}/builddir/output/include -I./error_messages -I./config/include -I./shared/os_crypto/md5 -I./shared/os_crypto/sha1 -I./shared/os_crypto/sha256 -I./shared/os_crypto/md5_sha1_sha256 -I./shared/os_crypto/blowfish -I./shared/os_crypto/signature -I./shared/os_net -I./shared/os_regex -I./shared/os_xml -I./data_provider/include/ -I./shared_modules/ -I./shared_modules/agent_metadata/include -I./shared_modules/common/ -I./shared_modules/content_manager/include -I./shared_modules/router/include -I./shared_modules/sync_protocol/include -I./syscheckd/include -I./rootcheck/include $(addprefix -I,$(WAZUH_MODULES_INC)) $(addprefix -I,$(WAZUH_MODULES_SRC)) -I./wazuh_modules/src/agent_upgrade -I./wazuh_modules/src/agent_upgrade/agent -I./wazuh_modules/src/agent_upgrade/manager -I./wazuh_modules/src/task_manager
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -713,9 +714,9 @@ ifeq (${TARGET},server)
 endif
 
 ifneq (${TARGET},winagent)
-EXTERNAL_LIBS += $(MSGPACK_LIB)
+EXTERNAL_LIBS += $(MSGPACK_LIB) $(BZIP2_LIB)
 ifneq (${TARGET},agent)
-EXTERNAL_LIBS += $(LIBFFI_LIB) $(BZIP2_LIB)
+EXTERNAL_LIBS += $(LIBFFI_LIB)
 endif
 ifeq (${uname_S},Linux)
 EXTERNAL_LIBS += ${DBUS_LIB} ${LUA_LIB} ${RPM_LIB} ${POPT_LIB}
@@ -744,8 +745,6 @@ endif
 endif
 
 ifeq (${TARGET},server)
-SERVER_SHARED_OBJS = shared/engine_external.o # External objects shared between libwazuhshared and engine
-SERVER_SHARED_OBJS += ${os_xml_o} # For config parsing in engine
 external: $(ROCKSDB_LIB) $(SIMDJSON_LIB) $(SPDLOG_LIB) $(YAMLCPP_LIB) $(PUGIXML_LIB) $(MAXMINDDB_LIB) $(DATE_LIB) $(FMT_LIB) $(FAST_FLOAT_LIB) $(PROTOBUF_LIB) $(ABSEILCPP_LIB) $(RE2_LIB)
 endif
 
@@ -898,12 +897,6 @@ else
 endif
 
 ZLIB_INCLUDE=-I./${EXTERNAL_ZLIB}
-
-os_zlib_c := os_zlib/os_zlib.c
-os_zlib_o := $(os_zlib_c:.c=.o)
-
-os_zlib/%.o: os_zlib/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
 
 #### minizip ##########
 
@@ -1434,228 +1427,27 @@ else
 WAZUHEXT_LIB = libwazuhext.$(SHARED)
 WAZUH_LIB = libwazuhshared.$(SHARED)
 endif
-BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
+BUILD_LIBS = $(WAZUHEXT_LIB)
 
 $(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS): $(BUILD_LIBS)
 
-#### os_xml ########
-
-os_xml_c := $(wildcard os_xml/*.c)
-os_xml_o := $(os_xml_c:.c=.o)
-
-os_xml/%.o: os_xml/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
-
-#### os_regex ######
-
-os_regex_c := $(wildcard os_regex/*.c)
-os_regex_o := $(os_regex_c:.c=.o)
-
-os_regex/%.o: os_regex/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
-
-#### os_net ##########
-
-os_net_c := $(wildcard os_net/*.c)
-os_net_o := $(os_net_c:.c=.o)
-
-os_net/%.o: os_net/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
-
-#### Shared ##########
-# Unit tests wrappers
-
-wrappers_common_c := $(wildcard unit_tests/wrappers/*.c)
-wrappers_common_o := $(wrappers_common_c:.c=.o)
-
-wrappers_externals_c := $(wildcard unit_tests/wrappers/externals/*.c)
-wrappers_externals_o := $(wrappers_externals_c:.c=.o)
-
-wrappers_externals_audit_c := $(wildcard unit_tests/wrappers/externals/audit/*.c)
-wrappers_externals_audit_o := $(wrappers_externals_audit_c:.c=.o)
-
-wrappers_externals_bzip2_c := $(wildcard unit_tests/wrappers/externals/bzip2/*.c)
-wrappers_externals_bzip2_o := $(wrappers_externals_bzip2_c:.c=.o)
-
-wrappers_externals_zlib_c := $(wildcard unit_tests/wrappers/externals/zlib/*.c)
-wrappers_externals_zlib_o := $(wrappers_externals_zlib_c:.c=.o)
-
-wrappers_externals_cJSON_c := $(wildcard unit_tests/wrappers/externals/cJSON/*.c)
-wrappers_externals_cJSON_o := $(wrappers_externals_cJSON_c:.c=.o)
-
-wrappers_externals_openssl_c := $(wildcard unit_tests/wrappers/externals/openssl/*.c)
-wrappers_externals_openssl_o := $(wrappers_externals_openssl_c:.c=.o)
-
-wrappers_externals_procpc_c := $(wildcard unit_tests/wrappers/externals/procpc/*.c)
-wrappers_externals_procpc_o := $(wrappers_externals_procpc_c:.c=.o)
-
-wrappers_externals_sqlite_c := $(wildcard unit_tests/wrappers/externals/sqlite/*.c)
-wrappers_externals_sqlite_o := $(wrappers_externals_sqlite_c:.c=.o)
-
-wrappers_externals_pcre2_c := $(wildcard unit_tests/wrappers/externals/pcre2/*.c)
-wrappers_externals_pcre2_o := $(wrappers_externals_pcre2_c:.c=.o)
-
-wrappers_libc_c := $(wildcard unit_tests/wrappers/libc/*.c)
-wrappers_libc_o := $(wrappers_libc_c:.c=.o)
-
-wrappers_linux_c := $(wildcard unit_tests/wrappers/linux/*.c)
-wrappers_linux_o := $(wrappers_linux_c:.c=.o)
-
-wrappers_macos_c := $(wildcard unit_tests/wrappers/macos/*.c)
-wrappers_macos_o := $(wrappers_macos_c:.c=.o)
-
-wrappers_macos_libc_c := $(wildcard unit_tests/wrappers/macos/libc/*.c)
-wrappers_macos_libc_o := $(wrappers_macos_libc_c:.c=.o)
-
-wrappers_macos_posix_c := $(wildcard unit_tests/wrappers/macos/posix/*.c)
-wrappers_macos_posix_o := $(wrappers_macos_posix_c:.c=.o)
-
-wrappers_posix_c := $(wildcard unit_tests/wrappers/posix/*.c)
-wrappers_posix_o := $(wrappers_posix_c:.c=.o)
-
-wrappers_wazuh_c := $(wildcard unit_tests/wrappers/wazuh/*.c)
-wrappers_wazuh_o := $(wrappers_wazuh_c:.c=.o)
-
-wrappers_wazuh_os_crypto_c := $(wildcard unit_tests/wrappers/wazuh/os_crypto/*.c)
-wrappers_wazuh_os_crypto_o := $(wrappers_wazuh_os_crypto_c:.c=.o)
-
-wrappers_wazuh_os_execd_c := $(wildcard unit_tests/wrappers/wazuh/os_execd/*.c)
-wrappers_wazuh_os_execd_o := $(wrappers_wazuh_os_execd_c:.c=.o)
-
-wrappers_wazuh_os_net_c := $(wildcard unit_tests/wrappers/wazuh/os_net/*.c)
-wrappers_wazuh_os_net_o := $(wrappers_wazuh_os_net_c:.c=.o)
-
-wrappers_wazuh_os_regex_c := $(wildcard unit_tests/wrappers/wazuh/os_regex/*.c)
-wrappers_wazuh_os_regex_o := $(wrappers_wazuh_os_regex_c:.c=.o)
-
-wrappers_wazuh_os_xml_c := $(wildcard unit_tests/wrappers/wazuh/os_xml/*.c)
-wrappers_wazuh_os_xml_o := $(wrappers_wazuh_os_xml_c:.c=.o)
-
-wrappers_wazuh_shared_c := $(wildcard unit_tests/wrappers/wazuh/shared/*.c)
-wrappers_wazuh_shared_o := $(wrappers_wazuh_shared_c:.c=.o)
-
-wrappers_wazuh_syscheckd_c := $(wildcard unit_tests/wrappers/wazuh/syscheckd/*.c)
-wrappers_wazuh_syscheckd_o := $(wrappers_wazuh_syscheckd_c:.c=.o)
-
-wrappers_wazuh_wazuh_db_c := $(wildcard unit_tests/wrappers/wazuh/wazuh_db/*.c)
-wrappers_wazuh_wazuh_db_o := $(wrappers_wazuh_wazuh_db_c:.c=.o)
-
-wrappers_wazuh_wazuh_modules_c := $(wildcard unit_tests/wrappers/wazuh/wazuh_modules/*.c)
-wrappers_wazuh_wazuh_modules_o := $(wrappers_wazuh_wazuh_modules_c:.c=.o)
-
-wrappers_wazuh_monitord_c := $(wildcard unit_tests/wrappers/wazuh/monitord/*.c)
-wrappers_wazuh_monitord_o := $(wrappers_wazuh_monitord_c:.c=.o)
-
-wrappers_wazuh_os_auth_c := $(wildcard unit_tests/wrappers/wazuh/os_auth/*.c)
-wrappers_wazuh_os_auth_o := $(wrappers_wazuh_os_auth_c:.c=.o)
-
-wrappers_wazuh_addagent_c := $(wildcard unit_tests/wrappers/wazuh/addagent/*.c)
-wrappers_wazuh_addagent_o := $(wrappers_wazuh_addagent_c:.c=.o)
-
-wrappers_client_agent_c := $(wildcard unit_tests/wrappers/wazuh/client-agent/*.c)
-wrappers_client_agent_o := $(wrappers_client_agent_c:.c=.o)
-
-wrappers_wazuh_config_c := $(wildcard unit_tests/wrappers/wazuh/config/*.c)
-wrappers_wazuh_config_o := $(wrappers_wazuh_config_c:.c=.o)
-
-wrappers_data_provider_c := $(wildcard unit_tests/wrappers/wazuh/data_provider/*.c)
-wrappers_data_provider_o := $(wrappers_data_provider_c:.c=.o)
-
-wrappers_logcollector_c := $(wildcard unit_tests/wrappers/wazuh/logcollector/*.c)
-wrappers_logcollector_o := $(wrappers_logcollector_c:.c=.o)
-
-wrappers_windows_c := $(wildcard unit_tests/wrappers/windows/*.c)
-wrappers_windows_o := $(wrappers_windows_c:.c=.o)
-
-wrappers_windows_lib_c := $(wildcard unit_tests/wrappers/windows/libc/*.c)
-wrappers_windows_lib_o := $(wrappers_windows_lib_c:.c=.o)
-
-wrappers_windows_posix_c := $(wildcard unit_tests/wrappers/windows/posix/*.c)
-wrappers_windows_posix_o := $(wrappers_windows_posix_c:.c=.o)
-
-wrappers_wazuh_remoted_c := $(wildcard unit_tests/wrappers/wazuh/remoted/*.c)
-wrappers_wazuh_remoted_o := $(wrappers_wazuh_remoted_c:.c=.o)
-
-wrappers_wazuh_shared_modules_c := $(wildcard unit_tests/wrappers/wazuh/shared_modules/*.c)
-wrappers_wazuh_shared_modules_o := $(wrappers_wazuh_shared_modules_c:.c=.o)
-
 ifneq (,$(filter ${TEST},YES yes y Y 1))
-	OSSEC_CFLAGS+=${CFLAGS_TEST}
-	OSSEC_LDFLAGS+=${CFLAGS_TEST}
-	AR_LDFLAGS+=${CFLAGS_TEST}
-	OSSEC_LIBS+=${LIBS_TEST}
+LIBS_TEST=-lcmocka
+CFLAGS_TEST=-g -O0 --coverage -DWAZUH_UNIT_TESTING
 
-	UNIT_TEST_WRAPPERS:=${wrappers_common_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_externals_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_externals_bzip2_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_externals_zlib_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_externals_cJSON_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_externals_openssl_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_externals_sqlite_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_externals_pcre2_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_libc_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_posix_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_crypto_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_execd_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_net_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_regex_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_xml_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_shared_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_syscheckd_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_wazuh_db_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_wazuh_modules_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_monitord_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_auth_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_addagent_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_config_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_remoted_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_data_provider_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_logcollector_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_shared_modules_o}
-
-	ifeq (${TARGET},winagent)
-		UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
-		UNIT_TEST_WRAPPERS+=${wrappers_windows_lib_o}
-		UNIT_TEST_WRAPPERS+=${wrappers_windows_posix_o}
-	else ifeq (${uname_S},Darwin)
-	    UNIT_TEST_WRAPPERS+=${wrappers_macos_o}
-		UNIT_TEST_WRAPPERS+=${wrappers_macos_libc_o}
-		UNIT_TEST_WRAPPERS+=${wrappers_macos_posix_o}
-	else
-		UNIT_TEST_WRAPPERS+=${wrappers_externals_audit_o}
-		UNIT_TEST_WRAPPERS+=${wrappers_externals_procpc_o}
-		UNIT_TEST_WRAPPERS+=${wrappers_linux_o}
-	endif
-endif #TEST
-
-shared_c := $(wildcard shared/*.c)
-shared_o := $(shared_c:.c=.o)
-
-shared/%.o: shared/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DARGV0=\"wazuh-remoted\" -c $^ -o $@
-
-shared/debug_op_proc.o: shared/debug_op.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DMA -DARGV0=\"wazuh-remoted\" -c $^ -o $@
-
-shared/utf8_op.o: shared/utf8_op.c
-	$(OSSEC_CC) $(OSSEC_CFLAGS) -fPIC -c $< -o $@
-
-shared/utf8_winapi_wrapper.o: shared/utf8_winapi_wrapper.c
-	$(OSSEC_CC) $(OSSEC_CFLAGS) -fPIC -c $< -o $@
-
-shared/file_op_proc.o: shared/file_op.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DCLIENT -DARGV0=\"wazuh-remoted\" -c $^ -o $@
+OSSEC_CFLAGS+=${CFLAGS_TEST}
+OSSEC_LDFLAGS+=${CFLAGS_TEST}
+AR_LDFLAGS+=${CFLAGS_TEST}
+OSSEC_LIBS+=${LIBS_TEST}
+endif
 
 #### Wazuh DB ####
 
 wdb_sql := $(wildcard wazuh_db/*.sql)
 wdblib_c := $(wildcard wazuh_db/wdb*.c)
 wdbhelpers_c := $(wildcard wazuh_db/helpers/*.c)
-wdbshared_c := wazuh_db/wdb_shared.c
 wdblib_o := $(wdblib_c:.c=.o) $(wdb_sql:.sql=.o)
-wdb_o := wazuh_db/main.o $(wdblib_o:.c=.o) $(wdb_c:.c=.o) $(wdb_sql:.sql=.o) $(wdbshared_c:.c=.o)
+wdb_o := wazuh_db/main.o $(wdblib_o:.c=.o) $(wdb_c:.c=.o) $(wdb_sql:.sql=.o)
 
 wazuh_db/schema_%.o: wazuh_db/schema_%.sql
 	${QUIET_CC}echo 'const char *'$(word 2, $(subst /, ,$(subst .,_,$<))) '= "'"`cat $< | tr -d \"\n\"`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
@@ -1667,90 +1459,8 @@ wazuh-db: ${wdb_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter -lconfig -lwazuh_modulesd_lib libwazuh.a ${OSSEC_LIBS} -o $@
 
 #### Wazuh cmake ###
-build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) libwazuh.a
+build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
 	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${WIN_RESOURCE_OBJ} ${CMAKE_ENGINE_OPTS} && ${MAKE}
-
-#### crypto ##########
-
-crypto_blowfish_c := os_crypto/blowfish/bf_op.c
-crypto_blowfish_o := $(crypto_blowfish_c:.c=.o)
-
-os_crypto/blowfish/%.o: os_crypto/blowfish/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
-crypto_md5_c := os_crypto/md5/md5_op.c
-crypto_md5_o := $(crypto_md5_c:.c=.o)
-
-os_crypto/md5/%.o: os_crypto/md5/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
-crypto_sha1_c := os_crypto/sha1/sha1_op.c
-crypto_sha1_o := $(crypto_sha1_c:.c=.o)
-
-os_crypto/sha1/%.o: os_crypto/sha1/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
-crypto_sha256_c := os_crypto/sha256/sha256_op.c
-crypto_sha256_o := $(crypto_sha256_c:.c=.o)
-
-os_crypto/sha256/%.o: os_crypto/sha256/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
-crypto_sha512_c := os_crypto/sha512/sha512_op.c
-crypto_sha512_o := $(crypto_sha512_c:.c=.o)
-
-os_crypto/sha512/%.o: os_crypto/sha512/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
-crypto_aes_c := os_crypto/aes/aes_op.c
-crypto_aes_o := $(crypto_aes_c:.c=.o)
-
-os_crypto/aes/%.o: os_crypto/aes/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
-crypto_md5_sha1_sha256_c := os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.c
-crypto_md5_sha1_sha256_o := $(crypto_md5_sha1_sha256_c:.c=.o)
-
-os_crypto/md5_sha1_sha256/%.o: os_crypto/md5_sha1_sha256/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
-crypto_hmac_c := os_crypto/hmac/hmac.c
-crypto_hmac_o := $(crypto_hmac_c:.c=.o)
-
-os_crypto/hmac/%.o: os_crypto/hmac/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
-crypto_shared_c := $(wildcard os_crypto/shared/*.c)
-crypto_shared_o := $(crypto_shared_c:.c=.o)
-
-os_crypto/shared/%.o: os_crypto/shared/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
-
-crypto_signature_c := $(wildcard os_crypto/signature/*.c)
-crypto_signature_o := $(crypto_signature_c:.c=.o)
-
-os_crypto/signature/%.o: os_crypto/signature/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
-
-
-crypto_o :=	${crypto_blowfish_o} \
-			${crypto_md5_o} \
-			${crypto_sha1_o} \
-			${crypto_shared_o} \
-			${crypto_md5_sha1_sha256_o} \
-			${crypto_sha256_o} \
-			${crypto_sha512_o} \
-			${crypto_aes_o} \
-			${crypto_hmac_o} \
-			${crypto_signature_o}
-
-#### libwazuh #########
-
-wmodules_dep := ${wdbhelpers_c:.c=.o} wazuh_db/wdb_shared.o
-
-libwazuh.a: ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o} ${UNIT_TEST_WRAPPERS} os_auth/ssl.o os_auth/check_cert.o addagent/validate.o ${manage_agents}
-	${OSSEC_LINK} $@ $^
-	${OSSEC_RANLIB} $@
 
 ### libwazuhext #########
 
@@ -1832,7 +1542,7 @@ addagent/%.o: addagent/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./addagent -DARGV0=\"manage_agents\" -c $^ -o $@
 
 
-manage_agents: ${addagent_o}
+manage_agents: ${addagent_o} libwazuh.a
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### Active Response ####
@@ -1840,19 +1550,6 @@ manage_agents: ${addagent_o}
 active_response_programs = default-firewall-drop pf npf ipfw firewalld-drop disable-account host-deny ip-customblock restart-wazuh route-null kaspersky wazuh-slack
 
 $(active_response_programs): ${WAZUH_LIB} ${WAZUHEXT_LIB}
-
-# Minimal dependencies for building active responses programs
-AR_PROGRAMS_DEPS = os_regex/os_regex.o os_regex/os_regex_compile.o os_regex/os_match_free_pattern.o os_regex/os_regex_maps.o os_regex/os_regex_execute.o os_regex/os_regex_free_pattern.o os_regex/os_match_execute.o os_regex/os_match_compile.o shared/expression.o shared/randombytes.o shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o shared/binaries_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o os_net/os_net.o
-
-ifneq (,$(filter ${TEST},YES yes y Y 1))
-AR_PROGRAMS_DEPS += unit_tests/wrappers/externals/pcre2/pcre2_wrappers.o
-endif
-
-ifeq (${TARGET}, winagent)
-ifneq (,$(filter ${TEST},YES yes y Y 1))
-AR_PROGRAMS_DEPS += unit_tests/wrappers/common.o unit_tests/wrappers/windows/handleapi_wrappers.o unit_tests/wrappers/windows/fileapi_wrappers.o unit_tests/wrappers/windows/stat64_wrappers.o unit_tests/wrappers/windows/processthreadsapi_wrappers.o unit_tests/wrappers/windows/libc/stdio_wrappers.o unit_tests/wrappers/windows/system_calls_wrappers.o
-endif
-endif
 
 .PHONY: active-responses
 active-responses: ${active_response_programs}
@@ -1906,18 +1603,21 @@ wazuh-slack: active-response/wazuh-slack.o active-response/active_responses.o
 ifeq (${uname_S},Darwin)
 WAZUH_SHARED_SHFLAGS=-install_name @rpath/libwazuhshared.$(SHARED)
 
-$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
+$(WAZUH_LIB): $(WAZUHEXT_LIB) libwazuh.a
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHARED_SHFLAGS) -o $@ -Wl,-all_load $^ $(OSSEC_LIBS)
 else
 ifeq (${TARGET}, winagent)
-$(WAZUH_DLL) $(WAZUH_DEF) : $(WAZUHEXT_DLL) $(AR_PROGRAMS_DEPS) win32/version-dll.o
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $(WAZUH_DLL) -static-libgcc -Wl,--export-all-symbols -Wl,--add-stdcall-alias -Wl,--whole-archive $^ -Wl,--no-whole-archive -Wl,--output-def,$(WAZUH_DEF) ${OSSEC_LIBS}
+shared/src/win_shared_stubs.o: shared/src/win_shared_stubs.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
+
+$(WAZUH_DLL) $(WAZUH_DEF) : $(WAZUHEXT_DLL) libwazuh.a win32/version-dll.o shared/src/win_shared_stubs.o
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $(WAZUH_DLL) -static-libgcc -Wl,--export-all-symbols -Wl,--add-stdcall-alias -Wl,--whole-archive libwazuh.a -Wl,--no-whole-archive $(WAZUHEXT_DLL) win32/version-dll.o shared/src/win_shared_stubs.o -Wl,--output-def,$(WAZUH_DEF) ${OSSEC_LIBS}
 
 $(WAZUH_LIB): $(WAZUH_DLL) $(WAZUH_DEF)
 	$(DLLTOOL)  -D $(WAZUH_DLL) --def $(WAZUH_DEF) --output-delaylib $@
 
 else
-$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS) $(SERVER_SHARED_OBJS)
+$(WAZUH_LIB): $(WAZUHEXT_LIB) libwazuh.a
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -Wl,-rpath,'$$ORIGIN' -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 endif
 endif
@@ -1939,7 +1639,7 @@ util/%.o: util/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./util -DARGV0=\"utils\" -c $^ -o $@
 
 verify-agent-conf: util/verify-agent-conf.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lconfig -lwazuh_modulesd_lib libwazuh.a ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lconfig -lwazuh_modulesd_lib libwazuh.a libwazuhext.so ${OSSEC_LIBS} -o $@
 
 
 #### Monitor #######
@@ -1962,7 +1662,7 @@ os_auth_o := $(os_auth_c:.c=.o)
 os_auth/%.o: os_auth/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./os_auth -DARGV0=\"wazuh-authd\" -c $^ -o $@
 
-wazuh-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o os_auth/authcom.o os_auth/auth.o os_auth/key_request.o os_auth/generate_cert.o
+wazuh-authd: os_auth/main-server.o os_auth/local-server.o os_auth/config.o os_auth/authcom.o os_auth/auth.o os_auth/key_request.o os_auth/generate_cert.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter -lconfig -lwazuh_modulesd_lib libwazuh.a ${OSSEC_LIBS} -o $@
 
 ### wazuh-gtest-gmock ###
@@ -2028,118 +1728,6 @@ install_mitre: install_python
 	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${INSTALLDIR}/var/db/mitre.db
 
 ####################
-#### test ##########
-####################
-CFLAGS_TEST=-g -O0 --coverage -DWAZUH_UNIT_TESTING
-# Use sanitizers only on linux and when VALGRIND is not set
-ifneq (${TARGET},winagent)
-ifeq (${uname_S},Linux)
-ifndef VALGRIND
-ifdef FSANITIZE
-CFLAGS_TEST+= -fsanitize=address -fsanitize=undefined
-endif
-endif
-endif
-endif
-
-LIBS_TEST=-lcmocka
-
-unit_tests/wrappers/%.o: unit_tests/wrappers/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/externals/%.o: unit_tests/wrappers/externals/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/externals/audit/%.o: unit_tests/wrappers/externals/audit/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/externals/bzip2/%.o: unit_tests/wrappers/externals/bzip2/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/externals/cJSON/%.o: unit_tests/wrappers/externals/cJSON/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/externals/openssl/%.o: unit_tests/wrappers/externals/openssl/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/externals/procpc/%.o: unit_tests/wrappers/externals/procpc/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/externals/sqlite/%.o: unit_tests/wrappers/externals/sqlite/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/externals/pcre2/%.o: unit_tests/wrappers/externals/pcre2/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -fPIC -c $^ -o $@
-
-unit_tests/wrappers/libc/%.o: unit_tests/wrappers/libc/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/linux/%.o: unit_tests/wrappers/linux/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/macos/%.o: unit_tests/wrappers/macos/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/macos/libc/%.o: unit_tests/wrappers/macos/libc/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/posix/%.o: unit_tests/wrappers/posix/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/%.o: unit_tests/wrappers/wazuh/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/os_crypto/%.o: unit_tests/wrappers/wazuh/os_crypto/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/os_execd/%.o: unit_tests/wrappers/wazuh/os_execd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/os_net/%.o: unit_tests/wrappers/wazuh/os_net/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/os_regex/%.o: unit_tests/wrappers/wazuh/os_regex/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/shared/%.o: unit_tests/wrappers/wazuh/shared/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/syscheckd/%.o: unit_tests/wrappers/wazuh/syscheckd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/wazuh_db/%.o: unit_tests/wrappers/wazuh/wazuh_db/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/wazuh_modules/%.o: unit_tests/wrappers/wazuh/wazuh_modules/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/monitord/%.o: unit_tests/wrappers/wazuh/monitord/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/os_auth/%.o: unit_tests/wrappers/wazuh/os_auth/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/addagent/%.o: unit_tests/wrappers/wazuh/addagent/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/config/%.o: unit_tests/wrappers/wazuh/config/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/windows/%.o: unit_tests/wrappers/windows/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/windows/libc/%.o: unit_tests/wrappers/windows/libc/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/remoted/%.o: unit_tests/wrappers/wazuh/remoted/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/shared_modules/%.o: unit_tests/wrappers/wazuh/shared_modules/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-.PHONY: test
-
-####################
 #### windows #######
 ####################
 
@@ -2191,34 +1779,34 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
 
-win32/wazuh-agent.exe: win32/wazuh_agent_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.o $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
+win32/wazuh-agent.exe: win32/wazuh_agent_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ -ldbsync -lwazuh-syscheckd -l:libfimdb.lib -lagent_metadata -llibagent_sync_protocol -lschema_validator -lconfig -lwazuh-modulesd libwazuh.a libwazuhext.lib -lrootcheck ${OSSEC_LIBS} -o $@
 
-win32/wazuh-agent-eventchannel.exe: win32/wazuh_agent_eventchannel_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.o $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
+win32/wazuh-agent-eventchannel.exe: win32/wazuh_agent_eventchannel_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ -ldbsync -lwazuh-syscheckd-event -l:libfimdb.lib -lagent_metadata -llibagent_sync_protocol -lschema_validator -lconfig -lwazuh-modulesd libwazuh.a libwazuhext.lib -lrootcheck ${OSSEC_LIBS} -lwevtapi -o $@
 
 win32/manage_agents.exe: win32/manage_agents_resource.o win32/version-app.o win32/win_service_rk.o ${addagent_o}
-	${OSSEC_CCBIN} -DARGV0=\"manage-agents\" -DMA ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} -DARGV0=\"manage-agents\" -DMA ${OSSEC_LDFLAGS} $^ libwazuh.a ${WAZUHEXT_LIB} ${OSSEC_LIBS} -o $@
 
 win32/setup-windows.exe: win32/win_service_rk.o win32/setup-win.o win32/setup-shared.o
-	${OSSEC_CCBIN} -DARGV0=\"setup-windows\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} -DARGV0=\"setup-windows\" ${OSSEC_LDFLAGS} $^ libwazuh.a ${WAZUHEXT_LIB} ${OSSEC_LIBS} -o $@
 
 win32/setup-syscheck.exe: win32/win_service_rk.o win32/setup-syscheck.o win32/setup-shared.o
-	${OSSEC_CCBIN} -DARGV0=\"setup-syscheck\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} -DARGV0=\"setup-syscheck\" ${OSSEC_LDFLAGS} $^ libwazuh.a ${WAZUHEXT_LIB} ${OSSEC_LIBS} -o $@
 
 win32/setup-iis.exe: win32/win_service_rk.o win32/setup-iis.o
-	${OSSEC_CCBIN} -DARGV0=\"setup-iis\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} -DARGV0=\"setup-iis\" ${OSSEC_LDFLAGS} $^ libwazuh.a ${WAZUHEXT_LIB} ${OSSEC_LIBS} -o $@
 
 win32/os_win32ui.exe: win32/ui_resource.o win32/version-app.o win32/win_service_rk.o ${win32_ui_o}
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -I./syscheckd/include -mwindows -o $@
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} $^ libwazuh.a ${WAZUHEXT_LIB} ${OSSEC_LIBS} -I./syscheckd/include -mwindows -o $@
 
-win32/restart-wazuh.exe: win32/restart_wazuh_resource.o win32/version-app.o active-response/active_responses.o active-response/restart-wazuh.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
+win32/restart-wazuh.exe: win32/restart_wazuh_resource.o win32/version-app.o active-response/active_responses.o active-response/restart-wazuh.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -o $@
 
-win32/route-null.exe: win32/route_null_resource.o win32/version-app.o active-response/active_responses.o active-response/route-null.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
+win32/route-null.exe: win32/route_null_resource.o win32/version-app.o active-response/active_responses.o active-response/route-null.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -o $@
 
-win32/netsh.exe: win32/netsh_resource.o win32/version-app.o active-response/active_responses.o active-response/netsh.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
+win32/netsh.exe: win32/netsh_resource.o win32/version-app.o active-response/active_responses.o active-response/netsh.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -o $@
 
 
@@ -2303,16 +1891,10 @@ endif
 clean-deps:
 	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_TAR) shared_modules/http-request/* shared_modules/http-request/.??* $(INDEXER_PLUGINS_DIR) $(WCS_FLAT_DIR)
 
-clean-internals: clean-unit-tests
+clean-internals:
 	rm -f $(BUILD_SERVER)
 	rm -f $(BUILD_AGENT)
 	rm -f $(BUILD_LIBS)
-	rm -f ${os_zlib_o}
-	rm -f ${os_xml_o}
-	rm -f ${os_regex_o}
-	rm -f ${os_net_o}
-	rm -f ${shared_o} shared/debug_op_proc.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o
-	rm -f ${crypto_o}
 	rm -f ${os_execd_o}
 	rm -f ${os_logcollector_o} ${os_logcollector_eventchannel_o}
 	rm -f ${remoted_o}
@@ -2324,7 +1906,6 @@ clean-internals: clean-unit-tests
 	rm -f ${os_auth_o}
 	rm -f ${wdb_o}
 	rm -f wazuh_db/*.o
-	rm -f wazuh_db/helpers/*.o
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
 	rm -f $(WAZUH_LIB)
@@ -2339,50 +1920,6 @@ clean-internals: clean-unit-tests
 	rm -f shared/*.o
 	rm -rf shared_modules/utils/flatbuffers/build
 	rm -rf shared_modules/utils/flatbuffers/include
-
-
-clean-unit-tests:
-	rm -f ${wrappers_syscheck_o}
-	rm -f ${wrappers_shared_o}
-	rm -f ${wrappers_common_o}
-	rm -f ${wrappers_externals_o}
-	rm -f ${wrappers_externals_audit_o}
-	rm -f ${wrappers_externals_bzip2_o}
-	rm -f ${wrappers_externals_zlib_o}
-	rm -f ${wrappers_externals_cJSON_o}
-	rm -f ${wrappers_externals_openssl_o}
-	rm -f ${wrappers_externals_procpc_o}
-	rm -f ${wrappers_externals_sqlite_o}
-	rm -f ${wrappers_externals_pcre2_o}
-	rm -f ${wrappers_libc_o}
-	rm -f ${wrappers_linux_o}
-	rm -f ${wrappers_macos_o}
-	rm -f ${wrappers_macos_libc_o}
-	rm -f ${wrappers_macos_posix_o}
-	rm -f ${wrappers_posix_o}
-	rm -f ${wrappers_wazuh_o}
-	rm -f ${wrappers_wazuh_os_crypto_o}
-	rm -f ${wrappers_wazuh_os_execd_o}
-	rm -f ${wrappers_wazuh_os_net_o}
-	rm -f ${wrappers_wazuh_os_regex_o}
-	rm -f ${wrappers_wazuh_os_xml_o}
-	rm -f ${wrappers_wazuh_shared_o}
-	rm -f ${wrappers_wazuh_shared_modules_o}
-	rm -f ${wrappers_wazuh_syscheckd_o}
-	rm -f ${wrappers_wazuh_wazuh_db_o}
-	rm -f ${wrappers_wazuh_wazuh_modules_o}
-	rm -f ${wrappers_wazuh_monitord_o}
-	rm -f ${wrappers_wazuh_os_auth_o}
-	rm -f ${wrappers_wazuh_addagent_o}
-	rm -f ${wrappers_wazuh_config_o}
-	rm -f ${wrappers_windows_o}
-	rm -f ${wrappers_windows_lib_o}
-	rm -f ${wrappers_windows_posix_o}
-	rm -f ${wrappers_client_agent_o}
-	rm -f ${wrappers_wazuh_remoted_o}
-	rm -f ${wrappers_logcollector_o}
-	rm -f ${wrappers_macos_o}
-	rm -f ${wrappers_data_provider_o}
 
 clean-framework:
 	${MAKE} -C ../framework clean

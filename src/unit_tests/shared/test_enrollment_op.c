@@ -5,9 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "shared.h"
-#include "../os_auth/check_cert.h"
-#include "../os_auth/auth.h"
+#include "check_cert_op.h"
+#include "ssl_op.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/posix/stat_wrappers.h"
@@ -17,6 +16,8 @@
 #include "../wrappers/externals/openssl/bio_wrappers.h"
 #include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
 #include "../wrappers/wazuh/os_auth/os_auth_wrappers.h"
+#include "../wrappers/wazuh/shared/check_cert_op_wrappers.h"
+#include "../wrappers/wazuh/shared/ssl_op_wrappers.h"
 
 #define NEW_AGENT1      "Agent1"
 #define AGENT1_ID       "001"

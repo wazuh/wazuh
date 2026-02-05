@@ -10,7 +10,7 @@
 
 #include <pthread.h>
 #include <shared.h>
-#include <os_net/os_net.h>
+#include "os_net.h"
 #include <request_op.h>
 #include "remoted.h"
 #include "state.h"

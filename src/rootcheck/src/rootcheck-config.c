@@ -16,7 +16,7 @@
 #include <unistd.h>
 
 #include "shared.h"
-#include "os_xml/os_xml.h"
+#include "os_xml.h"
 #include "rootcheck.h"
 
 

@@ -5,12 +5,11 @@ set(REQUIRED_ADDAGENT_OBJECTS
     ${SRC_FOLDER}/addagent/manage_agents.o
     ${SRC_FOLDER}/addagent/manage_keys.o
     ${SRC_FOLDER}/addagent/read_from_user.o
-    ${SRC_FOLDER}/addagent/validate.o
 )
 
 # Add custom target to build addagent object files using make
 add_custom_target(build_addagent_objects
-    COMMAND ${CMAKE_MAKE_PROGRAM} TARGET=${TARGET} addagent/manage_agents.o addagent/manage_keys.o addagent/read_from_user.o addagent/validate.o
+    COMMAND ${CMAKE_MAKE_PROGRAM} TARGET=${TARGET} addagent/manage_agents.o addagent/manage_keys.o addagent/read_from_user.o
     WORKING_DIRECTORY ${SRC_FOLDER}
     COMMENT "Building addagent object files"
 )

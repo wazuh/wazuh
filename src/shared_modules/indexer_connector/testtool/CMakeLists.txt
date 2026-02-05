@@ -4,7 +4,7 @@ if(NOT DEFINED WAZUH_MAIN_PROJECT)
   get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 endif()
 
-include_directories(${SRC_FOLDER}/headers/)
+include_directories(${SRC_FOLDER}/shared/include/)
 
 # Copy input files to the build directory
 file(COPY input DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

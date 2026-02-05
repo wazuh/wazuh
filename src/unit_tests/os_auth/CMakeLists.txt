@@ -34,8 +34,6 @@ list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} \
                            -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,difftime -Wl,--wrap,OS_IsValidIP")
 list(APPEND os_auth_names "test_auth_add")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsValidIP")
-list(APPEND os_auth_names "test_ssl")
-list(APPEND os_auth_flags "-Wl,--wrap,SSL_read -Wl,--wrap=SSL_new")
 list(APPEND os_auth_names "test_auth_key_request")
 list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
                            -Wl,--wrap,wm_exec -Wl,--wrap,wpopenv -Wl,--wrap,fgets -Wl,--wrap,popen \

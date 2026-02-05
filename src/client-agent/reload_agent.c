@@ -9,9 +9,9 @@
  */
 
 #include "shared.h"
-#include "headers/defs.h"
+#include "defs.h"
 #include "os_execd/execd.h"
-#include "os_net/os_net.h"
+#include "os_net.h"
 #include "syscheck-config.h"
 #include "rootcheck-config.h"
 #include "localfile-config.h"

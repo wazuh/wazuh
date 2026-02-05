@@ -12,9 +12,9 @@
 #include <stddef.h>
 #include <cmocka.h>
 
-#include "../../os_crypto/sha256/sha256_op.h"
+#include "sha256_op.h"
 #include "../../wrappers/common.h"
-#include "../headers/shared.h"
+#include "shared.h"
 
 /* setups/teardowns */
 static int setup_group(void **state) {

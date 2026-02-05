@@ -12,7 +12,22 @@
 #define WINEVT_WRAPPERS_H
 
 #include <windows.h>
+
+// Try to include winevt.h, but if types are missing, define them
+#ifdef __MINGW32__
+// Define missing types for MinGW
+#ifndef EVT_HANDLE
+typedef HANDLE EVT_HANDLE;
+#endif
+#ifndef PEVT_VARIANT
+typedef void* PEVT_VARIANT;
+#endif
+#ifndef EVT_SUBSCRIBE_CALLBACK
+typedef DWORD (WINAPI *EVT_SUBSCRIBE_CALLBACK)(DWORD Action, PVOID UserContext, EVT_HANDLE Event);
+#endif
+#else
 #include <winevt.h>
+#endif
 
 #undef EvtRender
 #define EvtRender wrap_EvtRender

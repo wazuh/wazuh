@@ -14,8 +14,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../headers/defs.h"
-#include "../headers/buffer_op.h"
+#include "defs.h"
+#include "buffer_op.h"
 
 /* setup / teardown */
 int test_setup_ok(void **state)

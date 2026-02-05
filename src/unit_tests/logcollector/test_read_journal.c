@@ -18,7 +18,7 @@
 
 #include "../../logcollector/logcollector.h"
 #include "../../logcollector/journal_log.h"
-#include "../../headers/shared.h"
+#include "shared.h"
 #include "../wrappers/common.h"
 
 bool w_journald_can_read(unsigned long owner_id);

@@ -28,7 +28,7 @@ include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/openssl/include/) # needed for
                                                              # hash_helper
 include_directories(${SRC_FOLDER}/external/flatbuffers/include)
-include_directories(${SRC_FOLDER}/headers/)
+include_directories(${SRC_FOLDER}/shared/include/)
 include_directories(${SRC_FOLDER}/wazuh_modules/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(

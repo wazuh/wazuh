@@ -19,7 +19,7 @@
 #include "wmodules.h"
 #include "wm_task_manager_parsing.h"
 #include "wm_task_manager_tasks.h"
-#include "../../headers/shared.h"
+#include "shared.h"
 
 int* wm_task_manager_parse_ids(const cJSON* ids);
 wm_task_manager_upgrade* wm_task_manager_parse_upgrade_parameters(const cJSON* origin, const cJSON* parameters);

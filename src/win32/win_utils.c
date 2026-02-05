@@ -16,7 +16,7 @@
 #include "wmodules.h"
 #include "sysInfo.h"
 #include "sym_load.h"
-#include "../os_net/os_net.h"
+#include "os_net.h"
 #include "dll_load_notify.h"
 
 #ifdef WAZUH_UNIT_TESTING

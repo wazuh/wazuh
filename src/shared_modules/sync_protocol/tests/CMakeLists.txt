@@ -14,7 +14,7 @@ include_directories(${SRC_FOLDER}/external/sqlite/)
 include_directories(${SRC_FOLDER}/external/flatbuffers/include/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
 include_directories(${SRC_FOLDER}/shared_modules/agent_metadata/include/)
-include_directories(${SRC_FOLDER}/headers/)
+include_directories(${SRC_FOLDER}/shared/include/)
 include_directories(${SRC_FOLDER})
 
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
@@ -80,4 +80,5 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME agent_sync_protocol_tests COMMAND agent_sync_protocol_tests)
 
-set_tests_properties(agent_sync_protocol_tests PROPERTIES LABELS "sync_protocol")
+set_tests_properties(agent_sync_protocol_tests PROPERTIES LABELS
+                                                          "sync_protocol")

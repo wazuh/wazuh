@@ -9,9 +9,9 @@
  */
 
 #include "shared.h"
-#include "os_crypto/md5/md5_op.h"
-#include "os_crypto/sha1/sha1_op.h"
-#include "os_crypto/sha256/sha256_op.h"
+#include "md5_op.h"
+#include "sha1_op.h"
+#include "sha256_op.h"
 #include "monitord.h"
 #include <openssl/evp.h>
 #include <openssl/sha.h>

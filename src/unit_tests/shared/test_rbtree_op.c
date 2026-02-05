@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "../headers/rbtree_op.h"
+#include "rbtree_op.h"
 
 /* setup/teardowns */
 

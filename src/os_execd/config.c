@@ -13,7 +13,7 @@
 #include "client-agent/agentd.h"
 #include "logcollector/logcollector.h"
 #include "rootcheck.h"
-#include "os_net/os_net.h"
+#include "os_net.h"
 
 int is_disabled;
 

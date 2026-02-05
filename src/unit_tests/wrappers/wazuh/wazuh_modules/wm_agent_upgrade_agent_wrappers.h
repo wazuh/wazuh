@@ -10,7 +10,7 @@
 #ifndef WM_AGENT_UPGRADE_AGENT_WRAPPERS_H
 #define WM_AGENT_UPGRADE_AGENT_WRAPPERS_H
 
-#include "../../../../headers/shared.h"
+#include "shared.h"
 #include "wm_agent_upgrade_agent.h"
 #include "wmodules.h"
 
