@@ -143,17 +143,9 @@ def test_drop_privileges(test_configuration, test_metadata, add_configuration, t
     """
     expected_user = test_metadata['expected_user']
 
-    # Get wazuh-manager-apid process info
-    api_script_candidates = [
-        WAZUH_API_SCRIPT,
-        '/var/ossec/api/scripts/wazuh_manager_apid.py'
-    ]
-    api_process = None
-    for script in api_script_candidates:
-        api_process = search_process_by_command(script)
-        if api_process is not None:
-            break
-    assert api_process is not None, f"The process {api_script_candidates} could not be found"
+    # Get wazuh-apid process info
+    api_process = search_process_by_command(WAZUH_API_SCRIPT)
+    assert api_process is not None, f"The process {WAZUH_API_SCRIPT} could not be found"
 
     # Get current user of the process
     process_stat_file = os.stat("/proc/%d" % api_process.pid)
@@ -161,3 +153,4 @@ def test_drop_privileges(test_configuration, test_metadata, add_configuration, t
     username = pwd.getpwuid(uid)[0]
 
     assert username == expected_user, f'Expected user was {expected_user}, but the current one is {username}'
+
