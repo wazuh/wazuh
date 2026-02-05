@@ -15,6 +15,7 @@ on:
       - 'src/wazuh_modules/inventory_sync/**'
       - 'src/shared_modules/utils/flatbuffers/**'
       - '.github/workflows/5_testintegration_inventory-sync.yml'
+      - 'src/shared_modules/indexer_connector/**'
 
 # Ensures only one instance of this workflow is running per PR
 concurrency:
