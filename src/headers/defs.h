@@ -316,10 +316,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #ifndef OSSECCONF
 #ifndef WIN32
-#ifdef WAZUH_MANAGER
-#define OSSECCONF       "etc/wazuh-manager.conf"
-#else
+#ifdef CLIENT
 #define OSSECCONF       "etc/ossec.conf"
+#else
+#define OSSECCONF       "etc/wazuh-manager.conf"
 #endif
 #else
 #define OSSECCONF       "ossec.conf"
