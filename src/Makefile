@@ -2134,8 +2134,6 @@ install_api: install_python
 
 install_mitre: install_python
 	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${INSTALLDIR}/var/db/mitre.db
-	chown root:${WAZUH_GROUP} ${INSTALLDIR}/var/db/mitre.db
-	chmod 660 ${INSTALLDIR}/var/db/mitre.db
 
 ####################
 #### test ##########

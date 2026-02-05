@@ -228,6 +228,9 @@ jobs:
           expected_files: manager_base.csv
           wazuh_uid: ${{ env.WAZUH_UID }}
           wazuh_gid: ${{ env.WAZUH_GID }}
+          wazuh_user_name: wazuh-manager
+          wazuh_group_name: wazuh-manager
+          use_real_names: "true"
           size_check: "false"
           ignore: "site-packages,/var/ossec/framework/python"
 
