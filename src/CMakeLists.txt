@@ -63,11 +63,6 @@ if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
   add_definitions(-DCLIENT)
 endif()
 
-# Define WAZUH_MANAGER for manager builds
-if("${TARGET}" STREQUAL "server")
-  add_definitions(-DWAZUH_MANAGER)
-endif()
-
 # Set Wine as crosscompiling emulator for Windows unit tests
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND UNIT_TEST)
   find_program(WINE "wine")
