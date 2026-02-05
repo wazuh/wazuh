@@ -43,6 +43,7 @@ add_library(builder STATIC
 
 	# Enrichment
 	${SRC_DIR}/builders/enrichment/enrichment.cpp
+	${SRC_DIR}/builders/enrichment/geo.cpp
 
     # Map
     ${SRC_DIR}/builders/opmap/map.cpp
