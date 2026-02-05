@@ -33,6 +33,12 @@ on:
         type: string
         default: 'release'
 
+      arch:
+        description: 'Architecture(s) to build as JSON array: ["x64"], ["arm64"], or ["x64", "arm64"]. Leave empty for both.'
+        required: false
+        type: string
+        default: ''
+
 
 env:
   ENGINE_DIR: ${{github.workspace}}/src/engine
@@ -41,22 +47,15 @@ env:
 
 jobs:
   build:
-    name: Build Server (${{ matrix.arch }}) 
-    runs-on: ${{ matrix.runner }}
+    name: Build Server (${{ matrix.arch }})
+    runs-on: ${{ (matrix.arch == 'arm64') && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     outputs:
       version: ${{ steps.set_version.outputs.version }}
     strategy:
       matrix:
-        arch: [amd64, arm64]
-        include:
-          - arch: amd64
-            runner: ubuntu-latest
-            container_name: pkg_rpm_manager_builder_amd64
-          - arch: arm64
-            runner: ubuntu-24.04-arm
-            container_name: pkg_rpm_manager_builder_arm64
+        arch: ${{ (inputs.arch == '' || inputs.arch == null) && fromJSON('["x64", "arm64"]') || fromJSON(inputs.arch) }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: wazuh/wazuh
           ref: ${{ env.WAZUH_BRANCH }}
@@ -67,7 +66,23 @@ jobs:
           VERSION="$(grep '"version"' $GITHUB_WORKSPACE/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
           echo "TAG=$VERSION" >> $GITHUB_ENV;
           echo "version=$VERSION" >> $GITHUB_OUTPUT;
-          echo "CONTAINER_NAME=${{ matrix.container_name }}" >> $GITHUB_ENV;
+
+          # Set container name and normalize architecture
+          case "${{ matrix.arch }}" in
+            x64|amd64)
+              echo "CONTAINER_NAME=pkg_rpm_manager_builder_amd64" >> $GITHUB_ENV
+              echo "NORMALIZED_ARCH=amd64" >> $GITHUB_ENV
+              ;;
+            arm64)
+              echo "CONTAINER_NAME=pkg_rpm_manager_builder_arm64" >> $GITHUB_ENV
+              echo "NORMALIZED_ARCH=arm64" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "Error: Unsupported architecture '${{ matrix.arch }}'"
+              echo "Supported architectures: x64, amd64, arm64"
+              exit 1
+              ;;
+          esac
 
       - name: Download docker image for package building
         run: |
@@ -84,35 +99,47 @@ jobs:
       - name: Upload standalone package
         uses: actions/upload-artifact@v4
         with:
-          name: wazuh-engine-${{ env.TAG }}-linux-${{ matrix.arch }}
+          name: wazuh-engine-${{ env.TAG }}-linux-${{ env.NORMALIZED_ARCH }}
           path: ${{ env.ENGINE_DIR }}/standalone/output/*.tar.gz
 
   check_standalone_engine:
     name: Test standalone engine (${{ matrix.arch }})
 
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ (matrix.arch == 'arm64') && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     needs: build
     timeout-minutes: 60
     strategy:
       matrix:
-        arch: [amd64, arm64]
-        include:
-          - arch: amd64
-            runner: ubuntu-latest
-          - arch: arm64
-            runner: ubuntu-24.04-arm
+        arch: ${{ (inputs.arch == '' || inputs.arch == null) && fromJSON('["x64", "arm64"]') || fromJSON(inputs.arch) }}
 
     steps:
+    - name: Set normalized architecture
+      id: set_arch
+      run: |
+        case "${{ matrix.arch }}" in
+          x64|amd64)
+            echo "NORMALIZED_ARCH=amd64" >> $GITHUB_ENV
+            ;;
+          arm64)
+            echo "NORMALIZED_ARCH=arm64" >> $GITHUB_ENV
+            ;;
+          *)
+            echo "Error: Unsupported architecture '${{ matrix.arch }}'"
+            echo "Supported architectures: x64, amd64, arm64"
+            exit 1
+            ;;
+        esac
+
     - name: Download compressed tar.gz file
       uses: actions/download-artifact@v4
       with:
-        name: wazuh-engine-${{ needs.build.outputs.version }}-linux-${{ matrix.arch }}
+        name: wazuh-engine-${{ needs.build.outputs.version }}-linux-${{ env.NORMALIZED_ARCH }}
         path: /tmp/standalone-test
 
     - name: Extract standalone package
       run: |
         cd /tmp/standalone-test
-        tar xzf wazuh-engine-${{ needs.build.outputs.version }}-linux-${{ matrix.arch }}.tar.gz
+        tar xzf wazuh-engine-${{ needs.build.outputs.version }}-linux-${{ env.NORMALIZED_ARCH }}.tar.gz
         mv wazuh-engine-standalone-${{ needs.build.outputs.version }} wazuh-engine-standalone
 
     - name: Verify artifact structure
@@ -166,17 +193,43 @@ jobs:
         ls -la
         ./run_engine.sh > engine_stdout.log 2> engine_stderr.log &
         ENGINE_PID=$!
-        sleep 5
-        cat engine_stderr.log
-        curl --silent --unix-socket sockets/engine-api.sock \
-            -X POST -H "Content-Type: application/json" \
-            -d '{"name":"default"}' \
-            http://localhost/router/route/get
-        if [ $? -eq 0 ]; then
+
+        echo "Waiting for engine to start..."
+        MAX_RETRIES=15
+        RETRY_COUNT=0
+        ENGINE_READY=0
+
+        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+          sleep 2
+          echo "Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES..."
+
+          if [ -S sockets/engine-api.sock ] && \
+             curl --silent --unix-socket sockets/engine-api.sock \
+                  -X POST -H "Content-Type: application/json" \
+                  -d '{"name":"default"}' \
+                  http://localhost/router/route/get; then
             echo "Engine started successfully"
-            kill $ENGINE_PID
-        else
-            echo "Engine failed to start"
-            kill $ENGINE_PID
+            ENGINE_READY=1
+            break
+          fi
+
+          RETRY_COUNT=$((RETRY_COUNT + 1))
+        done
+
+        kill $ENGINE_PID 2>/dev/null || true
+
+        if [ $ENGINE_READY -eq 0 ]; then
+            echo "Engine failed to start after $MAX_RETRIES attempts"
             exit 1
         fi
+
+    - name: Upload engine logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: engine-logs-${{ env.NORMALIZED_ARCH }}-${{ github.run_id }}
+        path: |
+          /tmp/standalone-test/wazuh-engine-standalone/engine_stdout.log
+          /tmp/standalone-test/wazuh-engine-standalone/engine_stderr.log
+          /tmp/standalone-test/wazuh-engine-standalone/logs/
+        if-no-files-found: ignore
