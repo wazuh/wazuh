@@ -244,15 +244,17 @@ def test_add_bulk_indexer_connector(opensearch):
     # Manual insert and check if resync clean the element.
     url = 'http://'+GLOBAL_URL+'/wazuh-states-vulnerabilities-cluster/_doc/000_pkghash_CVE-2022-123456?refresh=true'
     query = """{
-      "agent": {
-        "build": {
+      "wazuh": {
+        "agent": {
+          "build": {
           "original": "sample_build_1"
-        },
-        "ephemeral_id": "eph_id_1",
-        "id": "000",
-        "name": "agent_name_1",
-        "type": "agent_type_1",
-        "version": "1.0.0"
+          },
+          "ephemeral_id": "eph_id_1",
+          "id": "000",
+          "name": "agent_name_1",
+          "type": "agent_type_1",
+          "version": "1.0.0"
+        }
       },
       "message": "Sample message",
       "package": {

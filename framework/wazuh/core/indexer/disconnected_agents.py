@@ -265,7 +265,7 @@ class DisconnectedAgentGroupSyncTask:
             "aggs": {
                 "by_agent": {
                     "terms": {
-                        "field": "agent.id",
+                        "field": "wazuh.agent.id",
                         "include": agent_ids,
                         "exclude": ["000"],
                     },

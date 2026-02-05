@@ -698,7 +698,7 @@ public:
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         auto [it, success] = m_deleteByQuery.try_emplace(index, nlohmann::json::object());
-        it->second["query"]["bool"]["filter"]["terms"]["agent.id"].push_back(agentId);
+        it->second["query"]["bool"]["filter"]["terms"]["wazuh.agent.id"].push_back(agentId);
     }
 
     void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery)

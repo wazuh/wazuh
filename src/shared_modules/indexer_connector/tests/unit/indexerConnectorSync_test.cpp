@@ -2005,7 +2005,7 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuerySuccess)
 
     // Build a sample update query (simulating what inventory_sync would build)
     nlohmann::json updateQuery;
-    updateQuery["query"]["bool"]["must"][0]["term"]["agent.id"] = "agent-001";
+    updateQuery["query"]["bool"]["must"][0]["term"]["wazuh.agent.id"] = "agent-001";
     updateQuery["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"] = "state.document_version";
     updateQuery["query"]["bool"]["should"][1]["range"]["state.document_version"]["lte"] = 12345;
     updateQuery["query"]["bool"]["minimum_should_match"] = 1;
@@ -2022,7 +2022,7 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuerySuccess)
 
     // Verify the request contained the correct data
     auto requestData = nlohmann::json::parse(receivedData[0]);
-    EXPECT_EQ(requestData["query"]["bool"]["must"][0]["term"]["agent.id"], "agent-001");
+    EXPECT_EQ(requestData["query"]["bool"]["must"][0]["term"]["wazuh.agent.id"], "agent-001");
     EXPECT_EQ(requestData["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"],
               "state.document_version");
     EXPECT_EQ(requestData["query"]["bool"]["should"][1]["range"]["state.document_version"]["lte"], 12345);
@@ -2108,7 +2108,7 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryWithRetry)
 
     // Build a sample update query
     nlohmann::json updateQuery;
-    updateQuery["query"]["term"]["agent.id"] = "agent-003";
+    updateQuery["query"]["term"]["wazuh.agent.id"] = "agent-003";
     updateQuery["script"]["source"] = "ctx._source.groups = params.groups";
     updateQuery["script"]["params"]["groups"] = std::vector<std::string> {"default"};
 
@@ -2146,14 +2146,14 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQuerySuccess)
                     nlohmann::json hit1;
                     hit1["_id"] = "doc1";
                     hit1["_source"]["checksum"]["hash"]["sha1"] = "abc123";
-                    hit1["_source"]["agent"]["id"] = "001";
+                    hit1["_source"]["wazuh"]["agent"]["id"] = "001";
                     hit1["sort"] = nlohmann::json::array({"doc1"});
                     response["hits"]["hits"].push_back(hit1);
 
                     nlohmann::json hit2;
                     hit2["_id"] = "doc2";
                     hit2["_source"]["checksum"]["hash"]["sha1"] = "def456";
-                    hit2["_source"]["agent"]["id"] = "001";
+                    hit2["_source"]["wazuh"]["agent"]["id"] = "001";
                     hit2["sort"] = nlohmann::json::array({"doc2"});
                     response["hits"]["hits"].push_back(hit2);
 
@@ -2162,7 +2162,7 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQuerySuccess)
             }));
 
     nlohmann::json searchQuery;
-    searchQuery["query"]["term"]["agent.id"] = "001";
+    searchQuery["query"]["term"]["wazuh.agent.id"] = "001";
     searchQuery["_source"] = nlohmann::json::array({"checksum.hash.sha1"});
     searchQuery["sort"] = nlohmann::json::array({nlohmann::json::object({{"checksum.hash.sha1", "asc"}})});
     searchQuery["size"] = 1000;
@@ -2174,7 +2174,7 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQuerySuccess)
 
     // Verify request data contains the query
     nlohmann::json parsedRequest = nlohmann::json::parse(requestData);
-    EXPECT_EQ(parsedRequest["query"]["term"]["agent.id"], "001");
+    EXPECT_EQ(parsedRequest["query"]["term"]["wazuh.agent.id"], "001");
     EXPECT_EQ(parsedRequest["size"], 1000);
 
     // Verify response structure
@@ -2208,7 +2208,7 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithSearchAfter)
             }));
 
     nlohmann::json searchQuery;
-    searchQuery["query"]["term"]["agent.id"] = "001";
+    searchQuery["query"]["term"]["wazuh.agent.id"] = "001";
     searchQuery["_source"] = nlohmann::json::array({"checksum.hash.sha1"});
     searchQuery["sort"] = nlohmann::json::array({nlohmann::json::object({{"checksum.hash.sha1", "asc"}})});
     searchQuery["search_after"] = nlohmann::json::array({"previous_doc_id"});
@@ -2244,7 +2244,7 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryError)
             }));
 
     nlohmann::json searchQuery;
-    searchQuery["query"]["term"]["agent.id"] = "001";
+    searchQuery["query"]["term"]["wazuh.agent.id"] = "001";
 
     // Call should throw exception on error
     EXPECT_THROW(connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery), IndexerConnectorException);
@@ -2272,7 +2272,7 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryEmptyResults)
             }));
 
     nlohmann::json searchQuery;
-    searchQuery["query"]["term"]["agent.id"] = "999";
+    searchQuery["query"]["term"]["wazuh.agent.id"] = "999";
 
     nlohmann::json result = connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery);
 

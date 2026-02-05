@@ -40,14 +40,14 @@
       "indices": ["wazuh-states-fim-files", "wazuh-states-sca", "wazuh-states-inventory-system"],
       "agent_id": "001",
       "fields": {
-        "agent.name": "metadata-test-agent",
-        "agent.version": "4.9.0",
-        "agent.host.architecture": "x86_64",
-        "agent.host.hostname": "test-host-001",
-        "agent.host.os.name": "Ubuntu",
-        "agent.host.os.platform": "ubuntu",
-        "agent.host.os.type": "linux",
-        "agent.host.os.version": "22.04",
+        "wazuh.agent.name": "metadata-test-agent",
+        "wazuh.agent.version": "4.9.0",
+        "wazuh.agent.host.architecture": "x86_64",
+        "wazuh.agent.host.hostname": "test-host-001",
+        "wazuh.agent.host.os.name": "Ubuntu",
+        "wazuh.agent.host.os.platform": "ubuntu",
+        "wazuh.agent.host.os.type": "linux",
+        "wazuh.agent.host.os.version": "22.04",
         "state.document_version": 12345
       }
     }
