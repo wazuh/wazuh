@@ -53,83 +53,41 @@ bool mapGeoToECS(const std::string& ip,
                  json::Json& event)
 {
     bool mapCity = false;
-    // Geo data
-    auto city = locator->getString(ip, "city.names.en");
-    if (!base::isError(city))
-    {
-        event.setString(getResponse(city), ecsPath + "/city_name");
-        mapCity = true;
-    }
 
-    auto continentCode = locator->getString(ip, "continent.code");
-    if (!base::isError(continentCode))
+    // Helper lambda to map string fields
+    auto mapStringField = [&](const std::string& geoPath, const std::string& ecsField)
     {
-        event.setString(getResponse(continentCode), ecsPath + "/continent_code");
-        mapCity = true;
-    }
+        auto result = locator->getString(ip, geoPath);
+        if (!base::isError(result))
+        {
+            event.setString(getResponse(result), ecsPath + ecsField);
+            mapCity = true;
+        }
+    };
 
-    auto continentName = locator->getString(ip, "continent.names.en");
-    if (!base::isError(continentName))
+    // Helper lambda to map double fields
+    auto mapDoubleField = [&](const std::string& geoPath, const std::string& ecsField)
     {
-        event.setString(getResponse(continentName), ecsPath + "/continent_name");
-        mapCity = true;
-    }
+        auto result = locator->getDouble(ip, geoPath);
+        if (!base::isError(result))
+        {
+            event.setDouble(getResponse(result), ecsPath + ecsField);
+            mapCity = true;
+        }
+    };
 
-    auto countryIsoCode = locator->getString(ip, "country.iso_code");
-    if (!base::isError(countryIsoCode))
-    {
-        event.setString(getResponse(countryIsoCode), ecsPath + "/country_iso_code");
-        mapCity = true;
-    }
-
-    auto countryName = locator->getString(ip, "country.names.en");
-    if (!base::isError(countryName))
-    {
-        event.setString(getResponse(countryName), ecsPath + "/country_name");
-        mapCity = true;
-    }
-
-    auto lat = locator->getDouble(ip, "location.latitude");
-    if (!base::isError(lat))
-    {
-        event.setDouble(getResponse(lat), ecsPath + "/location/lat");
-        mapCity = true;
-    }
-
-    auto lon = locator->getDouble(ip, "location.longitude");
-    if (!base::isError(lon))
-    {
-        event.setDouble(getResponse(lon), ecsPath + "/location/lon");
-        mapCity = true;
-    }
-
-    auto postalCode = locator->getString(ip, "postal.code");
-    if (!base::isError(postalCode))
-    {
-        event.setString(getResponse(postalCode), ecsPath + "/postal_code");
-        mapCity = true;
-    }
-
-    auto timeZone = locator->getString(ip, "location.time_zone");
-    if (!base::isError(timeZone))
-    {
-        event.setString(getResponse(timeZone), ecsPath + "/timezone");
-        mapCity = true;
-    }
-
-    auto regionIsoCode = locator->getString(ip, "subdivisions.0.iso_code");
-    if (!base::isError(regionIsoCode))
-    {
-        event.setString(getResponse(regionIsoCode), ecsPath + "/region_iso_code");
-        mapCity = true;
-    }
-
-    auto regionName = locator->getString(ip, "subdivisions.0.names.en");
-    if (!base::isError(regionName))
-    {
-        event.setString(getResponse(regionName), ecsPath + "/region_name");
-        mapCity = true;
-    }
+    // Map all geo fields using the helper lambdas
+    mapStringField("city.names.en", "/city_name");
+    mapStringField("continent.code", "/continent_code");
+    mapStringField("continent.names.en", "/continent_name");
+    mapStringField("country.iso_code", "/country_iso_code");
+    mapStringField("country.names.en", "/country_name");
+    mapDoubleField("location.latitude", "/location/lat");
+    mapDoubleField("location.longitude", "/location/lon");
+    mapStringField("postal.code", "/postal_code");
+    mapStringField("location.time_zone", "/timezone");
+    mapStringField("subdivisions.0.iso_code", "/region_iso_code");
+    mapStringField("subdivisions.0.names.en", "/region_name");
 
     return mapCity;
 }
@@ -150,19 +108,31 @@ bool mapAStoECS(const std::string& ip,
 {
     bool mapAS = false;
 
-    auto asn = locator->getUint32(ip, "autonomous_system_number");
-    if (!base::isError(asn))
+    // Helper lambda for AS number field
+    auto mapUint32Field = [&](const std::string& geoPath, const std::string& ecsField)
     {
-        event.setInt64(getResponse(asn), ecsPath + "/number");
-        mapAS = true;
-    }
+        auto result = locator->getUint32(ip, geoPath);
+        if (!base::isError(result))
+        {
+            event.setInt64(getResponse(result), ecsPath + ecsField);
+            mapAS = true;
+        }
+    };
 
-    auto asnOrg = locator->getString(ip, "autonomous_system_organization");
-    if (!base::isError(asnOrg))
+    // Helper lambda for AS string field
+    auto mapStringField = [&](const std::string& geoPath, const std::string& ecsField)
     {
-        event.setString(getResponse(asnOrg), ecsPath + "/organization/name");
-        mapAS = true;
-    }
+        auto result = locator->getString(ip, geoPath);
+        if (!base::isError(result))
+        {
+            event.setString(getResponse(result), ecsPath + ecsField);
+            mapAS = true;
+        }
+    };
+
+    // Map AS fields
+    mapUint32Field("autonomous_system_number", "/number");
+    mapStringField("autonomous_system_organization", "/organization/name");
 
     return mapAS;
 }
@@ -173,68 +143,65 @@ getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& locator, const MappingCo
 
     auto opFn = [locator, mappingConfig, trace](base::Event event) -> base::result::Result<base::Event>
     {
-        std::string traceMsg {};
         // Get source IP
         auto ipOpt = event->getString(mappingConfig.originIpPath);
         if (!ipOpt.has_value())
         {
-            if (trace)
-            {
-                traceMsg = fmt::format(FMT_NOT_FOUND_IP_ENRICHMENT_TRACE, mappingConfig.originIpPath);
-            }
+            const auto traceMsg =
+                trace ? fmt::format(FMT_NOT_FOUND_IP_ENRICHMENT_TRACE, mappingConfig.originIpPath) : std::string {};
             return base::result::makeFailure<decltype(event)>(event, traceMsg);
         }
         const auto& ip = ipOpt.value();
 
-        // Map AS data
-        bool asSuccess = false;
-        if (mappingConfig.asEcsPath.has_value())
-        {
-            asSuccess = mapAStoECS(ip, locator, mappingConfig.asEcsPath.value(), *event);
-        }
+        // Map enrichment data
+        const bool asConfigured = mappingConfig.asEcsPath.has_value();
+        const bool geoConfigured = mappingConfig.geoEcsPath.has_value();
 
-        // Map Geo data
-        bool geoSuccess = false;
-        if (mappingConfig.geoEcsPath.has_value())
-        {
-            geoSuccess = mapGeoToECS(ip, locator, mappingConfig.geoEcsPath.value(), *event);
-        }
+        const bool asSuccess = asConfigured ? mapAStoECS(ip, locator, mappingConfig.asEcsPath.value(), *event) : false;
 
-        if (trace)
+        const bool geoSuccess =
+            geoConfigured ? mapGeoToECS(ip, locator, mappingConfig.geoEcsPath.value(), *event) : false;
+
+        // Generate trace message using lookup lambda
+        const auto getTraceMessage = [&]() -> std::string
         {
-            if (mappingConfig.asEcsPath.has_value() && mappingConfig.geoEcsPath.has_value())
+            if (!trace)
+                return {};
+
+            // Lambda to generate message based on configuration type
+            auto msgForBothConfigs = [&]()
             {
                 if (asSuccess && geoSuccess)
-                {
-                    traceMsg = fmt::format(FMT_SUCCESS_BOTH_ENRICHMENT_TRACE, ip, ip);
-                }
-                else if (asSuccess)
-                {
-                    traceMsg = fmt::format(FMT_SUCCESS_ONLY_AS_ENRICHMENT_TRACE, ip, ip);
-                }
-                else if (geoSuccess)
-                {
-                    traceMsg = fmt::format(FMT_SUCCESS_ONLY_GEO_ENRICHMENT_TRACE, ip, ip);
-                }
-                else
-                {
-                    traceMsg = fmt::format(FMT_NO_DATA_ENRICHMENT_TRACE, ip, ip);
-                }
-            }
-            else if (mappingConfig.asEcsPath.has_value())
-            {
-                traceMsg = asSuccess ? fmt::format(FMT_SUCCESS_AS_ENRICHMENT_TRACE, ip)
-                                     : fmt::format(FMT_NO_AS_DATA_ENRICHMENT_TRACE, ip);
-            }
-            else if (mappingConfig.geoEcsPath.has_value())
-            {
-                traceMsg = geoSuccess
-                               ? fmt::format(FMT_SUCCESS_GEO_ENRICHMENT_TRACE, ip)
-                               : fmt::format(FMT_NO_GEO_DATA_ENRICHMENT_TRACE, ip);
-            }
-        }
+                    return fmt::format(FMT_SUCCESS_BOTH_ENRICHMENT_TRACE, ip, ip);
+                if (asSuccess)
+                    return fmt::format(FMT_SUCCESS_ONLY_AS_ENRICHMENT_TRACE, ip, ip);
+                if (geoSuccess)
+                    return fmt::format(FMT_SUCCESS_ONLY_GEO_ENRICHMENT_TRACE, ip, ip);
+                return fmt::format(FMT_NO_DATA_ENRICHMENT_TRACE, ip, ip);
+            };
 
-        return base::result::makeSuccess<decltype(event)>(event, traceMsg);
+            auto msgForAsOnly = [&]()
+            {
+                return asSuccess ? fmt::format(FMT_SUCCESS_AS_ENRICHMENT_TRACE, ip)
+                                 : fmt::format(FMT_NO_AS_DATA_ENRICHMENT_TRACE, ip);
+            };
+
+            auto msgForGeoOnly = [&]()
+            {
+                return geoSuccess ? fmt::format(FMT_SUCCESS_GEO_ENRICHMENT_TRACE, ip)
+                                  : fmt::format(FMT_NO_GEO_DATA_ENRICHMENT_TRACE, ip);
+            };
+
+            if (asConfigured && geoConfigured)
+                return msgForBothConfigs();
+            if (asConfigured)
+                return msgForAsOnly();
+            if (geoConfigured)
+                return msgForGeoOnly();
+            return {};
+        };
+
+        return base::result::makeSuccess<decltype(event)>(event, getTraceMessage());
     };
 
     return base::Term<base::EngineOp>::create("geo_as_enrichment", opFn);
