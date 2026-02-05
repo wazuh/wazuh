@@ -77,21 +77,19 @@ Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later."
 
     # If any error was detected, show message and block
     if [ -n "$ERROR_TYPE" ]; then
-        cat <<EOF >&2
-═════════════════════════════════════════════════════════════════
-  UPGRADE BLOCKED: $ERROR_TITLE
-═════════════════════════════════════════════════════════════════
-
-$ERROR_MESSAGE
-
-Required action:
-  1. Upgrade to version 4.14.0 or later first
-  2. Then upgrade to 5.0.0
-
-For more information, visit:
-  https://documentation.wazuh.com/current/upgrade-guide/
-═════════════════════════════════════════════════════════════════
-EOF
+        echo "═════════════════════════════════════════════════════════════════"
+        echo "  UPGRADE BLOCKED: $ERROR_TITLE"
+        echo "═════════════════════════════════════════════════════════════════"
+        echo ""
+        echo "$ERROR_MESSAGE"
+        echo ""
+        echo "Required action:"
+        echo "  1. Upgrade to version 4.14.0 or later first"
+        echo "  2. Then upgrade to 5.0.0"
+        echo ""
+        echo "For more information, visit:"
+        echo "  https://documentation.wazuh.com/current/upgrade-guide/"
+        echo "═════════════════════════════════════════════════════════════════"
         exit 1
     fi
 
