@@ -50,7 +50,7 @@ public:
 
         const std::filesystem::path instPath {m_path}; // m_path string -> fs::path
 
-        // Borra el directorio de la instancia: .../ioc-production/737b
+        // Delete the instance directory
         std::error_code ec;
         std::filesystem::remove_all(instPath, ec);
         if (ec)
@@ -58,13 +58,12 @@ public:
             LOG_WARNING("Failed to delete directory '{}': {}.", instPath.string(), ec.message());
         }
 
-        // Intenta borrar el directorio padre (DB) SOLO si quedó vacío: .../ioc-production
+        // Try to delete the parent directory (DB) ONLY if it is empty: .../ioc-production
         const std::filesystem::path parent = instPath.parent_path();
         if (!parent.empty())
         {
             std::error_code ec2;
-            std::filesystem::remove(parent, ec2); // remove() solo borra si está vacío
-            // no logueo ec2: que falle por "not empty" es normal
+            std::filesystem::remove(parent, ec2); // remove() only deletes if empty
         }
     }
 
@@ -82,7 +81,7 @@ public:
     const std::string& path() const noexcept { return m_path; }
 
     std::string getPath() const { return m_path; }
-    
+
     // Mark this instance for deletion when destroyed (called by manager for retired instances)
     void markForDeletion() { m_shouldDeleteOnDestroy = true; }
 

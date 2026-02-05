@@ -37,7 +37,7 @@ class DbInstance;
 class DbHandle : public IReadOnlyKVDBHandler
 {
 public:
-    explicit DbHandle(DbName name)
+    explicit DbHandle(const std::string& name)
         : m_name(std::move(name))
         , m_state(DbState::READY)
     {
@@ -49,7 +49,7 @@ public:
      * @brief Get the database name this handle is bound to.
      * @return Reference to the database name.
      */
-    const DbName& name() const noexcept override { return m_name; }
+    const std::string& name() const noexcept override { return m_name; }
 
     /**
      * @brief Get a single value from the database.
@@ -142,7 +142,7 @@ public:
     std::mutex& structuralMutex() noexcept { return m_structuralMutex; }
 
 private:
-    DbName m_name;
+    std::string m_name;
 
     // === Published instance (RCU-like, lock-free for readers) ===
     std::shared_ptr<DbInstance> m_current; // Use atomic_load/store/exchange

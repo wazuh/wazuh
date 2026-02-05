@@ -302,9 +302,9 @@ int main(int argc, char* argv[])
 
         // KVDB IOC
         {
-            auto kvdbPath = std::filesystem::path(confManager.get<std::string>(conf::key::KVDB_PATH));
+            auto kvdbPath = std::filesystem::path(confManager.get<std::string>(conf::key::KVDB_IOC_PATH));
             kvdbIOC = std::make_shared<kvdbioc::KVDBManager>(kvdbPath, store);
-            LOG_INFO("KVDB IOC initialized at: {} with production database", kvdbPath.string());
+            LOG_INFO("KVDB IOC initialized.");
         }
 
         // GEO

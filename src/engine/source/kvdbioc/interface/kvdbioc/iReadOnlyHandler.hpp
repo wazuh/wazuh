@@ -24,7 +24,7 @@ public:
     virtual ~IReadOnlyKVDBHandler() = default;
 
     /// DB name this handler is bound to (exclusive).
-    virtual const DbName& name() const noexcept = 0;
+    virtual const std::string& name() const noexcept = 0;
 
     /**
      * @brief Get value as JSON.

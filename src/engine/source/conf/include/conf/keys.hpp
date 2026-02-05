@@ -11,7 +11,7 @@ constexpr std::string_view LOGGING_LEVEL = "analysisd.debug";
 
 constexpr std::string_view STORE_PATH = "analysisd.store_path";
 
-constexpr std::string_view KVDB_PATH = "analysisd.kvdb_path";
+constexpr std::string_view KVDB_IOC_PATH = "analysisd.kvdb_ioc_path";
 
 constexpr std::string_view OUTPUTS_PATH = "analysisd.output_path";
 

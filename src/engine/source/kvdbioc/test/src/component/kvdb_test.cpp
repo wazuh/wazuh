@@ -1,6 +1,7 @@
 #include <atomic>
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -1453,4 +1454,136 @@ TEST_F(KVDBComponentTest, PersistenceMultipleRestarts)
         EXPECT_TRUE(result.has_value());
         EXPECT_EQ(result->getInt("/value").value(), 2);
     }
+}
+
+// Test add() rollback on failure - handle removed from registry if operation fails
+TEST_F(KVDBComponentTest, AddRollbackOnFailure)
+{
+    kvdbioc::KVDBManager manager(testDir, store);
+
+    // Strategy: Create a regular FILE where manager expects a DIRECTORY
+    // This will cause create_directories() to fail reliably
+    fs::path conflictPath = testDir / "conflict-db";
+    fs::create_directories(testDir); // Ensure parent exists
+
+    // Create a regular file instead of directory
+    std::ofstream conflictFile(conflictPath);
+    conflictFile << "This is a file, not a directory";
+    conflictFile.close();
+
+    // First add() attempt should fail because it can't create subdirectories
+    // inside a regular file
+    EXPECT_THROW(
+        {
+            try
+            {
+                manager.add("conflict-db");
+            }
+            catch (const std::runtime_error& e)
+            {
+                // Verify error mentions the DB name
+                std::string msg = e.what();
+                EXPECT_TRUE(msg.find("conflict-db") != std::string::npos);
+                throw;
+            }
+        },
+        std::runtime_error);
+
+    // Remove the blocking file
+    fs::remove(conflictPath);
+
+    // Second add() attempt should succeed (rollback worked - handle was removed)
+    EXPECT_NO_THROW(manager.add("conflict-db"));
+
+    // Verify DB is functional
+    EXPECT_NO_THROW(manager.put("conflict-db", "test-key", R"({"status":"working"})"));
+    auto result = manager.get("conflict-db", "test-key");
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(result->getString("/status").value(), "working");
+}
+
+// Test add() rollback when RocksDB open fails
+TEST_F(KVDBComponentTest, AddRollbackOnRocksDBOpenFailure)
+{
+    kvdbioc::KVDBManager manager(testDir, store);
+
+    // Strategy: Create a regular FILE where manager expects to create DB directory
+    // This will cause create_directories() to fail when trying to create instance subdirectory
+    fs::path dbPath = testDir / "corrupted-db";
+
+    // Create a regular file instead of directory
+    std::ofstream corruptedFile(dbPath);
+    corruptedFile << "This blocks directory creation";
+    corruptedFile.close();
+
+    // First attempt should fail because it can't create subdirectories inside a file
+    EXPECT_THROW(
+        {
+            try
+            {
+                manager.add("corrupted-db");
+            }
+            catch (const std::runtime_error& e)
+            {
+                std::string msg = e.what();
+                EXPECT_TRUE(msg.find("corrupted-db") != std::string::npos);
+                throw;
+            }
+        },
+        std::runtime_error);
+
+    // Clean up the corrupted state
+    fs::remove(dbPath);
+
+    // Second attempt should succeed after rollback
+    EXPECT_NO_THROW(manager.add("corrupted-db"));
+    EXPECT_NO_THROW(manager.put("corrupted-db", "recovery", R"({"status":"recovered"})"));
+
+    auto result = manager.get("corrupted-db", "recovery");
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(result->getString("/status").value(), "recovered");
+}
+
+// Test concurrent add() attempts don't leave duplicate handles
+TEST_F(KVDBComponentTest, AddRollbackConcurrentAttempts)
+{
+    kvdbioc::KVDBManager manager(testDir, store);
+
+    std::atomic<int> successCount {0};
+    std::atomic<int> failureCount {0};
+    std::vector<std::thread> threads;
+
+    // Launch multiple threads trying to add the same DB
+    for (int i = 0; i < 10; ++i)
+    {
+        threads.emplace_back(
+            [&]()
+            {
+                try
+                {
+                    manager.add("concurrent-db");
+                    successCount++;
+                }
+                catch (const std::runtime_error&)
+                {
+                    // Expected: only one thread succeeds, others get "already exists"
+                    failureCount++;
+                }
+            });
+    }
+
+    for (auto& t : threads)
+    {
+        t.join();
+    }
+
+    // Exactly one thread should succeed
+    EXPECT_EQ(successCount.load(), 1);
+    EXPECT_EQ(failureCount.load(), 9);
+
+    // DB should be functional
+    EXPECT_NO_THROW(manager.put("concurrent-db", "test", R"({"value":42})"));
+    auto result = manager.get("concurrent-db", "test");
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(result->getInt("/value").value(), 42);
 }
