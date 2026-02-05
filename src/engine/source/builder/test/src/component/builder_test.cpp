@@ -2,6 +2,7 @@
 
 #include <base/baseTypes.hpp>
 #include <base/behaviour.hpp>
+#include <store/mockStore.hpp>
 
 #include "definitions.hpp"
 
@@ -318,9 +319,10 @@ protected:
         builderDeps.kvdbManager = nullptr;
 
         auto emptyAllowedFields = std::make_shared<AllowedFields>();
+        auto mockStore = std::make_shared<store::mocks::MockStore>();
 
         m_builder = std::make_shared<Builder>(
-            m_mocks->m_spStore, m_mocks->m_spSchemf, m_mocks->m_spDefBuilder, emptyAllowedFields, builderDeps);
+            m_mocks->m_spStore, m_mocks->m_spSchemf, m_mocks->m_spDefBuilder, emptyAllowedFields, builderDeps, mockStore);
     }
 };
 
@@ -512,9 +514,10 @@ protected:
         builderDeps.kvdbManager = nullptr;
 
         auto emptyAllowedFields = std::make_shared<AllowedFields>();
+        auto mockStore = std::make_shared<store::mocks::MockStore>();
 
         m_builder = std::make_shared<Builder>(
-            m_mocks->m_spStore, m_mocks->m_spSchemf, m_mocks->m_spDefBuilder, emptyAllowedFields, builderDeps);
+            m_mocks->m_spStore, m_mocks->m_spSchemf, m_mocks->m_spDefBuilder, emptyAllowedFields, builderDeps, mockStore);
     }
 };
 
@@ -668,9 +671,10 @@ protected:
         builderDeps.kvdbManager = nullptr;
 
         auto emptyAllowedFields = std::make_shared<AllowedFields>();
+        auto mockStore = std::make_shared<store::mocks::MockStore>();
 
         m_builder = std::make_shared<Builder>(
-            m_mocks->m_spStore, m_mocks->m_spSchemf, m_mocks->m_spDefBuilder, emptyAllowedFields, builderDeps);
+            m_mocks->m_spStore, m_mocks->m_spSchemf, m_mocks->m_spDefBuilder, emptyAllowedFields, builderDeps, mockStore);
     }
 };
 

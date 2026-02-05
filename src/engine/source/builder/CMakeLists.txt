@@ -72,6 +72,7 @@ target_link_libraries(builder
     schemf::ischema
     base
     kvdbstore::ikvdb
+	store::istore
     geo::igeo
     streamlogger::istreamlogger
     wIndexerConnector::iwIndexerConnector
@@ -101,7 +102,16 @@ add_executable(builder_ctest
     ${COMPONENT_SRC_DIR}/builder_test.cpp
     ${COMPONENT_SRC_DIR}/validator_test.cpp
 )
-target_link_libraries(builder_ctest PRIVATE builder GTest::gtest_main schemf::mocks cmstore::mocks defs::mocks base::test)
+target_link_libraries(builder_ctest
+	PRIVATE
+	builder
+	GTest::gtest_main
+	schemf::mocks
+	cmstore::mocks
+	store::mocks
+	defs::mocks
+	base::test
+)
 gtest_discover_tests(builder_ctest)
 ## Unit tests
 add_executable(builder_utest
@@ -174,6 +184,7 @@ target_link_libraries(builder_utest
 	builder::mocks
 	schemf::mocks
 	cmstore::mocks
+	store::mocks
 	defs::mocks
 	kvdbstore::mocks
 	geo::mocks

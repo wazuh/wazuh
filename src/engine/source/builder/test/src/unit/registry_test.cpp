@@ -126,4 +126,5 @@ TEST(RegistryTest, RegisterBuilders)
 
     ASSERT_NO_THROW(builder::detail::registerOpBuilders<builders::RegistryType>(metaRegistry, deps));
     ASSERT_NO_THROW(builder::detail::registerStageBuilders<builders::RegistryType>(metaRegistry, deps));
+    // Add Enrichment builders registration when implemented
 }
