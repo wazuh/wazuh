@@ -45,4 +45,5 @@ if(UNIT_TEST)
   add_subdirectory(tests)
 endif()
 
+# test comment
 add_subdirectory(testtool)
