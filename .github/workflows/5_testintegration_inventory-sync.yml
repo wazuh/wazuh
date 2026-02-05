@@ -21,6 +21,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# test comment
 jobs:
   inventory-sync-integration-tests:
     name: inventory-sync-integration-tests
