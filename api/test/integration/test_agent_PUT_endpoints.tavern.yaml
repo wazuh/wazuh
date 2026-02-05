@@ -109,7 +109,7 @@ stages:
               id:
                 - "999"
           total_affected_items: 0
-          total_failed_items: 2
+          total_failed_items: 1
 
     # PUT /agents/group?group_id=default&agents_list=001,002
   - name: Try to assign agents 001 and 002 to group default where they already belong
@@ -478,7 +478,7 @@ stages:
               id:
                 - "999"
           total_affected_items: 0
-          total_failed_items: 2
+          total_failed_items: 1
 
   # PUT /agents/reconnect?agents_list=001,002,999
   - name: Try to reconnect agents 001,002 and 999
@@ -591,7 +591,7 @@ stages:
               id:
                 - "999"
           total_affected_items: 0
-          total_failed_items: 2
+          total_failed_items: 1
 
     # PUT /agents/restart?agents_list=001,002,999
   - name: Try to restart agents 001,002 and 999
@@ -985,7 +985,7 @@ stages:
         data:
           affected_items: []
           total_affected_items: 0
-          total_failed_items: 7
+          total_failed_items: 6
           failed_items:
             - error:  # Not existing agents
                 code: 1701

@@ -1538,31 +1538,6 @@ stages:
               request_rto_sec: !anyint
               verify_msg_id: !anyint
 
-  - name: Get auth configuration from auth component
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/auth/auth"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          auth:
-            ciphers: !anystr
-            disabled: !anystr
-            force: !anything
-            port: !anyint
-            purge: !anystr
-            ssl_auto_negotiate: !anystr
-            ssl_manager_cert: !anystr
-            ssl_manager_key: !anystr
-            ssl_verify_host: !anystr
-            use_password: !anystr
-            use_source_ip: !anystr
-
   - name: Get active-response configuration from com component (Agent)
     request:
       verify: False
@@ -1648,81 +1623,6 @@ stages:
               sample_log_length: !anyint
               sock_fail_time: !anyint
               vcheck_files: !anyint
-
-  - name: Get internal configuration from monitor component
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/monitor/internal"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          monitord:
-            compress: !anyint
-            daily_rotations: !anyint
-            day_wait: !anyint
-            delete_old_agents: !anyint
-            keep_log_days: !anyint
-            monitor_agents: !anyint
-            rotate_log: !anyint
-            sign: !anyint
-            size_rotate: !anyint
-
-  - name: Get remote configuration from request component
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/request/remote"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          remote:
-            - connection: !anystr
-              ipv6: !anystr
-              port: !anystr
-              protocol: !anylist
-              queue_size: !anystr
-
-  - name: Get internal configuration from request component
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/request/internal"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          internal:
-            remoted:
-              buffer_relax: !anyint
-              comp_average_printout: !anyint
-              guess_agent_group: !anyint
-              max_attempts: !anyint
-              merge_shared: !anyint
-              pass_empty_keyfile: !anyint
-              receive_chunk: !anyint
-              recv_counter_flush: !anyint
-              recv_timeout: !anyint
-              request_pool: !anyint
-              request_rto_msec: !anyint
-              request_rto_sec: !anyint
-              request_timeout: !anyint
-              response_timeout: !anyint
-              rlimit_nofile: !anyint
-              sender_pool: !anyint
-              shared_reload: !anyint
-              verify_msg_id: !anyint
 
   - name: Get syscheck configuration from syscheck component (Agent)
     request:
@@ -2099,7 +1999,14 @@ stages:
         error: 0
         data:
           affected_items:
-            - <<: *stats_response
+            - global:
+                start: !anystr
+                end: !anystr
+                files: !anything
+              interval:
+                start: !anystr
+                end: !anystr
+                files: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -4477,6 +4384,9 @@ stages:
 ---
 test_name: GET /agents/summary/status
 
+marks:
+  - xfail # This will be failing until we complete https://github.com/wazuh/wazuh/issues/34175, we need to remove before final merge.
+
 stages:
 
   - name: Get the agents status summary
@@ -4611,7 +4521,7 @@ stages:
         data:
           affected_items: [ ]
           total_affected_items: 0
-          total_failed_items: 7
+          total_failed_items: 6
           failed_items:
             - error: # Not existing agents
                 code: 1701

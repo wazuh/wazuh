@@ -207,7 +207,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: 002
+        agents_list: "002"
         group_id: group1
     response:
       status_code: 200
