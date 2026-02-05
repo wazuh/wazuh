@@ -608,7 +608,7 @@ def collect_windows_runtime_dlls(bin_dir):
         "libgcc_s_dw2-1.dll",
         "libstdc++-6.dll",
         "libwinpthread-1.dll",
-        "schema_validator.dll"
+        "schema_validator.dll",
         "libwazuhext.dll",
     ]
 
