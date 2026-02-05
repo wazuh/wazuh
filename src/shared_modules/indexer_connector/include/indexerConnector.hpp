@@ -129,7 +129,7 @@ public:
      *
      * Example updateQuery structure:
      * {
-     *   "query": { "term": { "agent.id": "001" } },
+     *   "query": { "term": { "wazuh.agent.id": "001" } },
      *   "script": {
      *     "source": "ctx._source.field = params.value",
      *     "lang": "painless",

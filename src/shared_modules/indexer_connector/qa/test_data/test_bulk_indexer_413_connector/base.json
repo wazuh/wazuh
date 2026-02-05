@@ -2,15 +2,17 @@
   "id": "000",
   "operation": "INSERT",
   "data": {
-    "agent": {
-      "build": {
-        "original": "sample_build_1"
-      },
-      "ephemeral_id": "eph_id_1",
-      "id": "000",
-      "name": "agent_name_1",
-      "type": "agent_type_1",
-      "version": "1.0.0"
+    "wazuh": {
+      "agent": {
+        "build": {
+          "original": "sample_build_1"
+        },
+        "ephemeral_id": "eph_id_1",
+        "id": "000",
+        "name": "agent_name_1",
+        "type": "agent_type_1",
+        "version": "1.0.0"
+      }
     },
     "message": "Sample message",
     "package": {
