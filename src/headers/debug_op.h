@@ -28,12 +28,12 @@
 /* For internal logs */
 #ifndef LOGFILE
 #ifndef WIN32
-#ifdef WAZUH_MANAGER
-#define LOGFILE   "logs/wazuh-manager.log"
-#define LOGJSONFILE "logs/wazuh-manager.json"
-#else
+#ifdef CLIENT
 #define LOGFILE   "logs/ossec.log"
 #define LOGJSONFILE "logs/ossec.json"
+#else
+#define LOGFILE   "logs/wazuh-manager.log"
+#define LOGJSONFILE "logs/wazuh-manager.json"
 #endif
 #else
 #define LOGFILE "ossec.log"
