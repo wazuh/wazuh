@@ -34,6 +34,9 @@
 #include "builders/stage/outputs.hpp"
 #include "builders/stage/parse.hpp"
 
+// Enrichment builders
+#include "builders/enrichment/enrichment.hpp"
+
 namespace builder::detail
 {
 
@@ -63,7 +66,8 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
     registry->template add<builders::OpBuilderEntry>(
         "array_not_contains", {schemf::elementValidationToken(), builders::opfilter::opBuilderHelperNotContains});
     registry->template add<builders::OpBuilderEntry>(
-        "array_not_contains_any", {schemf::elementValidationToken(), builders::opfilter::opBuilderHelperNotContainsAny});
+        "array_not_contains_any",
+        {schemf::elementValidationToken(), builders::opfilter::opBuilderHelperNotContainsAny});
     registry->template add<builders::OpBuilderEntry>(
         "int_equal",
         {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperIntEqual});
@@ -236,13 +240,16 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
 
     // Transform builders
     registry->template add<builders::OpBuilderEntry>(
-        "array_append_unique", {schemf::elementValidationToken(), builders::optransform::getArrayAppendBuilder(true, false)});
+        "array_append_unique",
+        {schemf::elementValidationToken(), builders::optransform::getArrayAppendBuilder(true, false)});
     registry->template add<builders::OpBuilderEntry>(
         "array_append", {schemf::elementValidationToken(), builders::optransform::getArrayAppendBuilder(false, false)});
     registry->template add<builders::OpBuilderEntry>(
-        "array_append_unique_any", {schemf::elementValidationToken(), builders::optransform::getArrayAppendBuilder(true, true)});
+        "array_append_unique_any",
+        {schemf::elementValidationToken(), builders::optransform::getArrayAppendBuilder(true, true)});
     registry->template add<builders::OpBuilderEntry>(
-        "array_append_any", {schemf::elementValidationToken(), builders::optransform::getArrayAppendBuilder(false, true)});
+        "array_append_any",
+        {schemf::elementValidationToken(), builders::optransform::getArrayAppendBuilder(false, true)});
     // Transform helpers: Event Field functions
     registry->template add<builders::OpBuilderEntry>(
         "delete", {schemf::runtimeValidation(), builders::opBuilderHelperDeleteField});
@@ -259,8 +266,7 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
         "rename", {schemf::runtimeValidation(), builders::opBuilderHelperRenameField});
     // Transform helpers: String functions
     registry->template add<builders::OpBuilderEntry>(
-        "split",
-        {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperAppendSplitString});
+        "split", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperAppendSplitString});
     registry->template add<builders::OpBuilderEntry>(
         "array_obj_to_mapkv",
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperArrayObjToMapkv});
@@ -310,14 +316,16 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
     registry->template add<builders::OpBuilderEntry>(
         "parse_float", {schemf::STypeToken::create(schemf::Type::FLOAT), builders::optransform::floatParseBuilder});
     registry->template add<builders::OpBuilderEntry>(
-        "parse_half_float", {schemf::STypeToken::create(schemf::Type::HALF_FLOAT), builders::optransform::halfFloatParseBuilder});
+        "parse_half_float",
+        {schemf::STypeToken::create(schemf::Type::HALF_FLOAT), builders::optransform::halfFloatParseBuilder});
     registry->template add<builders::OpBuilderEntry>(
         "parse_double", {schemf::STypeToken::create(schemf::Type::DOUBLE), builders::optransform::doubleParseBuilder});
     registry->template add<builders::OpBuilderEntry>(
         "parse_unsigned_long",
         {schemf::STypeToken::create(schemf::Type::UNSIGNED_LONG), builders::optransform::unsignedLongParseBuilder});
     registry->template add<builders::OpBuilderEntry>(
-        "parse_integer", {schemf::STypeToken::create(schemf::Type::INTEGER), builders::optransform::integerParseBuilder});
+        "parse_integer",
+        {schemf::STypeToken::create(schemf::Type::INTEGER), builders::optransform::integerParseBuilder});
     registry->template add<builders::OpBuilderEntry>(
         "parse_short", {schemf::STypeToken::create(schemf::Type::SHORT), builders::optransform::shortParseBuilder});
     registry->template add<builders::OpBuilderEntry>(
@@ -359,20 +367,16 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
         "kvdb_get", {schemf::runtimeValidation(), builders::getOpBuilderKVDBGet(deps.kvdbManager)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_get_merge",
-        {schemf::STypeToken::create(schemf::Type::OBJECT),
-         builders::getOpBuilderKVDBGetMerge(deps.kvdbManager)});
-    registry->template add<builders::OpBuilderEntry>(
-        "kvdb_get_merge_recursive",
-        {schemf::STypeToken::create(schemf::Type::OBJECT),
-         builders::getOpBuilderKVDBGetMergeRecursive(deps.kvdbManager)});
+        {schemf::STypeToken::create(schemf::Type::OBJECT), builders::getOpBuilderKVDBGetMerge(deps.kvdbManager)});
+    registry->template add<builders::OpBuilderEntry>("kvdb_get_merge_recursive",
+                                                     {schemf::STypeToken::create(schemf::Type::OBJECT),
+                                                      builders::getOpBuilderKVDBGetMergeRecursive(deps.kvdbManager)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_match", {schemf::runtimeValidation(), builders::getOpBuilderKVDBMatch(deps.kvdbManager)});
     registry->template add<builders::OpBuilderEntry>(
-        "kvdb_not_match",
-        {schemf::runtimeValidation(), builders::getOpBuilderKVDBNotMatch(deps.kvdbManager)});
+        "kvdb_not_match", {schemf::runtimeValidation(), builders::getOpBuilderKVDBNotMatch(deps.kvdbManager)});
     registry->template add<builders::OpBuilderEntry>(
-        "kvdb_get_array",
-        {schemf::runtimeValidation(), builders::getOpBuilderKVDBGetArray(deps.kvdbManager)});
+        "kvdb_get_array", {schemf::runtimeValidation(), builders::getOpBuilderKVDBGetArray(deps.kvdbManager)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_decode_bitmask",
         {schemf::runtimeValidation(), builders::getOpBuilderHelperKVDBDecodeBitmask(deps.kvdbManager)});
@@ -405,6 +409,13 @@ void registerStageBuilders(const std::shared_ptr<Registry>& registry, const Buil
                                                    builders::getFileOutputBuilder(deps.logManager));
     registry->template add<builders::StageBuilder>(syntax::asset::INDEXER_OUTPUT_KEY,
                                                    builders::getIndexerOutputBuilder(deps.iConnector));
+}
+
+template<typename Registry>
+void registerEnrichmentBuilders(const std::shared_ptr<Registry>& registry, const BuilderDeps& deps)
+{
+    registry->template add<builders::EnrichmentBuilder>("geo",
+                                                        builders::enrichment::getGeoEnrichmentBuilder(deps.geoManager));
 }
 
 } // namespace builder::detail

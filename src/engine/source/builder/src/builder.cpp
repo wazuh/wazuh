@@ -54,6 +54,7 @@ Builder::Builder(const std::shared_ptr<cm::store::ICMStore>& cmStore,
 
     detail::registerStageBuilders<Registry>(m_registry, builderDeps);
     detail::registerOpBuilders<Registry>(m_registry, builderDeps);
+    detail::registerEnrichmentBuilders<Registry>(m_registry, builderDeps);
 }
 
 // TODO: Remove default argument on interface
