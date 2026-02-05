@@ -848,6 +848,11 @@ void DBSync::closeAndDeleteDatabase()
 
 std::string DBSync::getConcatenatedChecksums(const std::string& tableName)
 {
+    return getConcatenatedChecksums(tableName, "");
+}
+
+std::string DBSync::getConcatenatedChecksums(const std::string& tableName, const std::string& rowFilter)
+{
     std::string concatenatedChecksums;
 
     auto callback = [&concatenatedChecksums](ReturnTypeCallback type, const nlohmann::json & jsonResult)
@@ -862,7 +867,7 @@ std::string DBSync::getConcatenatedChecksums(const std::string& tableName)
                       .table(tableName)
                       .columnList({"checksum"})
                       .orderByOpt({"checksum"})
-                      .rowFilter("")
+                      .rowFilter(rowFilter)
                       .distinctOpt(false)
                       .build()};
 
@@ -873,7 +878,12 @@ std::string DBSync::getConcatenatedChecksums(const std::string& tableName)
 
 std::string DBSync::calculateTableChecksum(const std::string& tableName)
 {
-    std::string concatenated_checksums = getConcatenatedChecksums(tableName);
+    return calculateTableChecksum(tableName, "");
+}
+
+std::string DBSync::calculateTableChecksum(const std::string& tableName, const std::string& rowFilter)
+{
+    std::string concatenated_checksums = getConcatenatedChecksums(tableName, rowFilter);
 
     // Build checksum-of-checksums
     Utils::HashData hash(Utils::HashType::Sha1);
@@ -1103,4 +1113,3 @@ SyncRowQuery& SyncRowQuery::reset()
     m_jsQuery["data"].clear();
     return *this;
 }
-

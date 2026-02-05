@@ -45,3 +45,14 @@ Each policy file is a YAML file defining checks (rules) grouped by sections and 
 - **Compliance mapping**: Built-in support for CIS, NIST, and other standards
 - **Result persistence**: Local database storage with reliable synchronization
 - **Dual event system**: Stateful events for synchronization and stateless for real-time alerts
+
+## Document Limits (Internal)
+
+The manager can provide an internal **sync limit** during the SCA synchronization handshake. When enabled, the agent
+keeps the full local SCA state but synchronizes only the first **N** stateful documents (FIFO order). A limit of `0`
+or an unset value means **unlimited** synchronization.
+
+Important behavior:
+- The limit applies **only** to stateful SCA documents sent to the indexer.
+- **Stateless** real-time SCA alerts are still generated for the **full** local state.
+- This is an **internal manager setting** and is not a user-facing configuration option.

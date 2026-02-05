@@ -1,0 +1,574 @@
+#include <sca_sync_manager.hpp>
+
+#include <dbsync.hpp>
+
+#include <algorithm>
+#include <limits>
+
+#include "logging_helper.hpp"
+#include "stringHelper.h"
+
+namespace
+{
+    std::string extractId(const nlohmann::json& data)
+    {
+        if (!data.contains("id"))
+        {
+            return {};
+        }
+
+        if (data["id"].is_string())
+        {
+            return data["id"].get<std::string>();
+        }
+
+        if (data["id"].is_number_integer())
+        {
+            return std::to_string(data["id"].get<int>());
+        }
+
+        return {};
+    }
+
+    std::string escapeSqlString(std::string input)
+    {
+        Utils::replaceAll(input, "'", "''");
+        return input;
+    }
+}
+
+SCASyncManager::SCASyncManager(std::shared_ptr<IDBSync> dbSync)
+    : m_dBSync(std::move(dbSync))
+{
+}
+
+void SCASyncManager::initialize()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    enforceLimitLocked();
+    m_initialized = true;
+}
+
+SCASyncManager::LimitResult SCASyncManager::updateSyncLimit(uint64_t syncLimit)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    const bool limitChanged = (syncLimit != m_syncLimit);
+
+    m_syncLimit = syncLimit;
+    m_hasBatchAllowedIds = false;
+    m_batchAllowedIds.clear();
+
+    if (!m_initialized)
+    {
+        return {};
+    }
+
+    if (limitChanged)
+    {
+        return enforceLimitLocked();
+    }
+
+    return {};
+}
+
+void SCASyncManager::prepareBatchAllowedIds()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    m_batchAllowedIds.clear();
+    m_hasBatchAllowedIds = false;
+
+    if (m_syncLimit == 0)
+    {
+        return;
+    }
+
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "SCA sync manager: DBSync not available to prepare window");
+        return;
+    }
+
+    const auto limit =
+        static_cast<uint32_t>(std::min<uint64_t>(m_syncLimit, std::numeric_limits<uint32_t>::max()));
+
+    std::unordered_set<std::string> windowIds;
+    windowIds.reserve(limit);
+
+    auto query = SelectQuery::builder()
+                 .table("sca_check")
+                 .columnList({"id"})
+                 .orderByOpt("rowid")
+                 .countOpt(limit)
+                 .build();
+
+    const auto callback = [&windowIds](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+    {
+        if (returnTypeCallback == SELECTED)
+        {
+            const auto id = extractId(resultData);
+
+            if (!id.empty())
+            {
+                windowIds.insert(id);
+            }
+        }
+    };
+
+    m_dBSync->selectRows(query.query(), callback);
+    setBatchAllowedIdsLocked(std::move(windowIds));
+}
+
+void SCASyncManager::clearBatchAllowedIds()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_batchAllowedIds.clear();
+    m_hasBatchAllowedIds = false;
+}
+
+void SCASyncManager::setBatchAllowedIdsLocked(std::unordered_set<std::string> windowIds)
+{
+    m_batchAllowedIds = std::move(windowIds);
+    m_hasBatchAllowedIds = true;
+}
+
+bool SCASyncManager::shouldSyncInsert(const nlohmann::json& checkData)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    ensureInitializedLocked();
+
+    const std::string checkId = extractId(checkData);
+
+    if (checkId.empty())
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "SCA sync manager: insert without check id");
+        return false;
+    }
+
+    ++m_totalCount;
+
+    bool shouldSync = true;
+
+    if (m_syncLimit != 0)
+    {
+        if (m_hasBatchAllowedIds)
+        {
+            shouldSync = (m_batchAllowedIds.find(checkId) != m_batchAllowedIds.end());
+        }
+        else
+        {
+            if (!m_dBSync)
+            {
+                LoggingHelper::getInstance().log(LOG_ERROR, "SCA sync manager: DBSync not available on insert");
+                return false;
+            }
+
+            const std::string escapedId = escapeSqlString(checkId);
+            uint64_t rowRank = 0;
+
+            auto countQuery = SelectQuery::builder()
+                              .table("sca_check")
+                              .columnList({"COUNT(*) AS count"})
+                              .rowFilter("WHERE rowid <= (SELECT rowid FROM sca_check WHERE id = '" + escapedId + "')")
+                              .build();
+
+            const auto countCallback = [&rowRank](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+            {
+                if (returnTypeCallback == SELECTED && resultData.contains("count") && resultData["count"].is_number())
+                {
+                    rowRank = resultData["count"].get<uint64_t>();
+                }
+            };
+
+            m_dBSync->selectRows(countQuery.query(), countCallback);
+
+            shouldSync = (rowRank != 0 && rowRank <= m_syncLimit);
+        }
+    }
+
+    const int desiredSync = shouldSync ? 1 : 0;
+
+    int currentSync = 0;
+
+    if (checkData.contains("sync") && checkData["sync"].is_number())
+    {
+        currentSync = checkData["sync"].get<int>();
+    }
+
+    if (shouldSync)
+    {
+        m_syncedIds.insert(checkId);
+        ++m_syncedCount;
+    }
+
+    if (currentSync != desiredSync)
+    {
+        if (!checkData.contains("version"))
+        {
+            LoggingHelper::getInstance().log(LOG_ERROR,
+                                             "SCA sync manager: insert without version for check " + checkId);
+        }
+        else
+        {
+            deferSyncFlagUpdate(checkId, checkData["version"].get<uint64_t>(), desiredSync);
+        }
+    }
+
+    return shouldSync;
+}
+
+bool SCASyncManager::shouldSyncModify(const nlohmann::json& checkData)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    ensureInitializedLocked();
+
+    const std::string checkId = extractId(checkData);
+
+    if (checkId.empty())
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "SCA sync manager: modify without check id");
+        return false;
+    }
+
+    if (m_syncLimit == 0)
+    {
+        return true;
+    }
+
+    if (m_syncedIds.find(checkId) != m_syncedIds.end())
+    {
+        return true;
+    }
+
+    if (m_hasBatchAllowedIds)
+    {
+        if (m_batchAllowedIds.find(checkId) == m_batchAllowedIds.end())
+        {
+            return false;
+        }
+
+        if (!checkData.contains("version"))
+        {
+            LoggingHelper::getInstance().log(LOG_ERROR,
+                                             "SCA sync manager: modify without version for check " + checkId);
+            return false;
+        }
+
+        deferSyncFlagUpdate(checkId, checkData["version"].get<uint64_t>(), 1);
+        m_syncedIds.insert(checkId);
+        ++m_syncedCount;
+
+        LoggingHelper::getInstance().log(
+            LOG_INFO,
+            "SCA sync limit promotion: promoted check " + checkId + " on modify");
+
+        return true;
+    }
+
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "SCA sync manager: DBSync not available on modify");
+        return false;
+    }
+
+    bool existsInDb = false;
+
+    auto existsQuery = SelectQuery::builder()
+                       .table("sca_check")
+                       .columnList({"COUNT(*) AS count"})
+                       .rowFilter("WHERE id = '" + escapeSqlString(checkId) + "'")
+                       .build();
+
+    const auto existsCallback = [&existsInDb](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+    {
+        if (returnTypeCallback == SELECTED && resultData.contains("count") && resultData["count"].is_number())
+        {
+            existsInDb = (resultData["count"].get<uint64_t>() > 0);
+        }
+    };
+
+    m_dBSync->selectRows(existsQuery.query(), existsCallback);
+
+    if (!existsInDb)
+    {
+        return false;
+    }
+
+    if (m_syncedCount >= m_syncLimit)
+    {
+        return false;
+    }
+
+    if (!checkData.contains("version"))
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR,
+                                         "SCA sync manager: modify without version for check " + checkId);
+        return false;
+    }
+
+    deferSyncFlagUpdate(checkId, checkData["version"].get<uint64_t>(), 1);
+    m_syncedIds.insert(checkId);
+    ++m_syncedCount;
+
+    LoggingHelper::getInstance().log(
+        LOG_INFO,
+        "SCA sync limit promotion: promoted check " + checkId + " on modify");
+
+    return true;
+}
+
+SCASyncManager::DeleteResult SCASyncManager::handleDelete(const nlohmann::json& checkData)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    ensureInitializedLocked();
+
+    DeleteResult result;
+    const std::string checkId = extractId(checkData);
+
+    if (checkId.empty())
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "SCA sync manager: delete without check id");
+        return result;
+    }
+
+    if (m_totalCount > 0)
+    {
+        --m_totalCount;
+    }
+
+    auto it = m_syncedIds.find(checkId);
+
+    if (it != m_syncedIds.end())
+    {
+        result.wasSynced = true;
+        m_syncedIds.erase(it);
+
+        if (m_syncedCount > 0)
+        {
+            --m_syncedCount;
+        }
+    }
+
+    if (m_syncLimit == 0)
+    {
+        return result;
+    }
+
+    const uint64_t desiredSynced = std::min(m_syncLimit, m_totalCount);
+
+    if (m_syncedCount >= desiredSynced)
+    {
+        return result;
+    }
+
+    const auto needed = static_cast<uint32_t>(desiredSynced - m_syncedCount);
+    const auto rows = selectChecks("WHERE sync = 0", needed);
+
+    for (const auto& row : rows)
+    {
+        const std::string promoteId = extractId(row);
+
+        if (promoteId.empty() || !row.contains("version"))
+        {
+            continue;
+        }
+
+        deferSyncFlagUpdate(promoteId, row["version"].get<uint64_t>(), 1);
+        m_syncedIds.insert(promoteId);
+        ++m_syncedCount;
+        result.promotedIds.push_back(promoteId);
+
+        if (m_syncedCount >= desiredSynced)
+        {
+            break;
+        }
+    }
+
+    if (!result.promotedIds.empty())
+    {
+        LoggingHelper::getInstance().log(
+            LOG_INFO,
+            "SCA sync limit promotion: promoted " + std::to_string(result.promotedIds.size()) +
+            " check(s)");
+    }
+
+    return result;
+}
+
+void SCASyncManager::ensureInitializedLocked()
+{
+    if (!m_initialized)
+    {
+        enforceLimitLocked();
+        m_initialized = true;
+    }
+}
+
+SCASyncManager::LimitResult SCASyncManager::enforceLimitLocked()
+{
+    LimitResult result;
+
+    if (!m_dBSync)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "SCA sync manager: DBSync not available");
+        return result;
+    }
+
+    m_syncedIds.clear();
+    m_totalCount = 0;
+    m_syncedCount = 0;
+    m_hasBatchAllowedIds = false;
+    m_batchAllowedIds.clear();
+
+    const auto rows = selectChecks("", 0);
+    const bool unlimited = (m_syncLimit == 0);
+
+    for (const auto& row : rows)
+    {
+        ++m_totalCount;
+        const std::string checkId = extractId(row);
+
+        if (checkId.empty() || !row.contains("version"))
+        {
+            continue;
+        }
+
+        const bool shouldSync = unlimited || (m_syncedCount < m_syncLimit);
+        const int desiredSync = shouldSync ? 1 : 0;
+
+        if (shouldSync)
+        {
+            m_syncedIds.insert(checkId);
+            ++m_syncedCount;
+        }
+
+        int currentSync = 0;
+
+        if (row.contains("sync") && row["sync"].is_number())
+        {
+            currentSync = row["sync"].get<int>();
+        }
+
+        if (currentSync != desiredSync)
+        {
+            updateSyncFlag(checkId, row["version"].get<uint64_t>(), desiredSync);
+
+            if (currentSync == 1 && desiredSync == 0)
+            {
+                result.demotedIds.push_back(checkId);
+            }
+            else if (currentSync == 0 && desiredSync == 1)
+            {
+                result.promotedIds.push_back(checkId);
+            }
+        }
+    }
+
+    if (m_syncLimit == 0)
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "SCA sync limit disabled; syncing " + std::to_string(m_syncedCount) +
+                                         " check(s)");
+    }
+    else
+    {
+        LoggingHelper::getInstance().log(
+            LOG_INFO,
+            "SCA sync limit enforced: limit=" + std::to_string(m_syncLimit) +
+            " synced=" + std::to_string(m_syncedCount) +
+            " total=" + std::to_string(m_totalCount));
+    }
+
+    return result;
+}
+
+void SCASyncManager::updateSyncFlag(const std::string& checkId, uint64_t version, int syncValue)
+{
+    if (!m_dBSync)
+    {
+        return;
+    }
+
+    nlohmann::json data;
+    data["id"] = checkId;
+    data["sync"] = syncValue;
+    data["version"] = version;
+
+    auto updateQuery = SyncRowQuery::builder().table("sca_check").data(data).build();
+    const auto callback = [](ReturnTypeCallback, const nlohmann::json&)
+    {
+    };
+    m_dBSync->syncRow(updateQuery.query(), callback);
+}
+
+void SCASyncManager::deferSyncFlagUpdate(const std::string& checkId, uint64_t version, int syncValue)
+{
+    m_pendingUpdates.push_back({checkId, version, syncValue});
+}
+
+void SCASyncManager::applyDeferredUpdates()
+{
+    std::vector<PendingUpdate> pending;
+
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+
+        if (m_pendingUpdates.empty())
+        {
+            return;
+        }
+
+        pending.swap(m_pendingUpdates);
+    }
+
+    for (const auto& update : pending)
+    {
+        updateSyncFlag(update.checkId, update.version, update.syncValue);
+    }
+}
+
+void SCASyncManager::reconcile()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    enforceLimitLocked();
+}
+
+std::vector<nlohmann::json> SCASyncManager::selectChecks(const std::string& filter, uint32_t limit) const
+{
+    std::vector<nlohmann::json> rows;
+
+    if (!m_dBSync)
+    {
+        return rows;
+    }
+
+    auto builder = SelectQuery::builder()
+                   .table("sca_check")
+                   .columnList({"rowid", "id", "version", "sync"})
+                   .orderByOpt("rowid");
+
+    if (!filter.empty())
+    {
+        builder.rowFilter(filter);
+    }
+
+    if (limit > 0)
+    {
+        builder.countOpt(limit);
+    }
+
+    auto query = builder.build();
+
+    const auto callback = [&rows](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+    {
+        if (returnTypeCallback == SELECTED)
+        {
+            rows.push_back(resultData);
+        }
+    };
+
+    m_dBSync->selectRows(query.query(), callback);
+
+    return rows;
+}

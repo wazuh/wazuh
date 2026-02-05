@@ -368,6 +368,14 @@ bool SCA::parseResponseBuffer(const uint8_t* data, size_t length)
     return false;
 }
 
+void SCA::setSyncLimit(uint64_t syncLimit)
+{
+    if (m_sca)
+    {
+        m_sca->setSyncLimit(syncLimit);
+    }
+}
+
 bool SCA::notifyDataClean(const std::vector<std::string>& indices)
 {
     if (m_sca)
@@ -449,6 +457,13 @@ bool sca_parse_response(const unsigned char* data, size_t length)
     }
 
     return false;
+}
+
+/// @brief C-style wrapper for setting SCA sync limit.
+/// @param syncLimit Maximum number of synced checks (0 = unlimited)
+void sca_set_sync_limit(uint64_t syncLimit)
+{
+    SCA::instance().setSyncLimit(syncLimit);
 }
 
 /// @brief C-style wrapper for notifying data clean in SCA module.

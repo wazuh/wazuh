@@ -23,6 +23,10 @@
 #include "atomic.h"
 #include "defs.h"
 #include "logging_helper.h"
+#include <limits.h>
+#ifndef WIN32
+#include <unistd.h>
+#endif
 
 #include "sca/include/sca.h"
 #include "yaml2json.h"
@@ -105,6 +109,153 @@ sca_set_wm_exec_func sca_set_wm_exec_ptr = NULL;
 sca_set_log_function_func sca_set_log_function_ptr = NULL;
 sca_set_push_functions_func sca_set_push_functions_ptr = NULL;
 sca_set_sync_parameters_func sca_set_sync_parameters_ptr = NULL;
+sca_set_sync_limit_func sca_set_sync_limit_ptr = NULL;
+
+#ifdef WIN32
+extern size_t agcom_dispatch(char * command, char ** output);
+#endif
+
+static bool wm_sca_query_agentd(const char* command, char* output_buffer, size_t buffer_size)
+{
+    if (!command || !output_buffer || buffer_size == 0)
+    {
+        return false;
+    }
+
+    char response_buffer[OS_MAXSTR];
+    ssize_t response_length = 0;
+
+#ifndef WIN32
+    const char* AGENT_SOCKET = "queue/sockets/agent";
+    const size_t MAX_RECV_SIZE = sizeof(response_buffer) - 1;
+
+    int sock = OS_ConnectUnixDomain(AGENT_SOCKET, SOCK_STREAM, MAX_RECV_SIZE);
+    if (sock < 0)
+    {
+        mdebug1("Could not connect to agent socket: %s", strerror(errno));
+        return false;
+    }
+
+    if (OS_SendSecureTCP(sock, strlen(command), command) != 0)
+    {
+        mdebug1("Failed to send request to agent socket: %s", strerror(errno));
+        close(sock);
+        return false;
+    }
+
+    memset(response_buffer, 0, sizeof(response_buffer));
+    response_length = OS_RecvSecureTCP(sock, response_buffer, MAX_RECV_SIZE);
+    close(sock);
+
+    if (response_length <= 0)
+    {
+        if (response_length == 0)
+        {
+            mdebug1("Empty response from agent socket");
+        }
+        else if (response_length == -2)
+        {
+            mdebug1("Maximum buffer length reached reading from agent socket");
+        }
+        else
+        {
+            mdebug1("Failed to receive response from agent socket: %s", strerror(errno));
+        }
+        return false;
+    }
+
+    response_buffer[response_length] = '\0';
+#else
+    char* output = NULL;
+    // agcom_dispatch() mutates the command buffer (it splits "cmd args" in-place).
+    // Copy to a writable buffer since callers typically pass string literals.
+    char command_buffer[OS_MAXSTR];
+    strncpy(command_buffer, command, sizeof(command_buffer) - 1);
+    command_buffer[sizeof(command_buffer) - 1] = '\0';
+
+    size_t result = agcom_dispatch(command_buffer, &output);
+
+    if (result == 0 || !output)
+    {
+        mdebug1("Failed to query agentd via agcom_dispatch");
+        return false;
+    }
+
+    size_t output_len = strlen(output);
+    size_t max_copy = sizeof(response_buffer) - 1;
+    if (output_len > max_copy)
+    {
+        output_len = max_copy;
+    }
+
+    memcpy(response_buffer, output, output_len);
+    response_buffer[output_len] = '\0';
+    response_length = output_len;
+    os_free(output);
+#endif
+
+    if (response_length >= 3 && strncmp(response_buffer, "ok ", 3) == 0)
+    {
+        const char* json_start = response_buffer + 3;
+        size_t json_len = strlen(json_start);
+
+        if (json_len >= buffer_size)
+        {
+            mdebug1("Output buffer too small (%zu bytes needed, %zu available)", json_len + 1, buffer_size);
+            return false;
+        }
+
+        strncpy(output_buffer, json_start, buffer_size - 1);
+        output_buffer[buffer_size - 1] = '\0';
+        return true;
+    }
+    else if (response_length >= 4 && strncmp(response_buffer, "err ", 4) == 0)
+    {
+        mdebug1("Agentd returned error: %s", response_buffer + 4);
+        return false;
+    }
+    else
+    {
+        mdebug1("Unexpected response format from agentd: %s", response_buffer);
+        return false;
+    }
+}
+
+static bool wm_sca_query_agentd_doclimits(uint64_t *sync_limit)
+{
+    if (!sync_limit)
+    {
+        return false;
+    }
+
+    *sync_limit = 0;
+
+    char json_buffer[OS_MAXSTR];
+    if (!wm_sca_query_agentd("getdoclimits sca", json_buffer, sizeof(json_buffer)))
+    {
+        return false;
+    }
+
+    cJSON* root = cJSON_Parse(json_buffer);
+    if (!root)
+    {
+        mdebug1("Failed to parse getdoclimits sca response");
+        return false;
+    }
+
+    cJSON* checks = cJSON_GetObjectItem(root, "checks");
+    if (checks && cJSON_IsNumber(checks))
+    {
+        const double value = cJSON_GetNumberValue(checks);
+        if (value >= 0)
+        {
+            *sync_limit = (uint64_t)value;
+        }
+    }
+
+    cJSON_Delete(root);
+    return true;
+}
 
 // Sync protocol function pointers
 sca_sync_module_func sca_sync_module_ptr = NULL;
@@ -250,12 +401,14 @@ void * wm_sca_main(wm_sca_t * data) {
 
     if (sca_module = so_get_module_handle(SCA_WM_NAME), sca_module)
     {
+        sca_init_ptr = so_get_function_sym(sca_module, "sca_init");
         sca_start_ptr = so_get_function_sym(sca_module, "sca_start");
         sca_stop_ptr = so_get_function_sym(sca_module, "sca_stop");
         sca_set_wm_exec_ptr = so_get_function_sym(sca_module, "sca_set_wm_exec");
         sca_set_log_function_ptr = so_get_function_sym(sca_module, "sca_set_log_function");
         sca_set_push_functions_ptr = so_get_function_sym(sca_module, "sca_set_push_functions");
         sca_set_sync_parameters_ptr = so_get_function_sym(sca_module, "sca_set_sync_parameters");
+        sca_set_sync_limit_ptr = so_get_function_sym(sca_module, "sca_set_sync_limit");
 
         // Get sync protocol function pointers
         sca_sync_module_ptr = so_get_function_sym(sca_module, "sca_sync_module");
@@ -315,6 +468,38 @@ void * wm_sca_main(wm_sca_t * data) {
     data->remote_commands = getDefine_Int("sca", "remote_commands", 0, 1);
 #else
     data->remote_commands = 1;  // Only agents require this setting. For manager it's always enabled.
+#endif
+    if (sca_init_ptr) {
+        sca_init_ptr();
+    }
+
+#ifdef CLIENT
+    // On agents, document limits are owned by agentd (it receives them from the manager during handshake).
+    // SCA must not start until agentd can provide them, otherwise we may start with wrong defaults.
+    if (sca_set_sync_limit_ptr)
+    {
+        uint64_t sync_limit = 0;
+
+        while (!wm_sca_is_shutting_down() && !wm_sca_query_agentd_doclimits(&sync_limit))
+        {
+#ifdef WIN32
+            Sleep(1000);
+#else
+            sleep(1);
+#endif
+        }
+
+        if (wm_sca_is_shutting_down())
+        {
+#ifdef WIN32
+            return 0;
+#else
+            return NULL;
+#endif
+        }
+
+        sca_set_sync_limit_ptr(sync_limit);
+    }
 #endif
 
     minfo("Starting SCA module...");

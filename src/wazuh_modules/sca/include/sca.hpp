@@ -105,6 +105,10 @@ class EXPORTED SCA final
         /// @return true if parsing succeeds, false on error or invalid data
         bool parseResponseBuffer(const uint8_t* data, size_t length);
 
+        /// @brief Set the SCA sync limit.
+        /// @param syncLimit Maximum number of synced checks (0 = unlimited)
+        void setSyncLimit(uint64_t syncLimit);
+
         /// @brief Notifies that data associated with specified indices needs to be cleaned.
         /// @param indices Vector of indices whose data needs to be cleaned.
         /// @return true if the operation succeeds, false otherwise.

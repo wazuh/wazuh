@@ -21,6 +21,8 @@
 /// @brief Type alias for YAML to JSON conversion function
 using YamlToJsonFunc = std::function<nlohmann::json(const std::string&)>;
 
+class SCASyncManager;
+
 class SecurityConfigurationAssessment
 {
     public:
@@ -106,6 +108,10 @@ class SecurityConfigurationAssessment
         /// @return true if parsing was successful, false otherwise
         bool parseResponseBuffer(const uint8_t* data, size_t length);
 
+        /// @brief Set the sync limit for SCA documents.
+        /// @param syncLimit Maximum number of synced checks (0 = unlimited)
+        void setSyncLimit(uint64_t syncLimit);
+
         /// @brief Notify that data associated with specified indices needs to be cleaned.
         /// @param indices Vector of indices whose data needs to be cleaned.
         /// @return true if the operation succeeds, false otherwise.
@@ -158,6 +164,9 @@ class SecurityConfigurationAssessment
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
 
+        /// @brief Calculate checksum for synced checks only (sync=1).
+        std::string calculateSyncedChecksChecksum();
+
         /// @brief Integrity check interval in seconds (0 = disabled)
         std::chrono::seconds m_integrityInterval = std::chrono::seconds(0);
 
@@ -202,6 +211,9 @@ class SecurityConfigurationAssessment
 
         /// @brief Pointer to IDBSync
         std::shared_ptr<IDBSync> m_dBSync;
+
+        /// @brief SCA sync manager (document limits)
+        std::shared_ptr<SCASyncManager> m_syncManager;
 
         /// @brief Function for pushing stateless event messages
         std::function<int(const std::string&)> m_pushStatelessMessage;

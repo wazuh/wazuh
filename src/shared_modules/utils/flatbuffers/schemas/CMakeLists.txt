@@ -27,9 +27,13 @@ foreach(schema IN LISTS schemas)
   add_custom_command(
     OUTPUT "${OUTPUT_HEADER_GENERATED}"
     COMMAND
+      ${CMAKE_COMMAND} -E make_directory
+      "${SRC_FOLDER}/shared_modules/utils/flatbuffers/include"
+    COMMAND
       ${FLATC_EXECUTABLE} ARGS -c ARGS -o
       "${SRC_FOLDER}/shared_modules/utils/flatbuffers/include" "${FBS_FILE}"
       ARGS --no-warnings
+    DEPENDS "${FBS_FILE}"
     COMMENT "Executing flatc to generate ${schema} header file.")
 
   add_custom_command(
@@ -38,7 +42,7 @@ foreach(schema IN LISTS schemas)
       bash -c
       "echo -e '// This file was generated from ${FBS_FILE} , do not modify \\n#ifndef ${schema}_HEADER\\n#define ${schema}_HEADER\\n#define ${schema}_SCHEMA \"'`cat ${FBS_FILE}`'\" \\n#endif // ${schema}_HEADER\\n ' > ${SRC_FOLDER}/shared_modules/utils/flatbuffers/include/${schema}_schema.h"
     COMMENT "Creating header from schema file: '${schema}'"
-    DEPENDS "${OUTPUT_HEADER_GENERATED}"
+    DEPENDS "${OUTPUT_HEADER_GENERATED}" "${FBS_FILE}"
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     VERBATIM)
 
