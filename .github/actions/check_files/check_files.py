@@ -10,6 +10,9 @@ import fnmatch
 
 wazuh_gid = -1
 wazuh_uid = -1
+expected_user_name = "wazuh"
+expected_group_name = "wazuh"
+use_real_names = False
 
 HEADERS = ['full_filename', 'owner_name', 'group_name', 'mode',
            'type', 'prot_permissions', 'size_bytes', 'size_error']
@@ -75,10 +78,12 @@ class helper:
 def translate_uid(id):
     # If wazuh_uid was not set, use the default behavior
     import pwd
+    if use_real_names:
+        return pwd.getpwuid(id)[0]
     if wazuh_uid == -1:
         return pwd.getpwuid(id)[0]
     elif id == wazuh_uid:
-        return "wazuh"
+        return expected_user_name
     elif id == 0:
         return "root"
 
@@ -86,10 +91,12 @@ def translate_uid(id):
 def translate_gid(id):
     # If wazuh_gid was not set, use the default behavior
     import grp
+    if use_real_names:
+        return grp.getgrgid(id)[0]
     if wazuh_gid == -1:
         return grp.getgrgid(id)[0]
     elif id == wazuh_gid:
-        return "wazuh"
+        return expected_group_name
     elif id == 0:
         return "root"
 
@@ -398,6 +405,12 @@ if __name__ == "__main__":
                             help="The group id for wazuh", default=-1)
     arg_parser.add_argument("-wu", "--wazuh_uid", type=int,
                             help="The user id for wazuh", default=-1)
+    arg_parser.add_argument("--wazuh_user_name", type=str,
+                            help="Expected user name for wazuh UID", default="wazuh")
+    arg_parser.add_argument("--wazuh_group_name", type=str,
+                            help="Expected group name for wazuh GID", default="wazuh")
+    arg_parser.add_argument("--use_real_names", action="store_true",
+                            help="Use real user/group names instead of translating UID/GID", default=False)
     arg_parser.add_argument("-s", "--size_check", action="store_true",
                             help="Enable size validation", default=False)
     arg_parser.add_argument("-i", "--ignore", type=str,
@@ -406,6 +419,9 @@ if __name__ == "__main__":
     args = arg_parser.parse_args()
     wazuh_gid = args.wazuh_gid
     wazuh_uid = args.wazuh_uid
+    expected_user_name = args.wazuh_user_name
+    expected_group_name = args.wazuh_group_name
+    use_real_names = args.use_real_names
     installed_dir = args.directory
     size_check = args.size_check
     base_file_path = args.base_file
