@@ -24,11 +24,11 @@ ADD base/manager/supervisord.conf /etc/supervisor/conf.d/
 RUN mkdir wazuh && curl -sL https://github.com/wazuh/wazuh/tarball/${WAZUH_BRANCH} | tar zx --strip-components=1 -C wazuh
 COPY base/manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 RUN /wazuh/install.sh
-RUN mkdir -p /var/ossec/etc/certs && \
-    touch /var/ossec/etc/certs/root-ca.pem && \
-    touch /var/ossec/etc/certs/server.pem && \
-    touch /var/ossec/etc/certs/server-key.pem
+RUN mkdir -p /var/wazuh-manager/etc/certs && \
+    touch /var/wazuh-manager/etc/certs/root-ca.pem && \
+    touch /var/wazuh-manager/etc/certs/server.pem && \
+    touch /var/wazuh-manager/etc/certs/server-key.pem
 COPY base/manager/entrypoint.sh /scripts/entrypoint.sh
 
 # HEALTHCHECK
-HEALTHCHECK --retries=900 --interval=1s --timeout=30s --start-period=30s CMD /var/ossec/framework/python/bin/python3 /tmp_volume/healthcheck/healthcheck.py || exit 1
+HEALTHCHECK --retries=900 --interval=1s --timeout=30s --start-period=30s CMD /var/wazuh-manager/framework/python/bin/python3 /tmp_volume/healthcheck/healthcheck.py || exit 1

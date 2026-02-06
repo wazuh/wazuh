@@ -79,7 +79,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data
         # ranges
         ("5-35", _ranges),
         # paths
-        ("/var/ossec/etc/internal_options", _paths),
+        ("/var/wazuh-manager/etc/internal_options", _paths),
         ("scripts/active_response", _active_response_command),
         ("!scripts/active_response", _active_response_command),
         ("correct.wpk", _wpk_path),
@@ -131,7 +131,7 @@ def test_validation_check_exp_ok(exp, regex_name):
         ("5-35-32", _ranges),
         ("param1,param2,param3", _query_param),
         # paths
-        ("/var/ossec/etc/internal_options$", _paths),
+        ("/var/wazuh-manager/etc/internal_options$", _paths),
         ("!scripts/active_response()", _active_response_command),
         ("scripts\\active_response$", _active_response_command),
         ("incorrect.txt", _wpk_path),
