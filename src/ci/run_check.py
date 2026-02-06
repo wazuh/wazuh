@@ -31,28 +31,25 @@ def checkCoverage(output):
     Raises:
         - ValueError: Raises an exception when fails for some reason.
     """
-    reLines = re.search("lines.*(% ).*(lines)", str(output))
-    reFunctions = re.search("functions.*%", str(output))
-    if reLines:
-        end = reLines.group().index('%')
-        start = reLines.group()[0:end].rindex(' ') + 1
-        linesCoverage = reLines.group()[start:end]
-    if reFunctions:
-        end = reFunctions.group().index('%')
-        start = reFunctions.group().rindex(' ') + 1
-        functionsCoverage = reFunctions.group()[start:end]
+    output_str = str(output)
+    matchLines = re.search(r"lines[\.\s]*:\s+([\d\.]+)\%", output_str)
+    matchFunctions = re.search(r"functions[\.\s]*:\s+([\d\.]+)\%", output_str)
+    linesCoverage = matchLines.group(1) if matchLines else "0.0"
+    functionsCoverage = matchFunctions.group(1) if matchFunctions else "0.0"
+
     if float(linesCoverage) >= 90.0:
-        utils.printGreen(msg="[Lines Coverage {}%: PASSED]"
-                         .format(linesCoverage))
+        utils.printGreen(msg="[Lines Coverage {}%: PASSED]".format(linesCoverage))
     else:
         utils.printFail(msg="[Lines Coverage {}%: LOW]".format(linesCoverage))
         errorString = "Low lines coverage: {}".format(linesCoverage)
         raise ValueError(errorString)
+
     if float(functionsCoverage) >= 90.0:
-        utils.printGreen(msg="[Functions Coverage {}%: PASSED]"
-                         .format(functionsCoverage))
+        utils.printGreen(
+            msg="[Functions Coverage {}%: PASSED]".format(functionsCoverage)
+        )
     else:
-        utils.printFail(msg="[Functions Coverage {functionsCoverage}%: LOW]")
+        utils.printFail(msg="[Functions Coverage {}%: LOW]".format(functionsCoverage))
         errorString = "Low functions coverage: {}".format(functionsCoverage)
         raise ValueError(errorString)
 
@@ -273,7 +270,7 @@ def runCppCheck(moduleName):
                       headerKey="cppcheck")
 
     currentDir = utils.moduleDirPath(moduleName)
-    cppcheckCommand = "cppcheck --force --std=c++14 --quiet {}".format(currentDir)
+    cppcheckCommand = "cppcheck --force --std=c++17 --quiet -i {}/build {}".format(currentDir, currentDir)
 
     out = subprocess.run(cppcheckCommand,
                          stdout=subprocess.PIPE,
