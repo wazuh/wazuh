@@ -246,7 +246,7 @@ async def test_worker_main(asyncio_sleep_mock):
                             main_logger_mock.assert_has_calls([
                                 call.warning(
                                     "In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory "
-                                    "'/dev/shm' must be accessible by the 'wazuh' user. Check that this file has "
+                                    "'/dev/shm' must be accessible by the 'wazuh-manager' user. Check that this file has "
                                     "permissions to be accessed by all users. Changing the file permissions to 777 "
                                     "will solve this issue."),
                                 call.warning(
@@ -392,4 +392,4 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                                                         wazuh_manager_clusterd.main()
                                                         main_logger_mock.assert_any_call(
                                                             "Directory '/tmp' needs read, write & execution "
-                                                            "permission for 'wazuh' user")
+                                                            "permission for 'wazuh-manager' user")
