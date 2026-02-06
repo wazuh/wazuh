@@ -15,11 +15,6 @@
 namespace base::hostInfo
 {
 
-/// JSON pointer for agent id.
-constexpr char EVENT_AGENT_ID[] {"/agent/id"};
-/// JSON pointer for agent (host) name.
-constexpr char EVENT_AGENT_NAME[] {"/agent/name"};
-
 /// JSON pointer for OS name (e.g., "Ubuntu").
 constexpr char EVENT_HOST_OS_NAME[] {"/host/os/name"};
 /// JSON pointer for OS version (e.g., "20.04.6 LTS").
@@ -43,10 +38,6 @@ constexpr char EVENT_HOST_IP[] {"/host/ip"};
  *
  * @code{.json}
  * {
- *   "agent": {
- *     "id":   "000",
- *     "name": "worker"
- *   },
  *   "host": {
  *     "os": {
  *       "name":     "Ubuntu",
