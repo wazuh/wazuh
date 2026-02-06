@@ -110,3 +110,10 @@ target_link_libraries(agent_info_integrity_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoIntegrityTest COMMAND agent_info_integrity_test)
 
 set_tests_properties(AgentInfoIntegrityTest PROPERTIES LABELS "agent_info")
+
+# Agent Info Cluster Coordination Tests (cluster_name/cluster_node sync flag routing)
+add_executable(agent_info_cluster_coordination_test agent_info_cluster_coordination_test.cpp agent_info_mock.cpp)
+target_link_libraries(agent_info_cluster_coordination_test PRIVATE AGENT_INFO_IMPL)
+add_test(NAME AgentInfoClusterCoordinationTest COMMAND agent_info_cluster_coordination_test)
+
+set_tests_properties(AgentInfoClusterCoordinationTest PROPERTIES LABELS "agent_info")
