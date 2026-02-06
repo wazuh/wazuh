@@ -15,11 +15,12 @@
 namespace httpsrv
 {
 
-Server::Server(const std::string& id, size_t payloadMaxBytes)
+Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetailedLogging)
     : m_srv(std::make_shared<httplib::Server>())
     , m_id(id)
     , m_socketPath()
     , m_payloadMaxBytes(payloadMaxBytes)
+    , m_enableDetailedLogging(enableDetailedLogging)
 {
     // General exception handler for routes handlers, handlers must not throw exceptions.
     auto excptFnName = fmt::format("Server::Server({})::set_exception_handler", id);
@@ -69,38 +70,55 @@ Server::Server(const std::string& id, size_t payloadMaxBytes)
         });
 
     // TODO: Add Metrics
-    auto afterFnName = fmt::format("Server::Server({})::after_processing", id);
-    m_srv->set_logger(
-        [id, afterFnName](const auto& req, const auto& res)
-        {
-            auto truncateBody = [](const std::string& body, size_t maxLen = 128) -> std::string
+    if (m_enableDetailedLogging)
+    {
+        auto afterFnName = fmt::format("Server::Server({})::after_processing", id);
+        m_srv->set_logger(
+            [id, afterFnName](const auto& req, const auto& res)
             {
-                if (body.size() <= maxLen)
-                    return body;
-                return body.substr(0, maxLen) + "...";
-            };
+                auto truncateBody = [](const std::string& body, size_t maxLen = 128) -> std::string
+                {
+                    if (body.size() <= maxLen)
+                        return body;
+                    return body.substr(0, maxLen) + "...";
+                };
 
-            LOG_TRACE_L(afterFnName.c_str(),
-                        fmt::format("Request: {} {} '{}' - Response: {} '{}'",
-                                    req.method,
-                                    req.path,
-                                    truncateBody(req.body),
-                                    res.status,
-                                    res.body));
-        });
+                LOG_TRACE_L(afterFnName.c_str(),
+                            fmt::format("Request: {} {} '{}' - Response: {} '{}'",
+                                        req.method,
+                                        req.path,
+                                        truncateBody(req.body),
+                                        res.status,
+                                        res.body));
+            });
+    }
+    else
+    {
+        auto loggerFnName = fmt::format("Server::Server({})::set_logger", id);
+        m_srv->set_logger([id, loggerFnName](const auto& /*req*/, const auto& /*res*/)
+                          { LOG_TRACE_L(loggerFnName.c_str(), "Server {} request received", id); });
+    }
 }
 
 void Server::addRoute(Method method,
                       const std::string& route,
                       const std::function<void(const httplib::Request&, httplib::Response&)>& handler)
 {
-    auto beforeFnName = fmt::format("Server::Server({})::before_processing", m_id);
+    std::function<void(const httplib::Request&, httplib::Response&)> wrapped;
 
-    auto wrapped = [this, handler, beforeFnName](const httplib::Request& req, httplib::Response& res)
+    if (m_enableDetailedLogging)
     {
-        LOG_TRACE_L(beforeFnName.c_str(), fmt::format("Request: {} {} '{}'", req.method, req.path, req.body));
-        handler(req, res);
-    };
+        auto beforeFnName = fmt::format("Server::Server({})::before_processing", m_id);
+        wrapped = [this, handler, beforeFnName](const httplib::Request& req, httplib::Response& res)
+        {
+            LOG_TRACE_L(beforeFnName.c_str(), fmt::format("Request: {} {} '{}'", req.method, req.path, req.body));
+            handler(req, res);
+        };
+    }
+    else
+    {
+        wrapped = handler;
+    }
 
     try
     {

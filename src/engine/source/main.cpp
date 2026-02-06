@@ -515,7 +515,8 @@ int main(int argc, char* argv[])
         }
 
         // CMsync
-        if (enableProcessing) {
+        if (enableProcessing)
+        {
             cmSyncService = std::make_shared<cm::sync::CMSync>(indexerConnector, cmCrudService, store, orchestrator);
             LOG_INFO("Content Manager Sync Service initialized.");
 
@@ -545,14 +546,13 @@ int main(int argc, char* argv[])
 
                 scheduler->scheduleTask(
                     "geo-sync-task",
-                    scheduler::TaskConfig {
-                        .interval = geoSyncInterval,
-                        .CPUPriority = 0,
-                        .timeout = 0,
-                        .taskFunction = [geoManager, manifestUrl, cityPath, asnPath]()
-                        {
-                            geoManager->remoteUpsert(manifestUrl, cityPath, asnPath);
-                        }});
+                    scheduler::TaskConfig {.interval = geoSyncInterval,
+                                           .CPUPriority = 0,
+                                           .timeout = 0,
+                                           .taskFunction = [geoManager, manifestUrl, cityPath, asnPath]()
+                                           {
+                                               geoManager->remoteUpsert(manifestUrl, cityPath, asnPath);
+                                           }});
                 LOG_INFO("Geo sync scheduled with interval: {} seconds.", geoSyncInterval);
             }
             else
@@ -571,7 +571,7 @@ int main(int argc, char* argv[])
                             { archiver->deactivate(); });
         }
 
-        // Create and configure the api endpints
+        // Create and configure the api endpoints
         {
             // Validate payload limit to prevent unsigned integer wrapping from negative values
             auto serverApiPayloadMaxBytes = confManager.get<int64_t>(conf::key::SERVER_API_PAYLOAD_MAX_BYTES);
@@ -582,7 +582,8 @@ int main(int argc, char* argv[])
                             serverApiPayloadMaxBytes);
                 serverApiPayloadMaxBytes = 0;
             }
-            apiServer = std::make_shared<httpsrv::Server>("API_SRV", static_cast<size_t>(serverApiPayloadMaxBytes));
+            apiServer =
+                std::make_shared<httpsrv::Server>("API_SRV", static_cast<size_t>(serverApiPayloadMaxBytes), true);
 
             // API
             exitHandler.add(
@@ -645,7 +646,7 @@ int main(int argc, char* argv[])
         // HTTP enriched events server
         if (enableProcessing)
         {
-            engineRemoteServer = std::make_shared<httpsrv::Server>("ENRICHED_EVENTS_SRV");
+            engineRemoteServer = std::make_shared<httpsrv::Server>("ENRICHED_EVENTS_SRV", 0, false);
 
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 
