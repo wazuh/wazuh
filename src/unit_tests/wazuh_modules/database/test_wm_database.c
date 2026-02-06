@@ -379,7 +379,6 @@ void test_sync_keys_with_wdb_insert(void **state) {
     char **ids = NULL;
     ids = os_AddStrArray("001", ids);
 
-    expect_value(__wrap_wdb_get_all_agents_rbtree, include_manager, 0);
     will_return(__wrap_wdb_get_all_agents_rbtree, tree);
 
     expect_value(__wrap_rbtree_get, tree, tree);
@@ -424,7 +423,6 @@ void test_sync_keys_with_wdb_delete(void **state) {
 
     char *test_name = strdup("TESTNAME");
 
-    expect_value(__wrap_wdb_get_all_agents_rbtree, include_manager, 0);
     will_return(__wrap_wdb_get_all_agents_rbtree, tree);
 
     expect_value(__wrap_rbtree_get, tree, tree);
@@ -461,7 +459,6 @@ void test_sync_keys_with_wdb_insert_delete(void **state) {
     char **ids = NULL;
     ids = os_AddStrArray("001", ids);
 
-    expect_value(__wrap_wdb_get_all_agents_rbtree, include_manager, 0);
     will_return(__wrap_wdb_get_all_agents_rbtree, tree);
 
     expect_value(__wrap_rbtree_get, tree, tree);
@@ -518,7 +515,6 @@ void test_sync_keys_with_wdb_null(void **state) {
     keystore keys = *((keystore *)*state);
     keys.keysize = 1;
 
-    expect_value(__wrap_wdb_get_all_agents_rbtree, include_manager, 0);
     will_return(__wrap_wdb_get_all_agents_rbtree, NULL);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:database");
