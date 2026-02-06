@@ -90,7 +90,7 @@ class WazuhDBHTTPClient:
             raise WazuhInternalError(2011, e)
 
     async def close(self) -> None:
-        """Close the wazuh-db HTTP client."""
+        """Close the wazuh-manager-db HTTP client."""
         await self._client.aclose()
 
     async def _get(self, endpoint: str) -> Any:

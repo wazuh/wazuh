@@ -7,7 +7,7 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: The 'wazuh-analysisd' daemon uses a series of decoders and rules to analyze and interpret logs and events and
+brief: The 'wazuh-manager-analysisd' daemon uses a series of decoders and rules to analyze and interpret logs and events and
        generate alerts when the decoded information matches the established rules. There is a feature to limit the
        number of events that the manager can process, in order to allow the correct functioning of the daemon. These
        tests check different configuration values for this feature.
@@ -21,7 +21,7 @@ targets:
     - manager
 
 daemons:
-    - wazuh-analysisd
+    - wazuh-manager-analysisd
 
 os_platform:
     - linux
@@ -93,7 +93,7 @@ def test_accepted_values(test_configuration, test_metadata, load_wazuh_basic_con
             - Restart wazuh-manager service to apply configuration changes.
         - test:
             - Check in the log that the EPS limitation has been activated with the specified parameters.
-            - Check that wazuh-analysisd is running (it has not been crashed).
+            - Check that wazuh-manager-analysisd is running (it has not been crashed).
         - teardown:
             - Truncate wazuh logs.
             - Restore initial configuration.
@@ -142,7 +142,7 @@ def test_accepted_values(test_configuration, test_metadata, load_wazuh_basic_con
 def test_invalid_values(test_configuration, test_metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
                         truncate_monitored_files, daemons_handler):
     """
-    description: Check for configuration error and wazuh-analysisd if the EPS limiting configuration has unaccepted
+    description: Check for configuration error and wazuh-manager-analysisd if the EPS limiting configuration has unaccepted
         values. Done for the following cases:
             - Maximum value above the allowed value.
             - Timeframe value above the allowed value.
@@ -157,7 +157,7 @@ def test_invalid_values(test_configuration, test_metadata, load_wazuh_basic_conf
         - test:
             - Restart wazuh-manager service to apply configuration changes.
             - Check that a configuration error is raised when trying to start wazuh-manager.
-            - Check that wazuh-analysisd is not running (due to configuration error).
+            - Check that wazuh-manager-analysisd is not running (due to configuration error).
         - teardown:
             - Truncate wazuh logs.
             - Restore initial configuration.
@@ -219,7 +219,7 @@ def test_missing_configuration(test_configuration, test_metadata, load_wazuh_bas
             - Restart wazuh-manager service to apply configuration changes.
             - Check whether the EPS limitation is activated, deactivated or generates a configuration error due to a
               missing label.
-            - Check if wazuh-analysisd is running or not (according to the expected behavior).
+            - Check if wazuh-manager-analysisd is running or not (according to the expected behavior).
         - teardown:
             - Truncate wazuh logs.
             - Restore initial configuration.

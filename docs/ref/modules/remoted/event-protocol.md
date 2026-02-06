@@ -13,7 +13,7 @@ The Wazuh Event Protocol version 1 (x-wev1) defines how enriched events are tran
 
 ## Transport
 
-HTTP POST over Unix socket at `/var/ossec/queue/sockets/queue` with content-type `application/x-wev1`.
+HTTP POST over Unix socket at `/var/wazuh-manager/queue/sockets/queue` with content-type `application/x-wev1`.
 
 ## Message Format
 
@@ -126,7 +126,7 @@ POST /events/enriched HTTP/1.1
 Host: localhost
 Content-Type: application/x-wev1
 Content-Length: 512
-User-Agent: wazuh-remoted/1.0
+User-Agent: wazuh-manager-remoted/1.0
 Connection: keep-alive
 
 H	{"agent":{"id":"001","name":"web-server-01","version":"v5.0.0","groups":["web","production"],"host":{"architecture":"x86_64","hostname":"web-server-01","os":{"name":"Ubuntu","version":"22.04","platform":"ubuntu","type":"linux"}}},"wazuh":{"cluster":{"name":"production","node":"master-node"}}}

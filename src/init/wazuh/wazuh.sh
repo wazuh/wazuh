@@ -18,7 +18,7 @@ InstallSELinuxPolicyPackage(){
 }
 
 CheckModuleIsEnabled(){
-    # This function requires a properly formatted ossec.conf.
+    # This function requires a properly formatted config file.
     # It doesn't work if the configuration is set in the same line
 
     # How to use it:
@@ -29,7 +29,9 @@ CheckModuleIsEnabled(){
     close_label="$2"
     enable_label="$3"
 
-    if grep -n "${open_label}" $PREINSTALLEDDIR/etc/ossec.conf > /dev/null ; then
+    local conf_path="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}"
+
+    if grep -n "${open_label}" "$conf_path" > /dev/null ; then
         is_disabled="no"
     else
         is_disabled="yes"
@@ -46,12 +48,12 @@ CheckModuleIsEnabled(){
     fi
 
     end_config_limit="99999999"
-    for start_config in $(grep -n "${open_label}" $PREINSTALLEDDIR/etc/ossec.conf | cut -d':' -f 1); do
-        end_config="$(sed -n "${start_config},${end_config_limit}p" $PREINSTALLEDDIR/etc/ossec.conf | sed -n "/${open_label}/,\$p" | grep -n "${close_label}" | head -n 1 | cut -d':' -f 1)"
+    for start_config in $(grep -n "${open_label}" "$conf_path" | cut -d':' -f 1); do
+        end_config="$(sed -n "${start_config},${end_config_limit}p" "$conf_path" | sed -n "/${open_label}/,\$p" | grep -n "${close_label}" | head -n 1 | cut -d':' -f 1)"
         end_config="$((start_config + end_config))"
 
         if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-            configuration_block="$(sed -n "${start_config},${end_config}p" $PREINSTALLEDDIR/etc/ossec.conf)"
+            configuration_block="$(sed -n "${start_config},${end_config}p" "$conf_path")"
 
             for line in $(echo ${configuration_block} | grep -n "${tag}" | cut -d':' -f 1); do
                 # Check if the component is enabled
@@ -71,6 +73,14 @@ CheckModuleIsEnabled(){
 
 WazuhUpgrade()
 {
+    file_permissions=""
+    #Check installation type
+    if [ "X$1" = "Xserver" ]; then
+        file_permissions="wazuh-manager"
+    else
+        file_permissions="wazuh"
+    fi
+
     # Encode Agentd passlist if not encoded
 
     passlist=$PREINSTALLEDDIR/agentless/.passlist
@@ -97,7 +107,7 @@ WazuhUpgrade()
         cp $PREINSTALLEDDIR/var/db/global.db $PREINSTALLEDDIR/queue/db/
         if [ -f "$PREINSTALLEDDIR/queue/db/global.db" ]; then
             chmod 640 $PREINSTALLEDDIR/queue/db/global.db
-            chown wazuh:wazuh $PREINSTALLEDDIR/queue/db/global.db
+            chown $file_permissions:$file_permissions $PREINSTALLEDDIR/queue/db/global.db
             rm -f $PREINSTALLEDDIR/var/db/global.db*
         else
             echo "Unable to move global.db during the upgrade"
@@ -211,11 +221,11 @@ WazuhUpgrade()
     OSSEC_GROUP=ossec
     if (grep "^ossec:" /etc/group > /dev/null 2>&1) || (dscl . -read /Groups/ossec > /dev/null 2>&1)  ; then
         if [ "X$1" = "Xserver" ]; then
-            find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -print0 | xargs -0 chown root:wazuh
-            find $PREINSTALLEDDIR -group $OSSEC_GROUP -print0 | xargs -0 chown wazuh:wazuh
+            find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -print0 | xargs -0 chown root:$file_permissions
+            find $PREINSTALLEDDIR -group $OSSEC_GROUP -print0 | xargs -0 chown $file_permissions:$file_permissions
         else
-            find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -exec chown root:wazuh {} \;
-            find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown wazuh:wazuh {} \;
+            find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -exec chown root:$file_permissions {} \;
+            find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown $file_permissions:$file_permissions {} \;
         fi
     fi
     ./src/init/delete-oldusers.sh $OSSEC_GROUP
@@ -230,10 +240,10 @@ WazuhUpgrade()
 
     # Ensure that the 'Indexer' is configured
     if [ "X$1" = "Xserver" ]; then
-        local OSSEC_CONF_PATH="$PREINSTALLEDDIR/etc/ossec.conf"
+        local WAZUH_CONF_PATH="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}"
         local INDEXER_TEMPLATE_PATH="./etc/templates/config/generic/wodle-indexer.manager.template"
 
         . ./src/init/update-indexer.sh
-        updateIndexerTemplate "$OSSEC_CONF_PATH" "$INDEXER_TEMPLATE_PATH"
+        updateIndexerTemplate "$WAZUH_CONF_PATH" "$INDEXER_TEMPLATE_PATH"
     fi
 }

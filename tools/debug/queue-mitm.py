@@ -7,7 +7,7 @@ from socket import socket, AF_UNIX, SOCK_DGRAM, SO_SNDBUF, SOL_SOCKET
 from sys import stderr, exit
 from os import unlink, chmod
 
-ADDR = '/var/ossec/queue/sockets/queue'
+ADDR = '/var/wazuh-manager/queue/sockets/queue'
 BLEN = 212992
 INPUT_LEN = 65536
 

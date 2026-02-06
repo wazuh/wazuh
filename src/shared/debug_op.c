@@ -189,7 +189,7 @@ static void _log_function(int level, const char *tag, const char * file, int lin
     }
 
     if (flags.log_plain) {
-      /* If under chroot, log directly to /logs/ossec.log */
+      /* If under chroot, log directly to /logs/<wazuh log file> */
 
 #ifndef WIN32
         int oldmask;

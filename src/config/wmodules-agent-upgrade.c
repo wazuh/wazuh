@@ -12,7 +12,10 @@
 #ifdef CLIENT
 #include "wazuh_modules/agent_upgrade/agent/wm_agent_upgrade_agent.h"
 
+#endif
+
 static const char *XML_ENABLED = "enabled";
+#ifdef CLIENT
 static const char *XML_WAIT_START = "notification_wait_start";
 static const char *XML_WAIT_MAX = "notification_wait_max";
 static const char *XML_WAIT_FACTOR = "notification_wait_factor";
@@ -41,13 +44,14 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
         module->context = &WM_AGENT_UPGRADE_CONTEXT;
         module->tag = strdup(module->context->name);
         os_calloc(1, sizeof(wm_agent_upgrade), data);
-        data->enabled = 1;
         #ifdef CLIENT
+        data->enabled = 1;
         data->agent_config.upgrade_wait_start = WM_UPGRADE_WAIT_START;
         data->agent_config.upgrade_wait_max = WM_UPGRADE_WAIT_MAX;
         data->agent_config.upgrade_wait_factor_increase = WM_UPGRADE_WAIT_FACTOR_INCREASE;
         data->agent_config.enable_ca_verification = 1;
         #else
+        data->enabled = 0;
         data->manager_config.max_threads = WM_UPGRADE_MAX_THREADS;
         data->manager_config.chunk_size = WM_UPGRADE_CHUNK_SIZE;
         data->manager_config.wpk_repository = NULL;
@@ -145,6 +149,16 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
             OS_ClearNode(childs);
         }
         #else
+        else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
+            if (!strcmp(nodes[i]->content, "yes"))
+                data->enabled = 1;
+            else if (!strcmp(nodes[i]->content, "no"))
+                data->enabled = 0;
+            else {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_AGENT_UPGRADE_CONTEXT.name);
+                return OS_INVALID;
+            }
+        }
         else if (!strcmp(nodes[i]->element, XML_CHUNK_SIZE)) {
             if (!OS_StrIsNum(nodes[i]->content)) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_CHUNK_SIZE, WM_AGENT_UPGRADE_CONTEXT.name);

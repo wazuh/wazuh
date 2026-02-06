@@ -102,6 +102,7 @@ The following workspace settings are recommended for consistency with Wazuh codi
     "editor.acceptSuggestionOnEnter": "off",
     "workbench.editor.enablePreview": false,
     "files.associations": {
+        "wazuh-manager.conf": "xml",
         "ossec.conf": "xml",
         "agent.conf": "xml"
     },
@@ -184,10 +185,10 @@ Debug configurations enable interactive debugging with GDB. Create or update `.v
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug wazuh-logcollector",
+      "name": "Debug wazuh-manager-analysisd",
       "type": "cppdbg",
       "request": "launch",
-      "program": "/var/ossec/bin/wazuh-logcollector",
+      "program": "/var/wazuh-manager/bin/wazuh-manager-analysisd",
       "args": ["-f"],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
@@ -229,10 +230,10 @@ You can add more configurations for other Wazuh components:
 
 ```json
 {
-  "name": "Debug wazuh-analysisd",
+  "name": "Debug wazuh-manager-remoted",
   "type": "cppdbg",
   "request": "launch",
-  "program": "/var/ossec/bin/wazuh-analysisd",
+  "program": "/var/wazuh-manager/bin/wazuh-manager-remoted",
   "args": ["-f"],
   "preLaunchTask": "build server",
   "MIMode": "gdb"
@@ -245,10 +246,10 @@ After building, you may need to copy binaries to the installation directory. You
 
 ```json
 {
-  "label": "deploy logcollector",
+  "label": "deploy wazuh-manager-analysisd",
   "type": "shell",
   "command": "sudo",
-  "args": ["cp", "wazuh-logcollector", "/var/ossec/bin/"],
+  "args": ["cp", "wazuh-manager-analysisd", "/var/wazuh-manager/bin/"],
   "options": {
     "cwd": "${workspaceFolder}/src"
   },

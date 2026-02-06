@@ -7,7 +7,7 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: These tests will check if the response_postprocessing middleware of the API handled by the 'wazuh-apid' daemon is
+brief: These tests will check if the response_postprocessing middleware of the API handled by the 'wazuh-manager-apid' daemon is
        working properly. The Wazuh API is an open source 'RESTful' API that allows the interaction with the Wazuh
        manager from a web browser, command line tools like 'cURL' or any script or program that can make web requests.
 
@@ -20,12 +20,12 @@ targets:
     - manager
 
 daemons:
-    - wazuh-apid
-    - wazuh-modulesd
-    - wazuh-analysisd
-    - wazuh-execd
-    - wazuh-db
-    - wazuh-remoted
+    - wazuh-manager-apid
+    - wazuh-manager-modulesd
+    - wazuh-manager-analysisd
+    - wazuh-manager-execd
+    - wazuh-manager-db
+    - wazuh-manager-remoted
 
 os_platform:
     - linux

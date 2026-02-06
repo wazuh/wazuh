@@ -22,7 +22,7 @@ components:
     - manager
 
 daemons:
-    - wazuh-db
+    - wazuh-manager-db
 
 os_platform:
     - linux
@@ -47,7 +47,7 @@ os_version:
     - Red Hat 6
 
 references:
-    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-db.html
+    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-manager-db.html
 
 tags:
     - wazuh_db
@@ -96,8 +96,8 @@ def insert_agent_in_db(id=1, name='TestAgent', ip='any', registration_time=0, co
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
 def test_set_agent_groups(clean_databases, daemons_handler, test_metadata, create_groups):
     '''
-    description: Check that every input message using the 'set_agent_groups' command in wazuh-db socket generates
-                 the proper output to wazuh-db socket. To do this, it performs a query to the socket with a command
+    description: Check that every input message using the 'set_agent_groups' command in wazuh-manager-db socket generates
+                 the proper output to wazuh-manager-db socket. To do this, it performs a query to the socket with a command
                  taken from the list of test_metadata's 'input' field, and compare the result with the test_metadata's
                  'output' and 'expected_group' fields.
 

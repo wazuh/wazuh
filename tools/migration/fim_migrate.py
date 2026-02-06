@@ -30,7 +30,7 @@ else:
     logging.addLevelName(logging.INFO, '[INFO]')
     logging.addLevelName(logging.DEBUG, '[DEBUG]')
 
-_ossec_path = '/var/ossec'
+_ossec_path = os.environ['INSTALLDIR']
 _verbose = True
 _force = False
 

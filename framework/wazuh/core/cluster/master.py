@@ -623,7 +623,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         return super().end_receiving_file(task_and_file_names=task_and_file_names, logger_tag='Integrity check')
 
     async def sync_wazuh_db_info(self, task_id: bytes, info_type: str):
-        """Create a process to send to the local wazuh-db the chunks of data received from a worker.
+        """Create a process to send to the local wazuh-manager-db the chunks of data received from a worker.
 
         Parameters
         ----------
@@ -1014,7 +1014,7 @@ class Master(server.AbstractServer):
         except (FileNotFoundError, PermissionError):
             self.logger.warning(
                 "In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory '/dev/shm' must be "
-                "accessible by the 'wazuh' user. Check that this file has permissions to be accessed by all users. "
+                "accessible by the 'wazuh-manager' user. Check that this file has permissions to be accessed by all users. "
                 "Changing the file permissions to 777 will solve this issue.")
             self.logger.warning(
                 "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.")

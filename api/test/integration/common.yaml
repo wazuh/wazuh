@@ -24,7 +24,7 @@ variables:
   global_db_delay: 30
   cluster_sync_delay: 20
 
-  custom_wpk_path: "/var/ossec/test.wpk"
+  custom_wpk_path: "/var/wazuh-manager/test.wpk"
 
   invalid_file:
     "import os #:l\nos.system('do something bad') #:l"
@@ -76,7 +76,7 @@ variables:
     <localfile>
     <log_format>full_command</log_format>
     <alias>ciscat-ossec-log</alias>
-    <command>grep 'wazuh-modulesd:ciscat:' /opt/ossec/logs/ossec.log | tail -20</command>
+    <command>grep 'wazuh-manager-modulesd:ciscat:' /opt/ossec/logs/ossec.log | tail -20</command>
     <frequency>86400</frequency>
     </localfile>
 

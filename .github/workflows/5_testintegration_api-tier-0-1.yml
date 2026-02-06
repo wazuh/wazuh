@@ -20,6 +20,7 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
+      INSTALLATION_DIR: /var/wazuh-manager
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repo
@@ -45,7 +46,7 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_INSTALL_TYPE="server"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo "USER_DIR=/var/ossec" >> ./etc/preloaded-vars.conf
+          echo "USER_DIR=$INSTALLATION_DIR" >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -70,12 +71,12 @@ jobs:
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
 
-          sudo mkdir -p /var/ossec/etc/certs
-          sudo touch /var/ossec/etc/certs/root-ca.pem
-          sudo touch /var/ossec/etc/certs/server.pem
-          sudo touch /var/ossec/etc/certs/server-key.pem
+          sudo mkdir -p $INSTALLATION_DIR/etc/certs
+          sudo touch $INSTALLATION_DIR/etc/certs/root-ca.pem
+          sudo touch $INSTALLATION_DIR/etc/certs/server.pem
+          sudo touch $INSTALLATION_DIR/etc/certs/server-key.pem
 
-          sudo /var/ossec/bin/wazuh-control restart
+          sudo $INSTALLATION_DIR/bin/wazuh-control restart
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
@@ -96,9 +97,9 @@ jobs:
       - name: Run API tests
         run: |
           mkdir -p /tmp/wazuh-logs
-          sudo tail -F /var/ossec/logs/api.log >> /tmp/wazuh-logs/api.log 2>/dev/null &
-          sudo tail -F /var/ossec/logs/ossec.log >> /tmp/wazuh-logs/ossec.log 2>/dev/null &
-          sudo tail -F /var/ossec/logs/cluster.log >> /tmp/wazuh-logs/cluster.log 2>/dev/null &
+          sudo tail -F $INSTALLATION_DIR/logs/api.log >> /tmp/wazuh-logs/api.log 2>/dev/null &
+          sudo tail -F $INSTALLATION_DIR/logs/wazuh-manager.log >> /tmp/wazuh-logs/wazuh-manager.log 2>/dev/null &
+          sudo tail -F $INSTALLATION_DIR/logs/cluster.log >> /tmp/wazuh-logs/cluster.log 2>/dev/null &
           cd tests/integration
           sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python -m pytest --tier 0 --tier 1 test_api/ --html=results.html --self-contained-html
       # Collect logs if tests fail

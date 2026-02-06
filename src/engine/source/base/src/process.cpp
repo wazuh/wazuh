@@ -177,7 +177,7 @@ void privSepSetGroup(gid_t gid)
 
 std::filesystem::path getWazuhHome()
 {
-    return std::filesystem::path("/var/ossec");
+    return std::filesystem::path("/var/wazuh-manager");
 }
 
 void setThreadName(const std::string& name)

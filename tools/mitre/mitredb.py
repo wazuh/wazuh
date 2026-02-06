@@ -742,11 +742,11 @@ def main(database=None):
     """
     Main function that creates the mitre database in a chosen directory. It deletes, creates and fills the mitre tables.
 
-    :param database: Directory where mitre.db is. Default: /var/ossec/var/db/mitre.db
+    :param database: Directory where mitre.db is. Default: /var/wazuh-manager/var/db/mitre.db
     :return:
     """
     if database is None:
-        database = "/var/ossec/var/db/mitre.db"
+        database = "/var/wazuh-manager/var/db/mitre.db"
     else:
         if not os.path.isdir('/'.join((str(database).split('/')[0:-1]))):
             raise Exception('Error: Directory not found.')
@@ -769,12 +769,12 @@ def main(database=None):
     # User and group permissions
     os.chmod(database, 0o660)
     uid = pwd.getpwnam("root").pw_uid
-    gid = grp.getgrnam("wazuh").gr_gid
+    gid = grp.getgrnam("wazuh-manager").gr_gid
     os.chown(database, uid, gid)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='This script installs mitre.db in a directory.')
-    parser.add_argument('--database', '-d', help='-d /your/directory/mitre.db (default: /var/ossec/var/db/mitre.db')
+    parser.add_argument('--database', '-d', help='-d /your/directory/mitre.db (default: /var/wazuh-manager/var/db/mitre.db')
     args = parser.parse_args()
     main(args.database)

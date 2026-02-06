@@ -21,8 +21,6 @@ targets:
 
 daemons:
     - wazuh-modulesd
-    - wazuh-analysisd
-    - wazuh-db
 
 os_platform:
     - linux

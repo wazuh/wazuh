@@ -22,7 +22,7 @@ components:
     - manager
 
 daemons:
-    - wazuh-db
+    - wazuh-manager-db
 
 os_platform:
     - linux
@@ -47,7 +47,7 @@ os_version:
     - Red Hat 6
 
 references:
-    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-db.html
+    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-manager-db.html
 
 tags:
     - wazuh_db
@@ -91,8 +91,8 @@ sql_select_command = 'global sql select * from metadata'
 def test_wdb_backup_command(configure_sockets_environment_module, connect_to_sockets_module, remove_backups,
                             add_database_values, test_metadata):
     '''
-    description: Check that every input message using the 'backup' command in wazuh-db socket generates
-                 the proper output to wazuh-db socket. To do this, it performs a series of queries to the socket with
+    description: Check that every input message using the 'backup' command in wazuh-manager-db socket generates
+                 the proper output to wazuh-manager-db socket. To do this, it performs a series of queries to the socket with
                  parameters from the list of test_metadata, and compare the result with the test_metadata's 'restore_response'
                  field, as well as checking that the files have been created and the state of the data in DB in cases
                  where the 'restore' parameter is used.

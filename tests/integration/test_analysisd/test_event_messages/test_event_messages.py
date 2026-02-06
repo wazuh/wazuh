@@ -7,9 +7,9 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: The 'wazuh-analysisd' daemon receives the log messages and compares them to the rules.
+brief: The 'wazuh-manager-analysisd' daemon receives the log messages and compares them to the rules.
        It then creates an alert when a log message matches an applicable rule.
-       Specifically, these tests will check if the 'wazuh-analysisd' daemon correctly handles
+       Specifically, these tests will check if the 'wazuh-manager-analysisd' daemon correctly handles
        incoming events related to file modification.
 
 components:
@@ -21,8 +21,8 @@ targets:
     - manager
 
 daemons:
-    - wazuh-analysisd
-    - wazuh-db
+    - wazuh-manager-analysisd
+    - wazuh-manager-db
 
 os_platform:
     - linux
@@ -39,7 +39,7 @@ os_version:
     - Ubuntu Bionic
 
 references:
-    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-analysisd.html
+    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-manager-analysisd.html
 
 tags:
     - events
@@ -85,9 +85,9 @@ receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 def test_event_messages(test_metadata, configure_local_internal_options, configure_sockets_environment_module,
                        connect_to_sockets_module, wait_for_analysisd_startup):
     '''
-    description: Check if when the 'wazuh-analysisd' daemon socket receives a message with
+    description: Check if when the 'wazuh-manager-analysisd' daemon socket receives a message with
                  a file modification-related event, it generates the corresponding alert
-                 that sends to the 'wazuh-db' daemon socket.
+                 that sends to the 'wazuh-manager-db' daemon socket.
                  The 'validate_analysis_alert' function checks if an 'analysisd' event
                  is properly formatted.
 
@@ -110,7 +110,7 @@ def test_event_messages(test_metadata, configure_local_internal_options, configu
             brief: Connect to a given list of sockets.
         - wait_for_analysisd_startup:
             type: fixture
-            brief: Wait until the 'wazuh-analysisd' has begun and the 'alerts.json' file is created.
+            brief: Wait until the 'wazuh-manager-analysisd' has begun and the 'alerts.json' file is created.
 
     assertions:
         - Verify that the alerts generated are consistent with the events received.

@@ -29,5 +29,5 @@ access:
   max_login_attempts: 10000
   max_request_per_minute: 10000
 
-# Drop privileges (Run as wazuh user)
+# Drop privileges (Run as wazuh-manager user)
 drop_privileges: yes

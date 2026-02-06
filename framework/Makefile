@@ -5,7 +5,7 @@
 # Syntax: make [ all | build | install | examples | clean ]
 
 WAZUH_GROUP       = wazuh
-INSTALLDIR       ?= /var/ossec
+INSTALLDIR       ?= /var/wazuh-manager
 
 CC           = gcc
 CFLAGS       = -pipe -Wall -Wextra
@@ -48,7 +48,7 @@ install:
 #	Install scripts/%.py on $(INSTALLDIR)/bin/%
 	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(INSTALLDIR)/bin/%,$(script));)
 #   Provisional name change for wazuh-clusterd
-	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_clusterd $(INSTALLDIR)/bin/wazuh-clusterd
+	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_manager_clusterd $(INSTALLDIR)/bin/wazuh-manager-clusterd
 	$(RM_FILE) $(INSTALLDIR)/bin/__init__
 
 examples: install

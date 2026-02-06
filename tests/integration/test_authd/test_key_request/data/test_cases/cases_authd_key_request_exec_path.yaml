@@ -1,11 +1,11 @@
 - name: 'Exec_path file not found'
   description: 'Set an exec_path where the file does not exist'
   configuration_parameters:
-    EXEC_PATH: '/var/ossec/framework/python/bin/python3 /tmp/fetch_keys_not_found.py'
+    EXEC_PATH: '/var/wazuh-manager/framework/python/bin/python3 /tmp/fetch_keys_not_found.py'
   metadata:
     input: "id:004"
     log:
-      - Key request integration (/var/ossec/framework/python/bin/python3 /tmp/fetch_keys_not_found.py) returned code 2.
+      - Key request integration (/var/wazuh-manager/framework/python/bin/python3 /tmp/fetch_keys_not_found.py) returned code 2.
       - Error getting external key.
 
 - name: 'Exec_path file without python'
@@ -31,7 +31,7 @@
 - name: 'Key request Error 3' # With a bad exec_path conf
   description: 'Bad arguments passed to exec_path conf'
   configuration_parameters:
-    EXEC_PATH: '/var/ossec/framework/python/bin/python3 /tmp/fetch_keys.py error1'
+    EXEC_PATH: '/var/wazuh-manager/framework/python/bin/python3 /tmp/fetch_keys.py error1'
   metadata:
     input: "id:003"
     log:
@@ -41,7 +41,7 @@
 - name: 'Key request Error 1' # With a bad exec_path conf
   description: 'Too few arguments passed to exec_path conf [bad message input to the socket krequest]'
   configuration_parameters:
-    EXEC_PATH: '/var/ossec/framework/python/bin/python3 /tmp/fetch_keys.py'
+    EXEC_PATH: '/var/wazuh-manager/framework/python/bin/python3 /tmp/fetch_keys.py'
   metadata:
     input: "id:"
     log:
@@ -51,7 +51,7 @@
 - name: 'Invalid request'
   description: 'Checking the handling of erroneous requests'
   configuration_parameters:
-    EXEC_PATH: '/var/ossec/framework/python/bin/python3 /tmp/fetch_keys.py'
+    EXEC_PATH: '/var/wazuh-manager/framework/python/bin/python3 /tmp/fetch_keys.py'
   metadata:
     input: "invalid:request"
     log:

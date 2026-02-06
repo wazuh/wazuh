@@ -161,8 +161,8 @@ _context_cache = dict()
 token_cache_event = Event()
 _WAZUH_UID = None
 _WAZUH_GID = None
-GROUP_NAME = 'wazuh'
-USER_NAME = 'wazuh'
+GROUP_NAME = 'wazuh-manager'
+USER_NAME = 'wazuh-manager'
 WAZUH_PATH = find_wazuh_path()
 
 
@@ -196,7 +196,7 @@ ACTIVE_CONFIG_VERSION = 'Wazuh v3.7.0'
 
 
 # ================================================ Wazuh path - Config =================================================
-OSSEC_CONF = os.path.join(WAZUH_PATH, 'etc', 'ossec.conf')
+OSSEC_CONF = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager.conf')
 INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'internal_options.conf')
 LOCAL_INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'local_internal_options.conf')
 AR_CONF = os.path.join(WAZUH_PATH, 'etc', 'shared', 'ar.conf')
@@ -206,12 +206,12 @@ SHARED_PATH = os.path.join(WAZUH_PATH, 'etc', 'shared')
 
 # ================================================= Wazuh path - Misc ==================================================
 WAZUH_LOGS = os.path.join(WAZUH_PATH, 'logs')
-WAZUH_LOG = os.path.join(WAZUH_LOGS, 'ossec.log')
-WAZUH_LOG_JSON = os.path.join(WAZUH_LOGS, 'ossec.json')
+WAZUH_LOG = os.path.join(WAZUH_LOGS, 'wazuh-manager.log')
+WAZUH_LOG_JSON = os.path.join(WAZUH_LOGS, 'wazuh-manager.json')
 DATABASE_PATH = os.path.join(WAZUH_PATH, 'var', 'db')
 DATABASE_PATH_GLOBAL = os.path.join(DATABASE_PATH, 'global.db')
-ANALYSISD_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-analysisd.state')
-REMOTED_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-remoted.state')
+ANALYSISD_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-manager-analysisd.state')
+REMOTED_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-manager-remoted.state')
 OSSEC_TMP_PATH = os.path.join(WAZUH_PATH, 'tmp')
 OSSEC_PIDFILE_PATH = os.path.join(WAZUH_PATH, 'var', 'run')
 OS_PIDFILE_PATH = os.path.join('var', 'run')

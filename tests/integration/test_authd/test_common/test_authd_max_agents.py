@@ -7,7 +7,7 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: These tests verify that wazuh-authd enforces the authd.max_agents internal option during enrollment.
+brief: These tests verify that wazuh-manager-authd enforces the authd.max_agents internal option during enrollment.
 
 components:
     - authd
@@ -16,9 +16,9 @@ targets:
     - manager
 
 daemons:
-    - wazuh-authd
-    - wazuh-db
-    - wazuh-modulesd
+    - wazuh-manager-authd
+    - wazuh-manager-db
+    - wazuh-manager-modulesd
 
 os_platform:
     - linux
@@ -35,7 +35,7 @@ os_version:
     - Ubuntu Bionic
 
 references:
-    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-authd.html
+    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-manager-authd.html
 
 tags:
     - enrollment

@@ -21,8 +21,6 @@ targets:
     - agent
 
 daemons:
-    - wazuh-analysisd
-    - wazuh-monitord
     - wazuh-modulesd
 
 os_platform:
@@ -57,7 +55,7 @@ from wazuh_testing.utils.file import truncate_file
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 # Marks
-pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'config_API.yaml')
@@ -158,19 +156,19 @@ def test_future_events_yes(test_configuration, test_metadata, set_wazuh_configur
                        the module. Those include configuration settings for the 'ms-graph' module.
 
     expected_output:
-        - r'.*wazuh-modulesd:ms-graph.*Bookmark updated'
-        - r'.*wazuh-modulesd:ms-graph.*seconds to run first scan'
+        - r'.*wazuh-(?:manager-)?modulesd:ms-graph.*Bookmark updated'
+        - r'.*wazuh-(?:manager-)?modulesd:ms-graph.*seconds to run first scan'
     '''
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*Bookmark updated"))
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-(?:manager-)?modulesd:ms-graph.*Bookmark updated"))
 
     if(wazuh_log_monitor.callback_result != None):
         control_service('stop')
         truncate_file(WAZUH_LOG_PATH)
         control_service('start')
-        wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*seconds to run first scan"))
+        wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-(?:manager-)?modulesd:ms-graph.*seconds to run first scan"))
         assert (wazuh_log_monitor.callback_result != None), f'Error, `first scan` not found in log'
     else:
         assert (False), f'Error `Bookmark updated` not found in log'
@@ -221,23 +219,23 @@ def test_future_events_no(test_configuration, test_metadata, set_wazuh_configura
                        the module. Those include configuration settings for the 'ms-graph' module.
 
     expected_output:
-        - r'.*wazuh-modulesd:ms-graph.*Bookmark updated'
-        - r'.*wazuh-modulesd:ms-graph.*seconds to run next scan'
+        - r'.*wazuh-(?:manager-)?modulesd:ms-graph.*Bookmark updated'
+        - r'.*wazuh-(?:manager-)?modulesd:ms-graph.*seconds to run next scan'
     '''
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*Bookmark updated"))
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-(?:manager-)?modulesd:ms-graph.*Bookmark updated"))
 
     if(wazuh_log_monitor.callback_result != None):
         control_service('stop')
         truncate_file(WAZUH_LOG_PATH)
         control_service('start')
 
-        wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*seconds to run next scan"))
+        wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-(?:manager-)?modulesd:ms-graph.*seconds to run next scan"))
         assert (wazuh_log_monitor.callback_result != None), f'Error, `next scan` not found in log'
 
-        wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*seconds to run first scan"), timeout=10)
+        wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-(?:manager-)?modulesd:ms-graph.*seconds to run first scan"), timeout=10)
         assert (wazuh_log_monitor.callback_result == None), f'Error, `first scan` not found in log'
     else:
         assert (False), f'Error `Bookmark updated` not found in log'
@@ -286,12 +284,12 @@ def test_curl_max_size(test_configuration, test_metadata, set_wazuh_configuratio
                        the module. Those include configuration settings for the 'ms-graph' module.
 
     expected_output:
-        - r'.*wazuh-modulesd:ms-graph.*Reached maximum CURL size'
+        - r'.*wazuh-(?:manager-)?modulesd:ms-graph.*Reached maximum CURL size'
     '''
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*Reached maximum CURL size"))
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-(?:manager-)?modulesd:ms-graph.*Reached maximum CURL size"))
     assert (wazuh_log_monitor.callback_result != None), f'Error, `maximum CURL size` not found in log'
 
 
@@ -339,16 +337,16 @@ def test_valid_resource(test_configuration, test_metadata, set_wazuh_configurati
                        the module. Those include configuration settings for the 'ms-graph' module.
 
     expected_output:
-        - r'.*wazuh-modulesd:ms-graph.*microsoft.graph.security.alert'
-        - r'.*wazuh-modulesd:ms-graph.*microsoft.graph.security.incident'
+        - r'.*wazuh-(?:manager-)?modulesd:ms-graph.*microsoft.graph.security.alert'
+        - r'.*wazuh-(?:manager-)?modulesd:ms-graph.*microsoft.graph.security.incident'
     '''
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*microsoft.graph.security.alert"))
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-(?:manager-)?modulesd:ms-graph.*microsoft.graph.security.alert"))
     assert (wazuh_log_monitor.callback_result != None), f'Error, `security.alert` not found in log'
 
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*microsoft.graph.security.incident"))
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-(?:manager-)?modulesd:ms-graph.*microsoft.graph.security.incident"))
     assert (wazuh_log_monitor.callback_result != None), f'Error, `security.incident` not found in log'
 
 
@@ -396,14 +394,14 @@ def test_invalid_resource(test_configuration, test_metadata, set_wazuh_configura
                        the module. Those include configuration settings for the 'ms-graph' module.
 
     expected_output:
-        - r'.*wazuh-modulesd:ms-graph.*Received unsuccessful status
+        - r'.*wazuh-(?:manager-)?modulesd:ms-graph.*Received unsuccessful status
             code when attempting to get relationship \'invalid\'
     '''
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     wazuh_log_monitor.start(
-        callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*Received unsuccessful "\
+        callback=callbacks.generate_callback(r".*wazuh-(?:manager-)?modulesd:ms-graph.*Received unsuccessful "\
                                              r"status code when attempting to get relationship \'invalid\'"))
     assert (wazuh_log_monitor.callback_result != None), f'Error, `unsuccessful status code` not found in log'
 
@@ -451,12 +449,12 @@ def test_valid_auth(test_configuration, test_metadata, set_wazuh_configuration, 
                        the module. Those include configuration settings for the 'ms-graph' module.
 
     expected_output:
-        - r'.*wazuh-modulesd:ms-graph.*INFO: Scanning tenant'
+        - r'.*wazuh-(?:manager-)?modulesd:ms-graph.*INFO: Scanning tenant'
     '''
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*INFO: Scanning tenant"))
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-(?:manager-)?modulesd:ms-graph.*INFO: Scanning tenant"))
     assert (wazuh_log_monitor.callback_result != None), f'Error, `Scanning tenant` not found in log'
 
 
@@ -503,13 +501,13 @@ def test_invalid_auth(test_configuration, test_metadata, set_wazuh_configuration
                        the module. Those include configuration settings for the 'ms-graph' module.
 
     expected_output:
-        - r'.*wazuh-modulesd:ms-graph.*WARNING: Recieved unsuccessful
+        - r'.*wazuh-(?:manager-)?modulesd:ms-graph.*WARNING: Recieved unsuccessful
             status code when attempting to obtain access token'
     '''
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     wazuh_log_monitor.start(
-        callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*WARNING: Received unsuccessful "\
+        callback=callbacks.generate_callback(r".*wazuh-(?:manager-)?modulesd:ms-graph.*WARNING: Received unsuccessful "\
                                              r"status code when attempting to obtain access token"))
     assert (wazuh_log_monitor.callback_result != None), f'Error, `unsuccessful status code` not found in log'

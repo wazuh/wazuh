@@ -16,8 +16,8 @@ targets:
     - manager
 
 daemons:
-    - wazuh-authd
-    - wazuh-clusterd
+    - wazuh-manager-authd
+    - wazuh-manager-clusterd
 
 os_platform:
     - linux

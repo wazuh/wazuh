@@ -6,6 +6,7 @@
 
 UN=${NUNAME};
 service="wazuh";
+file_permissions="wazuh-manager";
 
 runInit()
 {
@@ -15,8 +16,10 @@ runInit()
     if [ -n "$1" ]; then
         if [ "X$1" = "Xserver" ]; then
             service="$service-manager"
+            file_permissions="wazuh-manager"
         else
             service="$service-$1"
+            file_permissions="wazuh"
         fi
     fi
 
@@ -37,7 +40,7 @@ runInit()
             SERVICE_UNIT_PATH=/etc/systemd/system/wazuh-$type.service
         fi
         GenerateService wazuh-$type.service > ${SERVICE_UNIT_PATH}
-        chown root:wazuh ${SERVICE_UNIT_PATH}
+        chown root:$file_permissions ${SERVICE_UNIT_PATH}
         systemctl daemon-reload
 
         rm -f /etc/rc.d/init.d/${service}
@@ -57,7 +60,7 @@ runInit()
             echo " - ${modifiedinit}"
             GenerateService ossec-hids-rh.init > /etc/rc.d/init.d/${service}
             chmod 755 /etc/rc.d/init.d/${service}
-            chown root:wazuh /etc/rc.d/init.d/${service}
+            chown root:$file_permissions /etc/rc.d/init.d/${service}
 
             if [ "X${update_only}" = "X" ]
             then
@@ -73,7 +76,7 @@ runInit()
         echo " - ${modifiedinit}"
         GenerateService ossec-hids-gentoo.init > /etc/init.d/${service}
         chmod 755 /etc/init.d/${service}
-        chown root:wazuh /etc/init.d/${service}
+        chown root:$file_permissions /etc/init.d/${service}
 
         if [ "X${update_only}" = "X" ]
         then
@@ -89,7 +92,7 @@ runInit()
         echo " - ${modifiedinit}"
         GenerateService ossec-hids-suse.init > /etc/init.d/${service}
         chmod 755 /etc/init.d/${service}
-        chown root:wazuh /etc/init.d/${service}
+        chown root:$file_permissions /etc/init.d/${service}
 
         if [ "X${update_only}" = "X" ]
         then
@@ -105,7 +108,7 @@ runInit()
         echo " - ${modifiedinit}"
         GenerateService ossec-hids.init > /etc/rc.d/rc.${service}
         chmod 755 /etc/rc.d/rc.${service}
-        chown root:wazuh /etc/rc.d/rc.${service}
+        chown root:$file_permissions /etc/rc.d/rc.${service}
 
         grep ${service} /etc/rc.d/rc.local > /dev/null 2>&1
         if [ $? != 0 ]; then
@@ -153,7 +156,7 @@ runInit()
             echo " - ${modifiedinit}"
             GenerateService ossec-hids.init > /etc/rc.d/init.d/${service}
             chmod 755 /etc/rc.d/init.d/${service}
-            chown root:wazuh /etc/rc.d/init.d/${service}
+            chown root:$file_permissions /etc/rc.d/init.d/${service}
             return 0;
         # Taken from Stephen Bunn ossec howto.
         elif [ -d "/etc/init.d" -a -f "/usr/sbin/update-rc.d" ]; then
@@ -162,7 +165,7 @@ runInit()
             GenerateService ossec-hids-debian.init > /etc/init.d/${service}
             chmod +x /etc/init.d/${service}
             chmod go-w /etc/init.d/${service}
-            chown root:wazuh /etc/init.d/${service}
+            chown root:$file_permissions /etc/init.d/${service}
 
             if [ "X${update_only}" = "X" ]
             then

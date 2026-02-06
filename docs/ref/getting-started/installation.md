@@ -32,17 +32,17 @@ Deploy the SSL certificates for secure communication between the Wazuh server an
 NODE_NAME=node-1
 
 # Create certificates directory
-sudo mkdir -p /var/ossec/etc/certs
+sudo mkdir -p /var/wazuh-manager/etc/certs
 
 # Extract and deploy certificates
-sudo tar -xf wazuh-certificates.tar -C /var/ossec/etc/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
-sudo mv /var/ossec/etc/certs/$NODE_NAME.pem /var/ossec/etc/certs/server.pem
-sudo mv /var/ossec/etc/certs/$NODE_NAME-key.pem /var/ossec/etc/certs/server-key.pem
+sudo tar -xf wazuh-certificates.tar -C /var/wazuh-manager/etc/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
+sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME.pem /var/wazuh-manager/etc/certs/server.pem
+sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/server-key.pem
 
 # Set proper permissions
-sudo chmod 500 /var/ossec/etc/certs
-sudo chmod 400 /var/ossec/etc/certs/*
-sudo chown -R wazuh:wazuh /var/ossec/etc/certs
+sudo chmod 500 /var/wazuh-manager/etc/certs
+sudo chmod 400 /var/wazuh-manager/etc/certs/*
+sudo chown -R wazuh:wazuh /var/wazuh-manager/etc/certs
 ```
 
 **Note:** Replace `node-1` with the name you used when generating the certificates.
@@ -53,11 +53,11 @@ Configure the Wazuh server to connect to the Wazuh indexer using the secure keys
 
 ```bash
 # Set indexer credentials (default: admin/admin)
-sudo /var/ossec/bin/wazuh-keystore -f indexer -k username -v admin
-sudo /var/ossec/bin/wazuh-keystore -f indexer -k password -v admin
+sudo /var/wazuh-manager/bin/wazuh-keystore -f indexer -k username -v admin
+sudo /var/wazuh-manager/bin/wazuh-keystore -f indexer -k password -v admin
 ```
 
-Update the indexer configuration in `/var/ossec/etc/ossec.conf` to specify the indexer IP address:
+Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` to specify the indexer IP address:
 
 ```xml
 <indexer>
@@ -66,10 +66,10 @@ Update the indexer configuration in `/var/ossec/etc/ossec.conf` to specify the i
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>/var/ossec/etc/certs/root-ca.pem</ca>
+      <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/var/ossec/etc/certs/server.pem</certificate>
-    <key>/var/ossec/etc/certs/server-key.pem</key>
+    <certificate>/var/wazuh-manager/etc/certs/server.pem</certificate>
+    <key>/var/wazuh-manager/etc/certs/server-key.pem</key>
   </ssl>
 </indexer>
 ```
@@ -94,7 +94,7 @@ sudo systemctl status wazuh-manager
 
 ### Cluster configuration
 
-The Wazuh server cluster allows you to scale horizontally by distributing the load across multiple nodes. The cluster comes enabled by default with the following configuration in `/var/ossec/etc/ossec.conf`:
+The Wazuh server cluster allows you to scale horizontally by distributing the load across multiple nodes. The cluster comes enabled by default with the following configuration in `/var/wazuh-manager/etc/wazuh-manager.conf`:
 
 ```xml
 <cluster>
@@ -115,7 +115,7 @@ The Wazuh server cluster allows you to scale horizontally by distributing the lo
 
 For a multi-node cluster deployment, you need to configure one master node and one or more worker nodes. Follow these steps on each node:
 
-1. **On the master node**, edit `/var/ossec/etc/ossec.conf`:
+1. **On the master node**, edit `/var/wazuh-manager/etc/wazuh-manager.conf`:
 
 ```xml
 <cluster>
@@ -134,7 +134,7 @@ For a multi-node cluster deployment, you need to configure one master node and o
 
 Replace `MASTER_NODE_IP` with the actual IP address of the master node.
 
-2. **On each worker node**, edit `/var/ossec/etc/ossec.conf`:
+2. **On each worker node**, edit `/var/wazuh-manager/etc/wazuh-manager.conf`:
 
 ```xml
 <cluster>
@@ -162,7 +162,7 @@ sudo systemctl restart wazuh-manager
 4. **Verify the cluster status** from any node:
 
 ```bash
-sudo /var/ossec/bin/cluster_control -l
+sudo /var/wazuh-manager/bin/cluster_control -l
 ```
 
 ### Configuration parameters

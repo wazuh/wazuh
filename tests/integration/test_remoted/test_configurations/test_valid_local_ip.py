@@ -64,7 +64,7 @@ local_internal_options = {REMOTED_DEBUG: '2'}
 def test_local_ip_valid(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
                             set_wazuh_configuration, restart_wazuh_expect_error, get_real_configuration):
     '''
-    description: Check if 'wazuh-remoted' can set 'local_ip' using different IPs without errors.
+    description: Check if 'wazuh-manager-remoted' can set 'local_ip' using different IPs without errors.
                  For this purpose, it uses the configuration from test cases and check if the cfg in ossec.conf matches
                  with the API response.
 

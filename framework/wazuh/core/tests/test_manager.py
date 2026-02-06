@@ -138,7 +138,7 @@ def test_get_logs_summary(mock_exists, mock_active_logging_format):
         result = get_logs_summary()
         assert all(key in log for key in ('all', 'info', 'error', 'critical', 'warning', 'debug')
                    for log in result.values())
-        assert result['wazuh-modulesd:database'] == {'all': 2, 'info': 0, 'error': 0, 'critical': 0, 'warning': 0,
+        assert result['wazuh-manager-modulesd:database'] == {'all': 2, 'info': 0, 'error': 0, 'critical': 0, 'warning': 0,
                                                      'debug': 2}
 
 
@@ -194,11 +194,11 @@ def test_validation_ko(mock_exists):
 
 @pytest.mark.parametrize('error_flag, error_msg', [
     (0, ""),
-    (1, "2019/02/27 11:30:07 wazuh-clusterd: ERROR: [Cluster] [Main] Error 3004 - Error in cluster configuration: "
+    (1, "2019/02/27 11:30:07 wazuh-manager-clusterd: ERROR: [Cluster] [Main] Error 3004 - Error in cluster configuration: "
         "Unspecified key"),
-    (1, "2019/02/27 11:30:24 wazuh-authd: ERROR: (1230): Invalid element in the configuration: "
-        "'use_source_i'.\n2019/02/27 11:30:24 wazuh-authd: ERROR: (1202): Configuration error at "
-        "'/var/ossec/etc/ossec.conf'.")
+    (1, "2019/02/27 11:30:24 wazuh-manager-authd: ERROR: (1230): Invalid element in the configuration: "
+        "'use_source_i'.\n2019/02/27 11:30:24 wazuh-manager-authd: ERROR: (1202): Configuration error at "
+        "'/var/wazuh-manage/etc/wazuh-manager.conf'.")
 ])
 def test_parse_execd_output(error_flag, error_msg):
     """Test parse_execd_output function works and returns expected message.

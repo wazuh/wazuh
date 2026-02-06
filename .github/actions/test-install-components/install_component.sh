@@ -41,8 +41,13 @@ WAZUH_MANAGER="10.0.0.2" $linux $install "/packages/$package_name"| tee /package
 grep -i " installed.*wazuh-$target" $installed_log| tee -a /packages/status.log
 
 # Retrieve wazuh gid and uid
-wazuh_gid=$(getent group wazuh | cut -d: -f3)
-wazuh_uid=$(getent passwd wazuh | cut -d: -f3)
+if [ "$target" = "manager" ]; then
+    wazuh_gid=$(getent group wazuh-manager | cut -d: -f3)
+    wazuh_uid=$(getent passwd wazuh-manager | cut -d: -f3)
+else
+    wazuh_gid=$(getent group wazuh | cut -d: -f3)
+    wazuh_uid=$(getent passwd wazuh | cut -d: -f3)
+fi
 
 echo $wazuh_gid > /tests/wazuh_gid
 echo $wazuh_uid > /tests/wazuh_uid
