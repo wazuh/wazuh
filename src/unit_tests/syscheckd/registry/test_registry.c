@@ -1383,6 +1383,97 @@ static void test_fim_read_values_single_string_value(void **state) {
     assert_int_equal(txn_ctx.data->type, REG_SZ);
 }
 
+static void test_fim_read_values_unterminated_string_value(void **state) {
+    HKEY key_handle = (HKEY)123;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    int arch = ARCH_64BIT;
+    DWORD value_count = 1;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    syscheck.registry = one_entry_config;
+    syscheck.registry[0].opts = CHECK_MD5SUM;
+
+    wchar_t *value_name = L"UnterminatedString";
+    /* Simulate the case where RegEnumValueW writes a string without null terminator */
+    WCHAR value_data[256];
+    const WCHAR *test_str = L"test_unterminated";
+    size_t str_len = wcslen(test_str);
+    memcpy(value_data, test_str, str_len * sizeof(WCHAR));
+    /* Do not add null terminator, leaving garbage data after the string */
+    memset(value_data + str_len, 0xFF, sizeof(value_data) - (str_len * sizeof(WCHAR)));
+
+    DWORD value_type = REG_SZ;
+    /* value_size indicates only the useful bytes, without counting the null terminator */
+    DWORD value_size = str_len * sizeof(WCHAR);
+
+    expect_RegEnumValueW_call(value_name, value_type, (LPBYTE)value_data, value_size, ERROR_SUCCESS);
+
+    will_return(__wrap_fim_db_transaction_sync_row, 0);
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_non_null(txn_ctx.data);
+    assert_int_equal(txn_ctx.data->type, REG_SZ);
+    /* Verify that the string was processed correctly without segfault */
+    assert_int_equal(txn_ctx.data->size, value_size);
+}
+
+static void test_fim_read_values_unterminated_multi_string_value(void **state) {
+    HKEY key_handle = (HKEY)123;
+    TXN_HANDLE mock_txn_handler = (TXN_HANDLE)456;
+    char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    int arch = ARCH_64BIT;
+    DWORD value_count = 1;
+    DWORD max_value_length = 256;
+    DWORD max_value_data_length = 256;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    fim_val_txn_context_t txn_ctx = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    syscheck.registry = one_entry_config;
+    syscheck.registry[0].opts = CHECK_MD5SUM;
+
+    wchar_t *value_name = L"UnterminatedMultiString";
+    /* Simulate REG_MULTI_SZ where the last string in the list lacks null terminator
+     * Format should be: "String1\0String2\0\0" but RegEnumValueW may write "String1\0String2" */
+    WCHAR value_data[256];
+    const WCHAR *first_str = L"FirstValue";
+    const WCHAR *second_str = L"SecondValue";
+    size_t first_len = wcslen(first_str);
+    size_t second_len = wcslen(second_str);
+
+    /* Copy first string with null terminator */
+    memcpy(value_data, first_str, first_len * sizeof(WCHAR));
+    value_data[first_len] = L'\0';
+
+    /* Copy second string WITHOUT null terminator */
+    memcpy(value_data + first_len + 1, second_str, second_len * sizeof(WCHAR));
+
+    /* Fill remaining buffer with garbage */
+    memset((BYTE *)(value_data + first_len + 1 + second_len), 0xFF,
+           sizeof(value_data) - ((first_len + 1 + second_len) * sizeof(WCHAR)));
+
+    DWORD value_type = REG_MULTI_SZ;
+    /* value_size includes first string with null, second string without null, but not final \0 */
+    DWORD value_size = (first_len + 1 + second_len) * sizeof(WCHAR);
+
+    expect_RegEnumValueW_call(value_name, value_type, (LPBYTE)value_data, value_size, ERROR_SUCCESS);
+
+    will_return(__wrap_fim_db_transaction_sync_row, 0);
+
+    fim_read_values(key_handle, path, arch, value_count, max_value_length, max_value_data_length,
+                    mock_txn_handler, &txn_ctx);
+
+    assert_non_null(txn_ctx.data);
+    assert_int_equal(txn_ctx.data->type, REG_MULTI_SZ);
+    /* Verify that the multi-string was processed correctly without segfault */
+    assert_int_equal(txn_ctx.data->size, value_size);
+}
+
 static void test_fim_read_values_multiple_values(void **state) {
     HKEY key_handle = (HKEY)123;
     char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
@@ -1744,6 +1835,8 @@ int main(void) {
         /* fim_read_values tests */
         cmocka_unit_test(test_fim_read_values_single_dword_value),
         cmocka_unit_test(test_fim_read_values_single_string_value),
+        cmocka_unit_test(test_fim_read_values_unterminated_string_value),
+        cmocka_unit_test(test_fim_read_values_unterminated_multi_string_value),
         cmocka_unit_test(test_fim_read_values_multiple_values),
         cmocka_unit_test(test_fim_read_values_zero_value_count),
         cmocka_unit_test(test_fim_read_values_RegEnumValueW_fail),
