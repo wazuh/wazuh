@@ -45,6 +45,10 @@ static const char* rpm_platforms[] = {
 
 int wm_agent_upgrade_validate_id(int agent_id)
 {
+    if(agent_id <= 0)
+    {
+        return WM_UPGRADE_UPGRADE_ERROR;
+    }
     return WM_UPGRADE_SUCCESS;
 }
 

@@ -124,9 +124,6 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
                       m_mockFileSystem
                   );
 
-    // Set to agent mode for this test
-    m_agentInfo->setIsAgent(true);
-
     m_agentInfo->start(1, 86400, []()
     {
         return false;

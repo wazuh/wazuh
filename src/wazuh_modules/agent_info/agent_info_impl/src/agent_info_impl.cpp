@@ -165,15 +165,12 @@ AgentInfoImpl::~AgentInfoImpl()
     m_logFunction(LOG_INFO, "AgentInfo destroyed.");
 }
 
-void AgentInfoImpl::setIsAgent(bool value)
-{
-    m_isAgent = value;
-}
+
 
 void AgentInfoImpl::start(int interval, int integrityInterval, std::function<bool()> shouldContinue)
 {
     m_logFunction(LOG_INFO, "AgentInfo module started with interval: " + std::to_string(interval) +
-                  " seconds, integrity interval: " + std::to_string(integrityInterval) + " seconds.");
+                " seconds, integrity interval: " + std::to_string(integrityInterval) + " seconds.");
 
     // Load sync flags from database at startup
     loadSyncFlags();
@@ -262,6 +259,7 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
     while (!m_stopped && (shouldContinue ? shouldContinue() : true));
 
     m_logFunction(LOG_INFO, "AgentInfo module loop ended.");
+    
 }
 
 void AgentInfoImpl::stop()
@@ -365,13 +363,10 @@ void AgentInfoImpl::populateAgentMetadata()
     std::string agentId;
     std::string agentName;
 
-    if (m_isAgent)
+    // For agents, read from client.keys
+    if (!readClientKeys(agentId, agentName))
     {
-        // For agents, read from client.keys
-        if (!readClientKeys(agentId, agentName))
-        {
-            m_logFunction(LOG_WARNING, "Failed to read agent ID and name from client.keys");
-        }
+        m_logFunction(LOG_WARNING, "Failed to read agent ID and name from client.keys");
     }
 
     // Build the agent metadata JSON
@@ -415,63 +410,51 @@ void AgentInfoImpl::populateAgentMetadata()
     // Get cluster_name from handshake (set by agentd during connection via agent_info_set_cluster_name)
     const char* cluster_name = agent_info_get_cluster_name();
 
-    if (m_isAgent && cluster_name && cluster_name[0] != '\0')
-    {
-        agentMetadata["cluster_name"] = std::string(cluster_name);
-    }
-    else
-    {
-        agentMetadata["cluster_name"] = "";
-    }
+    agentMetadata["cluster_name"] = std::string(cluster_name);
+
 
     // Get cluster_node from handshake (set by agentd during connection via agent_info_set_cluster_node)
     const char* cluster_node = agent_info_get_cluster_node();
 
-    if (m_isAgent && cluster_node && cluster_node[0] != '\0')
-    {
-        agentMetadata["cluster_node"] = std::string(cluster_node);
-    }
-    else
-    {
-        agentMetadata["cluster_node"] = "";
-    }
+
+    agentMetadata["cluster_node"] = std::string(cluster_node);
+
+
 
     // Get agent groups (only for agents)
     // Priority: 1) Groups from handshake, 2) Groups from merged.mg
     std::vector<std::string> groups;
 
-    if (m_isAgent)
+  
+    // First, try to get groups from handshake (received from manager)
+    const char* handshake_groups = agent_info_get_agent_groups();
+
+    if (handshake_groups && handshake_groups[0] != '\0')
     {
-        // First, try to get groups from handshake (received from manager)
-        const char* handshake_groups = agent_info_get_agent_groups();
+        // Parse CSV groups from handshake
+        std::string groups_str(handshake_groups);
+        std::istringstream iss(groups_str);
+        std::string group;
 
-        if (handshake_groups && handshake_groups[0] != '\0')
+        while (std::getline(iss, group, ','))
         {
-            // Parse CSV groups from handshake
-            std::string groups_str(handshake_groups);
-            std::istringstream iss(groups_str);
-            std::string group;
-
-            while (std::getline(iss, group, ','))
+            if (!group.empty())
             {
-                if (!group.empty())
-                {
-                    groups.push_back(group);
-                }
+                groups.push_back(group);
             }
-
-            m_logFunction(LOG_DEBUG, "Using " + std::to_string(groups.size()) + " groups from manager handshake");
-
-            // Clear handshake groups after consuming them
-            // Subsequent calls will read from merged.mg
-            agent_info_clear_agent_groups();
         }
-        else
-        {
-            // Fall back to reading from merged.mg
-            groups = readAgentGroups();
-        }
+
+        m_logFunction(LOG_DEBUG, "Using " + std::to_string(groups.size()) + " groups from manager handshake");
+
+        // Clear handshake groups after consuming them
+        // Subsequent calls will read from merged.mg
+        agent_info_clear_agent_groups();
     }
+    else
+    {
+        // Fall back to reading from merged.mg
+        groups = readAgentGroups();
+    } 
 
     // Update the global metadata provider BEFORE updateChanges
     // This ensures the metadata is available when syncProtocol is triggered

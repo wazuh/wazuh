@@ -223,8 +223,6 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
             g_agent_info_impl =
                 std::make_unique<AgentInfoImpl>(AGENT_INFO_DB_DISK_PATH, g_report_function_wrapper, g_log_function_wrapper, g_query_module_function_wrapper);
 
-            // Set agent mode
-            g_agent_info_impl->setIsAgent(agent_info_config->is_agent);
 
             // Set sync parameters from configuration
             g_agent_info_impl->setSyncParameters(agent_info_config->sync.sync_end_delay,

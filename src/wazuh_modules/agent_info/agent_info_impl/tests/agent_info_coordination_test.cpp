@@ -171,7 +171,6 @@ TEST_F(AgentInfoCoordinationTest, ResetSyncFlagSuccess)
                   );
 
     m_agentInfo->initSyncProtocol("test_module", mqFuncs);
-    m_agentInfo->setIsAgent(true);
 
     m_logOutput.clear();
 
@@ -326,7 +325,6 @@ TEST_F(AgentInfoCoordinationTest, QueryModuleWithNonNullResponse)
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
 
-    m_agentInfo->setIsAgent(true);
 
     // Run for only one iteration to avoid timeout
     m_agentInfo->start(1, 86400, []()
@@ -415,8 +413,6 @@ TEST_F(AgentInfoCoordinationTest, QueryModuleSuccessfulOnFirstAttempt)
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
 
-    m_agentInfo->setIsAgent(true);
-
     m_logOutput.clear();
 
     // Run for only one iteration to avoid timeout
@@ -499,8 +495,6 @@ TEST_F(AgentInfoCoordinationTest, ModuleUnavailableScenario)
     nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
-
-    m_agentInfo->setIsAgent(true);
 
     m_logOutput.clear();
 
@@ -595,7 +589,6 @@ TEST_F(AgentInfoCoordinationTest, SuccessfulPauseOperation)
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
 
-    m_agentInfo->setIsAgent(true);
 
     m_logOutput.clear();
 
@@ -676,8 +669,6 @@ TEST_F(AgentInfoCoordinationTest, CoordinateModulesGeneralException)
     nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
-
-    m_agentInfo->setIsAgent(true);
 
     m_logOutput.clear();
 
@@ -1220,7 +1211,6 @@ TEST_F(AgentInfoCoordinationTest, ResetSyncFlagMetadataTable)
                       m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
 
     m_agentInfo->initSyncProtocol("test_module", mqFuncs);
-    m_agentInfo->setIsAgent(true);
 
     m_logOutput.clear();
 

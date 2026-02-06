@@ -269,7 +269,6 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckTriggeredWhenIntervalElapsed)
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
 
-    m_agentInfo->setIsAgent(true);
 
     m_logOutput.clear();
 
@@ -352,7 +351,6 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckRunsAfterDeltaSyncCompletes)
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
 
-    m_agentInfo->setIsAgent(true);
 
     m_logOutput.clear();
 
@@ -438,7 +436,6 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckForBothMetadataAndGroups)
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
 
-    m_agentInfo->setIsAgent(true);
 
     m_logOutput.clear();
 

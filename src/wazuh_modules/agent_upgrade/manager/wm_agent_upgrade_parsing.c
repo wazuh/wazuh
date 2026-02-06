@@ -178,7 +178,7 @@ STATIC int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_mess
 
     while(!error_flag && (agent_index < agents_size)) {
         cJSON *agent = cJSON_GetArrayItem(agents, agent_index);
-        if (agent->type == cJSON_Number) {
+        if (agent->type == cJSON_Number && agent->valueint > 0) {
             agent_ids[agent_index] = agent->valueint;
             agent_ids[agent_index + 1] = OS_INVALID;
         } else {

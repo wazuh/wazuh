@@ -96,16 +96,6 @@ Stops the module's execution.
 ```cpp
 void stop();
 ```
----
-
-### `setIsAgent()`
-Sets the operating mode of the module.
-
-```cpp
-void setIsAgent(bool value);
-```
-**Description:**
-If `true`, the module runs in agent mode. If `false`, it runs in manager mode. This is set at startup based on the component it's running on.
 
 ---
 
