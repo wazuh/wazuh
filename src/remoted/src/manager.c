@@ -490,9 +490,10 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
                 merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
                 // Try to reconnect infinitely
-                logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+                // TODO: commented out while separating manager and agent, someone should bind DEFAULTQUEUE
+                // logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-                minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+                // minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
 
                 if (SendMSG(logr.m_queue, msg, srcmsg, SECURE_MQ) < 0) {
                     // Something went wrong sending a message after an immediate reconnection...
