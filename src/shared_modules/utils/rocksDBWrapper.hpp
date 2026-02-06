@@ -47,6 +47,7 @@ namespace Utils
         virtual bool columnExists(const std::string& columnName) const = 0;
         virtual void deleteAll() = 0;
         virtual void flush() = 0;
+        virtual void pauseBackgroundWork() = 0;
         virtual std::vector<std::string> getAllColumns() = 0;
         virtual RocksDBIterator seek(std::string_view key, const std::string& columnName = "") = 0; // NOLINT
 
@@ -714,6 +715,18 @@ namespace Utils
             }
         }
 
+        /**
+         * @brief Pause background work (compaction, flush, etc).
+         * Waits for current background jobs to complete and prevents new ones from starting.
+         */
+        void pauseBackgroundWork() override
+        {
+            if (const auto status {m_db->PauseBackgroundWork()}; !status.ok())
+            {
+                throw std::runtime_error("Failed to pause background work: " + status.ToString());
+            }
+        }
+
     private:
         std::shared_ptr<T> m_db;                                     ///< RocksDB instance.
         std::vector<ColumnFamilyRAII> m_columnsInstances;            ///< List of column family.
@@ -1003,6 +1016,16 @@ namespace Utils
         [[noreturn]] void flush() override
         {
             // This is only permited for atomic operations.
+            throw std::runtime_error("Not implemented");
+        }
+
+        /**
+         * @brief Pause background work (compaction, flush, etc).
+         * Waits for current background jobs to complete and prevents new ones from starting.
+         */
+        [[noreturn]] void pauseBackgroundWork() override
+        {
+            // This is only permitted for atomic operations.
             throw std::runtime_error("Not implemented");
         }
 

@@ -1341,6 +1341,20 @@ IndexerConnector::~IndexerConnector()
 
     m_dispatcher->cancel();
 
+    if (m_db)
+    {
+        try
+        {
+            logDebug2(IC_NAME, "Waiting RocksDB background to finish for index '%s'...", m_indexName.c_str());
+            m_db->pauseBackgroundWork();
+            m_db->flush();
+        }
+        catch (const std::exception& e)
+        {
+            logWarn(IC_NAME, "Error during RocksDB shutdown for index '%s': %s", m_indexName.c_str(), e.what());
+        }
+    }
+
     if (m_initializeThread.joinable())
     {
         m_initializeThread.join();
