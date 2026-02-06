@@ -35,7 +35,7 @@ class WazuhException(Exception):
         1005: {'message': 'Error reading file',
                'remediation': 'Please, ensure you have the right file permissions in Wazuh directories'},
         1006: {'message': 'File/directory does not exist or there is a problem with the permissions',
-               'remediation': 'Please, check if path to file/directory is correct and `wazuh` '
+               'remediation': 'Please, check if path to file/directory is correct and `wazuh-manager` '
                               'has the appropriate permissions'},
         1010: 'Unable to connect to queue',
         1011: 'Error communicating with queue',
@@ -93,7 +93,7 @@ class WazuhException(Exception):
                               f"configurations"},
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
-        1119: "Directory '/tmp' needs read, write & execution permission for 'wazuh' user",
+        1119: "Directory '/tmp' needs read, write & execution permission for 'wazuh-manager' user",
         1121: {'message': "Error connecting with socket",
                'remediation': "Please ensure the selected module is running and properly configured"},
         1123: {
