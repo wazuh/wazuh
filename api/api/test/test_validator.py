@@ -79,7 +79,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data
         # ranges
         ("5-35", _ranges),
         # paths
-        ("/var/ossec/etc/internal_options", _paths),
+        ("/var/wazuh-manager/etc/internal_options", _paths),
         ("scripts/active_response", _active_response_command),
         ("!scripts/active_response", _active_response_command),
         ("correct.wpk", _wpk_path),
@@ -131,7 +131,7 @@ def test_validation_check_exp_ok(exp, regex_name):
         ("5-35-32", _ranges),
         ("param1,param2,param3", _query_param),
         # paths
-        ("/var/ossec/etc/internal_options$", _paths),
+        ("/var/wazuh-manager/etc/internal_options$", _paths),
         ("!scripts/active_response()", _active_response_command),
         ("scripts\\active_response$", _active_response_command),
         ("incorrect.txt", _wpk_path),
@@ -181,7 +181,7 @@ def test_is_safe_path():
     """Verify that is_safe_path() works as expected"""
     assert is_safe_path("/api/configuration/api.yaml")
     assert is_safe_path("c:\\api\\configuration\\api.yaml")
-    assert is_safe_path("etc/ossec.conf", relative=True)
+    assert is_safe_path("etc/wazuh-manager.conf", relative=True)
     assert not is_safe_path("/api/configuration/api.yaml", basedir="non-existent", relative=False)
     assert not is_safe_path("/..")
     assert not is_safe_path("\\..")

@@ -47,7 +47,7 @@ def ossec_log(level: str = None, tag: str = None, offset: int = 0, limit: int = 
               sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
               complementary_search: bool = False, search_in_fields: list = None,
               q: str = '', select: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
-    """Get logs from ossec.log.
+    """Get logs from wazuh-manager.log.
 
     Parameters
     ----------
@@ -107,7 +107,7 @@ def ossec_log(level: str = None, tag: str = None, offset: int = 0, limit: int = 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def ossec_log_summary() -> AffectedItemsWazuhResult:
-    """Summary of ossec.log.
+    """Summary of wazuh-manager.log.
 
     Returns
     -------
@@ -332,7 +332,7 @@ def get_basic_info() -> AffectedItemsWazuhResult:
 
 @expose_resources(actions=['cluster:update_config'], resources=[f'node:id:{node_id}'])
 def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
-    """Replace wazuh configuration (ossec.conf) with the provided configuration.
+    """Replace wazuh configuration (wazuh-manager.conf) with the provided configuration.
 
     Parameters
     ----------

@@ -172,5 +172,5 @@ optional arguments:
 ```
 
 The `run_test.py` script does not show the tests' full output. The full reports are saved 
-at `wazuh/api/test/integration/_test_results`. Containers' logs (`ossec.log`, `api.log` and `cluster.log`) are stored 
+at `wazuh/api/test/integration/_test_results`. Containers' logs (`wazuh-manager.log`, agent's `ossec.conf`, `api.log` and `cluster.log`) are stored 
 at `_test_results/logs`. Reports in HTML format are also generated and can be found at `_test_results/html_reports`.

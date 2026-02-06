@@ -131,7 +131,7 @@ async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_it
     except (FileNotFoundError, PermissionError):
         main_logger.warning(
             "In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory '/dev/shm' must be "
-            "accessible by the 'wazuh' user. Check that this file has permissions to be accessed by all users. "
+            "accessible by the 'wazuh-manager' user. Check that this file has permissions to be accessed by all users. "
             "Changing the file permissions to 777 will solve this issue.")
         main_logger.warning(
             "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.")
@@ -246,7 +246,7 @@ def main():
         main_logger.info("SIGINT received. Bye!")
     except MemoryError:
         main_logger.error("Directory '/tmp' needs read, write & execution "
-                          "permission for 'wazuh' user")
+                          "permission for 'wazuh-manager' user")
     except Exception as e:
         main_logger.error(f"Unhandled exception: {e}")
     finally:

@@ -122,7 +122,7 @@ class ProxyAPI:
                     raise WazuhHAPHelperError(3047)
         except httpx.ConnectError:
             raise WazuhHAPHelperError(
-                3043, extra_message='Check connectivity and the configuration in the `ossec.conf`'
+                3043, extra_message='Check connectivity and the configuration in the `wazuh-manager.conf`'
             )
         except httpx.RequestError as req_exc:
             raise WazuhHAPHelperError(3043, extra_message=str(req_exc))

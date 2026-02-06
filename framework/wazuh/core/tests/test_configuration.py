@@ -195,23 +195,23 @@ def test_get_ossec_conf():
 
     with pytest.raises(WazuhError, match=".* 1102 .*"):
         configuration.get_ossec_conf(section='noexists',
-                                     conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'))
+                                     conf_file=os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.conf'))
 
     with pytest.raises(WazuhError, match=".* 1106 .*"):
         configuration.get_ossec_conf(section='remote',
-                                     conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'))
+                                     conf_file=os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.conf'))
 
     assert configuration.get_ossec_conf(conf_file=os.path.join(
-        parent_directory, tmp_path, 'configuration/ossec.conf'))['cluster']['name'] == 'wazuh'
+        parent_directory, tmp_path, 'configuration/wazuh-manager.conf'))['cluster']['name'] == 'wazuh'
 
     assert configuration.get_ossec_conf(
         section='cluster',
         conf_file=os.path.join(parent_directory, tmp_path,
-                               'configuration/ossec.conf'))['cluster']['name'] == 'wazuh'
+                               'configuration/wazuh-manager.conf'))['cluster']['name'] == 'wazuh'
 
     assert configuration.get_ossec_conf(
         section='cluster', field='name',
-        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf')
+        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.conf')
     )['cluster']['name'] == 'wazuh'
 
 
@@ -253,7 +253,7 @@ def test_get_agent_conf_multigroup():
 def test_get_file_conf():
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'noexists')):
         with pytest.raises(WazuhError, match=".* 1710 .*"):
-            configuration.get_file_conf(filename='ossec.conf', group_id='default', type_conf='conf',
+            configuration.get_file_conf(filename='wazuh-manager.conf', group_id='default', type_conf='conf',
                                         raw=True)
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
@@ -407,7 +407,7 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
 @patch('builtins.open', mock_open(read_data='test_password'))
 @patch('wazuh.core.wazuh_socket.create_wazuh_socket_message')
 @patch('os.path.exists')
-@patch('wazuh.core.common.WAZUH_PATH', new='/var/ossec')
+@patch('wazuh.core.common.WAZUH_PATH', new='/var/wazuh-manager')
 def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message, agent_id, component, socket,
                                   socket_dir, rec_msg):
     """This test checks the proper working of get_active_configuration function."""
@@ -423,7 +423,7 @@ def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message,
                     result = configuration.get_active_configuration(agent_id, component, config)
 
                     mock__init__.assert_called_with(
-                        f"/var/ossec/queue/{socket_dir}/{socket}" if agent_id == '000' else REMOTED_SOCKET)
+                        f"/var/wazuh-manager/queue/{socket_dir}/{socket}" if agent_id == '000' else REMOTED_SOCKET)
 
                     if socket_class == "WazuhSocket":
                         mock_send.assert_called_with(f"getconfig {config}".encode() if agent_id == '000' else \
