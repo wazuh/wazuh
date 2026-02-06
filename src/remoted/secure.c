@@ -312,9 +312,10 @@ void HandleSecure()
     /* Connect to the message queue
      * Exit if it fails.
      */
-    if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
-    }
+    // TODO: commented out while separating manager and agent, someone should bind DEFAULTQUEUE
+    // if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+    //     merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+    // }
 
     /* Read authentication keys */
     minfo(ENC_READ);
