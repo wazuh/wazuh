@@ -136,33 +136,36 @@ class MaxVersionIndex:
         body = {
             "query": {
                 "bool": {
-                    "must": [{"term": {"wazuh.agent.id": agent_id}}],
-                    "should": [
+                    "must": [
+                        {"term": {"wazuh.agent.id": agent_id}}
+                    ],
+                    "filter": [
                         {
                             "bool": {
-                                "must_not": {
-                                    "exists": {"field": "state.document_version"}
-                                }
+                                "should": [
+                                    {"bool": {"must_not": {"exists": {"field": "state.document_version"}}}},
+                                    {"range": {"state.document_version": {"lte": global_version}}}
+                                ],
+                                "minimum_should_match": 1
                             }
-                        },
-                        {"range": {"state.document_version": {"lte": global_version}}},
-                    ],
-                    "minimum_should_match": 1,
+                        }
+                    ]
                 }
             },
             "script": {
                 "lang": "painless",
                 "source": """
-                    if (ctx._source.agent.groups == params.groups) {
+                    if (ctx._source.wazuh == null) { ctx._source.wazuh = [:]; }
+                    if (ctx._source.wazuh.agent == null) { ctx._source.wazuh.agent = [:]; }
+
+                    if (ctx._source.wazuh.agent.groups != null && ctx._source.wazuh.agent.groups == params.groups) {
                         ctx.op = "noop";
                         return;
                     }
 
-                    ctx._source.agent.groups = params.groups;
+                    ctx._source.wazuh.agent.groups = params.groups;
 
-                    if (ctx._source.state == null) {
-                        ctx._source.state = [:];
-                    }
+                    if (ctx._source.state == null) { ctx._source.state = [:]; }
                     ctx._source.state.document_version = params.globalVersion;
                     ctx._source.state.modified_at = params.timestamp;
                 """,
@@ -243,24 +246,33 @@ class MaxVersionIndex:
         body = {
             "query": {
                 "bool": {
-                    "must": [{"term": {"agent.id": agent_id}}],
-                    "should": [
+                    "must": [
+                        {"term": {"wazuh.agent.id": agent_id}}
+                    ],
+                    "filter": [
                         {
                             "bool": {
-                                "must_not": {
-                                    "exists": {"field": "state.document_version"}
-                                }
+                                "should": [
+                                    {
+                                        "bool": {
+                                            "must_not": {
+                                                "exists": {"field": "state.document_version"}
+                                            }
+                                        }
+                                    },
+                                    {"range": {"state.document_version": {"lte": global_version}}}
+                                ],
+                                "minimum_should_match": 1
                             }
-                        },
-                        {"range": {"state.document_version": {"lte": global_version}}},
-                    ],
-                    "minimum_should_match": 1,
+                        }
+                    ]
                 }
             },
             "script": {
                 "lang": "painless",
                 "source": """
                     if (ctx._source.wazuh == null) { ctx._source.wazuh = [:]; }
+                    if (ctx._source.wazuh.agent == null) { ctx._source.wazuh.agent = [:]; }
                     if (ctx._source.wazuh.cluster == null) { ctx._source.wazuh.cluster = [:]; }
 
                     if (ctx._source.wazuh.cluster.name == params.clusterName) {
@@ -269,12 +281,12 @@ class MaxVersionIndex:
                     }
                     ctx._source.wazuh.cluster.name = params.clusterName;
                     if (ctx._source.state == null) { ctx._source.state = [:]; }
-                    ctx._source.state.document_version = params.globalVersion;
+                    ctx._source.state.document_version = params.newVersion;
                     ctx._source.state.modified_at = params.timestamp;
                 """,
                 "params": {
                     "clusterName": cluster_name,
-                    "globalVersion": global_version,
+                    "newVersion": global_version,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
             },

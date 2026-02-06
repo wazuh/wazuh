@@ -211,7 +211,7 @@ class DisconnectedAgentSyncTasks:
             agents = []
             now_utc = core_utils.get_utc_now()
             for agent in agents_not_active:
-                disconnected_time = agent["lastKeepAlive"] or agent["dateAdd"]
+                disconnected_time = agent.get("lastKeepAlive", None) or agent.get("dateAdd")
                 if (
                     disconnected_time + timedelta(seconds=self.min_disconnection_time)
                     < now_utc
@@ -257,7 +257,7 @@ class DisconnectedAgentSyncTasks:
             "aggs": {
                 "by_agent": {
                     "terms": {
-                        "field": "wazuh.agent.id",
+                        "field": "wazuh.agent.id.keyword",
                         "include": agent_ids,
                         "exclude": ["000"],
                     },
@@ -670,7 +670,7 @@ class DisconnectedAgentSyncTasks:
             "query": {
                 "bool": {
                     "filter": [
-                        {"terms": {"agent.id": agent_ids}},
+                        {"terms": {"wazuh.agent.id.keyword": agent_ids}},
                         {"exists": {"field": "wazuh.cluster.name"}},
                     ],
                     "must_not": [
@@ -680,7 +680,7 @@ class DisconnectedAgentSyncTasks:
             },
             "aggs": {
                 "by_agent": {
-                    "terms": {"field": "agent.id", "size": len(agent_ids)},
+                    "terms": {"field": "wazuh.agent.id.keyword", "size": len(agent_ids)},
                     "aggs": {
                         "cluster_name": {
                             "terms": {"field": "wazuh.cluster.name", "size": 5}

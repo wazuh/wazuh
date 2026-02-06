@@ -126,7 +126,7 @@ class TestUpdateAgentClusterName:
         params = first_call[1]["body"]["script"]["params"]
 
         assert params["clusterName"] == cluster_name
-        assert params["globalVersion"] == 10
+        assert params["newVersion"] == 10
 
     @pytest.mark.asyncio
     async def test_query_filters_by_agent_id(self, max_version_index, mock_indexer_client):
@@ -368,7 +368,7 @@ class TestUpdateAgentClusterNameEdgeCases:
         params = (
             mock_indexer_client.update_by_query.call_args_list[0][1]["body"]["script"]["params"]
         )
-        assert params["globalVersion"] == 0
+        assert params["newVersion"] == 0
 
     @pytest.mark.asyncio
     async def test_very_high_version(self, max_version_index, mock_indexer_client):
@@ -386,4 +386,4 @@ class TestUpdateAgentClusterNameEdgeCases:
         params = (
             mock_indexer_client.update_by_query.call_args_list[0][1]["body"]["script"]["params"]
         )
-        assert params["globalVersion"] == high_version
+        assert params["newVersion"] == high_version

@@ -94,7 +94,7 @@ class TestUpdateAgentClusterName:
         call_args = indexer_client.update_by_query.call_args_list[0]
         script_params = call_args[1]["body"]["script"]["params"]
 
-        assert script_params["globalVersion"] == custom_version
+        assert script_params["newVersion"] == custom_version
 
     @pytest.mark.asyncio
     async def test_update_cluster_name_script_structure(self, max_version_index, indexer_client):
@@ -156,8 +156,8 @@ class TestUpdateAgentClusterName:
         # Verify agent.id term filter
         must_clause = query["bool"]["must"]
         assert any(
-            "agent.id" in str(clause) for clause in must_clause
-        ), "Query should filter by agent.id"
+            "wazuh.agent.id" in str(clause) for clause in must_clause
+        ), "Query should filter by wazuh.agent.id"
 
     @pytest.mark.asyncio
     async def test_update_cluster_name_different_agents(self, max_version_index, indexer_client):
@@ -359,7 +359,7 @@ class TestUpdateAgentClusterName:
 
         call_args = indexer_client.update_by_query.call_args_list[0]
         params = call_args[1]["body"]["script"]["params"]
-        assert params["globalVersion"] == 0
+        assert params["newVersion"] == 0
 
     @pytest.mark.asyncio
     async def test_update_cluster_name_high_version(self, max_version_index, indexer_client):
@@ -376,7 +376,7 @@ class TestUpdateAgentClusterName:
 
         call_args = indexer_client.update_by_query.call_args_list[0]
         params = call_args[1]["body"]["script"]["params"]
-        assert params["globalVersion"] == high_version
+        assert params["newVersion"] == high_version
 
 
 # ============================================================
