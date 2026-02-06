@@ -489,7 +489,12 @@ void AgentInfoImpl::populateAgentMetadata()
     // This ensures the metadata is available when syncProtocol is triggered
     updateMetadataProvider(agentMetadata, groups);
 
+    // Reset cluster_name change tracking before detecting changes
+    m_clusterNameChanged = false;
+
     // Update agent metadata using dbsync to detect changes and emit events
+    // For metadata table, updateChanges returns true only for non-cluster metadata changes
+    // m_clusterNameChanged is set as side effect by categorizeMetadataChanges
     bool metadataChanged = updateChanges(AGENT_METADATA_TABLE, nlohmann::json::array({agentMetadata}));
 
     auto logMsg = std::string("Agent metadata populated successfully");
@@ -522,12 +527,17 @@ void AgentInfoImpl::populateAgentMetadata()
 
     m_logFunction(LOG_DEBUG, groupLogMsg);
 
+    // Route sync flags based on what changed:
+    // - cluster_name change alone → groups sync path (GROUP_DELTA, version=max)
+    // - cluster_node change → no sync flag (suppressed)
+    // - other metadata changes → metadata sync path (METADATA_DELTA, version=max+1)
+    // - cluster_name + other metadata → metadata sync path only (metadata subsumes cluster_name)
     if (metadataChanged)
     {
         setSyncFlag(AGENT_METADATA_TABLE, true);
     }
 
-    if (groupsChanged)
+    if (groupsChanged || (m_clusterNameChanged && !metadataChanged))
     {
         setSyncFlag(AGENT_GROUPS_TABLE, true);
     }
@@ -755,7 +765,15 @@ bool AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
     {
         if (result == INSERTED || result == MODIFIED || result == DELETED)
         {
-            hasChanges = true;
+            if (table == AGENT_METADATA_TABLE)
+            {
+                hasChanges |= categorizeMetadataChanges(result, data);
+            }
+            else
+            {
+                hasChanges = true;
+            }
+
             processEvent(result, data, table);
         }
     };
@@ -906,6 +924,45 @@ bool AgentInfoImpl::shouldGenerateStatelessEvent(ReturnTypeCallback result, cons
 
     // For all other cases (non-metadata tables, or changes include non-OS fields), generate stateless
     return true;
+}
+
+bool AgentInfoImpl::categorizeMetadataChanges(ReturnTypeCallback result, const nlohmann::json& data)
+{
+    // For INSERTED and DELETED events, treat as other metadata change (preserves current behavior)
+    if (result == INSERTED || result == DELETED)
+    {
+        return true;
+    }
+
+    // For MODIFIED events, check which fields actually changed
+    bool otherMetadataChanged = false;
+
+    if (result == MODIFIED && data.contains("old") && data.contains("new"))
+    {
+        const nlohmann::json& newData = data["new"];
+        const nlohmann::json& oldData = data["old"];
+
+        for (const auto& [key, value] : newData.items())
+        {
+            if (oldData.contains(key) && oldData[key] != value)
+            {
+                if (key == "cluster_name")
+                {
+                    m_clusterNameChanged = true;
+                }
+                else if (key == "cluster_node")
+                {
+                    // No sync flag for cluster_node changes
+                }
+                else
+                {
+                    otherMetadataChanged = true;
+                }
+            }
+        }
+    }
+
+    return otherMetadataChanged;
 }
 
 nlohmann::json AgentInfoImpl::ecsData(const nlohmann::json& data, const std::string& table) const
