@@ -407,7 +407,7 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
 @patch('builtins.open', mock_open(read_data='test_password'))
 @patch('wazuh.core.wazuh_socket.create_wazuh_socket_message')
 @patch('os.path.exists')
-@patch('wazuh.core.common.WAZUH_PATH', new='/var/ossec')
+@patch('wazuh.core.common.WAZUH_PATH', new='/var/wazuh-manager')
 def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message, agent_id, component, socket,
                                   socket_dir, rec_msg):
     """This test checks the proper working of get_active_configuration function."""
@@ -423,7 +423,7 @@ def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message,
                     result = configuration.get_active_configuration(agent_id, component, config)
 
                     mock__init__.assert_called_with(
-                        f"/var/ossec/queue/{socket_dir}/{socket}" if agent_id == '000' else REMOTED_SOCKET)
+                        f"/var/wazuh-manager/queue/{socket_dir}/{socket}" if agent_id == '000' else REMOTED_SOCKET)
 
                     if socket_class == "WazuhSocket":
                         mock_send.assert_called_with(f"getconfig {config}".encode() if agent_id == '000' else \

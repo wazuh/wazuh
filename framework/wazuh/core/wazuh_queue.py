@@ -106,7 +106,7 @@ class WazuhQueue(BaseQueue):
         """Send message to agent.
 
         Active-response
-          Agents: /var/ossec/queue/alerts/ar
+          Agents: /var/wazuh-manager/queue/alerts/ar
             - Existing command:
               - (msg_to_agent) [] NNS 001 restart-ossec0 arg1 arg2 arg3
               - (msg_to_agent) [] ANN (null) restart-ossec0 arg1 arg2 arg3
@@ -116,7 +116,7 @@ class WazuhQueue(BaseQueue):
           Agents with version >= 4.2.0:
             - Existing and custom commands:
               - (msg_to_agent) [] NNS 001 {JSON message}
-          Manager: /var/ossec/queue/alerts/execq
+          Manager: /var/wazuh-manager/queue/alerts/execq
             - Existing or custom command:
               - {JSON message}
 

@@ -198,7 +198,7 @@ def test_validation_ko(mock_exists):
         "Unspecified key"),
     (1, "2019/02/27 11:30:24 wazuh-manager-authd: ERROR: (1230): Invalid element in the configuration: "
         "'use_source_i'.\n2019/02/27 11:30:24 wazuh-manager-authd: ERROR: (1202): Configuration error at "
-        "'/var/ossec/etc/wazuh-manager.conf'.")
+        "'/var/wazuh-manage/etc/wazuh-manager.conf'.")
 ])
 def test_parse_execd_output(error_flag, error_msg):
     """Test parse_execd_output function works and returns expected message.

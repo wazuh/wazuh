@@ -693,7 +693,7 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
     agents_list : str
         List of agent IDs.
     file_path : str
-        Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
+        Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/wazuh-manager</code>).
     installer : str
         Installation file.
     q : str
