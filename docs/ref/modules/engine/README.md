@@ -1425,12 +1425,12 @@ kanban
 
 ### Filters
 
-The filters are assets with a single stage, the check stage, used to evaluate the conditions without modifying the event.
+Filters are assets with a single stage (`check`) used to evaluate conditions without modifying the event. They do not support `parse|*` or `normalize` stages.
 
 The filters are used to:
 
 1. Route events to the correct policy in the orchestrator (Most common use case).
-2. Filter a event between parent assets and child assets.
+2. Filter events between parent assets and child assets.
 
 
 ```mermaid
@@ -1438,29 +1438,63 @@ The filters are used to:
 title: Filter schema
 ---
 kanban
-  Output[Output schema]
+  Output[Filter schema]
     assetName["name"]@{ priority: 'Very Low'}
+    assetId["id"]@{ priority: 'Very Low'}
+    assetEnabled["enabled"]@{ priority: 'Very Low'}
+    assetType["type"]@{ priority: 'Very Low'}
     assetMetadata["metadata"]@{ priority: 'Very Low'}
     %% assetParents["parents"]
-    assetChecks["allow"]
+    assetChecks["check"]
 ```
 
 - **Name**: Identifies the filter and follows the pattern `<asset_type>/<name>/<version>`. The name is unique and cannot
   be repeated. The naming convention for components is `<type>/<name>/<version>`. The component type is `filter`, and
   the version must be 0, since versioning is not implemented:
 
-- **Metadata**: Each filter has metadata that provides information about the filter, such as the proposed use case, version,
-  and format. This metadata does not affect the processing stages.
-  The metadata fields are:
-    - `description`: A brief description of the filter.
-    - TODO: Add more fields when the metadata is defined.
+- **ID**: Unique identifier for the filter in UUIDv4 format.
 
-- **Allow**: The allow stage is a stage in the filter asset used to evaluate the conditions that the event must meet to
+- **Enabled**: Boolean flag to enable or disable the filter.
+
+- **Type**: Defines when the filter is executed in the pipeline:
+  - `pre-filter`: evaluated before decoders.
+  - `post-filter`: evaluated after decoders.
+
+- **Metadata**: Provides descriptive information about the filter (module, title, description, compatibility, versions,
+  author, references). This metadata does not affect processing stages.
+
+- **Check**: The check stage is a stage in the filter asset used to evaluate the conditions that the event must meet to
   pass the filter. More information on the checks stage can be found in the [Check/allow section](#checkallow).
 
+- **Parents** (optional): Defines parent filters evaluated before this one.
+
+- **Definitions** (optional): Defines symbols that will be replaced throughout the document in its occurrences.
+
+#### Example Filter
+
+```yaml
+name: filter/prefilter/0
+id: fef71314-00c6-41f5-ab26-15e271e9f913
+enabled: true
+type: pre-filter
+metadata:
+  module: wazuh
+  title: Platform filter
+  description: Filter events by platform
+  compatibility: Wazuh 5.*
+  versions:
+    - Wazuh 5.*
+  author:
+    name: Wazuh, Inc.
+    url: https://wazuh.com
+    date: 2024-01-31
+  references:
+    - https://documentation.wazuh.com/
+check: $host.os.platform == 'ubuntu'
+```
+
 > [!NOTE]
-> When filter assets are used in the orchestrator, the don't have parents, they are a check stage that is evaluated before
-> the event is sent to the policy.
+> When filter assets are used in the orchestrator, they don't have parents; they are a check stage that is evaluated before or after decoders depending on the `type` field.
 
 ## Stages
 

@@ -8,13 +8,34 @@
   "additionalProperties": false,
   "required": [
     "name",
-    "metadata"
+    "id",
+    "enabled",
+    "metadata",
+    "type",
+    "check"
   ],
   "properties": {
     "name": {
       "type": "string",
       "description": "Component name with 3 parts: filter/<name>/<version>",
       "pattern": "^filter\\/[^\\/]+\\/[^\\/]+$"
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the filter in UUIDv4 format",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    },
+    "enabled": {
+      "type": "boolean",
+      "description": "Whether the filter is enabled or disabled"
+    },
+    "type": {
+      "type": "string",
+      "description": "Filter execution stage in the pipeline. Determines when the filter is evaluated.",
+      "enum": [
+        "pre-filter",
+        "post-filter"
+      ]
     },
     "metadata": {
       "type": "object",
@@ -78,6 +99,13 @@
         }
       }
     },
+    "parents": {
+      "type": "array",
+      "description": "Parent filters evaluated before this one",
+      "items": {
+        "type": "string"
+      }
+    },
     "definitions": {
       "type": "object",
       "minProperties": 1,
@@ -119,7 +147,7 @@
           "$ref": "#/definitions/_checkList"
         }
       ],
-      "errorMessage": "check must be either a conditional expression (string) with $fields/operators, or a checklist (array) of single-pair objects { field: condition }."
+      "errorMessage": "check must be a conditional expression (string) with $fields/operators or a checklist (array) of single-pair objects { field: condition }."
     },
     "_checkExpression": {
       "type": "string",

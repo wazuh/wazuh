@@ -27,6 +27,7 @@ POLICY_NS = "testing"
 
 # Resource names
 FILTER_ALLOW_ALL_NAME = "filter/allow-all/0"
+FILTER_ALLOW_ALL_UUID = "b540db06-a761-4c02-8880-1d3e3b964063"
 
 # UUIDs (must match init.py and tester tests)
 DECODER_TEST_UUID = "2faeea8b-672b-4b42-8f91-657d7810d636"
@@ -126,7 +127,13 @@ def create_filter(filter_name: str):
     assert filter_name == FILTER_ALLOW_ALL_NAME, (
         f"Router steps only support '{FILTER_ALLOW_ALL_NAME}' for now"
     )
-    filter_yaml = f"name: {FILTER_ALLOW_ALL_NAME}\ntype: pre-filter\nenabled: true\n"
+    filter_yaml = f"""\
+name: {FILTER_ALLOW_ALL_NAME}
+id: {FILTER_ALLOW_ALL_UUID}
+enabled: true
+type: pre-filter
+check: exists($event.original)
+"""
 
     req = api_crud.resourcePost_Request()
     req.space = POLICY_NS

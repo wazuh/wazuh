@@ -266,7 +266,23 @@ inline json::Json adaptFilter(const json::Json& document)
         checkAssetName(*nameOpt, "filter");
     }
 
-    // 2. type
+    // 2. parents
+    if (document.exists("/parents"))
+    {
+        auto defsOpt = document.getJson("/parents");
+        if (defsOpt.has_value())
+        {
+            result.set("/parents", *defsOpt);
+        }
+    }
+
+    // 3. definitions
+    if (auto defJsonOpt = document.getJson("/definitions"); defJsonOpt.has_value())
+    {
+        result.set("/definitions", *defJsonOpt);
+    }
+
+    // 4. type
     auto typeOpt = document.getString("/type");
     if (!typeOpt.has_value())
     {
@@ -274,7 +290,7 @@ inline json::Json adaptFilter(const json::Json& document)
     }
     result.setString(*typeOpt, "/type");
 
-    // 3. Copy /check
+    // 5. Copy /check
     if (document.exists("/check"))
     {
         auto checkOpt = document.getJson("/check");
@@ -284,7 +300,7 @@ inline json::Json adaptFilter(const json::Json& document)
         }
     }
 
-    // 4. enabled
+    // 6. enabled
     auto enabledOpt = document.getBool("/enabled");
     if (!enabledOpt.has_value())
     {
@@ -292,7 +308,7 @@ inline json::Json adaptFilter(const json::Json& document)
     }
     result.setBool(*enabledOpt, "/enabled");
 
-    // 5. id
+    // 7. id
     if (document.exists("/id"))
     {
         auto idOpt = document.getString("/id");
@@ -327,7 +343,23 @@ inline json::Json adaptOutput(const json::Json& document)
         checkAssetName(*nameOpt, "output");
     }
 
-    // 2. outputs array (contains the first_of logic with check and then blocks)
+    // 2. parents
+    if (document.exists("/parents"))
+    {
+        auto defsOpt = document.getJson("/parents");
+        if (defsOpt.has_value())
+        {
+            result.set("/parents", *defsOpt);
+        }
+    }
+
+    // 3. definitions
+    if (auto defJsonOpt = document.getJson("/definitions"); defJsonOpt.has_value())
+    {
+        result.set("/definitions", *defJsonOpt);
+    }
+
+    // 4. outputs array (contains the first_of logic with check and then blocks)
     if (const auto outputsArrayOpt = document.getArray("/outputs"); outputsArrayOpt.has_value())
     {
         result.setArray("/outputs");
@@ -399,7 +431,7 @@ inline json::Json adaptOutput(const json::Json& document)
         }
     }
 
-    // 3. enabled
+    // 5. enabled
     auto enabledOpt = document.getBool("/enabled");
     if (!enabledOpt.has_value())
     {
@@ -407,7 +439,7 @@ inline json::Json adaptOutput(const json::Json& document)
     }
     result.setBool(*enabledOpt, "/enabled");
 
-    // 5. id (optional)
+    // 6. id (optional)
     if (document.exists("/id"))
     {
         auto idOpt = document.getString("/id");
