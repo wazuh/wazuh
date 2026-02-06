@@ -87,7 +87,7 @@ const wm_context WM_AGENT_INFO_CONTEXT = {.name = AGENT_INFO_WM_NAME,
                                           .start = (wm_routine)wm_agent_info_main,
                                           .destroy = (void (*)(void*))wm_agent_info_destroy,
                                           .dump = (cJSON * (*)(const void*)) wm_agent_info_dump,
-                                          .sync = (int(*)(const char*, size_t)) wm_agent_info_sync_message,
+                                          .sync = (int (*)(const char*, size_t))wm_agent_info_sync_message,
                                           .stop = (void (*)(void*))wm_agent_info_stop,
                                           .query = NULL};
 
@@ -224,15 +224,19 @@ static int wm_agent_info_query_module_wrapper(const char* module_name, const cha
     mdebug1("Received JSON for %s: %s", module_name, json_query);
 
     // Check if this is a request for FIM module (separate process)
-    if (strcmp(module_name, FIM_NAME) == 0) {
+    if (strcmp(module_name, FIM_NAME) == 0)
+    {
         size_t result_len = wm_fim_query_json(json_query, response);
 
-        if (result_len > 0 && *response) {
+        if (result_len > 0 && *response)
+        {
             // Parse JSON response to check for success
-            cJSON *json_obj = cJSON_Parse(*response);
-            if (json_obj) {
-                cJSON *error_item = cJSON_GetObjectItem(json_obj, "error");
-                if (error_item && cJSON_IsNumber(error_item)) {
+            cJSON* json_obj = cJSON_Parse(*response);
+            if (json_obj)
+            {
+                cJSON* error_item = cJSON_GetObjectItem(json_obj, "error");
+                if (error_item && cJSON_IsNumber(error_item))
+                {
                     int error_code = (int)cJSON_GetNumberValue(error_item);
                     cJSON_Delete(json_obj);
                     return (error_code == 0) ? 0 : -1;
@@ -247,12 +251,15 @@ static int wm_agent_info_query_module_wrapper(const char* module_name, const cha
     // Use wm_module_query_json_ex which accepts module_name directly (more efficient)
     size_t result_len = wm_module_query_json_ex(module_name, json_query, response);
 
-    if (result_len > 0 && *response) {
+    if (result_len > 0 && *response)
+    {
         // Parse JSON response to check for success
-        cJSON *json_obj = cJSON_Parse(*response);
-        if (json_obj) {
-            cJSON *error_item = cJSON_GetObjectItem(json_obj, "error");
-            if (error_item && cJSON_IsNumber(error_item)) {
+        cJSON* json_obj = cJSON_Parse(*response);
+        if (json_obj)
+        {
+            cJSON* error_item = cJSON_GetObjectItem(json_obj, "error");
+            if (error_item && cJSON_IsNumber(error_item))
+            {
                 int error_code = (int)cJSON_GetNumberValue(error_item);
                 cJSON_Delete(json_obj);
                 return (error_code == 0) ? 0 : -1;
@@ -266,15 +273,18 @@ static int wm_agent_info_query_module_wrapper(const char* module_name, const cha
 
 #ifdef WIN32
 // Forward declaration - agcom_dispatch is available in the same process on Windows
-extern size_t agcom_dispatch(char * command, char ** output);
+extern size_t agcom_dispatch(char* command, char** output);
 #endif
 
 // Query agentd for handshake data via agcom
 // On Windows: calls agcom_dispatch directly (same process)
 // On Unix: connects to agcom socket (AG_LOCAL_SOCK)
-static bool wm_agent_info_query_agentd_handshake(char* cluster_name, size_t cluster_name_size,
-                                                  char* cluster_node, size_t cluster_node_size,
-                                                  char* agent_groups, size_t agent_groups_size)
+static bool wm_agent_info_query_agentd_handshake(char* cluster_name,
+                                                 size_t cluster_name_size,
+                                                 char* cluster_node,
+                                                 size_t cluster_node_size,
+                                                 char* agent_groups,
+                                                 size_t agent_groups_size)
 {
     if (cluster_name && cluster_name_size > 0)
     {
@@ -378,7 +388,9 @@ static bool wm_agent_info_query_agentd_handshake(char* cluster_name, size_t clus
     cJSON_Delete(root);
 
     mdebug1("Received handshake data from agentd: cluster_name=%s, cluster_node=%s, agent_groups=%s",
-            cluster_name ? cluster_name : "", cluster_node ? cluster_node : "", agent_groups ? agent_groups : "");
+            cluster_name ? cluster_name : "",
+            cluster_node ? cluster_node : "",
+            agent_groups ? agent_groups : "");
     return true;
 }
 
@@ -440,8 +452,8 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
     }
 
     // Set default configuration values
-    agent_info->interval = 60;  // Delta updates every 60 seconds
-    agent_info->integrity_interval = 86400;  // Integrity check every 24 hours (86400 seconds)
+    agent_info->interval = 60;              // Delta updates every 60 seconds
+    agent_info->integrity_interval = 86400; // Integrity check every 24 hours (86400 seconds)
 
     // Database synchronization config values
     agent_info->sync.enable_synchronization = 1;
@@ -460,11 +472,17 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
     agent_info->is_agent = false;
 #endif
 
+    if(!agent_info->is_agent)
+    {
+        mdebug2("Agent-info module is not supported on manager. Ignoring configuration.");
+        return 0;
+    }
+
     if (!nodes)
     {
         return 0;
     }
-
+    
     for (i = 0; nodes[i]; i++)
     {
         if (!nodes[i]->element)
@@ -495,7 +513,8 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
 
             if (value < 60 || value > 7 * DAY_SEC || *end)
             {
-                mwarn("Invalid integrity_interval time at module '%s'. Value must be between 60 (1 minute) and %d (7 days).",
+                mwarn("Invalid integrity_interval time at module '%s'. Value must be between 60 (1 minute) and %d (7 "
+                      "days).",
                       WM_AGENT_INFO_CONTEXT.name,
                       7 * DAY_SEC);
             }
@@ -603,7 +622,8 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_set_log_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_log_function");
         agent_info_set_report_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_report_function");
         agent_info_init_sync_protocol_ptr = so_get_function_sym(agent_info_module, "agent_info_init_sync_protocol");
-        agent_info_set_query_module_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_query_module_function");
+        agent_info_set_query_module_function_ptr =
+            so_get_function_sym(agent_info_module, "agent_info_set_query_module_function");
         agent_info_set_cluster_name_ptr = so_get_function_sym(agent_info_module, "agent_info_set_cluster_name");
         agent_info_set_cluster_node_ptr = so_get_function_sym(agent_info_module, "agent_info_set_cluster_node");
         agent_info_set_agent_groups_ptr = so_get_function_sym(agent_info_module, "agent_info_set_agent_groups");
@@ -642,48 +662,49 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     }
 
     // Query agentd for handshake data (cluster_name, cluster_node, agent_groups) via agcom - only on agents
-    if (agent_info->is_agent)
+
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[OS_SIZE_65536] = {0};
+    bool handshake_success = false;
+
+    while (!handshake_success && !g_shutting_down)
     {
-        char cluster_name[256] = {0};
-        char cluster_node[256] = {0};
-        char agent_groups[OS_SIZE_65536] = {0};
-        bool handshake_success = false;
-
-        while (!handshake_success && !g_shutting_down)
+        if (wm_agent_info_query_agentd_handshake(cluster_name,
+                                                 sizeof(cluster_name),
+                                                 cluster_node,
+                                                 sizeof(cluster_node),
+                                                 agent_groups,
+                                                 sizeof(agent_groups)))
         {
-            if (wm_agent_info_query_agentd_handshake(cluster_name, sizeof(cluster_name),
-                                                      cluster_node, sizeof(cluster_node),
-                                                      agent_groups, sizeof(agent_groups)))
+            handshake_success = true;
+            if (cluster_name[0] != '\0' && agent_info_set_cluster_name_ptr)
             {
-                handshake_success = true;
-                if (cluster_name[0] != '\0' && agent_info_set_cluster_name_ptr)
-                {
-                    agent_info_set_cluster_name_ptr(cluster_name);
-                    minfo("Cluster name received from agentd: %s", cluster_name);
-                }
-                if (cluster_node[0] != '\0' && agent_info_set_cluster_node_ptr)
-                {
-                    agent_info_set_cluster_node_ptr(cluster_node);
-                    mdebug1("Cluster node received from agentd: %s", cluster_node);
-                }
-                if (agent_groups[0] != '\0' && agent_info_set_agent_groups_ptr)
-                {
-                    agent_info_set_agent_groups_ptr(agent_groups);
-                    mdebug1("Agent groups received from agentd: %s", agent_groups);
-                }
+                agent_info_set_cluster_name_ptr(cluster_name);
+                minfo("Cluster name received from agentd: %s", cluster_name);
             }
-            else
+            if (cluster_node[0] != '\0' && agent_info_set_cluster_node_ptr)
             {
-                mdebug1("Handshake data not available yet, retrying in 1 second...");
-                sleep(1);
+                agent_info_set_cluster_node_ptr(cluster_node);
+                mdebug1("Cluster node received from agentd: %s", cluster_node);
+            }
+            if (agent_groups[0] != '\0' && agent_info_set_agent_groups_ptr)
+            {
+                agent_info_set_agent_groups_ptr(agent_groups);
+                mdebug1("Agent groups received from agentd: %s", agent_groups);
             }
         }
-
-        if (g_shutting_down)
+        else
         {
-            minfo("Shutdown requested during handshake wait, exiting.");
-            return NULL;
+            mdebug1("Handshake data not available yet, retrying in 1 second...");
+            sleep(1);
         }
+    }
+
+    if (g_shutting_down)
+    {
+        minfo("Shutdown requested during handshake wait, exiting.");
+        return NULL;
     }
 
     // Initialize the C++ implementation (this will create the AgentInfoImpl with the callbacks)

@@ -852,7 +852,7 @@ void sendEvent(bool verbose,
     {
         testData = AgentTestData::loadFromFile(input);
 
-        const auto agentId = testData.start.value("agentid", std::string("000"));
+        const auto agentId = testData.start.value("agentid", std::string("001"));
         const auto modeStr = testData.start.value("mode", std::string("delta"));
         const auto optStr = testData.start.value("option", std::string("VDSync"));
     }

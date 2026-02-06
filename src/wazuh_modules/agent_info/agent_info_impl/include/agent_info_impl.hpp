@@ -58,10 +58,6 @@ class AgentInfoImpl
         void start(int interval, int integrityInterval = 86400, std::function<bool()> shouldContinue = nullptr);
         void stop();
 
-        /// @brief Set whether this instance is running on an agent or manager
-        /// @param value True if running on an agent, false if on a manager
-        void setIsAgent(bool value);
-
         /// @brief Initialize the synchronization protocol with only in-memory synchronization
         /// @param moduleName Name of the module
         /// @param mqFuncs Message queue functions
@@ -265,9 +261,6 @@ class AgentInfoImpl
 
         /// @brief Mutex for condition variable synchronization
         std::mutex m_mutex;
-
-        /// @brief True if the module is running on an agent, false if on a manager
-        bool m_isAgent = true;
 
         /// @brief Flag indicating if metadata needs to be synchronized
         bool m_shouldSyncMetadata = false;
