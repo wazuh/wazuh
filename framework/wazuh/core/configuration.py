@@ -930,11 +930,11 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
             # Example of raw output
             # 2019/01/08 14:51:09 verify-agent-conf: ERROR: (1230):
             # Invalid element in the configuration: 'agent_conf'.\n2019/01/08 14:51:09 verify-agent-conf: ERROR: (1207):
-            # Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
+            # Syscheck remote configuration in '/var/wazuh-manager/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
             # \n\n
             # Example of desired output:
             # Invalid element in the configuration: 'agent_conf'.
-            # Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
+            # Syscheck remote configuration in '/var/wazuh-manager/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
                                               r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
             if output_regex:

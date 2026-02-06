@@ -4499,7 +4499,7 @@ components:
       in: query
       name: file_path
       description: "Full path to the WPK file. The file must be on a folder on the Wazuh's installation directory
-      (by default, <code>/var/ossec</code>)"
+      (by default, <code>/var/wazuh-manager</code>)"
       required: True
       schema:
         type: string
@@ -7309,10 +7309,10 @@ paths:
                           request_timeout: 10
                         https:
                           enabled: true
-                          key: "/var/ossec/api/configuration/ssl/server.key"
-                          cert: "/var/ossec/api/configuration/ssl/server.crt"
+                          key: "/var/wazuh-manager/api/configuration/ssl/server.key"
+                          cert: "/var/wazuh-manager/api/configuration/ssl/server.crt"
                           use_ca: false
-                          ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                          ca: "/var/wazuh-manager/api/configuration/ssl/ca.crt"
                           ssl_protocol: "auto"
                           ssl_ciphers: ""
                         logs:
@@ -7355,10 +7355,10 @@ paths:
                           request_timeout: 10
                         https:
                           enabled: true
-                          key: "/var/ossec/api/configuration/ssl/server.key"
-                          cert: "/var/ossec/api/configuration/ssl/server.crt"
+                          key: "/var/wazuh-manager/api/configuration/ssl/server.key"
+                          cert: "/var/wazuh-manager/api/configuration/ssl/server.crt"
                           use_ca: false
-                          ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                          ca: "/var/wazuh-manager/api/configuration/ssl/ca.crt"
                           ssl_protocol: "auto"
                           ssl_ciphers: ""
                         logs:
@@ -7401,10 +7401,10 @@ paths:
                           request_timeout: 10
                         https:
                           enabled: true
-                          key: "/var/ossec/api/configuration/ssl/server.key"
-                          cert: "/var/ossec/api/configuration/ssl/server.crt"
+                          key: "/var/wazuh-manager/api/configuration/ssl/server.key"
+                          cert: "/var/wazuh-manager/api/configuration/ssl/server.crt"
                           use_ca: false
-                          ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                          ca: "/var/wazuh-manager/api/configuration/ssl/ca.crt"
                           ssl_protocol: "auto"
                           ssl_ciphers: ""
                         logs:
@@ -7533,7 +7533,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - path: /var/ossec
+                    - path: /var/wazuh-manager
                       version: v4.3.0
                       type: server
                       max_agents: unlimited
@@ -7642,11 +7642,11 @@ paths:
                         ssl:
                           certificate_authorities:
                             ca:
-                              - /var/ossec/etc/certs/root-ca.pem
+                              - /var/wazuh-manager/etc/certs/root-ca.pem
                           certificate:
-                            - /var/ossec/etc/certs/server.pem
+                            - /var/wazuh-manager/etc/certs/server.pem
                           key:
-                            - /var/ossec/etc/certs/server-key.pem
+                            - /var/wazuh-manager/etc/certs/server-key.pem
                       syscheck:
                         disabled: no
                         frequency: 43200
