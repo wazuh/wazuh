@@ -15,27 +15,28 @@ const base::Name DOCUMENT_GEOIP_MAPPING_COLLECTION {"enrichment/geo_mapping/0"};
 
 // Format strings for tracing
 
-constexpr auto FMT_NOT_FOUND_IP_ENRICHMENT_TRACE = "Geo()|AS() -> Failure: IP not found at path '{}'";
+constexpr auto FMT_NOT_FOUND_IP_ENRICHMENT_TRACE = "Geo()|AS() -> Failure: IP not found at field '{}'";
 
 // Only Geo configuration
-constexpr auto FMT_SUCCESS_GEO_ENRICHMENT_TRACE = "Geo({}) -> Success: Geo enrichment applied for IP";
-constexpr auto FMT_NO_GEO_DATA_ENRICHMENT_TRACE = "Geo({}) -> Failure: No Geo data found for IP";
+constexpr auto FMT_SUCCESS_GEO_ENRICHMENT_TRACE = "Geo({}) -> Success: Geo enrichment applied for IP at field '{}'";
+constexpr auto FMT_NO_GEO_DATA_ENRICHMENT_TRACE = "Geo({}) -> Failure: No Geo data found for IP at field '{}'";
 
 // Only AS configuration
-constexpr auto FMT_SUCCESS_AS_ENRICHMENT_TRACE = "AS({}) -> Success: AS enrichment applied for IP";
-constexpr auto FMT_NO_AS_DATA_ENRICHMENT_TRACE = "AS({}) -> Failure: No AS data found for IP";
+constexpr auto FMT_SUCCESS_AS_ENRICHMENT_TRACE = "AS({}) -> Success: AS enrichment applied for IP at field '{}'";
+constexpr auto FMT_NO_AS_DATA_ENRICHMENT_TRACE = "AS({}) -> Failure: No AS data found for IP at field '{}'";
 
 // Both configurations
-constexpr auto FMT_SUCCESS_BOTH_ENRICHMENT_TRACE = "Geo({})|AS({}) -> Success: Geo and AS enrichment applied for IP";
-constexpr auto FMT_SUCCESS_ONLY_GEO_ENRICHMENT_TRACE = "Geo({})|AS({}) -> Success: Only Geo enrichment applied for IP";
-constexpr auto FMT_SUCCESS_ONLY_AS_ENRICHMENT_TRACE = "Geo({})|AS({}) -> Success: Only AS enrichment applied for IP";
-constexpr auto FMT_NO_DATA_ENRICHMENT_TRACE = "Geo({})|AS({}) -> Failure: No Geo or AS data found for IP";
+constexpr auto FMT_SUCCESS_BOTH_ENRICHMENT_TRACE = "Geo({})|AS({}) -> Success: Geo and AS enrichment applied for IP at field '{}'";
+constexpr auto FMT_SUCCESS_ONLY_GEO_ENRICHMENT_TRACE = "Geo({})|AS({}) -> Success: Only Geo enrichment applied for IP at field '{}'";
+constexpr auto FMT_SUCCESS_ONLY_AS_ENRICHMENT_TRACE = "Geo({})|AS({}) -> Success: Only AS enrichment applied for IP at field '{}'";
+constexpr auto FMT_NO_DATA_ENRICHMENT_TRACE = "Geo({})|AS({}) -> Failure: No Geo or AS data found for IP at field '{}'";
 
 /**
  * @brief Representation of the GeoIP enrichment mapping configuration for 1 field.
  */
 struct MappingConfig
 {
+    std::string dotPath;                   ///< DotPath to the source IP address in the event (for trace)
     std::string originIpPath;              ///< Path to the source IP address in the event
     std::optional<std::string> geoEcsPath; ///< Path to map GeoIP city data in ECS format
     std::optional<std::string> asEcsPath;  ///< Path to map GeoIP AS data in ECS format
@@ -57,18 +58,19 @@ std::vector<MappingConfig> loadMappingConfigs(const json::Json& config)
     {
 
         MappingConfig config {};
+        config.dotPath = key;
         config.originIpPath = json::Json::formatJsonPath(key);
 
         // geo_field
         if (auto geoFieldOpt = value.getString("/geo_field"); geoFieldOpt.has_value())
         {
-            config.geoEcsPath = json::Json::formatJsonPath(geoFieldOpt.value(), true);
+            config.geoEcsPath = json::Json::formatJsonPath(geoFieldOpt.value());
         }
 
         // as_ecs_path
         if (auto asFieldOpt = value.getString("/as_field"); asFieldOpt.has_value())
         {
-            config.asEcsPath = json::Json::formatJsonPath(asFieldOpt.value(), true);
+            config.asEcsPath = json::Json::formatJsonPath(asFieldOpt.value());
         }
 
         mappingConfigs.push_back(std::move(config));
@@ -188,7 +190,7 @@ getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& locator, const MappingCo
         if (!ipOpt.has_value())
         {
             const auto traceMsg =
-                trace ? fmt::format(FMT_NOT_FOUND_IP_ENRICHMENT_TRACE, mappingConfig.originIpPath) : std::string {};
+                trace ? fmt::format(FMT_NOT_FOUND_IP_ENRICHMENT_TRACE, mappingConfig.dotPath) : std::string {};
             return base::result::makeFailure<decltype(event)>(event, traceMsg);
         }
         const auto& ip = ipOpt.value();
@@ -212,24 +214,24 @@ getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& locator, const MappingCo
             auto msgForBothConfigs = [&]()
             {
                 if (asSuccess && geoSuccess)
-                    return fmt::format(FMT_SUCCESS_BOTH_ENRICHMENT_TRACE, ip, ip);
+                    return fmt::format(FMT_SUCCESS_BOTH_ENRICHMENT_TRACE, ip, ip, mappingConfig.dotPath);
                 if (asSuccess)
-                    return fmt::format(FMT_SUCCESS_ONLY_AS_ENRICHMENT_TRACE, ip, ip);
+                    return fmt::format(FMT_SUCCESS_ONLY_AS_ENRICHMENT_TRACE, ip, ip, mappingConfig.dotPath);
                 if (geoSuccess)
-                    return fmt::format(FMT_SUCCESS_ONLY_GEO_ENRICHMENT_TRACE, ip, ip);
-                return fmt::format(FMT_NO_DATA_ENRICHMENT_TRACE, ip, ip);
+                    return fmt::format(FMT_SUCCESS_ONLY_GEO_ENRICHMENT_TRACE, ip, ip, mappingConfig.dotPath);
+                return fmt::format(FMT_NO_DATA_ENRICHMENT_TRACE, ip, ip, mappingConfig.dotPath);
             };
 
             auto msgForAsOnly = [&]()
             {
-                return asSuccess ? fmt::format(FMT_SUCCESS_AS_ENRICHMENT_TRACE, ip)
-                                 : fmt::format(FMT_NO_AS_DATA_ENRICHMENT_TRACE, ip);
+                return asSuccess ? fmt::format(FMT_SUCCESS_AS_ENRICHMENT_TRACE, ip, mappingConfig.dotPath)
+                                 : fmt::format(FMT_NO_AS_DATA_ENRICHMENT_TRACE, ip, mappingConfig.dotPath);
             };
 
             auto msgForGeoOnly = [&]()
             {
-                return geoSuccess ? fmt::format(FMT_SUCCESS_GEO_ENRICHMENT_TRACE, ip)
-                                  : fmt::format(FMT_NO_GEO_DATA_ENRICHMENT_TRACE, ip);
+                return geoSuccess ? fmt::format(FMT_SUCCESS_GEO_ENRICHMENT_TRACE, ip, mappingConfig.dotPath)
+                                  : fmt::format(FMT_NO_GEO_DATA_ENRICHMENT_TRACE, ip, mappingConfig.dotPath);
             };
 
             if (asConfigured && geoConfigured)
