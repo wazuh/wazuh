@@ -22,7 +22,7 @@ do                                                                      \
 {                                                                       \
     try                                                                 \
     {                                                                   \
-        if(!m_stopping)                                                 \
+        if(!m_stopping.load())                                          \
         {                                                               \
             task();                                                     \
         }                                                               \
@@ -171,7 +171,7 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
     {
         m_logFunction(LOG_ERROR, data.dump());
     }
-    else if (m_notify && !m_stopping)
+    else if (m_notify && !m_stopping.load())
     {
         if (data.is_array())
         {
@@ -279,7 +279,7 @@ void Syscollector::registerWithRsync()
             auto jsonData(nlohmann::json::parse(dataString));
             auto it{jsonData.find("data")};
 
-            if (!m_stopping)
+            if (!m_stopping.load())
             {
                 if (it != jsonData.end())
                 {
@@ -456,6 +456,14 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
 
     std::unique_lock<std::mutex> lock{m_mutex};
+
+    // Check if stop was requested during slow initialization (e.g., DBSync creation)
+    // If so, abort initialization to avoid losing the stop signal
+    if (m_stopping.load())
+    {
+        return;
+    }
+
     m_stopping = false;
 
     m_spDBSync      = std::move(dbSync);
@@ -474,6 +482,27 @@ void Syscollector::destroy()
 
     lock.unlock();
 }
+
+#ifdef WAZUH_UNIT_TESTING
+void Syscollector::reset()
+{
+    std::unique_lock<std::mutex> lock{m_mutex};
+
+    // Only wait if there's an active syncLoop running (m_spDBSync != nullptr)
+    // Otherwise, syncLoop has already finished cleanup or never started
+    if (m_spDBSync != nullptr)
+    {
+        // Wait until syncLoop finishes cleanup completely
+        m_cv.wait(lock, [this]()
+        {
+            return m_spDBSync == nullptr;
+        });
+    }
+
+    // Reset stopping flag to allow re-initialization
+    m_stopping = false;
+}
+#endif
 
 nlohmann::json Syscollector::getHardwareData()
 {
@@ -1060,17 +1089,21 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 
     if (m_scanOnStart)
     {
+        lock.unlock();
         scan();
         sync();
+        lock.lock();
     }
 
     while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
 {
-    return m_stopping;
-}))
+    return m_stopping.load();
+    }))
     {
+        lock.unlock();
         scan();
         sync();
+        lock.lock();
     }
     m_spRsync.reset(nullptr);
     m_spDBSync.reset(nullptr);
@@ -1081,7 +1114,7 @@ void Syscollector::push(const std::string& data)
 {
     std::unique_lock<std::mutex> lock{m_mutex};
 
-    if (!m_stopping)
+    if (!m_stopping.load())
     {
         auto rawData{data};
         Utils::replaceFirst(rawData, "dbsync ", "");
