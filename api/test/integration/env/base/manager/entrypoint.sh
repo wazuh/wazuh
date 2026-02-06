@@ -1,49 +1,49 @@
 #!/usr/bin/env bash
 
 # Apply API configuration
-cp -rf /tmp_volume/config/* /var/ossec/ && chown -R wazuh-manager:wazuh-manager /var/ossec/api
+cp -rf /tmp_volume/config/* /var/wazuh-manager/ && chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/api
 
 # Modify wazuh configuration file
 for conf_file in /tmp_volume/configuration_files/*.conf; do
-  python3 /tools/xml_parser.py /var/ossec/etc/wazuh-manager.conf $conf_file
+  python3 /tools/xml_parser.py /var/wazuh-manager/etc/wazuh-manager.conf $conf_file
 done
 
-  sed -i "s:<node>127.0.0.1</node>:<node>$1</node>:g" /var/ossec/etc/wazuh-manager.conf
-  sed -i "s:<node_name>node01</node_name>:<node_name>$2</node_name>:g" /var/ossec/etc/wazuh-manager.conf
-  sed -i "s:validate_responses=False:validate_responses=True:g" /var/ossec/api/scripts/wazuh_manager_apid.py
-  sed -i "s:<bind_addr>127.0.0.1</bind_addr>:<bind_addr>0.0.0.0</bind_addr>:g" /var/ossec/etc/wazuh-manager.conf
-  sed -i "/<cluster>/,/<\/cluster>/s:<key>.*</key>:<key>9d273b53510fef702b54a92e9cffc82e</key>:" /var/ossec/etc/wazuh-manager.conf
+  sed -i "s:<node>127.0.0.1</node>:<node>$1</node>:g" /var/wazuh-manager/etc/wazuh-manager.conf
+  sed -i "s:<node_name>node01</node_name>:<node_name>$2</node_name>:g" /var/wazuh-manager/etc/wazuh-manager.conf
+  sed -i "s:validate_responses=False:validate_responses=True:g" /var/wazuh-manager/api/scripts/wazuh_manager_apid.py
+  sed -i "s:<bind_addr>127.0.0.1</bind_addr>:<bind_addr>0.0.0.0</bind_addr>:g" /var/wazuh-manager/etc/wazuh-manager.conf
+  sed -i "/<cluster>/,/<\/cluster>/s:<key>.*</key>:<key>9d273b53510fef702b54a92e9cffc82e</key>:" /var/wazuh-manager/etc/wazuh-manager.conf
 
 if [ "$3" != "master" ]; then
-    sed -i "s:<node_type>master</node_type>:<node_type>worker</node_type>:g" /var/ossec/etc/wazuh-manager.conf
+    sed -i "s:<node_type>master</node_type>:<node_type>worker</node_type>:g" /var/wazuh-manager/etc/wazuh-manager.conf
 fi
 
-cp -rf /tmp_volume/configuration_files/config/* /var/ossec/
-chown root:wazuh-manager /var/ossec/etc/client.keys
-chown -R wazuh-manager:wazuh-manager /var/ossec/queue/db
-chown -R wazuh-manager:wazuh-manager /var/ossec/etc/shared
-chmod --reference=/var/ossec/etc/shared/default /var/ossec/etc/shared/group*
-cd /var/ossec/etc/shared && find -name merged.mg -exec chown wazuh-manager:wazuh-manager {} \; && cd /
-chown root:wazuh-manager /var/ossec/etc/shared/ar.conf
+cp -rf /tmp_volume/configuration_files/config/* /var/wazuh-manager/
+chown root:wazuh-manager /var/wazuh-manager/etc/client.keys
+chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db
+chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/shared
+chmod --reference=/var/wazuh-manager/etc/shared/default /var/wazuh-manager/etc/shared/group*
+cd /var/wazuh-manager/etc/shared && find -name merged.mg -exec chown wazuh-manager:wazuh-manager {} \; && cd /
+chown root:wazuh-manager /var/wazuh-manager/etc/shared/ar.conf
 
 sleep 1
 
 # Manager configuration
 for py_file in /tmp_volume/configuration_files/*.py; do
-  /var/ossec/framework/python/bin/python3 $py_file
+  /var/wazuh-manager/framework/python/bin/python3 $py_file
 done
 
 for sh_file in /tmp_volume/configuration_files/*.sh; do
   . $sh_file
 done
 
-echo "" > /var/ossec/logs/api.log
-/var/ossec/bin/wazuh-control start
+echo "" > /var/wazuh-manager/logs/api.log
+/var/wazuh-manager/bin/wazuh-control start
 
 # Master-only configuration
 if [ "$3" == "master" ]; then
   for py_file in /tmp_volume/configuration_files/master_only/*.py; do
-    /var/ossec/framework/python/bin/python3 $py_file
+    /var/wazuh-manager/framework/python/bin/python3 $py_file
   done
 
   for sh_file in /tmp_volume/configuration_files/master_only/*.sh; do
@@ -54,7 +54,7 @@ if [ "$3" == "master" ]; then
   [ -e /entrypoint_error ] && rm -f /entrypoint_error
   # Wait until Wazuh API is ready
   elapsed_time=0
-  while [[ $(grep -c 'Listening on' /var/ossec/logs/api.log)  -eq 0 ]] && [[ $exit_flag -eq 0 ]]
+  while [[ $(grep -c 'Listening on' /var/wazuh-manager/logs/api.log)  -eq 0 ]] && [[ $exit_flag -eq 0 ]]
   do
     if [ $elapsed_time -gt 300 ]; then
       echo "Timeout on API callback. Could not find 'Listening on'" > /entrypoint_error
@@ -68,7 +68,7 @@ if [ "$3" == "master" ]; then
   for sql_file in /tmp_volume/configuration_files/*.sql; do
     # Redirect standard error to /tmp_volume/sql_lock_check to check a possible locked database error
     # 2>&1 redirects "standard error" to "standard output"
-    sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file > /tmp_volume/sql_lock_check 2>&1
+    sqlite3 /var/wazuh-manager/api/configuration/security/rbac.db < $sql_file > /tmp_volume/sql_lock_check 2>&1
 
     # Insert the RBAC configuration again if database was locked
     elapsed_time=0
@@ -80,7 +80,7 @@ if [ "$3" == "master" ]; then
       fi
       sleep 1
       elapsed_time=$((elapsed_time+1))
-      sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file > /tmp_volume/sql_lock_check 2>&1
+      sqlite3 /var/wazuh-manager/api/configuration/security/rbac.db < $sql_file > /tmp_volume/sql_lock_check 2>&1
     done
 
     # Remove the temporal file used to check the possible locked database error

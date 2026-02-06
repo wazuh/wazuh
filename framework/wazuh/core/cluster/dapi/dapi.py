@@ -409,7 +409,7 @@ class DistributedAPI:
 
     async def send_tmp_file(self, node_name=None):
         # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
-        # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
+        # a temporary file in /var/wazuh-manager/tmp which needs to be sent to the master before forwarding the request
         client = self.get_client()
         res = json.loads(await client.send_file(os.path.join(common.WAZUH_PATH,
                                                              self.f_kwargs['tmp_file']),
