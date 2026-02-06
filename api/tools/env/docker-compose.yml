@@ -50,11 +50,11 @@ services:
         ports:
             - "55050:55000"
         volumes:
-            - wazuh-certs:/var/ossec/etc/certs
-            - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
-            - ${WAZUH_LOCAL_PATH}/api/scripts:/var/ossec/api/scripts
-            - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
-            - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+            - wazuh-certs:/var/wazuh-manager/etc/certs
+            - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/wazuh-manager/framework/scripts
+            - ${WAZUH_LOCAL_PATH}/api/scripts:/var/wazuh-manager/api/scripts
+            - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+            - ${WAZUH_LOCAL_PATH}/api/api:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
         environment:
             OPENDISTRO_SECURITY_ENABLED: "false"
             NODE_NAME: "wazuh-master"
@@ -74,11 +74,11 @@ services:
         hostname: wazuh.worker
         pull_policy: never
         volumes:
-            - wazuh-certs:/var/ossec/etc/certs
-            - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
-            - ${WAZUH_LOCAL_PATH}/api/scripts:/var/ossec/api/scripts
-            - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
-            - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+            - wazuh-certs:/var/wazuh-manager/etc/certs
+            - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/wazuh-manager/framework/scripts
+            - ${WAZUH_LOCAL_PATH}/api/scripts:/var/wazuh-manager/api/scripts
+            - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+            - ${WAZUH_LOCAL_PATH}/api/api:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
         depends_on:
             wazuh.master:
                 condition: service_started
@@ -96,11 +96,11 @@ services:
         hostname: wazuh.worker
         pull_policy: never
         volumes:
-            - wazuh-certs:/var/ossec/etc/certs
-            - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
-            - ${WAZUH_LOCAL_PATH}/api/scripts:/var/ossec/api/scripts
-            - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
-            - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+            - wazuh-certs:/var/wazuh-manager/etc/certs
+            - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/wazuh-manager/framework/scripts
+            - ${WAZUH_LOCAL_PATH}/api/scripts:/var/wazuh-manager/api/scripts
+            - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+            - ${WAZUH_LOCAL_PATH}/api/api:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
         depends_on:
             wazuh.master:
                 condition: service_started

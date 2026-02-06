@@ -24,7 +24,7 @@ variables:
   global_db_delay: 30
   cluster_sync_delay: 20
 
-  custom_wpk_path: "/var/ossec/test.wpk"
+  custom_wpk_path: "/var/wazuh-manager/test.wpk"
 
   invalid_file:
     "import os #:l\nos.system('do something bad') #:l"
