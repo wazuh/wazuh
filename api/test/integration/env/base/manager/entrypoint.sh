@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Apply API configuration
-cp -rf /tmp_volume/config/* /var/ossec/ && chown -R wazuh:wazuh /var/ossec/api
+cp -rf /tmp_volume/config/* /var/ossec/ && chown -R wazuh-manager:wazuh-manager /var/ossec/api
 
 # Modify wazuh configuration file
 for conf_file in /tmp_volume/configuration_files/*.conf; do
@@ -19,12 +19,12 @@ if [ "$3" != "master" ]; then
 fi
 
 cp -rf /tmp_volume/configuration_files/config/* /var/ossec/
-chown root:wazuh /var/ossec/etc/client.keys
-chown -R wazuh:wazuh /var/ossec/queue/db
-chown -R wazuh:wazuh /var/ossec/etc/shared
+chown root:wazuh-manager /var/ossec/etc/client.keys
+chown -R wazuh-manager:wazuh-manager /var/ossec/queue/db
+chown -R wazuh-manager:wazuh-manager /var/ossec/etc/shared
 chmod --reference=/var/ossec/etc/shared/default /var/ossec/etc/shared/group*
-cd /var/ossec/etc/shared && find -name merged.mg -exec chown wazuh:wazuh {} \; && cd /
-chown root:wazuh /var/ossec/etc/shared/ar.conf
+cd /var/ossec/etc/shared && find -name merged.mg -exec chown wazuh-manager:wazuh-manager {} \; && cd /
+chown root:wazuh-manager /var/ossec/etc/shared/ar.conf
 
 sleep 1
 

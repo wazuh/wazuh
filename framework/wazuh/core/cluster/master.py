@@ -1014,7 +1014,7 @@ class Master(server.AbstractServer):
         except (FileNotFoundError, PermissionError):
             self.logger.warning(
                 "In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory '/dev/shm' must be "
-                "accessible by the 'wazuh' user. Check that this file has permissions to be accessed by all users. "
+                "accessible by the 'wazuh-manager' user. Check that this file has permissions to be accessed by all users. "
                 "Changing the file permissions to 777 will solve this issue.")
             self.logger.warning(
                 "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.")
