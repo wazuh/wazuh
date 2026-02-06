@@ -73,7 +73,8 @@ namespace Utils
         explicit TRocksDBWrapper(std::string dbPath,
                                  const bool enableWal = true,
                                  const bool repairIfCorrupt = true,
-                                 const bool useSharedBuffers = false)
+                                 const bool useSharedBuffers = false,
+                                 const bool useCompression = false)
             : m_enableWal {enableWal}
             , m_path {std::move(dbPath)}
         {
@@ -92,6 +93,14 @@ namespace Utils
 
             rocksdb::Options options = RocksDBOptions::buildDBOptions(m_writeManager, m_readCache);
             rocksdb::ColumnFamilyOptions columnFamilyOptions = RocksDBOptions::buildColumnFamilyOptions(m_readCache);
+            rocksdb::ColumnFamilyOptions defaultColumnOptions = RocksDBOptions::buildColumnFamilyOptions(m_readCache);
+
+            if (useCompression)
+            {
+                defaultColumnOptions.bottommost_compression = rocksdb::kBZip2Compression;
+                defaultColumnOptions.bottommost_compression_opts.level = 3;
+                defaultColumnOptions.bottommost_compression_opts.enabled = true;
+            }
 
             T* dbRawPtr;
             std::vector<rocksdb::ColumnFamilyDescriptor> columnsDescriptors;
@@ -124,13 +133,20 @@ namespace Utils
                 // Create a set of column descriptors. This includes the default column.
                 for (auto& columnName : columnsNames)
                 {
-                    columnsDescriptors.emplace_back(columnName, columnFamilyOptions);
+                    if (columnName == rocksdb::kDefaultColumnFamilyName)
+                    {
+                        columnsDescriptors.emplace_back(columnName, defaultColumnOptions);
+                    }
+                    else
+                    {
+                        columnsDescriptors.emplace_back(columnName, columnFamilyOptions);
+                    }
                 }
             }
             else
             {
                 // Database doesn't exist: Set just the default column descriptor.
-                columnsDescriptors.emplace_back(rocksdb::kDefaultColumnFamilyName, columnFamilyOptions);
+                columnsDescriptors.emplace_back(rocksdb::kDefaultColumnFamilyName, defaultColumnOptions);
             }
 
             // Create a vector of column handles.

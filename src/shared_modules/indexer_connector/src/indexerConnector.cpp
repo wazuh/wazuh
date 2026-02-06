@@ -860,7 +860,7 @@ void IndexerConnector::preInitialization(
     }
 
     m_db = std::make_unique<Utils::RocksDBWrapper>(
-        std::string(DATABASE_BASE_PATH) + "db/" + m_indexName, true, true, true);
+        std::string(DATABASE_BASE_PATH) + "db/" + m_indexName, true, true, true, true);
 }
 
 IndexerConnector::IndexerConnector(
