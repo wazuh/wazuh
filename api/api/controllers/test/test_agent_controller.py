@@ -481,9 +481,9 @@ async def test_put_upgrade_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
 @pytest.mark.parametrize('agents_list, file_path',  [
-    (['all'], '/var/ossec/valid_file.wpk'),
-    (['001', '002'], '/var/ossec/var/upgrade/valid_file.wpk'),
-    (['001'], '/var/ossec/wrong_file.txt')
+    (['all'], '/var/wazuh-manager/valid_file.wpk'),
+    (['001', '002'], '/var/wazuh-manager/var/upgrade/valid_file.wpk'),
+    (['001'], '/var/wazuh-manager/wrong_file.txt')
 ])
 @patch('api.configuration.api_conf')
 @patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
