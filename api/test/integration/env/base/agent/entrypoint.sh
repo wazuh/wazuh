@@ -21,7 +21,7 @@ for conf_file in /tmp_volume/configuration_files/*.conf; do
 done
 
 sed -n "/$2 /p" /var/ossec/etc/test.keys > /var/ossec/etc/client.keys
-chown root:wazuh /var/ossec/etc/client.keys
+chown root:wazuh-manager /var/ossec/etc/client.keys
 rm /var/ossec/etc/test.keys
 
 # Agent configuration
