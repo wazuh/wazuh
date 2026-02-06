@@ -47,7 +47,7 @@ def run_command(agent_list: list = None, command: str = '', arguments: list = No
 
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list)
 
-        with WazuhDBQueryAgents(select=['id', 'status', 'version'], query="id!=000", **rbac_filters) as db_query:
+        with WazuhDBQueryAgents(select=['id', 'status', 'version'], **rbac_filters) as db_query:
             agents = db_query.run()['items']
 
         with WazuhQueue(common.AR_SOCKET) as wq:
@@ -55,7 +55,7 @@ def run_command(agent_list: list = None, command: str = '', arguments: list = No
                 try:
                     if agent['status'] != 'active':
                         raise WazuhError(1707)
-                    
+
                     agent_id = agent['id']
                     agent_version = agent['version']
 

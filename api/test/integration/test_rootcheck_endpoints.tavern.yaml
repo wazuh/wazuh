@@ -38,7 +38,6 @@ stages:
         error: 0
         data:
           affected_items:
-            - "000"
             - "001"
             - "002"
             - "003"
@@ -48,7 +47,7 @@ stages:
             - "007"
             - "008"
           failed_items: []
-          total_affected_items: 9
+          total_affected_items: 8
           total_failed_items: 0
 
   # PUT /rootcheck

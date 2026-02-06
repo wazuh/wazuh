@@ -374,22 +374,21 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
         with pytest.raises(WazuhError, match=".* 1111 .*"):
             configuration.upload_group_file('default', [], 'a.conf')
 
-
 @pytest.mark.parametrize("agent_id, component, socket, socket_dir, rec_msg", [
-    ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
-    ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
-    ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {}}'),
-    ('000', 'agent', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    ('000', 'analysis', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    ('000', 'com', 'com', 'sockets', 'ok {"com": {"enabled": "yes"}}'),
-    ('000', 'integrator', 'integrator', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
-    ('000', 'logcollector', 'logcollector', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
-    ('000', 'mail', 'mail', 'sockets', 'ok {"mail": {"enabled": "yes"}}'),
-    ('000', 'monitor', 'monitor', 'sockets', 'ok {"monitor": {"enabled": "yes"}}'),
-    ('000', 'request', 'remote', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    ('000', 'syscheck', 'syscheck', 'sockets', 'ok {"syscheck": {"enabled": "yes"}}'),
-    ('000', 'wazuh-manager-db', 'wdb', 'db', {"error": 0, "data": {"enabled": "yes"}}),
-    ('000', 'wmodules', 'wmodules', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}'),
+    (None, 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
+    (None, 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
+    (None, 'auth', 'auth', 'sockets', 'ok {"auth": {}}'),
+    (None, 'agent', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    (None, 'analysis', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    (None, 'com', 'com', 'sockets', 'ok {"com": {"enabled": "yes"}}'),
+    (None, 'integrator', 'integrator', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
+    (None, 'logcollector', 'logcollector', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
+    (None, 'mail', 'mail', 'sockets', 'ok {"mail": {"enabled": "yes"}}'),
+    (None, 'monitor', 'monitor', 'sockets', 'ok {"monitor": {"enabled": "yes"}}'),
+    (None, 'request', 'remote', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    (None, 'syscheck', 'syscheck', 'sockets', 'ok {"syscheck": {"enabled": "yes"}}'),
+    (None, 'wazuh-manager-db', 'wdb', 'db', {"error": 0, "data": {"enabled": "yes"}}),
+    (None, 'wmodules', 'wmodules', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}'),
     ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
     ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
     ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {}}'),
@@ -414,24 +413,29 @@ def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message,
     sockets_json_protocol = {'remote', 'analysis', 'wdb'}
     config = MagicMock()
 
-    socket_class = "WazuhSocket" if socket not in sockets_json_protocol or agent_id != '000' else "WazuhSocketJSON"
+    socket_class = "WazuhSocket" if socket not in sockets_json_protocol or agent_id is not None else "WazuhSocketJSON"
     with patch(f'wazuh.core.wazuh_socket.{socket_class}.close') as mock_close:
         with patch(f'wazuh.core.wazuh_socket.{socket_class}.send') as mock_send:
             with patch(f'wazuh.core.wazuh_socket.{socket_class}.__init__', return_value=None) as mock__init__:
                 with patch(f'wazuh.core.wazuh_socket.{socket_class}.receive',
                            return_value=rec_msg.encode() if socket_class == "WazuhSocket" else rec_msg) as mock_receive:
-                    result = configuration.get_active_configuration(agent_id, component, config)
 
+                    result = configuration.get_active_configuration(
+                        agent_id=agent_id, component=component, configuration=config
+                    )
                     mock__init__.assert_called_with(
-                        f"/var/wazuh-manager/queue/{socket_dir}/{socket}" if agent_id == '000' else REMOTED_SOCKET)
+                        f"/var/wazuh-manager/queue/{socket_dir}/{socket}" if agent_id is None else REMOTED_SOCKET
+                    )
 
                     if socket_class == "WazuhSocket":
-                        mock_send.assert_called_with(f"getconfig {config}".encode() if agent_id == '000' else \
-                                                         f"{agent_id} {component} getconfig {config}".encode())
+                        mock_send.assert_called_with(
+                            f"getconfig {config}".encode() if agent_id is None else \
+                                f"{agent_id} {component} getconfig {config}".encode()
+                        )
                     else:  # socket_class == "WazuhSocketJSON"
-                        mock_create_wazuh_socket_message.assert_called_with(origin={'module': ANY},
-                                                                            command="getconfig",
-                                                                            parameters={'section': config})
+                        mock_create_wazuh_socket_message.assert_called_with(
+                            origin={'module': ANY}, command="getconfig", parameters={'section': config}
+                        )
                         mock_send.assert_called_with(mock_create_wazuh_socket_message.return_value)
 
                     mock_receive.assert_called_once()
@@ -445,21 +449,21 @@ def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message,
 
 @pytest.mark.parametrize('agent_id, component, config, socket_exist, socket_class, expected_error, expected_id', [
     # Checks for 000 or any other agent
-    ('000', 'test_component', None, ANY, 'WazuhSocket', WazuhError, 1307),  # No configuration
-    ('000', None, 'test_config', ANY, 'WazuhSocket', WazuhError, 1307),  # No component
-    ('000', 'test_component', 'test_config', ANY, 'WazuhSocket', WazuhError, 1101),  # Component not in components
+    (None, 'test_component', None, ANY, 'WazuhSocket', WazuhError, 1307),  # No configuration
+    (None, None, 'test_config', ANY, 'WazuhSocket', WazuhError, 1307),  # No component
+    (None, 'test_component', 'test_config', ANY, 'WazuhSocket', WazuhError, 1101),  # Component not in components
     ('001', 'syscheck', 'syscheck', ANY, 'WazuhSocket', WazuhError, 1116),  # Cannot send request
     ('001', 'syscheck', 'syscheck', ANY, 'WazuhSocket', WazuhError, 1117),  # No such file or directory
 
     # Checks for 000 - Simple messages
-    ('000', 'syscheck', 'syscheck', False, 'WazuhSocket', WazuhError, 1121),  # Socket does not exist
-    ('000', 'syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1121),  # Error connecting with socket
-    ('000', 'syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1118),  # Data could not be received
+    (None, 'syscheck', 'syscheck', False, 'WazuhSocket', WazuhError, 1121),  # Socket does not exist
+    (None, 'syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1121),  # Error connecting with socket
+    (None, 'syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1118),  # Data could not be received
 
     # Checks for 000 - JSON messages
-    ('000', 'request', 'global', False, 'WazuhSocketJSON', WazuhError, 1121),  # Socket does not exist
-    ('000', 'request', 'global', True, 'WazuhSocketJSON', WazuhInternalError, 1121),  # Error connecting with socket
-    ('000', 'request', 'global', True, 'WazuhSocketJSON', WazuhInternalError, 1118),  # Data could not be received
+    (None, 'request', 'global', False, 'WazuhSocketJSON', WazuhError, 1121),  # Socket does not exist
+    (None, 'request', 'global', True, 'WazuhSocketJSON', WazuhInternalError, 1121),  # Error connecting with socket
+    (None, 'request', 'global', True, 'WazuhSocketJSON', WazuhInternalError, 1118),  # Data could not be received
 
     # Checks for 001
     ('001', 'syscheck', 'syscheck', ANY, 'WazuhSocket', WazuhInternalError, 1121),  # Error connecting with socket
@@ -479,7 +483,9 @@ def test_get_active_configuration_ko(mock_exists, agent_id, component, config, s
                        return_value=b'test 1' if expected_id == 1116 else b'test No such file or directory'):
                 with patch(f'wazuh.core.wazuh_socket.{socket_class}.close'):
                     with pytest.raises(expected_error, match=f'.* {expected_id} .*'):
-                        configuration.get_active_configuration(agent_id, component, config)
+                        configuration.get_active_configuration(
+                            agent_id=agent_id, component=component, configuration=config
+                        )
 
 
 def test_write_ossec_conf():

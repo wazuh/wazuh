@@ -4,7 +4,6 @@
 
 import os
 import sys
-import json
 from datetime import date, datetime, timezone
 from unittest.mock import MagicMock, mock_open, patch, call
 
@@ -15,7 +14,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from wazuh.core import common, stats
-        from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
+        from wazuh.core.exception import WazuhException, WazuhInternalError
         from wazuh.tests.util import RBAC_bypasser
 
         del sys.modules['wazuh.rbac.orm']
@@ -96,21 +95,7 @@ def test_hourly_data():
     assert result[0]['interactions'] == 0
 
 
-@pytest.mark.parametrize('agent, expected_value', [
-    (1, False),
-    (0, True),
-    ('1', False),
-    ('0', True),
-    ('001', False),
-    ('000', True)
-])
-def test_is_agent_a_manager(agent, expected_value):
-    """Verify is_agent_a_manager function works as expected"""
-    assert stats.is_agent_a_manager(agent) == expected_value
-
-
 @pytest.mark.parametrize('agent, daemon, expected_value', [
-    (0, 'logcollector', os.path.join(common.WAZUH_PATH, "queue", "sockets", 'logcollector')),
     (1, 'logcollector', common.REMOTED_SOCKET),
     (1, 'agent', common.REMOTED_SOCKET)
 ])
@@ -120,25 +105,12 @@ def test_get_stats_socket_path(agent, daemon, expected_value):
 
 
 @pytest.mark.parametrize('agent, daemon, next_page, expected_value', [
-    (0, 'logcollector', False, 'getstate'),
-    (0, 'logcollector', True, 'getstate next'),
     (1, 'agent', False, '001 agent getstate'),
     (1, 'agent', True, '001 agent getstate next'),
 ])
 def test_create_stats_command(agent, daemon, next_page, expected_value):
     """Verify create_stats_command function works as expected"""
     assert stats.create_stats_command(agent_id=agent, daemon=daemon, next_page=next_page) == expected_value
-
-
-@pytest.mark.parametrize('agent, daemon, expected_value', [
-    (0, 'logcollector', True),
-    (0, 'agent', False),
-    (1, 'logcollector', True),
-    (1, 'agent', True)
-])
-def test_check_if_daemon_exists_in_agent(agent, daemon, expected_value):
-    """Verify check_if_daemon_exists_in_agent function works as expected"""
-    assert stats.check_if_daemon_exists_in_agent(agent, daemon) == expected_value
 
 
 @pytest.mark.parametrize('agents_list, expected_socket_response, expected_result', [
@@ -219,7 +191,6 @@ def test_get_daemons_stats_ko():
 
 
 @pytest.mark.parametrize("agent_id, daemon, response", [
-    ('000', 'logcollector', '{"error":0, "data":{"test":0}}'),
     ('002', 'agent', '{"error":0, "data":{"test":0}}'),
     (3, 'test', '{"error":0, "data":{"test":0}}'),
 ])
@@ -231,24 +202,11 @@ def test_get_daemons_stats_from_socket(agent_id, daemon, response):
                 with patch('wazuh.core.wazuh_socket.WazuhSocket.close', side_effect=None):
                     stats.get_daemons_stats_from_socket(agent_id, daemon)
 
-        if agent_id == '000':
-            mock_socket.assert_called_once_with(os.path.join(common.WAZUH_PATH, "queue", "sockets", "logcollector"))
-            mock_send.assert_called_once_with(b'getstate')
-        else:
-            mock_socket.assert_called_once_with(os.path.join(common.WAZUH_PATH, "queue", "sockets", "remote"))
-            mock_send.assert_called_once_with(f"{str(agent_id).zfill(3)} {daemon} getstate".encode())
+        mock_socket.assert_called_once_with(os.path.join(common.WAZUH_PATH, "queue", "sockets", "remote"))
+        mock_send.assert_called_once_with(f"{str(agent_id).zfill(3)} {daemon} getstate".encode())
 
 
 @pytest.mark.parametrize("agent_id, daemon, responses, expected, expected_socket_calls, expected_arg_calls", [
-    ('000', 'logcollector', [
-        '{"error":0, "remaining": true, "data":{"global": {"start": "2023-11-27 19:51:54", '
-        '"end": "2023-11-27 19:52:54", "files": [1, 2]}, "interval": {}}}'.encode(),
-        '{"error":0, "remaining": false, "data":{"global": {"start": "2023-11-27 19:52:54", '
-        '"end": "2023-11-27 19:53:54", "files": [3, 4]}, "interval": {}}}'.encode()],
-     {"global": {"start": "2023-11-27T19:51:54Z", "end": "2023-11-27T19:53:54Z", "files": [1, 2, 3, 4]},
-      "interval": {}},
-     2,
-     [call('getstate'.encode()), call('getstate next'.encode())]),
     ('001', 'logcollector', [
         '{"error":0, "remaining": true, "data":{"global": {"start": "2023-11-27 19:51:54", '
         '"end": "2023-11-27 19:52:54", "files": [1, 2]}, "interval": {}}}'.encode(),
@@ -324,27 +282,3 @@ def test_pagination_handler_updates_data(initial_data, data, expected):
     test_handler.update_data(data)
 
     assert expected == test_handler.to_dict()
-
-
-def test_get_daemons_stats_from_socket_ko():
-    """Check if get_daemons_stats_from_socket() raises expected exceptions."""
-    with pytest.raises(WazuhError, match=r'\b1307\b'):
-        stats.get_daemons_stats_from_socket(None, None)
-
-    with pytest.raises(WazuhError, match=r'\b1310\b'):
-        stats.get_daemons_stats_from_socket('000', 'agent')
-
-    with pytest.raises(WazuhInternalError, match=r'\b1121\b'):
-        stats.get_daemons_stats_from_socket('000', 'logcollector')
-
-    with patch('wazuh.core.wazuh_socket.WazuhSocket.__init__', return_value=None):
-        with patch('wazuh.core.wazuh_socket.WazuhSocket.close', side_effect=None):
-            with patch('wazuh.core.wazuh_socket.WazuhSocket.send', side_effect=None):
-                with patch('wazuh.core.wazuh_socket.WazuhSocket.receive', side_effect=ValueError):
-                    with pytest.raises(WazuhInternalError, match=r'\b1118\b'):
-                        stats.get_daemons_stats_from_socket('000', 'logcollector')
-
-                with patch('wazuh.core.wazuh_socket.WazuhSocket.receive',
-                           return_value=json.dumps({'error': 1}).encode()):
-                    with pytest.raises(WazuhError, match=r'\b1117\b'):
-                        stats.get_daemons_stats_from_socket('000', 'logcollector')
