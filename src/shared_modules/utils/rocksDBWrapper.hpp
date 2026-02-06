@@ -98,7 +98,7 @@ namespace Utils
 
             if (useCompression)
             {
-                defaultColumnOptions.bottommost_compression = rocksdb::kBZip2Compression;
+                defaultColumnOptions.bottommost_compression = rocksdb::kZSTD;
                 defaultColumnOptions.bottommost_compression_opts.level = 3;
                 defaultColumnOptions.bottommost_compression_opts.enabled = true;
             }
