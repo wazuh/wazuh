@@ -454,6 +454,8 @@ All notable changes to this project will be documented in this file.
 - Fixed an enrollment failure on Solaris 10 caused by unsupported socket timeout. ([#29161](https://github.com/wazuh/wazuh/pull/29161))
 - Fixed a memory issue in the `wazuh-agentd` argument parser. ([#29214](https://github.com/wazuh/wazuh/pull/29214))
 - Fixed WPK package upgrades for DEB when upgrading from version 4.3.11 or earlier. ([#28928](https://github.com/wazuh/wazuh/pull/28928))
+- Fixed Windows FIM Registry scan crash on non-null-terminated values. ([#34353](https://github.com/wazuh/wazuh/pull/34353))
+- Fixed Windows Agent startup race condition. ([#34353](https://github.com/wazuh/wazuh/pull/34353))
 
 ### Ruleset
 
