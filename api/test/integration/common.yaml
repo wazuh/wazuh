@@ -8,7 +8,7 @@ description: File with information such as global variables or repeteable stages
 variables:
   protocol: https
   host: localhost
-  port: 55000
+  port: 55010
   user: testing
   user_auth_context: wazuh-wui
   pass: wazuh
