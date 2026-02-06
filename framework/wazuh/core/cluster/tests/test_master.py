@@ -1507,7 +1507,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
                                  enable_ssl=False)
 
     warning_mock.assert_has_calls([call("In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory "
-                                        "'/dev/shm' must be accessible by the 'wazuh' user. Check that this file has "
+                                        "'/dev/shm' must be accessible by the 'wazuh-manager' user. Check that this file has "
                                         "permissions to be accessed by all users. Changing the file permissions to 777 "
                                         "will solve this issue."),
                                    call('The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 '
@@ -1520,7 +1520,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
                                  enable_ssl=False)
 
     warning_mock.assert_has_calls([call("In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory "
-                                        "'/dev/shm' must be accessible by the 'wazuh' user. Check that this file has "
+                                        "'/dev/shm' must be accessible by the 'wazuh-manager' user. Check that this file has "
                                         "permissions to be accessed by all users. Changing the file permissions to 777 "
                                         "will solve this issue."),
                                    call('The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 '
