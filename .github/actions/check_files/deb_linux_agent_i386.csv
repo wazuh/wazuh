@@ -19,7 +19,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/modern.bpf.o,root,wazuh,750,file,-rwxr-x---,904752,0.1
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,2123404,0.1
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,822776,0.1
-/var/ossec/lib/libsca.so,root,wazuh,750,file,-rwxr-x---,734000,0.1
+/var/ossec/lib/libsca.so,root,wazuh,750,file,-rwxr-x---,836900,0.1
 /var/ossec/lib/libagent_info.so,root,wazuh,750,file,-rwxr-x---,402688,0.1
 /var/ossec/lib/libagent_metadata.so,root,wazuh,750,file,-rwxr-x---,8816,0.1
 /var/ossec/lib/libgcc_s.so.1,root,wazuh,750,file,-rwxr-x---,118632,0.1
