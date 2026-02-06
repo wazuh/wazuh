@@ -16,7 +16,7 @@ from wazuh.core.common import find_wazuh_path, wazuh_uid, wazuh_gid, context_cac
 
 
 @pytest.mark.parametrize('fake_path, expected', [
-    ('/var/ossec/framework/python/lib/python3.7/site-packages/wazuh-3.10.0-py3.7.egg/wazuh', '/var/ossec'),
+    ('/var/wazuh-manager/framework/python/lib/python3.7/site-packages/wazuh-3.10.0-py3.7.egg/wazuh', '/var/wazuh-manager'),
     ('/my/custom/path/framework/python/lib/python3.7/site-packages/wazuh-3.10.0-py3.7.egg/wazuh', '/my/custom/path'),
     ('/my/fake/path', '')
 ])

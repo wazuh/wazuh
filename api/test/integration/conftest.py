@@ -289,7 +289,8 @@ def save_logs(test_name: str):
     test_name : str
         Name of the test.
     """
-    logs_path = '/var/ossec/logs'
+    manager_logs_path = '/var/wazuh-manager/logs'
+    agent_logs_path = '/var/ossec/logs'
 
     # Save cluster nodes' logs
     logs = ['api.log', 'cluster.log', 'wazuh-manager.log']
@@ -297,7 +298,7 @@ def save_logs(test_name: str):
         for log in logs:
             try:
                 subprocess.check_output(
-                    f"docker cp env-wazuh-{node}-1:{os.path.join(logs_path, log)} "
+                    f"docker cp env-wazuh-{node}-1:{os.path.join(manager_logs_path, log)} "
                     f"{os.path.join(test_logs_path, f'test_{test_name}-{node}-{log}')}",
                     shell=True)
             except subprocess.CalledProcessError:
@@ -307,7 +308,7 @@ def save_logs(test_name: str):
     for agent in agent_names:
         try:
             subprocess.check_output(
-                f"docker cp env-wazuh-{agent}-1:{os.path.join(logs_path, 'ossec.log')} "
+                f"docker cp env-wazuh-{agent}-1:{os.path.join(agent_logs_path, 'ossec.log')} "
                 f"{os.path.join(test_logs_path, f'test_{test_name}-{agent}-ossec.log')}",
                 shell=True)
         except subprocess.CalledProcessError:
