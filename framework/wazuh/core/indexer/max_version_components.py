@@ -136,7 +136,7 @@ class MaxVersionIndex:
         body = {
             "query": {
                 "bool": {
-                    "must": [{"term": {"wazuh.agent.id": agent_id}}],
+                    "must": [{"term": {"wazuh.agent.id.keyword": agent_id}}],
                     "should": [
                         {
                             "bool": {
@@ -153,12 +153,12 @@ class MaxVersionIndex:
             "script": {
                 "lang": "painless",
                 "source": """
-                    if (ctx._source.agent.groups == params.groups) {
+                    if (ctx._source.wazuh.agent.groups == params.groups) {
                         ctx.op = "noop";
                         return;
                     }
 
-                    ctx._source.agent.groups = params.groups;
+                    ctx._source.wazuh.agent.groups = params.groups;
 
                     if (ctx._source.state == null) {
                         ctx._source.state = [:];
@@ -243,7 +243,7 @@ class MaxVersionIndex:
         body = {
             "query": {
                 "bool": {
-                    "must": [{"term": {"agent.id": agent_id}}],
+                    "must": [{"term": {"wazuh.agent.id.keyword": agent_id}}],
                     "should": [
                         {
                             "bool": {

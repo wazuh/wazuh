@@ -156,8 +156,8 @@ class TestUpdateAgentClusterName:
         # Verify agent.id term filter
         must_clause = query["bool"]["must"]
         assert any(
-            "agent.id" in str(clause) for clause in must_clause
-        ), "Query should filter by agent.id"
+            "wazuh.agent.id.keyword" in str(clause) for clause in must_clause
+        ), "Query should filter by wazuh.agent.id.keyword"
 
     @pytest.mark.asyncio
     async def test_update_cluster_name_different_agents(self, max_version_index, indexer_client):
