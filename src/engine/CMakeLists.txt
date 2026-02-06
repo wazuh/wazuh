@@ -282,6 +282,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/parsec)
 add_subdirectory(${ENGINE_SOURCE_DIR}/hlp)
 add_subdirectory(${ENGINE_SOURCE_DIR}/logpar)
 add_subdirectory(${ENGINE_SOURCE_DIR}/kvdbstore)
+add_subdirectory(${ENGINE_SOURCE_DIR}/kvdbioc)
 add_subdirectory(${ENGINE_SOURCE_DIR}/logicexpr)
 add_subdirectory(${ENGINE_SOURCE_DIR}/yml)
 add_subdirectory(${ENGINE_SOURCE_DIR}/store)
@@ -314,6 +315,7 @@ target_link_libraries(wazuh-engine
     store::fileDriver
     api
     kvdbstore::kvdb
+    kvdbioc::kvdb
     eMessages
     geo
     schemf

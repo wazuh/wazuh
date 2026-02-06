@@ -33,6 +33,7 @@
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
 #include <httpsrv/server.hpp>
+#include <kvdbioc/manager.hpp>
 #include <kvdbstore/ikvdbmanager.hpp>
 #include <kvdbstore/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
@@ -223,6 +224,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<router::Orchestrator> orchestrator;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;
+    std::shared_ptr<kvdbioc::IKVDBManager> kvdbIOC;
     std::shared_ptr<geo::Manager> geoManager;
     std::shared_ptr<schemf::Schema> schema;
     std::shared_ptr<scheduler::Scheduler> scheduler;
@@ -296,6 +298,13 @@ int main(int argc, char* argv[])
         {
             kvdbManager = std::make_shared<kvdbstore::KVDBManager>();
             LOG_INFO("KVDB initialized.");
+        }
+
+        // KVDB IOC
+        {
+            auto kvdbPath = std::filesystem::path(confManager.get<std::string>(conf::key::KVDB_IOC_PATH));
+            kvdbIOC = std::make_shared<kvdbioc::KVDBManager>(kvdbPath, store);
+            LOG_INFO("KVDB IOC initialized.");
         }
 
         // GEO
@@ -515,7 +524,8 @@ int main(int argc, char* argv[])
         }
 
         // CMsync
-        if (enableProcessing) {
+        if (enableProcessing)
+        {
             cmSyncService = std::make_shared<cm::sync::CMSync>(indexerConnector, cmCrudService, store, orchestrator);
             LOG_INFO("Content Manager Sync Service initialized.");
 
@@ -545,14 +555,13 @@ int main(int argc, char* argv[])
 
                 scheduler->scheduleTask(
                     "geo-sync-task",
-                    scheduler::TaskConfig {
-                        .interval = geoSyncInterval,
-                        .CPUPriority = 0,
-                        .timeout = 0,
-                        .taskFunction = [geoManager, manifestUrl, cityPath, asnPath]()
-                        {
-                            geoManager->remoteUpsert(manifestUrl, cityPath, asnPath);
-                        }});
+                    scheduler::TaskConfig {.interval = geoSyncInterval,
+                                           .CPUPriority = 0,
+                                           .timeout = 0,
+                                           .taskFunction = [geoManager, manifestUrl, cityPath, asnPath]()
+                                           {
+                                               geoManager->remoteUpsert(manifestUrl, cityPath, asnPath);
+                                           }});
                 LOG_INFO("Geo sync scheduled with interval: {} seconds.", geoSyncInterval);
             }
             else

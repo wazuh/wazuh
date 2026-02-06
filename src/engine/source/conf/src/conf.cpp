@@ -39,6 +39,9 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // Default outputs
     addUnit<std::string>(key::OUTPUTS_PATH, "WAZUH_OUTPUTS_PATH", (wazuhRoot / "engine/outputs/").c_str());
 
+    // Default kvdb ioc
+    addUnit<std::string>(key::KVDB_IOC_PATH, "WAZUH_KVDB_IOC_PATH", (wazuhRoot / "engine/kvdb-ioc").c_str());
+
     // Content Manager
     addUnit<std::string>(key::CM_RULESET_PATH, "WAZUH_CM_RULESET_PATH", (wazuhRoot / "etc/ruleset").c_str());
     addUnit<size_t>(key::CM_SYNC_INTERVAL, "WAZUH_CM_SYNC_INTERVAL", 360);
