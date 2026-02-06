@@ -948,7 +948,7 @@ void fim_read_values(HKEY key_handle,
     new.registry_entry.key = NULL;
 
     os_calloc(max_value_length + 1, sizeof(WCHAR), value_name_buffer);
-    os_calloc(max_value_data_length, sizeof(BYTE), data_buffer);
+    os_calloc(max_value_data_length + 4, sizeof(BYTE), data_buffer);
 
     for (i = 0; i < value_count; i++) {
         DWORD value_size = max_value_length + 1;
