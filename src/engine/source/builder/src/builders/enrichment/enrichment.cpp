@@ -5,18 +5,6 @@ namespace
 constexpr std::string_view JPATH_ORIGIN_SPACE = "/wazuh/space/name"; ///< wazuh.space.name
 const std::string ENRICHMENT_SPACE_TRACEABLE_NAME = "enrichment/OriginSpace";
 
-const auto successTraceable =
-    base::Term<base::EngineOp>::create("AcceptAll", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); });
-
-base::Expression makeTraceableSuccessExpression(const base::Expression& expr, bool trace)
-{
-    if (!trace)
-    {
-        return expr;
-    }
-    return base::Implication::create("TraceableSuccess", expr, successTraceable);
-}
-
 } // namespace
 namespace builder::builders::enrichment
 {

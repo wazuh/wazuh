@@ -11,6 +11,7 @@
 #include <schemf/ischema.hpp>
 #include <schemf/ivalidator.hpp>
 #include <streamlog/ilogger.hpp>
+#include <store/istore.hpp>
 #include <wiconnector/iwindexerconnector.hpp>
 
 #include <builder/iallowedFields.hpp>
@@ -62,7 +63,8 @@ public:
             const std::shared_ptr<schemf::IValidator>& schema,
             const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
             const std::shared_ptr<IAllowedFields>& allowedFields,
-            const BuilderDeps& builderDeps);
+            const BuilderDeps& builderDeps,
+            const std::shared_ptr<::store::IStore>& store);
 
     /**
      * @copydoc IBuilder::buildPolicy

@@ -46,7 +46,7 @@ using StageBuilder = std::function<base::Expression(const json::Json&, const std
  * @param bool Indicates if the enrichment need generate a trace or not.
  * @return std::tuple<base::Expression, std::string> The built enrichment expression and its traceable name.
  */
-using EnrichmentBuilder = std::function<std::tuple<base::Expression, std::string>(bool)>;
+using EnrichmentBuilder = std::function<std::pair<base::Expression, std::string>(bool)>;
 
 using RegistryType = MetaRegistry<OpBuilderEntry, StageBuilder, EnrichmentBuilder>;
 
