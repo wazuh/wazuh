@@ -30,80 +30,102 @@ Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_
         throw std::runtime_error("Maxmindb manager needs a non-null downloader");
     }
 
-    // Load dbs from the internal store
-    auto dbsResp = m_store->readCol(INTERNAL_NAME);
-    if (base::isError(dbsResp))
+    // Load dbs from the internal store (single document with nested structure)
+    auto docResp = m_store->readDoc(base::Name(INTERNAL_NAME));
+    if (base::isError(docResp))
     {
-        LOG_DEBUG("Geo module do not have dbs in the store: {}", base::getError(dbsResp).message);
+        LOG_DEBUG("Geo module do not have dbs in the store: {}", base::getError(docResp).message);
         return;
     }
 
-    auto dbs = base::getResponse(dbsResp);
-    for (const auto& db : dbs)
+    auto doc = base::getResponse(docResp);
+
+    // Load city database if present
+    auto cityPath = doc.getString("/city/path");
+    auto cityHash = doc.getString("/city/hash");
+    auto cityCreatedAt = doc.getInt64("/city/generated_at");
+    if (cityPath.has_value() && cityHash.has_value() && cityCreatedAt.has_value())
     {
-        auto dbResp = m_store->readDoc(db);
-        if (base::isError(dbResp))
-        {
-            LOG_ERROR("Geo cannot read internal document '{}': {}", db, base::getError(dbResp).message);
-            continue;
-        }
-
-        auto doc = base::getResponse(dbResp);
-        auto path = doc.getString(PATH_PATH).value();
-        auto type = typeFromName(doc.getString(TYPE_PATH).value());
-        auto hash = doc.getString(HASH_PATH).value();
-        auto createdAt = doc.getInt64(GENERATED_AT_PATH).value();
-
-        auto addResp = addDbUnsafe(path, hash, createdAt, type);
+        auto addResp = addDbUnsafe(cityPath.value(), cityHash.value(), cityCreatedAt.value(), Type::CITY);
         if (base::isError(addResp))
         {
-            LOG_ERROR("Geo cannot add db '{}': {}", path, base::getError(addResp).message);
-            m_store->deleteDoc(db);
-            LOG_TRACE("Geo deleted internal document '{}'", db);
+            LOG_ERROR("Geo cannot add city db '{}': {}", cityPath.value(), base::getError(addResp).message);
         }
+    }
+    else if (cityPath.has_value() || cityHash.has_value() || cityCreatedAt.has_value())
+    {
+        LOG_WARNING("Geo store has incomplete city database information, skipping");
+    }
+
+    // Load asn database if present
+    auto asnPath = doc.getString("/asn/path");
+    auto asnHash = doc.getString("/asn/hash");
+    auto asnCreatedAt = doc.getInt64("/asn/generated_at");
+    if (asnPath.has_value() && asnHash.has_value() && asnCreatedAt.has_value())
+    {
+        auto addResp = addDbUnsafe(asnPath.value(), asnHash.value(), asnCreatedAt.value(), Type::ASN);
+        if (base::isError(addResp))
+        {
+            LOG_ERROR("Geo cannot add asn db '{}': {}", asnPath.value(), base::getError(addResp).message);
+        }
+    }
+    else if (asnPath.has_value() || asnHash.has_value() || asnCreatedAt.has_value())
+    {
+        LOG_WARNING("Geo store has incomplete asn database information, skipping");
     }
 }
 
 base::OptError
 Manager::upsertStoreEntry(const std::string& path, Type type, const std::string& hash, const int64_t createdAt)
 {
-    // Create and upsert the internal document
-    std::filesystem::path dbPath(path);
-    auto internalName = base::Name(std::vector<std::string>({INTERNAL_NAME, dbPath.filename().string()}));
-    auto doc = store::Doc();
-    doc.setString(path, PATH_PATH);
-    doc.setString(hash, HASH_PATH);
-    doc.setString(typeName(type), TYPE_PATH);
-    doc.setInt64(createdAt, GENERATED_AT_PATH);
+    // Read existing document or create new one
+    auto internalName = base::Name(INTERNAL_NAME);
+    auto docResp = m_store->readDoc(internalName);
+
+    store::Doc doc;
+    if (!base::isError(docResp))
+    {
+        doc = std::move(base::getResponse(docResp));
+    }
+
+    // Update fields for the specific type
+    auto typePrefix = fmt::format("/{}", typeName(type));
+    doc.setString(path, typePrefix + "/path");
+    doc.setString(hash, typePrefix + "/hash");
+    doc.setInt64(createdAt, typePrefix + "/generated_at");
 
     auto storeResp = m_store->upsertDoc(internalName, doc);
     if (base::isError(storeResp))
     {
-        base::Error {fmt::format("Cannot update internal store for '{}': {}", path, base::getError(storeResp).message)};
+        return base::Error {
+            fmt::format("Cannot update internal store for '{}': {}", path, base::getError(storeResp).message)};
     }
 
     return base::noError();
 }
 
-bool Manager::needsUpdate(const std::string& name, const std::string& remoteHash) const
+bool Manager::needsUpdate(const std::string& name, const std::string& remoteHash, Type type) const
 {
-    auto internalResp =
-        m_store->readDoc(base::Name(fmt::format("{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, name)));
+    // Read the single document and check the specific type field
+    auto internalResp = m_store->readDoc(base::Name(INTERNAL_NAME));
 
     if (base::isError(internalResp))
     {
-        // If there's no stored hash, we need to update
+        // If there's no stored document, we need to update
         return true;
     }
 
-    auto storedHash = base::getResponse(internalResp).getString(HASH_PATH);
+    auto doc = base::getResponse(internalResp);
+    auto typePrefix = fmt::format("/{}", typeName(type));
+
+    auto storedHash = doc.getString(typePrefix + "/hash");
     if (!storedHash.has_value())
     {
         return true;
     }
 
     // Check if file exists physically
-    auto storedPath = base::getResponse(internalResp).getString(PATH_PATH);
+    auto storedPath = doc.getString(typePrefix + "/path");
     if (storedPath.has_value())
     {
         if (!std::filesystem::exists(storedPath.value()))
@@ -162,8 +184,8 @@ base::OptError Manager::writeDb(const std::string& path, const std::string& cont
         std::filesystem::create_directories(filePath.parent_path());
         // Set permissions to 770 (rwxrwx---)
         std::filesystem::permissions(filePath.parent_path(),
-                                    std::filesystem::perms::owner_all | std::filesystem::perms::group_all,
-                                    std::filesystem::perm_options::replace);
+                                     std::filesystem::perms::owner_all | std::filesystem::perms::group_all,
+                                     std::filesystem::perm_options::replace);
     }
     catch (const std::exception& e)
     {
@@ -211,7 +233,7 @@ base::OptError Manager::processDbEntry(const std::string& path,
     }
 
     // Check if database needs update by comparing stored hash with manifest MD5
-    if (!needsUpdate(name, expectedMd5))
+    if (!needsUpdate(name, expectedMd5, type))
     {
         return base::noError();
     }
@@ -282,17 +304,13 @@ base::OptError Manager::processDbEntry(const std::string& path,
     // Atomic rename to final path
     try
     {
-        if (std::filesystem::exists(path))
-        {
-            std::filesystem::remove(path);
-        }
         std::filesystem::rename(tmpPath, path);
 
         // Set permissions to 640 (rw-r-----)
         std::filesystem::permissions(path,
-                                    std::filesystem::perms::owner_read | std::filesystem::perms::owner_write |
-                                    std::filesystem::perms::group_read,
-                                    std::filesystem::perm_options::replace);
+                                     std::filesystem::perms::owner_read | std::filesystem::perms::owner_write
+                                         | std::filesystem::perms::group_read,
+                                     std::filesystem::perm_options::replace);
     }
     catch (const std::exception& e)
     {
@@ -331,7 +349,7 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
     auto manifestResp = m_downloader->downloadManifest(manifestUrl);
     if (base::isError(manifestResp))
     {
-        LOG_ERROR(
+        LOG_WARNING(
             "[Geo::Manager] Cannot download manifest from '{}': {}", manifestUrl, base::getError(manifestResp).message);
         return;
     }
@@ -342,73 +360,48 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
     // Extract manifest fields
     auto createdAt = manifest.getInt64(GENERATED_AT_PATH);
 
-    // Process city database if present
-    auto cityUrl = manifest.getString("/city/url");
-    auto cityMd5 = manifest.getString("/city/md5");
-    if (cityUrl.has_value() && cityMd5.has_value() && !cityPath.empty())
+    // Lambda to process database entries
+    auto processDatabase = [&](Type type,
+                               const std::string& path,
+                               const std::optional<std::string>& url,
+                               const std::optional<std::string>& md5,
+                               const std::string& typeName)
     {
-        const auto cityName = std::filesystem::path(cityPath).filename().string();
+        if (!url.has_value() || !md5.has_value() || path.empty())
+        {
+            LOG_WARNING("[Geo::Manager] {} database not present in manifest or path not provided", typeName);
+            return;
+        }
+
+        const auto dbName = std::filesystem::path(path).filename().string();
 
         // Check if database needs update
-        if (!needsUpdate(cityName, cityMd5.value()))
+        if (!needsUpdate(dbName, md5.value(), type))
         {
-            LOG_DEBUG("[Geo::Manager] No changes detected for CITY database '{}'", cityName);
+            LOG_DEBUG("[Geo::Manager] No changes detected for {} database '{}'", typeName, dbName);
+            return;
+        }
+
+        LOG_INFO("[Geo::Manager] Changes detected for {} database '{}', updating...", typeName, dbName);
+        auto error = processDbEntry(path, type, url.value(), md5.value(), createdAt.value());
+        if (base::isError(error))
+        {
+            LOG_ERROR("[Geo::Manager] Failed to process {} database '{}': {}",
+                      typeName,
+                      dbName,
+                      base::getError(error).message);
         }
         else
         {
-            LOG_INFO("[Geo::Manager] Changes detected for CITY database '{}', updating...", cityName);
-            auto cityError = processDbEntry(cityPath, Type::CITY, cityUrl.value(), cityMd5.value(), createdAt.value());
-            if (base::isError(cityError))
-            {
-                LOG_ERROR("[Geo::Manager] Failed to process CITY database '{}': {}",
-                          cityName,
-                          base::getError(cityError).message);
-                // Continue with ASN even if city fails
-            }
-            else
-            {
-                LOG_INFO("[Geo::Manager] Successfully updated CITY database '{}'", cityName);
-            }
+            LOG_INFO("[Geo::Manager] Successfully updated {} database '{}'", typeName, dbName);
         }
-    }
-    else
-    {
-        LOG_DEBUG("[Geo::Manager] CITY database not present in manifest or path not provided");
-    }
+    };
+
+    // Process city database if present
+    processDatabase(Type::CITY, cityPath, manifest.getString("/city/url"), manifest.getString("/city/md5"), "CITY");
 
     // Process ASN database if present
-    auto asnUrl = manifest.getString("/asn/url");
-    auto asnMd5 = manifest.getString("/asn/md5");
-    if (asnUrl.has_value() && asnMd5.has_value() && !asnPath.empty())
-    {
-        const auto asnName = std::filesystem::path(asnPath).filename().string();
-
-        // Check if database needs update
-        if (!needsUpdate(asnName, asnMd5.value()))
-        {
-            LOG_DEBUG("[Geo::Manager] No changes detected for ASN database '{}'", asnName);
-        }
-        else
-        {
-            LOG_INFO("[Geo::Manager] Changes detected for ASN database '{}', updating...", asnName);
-            auto asnError = processDbEntry(asnPath, Type::ASN, asnUrl.value(), asnMd5.value(), createdAt.value());
-            if (base::isError(asnError))
-            {
-                LOG_ERROR("[Geo::Manager] Failed to process ASN database '{}': {}",
-                          asnName,
-                          base::getError(asnError).message);
-                // Continue even if ASN fails
-            }
-            else
-            {
-                LOG_INFO("[Geo::Manager] Successfully updated ASN database '{}'", asnName);
-            }
-        }
-    }
-    else
-    {
-        LOG_DEBUG("[Geo::Manager] ASN database not present in manifest or path not provided");
-    }
+    processDatabase(Type::ASN, asnPath, manifest.getString("/asn/url"), manifest.getString("/asn/md5"), "ASN");
 
     LOG_DEBUG("[Geo::Manager] Finished synchronization of geo databases");
 }

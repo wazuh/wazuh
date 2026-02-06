@@ -126,26 +126,22 @@ protected:
 
     auto getEmptyManager()
     {
-        EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
-            .WillOnce(testing::Return(storeReadColResp({})));
+        EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
+            .WillOnce(testing::Return(storeReadError<store::Doc>()));
 
         return Manager(mockStore, mockDownloader);
     }
 
     auto getManagerWithDb(const std::string& path, Type type)
     {
-        auto docName = base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(path).filename().string()));
-        EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
-            .WillOnce(testing::Return(storeReadColResp(docName)));
-
         json::Json docJson;
-        docJson.setString(path, PATH_PATH);
-        docJson.setString(typeName(type), TYPE_PATH);
-        docJson.setString("hash", HASH_PATH);
-        docJson.setInt64(1769111225, GENERATED_AT_PATH);
-        auto internalName =
-            base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(path).filename().string()));
-        EXPECT_CALL(*mockStore, readDoc(internalName)).WillOnce(testing::Return(storeReadDocResp(docJson)));
+        auto typePrefix = fmt::format("/{}", typeName(type));
+        docJson.setString(path, typePrefix + "/path");
+        docJson.setString("hash", typePrefix + "/hash");
+        docJson.setInt64(1769111225, typePrefix + "/generated_at");
+        
+        EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
+            .WillOnce(testing::Return(storeReadDocResp(docJson)));
 
         return Manager(mockStore, mockDownloader);
     }
@@ -153,8 +149,8 @@ protected:
 
 TEST_F(GeoManagerTest, Initialize)
 {
-    EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
-        .WillOnce(testing::Return(store::mocks::storeReadError<store::Col>()));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
+        .WillOnce(testing::Return(store::mocks::storeReadError<store::Doc>()));
     EXPECT_NO_THROW(Manager(mockStore, mockDownloader));
     EXPECT_THROW(Manager(nullptr, mockDownloader), std::runtime_error);
     EXPECT_THROW(Manager(mockStore, nullptr), std::runtime_error);
@@ -162,34 +158,27 @@ TEST_F(GeoManagerTest, Initialize)
 
 TEST_F(GeoManagerTest, InitializeAddingDbs)
 {
-    EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
-        .WillOnce(testing::Return(storeReadColResp({"geo/db1", "geo/db2"})));
+    auto asnFile = getTmpDb();
+    auto cityFile = getTmpDb();
 
-    auto doc1File = getTmpDb();
-    json::Json doc1;
-    doc1.setString(doc1File, PATH_PATH);
-    doc1.setString("asn", TYPE_PATH);
-    doc1.setString("hash1", HASH_PATH);
-    doc1.setInt64(1769111225, GENERATED_AT_PATH);
-    base::Name doc1Name("geo/db1");
-    EXPECT_CALL(*mockStore, readDoc(base::Name(doc1Name))).WillOnce(testing::Return(storeReadDocResp(doc1)));
+    json::Json doc;
+    doc.setString(asnFile, "/asn/path");
+    doc.setString("hash1", "/asn/hash");
+    doc.setInt64(1769111225, "/asn/generated_at");
+    doc.setString(cityFile, "/city/path");
+    doc.setString("hash2", "/city/hash");
+    doc.setInt64(1769111225, "/city/generated_at");
 
-    auto doc2File = getTmpDb();
-    json::Json doc2;
-    doc2.setString(doc2File, PATH_PATH);
-    doc2.setString("city", TYPE_PATH);
-    doc2.setString("hash2", HASH_PATH);
-    doc2.setInt64(1769111225, GENERATED_AT_PATH);
-    base::Name doc2Name("geo/db2");
-    EXPECT_CALL(*mockStore, readDoc(base::Name(doc2Name))).WillOnce(testing::Return(storeReadDocResp(doc2)));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
+        .WillOnce(testing::Return(storeReadDocResp(doc)));
 
     std::shared_ptr<Manager> manager;
     ASSERT_NO_THROW(manager = std::make_shared<Manager>(mockStore, mockDownloader));
     ASSERT_NE(manager, nullptr);
     auto dbs = manager->listDbs();
-    auto db1Name = std::filesystem::path(doc1File).filename().string();
-    auto db2Name = std::filesystem::path(doc2File).filename().string();
-    auto expectedDbs = std::vector<std::pair<std::string, Type>> {{db1Name, Type::ASN}, {db2Name, Type::CITY}};
+    auto asnName = std::filesystem::path(asnFile).filename().string();
+    auto cityName = std::filesystem::path(cityFile).filename().string();
+    auto expectedDbs = std::vector<std::pair<std::string, Type>> {{asnName, Type::ASN}, {cityName, Type::CITY}};
     // Unordered comparison
     ASSERT_EQ(dbs.size(), expectedDbs.size());
     for (const auto& db : dbs)
@@ -204,30 +193,11 @@ TEST_F(GeoManagerTest, InitializeAddingDbs)
 
 TEST_F(GeoManagerTest, InitializeAddingDbsStoreError)
 {
-    // Failure doc
-    EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
-        .WillOnce(testing::Return(storeReadColResp({"geo/db1", "geo/db2"})));
-
-    auto doc1File = getTmpDb();
-    json::Json doc1;
-    doc1.setString(doc1File, PATH_PATH);
-    doc1.setString("asn", TYPE_PATH);
-    doc1.setString("hash1", HASH_PATH);
-    doc1.setInt64(1769111225, GENERATED_AT_PATH);
-    base::Name doc1Name("geo/db1");
-    EXPECT_CALL(*mockStore, readDoc(base::Name(doc1Name))).WillOnce(testing::Return(storeReadDocResp(doc1)));
-
-    EXPECT_CALL(*mockStore, readDoc(base::Name("geo/db2")))
+    // Failure reading document
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
         .WillOnce(testing::Return(storeReadError<store::Doc>()));
 
     std::shared_ptr<Manager> manager;
-    ASSERT_NO_THROW(manager = std::make_shared<Manager>(mockStore, mockDownloader));
-    ASSERT_NE(manager, nullptr);
-    EXPECT_EQ(manager->listDbs().size(), 1);
-
-    // Failure columns
-    EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
-        .WillOnce(testing::Return(storeReadError<store::Col>()));
     ASSERT_NO_THROW(manager = std::make_shared<Manager>(mockStore, mockDownloader));
     ASSERT_NE(manager, nullptr);
     ASSERT_EQ(manager->listDbs().size(), 0);
@@ -235,36 +205,27 @@ TEST_F(GeoManagerTest, InitializeAddingDbsStoreError)
 
 TEST_F(GeoManagerTest, InitializeAddingDbsAddError)
 {
-    EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
-        .WillOnce(testing::Return(storeReadColResp({"geo/db1", "geo/db2"})));
+    auto asnFile = getTmpDb();
+    auto cityFile = "non_existent_file";
 
-    auto doc1File = getTmpDb();
-    json::Json doc1;
-    doc1.setString(doc1File, PATH_PATH);
-    doc1.setString("asn", TYPE_PATH);
-    doc1.setString("hash1", HASH_PATH);
-    doc1.setInt64(1769111225, GENERATED_AT_PATH);
-    base::Name doc1Name("geo/db1");
-    EXPECT_CALL(*mockStore, readDoc(base::Name(doc1Name))).WillOnce(testing::Return(storeReadDocResp(doc1)));
+    json::Json doc;
+    doc.setString(asnFile, "/asn/path");
+    doc.setString("hash1", "/asn/hash");
+    doc.setInt64(1769111225, "/asn/generated_at");
+    doc.setString(cityFile, "/city/path");
+    doc.setString("hash2", "/city/hash");
+    doc.setInt64(1769111225, "/city/generated_at");
 
-    auto doc2File = "non_existent_file";
-    json::Json doc2;
-    doc2.setString(doc2File, PATH_PATH);
-    doc2.setString("city", TYPE_PATH);
-    doc2.setString("hash2", HASH_PATH);
-    doc2.setInt64(1769111225, GENERATED_AT_PATH);
-    base::Name doc2Name("geo/db2");
-    EXPECT_CALL(*mockStore, readDoc(base::Name(doc2Name))).WillOnce(testing::Return(storeReadDocResp(doc2)));
-
-    EXPECT_CALL(*mockStore, deleteDoc(base::Name(doc2Name))).WillOnce(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
+        .WillOnce(testing::Return(storeReadDocResp(doc)));
 
     std::shared_ptr<Manager> manager;
     ASSERT_NO_THROW(manager = std::make_shared<Manager>(mockStore, mockDownloader));
     ASSERT_NE(manager, nullptr);
     auto dbs = manager->listDbs();
-    auto db1Name = std::filesystem::path(doc1File).filename().string();
+    auto asnName = std::filesystem::path(asnFile).filename().string();
     ASSERT_EQ(dbs.size(), 1);
-    ASSERT_EQ(dbs[0].name, db1Name);
+    ASSERT_EQ(dbs[0].name, asnName);
     ASSERT_EQ(dbs[0].type, Type::ASN);
 }
 
@@ -316,9 +277,6 @@ TEST_F(GeoManagerTest, RemoteUpsert)
     manifest.setString("https://example.com/asn.tar.gz", "/asn/url");
     manifest.setString(asnHash, "/asn/md5");
 
-    auto cityInternalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(cityPath).filename().string());
-    auto asnInternalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(asnPath).filename().string());
-
     EXPECT_CALL(*mockDownloader, downloadManifest(manifestUrl))
         .WillOnce(testing::Return(base::RespOrError<json::Json>(manifest)));
     EXPECT_CALL(*mockDownloader, downloadHTTPS("https://example.com/city.tar.gz"))
@@ -345,12 +303,11 @@ TEST_F(GeoManagerTest, RemoteUpsert)
                 ofs.close();
                 return base::noError();
             }));
-    EXPECT_CALL(*mockStore, readDoc(cityInternalName))
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
         .WillRepeatedly(testing::Return(storeReadError<store::Doc>()));
-    EXPECT_CALL(*mockStore, readDoc(asnInternalName))
-        .WillRepeatedly(testing::Return(storeReadError<store::Doc>()));
-    EXPECT_CALL(*mockStore, upsertDoc(cityInternalName, testing::_)).WillOnce(testing::Return(storeOk()));
-    EXPECT_CALL(*mockStore, upsertDoc(asnInternalName, testing::_)).WillOnce(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, upsertDoc(base::Name(INTERNAL_NAME), testing::_))
+        .Times(2)
+        .WillRepeatedly(testing::Return(storeOk()));
 
     ASSERT_NO_THROW(manager.remoteUpsert(manifestUrl, cityPath, asnPath));
 
@@ -381,30 +338,17 @@ TEST_F(GeoManagerTest, RemoteUpsertAlreadyUpdated)
     auto manifestUrl = "https://example.com/manifest.json";
 
     // Setup manager with existing databases
-    auto cityInternalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(cityPath).filename().string());
-    auto asnInternalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(asnPath).filename().string());
+    json::Json doc;
+    doc.setString(cityPath, "/city/path");
+    doc.setString(cityHash, "/city/hash");
+    doc.setInt64(1769111225, "/city/generated_at");
+    doc.setString(asnPath, "/asn/path");
+    doc.setString(asnHash, "/asn/hash");
+    doc.setInt64(1769111225, "/asn/generated_at");
 
-    EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
-        .WillOnce(testing::Return(storeReadColResp({cityInternalName, asnInternalName})));
-
-    json::Json cityDoc;
-    cityDoc.setString(cityPath, PATH_PATH);
-    cityDoc.setString(typeName(Type::CITY), TYPE_PATH);
-    cityDoc.setString(cityHash, HASH_PATH);
-    cityDoc.setInt64(1769111225, GENERATED_AT_PATH);
-
-    json::Json asnDoc;
-    asnDoc.setString(asnPath, PATH_PATH);
-    asnDoc.setString(typeName(Type::ASN), TYPE_PATH);
-    asnDoc.setString(asnHash, HASH_PATH);
-    asnDoc.setInt64(1769111225, GENERATED_AT_PATH);
-
-    EXPECT_CALL(*mockStore, readDoc(cityInternalName))
-        .WillOnce(testing::Return(storeReadDocResp(cityDoc)))
-        .WillOnce(testing::Return(storeReadDocResp(cityDoc)));
-    EXPECT_CALL(*mockStore, readDoc(asnInternalName))
-        .WillOnce(testing::Return(storeReadDocResp(asnDoc)))
-        .WillOnce(testing::Return(storeReadDocResp(asnDoc)));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
+        .WillOnce(testing::Return(storeReadDocResp(doc)))
+        .WillRepeatedly(testing::Return(storeReadDocResp(doc)));
 
     auto manager = Manager(mockStore, mockDownloader);
 

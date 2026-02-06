@@ -13,6 +13,7 @@
 #include "commonDefs.h"
 #include "loggerHelper.h"
 
+#include <base/libwazuhshared.hpp>
 #include <base/process.hpp>
 
 #define LAMBDA_SEPARATOR "::<lambda>"
@@ -247,8 +248,6 @@ constexpr inline const char* default_tag()
     return "wazuh-analysisd";
 }
 
-
-
 /**
  * @brief Dispatches a fully composed log message to either spdlog (standalone)
  *        or the Wazuh logging callback (integrated mode).
@@ -298,6 +297,42 @@ backend_log(logging::Level lvl, const char* file, int line, const char* funcName
 }
 
 /**
+ * @brief Checks if a message at the given level should be logged.
+ *
+ * This function checks whether logging is enabled for the specified level
+ * to avoid unnecessary formatting of log messages that will be discarded.
+ *
+ * @param lvl The logging level to check.
+ * @return true if the message should be logged, false otherwise.
+ */
+inline bool should_log(logging::Level lvl)
+{
+    if (base::process::isStandaloneModeEnable())
+    {
+        return getDefaultLogger()->should_log(SEVERITY_LEVEL.at(lvl));
+    }
+
+    // TODO: CHECK THIS BECAUSE SOME TESTS DO NOT USE STANDALONE MODE AND FAIL BECAUSE THEY DO NOT HAVE LIBWAZUHSHARED
+    // // In Wazuh mode, check debug flag from the C logging system
+    // // isDebug() returns: 0 = Info+, 1 = Debug+, 2+ = Trace+
+    // using IsDebugFnType = int (*)();
+    // const auto isDebugFn = base::libwazuhshared::getFunction<IsDebugFnType>("isDebug");
+    // const int debugLevel = isDebugFn();
+
+    // switch (lvl)
+    // {
+    //     case logging::Level::Trace: return debugLevel >= 2;
+    //     case logging::Level::Debug: return debugLevel >= 1;
+    //     case logging::Level::Info:
+    //     case logging::Level::Warn:
+    //     case logging::Level::Err:
+    //     case logging::Level::Critical: return true; // Always log these levels
+    //     default: return false;
+    // }
+    return true;
+}
+
+/**
  * @brief Unified logging bridge for formatted and unformatted messages.
  * @tparam Args Types of the arguments interpolated into the format string.
  *
@@ -308,6 +343,9 @@ backend_log(logging::Level lvl, const char* file, int line, const char* funcName
  * @param fmtstr   Format string verified by {fmt} at compile time when arguments are present.
  *                 If no arguments are provided, it is treated as a literal (no reformatting).
  * @param args     Arguments to be formatted into the string (when placeholders exist).
+ *
+ * @note This function checks the log level BEFORE formatting to avoid constructing
+ *       expensive strings (e.g., HTTP bodies) that will be discarded.
  */
 template<typename... Args>
 inline void log_bridge(logging::Level lvl,
@@ -317,6 +355,12 @@ inline void log_bridge(logging::Level lvl,
                        fmt::format_string<Args...> fmtstr,
                        Args&&... args)
 {
+    // Check log level before formatting to avoid unnecessary work
+    if (!should_log(lvl))
+    {
+        return;
+    }
+
     if constexpr (sizeof...(Args) == 0)
     {
         fmt::basic_string_view<char> sv = fmtstr;

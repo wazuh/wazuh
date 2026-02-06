@@ -41,27 +41,15 @@ protected:
         asnPath = getTmpDb();
         cityPath = getTmpDb();
 
-        auto asnName = base::Name(fmt::format(
-            "{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, std::filesystem::path(asnPath).filename().string()));
-        auto cityName = base::Name(fmt::format(
-            "{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, std::filesystem::path(cityPath).filename().string()));
+        json::Json doc;
+        doc.setString(asnPath, "/asn/path");
+        doc.setString("asnHash", "/asn/hash");
+        doc.setInt64(1769111225, "/asn/generated_at");
+        doc.setString(cityPath, "/city/path");
+        doc.setString("cityHash", "/city/hash");
+        doc.setInt64(1769111225, "/city/generated_at");
 
-        EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
-            .WillOnce(testing::Return(storeReadColResp({asnName, cityName})));
-        json::Json asnJson;
-        asnJson.setString(asnPath, PATH_PATH);
-        asnJson.setString(typeName(Type::ASN), TYPE_PATH);
-        asnJson.setString("asnHash", HASH_PATH);
-        asnJson.setInt64(1769111225, GENERATED_AT_PATH);
-
-        json::Json cityJson;
-        cityJson.setString(cityPath, PATH_PATH);
-        cityJson.setString(typeName(Type::CITY), TYPE_PATH);
-        cityJson.setString("cityHash", HASH_PATH);
-        cityJson.setInt64(1769111225, GENERATED_AT_PATH);
-
-        EXPECT_CALL(*mockStore, readDoc(asnName)).WillOnce(testing::Return(storeReadDocResp(asnJson)));
-        EXPECT_CALL(*mockStore, readDoc(cityName)).WillOnce(testing::Return(storeReadDocResp(cityJson)));
+        EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME))).WillOnce(testing::Return(storeReadDocResp(doc)));
 
         manager = std::make_shared<geo::Manager>(mockStore, downloader);
     }

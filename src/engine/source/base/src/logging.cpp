@@ -9,7 +9,6 @@
  */
 
 #include <base/logging.hpp>
-#include <base/libwazuhshared.hpp>
 
 #include <spdlog/pattern_formatter.h>
 #include <spdlog/sinks/base_sink.h>

@@ -1205,7 +1205,7 @@ EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
-	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers simdjson spdlog yaml-cpp pugixml libmaxminddb date fmt abseil-cpp re2 protobuf rapidjson taskflow RxCpp concurrentqueue fast_float
+	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers simdjson spdlog yaml-cpp pugixml libmaxminddb date fmt abseil-cpp re2 protobuf rapidjson taskflow RxCpp concurrentqueue fast_float geo_db
 endif
 endif
 

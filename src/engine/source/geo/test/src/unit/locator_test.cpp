@@ -93,19 +93,14 @@ protected:
         mockDownloader = std::make_shared<mocks::MockDownloader>();
 
         auto path = getTmpDb();
-        auto internalName =
-            base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(path).filename().string()));
-
-        EXPECT_CALL(*mockStore, readCol(base::Name(INTERNAL_NAME)))
-            .WillOnce(testing::Return(storeReadColResp({internalName})));
 
         json::Json docJson;
-        docJson.setString(path, PATH_PATH);
-        docJson.setString(typeName(Type::CITY), TYPE_PATH);
-        docJson.setString("hash", HASH_PATH);
-        docJson.setInt64(0, GENERATED_AT_PATH);
+        docJson.setString(path, "/city/path");
+        docJson.setString("hash", "/city/hash");
+        docJson.setInt64(0, "/city/generated_at");
 
-        EXPECT_CALL(*mockStore, readDoc(internalName)).WillOnce(testing::Return(storeReadDocResp(docJson)));
+        EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
+            .WillOnce(testing::Return(storeReadDocResp(docJson)));
 
         manager = std::make_shared<Manager>(mockStore, mockDownloader);
 
@@ -484,14 +479,12 @@ TEST_F(LocatorTest, LocatorReloadsOnRemoteUpsert)
     json::Json manifest;
     manifest.setString("https://example.com/city.tar.gz", "/city/url");
     manifest.setString(newHash, "/city/md5");
-    manifest.setInt64(0, GENERATED_AT_PATH);
+    manifest.setInt64(0, "/generated_at");
 
     // Store: return old hash to trigger update
-    auto internalName =
-        base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(dbPath).filename().string()));
-    EXPECT_CALL(*mockStore, readDoc(internalName))
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
         .WillRepeatedly(
-            testing::Return(storeReadDocResp(json::Json(R"({"hash":"oldHash","createdAt":"2024-01-01T00:00:00Z"})"))));
+            testing::Return(storeReadDocResp(json::Json(R"({"city":{"hash":"oldHash","path":"","generated_at":0}})"))));
 
     // Downloader: return manifest
     EXPECT_CALL(*mockDownloader, downloadManifest(manifestUrl))
@@ -513,7 +506,7 @@ TEST_F(LocatorTest, LocatorReloadsOnRemoteUpsert)
             }));
 
     // Store upsert
-    EXPECT_CALL(*mockStore, upsertDoc(testing::_, testing::_)).WillOnce(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, upsertDoc(base::Name(INTERNAL_NAME), testing::_)).WillOnce(testing::Return(storeOk()));
 
     // 3) Execute the manifest-based update
     ASSERT_NO_THROW(manager->remoteUpsert(manifestUrl, dbPath, ""));
