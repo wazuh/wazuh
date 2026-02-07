@@ -16,7 +16,7 @@
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/posix/time_wrappers.h"
 #include "../wrappers/wazuh/shared/cluster_op_wrappers.h"
-#include "../../config/wazuh_db-config.h"
+#include "wazuh_db-config.h"
 #include "wazuhdb_op.h"
 
 

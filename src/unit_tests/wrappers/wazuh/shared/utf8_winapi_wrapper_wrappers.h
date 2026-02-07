@@ -12,7 +12,7 @@
 
 #ifdef WIN32
 
-#include "../../../../headers/utf8_winapi_wrapper.h"
+#include "utf8_winapi_wrapper.h"
 
 wchar_t* __wrap_auto_to_wide(const char* input);
 

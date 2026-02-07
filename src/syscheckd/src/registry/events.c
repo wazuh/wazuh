@@ -9,7 +9,7 @@
 
 #ifdef WIN32
 
-#include "../../include/syscheck.h"
+#include "syscheck.h"
 
 static const char *VALUE_TYPE[] = {
     [REG_NONE] = "REG_NONE",

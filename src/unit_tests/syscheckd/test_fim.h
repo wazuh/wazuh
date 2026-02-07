@@ -2,7 +2,7 @@
 #define __TEST_FIM_H
 
 #include "../syscheckd/include/syscheck.h"
-#include "../config/syscheck-config.h"
+#include "syscheck-config.h"
 
 #include "wrappers/posix/pthread_wrappers.h"
 #include "wrappers/wazuh/shared/debug_op_wrappers.h"

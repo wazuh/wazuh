@@ -16,7 +16,7 @@
 #include "agent_sync_protocol.hpp"
 #include "logging_helper.hpp"
 #include "hashHelper.h"
-#include "../../include/sca.h"
+#include "sca.h"
 #include "schemaValidator.hpp"
 
 // Static member definitions

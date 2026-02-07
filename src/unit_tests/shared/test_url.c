@@ -13,7 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "../headers/shared.h"
+#include "shared.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 

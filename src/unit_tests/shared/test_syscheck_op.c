@@ -12,7 +12,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "../headers/syscheck_op.h"
+#include "syscheck_op.h"
 
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/posix/grp_wrappers.h"

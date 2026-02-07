@@ -10,7 +10,7 @@
 
 #include "shared.h"
 #include "agentd.h"
-#include "os_net/os_net.h"
+#include "os_net.h"
 
 bool needs_config_reload = false;
 void reload_handler(int signum) {

@@ -16,8 +16,8 @@ list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.c")
 
 # Generate wazuh modules library
-file(GLOB aws ../../../wazuh_modules/*.o)
-list(REMOVE_ITEM aws ../../../wazuh_modules/main.o)
+file(GLOB_RECURSE aws ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+list(REMOVE_ITEM aws ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
 
 add_library(AWS_O STATIC ${aws})
 
@@ -51,16 +51,31 @@ foreach(counter RANGE ${count})
       add_executable(${test_name} ${test_name}.c)
     endif()
 
-    target_link_libraries(
-        ${test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        AWS_O
-        -lcmocka
-        -ldl
-        -fprofile-arcs
-        -ftest-coverage
-    )
+    # Use linker groups for Linux/BSD to resolve circular dependencies, macOS doesn't support it
+    if(NOT APPLE)
+        target_link_libraries(
+            ${test_name}
+            -Wl,--start-group
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            AWS_O
+            -Wl,--end-group
+            -lcmocka
+            -ldl
+            -fprofile-arcs
+            -ftest-coverage
+        )
+    else()
+        target_link_libraries(
+            ${test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            AWS_O
+            -lcmocka
+            -fprofile-arcs
+            -ftest-coverage
+        )
+    endif()
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(
             ${test_name}

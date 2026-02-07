@@ -10,15 +10,15 @@
 
 #include <shared.h>
 #include <pthread.h>
-#include "os_net/os_net.h"
+#include "os_net.h"
 #include "execd.h"
-#include "os_crypto/sha1/sha1_op.h"
-#include "os_crypto/signature/signature.h"
-#include "wazuh_modules/wmodules.h"
+#include "sha1_op.h"
+#include "signature.h"
+#include "wmodules.h"
 #include "external/zlib/zlib.h"
 #include "client-agent/agentd.h"
 #include "logcollector/logcollector.h"
-#include "rootcheck/rootcheck.h"
+#include "rootcheck.h"
 
 static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
 int req_timeout;

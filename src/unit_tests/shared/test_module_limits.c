@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../headers/module_limits.h"
+#include "module_limits.h"
 
 /* fim_limits_init tests */
 

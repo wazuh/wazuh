@@ -6,9 +6,9 @@
 # Foundation.
 
 # Generate wmodules library
-file(GLOB wmodules_files
-    ${SRC_FOLDER}/wazuh_modules/*.o)
-list(REMOVE_ITEM wmodules_files ${SRC_FOLDER}/wazuh_modules/main.o)
+file(GLOB_RECURSE wmodules_files
+    ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+list(REMOVE_ITEM wmodules_files ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
 
 add_library(WMODULES_O STATIC ${wmodules_files})
 

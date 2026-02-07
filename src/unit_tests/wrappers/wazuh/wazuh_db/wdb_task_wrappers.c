@@ -7,11 +7,11 @@
  * Foundation
  */
 
-#include "wdb_global_helpers_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include "wdb_task_wrappers.h"
 
 int __wrap_wdb_task_insert_task(__attribute__((unused)) wdb_t* wdb, int agent_id, const char *node, const char *module, const char *command) {
     check_expected(agent_id);

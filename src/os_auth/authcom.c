@@ -10,8 +10,8 @@
 
 #include <shared.h>
 #include "auth.h"
-#include "wazuh_modules/wmodules.h"
-#include "os_net/os_net.h"
+#include "wmodules.h"
+#include "os_net.h"
 
 size_t authcom_dispatch(const char * command, char ** output){
 

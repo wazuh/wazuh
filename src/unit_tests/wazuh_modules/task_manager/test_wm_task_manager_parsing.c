@@ -16,10 +16,10 @@
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/time_op_wrappers.h"
 
-#include "../../wazuh_modules/wmodules.h"
-#include "../../wazuh_modules/task_manager/wm_task_manager_parsing.h"
-#include "../../wazuh_modules/task_manager/wm_task_manager_tasks.h"
-#include "../../headers/shared.h"
+#include "wmodules.h"
+#include "wm_task_manager_parsing.h"
+#include "wm_task_manager_tasks.h"
+#include "shared.h"
 
 int* wm_task_manager_parse_ids(const cJSON* ids);
 wm_task_manager_upgrade* wm_task_manager_parse_upgrade_parameters(const cJSON* origin, const cJSON* parameters);

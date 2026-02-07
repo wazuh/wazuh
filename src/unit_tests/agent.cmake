@@ -25,7 +25,7 @@ if(${uname} STREQUAL "Darwin")
         -lagent_metadata -lagent_sync_protocol -ldbsync -lschema_validator -lfimdb
         -Wl,-noall_load
         -lpthread -ldl -fprofile-arcs -ftest-coverage)
-    add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -I/usr/local/include -DENABLE_SYSC -DWAZUH_UNIT_TESTING)
+    add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -I/usr/local/include -DWAZUH_UNIT_TESTING)
 else()
     add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -DENABLE_AUDIT -DINOTIFY_ENABLED -fsanitize=address -fsanitize=undefined)
     link_libraries(-fsanitize=address -fsanitize=undefined)

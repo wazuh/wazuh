@@ -10,9 +10,9 @@ on:
   pull_request:
     paths:
         - ".github/workflows/5_testintegration_office365-tier-0-1-lin.yml"
-        - "src/config/wmodules-office365.c"
-        - "src/wazuh_modules/wm_office365.h"
-        - "src/wazuh_modules/wm_office365.c"
+        - "src/config/src/wmodules-office365.c"
+        - "src/wazuh_modules/src/wm_office365.h"
+        - "src/wazuh_modules/src/wm_office365.c"
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_office365/**"

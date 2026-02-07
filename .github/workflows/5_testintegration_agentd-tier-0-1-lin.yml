@@ -11,9 +11,9 @@ on:
     paths:
         - ".github/workflows/5_testintegration_agentd-tier-0-1-lin.yml"
         - "src/client-agent/**"
-        - "src/config/buffer-config.c"
-        - "src/config/client-config.c"
-        - "src/config/client-config.h"
+        - "src/config/src/buffer-config.c"
+        - "src/config/src/client-config.c"
+        - "src/config/include/client-config.h"
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_agentd/**"

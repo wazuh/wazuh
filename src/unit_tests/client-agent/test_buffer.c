@@ -13,7 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "../../config/client-config.h"
+#include "client-config.h"
 
 #include "../wrappers/posix/pthread_wrappers.h"
 

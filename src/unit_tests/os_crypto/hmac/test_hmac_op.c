@@ -12,8 +12,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "../headers/shared.h"
-#include "../../os_crypto/hmac/hmac.h"
+#include "shared.h"
+#include "hmac.h"
 #include "../../wrappers/common.h"
 
 /* setups/teardowns */

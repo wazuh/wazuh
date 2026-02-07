@@ -12,8 +12,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "../headers/shared.h"
-#include "../../os_crypto/aes/aes_op.h"
+#include "shared.h"
+#include "aes_op.h"
 #include "../../wrappers/common.h"
 
 // Tests

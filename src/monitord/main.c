@@ -9,9 +9,9 @@
  */
 
 #include "shared.h"
-#include "config/config.h"
+#include "config.h"
 #include "monitord.h"
-#include "os_net/os_net.h"
+#include "os_net.h"
 
 /* Prototypes */
 static void help_monitord(char * home_path) __attribute__((noreturn));

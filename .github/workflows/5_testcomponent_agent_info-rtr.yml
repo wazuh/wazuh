@@ -7,7 +7,7 @@ on:
       - "src/ci/**"
       - "src/build.py"
       - "src/wazuh_modules/agent_info/**"
-      - "src/config/wmodules-agent_info.c"
+      - "src/config/src/wmodules-agent_info.c"
       - "src/Makefile"
       - ".github/workflows/5_testcomponent_agent_info-rtr.yml"
       - ".github/actions/**"

@@ -13,7 +13,7 @@
  */
 
 #include "shared.h"
-#include "os_net/os_net.h"
+#include "os_net.h"
 #include "remoted.h"
 
 #define WM_STRCAT_NO_SEPARATOR 0

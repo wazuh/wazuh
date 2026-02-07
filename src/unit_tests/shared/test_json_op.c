@@ -18,13 +18,13 @@
 #include <unistd.h>
 
 
-#include "../../headers/json_op.h"
+#include "json_op.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/common.h"
-#include "../../headers/shared.h"
+#include "shared.h"
 
 #define PATH_EXAMPLE "/home/test"
 #define BUFFER_EXAMPLE "//This is a comment"

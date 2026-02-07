@@ -11,7 +11,7 @@
 
 #include "logging_helper.hpp"
 #include "agent_sync_protocol.hpp"
-#include "../../include/sca.h"
+#include "sca.h"
 #include "schemaValidator.hpp"
 
 /// @brief Map of stateless operations

@@ -9,7 +9,7 @@
  */
 
 #include "shared.h"
-#include "os_net/os_net.h"
+#include "os_net.h"
 #include "remoted.h"
 
 #ifdef WAZUH_UNIT_TESTING

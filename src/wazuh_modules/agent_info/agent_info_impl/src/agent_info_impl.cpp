@@ -11,8 +11,8 @@
 #include <file_io_utils.hpp>
 #include <filesystem_wrapper.hpp>
 #include <sysInfo.hpp>
-#include "../../../module_query_errors.h"
-#include "../../../wmodules.h"
+#include "module_query_errors.h"
+#include "wmodules.h"
 
 #include <chrono>
 #include <condition_variable>

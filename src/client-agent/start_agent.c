@@ -10,7 +10,7 @@
 
 #include "shared.h"
 #include "agentd.h"
-#include "os_net/os_net.h"
+#include "os_net.h"
 
 #ifdef WAZUH_UNIT_TESTING
     // Remove static qualifier when unit testing

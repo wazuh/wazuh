@@ -9,11 +9,11 @@
  * Foundation.
  */
 
-#include "wdb.h"
+#include "wazuhdb_op.h"
 #include "wdb_state.h"
-#include <os_net/os_net.h>
-#include "config/config.h"
-#include "config/wazuh_db-config.h"
+#include "os_net.h"
+#include "config.h"
+#include "wazuh_db-config.h"
 
 static void wdb_help() __attribute__ ((noreturn));
 static void handler(int signum);

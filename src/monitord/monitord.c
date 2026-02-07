@@ -14,9 +14,9 @@
 #include "os_err.h"
 #include "shared.h"
 #include "monitord.h"
-#include "config/config.h"
+#include "config.h"
 #include "string_op.h"
-#include "wazuh_db/helpers/wdb_global_helpers.h"
+#include "wazuhdb_queries_op.h"
 #include "time.h"
 
 /* Global variables */

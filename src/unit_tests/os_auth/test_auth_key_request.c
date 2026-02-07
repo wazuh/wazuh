@@ -18,7 +18,7 @@
 #include "../../os_auth/auth.h"
 #include "../../os_auth/key_request.h"
 #include "../../addagent/manage_agents.h"
-#include "../../headers/sec.h"
+#include "sec.h"
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/exec_op_wrappers.h"

@@ -16,7 +16,7 @@
 #define ARGV0 "wazuh-monitord"
 #endif
 
-#include "../config/global-config.h"
+#include "global-config.h"
 
 /* Forward declarations */
 typedef struct _monitor_config monitor_config;

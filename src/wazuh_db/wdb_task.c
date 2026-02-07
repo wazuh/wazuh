@@ -10,7 +10,7 @@
  */
 
 #include "wdb.h"
-#include "wazuh_modules/wm_task_general.h"
+#include "wm_task_general.h"
 
 int wdb_task_insert_task(wdb_t* wdb, int agent_id, const char *node, const char *module, const char *command) {
     sqlite3_stmt *stmt = NULL;

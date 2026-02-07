@@ -36,7 +36,7 @@
 
 #include "syscheck.h"
 #include "file/file.h"
-#include "../../config/syscheck-config.h"
+#include "syscheck-config.h"
 #include "db/include/db.h"
 
 #include "test_fim.h"

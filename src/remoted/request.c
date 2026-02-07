@@ -10,11 +10,11 @@
 
 #include <pthread.h>
 #include <shared.h>
-#include <os_net/os_net.h>
+#include "os_net.h"
 #include <request_op.h>
 #include "remoted.h"
 #include "state.h"
-#include "wazuh_modules/wmodules.h"
+#include "wmodules.h"
 
 #define COUNTER_LENGTH 64
 

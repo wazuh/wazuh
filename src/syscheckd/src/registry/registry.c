@@ -12,11 +12,11 @@
 #include <cJSON.h>
 #include "registry.h"
 #include "shared.h"
-#include "../../include/syscheck.h"
-#include "../../config/syscheck-config.h"
-#include "../db/include/db.h"
-#include "../os_crypto/md5/md5_op.h"
-#include "../os_crypto/sha1/sha1_op.h"
+#include "syscheck.h"
+#include "syscheck-config.h"
+#include "db.h"
+#include "md5_op.h"
+#include "sha1_op.h"
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 #include "agent_sync_protocol_c_interface.h"

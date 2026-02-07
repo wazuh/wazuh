@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include "headers/defs.h"
+#include "defs.h"
 #include "../../common.h"
 
 char * wrap_fgets (char * __s, int __n, FILE * __stream) {

@@ -4,6 +4,8 @@ project(fimdb)
 
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
+include_directories(${SRC_FOLDER}/external/libpcre2/include/)
+include_directories(${SRC_FOLDER}/shared/os_regex/)
 include_directories(${SRC_FOLDER}/syscheckd)
 include_directories(${SRC_FOLDER}/syscheckd/src/db/src)
 

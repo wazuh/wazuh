@@ -18,10 +18,10 @@
 #include "../../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_task_manager_wrappers.h"
 
-#include "../../wazuh_modules/wmodules.h"
-#include "../../wazuh_modules/task_manager/wm_task_manager.h"
-#include "../../wazuh_modules/task_manager/wm_task_manager_tasks.h"
-#include "../../headers/shared.h"
+#include "wmodules.h"
+#include "wm_task_manager.h"
+#include "wm_task_manager_tasks.h"
+#include "shared.h"
 
 cJSON* wm_task_manager_command_upgrade(wm_task_manager_upgrade *task, int command, int *error_code);
 cJSON* wm_task_manager_command_upgrade_get_status(wm_task_manager_upgrade_get_status *task, int *error_code);

@@ -10,7 +10,7 @@ on:
   pull_request:
     paths:
         - ".github/workflows/5_testintegration_syscollector-tier-0-1-win.yml"
-        - "src/config/wmodules-syscollector.c"
+        - "src/config/src/wmodules-syscollector.c"
         - "src/wazuh_modules/syscollector/**"
         - "src/win32/**"
         - "src/Makefile"

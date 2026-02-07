@@ -1,8 +1,7 @@
 # Generate task manager library
-file(GLOB task_files
-    ${SRC_FOLDER}/wazuh_modules/*.o
-    ${SRC_FOLDER}/wazuh_modules/task_manager/*.o)
-list(REMOVE_ITEM task_files ${SRC_FOLDER}/wazuh_modules/main.o)
+file(GLOB_RECURSE task_files
+    ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+list(REMOVE_ITEM task_files ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
 
 add_library(TASK_O STATIC ${task_files})
 
@@ -47,6 +46,13 @@ foreach(counter RANGE ${count})
 
     add_executable(${test_name} ${test_name}.c)
 
+    if(NOT test_flags STREQUAL " ")
+        target_link_libraries(
+            ${test_name}
+            ${test_flags}
+        )
+    endif()
+
     target_link_libraries(
         ${test_name}
         ${WAZUHLIB}
@@ -54,12 +60,5 @@ foreach(counter RANGE ${count})
         TASK_O
         ${TEST_DEPS}
     )
-
-    if(NOT test_flags STREQUAL " ")
-        target_link_libraries(
-            ${test_name}
-            ${test_flags}
-        )
-    endif()
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()

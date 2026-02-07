@@ -10,8 +10,8 @@ on:
   pull_request:
     paths:
         - ".github/workflows/5_testintegration_fim-tier-0-1-lin.yml"
-        - "src/config/syscheck-config.c"
-        - "src/config/syscheck-config.h"
+        - "src/config/src/syscheck-config.c"
+        - "src/config/include/syscheck-config.h"
         - "src/syscheckd/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"

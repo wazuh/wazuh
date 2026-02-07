@@ -10,8 +10,8 @@
 
 #include <shared.h>
 #include "logcollector.h"
-#include "wazuh_modules/wmodules.h"
-#include "os_net/os_net.h"
+#include "wmodules.h"
+#include "os_net.h"
 #include "state.h"
 
 #define LEN_LOCATION        (10)    /*!< length of "location"*/

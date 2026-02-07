@@ -1,10 +1,7 @@
 # Generate agent upgrade library
-file(GLOB upgrade_files
-    ${SRC_FOLDER}/wazuh_modules/*.o
-    ${SRC_FOLDER}/wazuh_modules/agent_upgrade/*.o
-    ${SRC_FOLDER}/wazuh_modules/agent_upgrade/agent/*.o
-    ${SRC_FOLDER}/wazuh_modules/agent_upgrade/manager/*.o)
-list(REMOVE_ITEM upgrade_files ${SRC_FOLDER}/wazuh_modules/main.o)
+file(GLOB_RECURSE upgrade_files
+    ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+list(REMOVE_ITEM upgrade_files ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
 
 add_library(UPGRADE_O STATIC ${upgrade_files})
 
