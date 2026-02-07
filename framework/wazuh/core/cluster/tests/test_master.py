@@ -1782,7 +1782,7 @@ def test_master_get_node(get_running_loop_mock):
 @pytest.mark.asyncio
 @patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
 async def test_disconnected_agent_group_sync_task_initialization(get_ossec_conf_mock):
-    """Test DisconnectedAgentGroupSyncTask initialization."""
+    """Test DisconnectedAgentSyncTasks initialization."""
     
     cluster_items_with_sync = cluster_items.copy()
     cluster_items_with_sync['intervals']['master']['sync_disconnected_agent_groups'] = 300
@@ -1792,7 +1792,7 @@ async def test_disconnected_agent_group_sync_task_initialization(get_ossec_conf_
     server_mock = MagicMock()
     server_mock.setup_task_logger.return_value = MagicMock()
 
-    task = master.DisconnectedAgentGroupSyncTask(
+    task = master.DisconnectedAgentSyncTasks(
         server=server_mock,
         cluster_items=cluster_items_with_sync,
     )
@@ -1805,7 +1805,7 @@ async def test_disconnected_agent_group_sync_task_initialization(get_ossec_conf_
 @pytest.mark.asyncio
 @patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
 async def test_disconnected_agent_group_sync_task_batch_agents(get_ossec_conf_mock):
-    """Test DisconnectedAgentGroupSyncTask batch_agents method."""
+    """Test DisconnectedAgentSyncTasks batch_agents method."""
     
     cluster_items_with_sync = cluster_items.copy()
     cluster_items_with_sync['intervals']['master']['sync_disconnected_agent_groups'] = 300
@@ -1816,7 +1816,7 @@ async def test_disconnected_agent_group_sync_task_batch_agents(get_ossec_conf_mo
     server_mock = MagicMock()
     server_mock.setup_task_logger.return_value = MagicMock()
 
-    task = master.DisconnectedAgentGroupSyncTask(
+    task = master.DisconnectedAgentSyncTasks(
         server=server_mock,
         cluster_items=cluster_items_with_sync,
     )
@@ -1838,14 +1838,17 @@ async def test_disconnected_agent_group_sync_task_batch_agents(get_ossec_conf_mo
 @patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
 @patch('wazuh.core.cluster.master.AsyncWazuhDBConnection')
 @patch('wazuh.core.indexer.disconnected_agents.WazuhDBQueryAgents')
-async def test_disconnected_agent_group_sync_task_get_disconnected_agents(mock_wazuh_db_query, mock_wdb_conn, get_ossec_conf_mock):
-    """Test DisconnectedAgentGroupSyncTask _get_disconnected_agents method."""
+async def test_disconnected_agent_group_sync_task_get_disconnected_agents_filter_by_time(
+    mock_wazuh_db_query, 
+    mock_async_conn,
+    mock_get_ossec_conf
+):
+    """Test DisconnectedAgentSyncTasks _get_disconnected_agents_filter_by_time method."""
 
     cluster_items_with_sync = cluster_items.copy()
     cluster_items_with_sync['intervals']['master']['sync_disconnected_agent_groups'] = 300
     cluster_items_with_sync['sync_disconnected_agent_groups_batch_size'] = 100
     cluster_items_with_sync['sync_disconnected_agent_groups_min_offline'] = 600
-    cluster_items_with_sync['disconnected_agent_sync'] = {'enabled': True}
 
     server_mock = MagicMock()
     server_mock.setup_task_logger.return_value = MagicMock()
@@ -1863,7 +1866,7 @@ async def test_disconnected_agent_group_sync_task_get_disconnected_agents(mock_w
 
     mock_wazuh_db_query.return_value.__enter__.return_value = mock_db_query
 
-    task = master.DisconnectedAgentGroupSyncTask(
+    task = master.DisconnectedAgentSyncTasks(
         server=server_mock,
         cluster_items=cluster_items_with_sync,
     )
@@ -1871,8 +1874,7 @@ async def test_disconnected_agent_group_sync_task_get_disconnected_agents(mock_w
     with patch('wazuh.core.indexer.disconnected_agents.core_utils.get_utc_now') as mock_get_utc_now:
         mock_get_utc_now.return_value = now
 
-        wdb_conn = MagicMock()
-        result = await task._get_disconnected_agents(wdb_conn)
+        result = await task._get_disconnected_agents_filter_by_time()
 
     assert len(result) == 2
     assert result[0]['id'] == '001'
@@ -1881,10 +1883,10 @@ async def test_disconnected_agent_group_sync_task_get_disconnected_agents(mock_w
 
 @pytest.mark.asyncio
 @patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
-@patch('wazuh.core.cluster.master.DisconnectedAgentGroupSyncTask._get_disconnected_agents')
+@patch('wazuh.core.cluster.master.DisconnectedAgentSyncTasks._get_disconnected_agents_filter_by_time')
 @patch('wazuh.core.cluster.master.AsyncWazuhDBConnection')
 async def test_disconnected_agent_group_sync_task_run_with_disabled_task(mock_wdb_conn, mock_get_disconnected, get_ossec_conf_mock):
-    """Test DisconnectedAgentGroupSyncTask run method when disabled."""
+    """Test DisconnectedAgentSyncTasks run method when disabled."""
 
     cluster_items_with_sync = cluster_items.copy()
     cluster_items_with_sync['intervals']['master']['sync_disconnected_agent_groups'] = 300
@@ -1895,12 +1897,12 @@ async def test_disconnected_agent_group_sync_task_run_with_disabled_task(mock_wd
     server_mock = MagicMock()
     server_mock.setup_task_logger.return_value = MagicMock()
 
-    task = master.DisconnectedAgentGroupSyncTask(
+    task = master.DisconnectedAgentSyncTasks(
         server=server_mock,
         cluster_items=cluster_items_with_sync,
     )
 
-    # Make _get_disconnected_agents return empty and make asyncio.sleep raise to break loop
+    # Make _get_disconnected_agents_filter_by_time return empty and make asyncio.sleep raise to break loop
     mock_get_disconnected.return_value = []
 
     import asyncio as _asyncio
