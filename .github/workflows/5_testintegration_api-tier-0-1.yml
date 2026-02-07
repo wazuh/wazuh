@@ -71,11 +71,14 @@ jobs:
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
 
-          sudo mkdir -p $INSTALLATION_DIR/etc/certs
-          sudo touch $INSTALLATION_DIR/etc/certs/root-ca.pem
-          sudo touch $INSTALLATION_DIR/etc/certs/server.pem
-          sudo touch $INSTALLATION_DIR/etc/certs/server-key.pem
-
+          # Generate dummy SSL certificates for indexer module
+          sudo mkdir -p /var/ossec/etc/certs
+          sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
+            -keyout /var/ossec/etc/certs/root-ca.pem -out /var/ossec/etc/certs/root-ca.pem \
+            -days 1 -subj "/CN=test" 2>/dev/null
+          sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
+            -keyout /var/ossec/etc/certs/server-key.pem -out /var/ossec/etc/certs/server.pem \
+            -days 1 -subj "/CN=test" 2>/dev/null
           sudo $INSTALLATION_DIR/bin/wazuh-control restart
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
