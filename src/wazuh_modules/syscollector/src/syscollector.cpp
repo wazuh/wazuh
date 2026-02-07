@@ -109,6 +109,26 @@ void syscollector_init(const unsigned int inverval,
     }
 }
 
+void syscollector_set_agentd_query_func(agentd_query_func_t queryFunc)
+{
+    if (queryFunc)
+    {
+        try
+        {
+            Syscollector::instance().setAgentdQueryFunction(
+                [queryFunc](const char* command, char* output_buffer, size_t buffer_size) -> bool
+            {
+                return queryFunc(command, output_buffer, buffer_size);
+            }
+            );
+        }
+        catch (const std::exception& ex)
+        {
+            fprintf(stderr, "Failed to set agentd query function for syscollector: %s\n", ex.what());
+        }
+    }
+}
+
 void syscollector_start()
 {
     Syscollector::instance().start();
