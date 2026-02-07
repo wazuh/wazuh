@@ -25,7 +25,6 @@ daemons:
     - wazuh-apid
     - wazuh-modulesd
     - wazuh-analysisd
-    - wazuh-execd
     - wazuh-db
     - wazuh-remoted
 

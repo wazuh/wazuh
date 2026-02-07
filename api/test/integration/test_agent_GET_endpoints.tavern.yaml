@@ -1605,23 +1605,6 @@ stages:
           active-response:
             disabled: !anystr
 
-  - name: Get internal configuration from com component (Manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/internal"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          internal:
-            execd:
-              request_timeout: !anyint
-              max_restart_lock: !anyint
-
   - name: Get internal configuration from com component (Agent)
     request:
       verify: False

@@ -27,7 +27,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/bin/wazuh-clusterd,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/bin/wazuh-control,root,root,750,file,-rwxr-x---,,
 /var/ossec/bin/wazuh-db,root,root,750,file,-rwxr-x---,,
-/var/ossec/bin/wazuh-execd,root,root,750,file,-rwxr-x---,,
 /var/ossec/bin/wazuh-keystore,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/bin/wazuh-logcollector,root,root,750,file,-rwxr-x---,,
 /var/ossec/bin/wazuh-modulesd,root,root,750,file,-rwxr-x---,,

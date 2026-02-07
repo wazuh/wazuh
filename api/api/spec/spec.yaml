@@ -2840,8 +2840,6 @@ components:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-authd:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-execd:
-          $ref: '#/components/schemas/DaemonStatus'
         wazuh-logcollector:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-monitord:
@@ -3286,8 +3284,6 @@ components:
             $ref: '#/components/schemas/LogSummary'
           wazuh-authd:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-execd:
-            $ref: '#/components/schemas/LogSummary'
           wazuh-monitord:
             $ref: '#/components/schemas/LogSummary'
           wazuh-logcollector:
@@ -3647,11 +3643,6 @@ components:
         <td>com</td>
         <td>logging</td>
         <td><code>&lt;logging&gt;</code></td>
-        </tr>
-        <tr>
-        <td>com</td>
-        <td>internal</td>
-        <td><code>&lt;execd&gt;</code></td>
         </tr>
         <tr>
         <td>com</td>
@@ -7506,7 +7497,6 @@ paths:
                     - wazuh-analysisd: running
                       wazuh-authd: stopped
                       wazuh-monitord: running
-                      wazuh-execd: running
                       wazuh-logcollector: running
                       wazuh-remoted: running
                       wazuh-syscheckd: running

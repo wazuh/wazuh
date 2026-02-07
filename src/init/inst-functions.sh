@@ -925,7 +925,10 @@ InstallCommon()
 
   ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 wazuh-syscheckd ${INSTALLDIR}/bin
-  ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${INSTALLDIR}/bin
+  # Install execd only for agent and local installations (not server)
+  if [ "X${INSTYPE}" != "Xserver" ]; then
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${INSTALLDIR}/bin
+  fi
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
   ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${INSTALLDIR}/bin/
 

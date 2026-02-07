@@ -27,7 +27,7 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-analysisd wazuh-execd wazuh-db wazuh-authd wazuh-apid"
+DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-analysisd wazuh-db wazuh-authd wazuh-apid"
 DEPRECATED_DAEMONS="ossec-authd"
 
 # Reverse order of daemons
@@ -639,7 +639,6 @@ restart)
     restart_service
     ;;
 reload)
-    DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
     if is_systemd; then
         SYSTEMD_VERSION=$(systemctl --version | awk 'NR==1 {print $2}')
         if [ "$SYSTEMD_VERSION" -le 237 ]; then
