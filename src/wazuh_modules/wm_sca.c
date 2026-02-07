@@ -211,7 +211,7 @@ static bool wm_sca_query_agentd(const char* command, char* output_buffer, size_t
     }
     else if (response_length >= 4 && strncmp(response_buffer, "err ", 4) == 0)
     {
-        mdebug1("Agentd returned error: %s", response_buffer + 4);
+        mdebug2("Agentd returned error: %s", response_buffer + 4);
         return false;
     }
     else
@@ -239,7 +239,7 @@ static bool wm_sca_query_agentd_doclimits(uint64_t *sync_limit)
     cJSON* root = cJSON_Parse(json_buffer);
     if (!root)
     {
-        mdebug1("Failed to parse getdoclimits sca response");
+        mdebug2("Failed to parse getdoclimits sca response");
         return false;
     }
 
