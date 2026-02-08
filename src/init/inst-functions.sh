@@ -869,8 +869,8 @@ InstallCommon()
     ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${INSTALLDIR}/bin/
   else
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-execd ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-modulesd ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-manager-execd ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-manager-modulesd ${INSTALLDIR}/bin/
   fi
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
 
@@ -1111,10 +1111,10 @@ InstallLocal()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/firewall
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/api
 
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-monitord ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-manager-monitord ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} verify-agent-conf ${INSTALLDIR}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-db ${INSTALLDIR}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin/wazuh-manager-analysisd
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-manager-db ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/engine/wazuh-engine ${INSTALLDIR}/bin/wazuh-manager-analysisd
 
     ### Install Python
     ${MAKEBIN} wpython INSTALLDIR=${INSTALLDIR} TARGET=${INSTYPE}
@@ -1248,8 +1248,8 @@ InstallServer()
 
     TransferShared
 
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-remoted ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-authd ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-manager-remoted ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-manager-authd ${INSTALLDIR}/bin
 
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/router
