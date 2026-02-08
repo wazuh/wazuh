@@ -805,6 +805,15 @@ main()
         fi
 
         if getPreinstalledDirByType && isWazuhInstalled "$PREINSTALLEDDIR"; then
+            PRE_TYPE=$(getPreinstalledType)
+            if [ "X$INSTYPE" = "Xagent" ] && [ "X$PRE_TYPE" != "Xagent" ]; then
+                PREINSTALLEDDIR=""
+            elif [ "X$INSTYPE" != "Xagent" ] && [ "X$PRE_TYPE" = "Xagent" ]; then
+                PREINSTALLEDDIR=""
+            fi
+        fi
+
+        if [ "X$PREINSTALLEDDIR" != "X" ]; then
             echo ""
             ct="1"
             while [ $ct = "1" ]; do

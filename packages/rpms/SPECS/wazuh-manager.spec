@@ -17,7 +17,7 @@ Vendor:      Wazuh <info@wazuh.com>
 Packager:    Wazuh <info@wazuh.com>
 Requires(pre):    /usr/sbin/groupadd /usr/sbin/useradd
 Requires(postun): /usr/sbin/groupdel /usr/sbin/userdel
-Conflicts:   ossec-hids ossec-hids-agent wazuh-agent wazuh-local
+Conflicts:   ossec-hids ossec-hids-agent wazuh-local
 Obsoletes: wazuh-api < 4.0.0
 AutoReqProv: no
 
@@ -691,17 +691,17 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/agent_groups
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/agent_upgrade
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/cluster_control
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-analysisd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-authd
+%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-analysisd
+%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-authd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-control
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-execd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-monitord
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-remoted
+%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-execd
+%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-monitord
+%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-remoted
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/verify-agent-conf
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-apid
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-clusterd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-db
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-modulesd
+%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-db
+%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-modulesd
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/rbac_control
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-keystore
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc

@@ -135,6 +135,14 @@ case "$1" in
         mv ${WAZUH_TMP_DIR}/wazuh-manager.conf ${DIR}/etc/wazuh-manager.conf
     fi
 
+    for BIN in wazuh-manager-analysisd wazuh-manager-authd wazuh-manager-db \
+        wazuh-manager-execd wazuh-manager-modulesd wazuh-manager-monitord \
+        wazuh-manager-remoted; do
+        if [ -f "${DIR}/bin/${BIN}" ]; then
+            chown root:${GROUP} "${DIR}/bin/${BIN}"
+        fi
+    done
+
     # Restore group files
     if [ -d ${WAZUH_TMP_DIR}/group ]; then
         cp -rfp ${WAZUH_TMP_DIR}/group/* ${DIR}/etc/shared

@@ -10,7 +10,7 @@ Package: wazuh-manager
 Architecture: any
 Depends: ${shlibs:Depends}, libc6 (>= 2.7), lsb-release, debconf, adduser, curl
 Suggests: expect
-Conflicts: ossec-hids-agent, wazuh-agent, ossec-hids, wazuh-api
+Conflicts: ossec-hids-agent, ossec-hids, wazuh-api
 Replaces: wazuh-api
 Description: Wazuh manager
  Wazuh helps you to gain security visibility into your infrastructure by monitoring
