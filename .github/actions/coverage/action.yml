@@ -77,6 +77,8 @@ runs:
           # Exclude scanContext.hpp
           arguments+="--exclude=*/scanContext.hpp "
 
+          arguments+="--ignore-errors mismatch "
+
           echo "Executing: lcov $arguments"
           lcov $arguments
 
@@ -88,7 +90,7 @@ runs:
           cd ${{ inputs.path }}/build
 
           # Generate HTML report
-          genhtml coverage.info --output-directory coverage_report
+          genhtml coverage.info --output-directory coverage_report --ignore-errors mismatch
 
       # Upload the coverage report as an artifact
       - name: Uploading coverage report

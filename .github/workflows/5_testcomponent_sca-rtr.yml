@@ -19,7 +19,7 @@ jobs:
       matrix:
         module: [wazuh_modules/sca]
         target: [agent, winagent]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3

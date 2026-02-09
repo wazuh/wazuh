@@ -28,9 +28,9 @@ runs:
           sudo dpkg --add-architecture i386
           sudo mkdir -pm755 /etc/apt/keyrings
           sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
-          sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/jammy/winehq-jammy.sources
+          sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources
           sudo apt-get update
-          sudo apt-get install -y --allow-downgrades libc6:i386 libgcc-s1:i386 libstdc++6:i386 wine-stable=10.0.0.0~jammy-1 wine-stable-i386=10.0.0.0~jammy-1 wine-stable-amd64=10.0.0.0~jammy-1 winehq-stable=10.0.0.0~jammy-1
+          sudo apt-get install -y --allow-downgrades libc6:i386 libgcc-s1:i386 libstdc++6:i386 wine-stable=10.0.0.0~noble-1 wine-stable-i386=10.0.0.0~noble-1 wine-stable-amd64=10.0.0.0~noble-1 winehq-stable=10.0.0.0~noble-1
         else
           echo "Skipping wine installation for this target"
         fi

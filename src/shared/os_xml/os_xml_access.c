@@ -58,6 +58,9 @@ unsigned int OS_ElementExist(const OS_XML *_lxml, const char **element_name)
 /* Check if a root element exists */
 unsigned int OS_RootElementExist(const OS_XML *_lxml, const char *element_name)
 {
+    if (element_name == NULL) {
+        return (0);
+    }
     const char *(elements[]) = {element_name, NULL};
     return (OS_ElementExist(_lxml, elements));
 }

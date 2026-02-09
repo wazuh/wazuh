@@ -113,7 +113,7 @@ void OS_ClearNode(xml_node **node);
 /* Functions to read the XML */
 
 /* Return 1 if element_name is a root element */
-unsigned int OS_RootElementExist(const OS_XML *_lxml, const char *element_name) __attribute__((nonnull));
+unsigned int OS_RootElementExist(const OS_XML *_lxml, const char *element_name) __attribute__((nonnull(1)));
 
 /* Return 1 if the element_name exists */
 unsigned int OS_ElementExist(const OS_XML *_lxml, const char **element_name) __attribute__((nonnull));

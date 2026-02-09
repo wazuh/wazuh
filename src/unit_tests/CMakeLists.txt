@@ -211,29 +211,29 @@ add_custom_target(
   coverage
   # Cleanup lcov
   COMMAND ${LCOV_PATH} --gcov-tool ${GCOV_PATH} -directory ${SRC_FOLDER} --rc
-          lcov_branch_coverage=1 --zerocounters
+          lcov_branch_coverage=1 --ignore-errors mismatch --zerocounters
   # Create baseline to make sure untouched files show up in the report
   COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -c -i -d ${SRC_FOLDER} --rc
-          lcov_branch_coverage=1 -o coverage.base
+          lcov_branch_coverage=1 --ignore-errors mismatch -o coverage.base
   # Run tests
   COMMAND ctest
   # Capturing lcov counters and generating report
   COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} --directory ${SRC_FOLDER}
-          --capture --rc lcov_branch_coverage=1 --output-file coverage.info
+          --capture --rc lcov_branch_coverage=1 --ignore-errors mismatch --output-file coverage.info
   # Add baseline counters
   COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -a coverage.base -a
-          coverage.info --rc lcov_branch_coverage=1 --output-file coverage.total
+          coverage.info --rc lcov_branch_coverage=1 --ignore-errors mismatch --output-file coverage.total
   COMMAND
     ${LCOV_PATH} --gcov-tool ${GCOV_PATH} --remove coverage.total "*external/*"
     --remove coverage.total "*unit_tests/*" --remove coverage.total
     "*data_provider/*" --remove coverage.total "*shared_modules/*" --remove
     coverage.total "*syscollector/*" --remove coverage.total
-    "*syscheckd/src/db/*" --rc lcov_branch_coverage=1 --output-file
+    "*syscheckd/src/db/*" --rc lcov_branch_coverage=1 --ignore-errors mismatch --output-file
     coverage.info.cleaned
   # Generate HTML report
   COMMAND
     ${GENHTML_PATH} -q --output-directory coverage-report --title
-    "WAZUH unit-tests coverage" --rc lcov_branch_coverage=1 --legend
+    "WAZUH unit-tests coverage" --rc lcov_branch_coverage=1 --ignore-errors mismatch --legend
     coverage.info.cleaned
   # Clean counters
   COMMAND ${CMAKE_COMMAND} -E remove coverage.base coverage.total
