@@ -475,37 +475,53 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
 
                 if (fs.is_directory(pidFilePath))
                 {
-                    auto fdFiles = fs.list_directory(pidFilePath);
+                    std::vector<std::filesystem::path> fdFiles;
+
+                    try
+                    {
+                        fdFiles = fs.list_directory(pidFilePath);
+                    }
+                    catch (const std::filesystem::filesystem_error&)
+                    {
+                        continue;
+                    }
 
                     // Iterate fd directory.
                     for (const auto& fdFile : fdFiles)
                     {
-                        // Only sysmlinks that represent a socket are read.
+                        // Only symlinks that represent a socket are read.
                         const std::string fdFilePath = fdFile.string();
                         const std::string fdFileName = fdFile.filename().string();
 
-                        if (!Utils::startsWith(fdFileName, ".") && fs.is_socket(fdFilePath))
+                        try
                         {
-                            try
+                            if (!Utils::startsWith(fdFileName, ".") && fs.is_socket(fdFilePath))
                             {
-                                int64_t inode {findInode(fdFilePath)};
-
-                                if (std::any_of(inodes.cbegin(), inodes.cend(), [&](const auto it)
-                            {
-                                return it == inode;
-                            }))
+                                try
                                 {
-                                    std::string statPath = (procFile / "stat").string();
-                                    std::string processName = getProcessName(statPath);
-                                    int32_t pid { std::stoi(procFileName) };
+                                    int64_t inode {findInode(fdFilePath)};
 
-                                    ret.emplace(std::make_pair(inode, std::make_pair(pid, processName)));
+                                    if (std::any_of(inodes.cbegin(), inodes.cend(), [&](const auto it)
+                                {
+                                    return it == inode;
+                                }))
+                                    {
+                                        std::string statPath = (procFile / "stat").string();
+                                        std::string processName = getProcessName(statPath);
+                                        int32_t pid { std::stoi(procFileName) };
+
+                                        ret.emplace(std::make_pair(inode, std::make_pair(pid, processName)));
+                                    }
+                                }
+                                catch (const std::exception& e)
+                                {
+                                    std::cerr << "Error: " << e.what() << std::endl;
                                 }
                             }
-                            catch (const std::exception& e)
-                            {
-                                std::cerr << "Error: " << e.what() << std::endl;
-                            }
+                        }
+                        catch (const std::filesystem::filesystem_error&)
+                        {
+                            continue;
                         }
                     }
                 }
