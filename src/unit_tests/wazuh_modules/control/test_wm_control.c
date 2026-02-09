@@ -44,7 +44,7 @@ static void test_wm_control_getPrimaryIP_sysinfo_network_return_error(void ** st
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 1234);
-    expect_string(__wrap__mterror, tag, ARGV0 ":control");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:control");
     expect_string(__wrap__mterror, formatted_msg, "Unable to get system network information. Error code: 1234.");
 
     char * ip = getPrimaryIP();

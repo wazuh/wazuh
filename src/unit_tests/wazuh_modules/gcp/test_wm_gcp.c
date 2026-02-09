@@ -23,6 +23,13 @@
 #include "../../wrappers/wazuh/shared/time_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 
+#ifdef TEST_SERVER
+#undef WM_GCP_PUBSUB_LOGTAG
+#undef WM_GCP_BUCKET_LOGTAG
+#define WM_GCP_PUBSUB_LOGTAG "wazuh-manager-modulesd:gcp-pubsub"
+#define WM_GCP_BUCKET_LOGTAG "wazuh-manager-modulesd:gcp-bucket"
+#endif
+
 void wm_gcp_pubsub_run(const wm_gcp_pubsub *data);
 cJSON *wm_gcp_pubsub_dump(const wm_gcp_pubsub *data);
 void wm_gcp_pubsub_destroy(wm_gcp_pubsub * data);
