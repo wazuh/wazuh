@@ -356,13 +356,13 @@ int ebpf_whodata_healthcheck() {
         bpf_helpers->init_libbpf = (init_libbpf_t)init_libbpf;
     }
 
-    if (!bpf_helpers->check_invalid_kernel_version) {
-        bpf_helpers->check_invalid_kernel_version  = (check_invalid_kernel_version_t)check_invalid_kernel_version;
-    }
+    // if (!bpf_helpers->check_invalid_kernel_version) {
+    //     bpf_helpers->check_invalid_kernel_version  = (check_invalid_kernel_version_t)check_invalid_kernel_version;
+    // }
 
     kernelEventQueue.setMaxSize(fimebpf::instance().m_queue_size);
 
-    if (!logFn || bpf_helpers->check_invalid_kernel_version() || bpf_helpers->init_libbpf(std::move(sym_load)) || bpf_helpers->init_bpfobj() || bpf_helpers->init_ring_buffer(&rb, healthcheck_event)) {
+    if (!logFn || bpf_helpers->init_libbpf(std::move(sym_load)) || bpf_helpers->init_bpfobj() || bpf_helpers->init_ring_buffer(&rb, healthcheck_event)) {
         return 1;
     }
 
