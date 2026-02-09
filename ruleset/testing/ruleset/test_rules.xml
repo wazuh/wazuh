@@ -520,7 +520,7 @@
 </rule>
 
 <!-- user is considered an alias for the static user field (dstuser). -->
-<rule id="999286" level="10">
+<rule id="999286" level="3">
   <user>root</user>
   <description>Root user detected (static user field: dstuser)</description>
 </rule>

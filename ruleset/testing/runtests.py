@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (C) 2015, Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
@@ -9,7 +9,7 @@
 from __future__ import division
 from collections import OrderedDict
 import xml.etree.ElementTree as ET
-import ConfigParser
+import configparser
 import subprocess
 import os
 import sys
@@ -37,11 +37,11 @@ def getWazuhInfo(wazuh_home):
     try:
         proc = subprocess.Popen([wazuh_control, "info"], stdout=subprocess.PIPE)
         (stdout, stderr) = proc.communicate()
-    except Exception as e:
+    except Exception:
         print("Seems like there is no Wazuh installation.")
         return None
 
-    env_variables = stdout.rsplit("\n")
+    env_variables = stdout.decode('utf-8').rsplit("\n")
     env_variables.remove("")
     for env_variable in env_variables:
         key, value = env_variable.split("=")
@@ -85,15 +85,21 @@ def cleanDR():
 
 def enable_win_eventlog_test_actions(tree):
     base_rule = tree.find('.//rule[@id="60000"]')
-    base_rule.remove(base_rule.find(".//decoded_as"))
-    base_rule.remove(base_rule.find(".//category"))
+    decoded_as_elem = base_rule.find(".//decoded_as")
+    if decoded_as_elem is not None:
+        base_rule.remove(decoded_as_elem)
+    category_elem = base_rule.find(".//category")
+    if category_elem is not None:
+        base_rule.remove(category_elem)
     decoded_as = ET.SubElement(base_rule, "decoded_as")
     decoded_as.text = "json"
 
 
 def disable_win_eventlog_test_actions(tree):
     base_rule = tree.find('.//rule[@id="60000"]')
-    base_rule.remove(base_rule.find(".//decoded_as"))
+    decoded_as_elem = base_rule.find(".//decoded_as")
+    if decoded_as_elem is not None:
+        base_rule.remove(decoded_as_elem)
     decoded_as = ET.SubElement(base_rule, "decoded_as")
     decoded_as.text = "windows_eventchannel"
     category = ET.SubElement(base_rule, "category")
@@ -202,7 +208,7 @@ class OssecTester(object):
                     continue
                 self._execution_data[a_ini_file] = {"passed": 0, "failed": 0}
                 print("- [ File = %s ] ---------" % (a_ini_file))
-                tGroup = ConfigParser.RawConfigParser(dict_type=MultiOrderedDict)
+                tGroup = configparser.RawConfigParser(dict_type=MultiOrderedDict, strict=False)
                 tGroup.read([a_ini_file])
                 tSections = tGroup.sections()
                 for t in tSections:
@@ -231,7 +237,7 @@ class OssecTester(object):
         for test_name in self._execution_data:
             passed_count = self._execution_data[test_name]["passed"]
             failed_count = self._execution_data[test_name]["failed"]
-            status = u'\u274c'.encode('utf-8') if (failed_count > 0) else u'\u2705'.encode('utf-8')
+            status = '\u274c' if (failed_count > 0) else '\u2705'
             print(template.format(test_name, passed_count, failed_count, status))
 
         if len(self._failed_tests):
