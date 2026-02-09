@@ -635,7 +635,7 @@ int main(int argc, char* argv[])
             g_engineLocalServer = std::make_shared<udsrv::Server>(
                 [orchestrator, archiver, hostInfo](std::string_view msg)
                 {
-                    archiver->archive(msg.data());
+                    archiver->archive(std::string(msg));
                     auto event = base::eventParsers::parseLegacyEvent(msg, hostInfo);
                     // TODO: momentary change
                     event->setString("wazuh", "/wazuh/cluster/name");
