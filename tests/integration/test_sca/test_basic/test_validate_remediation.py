@@ -55,7 +55,10 @@ from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
-local_internal_options = {AGENTD_WINDOWS_DEBUG if sys.platform == WINDOWS else MODULESD_DEBUG: '2'}
+local_internal_options = {
+    AGENTD_WINDOWS_DEBUG if sys.platform == WINDOWS else MODULESD_DEBUG: '2',
+    'agent.remote_conf': '0'
+}
 
 # Configuration and cases data
 configurations_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_sca.yaml')
@@ -169,4 +172,3 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
     log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=30, only_new_events=True, accumulations=4)
     assert log_monitor.callback_result is not None and find_result_for_a_given_id(test_metadata['check_id'], log_monitor.callback_result)[2] == test_metadata['final_result'], \
         f"Got unexpected SCA result: expected {test_metadata['final_result']}, got {find_result_for_a_given_id(test_metadata['check_id'], log_monitor.callback_result)}"
-

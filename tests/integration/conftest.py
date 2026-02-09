@@ -7,7 +7,7 @@ import os
 import subprocess
 import pytest
 import sys
-from typing import List
+from typing import Any, Dict, List, Optional
 
 from py.xml import html
 from wazuh_testing import session_parameters
@@ -643,7 +643,7 @@ def mock_agent_packages(mock_agent_with_custom_system) -> list:
 
 
 @pytest.fixture()
-def remoted_simulator() -> RemotedSimulator:
+def remoted_simulator(request: pytest.FixtureRequest) -> RemotedSimulator:
     """
     Fixture for an RemotedSimulator instance.
 
@@ -655,7 +655,7 @@ def remoted_simulator() -> RemotedSimulator:
         RemotedSimulator: An instance of the RemotedSimulator.
 
     """
-    remoted = RemotedSimulator()
+    remoted = RemotedSimulator(limits_config=get_remoted_limits_config(request))
     remoted.start()
 
     yield remoted
@@ -753,8 +753,9 @@ def autostart_simulators(request: pytest.FixtureRequest) -> None:
     create_remoted = 'remoted_simulator' not in request.fixturenames
 
     if services.get_service() is not WAZUH_MANAGER:
+        limits_config = get_remoted_limits_config(request)
         authd = AuthdSimulator() if create_authd else None
-        remoted = RemotedSimulator() if create_remoted else None
+        remoted = RemotedSimulator(limits_config=limits_config) if create_remoted else None
 
         authd.start() if create_authd else None
         remoted.start() if create_remoted else None
@@ -764,6 +765,57 @@ def autostart_simulators(request: pytest.FixtureRequest) -> None:
     if services.get_service() is not WAZUH_MANAGER:
         authd.shutdown() if create_authd else None
         remoted.shutdown() if create_remoted else None
+
+
+def get_remoted_limits_config(request: pytest.FixtureRequest) -> Optional[Dict[str, Any]]:
+    """
+    Return an optional startup limits payload for the remoted simulator.
+
+    The payload can be defined per case inside `test_metadata.limits_config`
+    or as a module-level `remoted_limits_config` fallback.
+    """
+    # Prefer resolved fixture values when available.
+    if 'test_metadata' in request.fixturenames:
+        try:
+            test_metadata = request.getfixturevalue('test_metadata')
+            if isinstance(test_metadata, dict):
+                limits_config = test_metadata.get('limits_config')
+                if isinstance(limits_config, dict):
+                    return limits_config
+        except Exception:
+            pass
+
+    if 'test_configuration' in request.fixturenames:
+        try:
+            test_configuration = request.getfixturevalue('test_configuration')
+            if isinstance(test_configuration, dict):
+                metadata = test_configuration.get('metadata')
+                if isinstance(metadata, dict):
+                    limits_config = metadata.get('limits_config')
+                    if isinstance(limits_config, dict):
+                        return limits_config
+        except Exception:
+            pass
+
+    # Fallback for parametrized tests where fixture values are not yet resolved.
+    callspec = getattr(request.node, 'callspec', None)
+    if callspec is not None:
+        test_metadata = callspec.params.get('test_metadata')
+        if isinstance(test_metadata, dict):
+            limits_config = test_metadata.get('limits_config')
+            if isinstance(limits_config, dict):
+                return limits_config
+
+        test_configuration = callspec.params.get('test_configuration')
+        if isinstance(test_configuration, dict):
+            metadata = test_configuration.get('metadata')
+            if isinstance(metadata, dict):
+                limits_config = metadata.get('limits_config')
+                if isinstance(limits_config, dict):
+                    return limits_config
+
+    module_limits_config = getattr(request.module, 'remoted_limits_config', None)
+    return module_limits_config if isinstance(module_limits_config, dict) else None
 
 
 @pytest.fixture()

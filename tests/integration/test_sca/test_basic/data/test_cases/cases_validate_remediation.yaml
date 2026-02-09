@@ -10,6 +10,31 @@
     perms: 0222
     initial_result: Failed
     final_result: Passed
+    limits_config: &limits_config
+      limits:
+        fim:
+          file: 0
+          registry_key: 0
+          registry_value: 0
+        syscollector:
+          hotfixes: 0
+          packages: 0
+          processes: 0
+          ports: 0
+          network_iface: 0
+          network_protocol: 0
+          network_address: 0
+          hardware: 0
+          os_info: 0
+          users: 0
+          groups: 0
+          services: 0
+          browser_extensions: 0
+        sca:
+          checks: 0
+      cluster_name: wazuh-cluster
+      cluster_node: wazuh-node-01
+      agent_groups: []
 
 - name: SCA Rule Check Passes - Change system cause Fail
   description: A given rule check passes in SCA scan. After changing system, it fails in next scan.
@@ -23,3 +48,4 @@
     perms: 0222
     initial_result: Passed
     final_result: Failed
+    limits_config: *limits_config
