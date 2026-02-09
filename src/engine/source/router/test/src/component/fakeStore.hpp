@@ -9,7 +9,10 @@ constexpr auto POLICY_JSON {
     R"({"name":"policy/wazuh/0","hash":"12403460954181119054","assets":["integration/wazuh-core-fake/0"]})"};
 
 constexpr auto FILTER_JSON {R"({
-    "name": "filter/allow-all/0"
+    "name": "filter/allow-all/0",
+    "id": "b540db06-a761-4c02-8880-1d3e3b964063",
+    "enabled": true,
+    "type": "pre-filter"
 })"};
 
 constexpr auto EPS_JSON {
