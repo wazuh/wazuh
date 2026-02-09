@@ -62,7 +62,7 @@ Mounts the `/proc` filesystem inside the Wazuh installation directory for develo
 Enables or disables the archiving functionality in the Wazuh engine.
 
 ### Other utilities
-- `event_sock.py`, `event_sock_v2.go`: Tools for testing event socket communication
+- `event_sock_v2.go`: Tools for testing event socket communication
 - `wazuh_stream_socket.go`: WebSocket streaming utility for engine events
 - `fix_wazuh_dash.sh`, `fix_wazuh_indexer.sh`: Helper scripts to fix common issues with dashboard and indexer
 
