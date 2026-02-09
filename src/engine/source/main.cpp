@@ -667,6 +667,7 @@ int main(int argc, char* argv[])
         if (base::process::isStandaloneModeEnable())
         {
             LOG_INFO("Engine started in standalone mode.");
+            return EXIT_SUCCESS;
         }
         else
         {
