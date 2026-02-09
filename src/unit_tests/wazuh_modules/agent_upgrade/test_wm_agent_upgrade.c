@@ -147,7 +147,11 @@ void test_wm_agent_upgrade_destroy(void **state)
     os_strdup("wazuh.com/packages", config->manager_config.wpk_repository);
     #endif
 
-    expect_string(__wrap__mtinfo, tag, ARGV0 ":agent-upgrade");
+    #ifdef TEST_SERVER
+    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
+    #else
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    #endif
     expect_string(__wrap__mtinfo, formatted_msg, "(8154): Module Agent Upgrade finished.");
 
     wm_agent_upgrade_destroy(config);

@@ -198,7 +198,7 @@ void test_wm_agent_upgrade_send_command_to_agent_ok(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: 'Command to agent: restart agent now.'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -211,7 +211,7 @@ void test_wm_agent_upgrade_send_command_to_agent_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, response_size);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'Command received OK.'");
 
     char *res = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
@@ -233,7 +233,7 @@ void test_wm_agent_upgrade_send_command_to_agent_recv_error(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: 'Command to agent: restart agent now.'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -246,7 +246,7 @@ void test_wm_agent_upgrade_send_command_to_agent_recv_error(void **state)
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, -1);
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8111): Error in recv(): 'Success'");
 
     char *res = wm_agent_upgrade_send_command_to_agent(command, 0);
@@ -267,7 +267,7 @@ void test_wm_agent_upgrade_send_command_to_agent_sockterr_error(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: 'Command to agent: restart agent now.'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -280,7 +280,7 @@ void test_wm_agent_upgrade_send_command_to_agent_sockterr_error(void **state)
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8112): Response size is bigger than expected.");
 
     char *res = wm_agent_upgrade_send_command_to_agent(command, 0);
@@ -300,7 +300,7 @@ void test_wm_agent_upgrade_send_command_to_agent_connect_error(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, OS_SOCKTERR);
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8114): Cannot connect to 'queue/sockets/remote'. Could not reach agent.");
 
     char *res = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
@@ -324,7 +324,7 @@ void test_wm_agent_upgrade_send_lock_restart_ok(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '028 com lock_restart -1'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -337,7 +337,7 @@ void test_wm_agent_upgrade_send_lock_restart_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
@@ -362,7 +362,7 @@ void test_wm_agent_upgrade_send_lock_restart_err(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '028 com lock_restart -1'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -375,7 +375,7 @@ void test_wm_agent_upgrade_send_lock_restart_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not restart agent'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
@@ -402,7 +402,7 @@ void test_wm_agent_upgrade_send_open_ok(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -415,7 +415,7 @@ void test_wm_agent_upgrade_send_open_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
@@ -442,7 +442,7 @@ void test_wm_agent_upgrade_send_open_ok_new(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 upgrade {\"command\":\"open\",\"parameters\":{\"mode\":\"wb\",\"file\":\"test.wpk\"}}'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -455,7 +455,7 @@ void test_wm_agent_upgrade_send_open_ok_new(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: '{\"error\":0,\"message\":\"ok\",\"data\": []}'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, agent_response, agent_res);
@@ -483,7 +483,7 @@ void test_wm_agent_upgrade_send_open_retry_ok(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -496,7 +496,7 @@ void test_wm_agent_upgrade_send_open_retry_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res1) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not open file in agent'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res1);
@@ -507,7 +507,7 @@ void test_wm_agent_upgrade_send_open_retry_ok(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -520,7 +520,7 @@ void test_wm_agent_upgrade_send_open_retry_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res2);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res2) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res2);
@@ -575,7 +575,7 @@ void test_wm_agent_upgrade_send_open_retry_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string_count(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade", 20);
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade", 20);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not open file in agent'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com open wb test.wpk'");
@@ -631,7 +631,7 @@ void test_wm_agent_upgrade_send_write_ok(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com write 5 test.wpk test\n'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -644,7 +644,7 @@ void test_wm_agent_upgrade_send_write_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
@@ -658,7 +658,7 @@ void test_wm_agent_upgrade_send_write_ok(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com write 5 test.wpk test\n'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -671,7 +671,7 @@ void test_wm_agent_upgrade_send_write_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
@@ -714,7 +714,7 @@ void test_wm_agent_upgrade_send_write_ok_new(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 upgrade {\"command\":\"write\",\"parameters\":{\"buffer\":\"dGVzdAo=\",\"length\":5,\"file\":\"test.wpk\"}}'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -727,7 +727,7 @@ void test_wm_agent_upgrade_send_write_ok_new(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: '{\"error\":0,\"message\":\"ok\",\"data\": []}'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, agent_response, agent_res);
@@ -741,7 +741,7 @@ void test_wm_agent_upgrade_send_write_ok_new(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 upgrade {\"command\":\"write\",\"parameters\":{\"buffer\":\"dGVzdAo=\",\"length\":5,\"file\":\"test.wpk\"}}'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -754,7 +754,7 @@ void test_wm_agent_upgrade_send_write_ok_new(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: '{\"error\":0,\"message\":\"ok\",\"data\": []}'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, agent_response, agent_res);
@@ -798,7 +798,7 @@ void test_wm_agent_upgrade_send_write_err(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com write 5 test.wpk test\n'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -811,7 +811,7 @@ void test_wm_agent_upgrade_send_write_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res1) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res1);
@@ -825,7 +825,7 @@ void test_wm_agent_upgrade_send_write_err(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '039 com write 5 test.wpk test\n'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -838,7 +838,7 @@ void test_wm_agent_upgrade_send_write_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res2);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res2) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not write file in agent'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res2);
@@ -887,7 +887,7 @@ void test_wm_agent_upgrade_send_close_ok(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '033 com close test.wpk'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -900,7 +900,7 @@ void test_wm_agent_upgrade_send_close_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
@@ -927,7 +927,7 @@ void test_wm_agent_upgrade_send_close_ok_new(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '033 upgrade {\"command\":\"close\",\"parameters\":{\"file\":\"test.wpk\"}}'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -940,7 +940,7 @@ void test_wm_agent_upgrade_send_close_ok_new(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: '{\"error\":0,\"message\":\"ok\",\"data\": []}'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, agent_response, agent_res);
@@ -967,7 +967,7 @@ void test_wm_agent_upgrade_send_close_err(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '033 com close test.wpk'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -980,7 +980,7 @@ void test_wm_agent_upgrade_send_close_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not close file in agent'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
@@ -1008,7 +1008,7 @@ void test_wm_agent_upgrade_send_sha1_ok(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '033 com sha1 test.wpk'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -1021,7 +1021,7 @@ void test_wm_agent_upgrade_send_sha1_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok d321af65983fa412e3a12c312ada12ab321a253a'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
@@ -1049,7 +1049,7 @@ void test_wm_agent_upgrade_send_sha1_ok_new(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '033 upgrade {\"command\":\"sha1\",\"parameters\":{\"file\":\"test.wpk\"}}'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -1062,7 +1062,7 @@ void test_wm_agent_upgrade_send_sha1_ok_new(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: '{\"error\":0,\"message\":\"d321af65983fa412e3a12c312ada12ab321a253a\",\"data\": []}'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, agent_response, agent_res);
@@ -1091,7 +1091,7 @@ void test_wm_agent_upgrade_send_sha1_err(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '033 com sha1 test.wpk'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -1104,7 +1104,7 @@ void test_wm_agent_upgrade_send_sha1_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not calculate sha1 in agent'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
@@ -1132,7 +1132,7 @@ void test_wm_agent_upgrade_send_sha1_invalid_sha1(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '033 com sha1 test.wpk'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -1145,13 +1145,13 @@ void test_wm_agent_upgrade_send_sha1_invalid_sha1(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok d321af65983fa412e3a21c312ada12ab321a253a'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8118): The SHA1 of the file doesn't match in the agent.");
 
     int res = wm_agent_upgrade_send_sha1(agent, format, wpk_file, file_sha1);
@@ -1176,7 +1176,7 @@ void test_wm_agent_upgrade_send_upgrade_ok(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '055 com upgrade test.wpk install.sh'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -1189,7 +1189,7 @@ void test_wm_agent_upgrade_send_upgrade_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 0'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
@@ -1217,7 +1217,7 @@ void test_wm_agent_upgrade_send_upgrade_ok_new(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '055 upgrade {\"command\":\"upgrade\",\"parameters\":{\"file\":\"test.wpk\",\"installer\":\"install.sh\"}}'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -1230,7 +1230,7 @@ void test_wm_agent_upgrade_send_upgrade_ok_new(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: '{\"error\":0,\"message\":\"0\",\"data\": []}'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_upgrade_command_response, agent_response, agent_res);
@@ -1259,7 +1259,7 @@ void test_wm_agent_upgrade_send_upgrade_err(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '055 com upgrade test.wpk install.sh'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -1272,7 +1272,7 @@ void test_wm_agent_upgrade_send_upgrade_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err Could not run script in agent'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
@@ -1300,7 +1300,7 @@ void test_wm_agent_upgrade_send_upgrade_script_err(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '055 com upgrade test.wpk install.sh'");
 
     expect_value(__wrap_OS_SendSecureTCP, sock, socket);
@@ -1313,13 +1313,13 @@ void test_wm_agent_upgrade_send_upgrade_script_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res) + 1);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok 2'");
 
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, 0);
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8121): Script execution failed in the agent.");
 
     int res = wm_agent_upgrade_send_upgrade(agent, format, wpk_file, installer);
@@ -1367,7 +1367,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
 
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
     expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_LOCAL_SOCK, 6);
@@ -1467,7 +1467,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
-    expect_string_count(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade", 12);
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade", 12);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
@@ -1534,7 +1534,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
 
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
     expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_LOCAL_SOCK, 6);
@@ -1634,7 +1634,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
-    expect_string_count(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade", 12);
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade", 12);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
@@ -1694,7 +1694,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_custom_installer_ok(
     // wm_agent_upgrade_validate_wpk_custom
     will_return(__wrap_wm_agent_upgrade_validate_wpk_custom, WM_UPGRADE_SUCCESS);
 
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
     expect_string(__wrap_OS_SHA1_File, fname, "/tmp/test.wpk");
@@ -1799,7 +1799,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_custom_installer_ok(
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
-    expect_string_count(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade", 12);
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade", 12);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
@@ -1858,7 +1858,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_default_installer_ok
     // wm_agent_upgrade_validate_wpk_custom
     will_return(__wrap_wm_agent_upgrade_validate_wpk_custom, WM_UPGRADE_SUCCESS);
 
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
     expect_string(__wrap_OS_SHA1_File, fname, "/tmp/test.wpk");
@@ -1963,7 +1963,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_default_installer_ok
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
-    expect_string_count(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade", 12);
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade", 12);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
@@ -2030,7 +2030,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
 
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
     expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_LOCAL_SOCK, 6);
@@ -2130,7 +2130,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
-    expect_string_count(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade", 12);
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade", 12);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
@@ -2196,7 +2196,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
 
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
     expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_LOCAL_SOCK, 5);
@@ -2284,10 +2284,10 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_sha1);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_sha1) + 1);
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8118): The SHA1 of the file doesn't match in the agent.");
 
-    expect_string_count(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade", 10);
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade", 10);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
@@ -2348,7 +2348,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
 
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
     expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_LOCAL_SOCK, 4);
@@ -2424,7 +2424,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
-    expect_string_count(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade", 8);
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade", 8);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
@@ -2482,7 +2482,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_write_file_err(void **state
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
 
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
     expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_LOCAL_SOCK, 3);
@@ -2543,7 +2543,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_write_file_err(void **state
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
-    expect_string_count(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade", 6);
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade", 6);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
@@ -2597,7 +2597,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err(void **state)
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
 
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
     expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_LOCAL_SOCK, 11);
@@ -2681,7 +2681,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
-    expect_string_count(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade", 22);
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade", 22);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com open wb test.wpk'");
@@ -2748,7 +2748,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_lock_restart_err(void **sta
     // wm_agent_upgrade_validate_wpk
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
 
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
     expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_LOCAL_SOCK);
@@ -2775,7 +2775,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_lock_restart_err(void **sta
     expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
-    expect_string_count(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade", 2);
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade", 2);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '111 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
 
@@ -2959,7 +2959,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
 
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
 
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '025'");
 
     expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_LOCAL_SOCK, 6);
@@ -3059,7 +3059,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
-    expect_string_count(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade", 12);
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade", 12);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '025 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '025 com open wb test.wpk'");
@@ -3191,7 +3191,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
 
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
 
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '025'");
 
     expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_LOCAL_SOCK, 6);
@@ -3291,7 +3291,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
-    expect_string_count(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade", 12);
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade", 12);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '025 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '025 com open wb test.wpk'");
@@ -3419,7 +3419,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
 
     will_return(__wrap_wm_agent_upgrade_validate_wpk_custom, WM_UPGRADE_SUCCESS);
 
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '025'");
 
     expect_string(__wrap_OS_SHA1_File, fname, "/tmp/test.wpk");
@@ -3524,7 +3524,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok_0);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok_0) + 1);
 
-    expect_string_count(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade", 12);
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade", 12);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '025 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'ok '");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '025 com open wb test.wpk'");
@@ -3655,7 +3655,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
 
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
 
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '025'");
 
     expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_LOCAL_SOCK);
@@ -3682,7 +3682,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
     expect_value(__wrap_compare_wazuh_versions, compare_patch, 1);
     will_return(__wrap_compare_wazuh_versions, -1);
 
-    expect_string_count(__wrap__mtdebug2, tag, ARGV0 ":agent-upgrade", 2);
+    expect_string_count(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:agent-upgrade", 2);
     expect_string(__wrap__mtdebug2, formatted_msg, "(8165): Sending message to agent: '025 com lock_restart -1'");
     expect_string(__wrap__mtdebug2, formatted_msg, "(8166): Receiving message from agent: 'err '");
 

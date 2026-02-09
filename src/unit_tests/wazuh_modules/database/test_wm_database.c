@@ -115,7 +115,7 @@ void test_wm_sync_group_file_error_agent_id(void **state) {
     const char *group_file_path = "invalid_path";
 
     // Invalid agent ID obtained from 'group_file'
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":database");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Couldn't extract agent ID from file 'invalid_path'.");
 
     ret = wm_sync_group_file(group_file, group_file_path);
@@ -132,7 +132,7 @@ void test_wm_sync_group_file_error_opening_file(void **state) {
     expect_string(__wrap_wfopen, path, group_file_path);
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, NULL);
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":database");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Groups file 'invalid_path' could not be opened for syncronization.");
 
     ret = wm_sync_group_file(group_file, group_file_path);
@@ -154,7 +154,7 @@ void test_wm_sync_group_file_success_empty_file(void **state) {
     // No data when reading the file
     will_return(__wrap_fgets, groups_in_file);
     expect_value(__wrap_fgets, __stream, fp_group_file);
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":database");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Empty group file 'queue/agent-groups/001'.");
     // Closing group file
     expect_value(__wrap_fclose, _File, fp_group_file);
@@ -237,7 +237,7 @@ void test_wm_sync_legacy_groups_files_error_opening_groups_dir(void **state) {
     // Error opening groups directory
     will_return(__wrap_opendir, NULL);
     will_return(__wrap_strerror, "ERROR");
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":database");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Couldn't open directory 'queue/agent-groups': ERROR.");
 
     wm_sync_legacy_groups_files();
@@ -251,14 +251,14 @@ void test_wm_sync_legacy_groups_files_success_files_worker_error_dir(void **stat
 
     // Opening groups directory and iterating files
     will_return(__wrap_opendir, dir);
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":database");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Scanning directory 'queue/agent-groups'.");
     will_return(__wrap_readdir, dir_ent);
     will_return(__wrap_closedir, 0);
     is_worker = 1;
 
     // Logging result, removing agent groups file, and finalizing the dir iteration
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":database");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Group file 'queue/agent-groups/001' won't be synced in a worker node, removing.");
     expect_string(__wrap_unlink, file, "queue/agent-groups/001");
     will_return(__wrap_unlink, OS_SUCCESS);
@@ -268,7 +268,7 @@ void test_wm_sync_legacy_groups_files_success_files_worker_error_dir(void **stat
     expect_string(__wrap_rmdir_ex, name, GROUPS_DIR);
     will_return(__wrap_rmdir_ex, OS_INVALID);
     will_return(__wrap_strerror, "ERROR");
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":database");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Unable to remove directory 'queue/agent-groups': 'ERROR' (39)");
 
     wm_sync_legacy_groups_files();
@@ -284,7 +284,7 @@ void test_wm_sync_legacy_groups_files_success_files_success_dir(void **state) {
 
     // Opening groups directory and iterating files
     will_return(__wrap_opendir, dir);
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":database");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Scanning directory 'queue/agent-groups'.");
     will_return(__wrap_readdir, dir_ent);
     will_return(__wrap_closedir, 0);
@@ -316,7 +316,7 @@ void test_wm_sync_legacy_groups_files_success_files_success_dir(void **state) {
     will_return(__wrap_fclose, OS_SUCCESS);
 
     // Logging result, removing agent groups file, and finalizing the dir iteration
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":database");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Group file 'queue/agent-groups/001' successfully synced, removing.");
     expect_string(__wrap_unlink, file, "queue/agent-groups/001");
     will_return(__wrap_unlink, OS_SUCCESS);
@@ -340,7 +340,7 @@ void test_wm_sync_legacy_groups_files_error_files(void **state) {
 
     // Opening groups directory and iterating files
     will_return(__wrap_opendir, dir);
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":database");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Scanning directory 'queue/agent-groups'.");
     will_return(__wrap_readdir, dir_ent);
     will_return(__wrap_closedir, 0);
@@ -353,7 +353,7 @@ void test_wm_sync_legacy_groups_files_error_files(void **state) {
     expect_string(__wrap_wfopen, path, group_file_path);
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, NULL);
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":database");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Groups file 'queue/agent-groups/001' could not be opened for syncronization.");
 
     // Logging result and finalizing the dir iteration
@@ -386,7 +386,7 @@ void test_sync_keys_with_wdb_insert(void **state) {
     expect_string(__wrap_rbtree_get, key, keys.keyentries[0]->id);
     will_return(__wrap_rbtree_get, NULL);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":database");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug2, formatted_msg, "Synchronizing agent 001 'agent1'.");
 
     expect_any(__wrap_OS_CIDRtoStr, ip);
@@ -401,7 +401,7 @@ void test_sync_keys_with_wdb_insert(void **state) {
     expect_value(__wrap_wdb_insert_agent, keep_date, 1);
     will_return(__wrap_wdb_insert_agent, 1);
 
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":database");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Couldn't insert agent '001' in the database.");
 
     will_return(__wrap_rbtree_keys, ids);
@@ -442,7 +442,7 @@ void test_sync_keys_with_wdb_delete(void **state) {
     expect_value(__wrap_wdb_remove_agent, id, 1);
     will_return(__wrap_wdb_remove_agent, -1);
 
-    expect_string(__wrap__mtdebug1, tag, ARGV0 ":database");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Couldn't remove agent '001' from the database.");
 
     sync_keys_with_wdb(&keys);
@@ -468,7 +468,7 @@ void test_sync_keys_with_wdb_insert_delete(void **state) {
     expect_string(__wrap_rbtree_get, key, keys.keyentries[0]->id);
     will_return(__wrap_rbtree_get, NULL);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":database");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug2, formatted_msg, "Synchronizing agent 001 'agent1'.");
 
     expect_any(__wrap_OS_CIDRtoStr, ip);
@@ -508,7 +508,7 @@ void test_sync_keys_with_wdb_insert_delete(void **state) {
     expect_string(__wrap_so_get_module_handle, so, "router");
     will_return(__wrap_so_get_module_handle, NULL);
 
-    expect_string(__wrap__mtdebug2, tag, ARGV0 ":database");
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug2, formatted_msg, "Unable to load router module.");
 
     sync_keys_with_wdb(&keys);
@@ -521,7 +521,7 @@ void test_sync_keys_with_wdb_null(void **state) {
     expect_value(__wrap_wdb_get_all_agents_rbtree, include_manager, 0);
     will_return(__wrap_wdb_get_all_agents_rbtree, NULL);
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":database");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mterror, formatted_msg, "Couldn't synchronize the keystore with the DB.");
 
     sync_keys_with_wdb(&keys);

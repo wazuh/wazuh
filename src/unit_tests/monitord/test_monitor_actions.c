@@ -33,6 +33,11 @@
 #include "shared.h"
 #include "config.h"
 
+#ifdef TEST_SERVER
+#undef ARGV0
+#define ARGV0 "wazuh-manager-monitord"
+#endif
+
 /* redefinitons/wrapping */
 extern monitor_time_control mond_time_control;
 
