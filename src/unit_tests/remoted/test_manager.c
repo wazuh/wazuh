@@ -26,6 +26,10 @@
 #include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 
+#ifdef TEST_SERVER
+#define ARGV0 "wazuh-manager-remoted"
+#endif
+
 #include "../wazuh_db/wdb.h"
 #include "../remoted/remoted.h"
 #include "../remoted/shared_download.h"

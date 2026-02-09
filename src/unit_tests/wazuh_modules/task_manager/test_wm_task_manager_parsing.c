@@ -707,7 +707,7 @@ void test_wm_task_manager_parse_upgrade_cancel_tasks_parameters_node_err(void **
 {
     cJSON *origin = cJSON_CreateObject();
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'name' not found.");
 
     wm_task_manager_upgrade_cancel_tasks* upgrade_cancel_result = wm_task_manager_parse_upgrade_cancel_tasks_parameters(origin);
@@ -744,7 +744,7 @@ void test_wm_task_manager_parse_upgrade_result_parameters_agents_err(void **stat
 {
     cJSON *parameters = cJSON_CreateObject();
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'agents' not found.");
 
     wm_task_manager_upgrade_result* upgrade_result = wm_task_manager_parse_upgrade_result_parameters(parameters);
@@ -806,7 +806,7 @@ void test_wm_task_manager_parse_upgrade_update_status_parameters_agents_err(void
     cJSON_AddItemToObject(event, "origin", origin);
     cJSON_AddItemToObject(event, "parameters", parameters);
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'agents' not found.");
 
     wm_task_manager_upgrade_update_status* upgrade_update_status = wm_task_manager_parse_upgrade_update_status_parameters(origin, parameters);
@@ -828,7 +828,7 @@ void test_wm_task_manager_parse_upgrade_update_status_parameters_status_err(void
     cJSON_AddItemToObject(event, "origin", origin);
     cJSON_AddItemToObject(event, "parameters", parameters);
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'status' not found.");
 
     wm_task_manager_upgrade_update_status* upgrade_update_status = wm_task_manager_parse_upgrade_update_status_parameters(origin, parameters);
@@ -848,7 +848,7 @@ void test_wm_task_manager_parse_upgrade_update_status_parameters_node_err(void *
     cJSON_AddItemToObject(event, "origin", origin);
     cJSON_AddItemToObject(event, "parameters", parameters);
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'name' not found.");
 
     wm_task_manager_upgrade_update_status* upgrade_update_status = wm_task_manager_parse_upgrade_update_status_parameters(origin, parameters);
@@ -901,7 +901,7 @@ void test_wm_task_manager_parse_upgrade_get_status_parameters_agents_err(void **
     cJSON_AddItemToObject(event, "origin", origin);
     cJSON_AddItemToObject(event, "parameters", parameters);
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'agents' not found.");
 
     wm_task_manager_upgrade_get_status* upgrade_get_status = wm_task_manager_parse_upgrade_get_status_parameters(origin, parameters);
@@ -921,7 +921,7 @@ void test_wm_task_manager_parse_upgrade_get_status_parameters_node_err(void **st
     cJSON_AddItemToObject(event, "origin", origin);
     cJSON_AddItemToObject(event, "parameters", parameters);
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'name' not found.");
 
     wm_task_manager_upgrade_get_status* upgrade_get_status = wm_task_manager_parse_upgrade_get_status_parameters(origin, parameters);
@@ -978,7 +978,7 @@ void test_wm_task_manager_parse_upgrade_parameters_agents_err(void **state)
     cJSON_AddItemToObject(event, "origin", origin);
     cJSON_AddItemToObject(event, "parameters", parameters);
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'agents' not found.");
 
     wm_task_manager_upgrade* upgrade = wm_task_manager_parse_upgrade_parameters(origin, parameters);
@@ -1000,7 +1000,7 @@ void test_wm_task_manager_parse_upgrade_parameters_module_err(void **state)
     cJSON_AddItemToObject(event, "origin", origin);
     cJSON_AddItemToObject(event, "parameters", parameters);
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'module' not found.");
 
     wm_task_manager_upgrade* upgrade = wm_task_manager_parse_upgrade_parameters(origin, parameters);
@@ -1020,7 +1020,7 @@ void test_wm_task_manager_parse_upgrade_parameters_node_err(void **state)
     cJSON_AddItemToObject(event, "origin", origin);
     cJSON_AddItemToObject(event, "parameters", parameters);
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'name' not found.");
 
     wm_task_manager_upgrade* upgrade = wm_task_manager_parse_upgrade_parameters(origin, parameters);
@@ -1056,7 +1056,7 @@ void test_wm_task_manager_parse_ids_agents_type_err(void **state)
     cJSON_AddItemToArray(agents, cJSON_CreateNumber(5));
     cJSON_AddItemToArray(agents, cJSON_CreateString("78"));
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8260): Invalid element in array.");
 
     int *agents_array = wm_task_manager_parse_ids(agents);
@@ -1281,7 +1281,7 @@ void test_wm_task_manager_parse_message_command_parameters_err(void **state)
                     "   }"
                     "}";
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'agents' not found.");
 
     wm_task_manager_task *task = wm_task_manager_parse_message(message);
@@ -1299,7 +1299,7 @@ void test_wm_task_manager_parse_message_command_err(void **state)
                     "   }"
                     "}";
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'command' not found.");
 
     wm_task_manager_task *task = wm_task_manager_parse_message(message);
@@ -1316,7 +1316,7 @@ void test_wm_task_manager_parse_message_origin_err(void **state)
                     "   }"
                     "}";
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'origin' not found.");
 
     wm_task_manager_task *task = wm_task_manager_parse_message(message);
@@ -1334,7 +1334,7 @@ void test_wm_task_manager_parse_message_parameters_err(void **state)
                     "  \"command\": \"upgrade\""
                     "}";
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8259): Invalid message. 'parameters' not found.");
 
     wm_task_manager_task *task = wm_task_manager_parse_message(message);
@@ -1346,7 +1346,7 @@ void test_wm_task_manager_parse_message_invalid_json_err(void **state)
 {
     char *message = "unknown json";
 
-    expect_string(__wrap__mterror, tag, ARGV0 ":task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8257): Error parsing JSON event: 'unknown json'");
 
     wm_task_manager_task *task = wm_task_manager_parse_message(message);
