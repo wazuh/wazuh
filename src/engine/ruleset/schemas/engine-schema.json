@@ -12,177 +12,6 @@
     "agent.groups": {
       "type": "keyword"
     },
-    "agent.host.architecture": {
-      "type": "keyword"
-    },
-    "agent.host.boot.id": {
-      "type": "keyword"
-    },
-    "agent.host.cpu": {
-      "type": "object"
-    },
-    "agent.host.cpu.cores": {
-      "type": "long"
-    },
-    "agent.host.cpu.name": {
-      "type": "keyword"
-    },
-    "agent.host.cpu.speed": {
-      "type": "long"
-    },
-    "agent.host.cpu.usage": {
-      "type": "scaled_float"
-    },
-    "agent.host.disk.read.bytes": {
-      "type": "long"
-    },
-    "agent.host.disk.write.bytes": {
-      "type": "long"
-    },
-    "agent.host.domain": {
-      "type": "keyword"
-    },
-    "agent.host.geo.city_name": {
-      "type": "keyword"
-    },
-    "agent.host.geo.continent_code": {
-      "type": "keyword"
-    },
-    "agent.host.geo.continent_name": {
-      "type": "keyword"
-    },
-    "agent.host.geo.country_iso_code": {
-      "type": "keyword"
-    },
-    "agent.host.geo.country_name": {
-      "type": "keyword"
-    },
-    "agent.host.geo.location": {
-      "type": "geo_point"
-    },
-    "agent.host.geo.name": {
-      "type": "keyword"
-    },
-    "agent.host.geo.postal_code": {
-      "type": "keyword"
-    },
-    "agent.host.geo.region_iso_code": {
-      "type": "keyword"
-    },
-    "agent.host.geo.region_name": {
-      "type": "keyword"
-    },
-    "agent.host.geo.timezone": {
-      "type": "keyword"
-    },
-    "agent.host.hostname": {
-      "type": "keyword"
-    },
-    "agent.host.id": {
-      "type": "keyword"
-    },
-    "agent.host.ip": {
-      "type": "ip"
-    },
-    "agent.host.mac": {
-      "type": "keyword"
-    },
-    "agent.host.memory": {
-      "type": "object"
-    },
-    "agent.host.memory.free": {
-      "type": "long"
-    },
-    "agent.host.memory.total": {
-      "type": "long"
-    },
-    "agent.host.memory.used": {
-      "type": "object"
-    },
-    "agent.host.memory.used.percentage": {
-      "type": "long"
-    },
-    "agent.host.name": {
-      "type": "keyword"
-    },
-    "agent.host.network.egress.bytes": {
-      "type": "long"
-    },
-    "agent.host.network.egress.drops": {
-      "type": "long"
-    },
-    "agent.host.network.egress.errors": {
-      "type": "long"
-    },
-    "agent.host.network.egress.packets": {
-      "type": "long"
-    },
-    "agent.host.network.egress.queue": {
-      "type": "long"
-    },
-    "agent.host.network.ingress.bytes": {
-      "type": "long"
-    },
-    "agent.host.network.ingress.drops": {
-      "type": "long"
-    },
-    "agent.host.network.ingress.errors": {
-      "type": "long"
-    },
-    "agent.host.network.ingress.packets": {
-      "type": "long"
-    },
-    "agent.host.network.ingress.queue": {
-      "type": "long"
-    },
-    "agent.host.os.family": {
-      "type": "keyword"
-    },
-    "agent.host.os.full": {
-      "type": "keyword"
-    },
-    "agent.host.os.kernel": {
-      "type": "keyword"
-    },
-    "agent.host.os.name": {
-      "type": "keyword"
-    },
-    "agent.host.os.platform": {
-      "type": "keyword"
-    },
-    "agent.host.os.type": {
-      "type": "keyword"
-    },
-    "agent.host.os.version": {
-      "type": "keyword"
-    },
-    "agent.host.pid_ns_ino": {
-      "type": "keyword"
-    },
-    "agent.host.risk.calculated_level": {
-      "type": "keyword"
-    },
-    "agent.host.risk.calculated_score": {
-      "type": "float"
-    },
-    "agent.host.risk.calculated_score_norm": {
-      "type": "float"
-    },
-    "agent.host.risk.static_level": {
-      "type": "keyword"
-    },
-    "agent.host.risk.static_score": {
-      "type": "float"
-    },
-    "agent.host.risk.static_score_norm": {
-      "type": "float"
-    },
-    "agent.host.type": {
-      "type": "keyword"
-    },
-    "agent.host.uptime": {
-      "type": "long"
-    },
     "agent.id": {
       "type": "keyword"
     },
@@ -2731,6 +2560,51 @@
       "type": "keyword"
     },
     "email.x_mailer": {
+      "type": "keyword"
+    },
+    "enrichments.custom.anonymous": {
+      "type": "keyword"
+    },
+    "enrichments.custom.id": {
+      "type": "keyword"
+    },
+    "enrichments.custom.malware": {
+      "type": "keyword"
+    },
+    "enrichments.custom.malware_alias": {
+      "type": "keyword"
+    },
+    "enrichments.custom.malware_printable": {
+      "type": "keyword"
+    },
+    "enrichments.custom.tags": {
+      "type": "keyword"
+    },
+    "enrichments.custom.threat_type": {
+      "type": "keyword"
+    },
+    "enrichments.indicator.confidence": {
+      "type": "keyword"
+    },
+    "enrichments.indicator.first_seen": {
+      "type": "date"
+    },
+    "enrichments.indicator.last_seen": {
+      "type": "date"
+    },
+    "enrichments.indicator.name": {
+      "type": "keyword"
+    },
+    "enrichments.indicator.provider": {
+      "type": "keyword"
+    },
+    "enrichments.indicator.reference": {
+      "type": "keyword"
+    },
+    "enrichments.indicator.type": {
+      "type": "keyword"
+    },
+    "enrichments.source": {
       "type": "keyword"
     },
     "error.code": {
@@ -11769,6 +11643,198 @@
     "vulnerability.severity": {
       "type": "keyword"
     },
+    "wazuh.agent.build.original": {
+      "type": "keyword"
+    },
+    "wazuh.agent.ephemeral_id": {
+      "type": "keyword"
+    },
+    "wazuh.agent.groups": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.architecture": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.boot.id": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.cpu": {
+      "type": "object"
+    },
+    "wazuh.agent.host.cpu.cores": {
+      "type": "long"
+    },
+    "wazuh.agent.host.cpu.name": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.cpu.speed": {
+      "type": "long"
+    },
+    "wazuh.agent.host.cpu.usage": {
+      "type": "scaled_float"
+    },
+    "wazuh.agent.host.disk.read.bytes": {
+      "type": "long"
+    },
+    "wazuh.agent.host.disk.write.bytes": {
+      "type": "long"
+    },
+    "wazuh.agent.host.domain": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.geo.city_name": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.geo.continent_code": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.geo.continent_name": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.geo.country_iso_code": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.geo.country_name": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.geo.location": {
+      "type": "geo_point"
+    },
+    "wazuh.agent.host.geo.name": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.geo.postal_code": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.geo.region_iso_code": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.geo.region_name": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.geo.timezone": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.hostname": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.id": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.ip": {
+      "type": "ip"
+    },
+    "wazuh.agent.host.mac": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.memory": {
+      "type": "object"
+    },
+    "wazuh.agent.host.memory.free": {
+      "type": "long"
+    },
+    "wazuh.agent.host.memory.total": {
+      "type": "long"
+    },
+    "wazuh.agent.host.memory.used": {
+      "type": "object"
+    },
+    "wazuh.agent.host.memory.used.percentage": {
+      "type": "long"
+    },
+    "wazuh.agent.host.name": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.network.egress.bytes": {
+      "type": "long"
+    },
+    "wazuh.agent.host.network.egress.drops": {
+      "type": "long"
+    },
+    "wazuh.agent.host.network.egress.errors": {
+      "type": "long"
+    },
+    "wazuh.agent.host.network.egress.packets": {
+      "type": "long"
+    },
+    "wazuh.agent.host.network.egress.queue": {
+      "type": "long"
+    },
+    "wazuh.agent.host.network.ingress.bytes": {
+      "type": "long"
+    },
+    "wazuh.agent.host.network.ingress.drops": {
+      "type": "long"
+    },
+    "wazuh.agent.host.network.ingress.errors": {
+      "type": "long"
+    },
+    "wazuh.agent.host.network.ingress.packets": {
+      "type": "long"
+    },
+    "wazuh.agent.host.network.ingress.queue": {
+      "type": "long"
+    },
+    "wazuh.agent.host.os.family": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.os.full": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.os.kernel": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.os.name": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.os.platform": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.os.type": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.os.version": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.pid_ns_ino": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.risk.calculated_level": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.risk.calculated_score": {
+      "type": "float"
+    },
+    "wazuh.agent.host.risk.calculated_score_norm": {
+      "type": "float"
+    },
+    "wazuh.agent.host.risk.static_level": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.risk.static_score": {
+      "type": "float"
+    },
+    "wazuh.agent.host.risk.static_score_norm": {
+      "type": "float"
+    },
+    "wazuh.agent.host.type": {
+      "type": "keyword"
+    },
+    "wazuh.agent.host.uptime": {
+      "type": "long"
+    },
+    "wazuh.agent.id": {
+      "type": "keyword"
+    },
+    "wazuh.agent.name": {
+      "type": "keyword"
+    },
+    "wazuh.agent.type": {
+      "type": "keyword"
+    },
+    "wazuh.agent.version": {
+      "type": "keyword"
+    },
     "wazuh.cluster.name": {
       "type": "keyword"
     },
@@ -11794,6 +11860,9 @@
       "type": "byte"
     },
     "wazuh.schema.version": {
+      "type": "keyword"
+    },
+    "wazuh.space.name": {
       "type": "keyword"
     },
     "websphere.metrics.alarm_manager.cancelled.total": {
