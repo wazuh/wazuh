@@ -12,7 +12,7 @@ import shutil
 from collections import defaultdict
 from datetime import datetime, timezone
 from time import perf_counter
-from typing import Tuple, Dict, Callable, List
+from typing import Awaitable, Any, Tuple, Dict, Callable, List
 from typing import Union
 
 from wazuh.core import cluster as metadata, common, exception, utils
@@ -153,7 +153,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                              'Agent-groups recv full': self.setup_task_logger('Agent-groups recv full'),
                              'Integrity check': self.setup_task_logger('Integrity check'),
                              'Integrity sync': self.setup_task_logger('Integrity sync')}
-        default_date = datetime.utcfromtimestamp(0)
+        default_date = datetime.fromtimestamp(0, tz=timezone.utc)
         self.sync_agent_groups_from_master = {'date_start_worker': default_date, 'date_end_worker': default_date,
                                               'n_synced_chunks': 0}
         self.agent_info_sync_status = {'date_start': 0.0}
@@ -227,7 +227,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             return self.setup_sync_integrity(command, data)
         elif command == b'syn_m_a_e':
             logger = self.task_loggers['Agent-info sync']
-            start_time = datetime.utcfromtimestamp(self.agent_info_sync_status['date_start'])
+            start_time = datetime.fromtimestamp(self.agent_info_sync_status['date_start'], tz=timezone.utc)
             return c_common.end_sending_agent_information(logger, start_time, data.decode())
         elif command == b'syn_m_a_err':
             logger = self.task_loggers['Agent-info sync']
@@ -493,13 +493,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             Master's response after finishing the synchronization.
         """
         logger.info('Starting.')
-        start_time = datetime.utcnow().replace(tzinfo=timezone.utc)
+        start_time = datetime.now(timezone.utc)
         data = await super().get_chunks_in_task_id(task_id, error_command)
         result = await super().update_chunks_wdb(data, info_type, logger, error_command, timeout)
         response = await self.send_request(command=command, data=json.dumps(result).encode())
         await self.check_agent_groups_checksums(data, logger)
 
-        end_time = datetime.utcnow().replace(tzinfo=timezone.utc)
+        end_time = datetime.now(timezone.utc)
         logger.info(f'Finished in {(end_time - start_time).total_seconds():.3f}s. '
                     f'Updated {result["updated_chunks"]} chunks.')
 
@@ -847,7 +847,7 @@ class Worker(client.AbstractClientManager):
         self.dapi = dapi.APIRequestQueue(server=self)
         self.integrity_control = {}
 
-    def add_tasks(self) -> List[Tuple[asyncio.coroutine, Tuple]]:
+    def add_tasks(self) -> List[Tuple[Awaitable[Any], Tuple]]:
         """Define the tasks that the worker will always run in an infinite loop.
 
         Returns
