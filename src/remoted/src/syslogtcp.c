@@ -65,9 +65,10 @@ void send_buffer(sockbuffer_t *socket_buffer, char *srcip) {
         if (SendMSG(logr.m_queue, data_pt + w_get_pri_header_len(data_pt), srcip, SYSLOG_MQ) < 0) {
             merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
-            if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
-            }
+            // TODO: commented out while separating manager and agent, someone should bind DEFAULTQUEUE
+            // if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+            //     merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+            // }
         }
         // Re-calculate the used size of buffer and remove the message from the buffer
         socket_buffer->data_len = socket_buffer->data_len - (offset + 1);
