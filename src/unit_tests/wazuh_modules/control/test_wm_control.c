@@ -19,6 +19,12 @@
 extern sysinfo_networks_func sysinfo_network_ptr;
 extern sysinfo_free_result_func sysinfo_free_result_ptr;
 
+#ifdef TEST_SERVER
+#define WM_CONTROL_TEST_LOGTAG "wazuh-manager-modulesd:control"
+#else
+#define WM_CONTROL_TEST_LOGTAG "wazuh-modulesd:control"
+#endif
+
 static void test_wm_control_getPrimaryIP_no_sysinfo_network(void ** state) {
     sysinfo_network_ptr = NULL;
 
@@ -43,7 +49,7 @@ static void test_wm_control_getPrimaryIP_sysinfo_network_return_error(void ** st
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 1234);
-    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:control");
+    expect_string(__wrap__mterror, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "Unable to get system network information. Error code: 1234.");
 
     char * ip = getPrimaryIP();
