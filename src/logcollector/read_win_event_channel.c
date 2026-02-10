@@ -521,9 +521,9 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     cJSON_AddStringToObject(event_json, "Event", xml_event);
     msg_sent = cJSON_PrintUnformatted(event_json);
 
-    w_logcollector_state_update_file(channel->evt_log, strlen(msg_sent));
+    w_logcollector_state_update_file(channel->evt_log, strlen(xml_event));
 
-    if (SendMSG(logr_queue, msg_sent, "EventChannel", WIN_EVT_MQ) < 0) {
+    if (SendMSG(logr_queue, xml_event, "EventChannel", WIN_EVT_MQ) < 0) {
         merror(QUEUE_SEND);
         w_logcollector_state_update_target(channel->evt_log, "agent", true);
     } else {
