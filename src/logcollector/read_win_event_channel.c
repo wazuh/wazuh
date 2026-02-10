@@ -422,19 +422,8 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     PEVT_VARIANT properties_values = NULL;
     DWORD count = 0;
     int result = 0;
-    wchar_t *wprovider_name = NULL;
-    char *msg_sent = NULL;
-    char *provider_name = NULL;
-    char *msg_from_prov = NULL;
     char *xml_event = NULL;
-    char *beg_prov = NULL;
-    char *end_prov = NULL;
-    char *find_prov = NULL;
-    size_t num;
-
-    cJSON *event_json = cJSON_CreateObject();
-
-    os_malloc(OS_MAXSTR, provider_name);
+    char *xml_output = NULL;
 
     result = EvtRender(NULL,
                        evt,
@@ -479,51 +468,22 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
 
-    find_prov = strstr(xml_event, "Provider Name=");
-
-    if(find_prov){
-        beg_prov = strchr(find_prov, '\'');
-        if(beg_prov){
-            end_prov = strchr(beg_prov+1, '\'');
-
-            if (end_prov){
-                num = end_prov - beg_prov - 1;
-
-                if(num > OS_MAXSTR - 1){
-                    mwarn("The event message has exceeded the maximum size.");
-                    goto cleanup;
-                }
-
-                memcpy(provider_name, beg_prov+1, num);
-                provider_name[num] = '\0';
-                find_prov = '\0';
-                beg_prov = '\0';
-                end_prov = '\0';
-            }
+    /* Skip XML header if present (e.g., "<?xml version='1.0'?>") */
+    xml_output = xml_event;
+    if (strncmp(xml_output, "<?xml", 5) == 0) {
+        xml_output = strchr(xml_output, '>');
+        if (xml_output) {
+            xml_output++; /* Move past the '>' character */
+        } else {
+            xml_output = xml_event; /* Fallback to original if malformed */
         }
     }
 
-     if (provider_name) {
-        wprovider_name = convert_unix_string(provider_name);
+    win_format_event_string(xml_output);
 
-        if (wprovider_name && (msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
-            mdebug1(
-                "Could not get message for (%s)",
-                channel->evt_log);
-        }
-        else {
-            cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
-        }
-    }
+    w_logcollector_state_update_file(channel->evt_log, strlen(xml_output));
 
-    win_format_event_string(xml_event);
-
-    cJSON_AddStringToObject(event_json, "Event", xml_event);
-    msg_sent = cJSON_PrintUnformatted(event_json);
-
-    w_logcollector_state_update_file(channel->evt_log, strlen(msg_sent));
-
-    if (SendMSG(logr_queue, msg_sent, "EventChannel", WIN_EVT_MQ) < 0) {
+    if (SendMSG(logr_queue, xml_output, "EventChannel", WIN_EVT_MQ) < 0) {
         merror(QUEUE_SEND);
         w_logcollector_state_update_target(channel->evt_log, "agent", true);
     } else {
@@ -535,13 +495,8 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     }
 
 cleanup:
-    os_free(msg_from_prov);
     os_free(xml_event);
-    os_free(msg_sent);
     os_free(properties_values);
-    os_free(provider_name);
-    os_free(wprovider_name);
-    cJSON_Delete(event_json);
 
     return;
 }
