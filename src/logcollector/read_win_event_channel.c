@@ -356,13 +356,12 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 
     /* Skip XML header if present (e.g., "<?xml version='1.0'?>") */
     xml_output = xml_event;
-    if (strncmp(xml_output, "<?xml", 5) == 0) {
-        xml_output = strstr(xml_output, "?>");
-        if (xml_output) {
-            xml_output += 2; /* Move past the "?>" characters */
-        } else {
-            xml_output = xml_event; /* Fallback to original if malformed */
+    if (strncmp(xml_event, "<?xml", 5) == 0) {
+        char *end_of_header = strstr(xml_event, "?>");
+        if (end_of_header) {
+            xml_output = end_of_header + 2; /* Move past the "?>" characters */
         }
+        /* If no closing ?> found, use original (malformed header, but send as-is) */
     }
 
     win_format_event_string(xml_output);

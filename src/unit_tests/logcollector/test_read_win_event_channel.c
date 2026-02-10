@@ -23,7 +23,7 @@
  * The get_message function has been removed as it is no longer used.
  * 
  * Future test coverage needed:
- * - send_channel_event(): XML header stripping logic (lines 357-366)
+ * - send_channel_event(): XML header stripping logic
  *   - Test with XML header present
  *   - Test without XML header
  *   - Test with malformed XML header
