@@ -63,6 +63,12 @@ if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
   add_definitions(-DCLIENT)
 endif()
 
+# Keep Make-based Windows semantics for external headers that otherwise declare
+# symbols as dllimport. We link these through delay import stubs.
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_definitions(-DPCRE2_EXP_DECL= -DBUILDING_LIBCURL=)
+endif()
+
 # Set Wine as crosscompiling emulator for Windows unit tests
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND UNIT_TEST)
   find_program(WINE "wine")
