@@ -14,7 +14,7 @@
 #include <string.h>
 
 #include "shared.h"
-#include "../../active-response/active_responses.h"
+#include "active_responses.h"
 
 #include "../wrappers/common.h"
 

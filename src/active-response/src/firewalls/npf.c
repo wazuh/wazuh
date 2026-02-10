@@ -7,7 +7,7 @@
  * Foundation.
  */
 
-#include "../active_responses.h"
+#include "active_responses.h"
 
 int main (int argc, char **argv) {
     (void)argc;

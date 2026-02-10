@@ -12,6 +12,7 @@ get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 
 message(Source folder: ${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/shared/include)
+include_directories(${SRC_FOLDER}/active-response/include)
 include_directories(${SRC_FOLDER}/config/include)
 include_directories(${SRC_FOLDER}/error_messages)
 include_directories(${SRC_FOLDER}/shared/os_crypto/aes)
@@ -130,7 +131,8 @@ if(NOT WAZUHEXT)
   message(FATAL_ERROR "libwazuhext not found! Aborting...")
 endif()
 
-if((${uname} STREQUAL "Linux") OR (${uname} STREQUAL "Win32"))
+if((CMAKE_SYSTEM_NAME STREQUAL "Linux") OR (CMAKE_SYSTEM_NAME STREQUAL "Windows"
+                                           ))
   add_subdirectory(syscheckd)
   add_subdirectory(shared)
   add_subdirectory(os_xml)
@@ -139,7 +141,7 @@ if((${uname} STREQUAL "Linux") OR (${uname} STREQUAL "Win32"))
   add_subdirectory(config)
 endif()
 
-if(${uname} STREQUAL "Linux")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_subdirectory(os_net)
   add_subdirectory(active-response)
 endif()
@@ -218,23 +220,27 @@ add_custom_target(
   # Run tests
   COMMAND ctest
   # Capturing lcov counters and generating report
-  COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} --directory ${SRC_FOLDER}
-          --capture --rc lcov_branch_coverage=1 --ignore-errors mismatch --output-file coverage.info
+  COMMAND
+    ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} --directory ${SRC_FOLDER} --capture
+    --rc lcov_branch_coverage=1 --ignore-errors mismatch --output-file
+    coverage.info
   # Add baseline counters
-  COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -a coverage.base -a
-          coverage.info --rc lcov_branch_coverage=1 --ignore-errors mismatch --output-file coverage.total
+  COMMAND
+    ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -a coverage.base -a coverage.info
+    --rc lcov_branch_coverage=1 --ignore-errors mismatch --output-file
+    coverage.total
   COMMAND
     ${LCOV_PATH} --gcov-tool ${GCOV_PATH} --remove coverage.total "*external/*"
     --remove coverage.total "*unit_tests/*" --remove coverage.total
     "*data_provider/*" --remove coverage.total "*shared_modules/*" --remove
     coverage.total "*syscollector/*" --remove coverage.total
-    "*syscheckd/src/db/*" --rc lcov_branch_coverage=1 --ignore-errors mismatch --output-file
-    coverage.info.cleaned
+    "*syscheckd/src/db/*" --rc lcov_branch_coverage=1 --ignore-errors mismatch
+    --output-file coverage.info.cleaned
   # Generate HTML report
   COMMAND
     ${GENHTML_PATH} -q --output-directory coverage-report --title
-    "WAZUH unit-tests coverage" --rc lcov_branch_coverage=1 --ignore-errors mismatch --legend
-    coverage.info.cleaned
+    "WAZUH unit-tests coverage" --rc lcov_branch_coverage=1 --ignore-errors
+    mismatch --legend coverage.info.cleaned
   # Clean counters
   COMMAND ${CMAKE_COMMAND} -E remove coverage.base coverage.total
           coverage.info.cleaned)

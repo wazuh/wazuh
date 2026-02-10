@@ -250,3 +250,6 @@ add_subdirectory(rootcheck)
 
 # Wazuh modulesd
 add_subdirectory(wazuh_modules)
+
+# Active response
+add_subdirectory(active-response)

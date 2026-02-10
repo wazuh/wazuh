@@ -170,14 +170,12 @@ ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_PACMAN}lib/libalpm/ -I${EXTERNAL_LIBARCHIVE}libarchive
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
 ifeq (${CHECK_ALPINE},YES)
 		OSSEC_LIBS+=-lintl
 		DEFINES+=-DALPINE
 endif
 		OSSEC_LIBS+=-lrt -ldl -lm
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
-		AR_LDFLAGS+=-pthread -lrt -ldl
 		USE_AUDIT=yes
 		CC=gcc
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
@@ -186,7 +184,6 @@ endif
 ifeq (${CHECK_ARCHLINUX},YES)
 		ARCH_FLAGS+=-lnghttp2 -lbrotlidec -lpsl
 		OSSEC_LDFLAGS+=-lnghttp2 -lbrotlidec -lpsl
-		AR_LDFLAGS+=-lnghttp2 -lbrotlidec -lpsl
 endif
 else
 ifeq (${uname_S},Darwin)
@@ -195,8 +192,6 @@ ifeq (${uname_S},Darwin)
 	OSSEC_CFLAGS+=-pthread
 	OSSEC_LDFLAGS+=-pthread
 	OSSEC_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../lib"
-	AR_LDFLAGS+=-pthread
-	AR_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../../lib"
 	SHARED=dylib
 	OSSEC_LIBS+=-framework Security -framework CoreFoundation -framework SystemConfiguration
 	PRECOMPILED_OS:=darwin
@@ -207,9 +202,6 @@ ifeq (${uname_S},FreeBSD)
 		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-L/usr/local/lib
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		AR_LDFLAGS+=-pthread
-		AR_LDFLAGS+=-L/usr/local/lib
-		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
 		PRECOMPILED_OS:=freebsd
 else
 ifeq (${uname_S},NetBSD)
@@ -217,8 +209,6 @@ ifeq (${uname_S},NetBSD)
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		AR_LDFLAGS+=-pthread
-		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
 		PRECOMPILED_OS:=netbsd
 else
 ifeq (${uname_S},OpenBSD)
@@ -227,9 +217,6 @@ ifeq (${uname_S},OpenBSD)
 		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-L/usr/local/lib
 		OSSEC_LDFLAGS+=-Wl,-zorigin '-Wl,-rpath,$$ORIGIN/../lib'
-		AR_LDFLAGS+=-pthread
-		AR_LDFLAGS+=-L/usr/local/lib
-		AR_LDFLAGS+=-Wl,-zorigin '-Wl,-rpath,$$ORIGIN/../../lib'
 		PRECOMPILED_OS:=openbsd
 else
 	    # Unknow platform
@@ -246,7 +233,6 @@ else
 		# We link against a patched libwinpthread.a library that no contains version.o (version.rc) to avoid including the resource in the executables due to the "--whole-archive" flag
 		OSSEC_CFLAGS+=-Wl,-L,win32/ -Wl,-Bstatic,--whole-archive -lwinpthreadpatched -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
 		OSSEC_LDFLAGS+=-Wl,-L,win32/ -Wl,-Bstatic,--whole-archive -lwinpthreadpatched -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
-		AR_LDFLAGS+=-Wl,-L,win32/ -Wl,-Bstatic,--whole-archive -lwinpthreadpatched -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
 		PRECOMPILED_OS:=windows
 endif # winagent
 
@@ -277,27 +263,22 @@ endif
 
 ifneq (,$(SYMBOLS_IN_RELEASE))
 	OSSEC_CFLAGS+=-g
-	AR_LDFLAGS+=-g
 	CMAKE_OPTS+=-DCMAKE_SYMBOLS_IN_RELEASE=ON
 	ifeq (,$(filter ${DEBUG},YES yes y Y 1))
 		OSSEC_CFLAGS+=-DNDEBUG
 		OFLAGS+=-O2
-		AR_LDFLAGS+=-s
 	endif
 else
 	ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 		OSSEC_CFLAGS+=-g
-		AR_LDFLAGS+=-g
 	else
 		OSSEC_CFLAGS+=-DNDEBUG
 		OFLAGS+=-O2
-		AR_LDFLAGS+=-s
 	endif
 endif
 
 OSSEC_CFLAGS+=${OFLAGS}
 OSSEC_LDFLAGS+=${OFLAGS}
-AR_LDFLAGS+=${OFLAGS}
 
 ifeq (${TARGET}, winagent)
 	OSSEC_LDFLAGS+=-Lbuild/bin -Lbuild/lib
@@ -325,11 +306,10 @@ OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
 WAZUH_MODULES_INC := $(shell find ./wazuh_modules -type d -name include)
 WAZUH_MODULES_SRC := $(shell find ./wazuh_modules -type d -name src)
-OSSEC_CFLAGS+=-I./ -I./shared/include/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include/curl -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_SQLITE} -I${EXTERNAL_RPM}/builddir/output/include -I./error_messages -I./config/include -I./shared/os_crypto/md5 -I./shared/os_crypto/sha1 -I./shared/os_crypto/sha256 -I./shared/os_crypto/md5_sha1_sha256 -I./shared/os_crypto/blowfish -I./shared/os_crypto/signature -I./shared/os_net -I./shared/os_regex -I./shared/os_xml -I./data_provider/include/ -I./shared_modules/ -I./shared_modules/agent_metadata/include -I./shared_modules/common/ -I./shared_modules/content_manager/include -I./shared_modules/router/include -I./shared_modules/sync_protocol/include -I./syscheckd/include -I./rootcheck/include $(addprefix -I,$(WAZUH_MODULES_INC)) $(addprefix -I,$(WAZUH_MODULES_SRC)) -I./wazuh_modules/src/agent_upgrade -I./wazuh_modules/src/agent_upgrade/agent -I./wazuh_modules/src/agent_upgrade/manager -I./wazuh_modules/src/task_manager
+OSSEC_CFLAGS+=-I./ -I./shared/include/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include/curl -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_SQLITE} -I${EXTERNAL_RPM}/builddir/output/include -I./active-response/include -I./error_messages -I./config/include -I./shared/os_crypto/md5 -I./shared/os_crypto/sha1 -I./shared/os_crypto/sha256 -I./shared/os_crypto/md5_sha1_sha256 -I./shared/os_crypto/blowfish -I./shared/os_crypto/signature -I./shared/os_net -I./shared/os_regex -I./shared/os_xml -I./data_provider/include/ -I./shared_modules/ -I./shared_modules/agent_metadata/include -I./shared_modules/common/ -I./shared_modules/content_manager/include -I./shared_modules/router/include -I./shared_modules/sync_protocol/include -I./syscheckd/include -I./rootcheck/include $(addprefix -I,$(WAZUH_MODULES_INC)) $(addprefix -I,$(WAZUH_MODULES_SRC)) -I./wazuh_modules/src/agent_upgrade -I./wazuh_modules/src/agent_upgrade/agent -I./wazuh_modules/src/agent_upgrade/manager -I./wazuh_modules/src/task_manager
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
-AR_LDFLAGS += ${LDFLAGS}
 OSSEC_LIBS += $(LIBS)
 
 # Linker group flags for resolving circular dependencies
@@ -556,7 +536,6 @@ BUILD_SERVER+=wazuh-logcollector -
 BUILD_SERVER+=wazuh-remoted
 ifeq (,$(filter ${TEST},YES yes y Y 1))
 BUILD_SERVER+=utils
-BUILD_SERVER+=active-responses
 endif
 BUILD_SERVER+=wazuh-monitord
 BUILD_SERVER+=wazuh-authd
@@ -566,9 +545,6 @@ BUILD_AGENT+=wazuh-agentd
 BUILD_AGENT+=wazuh-logcollector
 BUILD_AGENT+=wazuh-execd
 BUILD_AGENT+=manage_agents
-ifeq (,$(filter ${TEST},YES yes y Y 1))
-BUILD_AGENT+=active-responses
-endif
 
 BUILD_CMAKE_PROJECTS+=build_wazuh_cmake
 
@@ -625,7 +601,6 @@ $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 
 WINDOWS_CMAKE_MODULES:=win32/wazuh_cmake_modules
 WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/os_win32ui.exe
-WINDOWS_ACTIVE_RESPONSES:=win32/restart-wazuh.exe win32/route-null.exe win32/netsh.exe
 
 ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
@@ -635,9 +610,6 @@ winagent: external win32/libwinpthread-1.dll win32/libwinpthreadpatched.a ${WAZU
 	${MAKE} ${WAZUHEXT_LIB} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lws2_32 -lcrypt32"
 	${MAKE} ${WINDOWS_CMAKE_MODULES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1"
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
-ifeq (,$(filter ${TEST},YES yes y Y 1))
-	${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
-endif
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
 	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
@@ -1442,7 +1414,6 @@ CFLAGS_TEST=-g -O0 --coverage -DWAZUH_UNIT_TESTING
 
 OSSEC_CFLAGS+=${CFLAGS_TEST}
 OSSEC_LDFLAGS+=${CFLAGS_TEST}
-AR_LDFLAGS+=${CFLAGS_TEST}
 OSSEC_LIBS+=${LIBS_TEST}
 endif
 
@@ -1497,7 +1468,7 @@ os_execd_o := $(os_execd_c:.c=.o)
 os_execd/%.o: os_execd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-execd\" -c $^ -o $@
 
-wazuh-execd: ${os_execd_o} active-response/active_responses.o
+wazuh-execd: ${os_execd_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${LINKER_START_GROUP} -lconfig -lwazuh_modulesd_lib ${WAZUH_STATIC_LIB} ${LINKER_END_GROUP} ${OSSEC_LIBS} -o $@
 
 
@@ -1549,58 +1520,6 @@ addagent/%.o: addagent/%.c
 
 manage_agents: ${addagent_o} ${WAZUH_STATIC_LIB}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-#### Active Response ####
-
-active_response_programs = default-firewall-drop pf npf ipfw firewalld-drop disable-account host-deny ip-customblock restart-wazuh route-null kaspersky wazuh-slack
-
-$(active_response_programs): ${WAZUH_LIB} ${WAZUHEXT_LIB}
-
-.PHONY: active-responses
-active-responses: ${active_response_programs}
-
-active_response_c := $(wildcard active-response/*.c)
-active_response_c += $(wildcard active-response/firewalls/*.c)
-active_response_o := $(active_response_c:.c=.o)
-
-active-response/%.o: active-response/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -I./active-response -DARGV0=\"active-responses\" -c $^ -o $@
-
-default-firewall-drop: active-response/firewalls/default-firewall-drop.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-pf: active-response/firewalls/pf.o  active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-npf: active-response/firewalls/npf.o  active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-ipfw: active-response/firewalls/ipfw.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-firewalld-drop: active-response/firewalld-drop.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-disable-account: active-response/disable-account.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-host-deny: active-response/host-deny.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-ip-customblock: active-response/ip-customblock.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-restart-wazuh: active-response/restart-wazuh.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-route-null: active-response/route-null.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-kaspersky: active-response/kaspersky.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-wazuh-slack: active-response/wazuh-slack.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 
 #### Util ##########
@@ -1773,10 +1692,10 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
 
-win32/wazuh-agent.exe: win32/wazuh_agent_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
+win32/wazuh-agent.exe: win32/wazuh_agent_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) $(filter-out os_execd/main.o, ${os_execd_o}) monitord/rotate_log.o monitord/compress_log.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ -ldbsync -lwazuh-syscheckd -l:libfimdb.lib -lagent_metadata -llibagent_sync_protocol -lschema_validator -lconfig -lwazuh-modulesd ${WAZUH_STATIC_LIB} libwazuhext.lib -lrootcheck ${OSSEC_LIBS} -o $@
 
-win32/wazuh-agent-eventchannel.exe: win32/wazuh_agent_eventchannel_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
+win32/wazuh-agent-eventchannel.exe: win32/wazuh_agent_eventchannel_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) $(filter-out os_execd/main.o, ${os_execd_o}) monitord/rotate_log.o monitord/compress_log.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ -ldbsync -lwazuh-syscheckd-event -l:libfimdb.lib -lagent_metadata -llibagent_sync_protocol -lschema_validator -lconfig -lwazuh-modulesd ${WAZUH_STATIC_LIB} libwazuhext.lib -lrootcheck ${OSSEC_LIBS} -lwevtapi -o $@
 
 win32/manage_agents.exe: win32/manage_agents_resource.o win32/version-app.o win32/win_service_rk.o ${addagent_o}
@@ -1793,15 +1712,6 @@ win32/setup-iis.exe: win32/win_service_rk.o win32/setup-iis.o
 
 win32/os_win32ui.exe: win32/ui_resource.o win32/version-app.o win32/win_service_rk.o ${win32_ui_o}
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} $^ ${WAZUH_STATIC_LIB} ${WAZUHEXT_LIB} ${OSSEC_LIBS} -I./syscheckd/include -mwindows -o $@
-
-win32/restart-wazuh.exe: win32/restart_wazuh_resource.o win32/version-app.o win32/win_stubs.o active-response/active_responses.o active-response/restart-wazuh.o ${WAZUH_STATIC_LIB} ${WAZUHEXT_LIB}
-	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -o $@
-
-win32/route-null.exe: win32/route_null_resource.o win32/version-app.o win32/win_stubs.o active-response/active_responses.o active-response/route-null.o ${WAZUH_STATIC_LIB} ${WAZUHEXT_LIB}
-	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -o $@
-
-win32/netsh.exe: win32/netsh_resource.o win32/version-app.o win32/win_stubs.o active-response/active_responses.o active-response/netsh.o ${WAZUH_STATIC_LIB} ${WAZUHEXT_LIB}
-	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -o $@
 
 
 ####################
@@ -1894,7 +1804,7 @@ clean-internals:
 	rm -f ${remoted_o}
 	rm -f ${client_agent_o}
 	rm -f ${addagent_o}
-	rm -f ${active_response_o} ${active_response_programs} firewall-drop
+	rm -f default-firewall-drop pf npf ipfw firewalld-drop disable-account host-deny ip-customblock restart-wazuh route-null kaspersky wazuh-slack firewall-drop
 	rm -f ${util_o} ${util_programs}
 	rm -f ${monitor_o}
 	rm -f ${os_auth_o}

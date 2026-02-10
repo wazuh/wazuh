@@ -16,6 +16,7 @@ include_directories(
   ${SRC_FOLDER}/external/libplist/bin/include/
   ${SRC_FOLDER}/external/bzip2/
   ${SRC_FOLDER}/external/zlib/
+  ${SRC_FOLDER}/active-response/include
   ${SRC_FOLDER}/client-agent
   ${SRC_FOLDER}/config/include
   ${SRC_FOLDER}/error_messages
@@ -49,8 +50,6 @@ endif()
 
 # Collect all source files from the various subdirectories
 file(GLOB SHARED_CORE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
-# Exclude windows_stubs.c from SHARED_CORE_SRC (only used for DLL build)
-list(FILTER SHARED_CORE_SRC EXCLUDE REGEX "windows_stubs\\.c$")
 file(GLOB OS_CRYPTO_BLOWFISH_SRC
      "${CMAKE_CURRENT_SOURCE_DIR}/os_crypto/blowfish/*.c")
 file(GLOB OS_CRYPTO_MD5_SRC "${CMAKE_CURRENT_SOURCE_DIR}/os_crypto/md5/*.c")
@@ -72,6 +71,9 @@ file(GLOB OS_REGEX_SRC "${CMAKE_CURRENT_SOURCE_DIR}/os_regex/*.c")
 file(GLOB OS_XML_SRC "${CMAKE_CURRENT_SOURCE_DIR}/os_xml/*.c")
 file(GLOB OS_ZLIB_SRC "${CMAKE_CURRENT_SOURCE_DIR}/os_zlib/*.c")
 
+# Active response shared utilities (used by execd and active response binaries)
+set(ACTIVE_RESPONSE_SRC "${SRC_FOLDER}/active-response/src/active_responses.c")
+
 # Combine all sources
 set(LIBWAZUH_SRC
     ${SHARED_CORE_SRC}
@@ -88,7 +90,8 @@ set(LIBWAZUH_SRC
     ${OS_NET_SRC}
     ${OS_REGEX_SRC}
     ${OS_XML_SRC}
-    ${OS_ZLIB_SRC})
+    ${OS_ZLIB_SRC}
+    ${ACTIVE_RESPONSE_SRC})
 
 # Add unit test wrappers if UNIT_TEST is enabled
 if(UNIT_TEST)

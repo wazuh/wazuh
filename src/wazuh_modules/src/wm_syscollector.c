@@ -21,7 +21,7 @@
 #include "logging_helper.h"
 #include "commonDefs.h"
 #ifndef WIN32
-#include "os_net/os_net.h"
+#include "os_net.h"
 #include <unistd.h>
 #else
 #include "../client-agent/agentd.h"

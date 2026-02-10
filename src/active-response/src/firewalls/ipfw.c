@@ -7,7 +7,7 @@
  * Foundation.
  */
 
-#include "../active_responses.h"
+#include "active_responses.h"
 
 #define TABLE_ID "00001"
 #define SET_ID "2"

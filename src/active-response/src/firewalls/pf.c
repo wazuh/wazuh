@@ -7,7 +7,7 @@
  * Foundation.
  */
 
-#include "../active_responses.h"
+#include "active_responses.h"
 
 #define DEVPF       ("/dev/pf")
 #define PFCTL_RULES ("/etc/pf.conf")

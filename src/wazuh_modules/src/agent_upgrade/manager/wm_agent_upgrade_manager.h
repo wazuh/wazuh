@@ -12,6 +12,9 @@
 #ifndef WM_AGENT_UPGRADE_MANAGER_H
 #define WM_AGENT_UPGRADE_MANAGER_H
 
+#include "wm_agent_upgrade.h"
+#include "wm_task_general.h"
+
 #define WM_UPGRADE_MINIMAL_VERSION_SUPPORT "v4.14.0"
 #define WM_UPGRADE_NEW_LINUX_VERSION_REPOSITORY "v3.4.0"
 #define WM_UPGRADE_NEW_VERSION_STRUCTURE_REPOSITORY "v4.9.0"

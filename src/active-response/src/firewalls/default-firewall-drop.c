@@ -7,7 +7,7 @@
  * Foundation.
  */
 
-#include "../active_responses.h"
+#include "active_responses.h"
 
 #define LOCK_PATH "active-response/bin/fw-drop"
 #define LOCK_FILE "active-response/bin/fw-drop/pid"

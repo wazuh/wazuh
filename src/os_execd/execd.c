@@ -15,7 +15,7 @@
 #include "wmodules.h"
 #include "../external/cJSON/cJSON.h"
 #include "execd.h"
-#include "active-response/active_responses.h"
+#include "active_responses.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
