@@ -1086,6 +1086,64 @@ installEngineStore()
     echo "Engine output configuration files installed successfully."
 }
 
+installGeoIP()
+{
+    DEST_FULL_PATH=${INSTALLDIR}/engine
+    GEOIP_SRC_PATH=./external/geo_db
+
+    local MMDB_PATH=${DEST_FULL_PATH}/mmdb
+    local STORE_GEO_PATH=${DEST_FULL_PATH}/store/geo/mmdb
+    local MANIFEST_FILE=${GEOIP_SRC_PATH}/manifest.json
+
+    # Create directories
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${MMDB_PATH}
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${STORE_GEO_PATH}
+
+    # Check if GeoIP files exist
+    if [ ! -f "${GEOIP_SRC_PATH}/GeoLite2-ASN.mmdb" ] || [ ! -f "${GEOIP_SRC_PATH}/GeoLite2-City.mmdb" ]; then
+        echo "Warning: GeoIP database files not found in ${GEOIP_SRC_PATH}. Skipping GeoIP installation."
+        return 0
+    fi
+
+    if [ ! -f "${MANIFEST_FILE}" ]; then
+        echo "Warning: GeoIP manifest.json not found. Skipping GeoIP installation."
+        return 0
+    fi
+
+    echo "Installing GeoIP databases..."
+
+    # Copy .mmdb files
+    ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} "${GEOIP_SRC_PATH}/GeoLite2-ASN.mmdb" "${MMDB_PATH}/"
+    ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} "${GEOIP_SRC_PATH}/GeoLite2-City.mmdb" "${MMDB_PATH}/"
+
+    # Parse manifest.json without jq or python - using grep and sed
+    ASN_MD5=$(grep -A 2 '"asn"' "${MANIFEST_FILE}" | grep '"md5"' | sed 's/.*"md5"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+    CITY_MD5=$(grep -A 2 '"city"' "${MANIFEST_FILE}" | grep '"md5"' | sed 's/.*"md5"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+    GENERATED_AT=$(grep '"generated_at"' "${MANIFEST_FILE}" | sed 's/.*"generated_at"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/')
+
+    # Generate metadata JSON file
+    cat > "${STORE_GEO_PATH}/0" << EOF
+{
+    "city": {
+        "path": "${MMDB_PATH}/GeoLite2-City.mmdb",
+        "hash": "${CITY_MD5}",
+        "generated_at": ${GENERATED_AT}
+    },
+    "asn": {
+        "path": "${MMDB_PATH}/GeoLite2-ASN.mmdb",
+        "hash": "${ASN_MD5}",
+        "generated_at": ${GENERATED_AT}
+    }
+}
+EOF
+
+    # Set proper ownership and permissions
+    chown ${WAZUH_USER}:${WAZUH_GROUP} "${STORE_GEO_PATH}/0"
+    chmod 640 "${STORE_GEO_PATH}/0"
+
+    echo "GeoIP databases installed successfully."
+}
+
 InstallLocal()
 {
 
@@ -1113,6 +1171,9 @@ InstallLocal()
     generateSchemaFiles
 
     installEngineStore
+
+    installGeoIP
+
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tzdb
 
     # TODO Deletes old ruleset and stats, rootcheck and SCA?

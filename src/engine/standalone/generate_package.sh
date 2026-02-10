@@ -22,6 +22,77 @@ ctrl_c() {
     clean 1
 }
 
+install_geoip() {
+    local wazuh_path="$1"
+    local temp_dir="$2"
+
+    local geoip_src_path="${wazuh_path}/src/external/geo_db"
+    local mmdb_dst_dir="${temp_dir}/data/mmdb"
+    local store_doc_dir="${temp_dir}/data/store/geo/mmdb"
+    local store_doc="${store_doc_dir}/0"
+    local manifest_file="${geoip_src_path}/manifest.json"
+
+    local asn_src="${geoip_src_path}/GeoLite2-ASN.mmdb"
+    local city_src="${geoip_src_path}/GeoLite2-City.mmdb"
+
+    # Ensure dirs exist (in case caller didn't create them yet)
+    install -d -m 0770 "${mmdb_dst_dir}" "${store_doc_dir}"
+
+    if [ ! -f "${asn_src}" ] || [ ! -f "${city_src}" ]; then
+        echo "Warning: GeoIP .mmdb files not found in ${geoip_src_path}. Standalone will ship without GeoIP."
+        return 0
+    fi
+
+    echo "Including GeoIP databases (offline) in standalone package..."
+
+    # Copy databases into package
+    install -m 0640 "${asn_src}"  "${mmdb_dst_dir}/"
+    install -m 0640 "${city_src}" "${mmdb_dst_dir}/"
+
+    # Prefer manifest.json values (same semantics as manager/install.sh),
+    # but do NOT ship manifest.json in the package.
+    local asn_md5=""
+    local city_md5=""
+    local generated_at=""
+
+    if [ -f "${manifest_file}" ]; then
+        asn_md5=$(grep -A 2 '"asn"'  "${manifest_file}" | grep '"md5"' | sed 's/.*"md5"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+        city_md5=$(grep -A 2 '"city"' "${manifest_file}" | grep '"md5"' | sed 's/.*"md5"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+        generated_at=$(grep '"generated_at"' "${manifest_file}" | sed 's/.*"generated_at"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/')
+    fi
+
+    # Fallbacks if manifest missing/partial (keeps build resilient)
+    if [ -z "${asn_md5}" ]; then
+        asn_md5=$(md5sum "${mmdb_dst_dir}/GeoLite2-ASN.mmdb" | awk '{print $1}')
+    fi
+    if [ -z "${city_md5}" ]; then
+        city_md5=$(md5sum "${mmdb_dst_dir}/GeoLite2-City.mmdb" | awk '{print $1}')
+    fi
+    if [ -z "${generated_at}" ]; then
+        generated_at=$(stat -c %Y "${mmdb_dst_dir}/GeoLite2-City.mmdb" 2>/dev/null || echo 0)
+    fi
+
+    # Seed store doc with RELATIVE paths (package root expected as CWD)
+    cat > "${store_doc}" << EOF
+{
+  "city": {
+    "path": "data/mmdb/GeoLite2-City.mmdb",
+    "hash": "${city_md5}",
+    "generated_at": ${generated_at}
+  },
+  "asn": {
+    "path": "data/mmdb/GeoLite2-ASN.mmdb",
+    "hash": "${asn_md5}",
+    "generated_at": ${generated_at}
+  }
+}
+EOF
+
+    chmod 0640 "${store_doc}" || true
+    return 0
+}
+
+
 build_standalone() {
     # Determine package architecture based on input
     case "${ARCHITECTURE}" in
@@ -98,6 +169,7 @@ build_standalone() {
         ${TEMP_DIR}/data/store/schema/engine-schema \
         ${TEMP_DIR}/data/store/schema/wazuh-logpar-overrides \
         ${TEMP_DIR}/data/store/schema/allowed-fields \
+        ${TEMP_DIR}/data/store/geo/mmdb \
         ${TEMP_DIR}/data/kvdb \
         ${TEMP_DIR}/data/tzdb \
         ${TEMP_DIR}/data/mmdb \
@@ -119,6 +191,9 @@ build_standalone() {
     cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/allowed-fields.json ${TEMP_DIR}/data/store/schema/allowed-fields/0
     cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/wazuh-decoders.json ${TEMP_DIR}/schemas/
     cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/wazuh-filters.json ${TEMP_DIR}/schemas/
+
+    # Copy geo dbs
+    install_geoip "${WAZUH_PATH}" "${TEMP_DIR}"
 
     # Copy scripts and README
     cp -r ${WAZUH_PATH}/src/engine/standalone/run_engine.sh ${TEMP_DIR}/

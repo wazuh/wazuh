@@ -23,6 +23,7 @@ private:
     std::string m_id;                       ///< Server identifier
     std::filesystem::path m_socketPath;     ///< Socket path where the server is listening
     size_t m_payloadMaxBytes {0};           ///< Maximum allowed payload size in bytes. 0 means unlimited.
+    bool m_enableDetailedLogging {true};    ///< Enable detailed request/response logging
 
     /**
      * @brief Apply the payload size limit to the server.
@@ -47,8 +48,9 @@ public:
      *
      * @param id Server string identifier
      * @param payloadMaxBytes Maximum allowed payload size in bytes. 0 means unlimited.
+     * @param enableDetailedLogging If true, logs detailed request/response information.
      */
-    explicit Server(const std::string& id, size_t payloadMaxBytes = 0);
+    explicit Server(const std::string& id, size_t payloadMaxBytes = 0, bool enableDetailedLogging = true);
 
     /**
      * @brief Destroy the Server object

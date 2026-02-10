@@ -120,409 +120,6 @@
             "string"
           ]
         },
-        "agent.host.architecture": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOperating system architecture.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.boot.id": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nLinux boot uuid taken from /proc/sys/kernel/random/boot_id. Note the boot_id value from /proc may or may not be the same in containers as on the host. Some container runtimes will bind mount a new boot_id value onto the proc file in each container.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.cpu": {
-          "additionalProperties": false,
-          "description": "Module: ecs\nIndexerType: object\n\nCPU-related data.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "properties": {
-            "cores": {
-              "description": "Module: ecs\nIndexerType: long\n\nNumber of CPU cores.",
-              "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-              "type": [
-                "number",
-                "string"
-              ]
-            },
-            "name": {
-              "description": "Module: ecs\nIndexerType: keyword\n\nCPU Model name.",
-              "type": [
-                "string"
-              ]
-            },
-            "speed": {
-              "description": "Module: ecs\nIndexerType: long\n\nCPU clock speed.",
-              "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-              "type": [
-                "number",
-                "string"
-              ]
-            },
-            "usage": {
-              "description": "Module: ecs\nIndexerType: scaled_float\n\nPercent CPU used which is normalized by the number of CPU cores and it ranges from 0 to 1.\nScaling factor: 1000.\nFor example: For a two core host, this value should be the average of the two cores, between 0 and 1.",
-              "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-              "type": [
-                "number",
-                "string"
-              ]
-            }
-          },
-          "type": [
-            "object",
-            "string"
-          ]
-        },
-        "agent.host.disk.read.bytes": {
-          "description": "Module: ecs\nIndexerType: long\n\nThe total number of bytes (gauge) read successfully (aggregated from all disks) since the last metric collection.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "agent.host.disk.write.bytes": {
-          "description": "Module: ecs\nIndexerType: long\n\nThe total number of bytes (gauge) written successfully (aggregated from all disks) since the last metric collection.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "agent.host.domain": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nName of the domain of which the host is a member.\nFor example, on Windows this could be the host's Active Directory domain or NetBIOS domain name. For Linux this could be the domain of the host's LDAP provider.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.geo.city_name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nCity name.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.geo.continent_code": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nTwo-letter code representing continent's name.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.geo.continent_name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nName of the continent.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.geo.country_iso_code": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nCountry ISO code.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.geo.country_name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nCountry name.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.geo.location": {
-          "description": "Module: ecs\nIndexerType: geo_point\n\nLongitude and latitude.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.geo.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nUser-defined description of a location, at the level of granularity they care about.\nCould be the name of their data centers, the floor number, if this describes a local physical entity, city names.\nNot typically used in automated geolocation.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.geo.postal_code": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nPostal code associated with the location.\nValues appropriate for this field may also be known as a postcode or ZIP code and will vary widely from country to country.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.geo.region_iso_code": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRegion ISO code.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.geo.region_name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRegion name.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.geo.timezone": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nThe time zone of the location, such as IANA time zone name.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.hostname": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nHostname of the host.\nIt normally contains what the `hostname` command returns on the host machine.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.id": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nUnique host id.\nAs hostname is not always unique, use values that are meaningful in your environment.\nExample: The current usage of `beat.name`.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.ip": {
-          "description": "Module: ecs\nIndexerType: ip\n\nHost ip addresses.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.mac": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nHost MAC addresses.\nThe notation format from RFC 7042 is suggested: Each octet (that is, 8-bit byte) is represented by two [uppercase] hexadecimal digits giving the value of the octet as an unsigned integer. Successive octets are separated by a hyphen.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.memory": {
-          "additionalProperties": false,
-          "description": "Module: ecs\nIndexerType: object\n\nMemory-related data.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "properties": {
-            "free": {
-              "description": "Module: ecs\nIndexerType: long\n\nFree memory in MB.",
-              "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-              "type": [
-                "number",
-                "string"
-              ]
-            },
-            "total": {
-              "description": "Module: ecs\nIndexerType: long\n\nTotal memory in MB.",
-              "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-              "type": [
-                "number",
-                "string"
-              ]
-            },
-            "used": {
-              "additionalProperties": false,
-              "description": "Module: ecs\nIndexerType: object\n\nUsed memory-related data.",
-              "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-              "properties": {
-                "percentage": {
-                  "description": "Module: ecs\nIndexerType: long\n\nUsed memory percentage.",
-                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-                  "type": [
-                    "number",
-                    "string"
-                  ]
-                }
-              },
-              "type": [
-                "object",
-                "string"
-              ]
-            }
-          },
-          "type": [
-            "object",
-            "string"
-          ]
-        },
-        "agent.host.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nName of the host.\nIt can contain what hostname returns on Unix systems, the fully qualified domain name (FQDN), or a name specified by the user. The recommended value is the lowercase FQDN of the host.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.network.egress.bytes": {
-          "description": "Module: ecs\nIndexerType: long\n\nThe number of bytes (gauge) sent out on all network interfaces by the host since the last metric collection.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "agent.host.network.egress.drops": {
-          "description": "Module: ecs\nIndexerType: long\n\nNumber of dropped transmitted packets.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "agent.host.network.egress.errors": {
-          "description": "Module: ecs\nIndexerType: long\n\nNumber of transmission errors.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "agent.host.network.egress.packets": {
-          "description": "Module: ecs\nIndexerType: long\n\nThe number of packets (gauge) sent out on all network interfaces by the host since the last metric collection.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "agent.host.network.egress.queue": {
-          "description": "Module: ecs\nIndexerType: long\n\nTransmit queue length.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "agent.host.network.ingress.bytes": {
-          "description": "Module: ecs\nIndexerType: long\n\nThe number of bytes received (gauge) on all network interfaces by the host since the last metric collection.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "agent.host.network.ingress.drops": {
-          "description": "Module: ecs\nIndexerType: long\n\nNumber of dropped received packets.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "agent.host.network.ingress.errors": {
-          "description": "Module: ecs\nIndexerType: long\n\nNumber of reception errors.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "agent.host.network.ingress.packets": {
-          "description": "Module: ecs\nIndexerType: long\n\nThe number of packets (gauge) received on all network interfaces by the host since the last metric collection.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "agent.host.network.ingress.queue": {
-          "description": "Module: ecs\nIndexerType: long\n\nReceive queue length.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "agent.host.os.family": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOS family (such as redhat, debian, freebsd, windows).",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.os.full": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOperating system name, including the version or code name.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.os.kernel": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOperating system kernel version as a raw string.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.os.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOperating system name, without the version.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.os.platform": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOperating system platform (such centos, ubuntu, windows).",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.os.type": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nUse the `os.type` field to categorize the operating system into one of the broad commercial families.\nIf the OS you're dealing with is not listed as an expected value, the field should not be populated. Please let us know by opening an issue with ECS, to propose its addition.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.os.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOperating system version as a raw string.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.pid_ns_ino": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nThis is the inode number of the namespace in the namespace file system (nsfs). Unsigned int inum in include/linux/ns_common.h.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.risk.calculated_level": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nA risk classification level calculated by an internal system as part of entity analytics and entity risk scoring.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.risk.calculated_score": {
-          "description": "Module: ecs\nIndexerType: float\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "agent.host.risk.calculated_score_norm": {
-          "description": "Module: ecs\nIndexerType: float\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring, and normalized to a range of 0 to 100.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "agent.host.risk.static_level": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nA risk classification level obtained from outside the system, such as from some external Threat Intelligence Platform.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.risk.static_score": {
-          "description": "Module: ecs\nIndexerType: float\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "agent.host.risk.static_score_norm": {
-          "description": "Module: ecs\nIndexerType: float\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform, and normalized to a range of 0 to 100.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "agent.host.type": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nType of host.\nFor Cloud providers this can be the machine type like `t2.medium`. If vm, this could be the container, for example, or other information meaningful in your environment.",
-          "type": [
-            "string"
-          ]
-        },
-        "agent.host.uptime": {
-          "description": "Module: ecs\nIndexerType: long\n\nSeconds the host has been up.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
         "agent.id": {
           "description": "Module: ecs\nIndexerType: keyword\n\nUnique identifier of this agent (if one exists).\nExample: For Beats this would be beat.id.",
           "type": [
@@ -6104,6 +5701,96 @@
         },
         "email.x_mailer": {
           "description": "Module: ecs\nIndexerType: keyword\n\nThe name of the application that was used to draft and send the original email message.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.custom.anonymous": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nIndicates whether the indicator was reported anonymously by the submitter.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.custom.id": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nUnique identifier of the indicator.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.custom.malware": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nMalware family or identifier associated with the indicator.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.custom.malware_alias": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nAlternative or secondary name used to refer to the same malware family.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.custom.malware_printable": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nHuman-readable or normalized malware name intended for display purposes.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.custom.tags": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nList of tags associated with the indicator used to classify or group related threats or campaigns.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.custom.threat_type": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nHigh-level classification of the threat associated with the indicator.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.indicator.confidence": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nIndicator confidence rating.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.indicator.first_seen": {
+          "description": "Module: ecs\nIndexerType: date\n\nDate/time indicator was first reported.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.indicator.last_seen": {
+          "description": "Module: ecs\nIndexerType: date\n\nDate/time indicator was last reported.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.indicator.name": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nIndicator display name.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.indicator.provider": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nIndicator provider.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.indicator.reference": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nIndicator reference URL.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.indicator.type": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nType of indicator.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.source": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nSource of the enrichment data identifying the external provider that supplied the indicator.",
           "type": [
             "string"
           ]
@@ -26215,6 +25902,451 @@
             "string"
           ]
         },
+        "wazuh.agent.build.original": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nExtended build information for the agent.\nThis field is intended to contain any build information that a data source may provide, no specific formatting is required.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.ephemeral_id": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nEphemeral identifier of this agent (if one exists).\nThis id normally changes across restarts, but `agent.id` does not.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.groups": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nList of groups the agent belongs to.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.architecture": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nOperating system architecture.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.boot.id": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nLinux boot uuid taken from /proc/sys/kernel/random/boot_id. Note the boot_id value from /proc may or may not be the same in containers as on the host. Some container runtimes will bind mount a new boot_id value onto the proc file in each container.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.cpu": {
+          "additionalProperties": false,
+          "description": "Module: ecs\nIndexerType: object\n\nCPU-related data.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "properties": {
+            "cores": {
+              "description": "Module: ecs\nIndexerType: long\n\nNumber of CPU cores.",
+              "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "name": {
+              "description": "Module: ecs\nIndexerType: keyword\n\nCPU Model name.",
+              "type": [
+                "string"
+              ]
+            },
+            "speed": {
+              "description": "Module: ecs\nIndexerType: long\n\nCPU clock speed.",
+              "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "usage": {
+              "description": "Module: ecs\nIndexerType: scaled_float\n\nPercent CPU used which is normalized by the number of CPU cores and it ranges from 0 to 1.\nScaling factor: 1000.\nFor example: For a two core host, this value should be the average of the two cores, between 0 and 1.",
+              "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+              "type": [
+                "number",
+                "string"
+              ]
+            }
+          },
+          "type": [
+            "object",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.disk.read.bytes": {
+          "description": "Module: ecs\nIndexerType: long\n\nThe total number of bytes (gauge) read successfully (aggregated from all disks) since the last metric collection.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.disk.write.bytes": {
+          "description": "Module: ecs\nIndexerType: long\n\nThe total number of bytes (gauge) written successfully (aggregated from all disks) since the last metric collection.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.domain": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nName of the domain of which the host is a member.\nFor example, on Windows this could be the host's Active Directory domain or NetBIOS domain name. For Linux this could be the domain of the host's LDAP provider.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.geo.city_name": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nCity name.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.geo.continent_code": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nTwo-letter code representing continent's name.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.geo.continent_name": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nName of the continent.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.geo.country_iso_code": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nCountry ISO code.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.geo.country_name": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nCountry name.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.geo.location": {
+          "description": "Module: ecs\nIndexerType: geo_point\n\nLongitude and latitude.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.geo.name": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nUser-defined description of a location, at the level of granularity they care about.\nCould be the name of their data centers, the floor number, if this describes a local physical entity, city names.\nNot typically used in automated geolocation.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.geo.postal_code": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nPostal code associated with the location.\nValues appropriate for this field may also be known as a postcode or ZIP code and will vary widely from country to country.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.geo.region_iso_code": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nRegion ISO code.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.geo.region_name": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nRegion name.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.geo.timezone": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nThe time zone of the location, such as IANA time zone name.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.hostname": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nHostname of the host.\nIt normally contains what the `hostname` command returns on the host machine.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.id": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nUnique host id.\nAs hostname is not always unique, use values that are meaningful in your environment.\nExample: The current usage of `beat.name`.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.ip": {
+          "description": "Module: ecs\nIndexerType: ip\n\nHost ip addresses.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.mac": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nHost MAC addresses.\nThe notation format from RFC 7042 is suggested: Each octet (that is, 8-bit byte) is represented by two [uppercase] hexadecimal digits giving the value of the octet as an unsigned integer. Successive octets are separated by a hyphen.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.memory": {
+          "additionalProperties": false,
+          "description": "Module: ecs\nIndexerType: object\n\nMemory-related data.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "properties": {
+            "free": {
+              "description": "Module: ecs\nIndexerType: long\n\nFree memory in MB.",
+              "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "total": {
+              "description": "Module: ecs\nIndexerType: long\n\nTotal memory in MB.",
+              "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "used": {
+              "additionalProperties": false,
+              "description": "Module: ecs\nIndexerType: object\n\nUsed memory-related data.",
+              "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+              "properties": {
+                "percentage": {
+                  "description": "Module: ecs\nIndexerType: long\n\nUsed memory percentage.",
+                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                  "type": [
+                    "number",
+                    "string"
+                  ]
+                }
+              },
+              "type": [
+                "object",
+                "string"
+              ]
+            }
+          },
+          "type": [
+            "object",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.name": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nName of the host.\nIt can contain what hostname returns on Unix systems, the fully qualified domain name (FQDN), or a name specified by the user. The recommended value is the lowercase FQDN of the host.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.network.egress.bytes": {
+          "description": "Module: ecs\nIndexerType: long\n\nThe number of bytes (gauge) sent out on all network interfaces by the host since the last metric collection.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.network.egress.drops": {
+          "description": "Module: ecs\nIndexerType: long\n\nNumber of dropped transmitted packets.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.network.egress.errors": {
+          "description": "Module: ecs\nIndexerType: long\n\nNumber of transmission errors.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.network.egress.packets": {
+          "description": "Module: ecs\nIndexerType: long\n\nThe number of packets (gauge) sent out on all network interfaces by the host since the last metric collection.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.network.egress.queue": {
+          "description": "Module: ecs\nIndexerType: long\n\nTransmit queue length.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.network.ingress.bytes": {
+          "description": "Module: ecs\nIndexerType: long\n\nThe number of bytes received (gauge) on all network interfaces by the host since the last metric collection.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.network.ingress.drops": {
+          "description": "Module: ecs\nIndexerType: long\n\nNumber of dropped received packets.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.network.ingress.errors": {
+          "description": "Module: ecs\nIndexerType: long\n\nNumber of reception errors.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.network.ingress.packets": {
+          "description": "Module: ecs\nIndexerType: long\n\nThe number of packets (gauge) received on all network interfaces by the host since the last metric collection.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.network.ingress.queue": {
+          "description": "Module: ecs\nIndexerType: long\n\nReceive queue length.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.os.family": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nOS family (such as redhat, debian, freebsd, windows).",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.os.full": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nOperating system name, including the version or code name.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.os.kernel": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nOperating system kernel version as a raw string.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.os.name": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nOperating system name, without the version.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.os.platform": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nOperating system platform (such centos, ubuntu, windows).",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.os.type": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nUse the `os.type` field to categorize the operating system into one of the broad commercial families.\nIf the OS you're dealing with is not listed as an expected value, the field should not be populated. Please let us know by opening an issue with ECS, to propose its addition.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.os.version": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nOperating system version as a raw string.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.pid_ns_ino": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nThis is the inode number of the namespace in the namespace file system (nsfs). Unsigned int inum in include/linux/ns_common.h.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.risk.calculated_level": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nA risk classification level calculated by an internal system as part of entity analytics and entity risk scoring.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.risk.calculated_score": {
+          "description": "Module: ecs\nIndexerType: float\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.risk.calculated_score_norm": {
+          "description": "Module: ecs\nIndexerType: float\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring, and normalized to a range of 0 to 100.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.risk.static_level": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nA risk classification level obtained from outside the system, such as from some external Threat Intelligence Platform.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.risk.static_score": {
+          "description": "Module: ecs\nIndexerType: float\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.risk.static_score_norm": {
+          "description": "Module: ecs\nIndexerType: float\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform, and normalized to a range of 0 to 100.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.host.type": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nType of host.\nFor Cloud providers this can be the machine type like `t2.medium`. If vm, this could be the container, for example, or other information meaningful in your environment.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.host.uptime": {
+          "description": "Module: ecs\nIndexerType: long\n\nSeconds the host has been up.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "wazuh.agent.id": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nUnique identifier of this agent (if one exists).\nExample: For Beats this would be beat.id.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.name": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nCustom name of the agent.\nThis is a name that can be given to an agent. This can be helpful if for example two Filebeat instances are running on the same host but a human readable separation is needed on which Filebeat instance data is coming from.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.type": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nType of the agent.\nThe agent type always stays the same and should be given by the agent used. In case of Filebeat the agent would always be Filebeat also if two Filebeat instances are run on the same machine.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.agent.version": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nVersion of the agent.",
+          "type": [
+            "string"
+          ]
+        },
         "wazuh.cluster.name": {
           "description": "Module: ecs\nIndexerType: keyword\n\nWazuh cluster name.",
           "type": [
@@ -26267,6 +26399,12 @@
         },
         "wazuh.schema.version": {
           "description": "Module: ecs\nIndexerType: keyword\n\nWazuh schema version.",
+          "type": [
+            "string"
+          ]
+        },
+        "wazuh.space.name": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nWazuh space name.",
           "type": [
             "string"
           ]

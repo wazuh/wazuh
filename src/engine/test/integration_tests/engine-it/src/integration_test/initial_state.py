@@ -88,42 +88,40 @@ def md5_file(path: Path) -> str:
 def init_geo_store(env_path: Path, test_path: Path):
     """
     Initialize geo store structure and JSON metadata for databases.
-    Creates store/geo/ directory with JSON files describing each database.
+    Creates store/geo/mmdb/0 with nested structure for all databases.
     """
     geo_data_path = test_path / "geo" / "data"
     geo_dest_path = env_path / "geo"
-    geo_store_path = env_path / "store" / "geo"
+    geo_store_path = env_path / "store" / "geo" / "mmdb"
 
     # Create directories
     geo_dest_path.mkdir(parents=True, exist_ok=True)
     geo_store_path.mkdir(parents=True, exist_ok=True)
 
-    # Current timestamp in ISO 8601 format
-    generated_at = int(datetime.now(timezone.utc).timestamp() * 1000)
+    # Current timestamp
+    generated_at = int(datetime.now(timezone.utc).timestamp())
 
     db_name = "base.mmdb"
-    db_type = "city"
-
-    # Copy database to geo destination
     dest_db = geo_data_path / db_name
 
     # Calculate MD5 hash
     db_hash = md5_file(dest_db)
 
-    # Create store metadata JSON
+    # Create nested store metadata JSON
     metadata = {
-        "path": dest_db.as_posix(),
-        "type": db_type,
-        "hash": db_hash,
-        "generated_at": generated_at
+        "city": {
+            "path": dest_db.as_posix(),
+            "hash": db_hash,
+            "generated_at": generated_at
+        }
     }
 
-    # Write JSON to store/geo/{db_name}.json
-    store_json_path = geo_store_path / f"{db_name}.json"
+    # Write JSON to store/geo/mmdb/0 (single file with nested structure)
+    store_json_path = geo_store_path / "0"
     with open(store_json_path, "w") as f:
-        json.dump(metadata, f, indent=2)
+        json.dump(metadata, f, indent=4)
 
-    print(f"  Initialized {db_name} ({db_type}): hash={db_hash[:8]}...")
+    print(f"  Initialized geo store: city={db_hash[:8]}...")
 
 
 # ===================================================================

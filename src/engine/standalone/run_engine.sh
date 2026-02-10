@@ -24,9 +24,4 @@ mkdir -p "$SOCKET_PATH" "$LOG_PATH"
 mkdir -p "${WAZUH_OUTPUTS_PATH}" # For cmsync output files
 mkdir -p "${WAZUH_CM_RULESET_PATH}" # For Ruleset store
 
-"${SCRIPT_DIR}/bin/wazuh-engine" -f
-
-# Clean stale PID files
-find "${DATA_PATH}" -maxdepth 1 -name "*.pid" -exec rm -f {} \;
-
-cd "$OLD_PWD"
+exec "${SCRIPT_DIR}/bin/wazuh-engine" -f
