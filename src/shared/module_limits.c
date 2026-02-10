@@ -57,3 +57,40 @@ void module_limits_init(module_limits_t *limits) {
 void module_limits_reset(module_limits_t *limits) {
     module_limits_init(limits);
 }
+
+bool module_limits_changed(const module_limits_t *limits1, const module_limits_t *limits2) {
+    if (!limits1 || !limits2) {
+        return false;
+    }
+
+    // Compare FIM limits
+    if (limits1->fim.file != limits2->fim.file ||
+        limits1->fim.registry_key != limits2->fim.registry_key ||
+        limits1->fim.registry_value != limits2->fim.registry_value) {
+        return true;
+    }
+
+    // Compare Syscollector limits
+    if (limits1->syscollector.hotfixes != limits2->syscollector.hotfixes ||
+        limits1->syscollector.packages != limits2->syscollector.packages ||
+        limits1->syscollector.processes != limits2->syscollector.processes ||
+        limits1->syscollector.ports != limits2->syscollector.ports ||
+        limits1->syscollector.network_iface != limits2->syscollector.network_iface ||
+        limits1->syscollector.network_protocol != limits2->syscollector.network_protocol ||
+        limits1->syscollector.network_address != limits2->syscollector.network_address ||
+        limits1->syscollector.hardware != limits2->syscollector.hardware ||
+        limits1->syscollector.os_info != limits2->syscollector.os_info ||
+        limits1->syscollector.users != limits2->syscollector.users ||
+        limits1->syscollector.groups != limits2->syscollector.groups ||
+        limits1->syscollector.services != limits2->syscollector.services ||
+        limits1->syscollector.browser_extensions != limits2->syscollector.browser_extensions) {
+        return true;
+    }
+
+    // Compare SCA limits
+    if (limits1->sca.checks != limits2->sca.checks) {
+        return true;
+    }
+
+    return false;
+}

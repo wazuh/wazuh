@@ -110,4 +110,12 @@ void syscollector_limits_init(syscollector_limits_t *syscollector);
  */
 void sca_limits_init(sca_limits_t *sca);
 
+/**
+ * @brief Compare two module limits structures
+ * @param limits1 First limits structure
+ * @param limits2 Second limits structure
+ * @return true if limits are different, false if they are the same
+ */
+bool module_limits_changed(const module_limits_t *limits1, const module_limits_t *limits2);
+
 #endif /* MODULE_LIMITS_H */

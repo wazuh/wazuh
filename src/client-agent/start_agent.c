@@ -568,6 +568,10 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                             char cluster_name_buffer[256] = {0};
                             char cluster_node_buffer[256] = {0};
                             char agent_groups_buffer[OS_SIZE_65536] = {0};
+
+                            /* Save previous limits to detect changes */
+                            module_limits_t previous_limits = agent_module_limits;
+
                             if (parse_handshake_json(json_start, &agent_module_limits,
                                                       cluster_name_buffer, sizeof(cluster_name_buffer),
                                                       cluster_node_buffer, sizeof(cluster_node_buffer),
@@ -609,6 +613,17 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                 strncpy(agent_agent_groups, agent_groups_buffer, sizeof(agent_agent_groups) - 1);
                                 agent_agent_groups[sizeof(agent_agent_groups) - 1] = '\0';
                                 minfo("Agent groups: %s", agent_agent_groups);
+
+                                /* Check if limits changed and reload if auto_restart is enabled */
+                                if (previous_limits.limits_received &&
+                                    module_limits_changed(&previous_limits, &agent_module_limits)) {
+                                    if (agt->flags.auto_restart) {
+                                        minfo("Agent is reloading due to document limits changes.");
+                                        reloadAgent();
+                                    } else {
+                                        minfo("Document limits have been updated.");
+                                    }
+                                }
                             } else {
                                 mwarn("Error parsing handshake JSON, will retry handshake");
                                 return false;
