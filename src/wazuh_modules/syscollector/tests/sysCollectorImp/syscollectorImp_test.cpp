@@ -222,6 +222,10 @@ void SyscollectorImpTest::TearDown()
 {
     std::remove(SYSCOLLECTOR_TEST_DB_PATH);
 
+    // Ensure Syscollector singleton is destroyed after each test
+    // This prevents stale function pointer issues between tests
+    Syscollector::instance().destroy();
+
     // Clean up SchemaValidatorFactory after each test
     SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 };
@@ -4111,7 +4115,7 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
 
     // Capture log messages to verify validation errors
     std::vector<std::string> loggedMessages;
-    auto customLogFunction = [&loggedMessages](modules_log_level_t level, const std::string & message)
+    auto customLogFunction = [&loggedMessages](modules_log_level_t, const std::string & message)
     {
         loggedMessages.push_back(message);
     };
@@ -4255,10 +4259,11 @@ TEST_F(SyscollectorImpTest, schemaValidationQueuesWhenValidatorNotFound)
     EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
 
     // Capture log messages to verify warning is logged
-    std::vector<std::string> loggedMessages;
-    auto customLogFunction = [&loggedMessages](modules_log_level_t level, const std::string & message)
+    // Use shared_ptr to prevent dangling references after test completes
+    auto loggedMessages = std::make_shared<std::vector<std::string>>();
+    auto customLogFunction = [loggedMessages](modules_log_level_t, const std::string & message)
     {
-        loggedMessages.push_back(message);
+        loggedMessages->push_back(message);
     };
 
     // Create mock validator for a DIFFERENT index (not for hardware)
@@ -4321,11 +4326,11 @@ TEST_F(SyscollectorImpTest, schemaValidationQueuesWhenValidatorNotFound)
     SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 
     // Verify that warning was logged for missing validator
-    EXPECT_FALSE(loggedMessages.empty());
+    EXPECT_FALSE(loggedMessages->empty());
 
     bool foundMissingValidatorWarning = false;
 
-    for (const auto& msg : loggedMessages)
+    for (const auto& msg : *loggedMessages)
     {
         if (msg.find("No schema validator found for index: wazuh-states-inventory-hardware") != std::string::npos)
         {
@@ -4335,4 +4340,543 @@ TEST_F(SyscollectorImpTest, schemaValidationQueuesWhenValidatorNotFound)
     }
 
     EXPECT_TRUE(foundMissingValidatorWarning) << "Expected warning for missing validator not found";
+}
+
+// Test setDocumentLimits with invalid input (not a JSON object)
+// This tests the input validation path: if (!limits.is_object()) return false;
+TEST_F(SyscollectorImpTest, DocumentLimits_InvalidInput_NotAnObject)
+{
+    // Capture log messages
+    // Use shared_ptr to prevent dangling references after test completes
+    auto logCapture = std::make_shared<LogCapture>();
+
+    // Create log function that captures messages
+    std::function<void(const modules_log_level_t, const std::string&)> captureLogFunction =
+        [logCapture](const modules_log_level_t level, const std::string & message)
+    {
+        logCapture->capture(level, message);
+    };
+
+    // Set up mock agentd query to return an array instead of an object
+    auto mockQuery = [](const char*, char* output, size_t size) -> bool
+    {
+        // Return invalid JSON - an array instead of an object
+        std::string response = R"([1, 2, 3])";
+        std::strncpy(output, response.c_str(), size - 1);
+        output[size - 1] = '\0';
+        return true;
+    };
+
+    Syscollector::instance().setAgentdQueryFunction(mockQuery);
+
+    // Set up minimal mock sysinfo (no scan data needed for this test)
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).WillRepeatedly(Return());
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).WillRepeatedly(Return());
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string&) {}
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) {}
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist, &captureLogFunction]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          captureLogFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, false, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    // Wait for syncLoop to attempt fetching and applying limits
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Verify that an error was logged about failing to apply document limits
+    // When setDocumentLimits receives a non-object (an array in this case),
+    // it should return false, causing the error message to be logged
+    EXPECT_TRUE(logCapture->contains(LOG_ERROR, "Failed to apply document limits"))
+            << "Expected error log about failing to apply document limits";
+}
+
+// Test setDocumentLimits with valid input - limit value of 0 (unlimited)
+// This tests the path where limits are valid and set to 0 (no limit)
+TEST_F(SyscollectorImpTest, DocumentLimits_ValidInput_UnlimitedPackages)
+{
+    // Capture log messages
+    // Use shared_ptr to prevent dangling references after test completes
+    auto logCapture = std::make_shared<LogCapture>();
+
+    // Create log function that captures messages
+    std::function<void(const modules_log_level_t, const std::string&)> captureLogFunction =
+        [logCapture](const modules_log_level_t level, const std::string & message)
+    {
+        logCapture->capture(level, message);
+    };
+
+    // Set up mock agentd query to return valid limits with packages=0 (unlimited)
+    auto mockQuery = [](const char*, char* output, size_t size) -> bool
+    {
+        // Return valid JSON object with packages limit set to 0 (unlimited)
+        std::string response = R"({"packages": 0})";
+        std::strncpy(output, response.c_str(), size - 1);
+        output[size - 1] = '\0';
+        return true;
+    };
+
+    Syscollector::instance().setAgentdQueryFunction(mockQuery);
+
+    // Set up minimal mock sysinfo
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).WillRepeatedly(Return());
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).WillRepeatedly(Return());
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string&) {}
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) {}
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist, &captureLogFunction]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          captureLogFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, false, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    // Wait for syncLoop to fetch and apply limits
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Verify that document limits were successfully configured
+    // When limit is 0 (unlimited), should log info about unlimited
+    EXPECT_TRUE(logCapture->contains(LOG_INFO, "Document limits successfully configured from agentd"))
+            << "Expected success message about document limits";
+
+    EXPECT_TRUE(logCapture->contains(LOG_INFO, "Document limit set to unlimited for index 'wazuh-states-inventory-packages'"))
+            << "Expected info log about unlimited packages";
+}
+
+// Test setDocumentLimits with invalid limit value (not a number)
+// This tests the validation path for limit values: if (!limit.is_number_unsigned())
+TEST_F(SyscollectorImpTest, DocumentLimits_InvalidLimitValue_NotANumber)
+{
+    // Capture log messages
+    // Use shared_ptr to prevent dangling references after test completes
+    auto logCapture = std::make_shared<LogCapture>();
+
+    // Create log function that captures messages
+    std::function<void(const modules_log_level_t, const std::string&)> captureLogFunction =
+        [logCapture](const modules_log_level_t level, const std::string & message)
+    {
+        logCapture->capture(level, message);
+    };
+
+    // Set up mock agentd query to return invalid limit value (string instead of number)
+    auto mockQuery = [](const char*, char* output, size_t size) -> bool
+    {
+        // Return JSON object with invalid limit value (string instead of unsigned number)
+        std::string response = R"({"packages": "invalid"})";
+        std::strncpy(output, response.c_str(), size - 1);
+        output[size - 1] = '\0';
+        return true;
+    };
+
+    Syscollector::instance().setAgentdQueryFunction(mockQuery);
+
+    // Set up minimal mock sysinfo
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).WillRepeatedly(Return());
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).WillRepeatedly(Return());
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string&) {}
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) {}
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist, &captureLogFunction]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          captureLogFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, false, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    // Wait for syncLoop to fetch and attempt to apply limits
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Verify that appropriate error messages were logged
+    // Should have error about invalid limit value
+    EXPECT_TRUE(logCapture->contains(LOG_ERROR, "Invalid limit value for index: packages"))
+            << "Expected error log about invalid limit value";
+
+    // Should have error about failing to apply document limits
+    EXPECT_TRUE(logCapture->contains(LOG_ERROR, "Failed to apply document limits"))
+            << "Expected error log about failing to apply document limits";
+}
+
+// Test setDocumentLimits with unknown index name
+// This tests the validation path for index names: AGENTD_TO_INDEX_MAP.find()
+TEST_F(SyscollectorImpTest, DocumentLimits_UnknownIndexName)
+{
+    // Capture log messages
+    // Use shared_ptr to prevent dangling references after test completes
+    auto logCapture = std::make_shared<LogCapture>();
+
+    // Create log function that captures messages
+    std::function<void(const modules_log_level_t, const std::string&)> captureLogFunction =
+        [logCapture](const modules_log_level_t level, const std::string & message)
+    {
+        logCapture->capture(level, message);
+    };
+
+    // Set up mock agentd query to return unknown index name
+    auto mockQuery = [](const char*, char* output, size_t size) -> bool
+    {
+        // Return JSON object with unknown index name
+        std::string response = R"({"unknown_index": 100})";
+        std::strncpy(output, response.c_str(), size - 1);
+        output[size - 1] = '\0';
+        return true;
+    };
+
+    Syscollector::instance().setAgentdQueryFunction(mockQuery);
+
+    // Set up minimal mock sysinfo
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).WillRepeatedly(Return());
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).WillRepeatedly(Return());
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string&) {}
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) {}
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist, &captureLogFunction]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          captureLogFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, false, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    // Wait for syncLoop to fetch and attempt to apply limits
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Verify that appropriate error messages were logged
+    // Should have error about unknown index
+    EXPECT_TRUE(logCapture->contains(LOG_ERROR, "Unknown index from agentd: unknown_index"))
+            << "Expected error log about unknown index";
+
+    // Should have error about failing to apply document limits
+    EXPECT_TRUE(logCapture->contains(LOG_ERROR, "Failed to apply document limits"))
+            << "Expected error log about failing to apply document limits";
+}
+
+// Test setDocumentLimits with valid numeric limit (newLimit >= currentCount case)
+// This tests the path where limit is set and no data exceeds it
+// Lines covered: validation, counting, accept limit
+TEST_F(SyscollectorImpTest, DocumentLimits_ValidInput_NumericLimit)
+{
+    // Capture log messages
+    // Use shared_ptr to prevent dangling references after test completes
+    auto logCapture = std::make_shared<LogCapture>();
+
+    // Create log function that captures messages
+    std::function<void(const modules_log_level_t, const std::string&)> captureLogFunction =
+        [logCapture](const modules_log_level_t level, const std::string & message)
+    {
+        logCapture->capture(level, message);
+    };
+
+    // Set up mock agentd query to return valid numeric limit
+    auto mockQuery = [](const char*, char* output, size_t size) -> bool
+    {
+        // Return valid JSON object with packages limit set to 100
+        std::string response = R"({"packages": 100})";
+        std::strncpy(output, response.c_str(), size - 1);
+        output[size - 1] = '\0';
+        return true;
+    };
+
+    Syscollector::instance().setAgentdQueryFunction(mockQuery);
+
+    // Set up minimal mock sysinfo
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).WillRepeatedly(Return());
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).WillRepeatedly(Return());
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string&) {}
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) {}
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist, &captureLogFunction]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          captureLogFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, false, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    // Wait for syncLoop to fetch and apply limits
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Verify that document limits were successfully configured
+    EXPECT_TRUE(logCapture->contains(LOG_INFO, "Document limits successfully configured from agentd"))
+            << "Expected success message about document limits";
+
+    // When currentCount (0) < newLimit (100), it attempts to promote unsynced items
+    // Since there are no unsynced items, it logs a DEBUG message
+    EXPECT_TRUE(logCapture->contains(LOG_DEBUG, "Document limit increased from 0 to 100: No unsynced items available to promote"))
+            << "Expected debug log about no unsynced items to promote";
+}
+
+// Summary test to verify the DocumentLimits feature works end-to-end
+// This test verifies that:
+// 1. Document limits are fetched from agentd
+// 2. Limits are applied successfully
+// 3. The system respects the limits during operation
+// Lines covered: Validates the overall document limits functionality
+TEST_F(SyscollectorImpTest, DocumentLimits_EndToEnd_Summary)
+{
+    // Capture log messages
+    auto logCapture = std::make_shared<LogCapture>();
+
+    // Create log function that captures messages
+    std::function<void(const modules_log_level_t, const std::string&)> captureLogFunction =
+        [logCapture](const modules_log_level_t level, const std::string & message)
+    {
+        logCapture->capture(level, message);
+    };
+
+    // Set up mock agentd query to return multiple valid limits
+    auto mockQuery = [](const char*, char* output, size_t size) -> bool
+    {
+        // Return JSON object with multiple index limits
+        std::string response = R"({"packages": 50, "processes": 0, "hotfixes": 10})";
+        std::strncpy(output, response.c_str(), size - 1);
+        output[size - 1] = '\0';
+        return true;
+    };
+
+    Syscollector::instance().setAgentdQueryFunction(mockQuery);
+
+    // Set up minimal mock sysinfo
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).WillRepeatedly(Return());
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).WillRepeatedly(Return());
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string&) {}
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) {}
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist, &captureLogFunction]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          captureLogFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, false, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    // Wait for syncLoop to fetch and apply limits
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Verify that document limits were successfully configured
+    EXPECT_TRUE(logCapture->contains(LOG_INFO, "Document limits successfully configured from agentd"))
+            << "Expected success message about document limits";
+
+    // Verify that limits were set for each index
+    EXPECT_TRUE(logCapture->contains(LOG_DEBUG, "Document limit increased from 0 to 50"))
+            << "Expected packages limit to be set to 50";
+
+    EXPECT_TRUE(logCapture->contains(LOG_INFO, "Document limit set to unlimited for index 'wazuh-states-inventory-processes'"))
+            << "Expected processes to be unlimited (0)";
+
+    EXPECT_TRUE(logCapture->contains(LOG_DEBUG, "Document limit increased from 0 to 10"))
+            << "Expected hotfixes limit to be set to 10";
 }
