@@ -688,7 +688,6 @@
         </Feature>
         <MajorUpgrade Schedule="afterInstallInitialize" AllowDowngrades="yes" />
         <Upgrade Id="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
-        <UpgradeVersion Minimum="4.14.0" Maximum="5.0.0" IncludeMinimum="yes" IncludeMaximum="no" Property="IS_UPGRADING_FROM_SUPPORTED_VERSION" />
         <UpgradeVersion Maximum="4.14.0" IncludeMaximum="no" Property="IS_UPGRADING_FROM_UNSUPPORTED_VERSION" />
         <UpgradeVersion Maximum="5.0.0" IncludeMaximum="no" Property="IS_UPGRADING_FROM_PRIOR_TO_5X" /></Upgrade>
 

@@ -53,7 +53,7 @@ if [ -d "${DIR}" ]; then
         MAJOR=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f1)
         MINOR=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f2)
     elif [ -f ${DIR}/VERSION.json ]; then
-        OLD_VERSION=`grep -oP '(?<="version": ")[^"]*' ${DIR}/VERSION.json 2>/dev/null`
+        OLD_VERSION=$(awk -F'"' '/"version"[[:space:]]*:/ {print $4; exit}' "${DIR}/VERSION.json" 2>/dev/null)
         MAJOR=$(echo $OLD_VERSION | cut -d. -f1)
         MINOR=$(echo $OLD_VERSION | cut -d. -f2)
     fi

@@ -805,7 +805,7 @@ main()
                     if [ "$USER_INSTALL_TYPE" = "agent" ]; then
                         # Agent: Block upgrades from < 4.14.0
                         if [ -n "$OLD_MAJOR" ] && [ -n "$OLD_MINOR" ]; then
-                            if [ "$OLD_MAJOR" -lt 4 ] || [ "$OLD_MAJOR" -eq 4 -a "$OLD_MINOR" -lt 14 ]; then
+                            if [ "$OLD_MAJOR" -lt 4 ] || { [ "$OLD_MAJOR" -eq 4 ] && [ "$OLD_MINOR" -lt 14 ]; }; then
                                 UPGRADE_BLOCKED="yes"
                                 ERROR_MESSAGE="Current version: $USER_OLD_VERSION
 Target version:  5.0.0
