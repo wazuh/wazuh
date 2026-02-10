@@ -481,12 +481,15 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
                     {
                         fdFiles = fs.list_directory(pidFilePath);
                     }
-                    catch (const std::filesystem::filesystem_error&)
+                    catch (const std::filesystem::filesystem_error& e)
                     {
+                        std::cerr << "Error listing " << pidFilePath.string() << ": " << e.what() << std::endl;
                         continue;
                     }
 
                     // Iterate fd directory.
+                    int skippedFdCount {0};
+
                     for (const auto& fdFile : fdFiles)
                     {
                         // Only symlinks that represent a socket are read.
@@ -521,8 +524,16 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
                         }
                         catch (const std::filesystem::filesystem_error&)
                         {
+                            ++skippedFdCount;
                             continue;
                         }
+                    }
+
+                    if (skippedFdCount > 0)
+                    {
+                        std::cerr << "Skipped " << skippedFdCount
+                                  << " fd entries in " << pidFilePath.string()
+                                  << " due to filesystem errors" << std::endl;
                     }
                 }
             }
