@@ -740,6 +740,8 @@ rm -fr %{buildroot}
 %attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/geo/mmdb/0
 %dir %attr(770, root, wazuh) %{_localstatedir}/engine/mmdb
 %attr(640, wazuh, wazuh) %{_localstatedir}/engine/mmdb/*.mmdb
+%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store/enrichment/geo
+%attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/enrichment/geo/0
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/outputs
 %attr(640, wazuh, wazuh) %{_localstatedir}/engine/outputs/*.yml
 %dir %attr(750, root, wazuh) %{_localstatedir}/framework

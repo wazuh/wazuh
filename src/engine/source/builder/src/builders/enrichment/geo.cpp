@@ -26,9 +26,12 @@ constexpr auto FMT_SUCCESS_AS_ENRICHMENT_TRACE = "AS({}) -> Success: AS enrichme
 constexpr auto FMT_NO_AS_DATA_ENRICHMENT_TRACE = "AS({}) -> Failure: No AS data found for IP at field '{}'";
 
 // Both configurations
-constexpr auto FMT_SUCCESS_BOTH_ENRICHMENT_TRACE = "Geo({})|AS({}) -> Success: Geo and AS enrichment applied for IP at field '{}'";
-constexpr auto FMT_SUCCESS_ONLY_GEO_ENRICHMENT_TRACE = "Geo({})|AS({}) -> Success: Only Geo enrichment applied for IP at field '{}'";
-constexpr auto FMT_SUCCESS_ONLY_AS_ENRICHMENT_TRACE = "Geo({})|AS({}) -> Success: Only AS enrichment applied for IP at field '{}'";
+constexpr auto FMT_SUCCESS_BOTH_ENRICHMENT_TRACE =
+    "Geo({})|AS({}) -> Success: Geo and AS enrichment applied for IP at field '{}'";
+constexpr auto FMT_SUCCESS_ONLY_GEO_ENRICHMENT_TRACE =
+    "Geo({})|AS({}) -> Success: Only Geo enrichment applied for IP at field '{}'";
+constexpr auto FMT_SUCCESS_ONLY_AS_ENRICHMENT_TRACE =
+    "Geo({})|AS({}) -> Success: Only AS enrichment applied for IP at field '{}'";
 constexpr auto FMT_NO_DATA_ENRICHMENT_TRACE = "Geo({})|AS({}) -> Failure: No Geo or AS data found for IP at field '{}'";
 
 /**
@@ -78,7 +81,6 @@ std::vector<MappingConfig> loadMappingConfigs(const json::Json& config)
 
     return mappingConfigs;
 }
-
 
 /**
  * @brief Maps GeoIP data to ECS format.
@@ -179,11 +181,13 @@ bool mapAStoECS(const std::string& ip,
     return mapAS;
 }
 
-base::Expression
-getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& locator, const MappingConfig& mappingConfig, bool trace)
+base::Expression getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& cityLocator,
+                                   const std::shared_ptr<geo::ILocator>& asLocator,
+                                   const MappingConfig& mappingConfig,
+                                   bool trace)
 {
 
-    auto opFn = [locator, mappingConfig, trace](base::Event event) -> base::result::Result<base::Event>
+    auto opFn = [cityLocator, asLocator, mappingConfig, trace](base::Event event) -> base::result::Result<base::Event>
     {
         // Get source IP
         auto ipOpt = event->getString(mappingConfig.originIpPath);
@@ -199,10 +203,11 @@ getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& locator, const MappingCo
         const bool asConfigured = mappingConfig.asEcsPath.has_value();
         const bool geoConfigured = mappingConfig.geoEcsPath.has_value();
 
-        const bool asSuccess = asConfigured ? mapAStoECS(ip, locator, mappingConfig.asEcsPath.value(), *event) : false;
+        const bool asSuccess =
+            asConfigured ? mapAStoECS(ip, asLocator, mappingConfig.asEcsPath.value(), *event) : false;
 
         const bool geoSuccess =
-            geoConfigured ? mapGeoToECS(ip, locator, mappingConfig.geoEcsPath.value(), *event) : false;
+            geoConfigured ? mapGeoToECS(ip, cityLocator, mappingConfig.geoEcsPath.value(), *event) : false;
 
         // Generate trace message using lookup lambda
         const auto getTraceMessage = [&]() -> std::string
@@ -275,7 +280,7 @@ std::pair<base::Expression, std::string> geoEnrichmentBuilder(const std::shared_
     std::vector<base::Expression> enrichmentTerms;
     for (const auto& config : mappingConfigs)
     {
-        enrichmentTerms.push_back(getEachEnrichTerm(cityLocator, config, trace));
+        enrichmentTerms.push_back(getEachEnrichTerm(cityLocator, asLocator, config, trace));
     }
 
     // Combine terms into a single expression

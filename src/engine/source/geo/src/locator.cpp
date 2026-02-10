@@ -371,6 +371,7 @@ base::RespOrError<uint32_t> Locator::getUint32(const std::string& ip, const DotP
     auto eDataResp = getEData(path);
     if (base::isError(eDataResp))
     {
+        auto message = base::getError(eDataResp).message;
         return base::getError(eDataResp);
     }
 
