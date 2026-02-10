@@ -1,0 +1,39 @@
+{
+  "client.ip": {
+    "as_field": "client.as",
+    "geo_field": "client.geo"
+  },
+  "destination.ip": {
+    "as_field": "destination.as",
+    "geo_field": "destination.geo"
+  },
+  "f5_bigip.log.mgmt_ip": {
+    "geo_field": "f5_bigip.log.geo"
+  },
+  "f5_bigip.log.node": {
+    "geo_field": "f5_bigip.log.geo"
+  },
+  "f5_bigip.log.src.ip": {
+    "geo_field": "f5_bigip.log.src.geo"
+  },
+  "f5_bigip.log.x_forwarded_for_header_value": {
+    "geo_field": "f5_bigip.log.geo"
+  },
+  "host.ip": {
+    "geo_field": "host.geo"
+  },
+  "observer.ip": {
+    "geo_field": "observer.geo"
+  },
+  "server.ip": {
+    "as_field": "server.as",
+    "geo_field": "server.geo"
+  },
+  "source.ip": {
+    "as_field": "source.as",
+    "geo_field": "source.geo"
+  },
+  "wazuh.agent.host.ip": {
+    "geo_field": "wazuh.agent.host.geo"
+  }
+}
