@@ -448,19 +448,19 @@ def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message,
 
 
 @pytest.mark.parametrize('agent_id, component, config, socket_exist, socket_class, expected_error, expected_id', [
-    # Checks for 000 or any other agent
+    # Checks for manager or any other agent
     (None, 'test_component', None, ANY, 'WazuhSocket', WazuhError, 1307),  # No configuration
     (None, None, 'test_config', ANY, 'WazuhSocket', WazuhError, 1307),  # No component
     (None, 'test_component', 'test_config', ANY, 'WazuhSocket', WazuhError, 1101),  # Component not in components
     ('001', 'syscheck', 'syscheck', ANY, 'WazuhSocket', WazuhError, 1116),  # Cannot send request
     ('001', 'syscheck', 'syscheck', ANY, 'WazuhSocket', WazuhError, 1117),  # No such file or directory
 
-    # Checks for 000 - Simple messages
+    # Checks for manager - Simple messages
     (None, 'syscheck', 'syscheck', False, 'WazuhSocket', WazuhError, 1121),  # Socket does not exist
     (None, 'syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1121),  # Error connecting with socket
     (None, 'syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1118),  # Data could not be received
 
-    # Checks for 000 - JSON messages
+    # Checks for manager - JSON messages
     (None, 'request', 'global', False, 'WazuhSocketJSON', WazuhError, 1121),  # Socket does not exist
     (None, 'request', 'global', True, 'WazuhSocketJSON', WazuhInternalError, 1121),  # Error connecting with socket
     (None, 'request', 'global', True, 'WazuhSocketJSON', WazuhInternalError, 1118),  # Data could not be received

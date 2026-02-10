@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from datetime import timedelta, timezone
+from datetime import timedelta
 from typing import Generator, List
 
 import wazuh.core.utils as core_utils
@@ -216,7 +216,7 @@ class DisconnectedAgentGroupSyncTask:
 
             agents_not_active = result.get("items", [])
             agents = []
-            now_utc = core_utils.get_utc_now()  
+            now_utc = core_utils.get_utc_now()
             for agent in agents_not_active:
                 disconnected_time = agent["lastKeepAlive"] or agent["dateAdd"]
                 if (
@@ -267,7 +267,6 @@ class DisconnectedAgentGroupSyncTask:
                     "terms": {
                         "field": "wazuh.agent.id",
                         "include": agent_ids,
-                        "exclude": ["000"],
                     },
                     "aggs": {
                         "max_document_version": {
