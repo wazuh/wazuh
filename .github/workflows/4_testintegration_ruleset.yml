@@ -1,0 +1,60 @@
+name: 4.X - Ruleset - Integration tests
+
+# This workflow is only applicable to 4.14.x branches.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: ".github/workflows/.python-version-it"
+          architecture: x64
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
+      # Build wazuh server for linux.
+      - name: Build wazuh server for linux
+        run: |
+          make deps -C src TARGET=server -j2
+          make -C src TARGET=server -j2
+      # Install wazuh server for linux.
+      - name: Install wazuh server for linux
+        run: |
+          echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_INSTALL_TYPE="server"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo "USER_DIR=/var/ossec" >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_SCA="n"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_WHITE_LIST="n"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_SYSLOG="n"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_AUTO_START="y"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          sudo sh install.sh
+          rm ./etc/preloaded-vars.conf
+      # Run ruleset integration tests.
+      - name: Run ruleset integration tests
+        run: |
+          cd ruleset/testing
+          sudo python runtests.py --path /var/ossec
