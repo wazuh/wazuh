@@ -16,7 +16,7 @@
 #ifdef WAZUH_UNIT_TESTING
 // Redefine ossec_version
 #undef __ossec_version
-#define __ossec_version "v3.13.0"
+#define __ossec_version "v5.0.0"
 #endif
 
 // Mutex needed to download a WPK file
