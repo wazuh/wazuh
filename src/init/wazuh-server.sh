@@ -17,6 +17,8 @@ WAZUH_CONF="${WAZUH_CONF:-wazuh-manager.conf}"
 VERSION="v5.0.0"
 REVISION="alpha0"
 TYPE="server"
+WAZUH_ENGINE_GROUP="${WAZUH_ENGINE_GROUP:-wazuh-manager}"
+export WAZUH_ENGINE_GROUP
 
 ###  Do not modify below here ###
 

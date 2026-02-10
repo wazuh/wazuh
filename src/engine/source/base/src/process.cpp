@@ -151,16 +151,13 @@ gid_t privSepGetGroup(const std::string& groupname)
         }
         else
         {
-            throw std::runtime_error(fmt::format("Error looking up group '{}': {} ({})",
-                                             groupname,
-                                             std::strerror(errno),
-                                             errno));
+            throw std::runtime_error(
+                fmt::format("Error looking up group '{}': {} ({})", groupname, std::strerror(errno), errno));
         }
     }
 
     throw std::runtime_error("Exceeded maximum buffer size looking up group '" + groupname + "'");
 }
-
 
 void privSepSetGroup(gid_t gid)
 {

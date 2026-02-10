@@ -1,9 +1,9 @@
 - name: DROP_PRIVILEGES_ENABLED
-  description: Check that the user who has started the 'wazuh-manager-apid' daemon is 'wazuh'
+  description: Check that the user who has started the 'wazuh-manager-apid' daemon is 'wazuh-manager'
   configuration_parameters:
     DROP_PRIVILEGES: yes
   metadata:
-    expected_user: wazuh
+    expected_user: wazuh-manager
 
 - name: DROP_PRIVILEGES_DISABLED
   description: Check that the user who has started the 'wazuh-manager-apid' daemon is 'root'
