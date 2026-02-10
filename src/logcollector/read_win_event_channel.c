@@ -357,9 +357,9 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     /* Skip XML header if present (e.g., "<?xml version='1.0'?>") */
     xml_output = xml_event;
     if (strncmp(xml_output, "<?xml", 5) == 0) {
-        xml_output = strchr(xml_output, '>');
+        xml_output = strstr(xml_output, "?>");
         if (xml_output) {
-            xml_output++; /* Move past the '>' character */
+            xml_output += 2; /* Move past the "?>" characters */
         } else {
             xml_output = xml_event; /* Fallback to original if malformed */
         }

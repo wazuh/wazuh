@@ -21,6 +21,13 @@
 
 /* No tests currently defined for read_win_event_channel.c
  * The get_message function has been removed as it is no longer used.
+ * 
+ * Future test coverage needed:
+ * - send_channel_event(): XML header stripping logic (lines 357-366)
+ *   - Test with XML header present
+ *   - Test without XML header
+ *   - Test with malformed XML header
+ * 
  * Tests can be added here for send_channel_event or other functions as needed.
  */
 
