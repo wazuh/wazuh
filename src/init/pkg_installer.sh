@@ -19,6 +19,10 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >> ./logs/upgrade.log
 OS=$(uname)
 WAZUH_HOME=$(pwd)
 
+if [ -z "${INSTALLDIR}" ]; then
+    INSTALLDIR="${WAZUH_HOME}"
+fi
+
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking execution path." >> ./logs/upgrade.log
 
 
