@@ -1,15 +1,8 @@
 name: 4.X - Ruleset - Integration tests
 
+# This workflow is only applicable to 4.14.x branches.
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-        - ".github/workflows/4_testintegration_ruleset.yml"
-        - "ruleset/**"
-        - "src/analysisd/**"
-        - "src/config/rules-config.*"
-        - "src/config/decoder-config.*"
-        - "src/Makefile"
 
 jobs:
   build:
