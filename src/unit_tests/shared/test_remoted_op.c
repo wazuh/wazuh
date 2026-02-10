@@ -533,7 +533,7 @@ void test_parse_json_keepalive_invalid_json(void **state)
     agent_info_data *agent_data = NULL;
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL, NULL, NULL);
 
     assert_int_equal(OS_INVALID, result);
 
@@ -547,7 +547,7 @@ void test_parse_json_keepalive_missing_agent(void **state)
     agent_info_data *agent_data = NULL;
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL, NULL, NULL);
 
     assert_int_equal(OS_INVALID, result);
 
@@ -567,7 +567,7 @@ void test_parse_json_keepalive_linux_complete(void **state)
     agent_info_data *agent_data = NULL;
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL, NULL, NULL);
 
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("v5.0.0", agent_data->version);
@@ -599,7 +599,7 @@ void test_parse_json_keepalive_windows(void **state)
     agent_info_data *agent_data = NULL;
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL, NULL, NULL);
 
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("v5.0.0", agent_data->version);
@@ -625,7 +625,7 @@ void test_parse_json_keepalive_minimal(void **state)
     agent_info_data *agent_data = NULL;
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL, NULL, NULL);
 
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("v5.0.0", agent_data->version);
@@ -648,7 +648,7 @@ void test_parse_json_keepalive_with_groups(void **state)
     char **groups = NULL;
     size_t groups_count = 0;
 
-    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count);
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count, NULL, NULL);
 
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("v5.0.0", agent_data->version);
@@ -679,7 +679,7 @@ void test_parse_json_keepalive_empty_groups(void **state)
     char **groups = NULL;
     size_t groups_count = 0;
 
-    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count);
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count, NULL, NULL);
 
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("v5.0.0", agent_data->version);
@@ -701,7 +701,7 @@ void test_parse_json_keepalive_no_groups(void **state)
     char **groups = NULL;
     size_t groups_count = 0;
 
-    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count);
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count, NULL, NULL);
 
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("v5.0.0", agent_data->version);

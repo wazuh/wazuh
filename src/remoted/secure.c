@@ -889,10 +889,12 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                     int result;
                     char **groups = NULL;
                     size_t groups_count = 0;
+                    char *cluster_name = NULL;
+                    char *cluster_node = NULL;
 
                     if (tmp_msg[0] == '{') {
-                        // JSON keepalive from 5.0+ agent - extract groups during parsing
-                        result = parse_json_keepalive(tmp_msg, agent_data, &groups, &groups_count);
+                        // JSON keepalive from 5.0+ agent - extract groups and cluster info during parsing
+                        result = parse_json_keepalive(tmp_msg, agent_data, &groups, &groups_count, &cluster_name, &cluster_node);
                         if (result == OS_SUCCESS) {
                             mdebug2("Parsed JSON keepalive from agent %s", key->id);
                         } else {
@@ -913,23 +915,42 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                                 fresh->groups_count = groups_count;
                                 groups = NULL;  // Transfer ownership to fresh
                             }
+                            // Add cluster info if available (5.0+ agents only)
+                            if (cluster_name) {
+                                fresh->cluster_name = cluster_name;
+                                cluster_name = NULL;  // Transfer ownership to fresh
+                            }
+                            if (cluster_node) {
+                                fresh->cluster_node = cluster_node;
+                                cluster_node = NULL;  // Transfer ownership to fresh
+                            }
                             if (agent_meta_upsert_locked(key->id, fresh) != 0) {
                                 mwarn("Failed to update metadata cache for agent ID '%s'", key->id);
                                 agent_meta_free(fresh);
                             }
-                        } else if (groups) {
+                        } else {
                             // Free groups if agent_meta creation failed
+                            if (groups) {
+                                for (size_t i = 0; i < groups_count; i++) {
+                                    os_free(groups[i]);
+                                }
+                                os_free(groups);
+                            }
+                            // Free cluster info if agent_meta creation failed
+                            os_free(cluster_name);
+                            os_free(cluster_node);
+                        }
+                    } else {
+                        // Free groups if parsing failed
+                        if (groups) {
                             for (size_t i = 0; i < groups_count; i++) {
                                 os_free(groups[i]);
                             }
                             os_free(groups);
                         }
-                    } else if (groups) {
-                        // Free groups if parsing failed
-                        for (size_t i = 0; i < groups_count; i++) {
-                            os_free(groups[i]);
-                        }
-                        os_free(groups);
+                        // Free cluster info if parsing failed
+                        os_free(cluster_name);
+                        os_free(cluster_node);
                     }
 
                     wdb_free_agent_info_data(agent_data);
@@ -1368,17 +1389,30 @@ static int append_header(dispatch_ctx_t *ctx) {
     // agent.host.hostname (only for Linux/macOS, empty for Windows)
     if (have_meta && snap.hostname) cJSON_AddStringToObject(host, "hostname", snap.hostname);
 
-    // Add wazuh.cluster.name and wazuh.cluster.node from manager
-    if (cluster_name || node_name) {
-        cJSON *cluster = cJSON_CreateObject();
-        if (wazuh && cluster) {
-            if (cluster_name && strcmp(cluster_name, "undefined") != 0) {
-                cJSON_AddStringToObject(cluster, "name", cluster_name);
-            }
-            if (node_name && strcmp(node_name, "undefined") != 0) {
-                cJSON_AddStringToObject(cluster, "node", node_name);
-            }
+    // Add wazuh.cluster.name and wazuh.cluster.node
+    bool has_cluster_info = false;
+    cJSON *cluster = cJSON_CreateObject();
+    if (wazuh && cluster) {
+        if (have_meta && snap.cluster_name && snap.cluster_name[0]) {
+            cJSON_AddStringToObject(cluster, "name", snap.cluster_name);
+            has_cluster_info = true;
+        } else if (cluster_name && strcmp(cluster_name, "undefined") != 0) {
+            cJSON_AddStringToObject(cluster, "name", cluster_name);
+            has_cluster_info = true;
+        }
+
+        if (have_meta && snap.cluster_node && snap.cluster_node[0]) {
+            cJSON_AddStringToObject(cluster, "node", snap.cluster_node);
+            has_cluster_info = true;
+        } else if (node_name && strcmp(node_name, "undefined") != 0) {
+            cJSON_AddStringToObject(cluster, "node", node_name);
+            has_cluster_info = true;
+        }
+
+        if (has_cluster_info) {
             cJSON_AddItemToObject(wazuh, "cluster", cluster);
+        } else {
+            cJSON_Delete(cluster);
         }
     }
 

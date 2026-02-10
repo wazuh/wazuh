@@ -937,7 +937,8 @@ public:
                                 thread_local std::string elementId;
                                 elementId.clear();
 
-                                elementId.append(m_clusterName);
+                                elementId.append(!res.context->clusterName.empty() ? res.context->clusterName
+                                                                                   : m_clusterName);
                                 elementId.append("_");
                                 elementId.append(res.context->agentId);
                                 elementId.append("_");
@@ -959,7 +960,8 @@ public:
                                     metadata["wazuh"]["agent"]["host"]["os"]["platform"] = res.context->osplatform;
                                     metadata["wazuh"]["agent"]["host"]["os"]["type"] = res.context->ostype;
                                     metadata["wazuh"]["agent"]["host"]["os"]["version"] = res.context->osversion;
-                                    metadata["wazuh"]["cluster"]["name"] = m_clusterName;
+                                    metadata["wazuh"]["cluster"]["name"] =
+                                        !res.context->clusterName.empty() ? res.context->clusterName : m_clusterName;
 
                                     // Serialize metadata to string and append FlatBuffer inventory data
                                     thread_local std::string dataString;

@@ -23,8 +23,9 @@
 #define HOST_NAME_MAX 64
 #endif
 
-/* Default cluster name when not configured */
+/* Default cluster name and node name when not configured */
 #define DEFAULT_CLUSTER_NAME "undefined"
+#define DEFAULT_NODE_NAME "undefined"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -253,8 +254,6 @@ void free_file_time(void *data) {
  */
 STATIC char* build_handshake_json(const module_limits_t *limits, const char *agent_id) {
     char *json_str = NULL;
-    char *cluster_name = NULL;
-    char *cluster_node = NULL;
     char *agent_groups_csv = NULL;
 
     if (!limits) {
@@ -310,22 +309,16 @@ STATIC char* build_handshake_json(const module_limits_t *limits, const char *age
 
     cJSON_AddItemToObject(root, "limits", limits_obj);
 
-    /* Add cluster_name - get from cluster configuration */
-    cluster_name = get_cluster_name();  /* From cluster_utils.h, returns allocated string */
     if (cluster_name) {
         cJSON_AddStringToObject(root, "cluster_name", cluster_name);
-        os_free(cluster_name);
     } else {
         cJSON_AddStringToObject(root, "cluster_name", DEFAULT_CLUSTER_NAME);
     }
 
-    /* Add cluster_node - get from cluster configuration */
-    cluster_node = get_node_name();  /* From cluster_utils.h, returns allocated string */
-    if (cluster_node) {
-        cJSON_AddStringToObject(root, "cluster_node", cluster_node);
-        os_free(cluster_node);
+    if (node_name) {
+        cJSON_AddStringToObject(root, "cluster_node", node_name);
     } else {
-        cJSON_AddStringToObject(root, "cluster_node", DEFAULT_CLUSTER_NAME);
+        cJSON_AddStringToObject(root, "cluster_node", DEFAULT_NODE_NAME);
     }
 
     /* Add agent_groups - always include field, agent can fallback to merge.mg if empty */
@@ -663,8 +656,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
 
             // Detect JSON format (5.0+ agent) vs text format (4.x agent)
             if (msg[0] == '{') {
-                // JSON keepalive from 5.0+ agent (groups not needed here, only for cache)
-                result = parse_json_keepalive(msg, agent_data, NULL, NULL);
+                // JSON keepalive from 5.0+ agent (groups and cluster not needed here, only for cache)
+                result = parse_json_keepalive(msg, agent_data, NULL, NULL, NULL, NULL);
             } else {
                 // Text keepalive from 4.x agent
                 result = parse_agent_update_msg(msg, agent_data);

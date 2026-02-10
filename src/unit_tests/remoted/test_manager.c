@@ -117,6 +117,22 @@ static int teardown_test_mode(void ** state) {
     return 0;
 }
 
+static int setup_cluster_globals(void ** state) {
+    cluster_name = strdup("test_cluster");
+    node_name = strdup("test_node");
+    test_mode = 1;
+
+    return 0;
+}
+
+static int teardown_cluster_globals(void ** state) {
+    os_free(cluster_name);
+    os_free(node_name);
+    test_mode = 0;
+
+    return 0;
+}
+
 
 int __wrap_send_msg(const char *agent_id, const char *msg, ssize_t msg_length) {
     check_expected(agent_id);
@@ -5453,11 +5469,6 @@ static void test_build_handshake_json_default_values(void **state) {
 
     module_limits_init(&limits);
 
-    /* Mock get_cluster_name to return NULL (will use default) */
-    will_return(__wrap_get_cluster_name, NULL);
-    /* Mock get_node_name to return NULL (will use default) */
-    will_return(__wrap_get_node_name, NULL);
-
     /* Pass NULL for agent_id to skip groups lookup */
     json_str = build_handshake_json(&limits, NULL);
 
@@ -5507,7 +5518,7 @@ static void test_build_handshake_json_default_values(void **state) {
     /* Verify cluster_node uses default when get_node_name returns NULL */
     cJSON *cluster_node = cJSON_GetObjectItem(root, "cluster_node");
     assert_non_null(cluster_node);
-    assert_string_equal(cluster_node->valuestring, DEFAULT_CLUSTER_NAME);
+    assert_string_equal(cluster_node->valuestring, DEFAULT_NODE_NAME);
 
     cJSON_Delete(root);
     os_free(json_str);
@@ -5529,11 +5540,6 @@ static void test_build_handshake_json_custom_values(void **state) {
     limits.fim.registry_key = 150000;
     limits.fim.registry_value = 100000;
     limits.sca.checks = 20000;
-
-    /* Mock get_cluster_name to return a custom name */
-    will_return(__wrap_get_cluster_name, strdup("custom-cluster"));
-    /* Mock get_node_name to return a custom node name */
-    will_return(__wrap_get_node_name, strdup("custom-node"));
 
     /* Pass NULL for agent_id to skip groups lookup */
     json_str = build_handshake_json(&limits, NULL);
@@ -5562,12 +5568,12 @@ static void test_build_handshake_json_custom_values(void **state) {
     /* Verify custom cluster_name */
     cJSON *cluster = cJSON_GetObjectItem(root, "cluster_name");
     assert_non_null(cluster);
-    assert_string_equal(cluster->valuestring, "custom-cluster");
+    assert_string_equal(cluster->valuestring, "test_cluster");
 
     /* Verify custom cluster_node */
     cJSON *cluster_node = cJSON_GetObjectItem(root, "cluster_node");
     assert_non_null(cluster_node);
-    assert_string_equal(cluster_node->valuestring, "custom-node");
+    assert_string_equal(cluster_node->valuestring, "test_node");
 
     cJSON_Delete(root);
     os_free(json_str);
@@ -5591,11 +5597,6 @@ static void test_build_handshake_json_verifies_structure(void **state) {
 
     module_limits_init(&limits);
 
-    /* Mock get_cluster_name to return a cluster name */
-    will_return(__wrap_get_cluster_name, strdup("wazuh-cluster"));
-    /* Mock get_node_name to return a node name */
-    will_return(__wrap_get_node_name, strdup("wazuh-node"));
-
     /* Pass NULL for agent_id to skip groups lookup */
     json_str = build_handshake_json(&limits, NULL);
 
@@ -5613,13 +5614,13 @@ static void test_build_handshake_json_verifies_structure(void **state) {
     cJSON *cluster_name = cJSON_GetObjectItem(root, "cluster_name");
     assert_non_null(cluster_name);
     assert_true(cJSON_IsString(cluster_name));
-    assert_string_equal(cluster_name->valuestring, "wazuh-cluster");
+    assert_string_equal(cluster_name->valuestring, "test_cluster");
 
     /* Verify cluster_node exists and is a string */
     cJSON *cluster_node = cJSON_GetObjectItem(root, "cluster_node");
     assert_non_null(cluster_node);
     assert_true(cJSON_IsString(cluster_node));
-    assert_string_equal(cluster_node->valuestring, "wazuh-node");
+    assert_string_equal(cluster_node->valuestring, "test_node");
 
     /* Check limits sub-objects exist and are objects */
     cJSON *fim = cJSON_GetObjectItem(limits_obj, "fim");
@@ -5646,11 +5647,6 @@ static void test_build_handshake_json_with_agent_groups(void **state) {
     cJSON *groups_array = NULL;
 
     module_limits_init(&limits);
-
-    /* Mock get_cluster_name to return a name */
-    will_return(__wrap_get_cluster_name, strdup("test-cluster"));
-    /* Mock get_node_name to return a name */
-    will_return(__wrap_get_node_name, strdup("test-node"));
 
     /* Mock wdb_get_agent_group to return multiple groups */
     expect_value(__wrap_wdb_get_agent_group, id, 1);
@@ -5689,11 +5685,6 @@ static void test_build_handshake_json_with_single_agent_group(void **state) {
 
     module_limits_init(&limits);
 
-    /* Mock get_cluster_name to return a name */
-    will_return(__wrap_get_cluster_name, strdup("test-cluster"));
-    /* Mock get_node_name to return a name */
-    will_return(__wrap_get_node_name, strdup("test-node"));
-
     /* Mock wdb_get_agent_group to return a single group (no comma) */
     expect_value(__wrap_wdb_get_agent_group, id, 1);
     will_return(__wrap_wdb_get_agent_group, strdup("default"));
@@ -5729,11 +5720,6 @@ static void test_build_handshake_json_with_no_agent_groups(void **state) {
 
     module_limits_init(&limits);
 
-    /* Mock get_cluster_name to return a name */
-    will_return(__wrap_get_cluster_name, strdup("test-cluster"));
-    /* Mock get_node_name to return a name */
-    will_return(__wrap_get_node_name, strdup("test-node"));
-
     /* Mock wdb_get_agent_group to return NULL (no groups) */
     expect_value(__wrap_wdb_get_agent_group, id, 1);
     will_return(__wrap_wdb_get_agent_group, NULL);
@@ -5766,11 +5752,6 @@ static void test_build_handshake_json_with_empty_agent_groups(void **state) {
 
     module_limits_init(&limits);
 
-    /* Mock get_cluster_name to return a name */
-    will_return(__wrap_get_cluster_name, strdup("test-cluster"));
-    /* Mock get_node_name to return a name */
-    will_return(__wrap_get_node_name, strdup("test-node"));
-
     /* Mock wdb_get_agent_group to return empty string */
     expect_value(__wrap_wdb_get_agent_group, id, 1);
     will_return(__wrap_wdb_get_agent_group, strdup(""));
@@ -5789,39 +5770,6 @@ static void test_build_handshake_json_with_empty_agent_groups(void **state) {
     assert_non_null(groups_array);
     assert_true(cJSON_IsArray(groups_array));
     assert_int_equal(cJSON_GetArraySize(groups_array), 0);
-
-    cJSON_Delete(root);
-    os_free(json_str);
-}
-
-static void test_build_handshake_json_cluster_node_custom(void **state) {
-    (void)state;
-    module_limits_t limits;
-    char *json_str = NULL;
-    cJSON *root = NULL;
-    cJSON *cluster_node = NULL;
-
-    module_limits_init(&limits);
-
-    /* Mock get_cluster_name to return a name */
-    will_return(__wrap_get_cluster_name, strdup("production-cluster"));
-    /* Mock get_node_name to return a custom worker node name */
-    will_return(__wrap_get_node_name, strdup("worker-node-1"));
-
-    /* Pass NULL for agent_id to skip groups lookup */
-    json_str = build_handshake_json(&limits, NULL);
-
-    assert_non_null(json_str);
-
-    /* Parse and verify structure */
-    root = cJSON_Parse(json_str);
-    assert_non_null(root);
-
-    /* Verify custom cluster_node value */
-    cluster_node = cJSON_GetObjectItem(root, "cluster_node");
-    assert_non_null(cluster_node);
-    assert_true(cJSON_IsString(cluster_node));
-    assert_string_equal(cluster_node->valuestring, "worker-node-1");
 
     cJSON_Delete(root);
     os_free(json_str);
@@ -5970,14 +5918,13 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_save_controlmsg_shutdown_wdb_fail, setup_globals, teardown_globals),
         // Tests build_handshake_json
         cmocka_unit_test(test_build_handshake_json_default_values),
-        cmocka_unit_test(test_build_handshake_json_custom_values),
-        cmocka_unit_test(test_build_handshake_json_null_limits),
-        cmocka_unit_test(test_build_handshake_json_verifies_structure),
-        cmocka_unit_test(test_build_handshake_json_with_agent_groups),
-        cmocka_unit_test(test_build_handshake_json_with_single_agent_group),
-        cmocka_unit_test(test_build_handshake_json_with_no_agent_groups),
-        cmocka_unit_test(test_build_handshake_json_with_empty_agent_groups),
-        cmocka_unit_test(test_build_handshake_json_cluster_node_custom),
+        cmocka_unit_test_setup_teardown(test_build_handshake_json_custom_values, setup_cluster_globals, teardown_cluster_globals),
+        cmocka_unit_test_setup_teardown(test_build_handshake_json_null_limits, setup_cluster_globals, teardown_cluster_globals),
+        cmocka_unit_test_setup_teardown(test_build_handshake_json_verifies_structure, setup_cluster_globals, teardown_cluster_globals),
+        cmocka_unit_test_setup_teardown(test_build_handshake_json_with_agent_groups, setup_cluster_globals, teardown_cluster_globals),
+        cmocka_unit_test_setup_teardown(test_build_handshake_json_with_single_agent_group, setup_cluster_globals, teardown_cluster_globals),
+        cmocka_unit_test_setup_teardown(test_build_handshake_json_with_no_agent_groups, setup_cluster_globals, teardown_cluster_globals),
+        cmocka_unit_test_setup_teardown(test_build_handshake_json_with_empty_agent_groups, setup_cluster_globals, teardown_cluster_globals),
     };
     return cmocka_run_group_tests(tests, test_setup_group, test_teardown_group);
 }

@@ -172,6 +172,27 @@ static char* build_json_keepalive(const char *agent_ip, const char *config_sum,
         cJSON_AddItemToObject(root, "host", host);
     }
 
+    // Cluster fields (only if metadata available and cluster info present)
+    if (has_metadata) {
+        cJSON *cluster = cJSON_CreateObject();
+        bool has_cluster_info = false;
+
+        if (metadata.cluster_name[0]) {
+            cJSON_AddStringToObject(cluster, "name", metadata.cluster_name);
+            has_cluster_info = true;
+        }
+        if (metadata.cluster_node[0]) {
+            cJSON_AddStringToObject(cluster, "node", metadata.cluster_node);
+            has_cluster_info = true;
+        }
+
+        if (has_cluster_info) {
+            cJSON_AddItemToObject(root, "cluster", cluster);
+        } else {
+            cJSON_Delete(cluster);
+        }
+    }
+
     // Convert to string
     char *json_str = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
