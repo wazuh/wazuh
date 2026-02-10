@@ -80,7 +80,6 @@ typedef struct _os_channel {
     EVT_HANDLE subscription;
 } os_channel;
 
-STATIC char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags);
 STATIC EVT_HANDLE read_bookmark(os_channel *channel);
 
 wchar_t *convert_unix_string(char *string)
@@ -132,119 +131,6 @@ wchar_t *convert_unix_string(char *string)
     }
 
     return (dest);
-}
-
-STATIC char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
-{
-    char *message = NULL;
-    EVT_HANDLE publisher = NULL;
-    DWORD size = 0;
-    wchar_t *buffer = NULL;
-    int result = 0;
-    DWORD lastError;
-
-    publisher = EvtOpenPublisherMetadata(NULL,
-                                         provider_name,
-                                         NULL,
-                                         0,
-                                         0);
-    if (publisher == NULL) {
-        LSTATUS err = GetLastError();
-        char error_msg[OS_SIZE_1024];
-        memset(error_msg, 0, OS_SIZE_1024);
-        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
-                | FORMAT_MESSAGE_MAX_WIDTH_MASK,
-                NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                (LPTSTR) &error_msg, OS_SIZE_1024, NULL);
-
-        mdebug1(
-            "Could not EvtOpenPublisherMetadata() with flags (%lu) which returned (%lu): %s",
-            flags,
-            err,
-            error_msg);
-        goto cleanup;
-    }
-
-    /* Make initial call to determine buffer size */
-    result = EvtFormatMessage(publisher,
-                              evt,
-                              0,
-                              0,
-                              NULL,
-                              flags,
-                              0,
-                              NULL,
-                              &size);
-
-    if (result) {
-        // We expect failure here because the buffer is null
-        merror(
-            "Could not EvtFormatMessage() to determine buffer size with flags (%lu): unexpected result",
-            flags);
-        goto cleanup;
-    }
-
-    lastError = GetLastError();
-
-    switch (lastError) {
-    case ERROR_INSUFFICIENT_BUFFER:             // 122
-        // Expected case
-        break;
-
-    case ERROR_EVT_MESSAGE_NOT_FOUND:           // 15027
-    case ERROR_EVT_MESSAGE_LOCALE_NOT_FOUND:    // 15033
-         mdebug1(
-            "Could not EvtFormatMessage() to determine buffer size with flags (%lu) which returned (%lu)",
-            flags,
-            lastError);
-        goto cleanup;
-
-    default:
-        merror(
-            "Could not EvtFormatMessage() to determine buffer size with flags (%lu) which returned (%lu)",
-            flags,
-            lastError);
-        goto cleanup;
-    }
-
-    /* Increase buffer size by one due to the difference in the size count between EvtFormatMessage() and
-       WideCharToMultiByte() */
-    size += 1;
-    if ((buffer = calloc(size, sizeof(wchar_t))) == NULL) {
-        merror(
-            "Could not calloc() memory which returned [(%d)-(%s)]",
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
-
-    result = EvtFormatMessage(publisher,
-                              evt,
-                              0,
-                              0,
-                              NULL,
-                              flags,
-                              size,
-                              buffer,
-                              &size);
-    if (result == FALSE) {
-        merror(
-            "Could not EvtFormatMessage() with flags (%lu) which returned (%lu)",
-            flags,
-            GetLastError());
-        goto cleanup;
-    }
-
-    message = convert_windows_string(buffer);
-
-cleanup:
-    free(buffer);
-
-    if (publisher != NULL) {
-        EvtClose(publisher);
-    }
-
-    return (message);
 }
 
 /* Read an existing bookmark (if one exists) */
