@@ -19,6 +19,7 @@ Syscollector performs periodic scans to gather inventory data and only sends cha
 - **Cross-Platform**: Supports Windows, Linux, macOS, and Unix systems
 - **Configurable**: Flexible scan intervals and component selection
 - **Local Storage**: SQLite database for change detection and state persistence
+- **Document Limits**: Manager-controlled limits on synchronized items per inventory type to optimize resource consumption
 - **Automatic Data Cleanup**: When individual collectors (packages, OS, hotfixes, etc.) are disabled, Syscollector automatically notifies the manager and cleans up associated data
 
 ### How It Works

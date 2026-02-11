@@ -165,6 +165,66 @@ This coordination mechanism ensures that:
 - Resume commands immediately allow operations to continue
 - Module state is consistent and thread-safe
 
+### **Document Limits**
+
+Syscollector implements an inventory limit mechanism to control the number of synchronized items per inventory type. This feature allows the manager to limit resource consumption by restricting how many items are synced to the indexer.
+
+**Configuration:**
+- Document limits are received from the manager during agent handshake
+- Limits are applied per inventory index (packages, processes, ports, etc.)
+- Value of `0` means unlimited (all items are synchronized)
+- Non-zero values enforce a maximum number of synchronized items
+
+**Synchronization Control:**
+
+Each inventory item has a `synced` flag in the database:
+- `synced=1`: Item is synchronized and will generate events
+- `synced=0`: Item is stored locally but not synchronized
+
+**Limit Enforcement Flow:**
+
+```
+Inventory Scan Detects Item
+         │
+         ▼
+Check Document Limit
+         │
+         ├─► Limit = 0 (unlimited) ──────► Set synced=1 ──────► Generate Event
+         │
+         └─► Limit > 0 (limited)
+                  │
+                  ├─► Count < Limit ──────► Set synced=1 ──────► Generate Event
+                  │
+                  └─► Count >= Limit ─────► Set synced=0 ──────► Store Locally (no event)
+```
+
+**Promotion Mechanism:**
+
+When limits increase or items are deleted, pending items (synced=0) are promoted:
+
+```cpp
+// Triggered when:
+// 1. Document limit increases
+// 2. Document limit changes to unlimited
+// 3. Synced item is deleted (frees a slot)
+
+promoteUnsyncedItems(index, tableName, availableSlots, reason);
+         │
+         ├─► Select unsynced items: WHERE synced=0 ORDER BY primary_key ASC
+         ├─► Generate INSERT events for selected items
+         └─► Update synced flag: synced=0 → synced=1
+```
+
+**Ordering Strategy:**
+- Items are promoted in deterministic alphabetical order (COLLATE NOCASE)
+- Uses primary key fields for stable ordering (e.g., packages ordered by `name, type`)
+- Ensures consistent behavior across agent restarts
+
+**Dynamic Limit Updates:**
+- Limits can be updated during agent reconnection
+- If new limits differ from previous limits and agent auto-restart is enabled, the agent reloads modules
+- Limit changes are logged with promotion/demotion details
+
 ---
 
 ## Event Flow Architecture
