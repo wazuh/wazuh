@@ -110,7 +110,6 @@ w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_c
     cfg->cert_cfg = cert;
     cfg->enabled = true;
     cfg->ssl = NULL;
-    cfg->allow_localhost = true;
     cfg->delay_after_enrollment = 20;
     cfg->keys = keys;
     os_strdup(__ossec_version, cfg->agent_version);
@@ -147,7 +146,6 @@ int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address,
  * be obtained by obtaining hostname
  *
  * @param cfg configuration structure
- * @param allow_localhost true will allow localhost as name, false will throw an merror_exit
  * @return agent_name on succes
  *         NULL on errors
  * */
@@ -165,13 +163,6 @@ static char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg) {
         OS_ConvertToValidAgentName(lhostname);
     } else {
         lhostname = cfg->target_cfg->agent_name;
-    }
-
-    if(!cfg->allow_localhost && (strcmp(lhostname, "localhost") == 0)) {
-        merror(AG_INV_HOST, lhostname);
-        if(lhostname != cfg->target_cfg->agent_name)
-            os_free(lhostname);
-        return NULL;
     }
 
     if (!OS_IsValidName(lhostname)) {
