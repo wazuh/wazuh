@@ -11,6 +11,9 @@
 #include "shared.h"
 #include "os_net/os_net.h"
 #include "startup_gate_op.h"
+#if defined(CLIENT) && defined(WIN32)
+#include "client-agent/agentd.h"
+#endif
 
 #define STARTUP_GATE_COMMAND "getstartupgate"
 #define STARTUP_GATE_POLL_INTERVAL 1
@@ -50,17 +53,34 @@ static bool startup_gate_parse_status(const char *response, bool *ready, char *r
     cJSON_Delete(root);
     return parsed;
 }
+#endif
 
+#if defined(CLIENT)
 static bool startup_gate_query_status(bool *ready, char *reason, size_t reason_size) {
+#if !defined(WIN32)
     bool parsed = false;
     int sock = -1;
     char response[OS_MAXSTR + 1] = {0};
     ssize_t recv_len = 0;
+#else
+    bool ready_value = false;
+    char reason_value[OS_SIZE_128] = {0};
+#endif
 
     if (!ready) {
         return false;
     }
 
+#if defined(WIN32)
+    startup_gate_get_status(&ready_value, reason_value, sizeof(reason_value));
+    *ready = ready_value;
+
+    if (reason && reason_size > 0) {
+        snprintf(reason, reason_size, "%s", reason_value[0] ? reason_value : "unknown");
+    }
+
+    return true;
+#else
     sock = OS_ConnectUnixDomain(AG_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
     if (sock < 0) {
         return false;
@@ -82,11 +102,12 @@ static bool startup_gate_query_status(bool *ready, char *reason, size_t reason_s
     parsed = startup_gate_parse_status(response, ready, reason, reason_size);
 
     return parsed;
+#endif
 }
 #endif
 
 void startup_gate_wait_for_ready(const char *module_name) {
-#if defined(CLIENT) && !defined(WIN32)
+#if defined(CLIENT)
     bool waiting_logged = false;
     unsigned int waiting_loops = 0;
     char last_reason[OS_SIZE_128] = {0};
