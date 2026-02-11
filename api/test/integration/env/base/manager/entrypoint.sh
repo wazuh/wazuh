@@ -37,6 +37,24 @@ for sh_file in /tmp_volume/configuration_files/*.sh; do
   . $sh_file
 done
 
+# API SSL sync (only when cluster + shared ssl volume)
+SSL_DIR="/var/ossec/api/configuration/ssl"
+SSL_KEY="${SSL_DIR}/server.key"
+SSL_CRT="${SSL_DIR}/server.crt"
+
+if [ "$4" != "standalone" ] && [ "$3" != "master" ]; then
+  echo "[entrypoint] Worker waiting for shared API SSL files..."
+  elapsed_time=0
+  while [ ! -s "$SSL_KEY" ] || [ ! -s "$SSL_CRT" ]; do
+    if [ $elapsed_time -gt 120 ]; then
+      echo "Timeout waiting for API SSL files ($SSL_KEY, $SSL_CRT)" >&2
+      exit 1
+    fi
+    sleep 1
+    elapsed_time=$((elapsed_time+1))
+  done
+fi
+
 echo "" > /var/ossec/logs/api.log
 /var/ossec/bin/wazuh-control start
 
