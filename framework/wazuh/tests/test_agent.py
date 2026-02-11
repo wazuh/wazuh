@@ -47,8 +47,8 @@ test_multigroup_path = os.path.join(test_agent_path, 'multigroups')
 test_global_bd_path = os.path.join(test_data_path, 'global.db')
 
 test_data = InitAgent(data_path=test_data_path)
-full_agent_list = ['001', '002', '003', '004', '005', '006', '007', '008', '009']
-short_agent_list = ['001', '002', '003', '004', '005']
+full_agent_list = ['001', '002', '003', '004', '005', '006', '007', '008', '009', '010']
+short_agent_list = ['001', '002', '003', '004', '005', '010']
 
 def send_msg_to_wdb_http_post_restartinfo(endpoint: str, data: Any, empty_response: bool = False):
     ids = ",".join(map(str, data["ids"]))
@@ -66,28 +66,31 @@ def send_msg_to_wdb(msg, raw=False):
 @pytest.mark.parametrize('fields, expected_items', [
     (
             ['os.platform'],
-            [{'os': {'platform': 'ubuntu'}, 'count': 3}, {'os': {'platform': 'N/A'}, 'count': 2}]
+            [{'os': {'platform': 'ubuntu'}, 'count': 4}, {'os': {'platform': 'N/A'}, 'count': 2}]
     ),
     (
             ['version'],
-            [{'version': 'Wazuh v3.8.2', 'count': 2},
-             {'version': 'Wazuh v3.6.2', 'count': 1}, {'version': 'N/A', 'count': 2}]
+            [{'version': 'v5.0.0', 'count': 1}, {'version': 'v3.8.2', 'count': 2},
+             {'version': 'v3.6.2', 'count': 1}, {'version': 'N/A', 'count': 2},
+             ]
     ),
     (
             ['os.platform', 'os.major'],
-            [{'count': 1, 'os': {'major': '18', 'platform': 'ubuntu'}},
+            [{'count': 1, 'os': {'major': '24', 'platform': 'ubuntu'}},
+             {'count': 1, 'os': {'major': '18', 'platform': 'ubuntu'}},
              {'count': 2, 'os': {'major': '16', 'platform': 'ubuntu'}},
              {'count': 2, 'os': {'major': 'N/A', 'platform': 'N/A'}}]
     ),
     (
             ['node_name'],
-            [{'node_name': 'unknown', 'count': 2}, {'node_name': 'node01', 'count': 3}]
+            [{'node_name': 'unknown', 'count': 2}, {'node_name': 'node01', 'count': 4}]
     ),
     (
             ['os.name', 'os.platform', 'os.version'],
-            [{'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '18.08.1 LTS'}},
+            [{'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '24.04.3 LTS'}},
+             {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '18.08.1 LTS'}},
              {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.06.1 LTS'}},
-             {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.04.1 LTS'}},
+             {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.04.1 LTS'}},       
              {'count': 2, 'os': {'name': 'N/A', 'platform': 'N/A', 'version': 'N/A'}}]
     ),
 ])
@@ -120,7 +123,8 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
          {'id': '007', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
          {'id': '008', 'os': {'name': 'Xubuntu', 'version': '18.04.1 LTS'}},
          {'id': '005', 'os': {'name': 'Ubuntu', 'version': '18.08.1 LTS'}},
-         {'id': '006', 'os': {'name': 'Xubuntu', 'version': '21.04.1 LTS'}}
+         {'id': '006', 'os': {'name': 'Xubuntu', 'version': '21.04.1 LTS'}},
+         {'id': '010', 'os': {'name': 'Ubuntu', 'version': '24.04.3 LTS'}}
      ]
      ),
     (['os.name', 'os.version'], 'asc',
@@ -131,9 +135,10 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
          {'id': '001', 'os': {'name': 'Ubuntu', 'version': '16.06.1 LTS'}},
          {'id': '007', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
          {'id': '005', 'os': {'name': 'Ubuntu', 'version': '18.08.1 LTS'}},
+         {'id': '010', 'os': {'name': 'Ubuntu', 'version': '24.04.3 LTS'}},
          {'id': '009', 'os': {'name': 'Windows', 'version': '10.0.0 XP'}},
          {'id': '008', 'os': {'name': 'Xubuntu', 'version': '18.04.1 LTS'}},
-         {'id': '006', 'os': {'name': 'Xubuntu', 'version': '21.04.1 LTS'}}
+         {'id': '006', 'os': {'name': 'Xubuntu', 'version': '21.04.1 LTS'}},
      ]
      ),
     (['os.platform', 'os.minor', 'os.major'], 'desc',
@@ -143,6 +148,7 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
          {'id': '009', 'os': {'major': '10', 'minor': '00', 'platform': 'windows'}},
          {'id': '005', 'os': {'major': '18', 'minor': '08', 'platform': 'ubuntu'}},
          {'id': '001', 'os': {'major': '16', 'minor': '06', 'platform': 'ubuntu'}},
+         {'id': '010', 'os': {'major': '24', 'minor': '04', 'platform': 'ubuntu'}},
          {'id': '007', 'os': {'major': '18', 'minor': '04', 'platform': 'ubuntu'}},
          {'id': '002', 'os': {'major': '16', 'minor': '04', 'platform': 'ubuntu'}},
          {'id': '003'},
@@ -185,8 +191,8 @@ def test_agent_get_agents_summary_status(socket_mock, send_mock):
     assert isinstance(summary, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     # Asserts are based on what it should get from the fake database
     expected_results = {
-        'connection': {'active': 2, 'disconnected': 1, 'never_connected': 1, 'pending': 1, 'total': 5},
-        'configuration': {'synced': 2, 'not_synced': 3, 'total': 5}
+        'connection': {'active': 3, 'disconnected': 1, 'never_connected': 1, 'pending': 1, 'total': 6},
+        'configuration': {'synced': 3, 'not_synced': 3, 'total': 6}
     }
     summary_data = summary['data']
 
@@ -315,7 +321,7 @@ def test_agent_get_agents(socket_mock, send_mock, agent_list, expected_items):
 
 
 @pytest.mark.parametrize('group, group_exists, expected_agents', [
-    ('default', True, ['001', '002', '005']),
+    ('default', True, ['001', '002', '005', '010']),
     ('not_exists_group', False, None)
 ])
 @patch('wazuh.agent.get_agents')
@@ -407,26 +413,25 @@ def test_agent_get_agents_keys(socket_mock, send_mock, agent_list, expected_item
 
 
 @pytest.mark.parametrize('agent_list, filters, q, error_code, expected_items', [
-    (full_agent_list[1:], {'status': 'all', 'older_than': '1s'}, None, None, full_agent_list[1:]),
-    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'group': 'group-0'}, None, 1731, ['002']),
-    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'group': 'group-1'}, None, 1731, ['006', '008']),
-    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'group': 'group-2'}, None, 1731, ['007', '008']),
-    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'registerIP': 'any'}, None, 1731,
-     ['003', '004', '006', '007', '008', '009']),
-    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'ip': '172.17.0.202'}, None, 1731, []),
-    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'name': 'agent-6'}, None, 1731, ['006']),
-    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'node_name': 'random'}, None, 1731, []),
-    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'version': 'Wazuh v3.6.2'}, None, 1731, ['002']),
-    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'manager': 'master'}, None, 1731,
-     ['002', '005', '006', '007', '008', '009']),
-    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'os.name': 'ubuntu'}, None, 1731,
-     [ '002', '005', '007']),
-    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'os.version': '16.04.1 LTS'}, None, 1731, ['002']),
-    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'os.platform': 'centos'}, None, 1731, []),
-    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'node_name': 'random'}, None, 1731, []),
-    (
-            full_agent_list[1:], {'status': 'all', 'older_than': '1s'}, 'manager=master;registerIP!=any', 1731,
-            ['002', '005']),
+    (full_agent_list, {'status': 'all', 'older_than': '1s'}, None, None, full_agent_list),
+    (full_agent_list, {'status': 'all', 'older_than': '1s', 'group': 'group-0'}, None, 1731, ['001', '002']),
+    (full_agent_list, {'status': 'all', 'older_than': '1s', 'group': 'group-1'}, None, 1731, ['006', '008']),
+    (full_agent_list, {'status': 'all', 'older_than': '1s', 'group': 'group-2'}, None, 1731, ['007', '008']),
+    (full_agent_list, {'status': 'all', 'older_than': '1s', 'registerIP': 'any'}, None, 1731,
+     ['001', '003', '004', '006', '007', '008', '009']),
+    (full_agent_list, {'status': 'all', 'older_than': '1s', 'ip': '172.17.0.202'}, None, 1731, ['001']),
+    (full_agent_list, {'status': 'all', 'older_than': '1s', 'name': 'agent-6'}, None, 1731, ['006']),
+    (full_agent_list, {'status': 'all', 'older_than': '1s', 'node_name': 'random'}, None, 1731, []),
+    (full_agent_list, {'status': 'all', 'older_than': '1s', 'version': 'Wazuh v3.6.2'}, None, 1731, ['002']),
+    (full_agent_list, {'status': 'all', 'older_than': '1s', 'manager': 'master'}, None, 1731,
+     ['001', '002', '005', '006', '007', '008', '009', '010']),
+    (full_agent_list, {'status': 'all', 'older_than': '1s', 'os.name': 'ubuntu'}, None, 1731,
+     ['001', '002', '005', '007', '010']),
+    (full_agent_list, {'status': 'all', 'older_than': '1s', 'os.version': '16.04.1 LTS'}, None, 1731, ['002']),
+    (full_agent_list, {'status': 'all', 'older_than': '1s', 'os.platform': 'centos'}, None, 1731, []),
+    (full_agent_list, {'status': 'all', 'older_than': '1s', 'node_name': 'random'}, None, 1731, []),
+    (full_agent_list, {'status': 'all', 'older_than': '1s'}, 'manager=master;registerIP!=any', 1731,
+    ['002', '005', '010']),
     (['001', '500'], {'status': 'all', 'older_than': '1s'}, None, 1701, ['001']),
     (['001', '002'], {'status': 'all', 'older_than': '1s'}, None, WazuhError(1726), None),
 ])
@@ -1314,7 +1319,7 @@ def test_agent_get_agent_config_exceptions(socket_mock, send_mock, agent_list):
 
 
 @pytest.mark.parametrize('agent_list', [
-    full_agent_list[1:]
+    full_agent_list
 ])
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 @patch('wazuh.core.common.MULTI_GROUPS_PATH', new=test_multigroup_path)

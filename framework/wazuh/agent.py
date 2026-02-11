@@ -17,8 +17,8 @@ from wazuh.core.wdb_http import get_wdb_http_client
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches, \
-    full_copy, check_if_wazuh_agent_version, parse_wazuh_agent_version
+from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches, \
+    full_copy
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources, async_list_handler
 
@@ -385,13 +385,8 @@ def get_agents(agent_list: list = None, offset: int = 0, limit: int = common.DAT
             data = db_query.run()
 
         if sort and 'version' in sort['fields']:
-            data['items'] = sorted(data['items'],
-                          key=lambda o: tuple(
-                              parse_wazuh_agent_version(o.get(a)) if a == 'version' and check_if_wazuh_agent_version(o.get(a))
-                              else (0, 0, 0) if o.get(a) is None and a == 'version'
-                              else o.get(a).lower() if type(o.get(a)) == str else o.get(a) for a in sort['fields']),
-                          reverse=False if sort['order'] == 'asc' else True)
-
+            data["items"].sort(key=lambda item: WazuhVersion(item.get("version"), treat_as_empty=[None, 'N/A']),
+                               reverse=sort["order"] != "asc")
         result.affected_items.extend(data['items'])
         result.total_affected_items = data['totalItems']
 
@@ -1105,8 +1100,8 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
     if agent_list:
         # Get manager version
         server_info = Wazuh().to_dict()
-        manager_version = f"Wazuh {server_info['version']}"
-
+        manager_version = server_info['version']
+        
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
