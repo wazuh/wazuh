@@ -883,6 +883,9 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      timeout: 20
+      params:
+        wait_for_complete: true
     response:
       <<: *empty_response
 
@@ -895,6 +898,9 @@ stages:
         nodes_list: master-node
       headers:
         Authorization: "Bearer {test_login_token}"
+      timeout: 20
+      params:
+        wait_for_complete: true
     response:
       <<: *permission_denied
 
