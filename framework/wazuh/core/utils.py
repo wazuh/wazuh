@@ -1159,9 +1159,22 @@ def load_wazuh_xml(xml_path, data=None):
 
 class WazuhVersion:
 
-    def __init__(self, version):
+    def __init__(self, version, treat_as_empty: list = None, no_version_string: str = 'N/A'):
 
         pattern = r"(?:Wazuh )?v?(\d+)\.(\d+)\.(\d+)\-?(alpha|beta|rc)?(\d*)"
+
+        self.__empty_string = no_version_string
+
+        treat_as_empty = treat_as_empty or []
+
+        if version in treat_as_empty:
+            self.__mayor = 0
+            self.__minor = 0
+            self.__patch = 0
+            self.__dev = None
+            self.__dev_ver = None
+            return
+
         m = re.match(pattern, version)
 
         if m:
@@ -1184,7 +1197,9 @@ class WazuhVersion:
         return array
 
     def __to_string(self):
-        ver_string = "{0}.{1}.{2}".format(self.__mayor, self.__minor, self.__patch)
+        if self.__mayor == 0 and self.__minor == 0 and self.__patch == 0:
+            return self.__empty_string
+        ver_string = "v{0}.{1}.{2}".format(self.__mayor, self.__minor, self.__patch)
         if self.__dev:
             ver_string = "{0}-{1}{2}".format(ver_string, self.__dev, self.__dev_ver)
         return ver_string
@@ -1677,6 +1692,7 @@ class WazuhDBQuery(object):
             self.request['search'] = "%{0}%".format(re.sub(f"[{self.special_characters}]", '_', self.search['value']))
 
     def _parse_select_filter(self, select_fields):
+
         if select_fields:
             select_fields_set = set(select_fields)
             allowed_select_fields = set(self.fields.keys()) - self.extra_fields
@@ -2368,40 +2384,3 @@ def get_utc_strptime(date: str, datetime_format: str, date_is_at_utc: bool = Tru
     return dt
 
 
-def check_if_wazuh_agent_version(version_str: str) -> bool:
-    """Check if the string has the expected wazuh agent version format.
-
-    Parameters
-    ----------
-    version_str : str
-        The wazuh version string.
-
-    Returns
-    -------
-    bool
-        True if the string has the expected wazuh version format.
-
-    """
-    if not isinstance(version_str, str):
-        return False
-
-    return bool(re.match(r'^Wazuh v(\d+)\.(\d+)\.(\d+)', version_str))
-
-
-def parse_wazuh_agent_version(version_str: str) -> tuple:
-    """Convert the string vX.Y.Z to a tuple of type (X, Y, Z).
-
-    Parameters
-    ----------
-    version_str : str
-        The wazuh version string.
-
-    Returns
-    -------
-    tuple
-        The tuple of the wazuh version string.
-    """
-    match = re.search(r'v(\d+)\.(\d+)\.(\d+)', version_str)
-    if match:
-        return tuple(map(int, match.groups()))
-    return 0, 0, 0
