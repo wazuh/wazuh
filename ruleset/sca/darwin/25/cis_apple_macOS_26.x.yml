@@ -21,9 +21,9 @@ requirements:
   description: "Requirements for running the policy against macOS 26 Tahoe."
   condition: any
   rules:
-    - 'c:sw_vers -> r:^ProductVersion:\t*\s*26\p'
-    - 'c:system_profiler SPSoftwareDataType -> r:System Version:.*26\p'
-    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\s*26\p'
+    - 'c:sw_vers -> r:^ProductVersion:\s*26\.\d+'
+    - 'c:system_profiler SPSoftwareDataType -> r:System Version:.*26\.\d+'
+    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\s*26\.\d+'
 
 checks:
   ##########################################################################
@@ -1045,10 +1045,14 @@ checks:
       - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)h compare >= 1440'
       - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)d compare >= 60'
       - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)y compare >= 1'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)b compare >= 5368709120'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)k compare >= 5242880'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)m compare >= 5120'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)g compare >= 5'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after:\s*(\d+)[bB](?:\s*OR\s*\d+\s*[a-zA-Z])? compare >= 5368709120'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after:\s*\d+\s*[a-zA-Z]\s*OR\s*(\d+)[bB] compare >= 5368709120'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after:\s*(\d+)[kK](?:\s*OR\s*\d+\s*[a-zA-Z])? compare >= 5242880'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after:\s*\d+\s*[a-zA-Z]\s*OR\s*(\d+)[kK] compare >= 5242880'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after:\s*(\d+)[mM](?:\s*OR\s*\d+\s*[a-zA-Z])? compare >= 5120'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after:\s*\d+\s*[a-zA-Z]\s*OR\s*(\d+)[mM] compare >= 5120'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after:\s*(\d+)[gG](?:\s*OR\s*\d+\s*[a-zA-Z])? compare >= 5'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after:\s*\d+\s*[a-zA-Z]\s*OR\s*(\d+)[gG] compare >= 5'
 
   # 3.5 Ensure Access to Audit Records Is Controlled. (Automated) - Not Implemented
   # 3.6 Audit Software Inventory. (Manual) - Not Implemented
