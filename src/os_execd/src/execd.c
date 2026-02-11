@@ -16,6 +16,7 @@
 #include "cJSON.h"
 #include "execd.h"
 #include "active_responses.h"
+#include "startup_gate_op.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -602,6 +603,8 @@ int WinExecdStart()
 
 // Create a thread to run windows AR simultaneous
 DWORD WINAPI win_exec_main(__attribute__((unused)) void * args) {
+    startup_gate_wait_for_ready("wazuh-execd");
+
     while(1) {
         char* exec_msg = queue_pop_ex(winexec_queue);
         if (exec_msg) {
