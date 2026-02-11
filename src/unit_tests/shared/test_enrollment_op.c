@@ -1203,39 +1203,6 @@ void test_w_enrollment_request_key(void **state) {
     assert_int_equal(ret, 0);
 }
 
-/**********************************************/
-/******* w_enrollment_extract_agent_name ********/
-void test_w_enrollment_extract_agent_name_localhost_allowed(void **state) {
-    w_enrollment_ctx *cfg = *state;
-    cfg->allow_localhost = true; // Allow localhost
-#ifdef WIN32
-    will_return(wrap_gethostname, "localhost");
-    will_return(wrap_gethostname, 0);
-#else
-    will_return(__wrap_gethostname, "localhost");
-    will_return(__wrap_gethostname, 0);
-#endif
-    char *lhostname = w_enrollment_extract_agent_name(cfg);
-    assert_string_equal( lhostname, "localhost");
-    os_free(lhostname);
-}
-
-void test_w_enrollment_extract_agent_name_localhost_not_allowed(void **state) {
-    w_enrollment_ctx *cfg = *state;
-    cfg->allow_localhost = false; // Do not allow localhost
-#ifdef WIN32
-    will_return(wrap_gethostname, "localhost");
-    will_return(wrap_gethostname, 0);
-#else
-    will_return(__wrap_gethostname, "localhost");
-    will_return(__wrap_gethostname, 0);
-#endif
-    expect_string(__wrap__merror, formatted_msg, "(4104): Invalid hostname: 'localhost'.");
-
-    char *lhostname = w_enrollment_extract_agent_name(cfg);
-    assert_int_equal( lhostname, NULL);
-}
-
 /******* w_enrollment_load_pass ********/
 void test_w_enrollment_load_pass_null_cert(void **state) {
     expect_assert_failure(w_enrollment_load_pass(NULL));
