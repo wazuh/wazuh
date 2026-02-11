@@ -3092,18 +3092,6 @@ bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
             normalizedLimits[it->second] = limit;
         }
 
-        // Wait for scan to finish before setting limits
-        // This ensures no items are in syncedItems vector
-        while (m_scanning.load())
-        {
-            if (m_logFunction)
-            {
-                m_logFunction(LOG_DEBUG, "Waiting for scan to finish before setting document limits...");
-            }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-
         std::lock_guard<std::mutex> lock(m_limitsMutex);
 
         // Set new limits and adjust database records using normalized names
@@ -3179,7 +3167,7 @@ bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
 
                 if (m_logFunction)
                 {
-                    m_logFunction(LOG_WARNING, "Document limit reduced for index '" + index +
+                    m_logFunction(LOG_INFO, "Document limit reduced for index '" + index +
                                   "' from " + std::to_string(currentCount) + " to " + std::to_string(newLimit) +
                                   ". Resetting " + std::to_string(excessCount) + " excess records to synced=0.");
                 }
@@ -3655,7 +3643,7 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
 
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG, reason + ": Successfully promoted " +
+            m_logFunction(LOG_INFO, reason + ": Successfully promoted " +
                           std::to_string(itemsToMarkSynced.size()) + " records for index '" + index + "'");
         }
     }
