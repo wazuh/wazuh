@@ -30,6 +30,7 @@
 
 #include "sca.h"
 #include "yaml2json.h"
+#include "agentd_query.h"
 
 #define SCA_SYNC_PROTOCOL_DB_PATH "queue/sca/db/sca_sync.db"
 #define SCA_SYNC_RETRIES 3
@@ -231,7 +232,7 @@ static bool wm_sca_query_agentd_doclimits(uint64_t *sync_limit)
     *sync_limit = 0;
 
     char json_buffer[OS_MAXSTR];
-    if (!wm_sca_query_agentd("getdoclimits sca", json_buffer, sizeof(json_buffer)))
+    if (!w_query_agentd(WM_SCA_LOGTAG, "getdoclimits sca", json_buffer, sizeof(json_buffer)))
     {
         return false;
     }

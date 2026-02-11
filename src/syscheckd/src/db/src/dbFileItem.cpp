@@ -10,6 +10,7 @@
  */
 
 #include "dbFileItem.hpp"
+#include "json.hpp"
 
 void FileItem::createFimEntry()
 {
@@ -28,6 +29,7 @@ void FileItem::createFimEntry()
 
         if (data)
         {
+            data->sync = m_sync;
             data->size = m_size;
             data->permissions = const_cast<char*>(m_permissions.c_str());
             data->attributes = const_cast<char*>(m_attributes.c_str());

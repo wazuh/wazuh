@@ -33,6 +33,7 @@ void RegistryKey::createFimEntry()
             key->permissions = const_cast<char*>(m_permissions.c_str());
             key->owner = const_cast<char*>(m_owner.c_str());
             key->version = m_version;
+            key->sync = m_sync;
 
             fim->registry_entry.key = key;
             m_fimEntry = std::unique_ptr<fim_entry, FimRegistryKeyDeleter>(fim);

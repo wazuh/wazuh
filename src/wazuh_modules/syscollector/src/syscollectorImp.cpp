@@ -4231,16 +4231,15 @@ void Syscollector::runRecoveryProcess()
 
                 try
                 {
-
                     if (documentLimit > 0)
                     {
-                        // With limits: only recover items with synced=1
-                        // Items with synced=0 exceeded the document limit and should not be recovered
-                        rowFilterClause = "WHERE synced=1";
+                        // With limits: only recover items with sync=1
+                        // Items with sync=0 exceeded the document limit and should not be recovered
+                        rowFilterClause = "WHERE sync=1";
                     }
                     else
                     {
-                        // No limits: recover all items regardless of synced value
+                        // No limits: recover all items regardless of sync value
                         rowFilterClause = "";
                     }
 

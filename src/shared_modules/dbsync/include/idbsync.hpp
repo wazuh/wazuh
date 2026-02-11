@@ -97,8 +97,8 @@ class IDBSync
         virtual void increaseEachEntryVersion(const std::string& tableName,
                                               const std::string& rowFilter) = 0;
 
-        /// @brief Gets all elements from a table
+        /// @brief Gets all synced elements from a table (WHERE sync = 1)
         /// @param tableName Name of the table to query
-        /// @return Vector of JSON objects representing all rows in the table
-        virtual std::vector<nlohmann::json> getEveryElement(const std::string& tableName) = 0;
+        /// @return Vector of JSON objects representing all rows where sync = 1
+        virtual std::vector<nlohmann::json> getEverySyncElement(const std::string& tableName) = 0;
 };

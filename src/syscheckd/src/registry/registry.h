@@ -32,6 +32,9 @@ typedef struct fim_key_txn_context_s {
     registry_t *config;
     fim_registry_key *key;
     OSList *failed_keys;  // List of failed_registry_key_t* for deferred deletion
+
+    // Pending sync flag updates (applied after transaction commit)
+    OSList* pending_sync_updates;  // List of pending_sync_item_t items for sync flag updates
 } fim_key_txn_context_t;
 
 typedef struct fim_val_txn_context_s {
@@ -40,6 +43,9 @@ typedef struct fim_val_txn_context_s {
     fim_registry_value_data *data;
     char* diff;
     OSList *failed_values;  // List of failed_registry_value_t* for deferred deletion
+
+    // Pending sync flag updates (applied after transaction commit)
+    OSList* pending_sync_updates;  // List of pending_sync_item_t items for sync flag updates
 } fim_val_txn_context_t;
 
 /**

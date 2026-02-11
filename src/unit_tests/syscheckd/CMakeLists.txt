@@ -439,13 +439,37 @@ endif()
 
 add_test(NAME test_fim_scan COMMAND test_fim_scan)
 
+# fim_sync_limits tests (new sync document limit functionality)
+add_executable(test_fim_sync_limits test_fim_sync_limits.c)
+
+target_compile_options(test_fim_sync_limits PRIVATE "-Wall")
+
+set(FIM_SYNC_LIMITS_BASE_FLAGS "-Wl,--wrap,validate_and_persist_fim_event \
+                                -Wl,--wrap,build_stateful_event_file \
+                                -Wl,--wrap,build_stateful_event_registry_key \
+                                -Wl,--wrap,build_stateful_event_registry_value \
+                                -Wl,--wrap,fim_db_get_documents_to_promote \
+                                -Wl,--wrap,fim_db_get_documents_to_demote \
+                                -Wl,--wrap,fim_db_count_synced_docs \
+                                -Wl,--wrap,fim_db_sync_row_update \
+                                ${DEBUG_OP_WRAPPERS}")
+
+target_link_libraries(test_fim_sync_limits SYSCHECK_O ${TEST_DEPS})
+if(${TARGET} STREQUAL "winagent")
+  target_link_libraries(test_fim_sync_limits "${FIM_SYNC_LIMITS_BASE_FLAGS}" fimdb)
+else()
+  target_link_libraries(test_fim_sync_limits "${FIM_SYNC_LIMITS_BASE_FLAGS}")
+endif()
+
+add_test(NAME test_fim_sync_limits COMMAND test_fim_sync_limits)
+
 # recovery.c tests
 add_executable(test_recovery test_recovery.c)
 
 target_compile_options(test_recovery PRIVATE "-Wall")
 
 set(RECOVERY_BASE_FLAGS "-Wl,--wrap,fim_db_get_last_sync_time -Wl,--wrap,fim_db_update_last_sync_time_value \
-                         -Wl,--wrap,fim_db_get_every_element -Wl,--wrap,fim_db_calculate_table_checksum \
+                         -Wl,--wrap,fim_db_get_every_sync_element -Wl,--wrap,fim_db_calculate_table_checksum \
                          -Wl,--wrap,fim_db_increase_each_entry_version \
                          -Wl,--wrap,asp_clear_in_memory_data -Wl,--wrap,asp_persist_diff_in_memory \
                          -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_requires_full_sync \

@@ -12,6 +12,8 @@
  * Copyright (C) 2003 Daniel B. Cid <daniel@underlinux.com.br>
  */
 
+#include "cJSON.h"
+#include "debug_op.h"
 #include "shared.h"
 #include "syscheck.h"
 #include "rootcheck.h"
@@ -21,12 +23,17 @@
 #include "ebpf_whodata.h"
 #include "agent_sync_protocol_c_interface.h"
 #include "schemaValidator_c.h"
+#include "agentd_query.h"
+#include <limits.h>
 
 // Global variables
 syscheck_config syscheck;
 int notify_scan = 0;
 int sys_debug_level;
 int audit_queue_full_reported = 0;
+int synced_docs_files = 0;
+int synced_docs_registry_keys = 0;
+int synced_docs_registry_values = 0;
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -80,6 +87,246 @@ void read_internal(int debug_level)
     return;
 }
 
+void free_pending_sync_item(void *data) {
+    if (data) {
+        pending_sync_item_t *item = (pending_sync_item_t *)data;
+        cJSON_Delete(item->json);
+        free(item);
+    }
+}
+
+void add_pending_sync_item(OSList *pending_items, const cJSON *json, int sync_value) {
+    if (pending_items == NULL || json == NULL) {
+        return;
+    }
+
+    pending_sync_item_t *item = (pending_sync_item_t *)malloc(sizeof(pending_sync_item_t));
+    if (item == NULL) {
+        merror("Failed to allocate memory for pending sync item");
+        return;
+    }
+
+    item->json = cJSON_Duplicate(json, true);
+    if (item->json == NULL) {
+        merror("Failed to duplicate item for pending sync item");
+        free(item);
+        return;
+    }
+
+    item->sync_value = sync_value;
+
+    OSList_AddData(pending_items, item);
+    const cJSON* path = cJSON_GetObjectItem(json, "path");
+    const cJSON* version = cJSON_GetObjectItem(json, "version");
+    mdebug2("Added item to pending sync list: %s (version: %d, sync: %d)", cJSON_GetStringValue(path), (int)cJSON_GetNumberValue(version), sync_value);
+}
+
+void process_pending_sync_updates(char* table_name, OSList *pending_items) {
+    if (pending_items == NULL) {
+        return;
+    }
+
+    int count = 0;
+    OSListNode *node_it;
+    OSList_foreach(node_it, pending_items) {
+        pending_sync_item_t *item = (pending_sync_item_t *)node_it->data;
+        if (item != NULL && item->json != NULL) {
+            const cJSON* path = cJSON_GetObjectItem(item->json, "path");
+            mdebug2("Setting sync=%d for path: %s", item->sync_value, cJSON_GetStringValue(path));
+            fim_db_set_sync_flag(table_name, item, item->sync_value);
+            count++;
+        }
+    }
+    mdebug1("Processed %d pending sync flag updates", count);
+}
+
+/**
+ * @brief Extract primary keys from full document for sync flag update
+ *
+ * @param table_name Name of the table
+ * @param full_doc Full document JSON
+ * @return cJSON object with only primary keys and version, or NULL on error
+ */
+static cJSON* extract_primary_keys(const char* table_name, const cJSON* full_doc) {
+    cJSON* keys = cJSON_CreateObject();
+    if (!keys) {
+        return NULL;
+    }
+
+    // All tables have path and version
+    const cJSON* path = cJSON_GetObjectItem(full_doc, "path");
+    const cJSON* version = cJSON_GetObjectItem(full_doc, "version");
+
+    if (path) cJSON_AddStringToObject(keys, "path", cJSON_GetStringValue(path));
+    if (version) cJSON_AddNumberToObject(keys, "version", cJSON_GetNumberValue(version));
+
+    // Registry tables also have architecture
+    if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0 ||
+        strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+        const cJSON* arch = cJSON_GetObjectItem(full_doc, "architecture");
+        if (arch) cJSON_AddStringToObject(keys, "architecture", cJSON_GetStringValue(arch));
+    }
+
+    // Registry value table also has value field
+    if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+        const cJSON* value = cJSON_GetObjectItem(full_doc, "value");
+        if (value) cJSON_AddStringToObject(keys, "value", cJSON_GetStringValue(value));
+    }
+
+    return keys;
+}
+
+/**
+ * @brief Send promoted documents to persistent queue
+ *
+ * @param table_name Name of the table (file_entry, registry_key, registry_data)
+ * @param docs_to_promote cJSON array with full document data
+ */
+void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation) {
+    if (!docs || !cJSON_IsArray(docs)) {
+        return;
+    }
+
+    cJSON* item = NULL;
+    int count = 0;
+    const char* operation_name = (operation == OPERATION_CREATE) ? "promoted" : "demoted";
+
+    cJSON_ArrayForEach(item, docs) {
+        const cJSON* path_json = cJSON_GetObjectItem(item, "path");
+        const cJSON* version_json = cJSON_GetObjectItem(item, "version");
+
+        if (!path_json || !version_json) {
+            mwarn("Skipping %s document with missing required fields", operation_name);
+            continue;
+        }
+
+        const char* path = cJSON_GetStringValue(path_json);
+        uint64_t document_version = (uint64_t)cJSON_GetNumberValue(version_json);
+
+        // For promoted documents, checksum is required
+        const char* checksum = NULL;
+        if (operation == OPERATION_CREATE) {
+            const cJSON* checksum_json = cJSON_GetObjectItem(item, "checksum");
+            if (!checksum_json) {
+                mwarn("Skipping promoted document with missing checksum");
+                continue;
+            }
+            checksum = cJSON_GetStringValue(checksum_json);
+        }
+
+        cJSON* stateful_event = NULL;
+        char id[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
+        const char* sync_index = NULL;
+
+        // Build stateful event based on table type and operation
+        if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+            sync_index = FIM_FILES_SYNC_INDEX;
+            OS_SHA1_Str(path, -1, id);
+
+            if (operation == OPERATION_CREATE) {
+                stateful_event = build_stateful_event_file(path, checksum, document_version, item, NULL, syscheck.directories);
+            } else {
+                // Build minimal DELETE event for file
+                stateful_event = cJSON_CreateObject();
+                if (stateful_event) {
+                    cJSON* file_obj = cJSON_CreateObject();
+                    cJSON_AddItemToObject(stateful_event, "file", file_obj);
+                    cJSON_AddStringToObject(file_obj, "path", path);
+
+                    cJSON* state_obj = cJSON_CreateObject();
+                    cJSON_AddItemToObject(stateful_event, "state", state_obj);
+                    cJSON_AddNumberToObject(state_obj, "document_version", (double)document_version);
+                }
+            }
+        }
+#ifdef WIN32
+        else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
+            sync_index = FIM_REGISTRY_KEYS_SYNC_INDEX;
+            const cJSON* arch_json = cJSON_GetObjectItem(item, "architecture");
+            int arch = (strcmp(cJSON_GetStringValue(arch_json), "[x32]") == 0) ? ARCH_32BIT : ARCH_64BIT;
+
+            char id_source[OS_MAXSTR] = {0};
+            snprintf(id_source, OS_MAXSTR - 1, "%d:%s", arch, path);
+            OS_SHA1_Str(id_source, -1, id);
+
+            if (operation == OPERATION_CREATE) {
+                stateful_event = build_stateful_event_registry_key(path, checksum, document_version, arch, item, NULL);
+            } else {
+                // Build minimal DELETE event for registry key
+                stateful_event = cJSON_CreateObject();
+                if (stateful_event) {
+                    cJSON* registry_obj = cJSON_CreateObject();
+                    cJSON_AddItemToObject(stateful_event, "registry", registry_obj);
+                    cJSON_AddStringToObject(registry_obj, "path", path);
+                    cJSON_AddStringToObject(registry_obj, "arch", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+
+                    cJSON* state_obj = cJSON_CreateObject();
+                    cJSON_AddItemToObject(stateful_event, "state", state_obj);
+                    cJSON_AddNumberToObject(state_obj, "document_version", (double)document_version);
+                }
+            }
+        }
+        else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+            sync_index = FIM_REGISTRY_VALUES_SYNC_INDEX;
+            const cJSON* arch_json = cJSON_GetObjectItem(item, "architecture");
+            const cJSON* value_json = cJSON_GetObjectItem(item, "value");
+
+            int arch = (strcmp(cJSON_GetStringValue(arch_json), "[x32]") == 0) ? ARCH_32BIT : ARCH_64BIT;
+            const char* value = cJSON_GetStringValue(value_json);
+
+            char id_source[OS_MAXSTR] = {0};
+            snprintf(id_source, OS_MAXSTR - 1, "%s:%d:%s", path, arch, value);
+            OS_SHA1_Str(id_source, -1, id);
+
+            if (operation == OPERATION_CREATE) {
+                stateful_event = build_stateful_event_registry_value(path, value, checksum, document_version, arch, item, NULL);
+            } else {
+                // Build minimal DELETE event for registry value
+                stateful_event = cJSON_CreateObject();
+                if (stateful_event) {
+                    cJSON* registry_obj = cJSON_CreateObject();
+                    cJSON_AddItemToObject(stateful_event, "registry", registry_obj);
+                    cJSON_AddStringToObject(registry_obj, "path", path);
+                    cJSON_AddStringToObject(registry_obj, "value_name", value);
+                    cJSON_AddStringToObject(registry_obj, "arch", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+
+                    cJSON* state_obj = cJSON_CreateObject();
+                    cJSON_AddItemToObject(stateful_event, "state", state_obj);
+                    cJSON_AddNumberToObject(state_obj, "document_version", (double)document_version);
+                }
+            }
+        }
+#endif
+
+        if (stateful_event) {
+            char item_desc[PATH_MAX + 128];
+            // Use same description format as transaction callbacks
+            if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+                snprintf(item_desc, sizeof(item_desc), "file %s", path);
+            }
+#ifdef WIN32
+            else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
+                snprintf(item_desc, sizeof(item_desc), "registry key %s", path);
+            }
+            else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+                const cJSON* value_json = cJSON_GetObjectItem(item, "value");
+                const char* value = cJSON_GetStringValue(value_json);
+                snprintf(item_desc, sizeof(item_desc), "registry value %s:%s", path, value);
+            }
+#endif
+
+            // Send to persistent queue with sync_flag=1
+            validate_and_persist_fim_event(stateful_event, id, operation,
+                                          sync_index, document_version,
+                                          item_desc, false, NULL, NULL, 1);
+            cJSON_Delete(stateful_event);
+            count++;
+        }
+    }
+
+    mdebug1("Sent %d %s documents to persistent queue for table %s", count, operation_name, table_name);
+}
+
 static int fim_startmq(const char* key, short type, short attempts) {
     return StartMQ(key, type, attempts);
 }
@@ -88,6 +335,58 @@ static int fim_send_binary_msg(int queue, const void* message, size_t message_le
     return SendBinaryMSG(queue, message, message_len, locmsg, loc);
 }
 
+/**
+ * @brief Fetch document sync limits from agentd.
+ *
+ * Queries agentd for FIM document sync limits and updates syscheck configuration.
+ * The limits control how many documents are synced for each table type.
+ *
+ * @return true if limits were successfully fetched and parsed, false otherwise.
+ */
+bool fetch_document_limits_from_agentd(){
+    char json_buffer[OS_MAXSTR];
+    w_query_agentd(SYSCHECK, "getdoclimits fim", json_buffer, sizeof(json_buffer));
+
+    cJSON* root = cJSON_Parse(json_buffer);
+    if (!root)
+    {
+        mdebug1("Failed to parse getdoclimits fim response");
+        return false;
+    }
+
+    cJSON* file = cJSON_GetObjectItem(root, "file");
+    if (file && cJSON_IsNumber(file))
+    {
+        const double value = cJSON_GetNumberValue(file);
+        if (value >= 0)
+        {
+            syscheck.file_limit = (int)value;
+        }
+    }
+
+    cJSON* registry_key = cJSON_GetObjectItem(root, "registry_key");
+    if (registry_key && cJSON_IsNumber(registry_key))
+    {
+        const double value = cJSON_GetNumberValue(registry_key);
+        if (value >= 0)
+        {
+            syscheck.registry_key_limit = (int)value;
+        }
+    }
+
+    cJSON* registry_value = cJSON_GetObjectItem(root, "registry_value");
+    if (registry_value && cJSON_IsNumber(registry_value))
+    {
+        const double value = cJSON_GetNumberValue(registry_value);
+        if (value >= 0)
+        {
+            syscheck.registry_value_limit = (int)value;
+        }
+    }
+
+    cJSON_Delete(root);
+    return true;
+}
 
 void fim_initialize() {
     // Create store data
@@ -111,6 +410,22 @@ void fim_initialize() {
         return;
     }
 
+    syscheck.file_limit = 0;
+    syscheck.registry_key_limit = 0;
+    syscheck.registry_value_limit = 0;
+#ifdef CLIENT
+        while (!fetch_document_limits_from_agentd())
+        {
+        mdebug1("Trying to fetch limits from agentd...");
+#ifdef WIN32
+            Sleep(1000);
+#else
+            sleep(1);
+#endif // WIN32
+        }
+#endif // CLIENT
+
+    // Initialize locks before sync handle creation
     w_rwlock_init(&syscheck.directories_lock, NULL);
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
@@ -124,6 +439,7 @@ void fim_initialize() {
 
     notify_scan = syscheck.notify_first_scan;
 
+    // Initialize sync handle early so it's available for document promotion
     MQ_Functions mq_funcs = {
         .start = fim_startmq,
         .send_binary = fim_send_binary_msg
@@ -133,6 +449,97 @@ void fim_initialize() {
     if (!syscheck.sync_handle) {
         merror_exit("Failed to initialize AgentSyncProtocol");
     }
+
+// Check for limit changes
+#ifdef CLIENT
+#ifdef WIN32
+    int table_count = 3;
+    char* table_names[3] = {FIMDB_FILE_TABLE_NAME, FIMDB_REGISTRY_KEY_TABLENAME, FIMDB_REGISTRY_VALUE_TABLENAME};
+#else
+    int table_count = 1;
+    char* table_names[1] = {FIMDB_FILE_TABLE_NAME};
+#endif
+
+    for (int i = 0; i < table_count; i++) {
+        char* table_name = table_names[i];
+
+        // Get the appropriate limit and synced_docs pointer for this table
+        int limit = 0;
+        int* synced_docs_ptr = NULL;
+        if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+            limit = syscheck.file_limit;
+            synced_docs_ptr = &synced_docs_files;
+        } else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
+            limit = syscheck.registry_key_limit;
+            synced_docs_ptr = &synced_docs_registry_keys;
+        } else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+            limit = syscheck.registry_value_limit;
+            synced_docs_ptr = &synced_docs_registry_values;
+        }
+
+        *synced_docs_ptr = fim_db_count_synced_docs(table_name);
+        if (*synced_docs_ptr != 0) { // No need to check if no scans have been run
+            if (limit == 0) { // If moving from limited agent to unlimited, promote everything
+                limit = INT_MAX;
+            }
+            if (*synced_docs_ptr < limit) { // Limit increased
+                int document_count = limit - *synced_docs_ptr;
+                cJSON* docs_to_promote = fim_db_get_documents_to_promote(table_name, document_count);
+
+                if (docs_to_promote) {
+                    // Send promoted documents to persistent queue as CREATE events
+                    persist_sync_documents(table_name, docs_to_promote, OPERATION_CREATE);
+
+                    OSList* pending_sync_updates = OSList_Create();
+                    if (pending_sync_updates) {
+                        OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+
+                        // Iterate through full documents and extract primary keys for sync flag update
+                        cJSON* full_doc = NULL;
+                        cJSON_ArrayForEach(full_doc, docs_to_promote) {
+                            cJSON* primary_keys = extract_primary_keys(table_name, full_doc);
+                            if (primary_keys) {
+                                add_pending_sync_item(pending_sync_updates, primary_keys, 1);
+                                cJSON_Delete(primary_keys);
+                                (*synced_docs_ptr)++;
+                            }
+                        }
+
+                        // Process pending sync updates
+                        process_pending_sync_updates(table_name, pending_sync_updates);
+                        OSList_Destroy(pending_sync_updates);
+                    }
+                    cJSON_Delete(docs_to_promote);
+                }
+            } else if (*synced_docs_ptr > limit) { // Limit decreased
+                int document_count = *synced_docs_ptr - limit;
+                cJSON* docs_to_demote = fim_db_get_documents_to_demote(table_name, document_count);
+
+                if (docs_to_demote) {
+                    // Send demoted documents to persistent queue as DELETE events
+                    persist_sync_documents(table_name, docs_to_demote, OPERATION_DELETE);
+
+                    OSList* pending_sync_updates = OSList_Create();
+                    if (pending_sync_updates) {
+                        OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+
+                        // Iterate through the cJSON array and add to pending list
+                        cJSON* item = NULL;
+                        cJSON_ArrayForEach(item, docs_to_demote) {
+                            add_pending_sync_item(pending_sync_updates, item, 0);
+                            (*synced_docs_ptr)--;
+                        }
+
+                        // Process pending sync updates
+                        process_pending_sync_updates(table_name, pending_sync_updates);
+                        OSList_Destroy(pending_sync_updates);
+                    }
+                    cJSON_Delete(docs_to_demote);
+                }
+            }
+        }
+    }
+#endif // CLIENT
 
     // Initialize schema validator from embedded resources
     if (!schema_validator_is_initialized()) {

@@ -88,4 +88,13 @@ int __wrap_fim_db_set_version_file();
 
 FIMDBErrorCode __wrap_fim_db_file_delete(const char* path);
 
+cJSON* __wrap_fim_db_get_documents_to_promote(char* table_name, int count);
+
+cJSON* __wrap_fim_db_get_documents_to_demote(char* table_name, int count);
+
+int __wrap_fim_db_count_synced_docs(char* table_name);
+
+int __wrap_fim_db_sync_row_update(const char* table_name, const char* path,
+                                   const char* arch, const char* value, int sync_value);
+
 #endif
