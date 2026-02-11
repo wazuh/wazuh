@@ -28,7 +28,7 @@ constexpr auto OS_SQL_STATEMENT
     os_kernel_version TEXT,
     os_distribution_release TEXT,
     os_full TEXT,
-    synced INTEGER DEFAULT 0,
+    sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (os_name, os_version)) WITHOUT ROWID;)"
@@ -44,7 +44,7 @@ constexpr auto HW_SQL_STATEMENT
     memory_total INTEGER,
     memory_free INTEGER,
     memory_used INTEGER,
-    synced INTEGER DEFAULT 0,
+    sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (serial_number)) WITHOUT ROWID;)"
@@ -54,7 +54,7 @@ constexpr auto HOTFIXES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_hotfixes(
     hotfix_name TEXT,
-    synced INTEGER DEFAULT 0,
+    sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (hotfix_name)) WITHOUT ROWID;)"
@@ -76,7 +76,7 @@ constexpr auto PACKAGES_SQL_STATEMENT
     multiarch TEXT,
     source TEXT,
     type TEXT,
-    synced INTEGER DEFAULT 0,
+    sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (name,version_,architecture,type,path)) WITHOUT ROWID;)"
@@ -95,7 +95,7 @@ constexpr auto PROCESSES_SQL_STATEMENT
     args TEXT,
     args_count BIGINT,
     start TEXT,
-    synced INTEGER DEFAULT 0,
+    sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (pid)) WITHOUT ROWID;)"
@@ -115,7 +115,7 @@ constexpr auto PORTS_SQL_STATEMENT
        interface_state TEXT,
        process_pid BIGINT,
        process_name TEXT,
-       synced INTEGER DEFAULT 0,
+       sync INTEGER DEFAULT 0,
        checksum TEXT,
        version INTEGER NOT NULL DEFAULT 1,
        PRIMARY KEY (file_inode, network_transport, source_ip, source_port)) WITHOUT ROWID;)"
@@ -138,7 +138,7 @@ constexpr auto NETIFACE_SQL_STATEMENT
        host_network_ingress_errors INTEGER,
        host_network_egress_drops INTEGER,
        host_network_ingress_drops INTEGER,
-       synced INTEGER DEFAULT 0,
+       sync INTEGER DEFAULT 0,
        checksum TEXT,
        version INTEGER NOT NULL DEFAULT 1,
        PRIMARY KEY (interface_name,interface_alias,interface_type)) WITHOUT ROWID;)"
@@ -152,7 +152,7 @@ constexpr auto NETPROTO_SQL_STATEMENT
        network_gateway TEXT,
        network_dhcp INTEGER,
        network_metric TEXT,
-       synced INTEGER DEFAULT 0,
+       sync INTEGER DEFAULT 0,
        checksum TEXT,
        version INTEGER NOT NULL DEFAULT 1,
        PRIMARY KEY (interface_name,network_type)) WITHOUT ROWID;)"
@@ -166,7 +166,7 @@ constexpr auto NETADDR_SQL_STATEMENT
        network_ip TEXT,
        network_netmask TEXT,
        network_broadcast TEXT,
-       synced INTEGER DEFAULT 0,
+       sync INTEGER DEFAULT 0,
        checksum TEXT,
        version INTEGER NOT NULL DEFAULT 1,
        PRIMARY KEY (interface_name,network_type,network_ip)) WITHOUT ROWID;)"
@@ -206,7 +206,7 @@ constexpr auto USERS_SQL_STATEMENT
         login_status INTEGER,
         login_tty TEXT,
         login_type TEXT,
-        synced INTEGER DEFAULT 0,
+        sync INTEGER DEFAULT 0,
         checksum TEXT,
         version INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY (user_name)) WITHOUT ROWID;)"
@@ -222,7 +222,7 @@ constexpr auto GROUPS_SQL_STATEMENT
     group_uuid TEXT,
     group_is_hidden INTEGER,
     group_users TEXT,
-    synced INTEGER DEFAULT 0,
+    sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (group_name)) WITHOUT ROWID;)"
@@ -263,7 +263,7 @@ constexpr auto SERVICES_SQL_STATEMENT
         service_target_ephemeral_id BIGINT,
         service_target_type TEXT,
         service_target_address TEXT,
-        synced INTEGER DEFAULT 0,
+        sync INTEGER DEFAULT 0,
         checksum TEXT,
         version INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY (service_id, file_path)) WITHOUT ROWID;)"
@@ -294,7 +294,7 @@ constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
         browser_profile_referenced INTEGER,
         package_installed TEXT,
         file_hash_sha256 TEXT,
-        synced INTEGER DEFAULT 0,
+        sync INTEGER DEFAULT 0,
         checksum TEXT,
         version INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY (browser_name,user_id,browser_profile_path,package_name,package_version_)) WITHOUT ROWID;)"
