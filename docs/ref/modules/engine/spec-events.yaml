@@ -76,3 +76,73 @@ paths:
               examples:
                 orchestratorUnavailable:
                   value: {"error":"Internal server error","code":500}
+  /events/local:
+    post:
+      tags:
+        - Events
+      summary: Ingest manager-generated local events
+      description: |
+        Accepts events from local manager modules.
+        The engine parses them and pushes them to the orchestrator queue.
+        Socket path: /var/ossec/queue/sockets/queue-http.sock
+      requestBody:
+        required: true
+        content:
+          application/x-ndjson:
+            schema:
+              type: string
+              description: |
+                H/E protocol: first line is "H {json}", followed by one or more
+                "E queue:location:message" lines.
+            examples:
+              singleAgentEvent:
+                summary: Agent lifecycle event
+                value: |-
+                  H {"agent":{"id":"001","name":"tomas2"}}
+                  E w:wazuh-remoted:{"event":{"collector":"manager","action":"agent-added"}}
+              multipleEvents:
+                summary: Multiple manager events
+                value: |-
+                  H {"agent":{"id":"001","name":"tomas2"}}
+                  E w:wazuh-remoted:{"event":{"collector":"manager","action":"agent-added"}}
+                  E w:wazuh-monitord:{"event":{"collector":"manager","action":"manager-started"}}
+              managerLifecycle:
+                summary: Manager lifecycle event (no agent context)
+                value: |-
+                  H {}
+                  E w:wazuh-remoted:{"event":{"collector":"manager","action":"manager-started"}}
+      responses:
+        "200":
+          description: Events accepted and enqueued. (Empty body)
+        "400":
+          description: Invalid payload (malformed H/E protocol or invalid JSON).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: integer
+                required: [error, code]
+              examples:
+                invalidHeader:
+                  value: {"error":"NDJson parser error, ...","code":400}
+                missingHeader:
+                  value: {"error":"NDJson parser error, unexpected line outside of an event","code":400}
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: integer
+                required: [error, code]
+              examples:
+                orchestratorUnavailable:
+                  value: {"error":"Internal server error","code":500}

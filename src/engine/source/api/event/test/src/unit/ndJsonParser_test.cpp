@@ -211,11 +211,16 @@ static inline std::string E(std::string p)
 // Example JSON headers
 static const std::string HDR1 = R"({"agent":{"name":"worker","id":"000"}})";
 static const std::string HDR2 = R"({"agent":{"name":"alt","id":"000"}})";
+static const std::string HDR_LOCAL = R"({"agent":{"id":"001","name":"tomas2"}})";
 
 // OSSEC events: "queue:location:message"
 static const std::string EV1 = "1:/etc/passwd:File modified md5=abc";
 static const std::string EV2 = "2:/var/log/auth.log:sshd[12345]: Failed password for root from 1.2.3.4 port 22";
 static const std::string EV3L1 = "3:/var/log/app.log:START"; // multi-line (message continues)
+static const std::string EV_LOCAL1 =
+    "w:wazuh-remoted:{\"event\":{\"collector\":\"manager\",\"action\":\"agent-added\"}}";
+static const std::string EV_LOCAL2 =
+    "w:wazuh-monitord:{\"event\":{\"collector\":\"manager\",\"action\":\"manager-started\"}}";
 
 // Repeat block N times (exercise performance and repetition)
 template<size_t N>
@@ -234,11 +239,18 @@ INSTANTIATE_TEST_SUITE_P(
         // OK: 2 simple events
         EventT(makeRawNdJson(H(HDR1), E(EV1), E(EV2)), SUCCESS(makeResultHE(H(HDR1), E(EV1), E(EV2)))),
 
+        // OK: manager local events
+        EventT(makeRawNdJson(H(HDR_LOCAL), E(EV_LOCAL1)), SUCCESS(makeResultHE(H(HDR_LOCAL), E(EV_LOCAL1)))),
+        EventT(makeRawNdJson(H(HDR_LOCAL), E(EV_LOCAL1), E(EV_LOCAL2)),
+               SUCCESS(makeResultHE(H(HDR_LOCAL), E(EV_LOCAL1), E(EV_LOCAL2)))),
+
         // OK: header change mid-batch
         EventT(makeRawNdJson(H(HDR1), E(EV1), E(EV2)), SUCCESS(makeResultHE(H(HDR1), E(EV1), E(EV2)))),
 
         // FAIL: first line is not H
         EventT(makeRawNdJson(E(EV1)), FAILURE()),
+
+        EventT(std::string(""), FAILURE()),
 
         // FAIL: header without JSON
         EventT(makeRawNdJson("H    ", E(EV1)), FAILURE()),
@@ -251,6 +263,8 @@ INSTANTIATE_TEST_SUITE_P(
 
         // FAIL: E without payload (empty)
         EventT(std::string(H(HDR1) + "\nE "), FAILURE()),
+
+        EventT(makeRawNdJson(H(HDR_LOCAL), E(":wazuh-remoted:msg")), FAILURE()),
 
         // FAIL: event not compliant with OSSEC (missing ':')
         EventT(makeRawNdJson(H(HDR1), E("bad-payload-without-colons")), FAILURE())));

@@ -56,6 +56,10 @@ inline ProtocolHandler getNDJsonParser()
             };
 
             // ---- Single header at the start: "H {json}" (assumed valid) ----
+            if (lines.empty())
+            {
+                throw std::runtime_error {"empty batch"};
+            }
             // We assume there's always JSON after "H "; no length checks here.
             json::Json header(lines.front().substr(2).data());
 

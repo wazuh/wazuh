@@ -663,6 +663,10 @@ int main(int argc, char* argv[])
                 httpsrv::Method::POST,
                 "/events/enriched", // TODO: Double check route
                 api::event::handlers::pushEvent(orchestrator, api::event::protocol::getNDJsonParser(), archiver));
+            engineRemoteServer->addRoute(
+                httpsrv::Method::POST,
+                "/events/local",
+                api::event::handlers::pushEvent(orchestrator, api::event::protocol::getNDJsonParser(), archiver));
 
             // starting in a new thread
             engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));

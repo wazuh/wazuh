@@ -2,6 +2,7 @@
 
 #include <api/adapter/baseHandler_test.hpp>
 #include <api/event/handlers.hpp>
+#include <api/event/ndJsonParser.hpp>
 #include <archiver/mockArchiver.hpp>
 #include <router/mockRouter.hpp>
 
@@ -104,6 +105,53 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                              events.push(event);
                                              return events;
                                          },
+                                         std::make_shared<archiver::mocks::MockArchiver>());
+                                 },
+                                 []()
+                                 {
+                                     httplib::Response res;
+                                     res.status = httplib::StatusCode::OK_200;
+                                     return res;
+                                 },
+                                 [](auto& mock) { EXPECT_CALL(mock, postEvent(testing::_)).Times(2); }),
+                             HandlerT(
+                                 []()
+                                 {
+                                     httplib::Request req;
+                                     req.headers.emplace("Content-Type", "application/x-wev1");
+                                     req.body = "H {\"agent\":{\"id\":\"001\",\"name\":\"tomas2\"}}\n"
+                                                "E w:wazuh-remoted:{\"event\":{\"collector\":\"manager\",\"action\":\"agent-added\"}}";
+                                     return req;
+                                 },
+                                 [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
+                                 {
+                                     return pushEvent(
+                                         orchestrator,
+                                         api::event::protocol::getNDJsonParser(),
+                                         std::make_shared<archiver::mocks::MockArchiver>());
+                                 },
+                                 []()
+                                 {
+                                     httplib::Response res;
+                                     res.status = httplib::StatusCode::OK_200;
+                                     return res;
+                                 },
+                                 [](auto& mock) { EXPECT_CALL(mock, postEvent(testing::_)).Times(1); }),
+                             HandlerT(
+                                 []()
+                                 {
+                                     httplib::Request req;
+                                     req.headers.emplace("Content-Type", "application/x-wev1");
+                                     req.body = "H {\"agent\":{\"id\":\"001\",\"name\":\"tomas2\"}}\n"
+                                                "E w:wazuh-remoted:{\"event\":{\"collector\":\"manager\",\"action\":\"agent-added\"}}\n"
+                                                "E w:wazuh-monitord:{\"event\":{\"collector\":\"manager\",\"action\":\"manager-started\"}}";
+                                     return req;
+                                 },
+                                 [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
+                                 {
+                                     return pushEvent(
+                                         orchestrator,
+                                         api::event::protocol::getNDJsonParser(),
                                          std::make_shared<archiver::mocks::MockArchiver>());
                                  },
                                  []()
