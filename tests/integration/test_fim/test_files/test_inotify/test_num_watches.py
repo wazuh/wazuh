@@ -61,6 +61,7 @@ tags:
 
 from pathlib import Path
 
+# Triggering CI execution to check baseline stability
 import pytest
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
