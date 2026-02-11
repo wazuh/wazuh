@@ -21,9 +21,9 @@
 #include "fimCommonDefs.h"
 #include "fimDB.hpp"
 #include "fimDBSpecialization.h"
-#include <hashHelper.h>
 #include "stringHelper.h"
 #include "timeHelper.h"
+#include <hashHelper.h>
 
 void DB::init(const int storage,
               std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
@@ -37,7 +37,7 @@ void DB::init(const int storage,
                                                  FIMDBCreator<OS_TYPE>::CreateStatement(),
                                                  DbManagement::PERSISTENT)};
 
-    FIMDB::instance().init(callbackLogWrapper, dbsyncHandler, fileLimit, valueLimit);
+    FIMDB::instance().init(std::move(callbackLogWrapper), dbsyncHandler, fileLimit, valueLimit);
 }
 
 DBSYNC_HANDLE DB::DBSyncHandle()
@@ -85,14 +85,13 @@ int DB::countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selec
     return count;
 }
 
-
 void DB::updateLastSyncTime(const std::string& tableName, int64_t timestamp)
 {
     auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
 
     auto syncQuery = SyncRowQuery::builder()
                      .table("table_metadata")
-    .data(nlohmann::json{{"table_name", tableName}, {"last_sync_time", timestamp}})
+    .data(nlohmann::json {{"table_name", tableName}, {"last_sync_time", timestamp}})
     .build();
 
     FIMDB::instance().updateItem(syncQuery.query(), emptyCallback);
@@ -168,7 +167,7 @@ int DB::updateVersion(const std::string& tableName, int version)
         // Select all rows (only primary keys and version column)
         auto selectQuery {SelectQuery::builder()
                           .table(tableName)
-                          .columnList({"*"})  // Get all columns to properly identify rows
+                          .columnList({"*"}) // Get all columns to properly identify rows
                           .rowFilter("")
                           .orderByOpt("")
                           .distinctOpt(false)
@@ -190,10 +189,7 @@ int DB::updateVersion(const std::string& tableName, int version)
         // Use syncRow to update the entry
         auto updateCallback {[](ReturnTypeCallback, const nlohmann::json&) {}};
 
-        auto syncQuery {SyncRowQuery::builder()
-                        .table(tableName)
-                        .data(row)
-                        .build()};
+        auto syncQuery {SyncRowQuery::builder().table(tableName).data(row).build()};
 
         try
         {
@@ -208,7 +204,6 @@ int DB::updateVersion(const std::string& tableName, int version)
 
     return retval;
 }
-
 
 #ifdef __cplusplus
 extern "C"
@@ -291,7 +286,7 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_ent
         }
         else
         {
-            if (entry->registry_entry.key == NULL)
+            if (entry->registry_entry.key == nullptr)
             {
                 syncItem = std::make_unique<RegistryValue>(entry, true);
             }
@@ -392,10 +387,10 @@ cJSON* fim_db_get_every_element(const char* table_name)
     if (!table_name)
     {
         FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
-        return NULL;
+        return nullptr;
     }
 
-    cJSON* result_array = NULL;
+    cJSON* result_array = nullptr;
 
     try
     {
@@ -406,7 +401,7 @@ cJSON* fim_db_get_every_element(const char* table_name)
         if (!result_array)
         {
             FIMDB::instance().logFunction(LOG_ERROR, "Failed to create cJSON array");
-            return NULL;
+            return nullptr;
         }
 
         size_t processed = 0;
@@ -427,11 +422,11 @@ cJSON* fim_db_get_every_element(const char* table_name)
                 // Critical: If ANY item fails to parse, the entire result is invalid
                 // Returning partial data could cause incomplete sync/recovery operations
                 FIMDB::instance().logFunction(LOG_ERROR,
-                                              std::string("Failed to parse JSON item ") + std::to_string(processed) +
-                                              "/" + std::to_string(items.size()) + " from table " + table_name +
-                                              ". Aborting to prevent data loss.");
+                                              std::string("Failed to parse JSON item ") +
+                                              std::to_string(processed) + "/" + std::to_string(items.size()) +
+                                              " from table " + table_name + ". Aborting to prevent data loss.");
                 cJSON_Delete(result_array);
-                return NULL;
+                return nullptr;
             }
         }
     }
@@ -444,7 +439,7 @@ cJSON* fim_db_get_every_element(const char* table_name)
             cJSON_Delete(result_array);
         }
 
-        return NULL;
+        return nullptr;
     }
 
     return result_array;
@@ -452,12 +447,12 @@ cJSON* fim_db_get_every_element(const char* table_name)
 
 char* fim_db_calculate_table_checksum(const char* table_name)
 {
-    char* result = NULL;
+    char* result = nullptr;
 
     if (!table_name)
     {
         FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
-        return NULL;
+        return nullptr;
     }
 
     try

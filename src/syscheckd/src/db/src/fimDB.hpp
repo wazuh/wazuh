@@ -118,8 +118,8 @@ class FIMDB
          */
         void init(std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
                   std::shared_ptr<DBSync> dbsyncHandler,
-                  const int fileLimit,
-                  const int registryLimit = 0);
+                  int fileLimit,
+                  int registryLimit = 0);
 
         /**
          * @brief Remove a given item from the database
@@ -135,7 +135,7 @@ class FIMDB
          * @param item json item that represent the fim_entry data
          * @param callbackData Pointer to the callback used after update rows
          */
-        void updateItem(const nlohmann::json& item, ResultCallbackData callbackData);
+        void updateItem(const nlohmann::json& item, ResultCallbackData& callbackData);
 
         /**
          * @brief Execute a query given and uses the callbackData in these rows
@@ -143,7 +143,7 @@ class FIMDB
          * @param item json item that represent the query to execute
          * @param callbackData Pointer to the callback used after execute query
          */
-        void executeQuery(const nlohmann::json& item, ResultCallbackData callbackData);
+        void executeQuery(const nlohmann::json& item, ResultCallbackData& callbackData);
 
         /**
          * @brief Its the function to log an error

@@ -78,10 +78,10 @@ class EXPORTED DB final
          * @param fileLimit File limit.
          * @param valueLimit Registry value limit.
          */
-        void init(const int storage,
+        void init(int storage,
                   std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
-                  const int fileLimit,
-                  const int valueLimit);
+                  int fileLimit,
+                  int valueLimit);
 
         /**
          * @brief DBSyncHandle return the dbsync handle, for operations with the database.
@@ -112,7 +112,7 @@ class EXPORTED DB final
          * @param selectType Type of count.
          * @return Number of files.
          */
-        int countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selectType);
+        int countEntries(const std::string& tableName, COUNT_SELECT_TYPE selectType);
 
         /**
          * @brief maxVersion Get the maximum version from a table.
@@ -130,7 +130,6 @@ class EXPORTED DB final
          * @return 0 on success, -1 on error.
          */
         int updateVersion(const std::string& tableName, int version);
-
 
         /**
          * @brief updateFile Update/insert a file in the database.
@@ -173,6 +172,7 @@ class EXPORTED DB final
          * @return int64_t The last sync timestamp (UNIX format), or 0 if not found.
          */
         int64_t getLastSyncTime(const std::string& tableName);
+
     private:
         DB() = default;
         ~DB() = default;

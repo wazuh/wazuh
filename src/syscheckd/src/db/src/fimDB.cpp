@@ -20,7 +20,7 @@ void FIMDB::init(std::function<void(modules_log_level_t, const std::string&)> ca
 {
     std::lock_guard<std::shared_timed_mutex> lock(m_handlersMutex);
     m_dbsyncHandler = dbsyncHandler;
-    m_loggingFunction = callbackLogWrapper;
+    m_loggingFunction = std::move(callbackLogWrapper);
     m_stopping = false;
     FIMDBCreator<OS_TYPE>::setLimits(m_dbsyncHandler, fileLimit, registryLimit);
 }
@@ -35,7 +35,7 @@ void FIMDB::removeItem(const nlohmann::json& item)
     }
 }
 
-void FIMDB::updateItem(const nlohmann::json& item, ResultCallbackData callbackData)
+void FIMDB::updateItem(const nlohmann::json& item, ResultCallbackData& callbackData)
 {
     std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
 
@@ -45,7 +45,7 @@ void FIMDB::updateItem(const nlohmann::json& item, ResultCallbackData callbackDa
     }
 }
 
-void FIMDB::executeQuery(const nlohmann::json& item, ResultCallbackData callbackData)
+void FIMDB::executeQuery(const nlohmann::json& item, ResultCallbackData& callbackData)
 {
     std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
 
