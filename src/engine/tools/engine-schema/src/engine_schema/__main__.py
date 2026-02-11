@@ -15,10 +15,21 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> int:
     args = parse_args()
     resource_handler = rs.ResourceHandler()
-    args.func(vars(args), resource_handler)
+
+    try:
+        args.func(vars(args), resource_handler)
+        return 0
+    except ValueError as e:
+        # Errores "esperados" (validación, inputs, etc.)
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    except Exception as e:
+        # Errores inesperados
+        print(f"Error: Failed to generate schema files. {e}", file=sys.stderr)
+        return 1
 
 
 if __name__ == '__main__':

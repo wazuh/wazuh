@@ -1,4 +1,5 @@
-from typing import Set, Tuple, Dict, Any
+from typing import Set, Tuple, Dict, Any, DefaultDict, List
+from collections import defaultdict
 from copy import deepcopy
 import os
 import tempfile
@@ -112,7 +113,7 @@ def _build_fields_schema(base_template: dict, properties: dict, file_id: str, na
     return t
 
 
-def build_geo_as_enrichment_map_from_flat(wcs_flat: Dict[str, Dict[str, Any]], exclude_ip_fields: Set[str] | None = None) -> Dict[str, Dict[str, str]]:
+def build_geo_as_enrichment_map_from_flat(wcs_flat: Dict[str, Dict[str, Any]], exclude_ip_fields: Set[str] | None = None,) -> Dict[str, Dict[str, str]]:
     exclude_ip_fields = exclude_ip_fields or set()
     result: Dict[str, Dict[str, str]] = {}
 
@@ -121,24 +122,18 @@ def build_geo_as_enrichment_map_from_flat(wcs_flat: Dict[str, Dict[str, Any]], e
             return meta["type"].lower()
         return ""
 
-    # Build a set of "implicit container paths" present in the flat.
-    # Example: if "destination.geo.country_iso_code" exists,
-    # then containers include "destination", "destination.geo".
+    # Build implicit containers (so "destination.geo.*" implies "destination.geo" exists)
     containers: Set[str] = set()
     for k in wcs_flat.keys():
         parts = k.split(".")
-        # add all prefixes except the full key
         for i in range(1, len(parts)):
             containers.add(".".join(parts[:i]))
 
     def container_exists(path: str) -> bool:
-        # True if exact key exists OR it appears as an implicit container of other keys
         return path in wcs_flat or path in containers
 
+    # 1) Build the mapping
     for ip_field, meta in wcs_flat.items():
-        # debug print if you want:
-        # print(f"Processing IP field: {ip_field}")
-
         if ip_field in exclude_ip_fields:
             continue
         if field_type(meta) != "ip":
@@ -147,15 +142,12 @@ def build_geo_as_enrichment_map_from_flat(wcs_flat: Dict[str, Dict[str, Any]], e
             continue
 
         parent = ip_field.rsplit(".", 1)[0]
-
         entry: Dict[str, str] = {}
 
-        # geo container
         geo_path = f"{parent}.geo"
         if container_exists(geo_path):
             entry["geo_field"] = geo_path
 
-        # as/asn container (prefer ".as")
         as_path = f"{parent}.as"
         asn_path = f"{parent}.asn"
         if container_exists(as_path):
@@ -165,6 +157,34 @@ def build_geo_as_enrichment_map_from_flat(wcs_flat: Dict[str, Dict[str, Any]], e
 
         if entry:
             result[ip_field] = entry
+
+    # 2) Validate: no duplicates (same geo/as target) across different IP fields
+    by_target: DefaultDict[Tuple[str | None, str | None], List[str]] = defaultdict(list)
+
+    for ip_field, mapping in result.items():
+        geo = mapping.get("geo_field")
+        asf = mapping.get("as_field")
+        by_target[(geo, asf)].append(ip_field)
+
+    collisions = {t: ips for t, ips in by_target.items() if len(ips) > 1}
+
+    if collisions:
+        lines: List[str] = []
+        lines.append("Geo/ASN enrichment map validation failed: duplicated targets detected.")
+
+        for (geo, asf), ips in sorted(
+            collisions.items(),
+            key=lambda x: ((x[0][0] or ""), (x[0][1] or ""))
+        ):
+            parts = []
+            if geo:
+                parts.append(f"geo={geo}")
+            if asf:
+                parts.append(f"as={asf}")
+            target_str = " ".join(parts) if parts else "(empty target)"
+            lines.append(f"  - {target_str} <- {', '.join(sorted(ips))}")
+
+        raise ValueError("\n".join(lines))
 
     return result
 
