@@ -25,6 +25,7 @@
 #include "stringHelper.h"
 #include "timeHelper.h"
 
+// This check
 void DB::init(const int storage,
               std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
               const int fileLimit,
