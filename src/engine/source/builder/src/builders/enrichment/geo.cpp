@@ -189,8 +189,17 @@ base::Expression getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& cityLoc
 
     auto opFn = [cityLocator, asLocator, mappingConfig, trace](base::Event event) -> base::result::Result<base::Event>
     {
-        // Get source IP
-        auto ipOpt = event->getString(mappingConfig.originIpPath);
+        // Get source IP, can be an string o a array of strings, in that case we take the first one.
+        const auto ipOpt = [&]() -> std::optional<std::string>
+        {
+            auto ipStr = event->getString(mappingConfig.originIpPath);
+            if (!ipStr.has_value())
+            {
+                ipStr = event->getString(mappingConfig.originIpPath + "/0");
+            }
+            return ipStr;
+        }();
+
         if (!ipOpt.has_value())
         {
             const auto traceMsg =
