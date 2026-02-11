@@ -257,7 +257,7 @@ class DisconnectedAgentSyncTasks:
             "aggs": {
                 "by_agent": {
                     "terms": {
-                        "field": "wazuh.agent.id.keyword",
+                        "field": "wazuh.agent.id",
                         "include": agent_ids,
                         "exclude": ["000"],
                     },
@@ -284,8 +284,10 @@ class DisconnectedAgentSyncTasks:
                 for bucket in result["aggregations"]["by_agent"]["buckets"]:
                     agent_id = bucket.get("key")
                     max_version = bucket["max_document_version"]["value"]
-                    if agent_id and max_version is not None:
+                    if agent_id and max_version:
                         max_versions[agent_id] = int(max_version)
+                    else:
+                        raise Exception("Failed to get the max version for agent ID: " + str(agent_id))
                 self.logger.info(
                     f"Batch max version query completed for {len(max_versions)} agents "
                     f"out of {len(agent_ids)} requested"
@@ -459,7 +461,10 @@ class DisconnectedAgentSyncTasks:
                     "All disconnected agents already have correct cluster name"
                 )
                 return
-
+            self.logger.info(
+                f"Starting Cluster name synchronization for {len(agents_to_update)} disconnected agents "
+                f"with cluster_name={cluster_name}"
+            )
             # Resolve indexer client once
             if self._indexer_client_override:
                 client = self._indexer_client_override
@@ -670,7 +675,7 @@ class DisconnectedAgentSyncTasks:
             "query": {
                 "bool": {
                     "filter": [
-                        {"terms": {"wazuh.agent.id.keyword": agent_ids}},
+                        {"terms": {"wazuh.agent.id": agent_ids}},
                         {"exists": {"field": "wazuh.cluster.name"}},
                     ],
                     "must_not": [
@@ -680,7 +685,7 @@ class DisconnectedAgentSyncTasks:
             },
             "aggs": {
                 "by_agent": {
-                    "terms": {"field": "wazuh.agent.id.keyword", "size": len(agent_ids)},
+                    "terms": {"field": "wazuh.agent.id", "size": len(agent_ids)},
                     "aggs": {
                         "cluster_name": {
                             "terms": {"field": "wazuh.cluster.name", "size": 5}
@@ -721,9 +726,6 @@ class DisconnectedAgentSyncTasks:
             self.logger.info(
                 f"Resolved cluster name for {len(agent_cluster_map)} "
                 f"out of {len(agent_ids)} requested agents"
-            )
-            self.logger.info(
-                f"{agent_cluster_map} agents " f"found with cluster name in indexer"
             )
             return agent_cluster_map
 
