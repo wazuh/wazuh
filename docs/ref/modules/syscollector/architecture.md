@@ -177,9 +177,9 @@ Syscollector implements an inventory limit mechanism to control the number of sy
 
 **Synchronization Control:**
 
-Each inventory item has a `synced` flag in the database:
-- `synced=1`: Item is synchronized and will generate events
-- `synced=0`: Item is stored locally but not synchronized
+Each inventory item has a `sync` flag in the database:
+- `sync=1`: Item is synchronized and will generate events
+- `sync=0`: Item is stored locally but not synchronized
 
 **Limit Enforcement Flow:**
 
@@ -189,18 +189,18 @@ Inventory Scan Detects Item
          ▼
 Check Document Limit
          │
-         ├─► Limit = 0 (unlimited) ──────► Set synced=1 ──────► Generate Event
+         ├─► Limit = 0 (unlimited) ──────► Set sync=1 ──────► Generate Event
          │
          └─► Limit > 0 (limited)
                   │
-                  ├─► Count < Limit ──────► Set synced=1 ──────► Generate Event
+                  ├─► Count < Limit ──────► Set sync=1 ──────► Generate Event
                   │
-                  └─► Count >= Limit ─────► Set synced=0 ──────► Store Locally (no event)
+                  └─► Count >= Limit ─────► Set sync=0 ──────► Store Locally (no event)
 ```
 
 **Promotion Mechanism:**
 
-When limits increase or items are deleted, pending items (synced=0) are promoted:
+When limits increase or items are deleted, pending items (sync=0) are promoted:
 
 ```cpp
 // Triggered when:
@@ -210,9 +210,9 @@ When limits increase or items are deleted, pending items (synced=0) are promoted
 
 promoteUnsyncedItems(index, tableName, availableSlots, reason);
          │
-         ├─► Select unsynced items: WHERE synced=0 ORDER BY primary_key ASC
+         ├─► Select unsynced items: WHERE sync=0 ORDER BY primary_key ASC
          ├─► Generate INSERT events for selected items
-         └─► Update synced flag: synced=0 → synced=1
+         └─► Update sync flag: sync=0 → sync=1
 ```
 
 **Ordering Strategy:**

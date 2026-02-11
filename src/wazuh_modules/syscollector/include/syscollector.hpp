@@ -130,7 +130,7 @@ class EXPORTED Syscollector final
          * @brief Fetches all items from a VD table (OS, Packages, or Hotfixes) excluding specified IDs
          * @param tableName Name of the table to query ("dbsync_osinfo", "dbsync_packages", "dbsync_hotfixes")
          * @param excludeIds Set of hash IDs to exclude from results (items already in DataValue)
-         * @param forceAll If true, fetch all records regardless of document limits (ignores synced flag)
+         * @param forceAll If true, fetch all records regardless of document limits (ignores sync flag)
          * @return Vector of JSON objects representing all rows in the table (excluding specified IDs)
          */
         std::vector<nlohmann::json> fetchAllFromTable(const std::string& tableName, const std::set<std::string>& excludeIds, bool forceAll = false);
@@ -277,21 +277,21 @@ class EXPORTED Syscollector final
         void deleteFailedItemsFromDB(const std::vector<std::pair<std::string, nlohmann::json>>& failedItems) const;
 
         /**
-         * @brief Updates synced flag for items in database
+         * @brief Updates sync flag for items in database
          *
-         * This helper function updates the synced flag (0 or 1) for all items in the vector.
+         * This helper function updates the sync flag (0 or 1) for all items in the vector.
          * It uses a DBSync transaction to ensure all updates are atomic and properly committed to disk.
          *
          * @param itemsToUpdate Vector of (table_name, json_data) pairs to update
-         * @param syncedValue Value to set for synced flag (0 or 1)
+         * @param syncedValue Value to set for sync flag (0 or 1)
          */
-        void updateSyncedFlagInDB(const std::vector<std::pair<std::string, nlohmann::json>>& itemsToUpdate, int syncedValue) const;
+        void updateSyncFlagInDB(const std::vector<std::pair<std::string, nlohmann::json>>& itemsToUpdate, int syncValue) const;
 
         /**
          * @brief Promotes unsynced items with deterministic ordering
          *
-         * Selects up to maxToPromote items with synced=0, ordered by the table's ordering fields
-         * (using ORDER BY with COLLATE NOCASE), generates INSERT events, and marks them as synced=1.
+         * Selects up to maxToPromote items with sync=0, ordered by the table's ordering fields
+         * (using ORDER BY with COLLATE NOCASE), generates INSERT events, and marks them as sync=1.
          * Used by both setDocumentLimits and promoteItemsAfterScan to avoid code duplication.
          *
          * @param index Index name (e.g., "packages")
@@ -311,7 +311,7 @@ class EXPORTED Syscollector final
          * After a scan completes, calculates available space (limit - currentCount) for each index
          * and promotes unsynced items with deterministic ordering to fill those slots.
          * Uses the database as source of truth for current counts (m_documentCounts already reflects deletes).
-         * Generates INSERT events for promoted items and marks them as synced=1.
+         * Generates INSERT events for promoted items and marks them as sync=1.
          */
         void promoteItemsAfterScan();
 
@@ -420,12 +420,12 @@ class EXPORTED Syscollector final
         std::vector<std::string>                                                 m_disabledCollectorsIndicesWithData;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocolVD;
         std::vector<std::pair<std::string, nlohmann::json>>*                     m_failedItems;  // Pointer to list of items that failed validation (for deferred deletion)
-        std::vector<std::pair<std::string, nlohmann::json>>*                     m_itemsToUpdateSynced;  // Pointer to list of items that passed limit check (for deferred synced=1 update)
+        std::vector<std::pair<std::string, nlohmann::json>>*                     m_itemsToUpdateSync;  // Pointer to list of items that passed limit check (for deferred sync=1 update)
 
         // Document limits configuration (0 = unlimited)
         std::map<std::string, size_t>                                            m_documentLimits;
 
-        // Current document counts per index (tracks items with synced=1)
+        // Current document counts per index (tracks items with sync=1)
         std::map<std::string, size_t>                                            m_documentCounts;
 
         // Mutex for thread-safe access to limits and counts
