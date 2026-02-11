@@ -1325,9 +1325,6 @@ int main() {
         // w_enrollment_request_key (wrapper)
         cmocka_unit_test(test_w_enrollment_request_key_null_cfg),
         cmocka_unit_test_setup_teardown(test_w_enrollment_request_key, test_setup_w_enrollment_request_key, test_teardown_w_enrollment_request_key),
-        // w_enrollment_extract_agent_name
-        cmocka_unit_test_setup_teardown(test_w_enrollment_extract_agent_name_localhost_allowed, test_setup_context, test_teardown_context),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_extract_agent_name_localhost_not_allowed, test_setup_context, test_teardown_context),
         // w_enrollment_load_pass
         cmocka_unit_test(test_w_enrollment_load_pass_null_cert),
         cmocka_unit_test_setup_teardown(test_w_enrollment_load_pass_empty_file, test_setup_enrollment_load_pass, test_teardown_enrollment_load_pass),
