@@ -16,6 +16,7 @@
 #include "db.h"
 #include "shared.h"
 #include "syscheck.h"
+#include "startup_gate_op.h"
 
 #ifndef WIN32
 
@@ -193,6 +194,8 @@ int main(int argc, char **argv)
     if (CreatePID(ARGV0, getpid()) < 0) {
         merror_exit(PID_ERROR);
     }
+
+    startup_gate_wait_for_ready(ARGV0);
 
     if (syscheck.rootcheck) {
         rootcheck_connect();
