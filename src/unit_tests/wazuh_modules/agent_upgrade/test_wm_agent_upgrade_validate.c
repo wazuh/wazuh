@@ -1278,12 +1278,12 @@ void test_wm_agent_upgrade_validate_version_upgrade_greater_version(void **state
     char *platform = "ubuntu";
 
     task->force_upgrade = false;
-    os_strdup("v6.0.0", task->custom_version);
+    os_strdup("v5.0.1", task->custom_version);
 
     int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
     assert_int_equal(ret, WM_UPGRADE_NEW_VERSION_GREATER_MASTER);
-    assert_string_equal(task->wpk_version, "v6.0.0");
+    assert_string_equal(task->wpk_version, "v5.0.1");
 }
 
 void test_wm_agent_upgrade_validate_version_upgrade_force(void **state)
