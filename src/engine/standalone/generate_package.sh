@@ -96,7 +96,7 @@ EOF
 build_standalone() {
     # Determine package architecture based on input
     case "${ARCHITECTURE}" in
-        amd64|x86_64)
+        amd64|x86_64|x64)
             PACKAGE_ARCH="amd64"
             ;;
         arm64|aarch64)
@@ -210,7 +210,7 @@ build_standalone() {
     chmod +x ${TEMP_DIR}/bin/wazuh-engine
 
     # Create zip package
-    PACKAGE_NAME="wazuh-engine-${VERSION}-linux-${ARCHITECTURE}.tar.gz"
+    PACKAGE_NAME="wazuh-engine-${VERSION}-linux-${PACKAGE_ARCH}.tar.gz"
     echo "Creating package: ${PACKAGE_NAME}"
     cd ${OUTDIR}
     tar czf ${PACKAGE_NAME} wazuh-engine-standalone-${VERSION}/ || return 1
@@ -233,7 +233,7 @@ help() {
     echo
     echo "Usage: $0 [OPTIONS]"
     echo
-    echo "    -a, --architecture <arch>  [Optional] Target architecture of the package [amd64/x86_64/arm64/aarch64]. By default: amd64."
+    echo "    -a, --architecture <arch>  [Optional] Target architecture of the package [amd64/x86_64/x64/arm64/aarch64]. By default: amd64."
     echo "    -j, --jobs <number>        [Optional] Number of parallel jobs when compiling. By default: 2."
     echo "    -s, --store <path>         [Optional] Set the destination path of package. By default, an output folder will be created."
     echo "    -d, --debug                [Optional] Build the binaries with debug flags (without optimizations). By default: no."
