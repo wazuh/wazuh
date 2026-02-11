@@ -1221,7 +1221,7 @@ void test_wm_agent_upgrade_validate_version_upgrade_ok(void **state)
     int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
-    assert_string_equal(task->wpk_version, "v3.13.0");
+    assert_string_equal(task->wpk_version, "v5.0.0");
 }
 
 void test_wm_agent_upgrade_validate_version_upgrade_custom_ok(void **state)
@@ -1279,12 +1279,12 @@ void test_wm_agent_upgrade_validate_version_upgrade_greater_version(void **state
     char *platform = "ubuntu";
 
     task->force_upgrade = false;
-    os_strdup("v3.13.1", task->custom_version);
+    os_strdup("v5.0.1", task->custom_version);
 
     int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
     assert_int_equal(ret, WM_UPGRADE_NEW_VERSION_GREATER_MASTER);
-    assert_string_equal(task->wpk_version, "v3.13.1");
+    assert_string_equal(task->wpk_version, "v5.0.1");
 }
 
 void test_wm_agent_upgrade_validate_version_upgrade_force(void **state)
@@ -1330,7 +1330,7 @@ void test_wm_agent_upgrade_validate_version_upgrade_ok_macos(void **state)
 void test_wm_agent_upgrade_validate_version_upgrade_non_minimal_macos(void **state)
 {
     wm_upgrade_task *task = state[1];
-    char *wazuh_version = "v4.2.0";
+    char *wazuh_version = "v2.1.1";
     char *platform = "darwin";
 
     int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
