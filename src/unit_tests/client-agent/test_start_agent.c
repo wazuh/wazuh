@@ -20,6 +20,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/wazuh/monitord/monitord_wrappers.h"
+#include "../../os_crypto/md5/md5_op.h"
 
 #ifdef TEST_WINAGENT
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"
