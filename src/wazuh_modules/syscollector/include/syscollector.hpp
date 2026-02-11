@@ -47,6 +47,8 @@ class EXPORTED Syscollector final
             return s_instance;
         }
 
+        using AgentdQueryFunc = std::function<bool(const char*, char*, size_t)>;
+
         void init(const std::shared_ptr<ISysInfo>& spInfo,
                   const std::function<void(const std::string&)> reportDiffFunction,
                   const std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> persistDiffFunction,
@@ -69,6 +71,17 @@ class EXPORTED Syscollector final
                   const bool services = true,
                   const bool browserExtensions = true,
                   const bool notifyOnFirstScan = false);
+
+        /**
+         * @brief Set agentd query function for agentd communication (cross-platform)
+         *
+         * This function is used to send commands to agentd and receive JSON responses.
+         * Works on both Unix/Linux (socket) and Windows (agcom_dispatch).
+         * Should be set before calling start().
+         *
+         * @param queryFunc Function to query agentd (returns JSON string or nullptr)
+         */
+        void setAgentdQueryFunction(AgentdQueryFunc queryFunc);
 
         void start();
         void destroy();
@@ -117,9 +130,10 @@ class EXPORTED Syscollector final
          * @brief Fetches all items from a VD table (OS, Packages, or Hotfixes) excluding specified IDs
          * @param tableName Name of the table to query ("dbsync_osinfo", "dbsync_packages", "dbsync_hotfixes")
          * @param excludeIds Set of hash IDs to exclude from results (items already in DataValue)
+         * @param forceAll If true, fetch all records regardless of document limits (ignores synced flag)
          * @return Vector of JSON objects representing all rows in the table (excluding specified IDs)
          */
-        std::vector<nlohmann::json> fetchAllFromTable(const std::string& tableName, const std::set<std::string>& excludeIds);
+        std::vector<nlohmann::json> fetchAllFromTable(const std::string& tableName, const std::set<std::string>& excludeIds, bool forceAll = false);
 
         /**
          * @brief Determines which DataContext items to include based on platform-specific rules
@@ -262,10 +276,116 @@ class EXPORTED Syscollector final
          */
         void deleteFailedItemsFromDB(const std::vector<std::pair<std::string, nlohmann::json>>& failedItems) const;
 
+        /**
+         * @brief Updates synced flag for items in database
+         *
+         * This helper function updates the synced flag (0 or 1) for all items in the vector.
+         * It uses a DBSync transaction to ensure all updates are atomic and properly committed to disk.
+         *
+         * @param itemsToUpdate Vector of (table_name, json_data) pairs to update
+         * @param syncedValue Value to set for synced flag (0 or 1)
+         */
+        void updateSyncedFlagInDB(const std::vector<std::pair<std::string, nlohmann::json>>& itemsToUpdate, int syncedValue) const;
+
+        /**
+         * @brief Promotes unsynced items with deterministic ordering
+         *
+         * Selects up to maxToPromote items with synced=0, ordered by the table's ordering fields
+         * (using ORDER BY with COLLATE NOCASE), generates INSERT events, and marks them as synced=1.
+         * Used by both setDocumentLimits and promoteItemsAfterScan to avoid code duplication.
+         *
+         * @param index Index name (e.g., "packages")
+         * @param tableName Table name (e.g., "dbsync_packages")
+         * @param maxToPromote Maximum number of items to promote
+         * @param reason Descriptive reason for logging purposes
+         * @return Number of items actually promoted
+         */
+        size_t promoteUnsyncedItems(const std::string& index,
+                                    const std::string& tableName,
+                                    size_t maxToPromote,
+                                    const std::string& reason);
+
+        /**
+         * @brief Promotes items after scan to fill available slots
+         *
+         * After a scan completes, calculates available space (limit - currentCount) for each index
+         * and promotes unsynced items with deterministic ordering to fill those slots.
+         * Uses the database as source of truth for current counts (m_documentCounts already reflects deletes).
+         * Generates INSERT events for promoted items and marks them as synced=1.
+         */
+        void promoteItemsAfterScan();
+
+        /**
+         * @brief Gets simplified ordering fields for a table
+         *
+         * Returns the field(s) to use for simplified ordering when managing document limits.
+         * Most tables use only the first PK field, but some (like packages) use multiple
+         * fields for more stable ordering (e.g., "name, type").
+         *
+         * @param tableName Name of the table (e.g., "dbsync_packages")
+         * @return Ordering field(s) as string (e.g., "name, type"), empty if table unknown
+         */
+        std::string getFirstPrimaryKeyField(const std::string& tableName) const;
+
+        /**
+         * @brief Builds ORDER BY clause with COLLATE NOCASE for case-insensitive ordering
+         *
+         * Constructs an ORDER BY clause from comma-separated field names with COLLATE NOCASE
+         * for case-insensitive ordering. This ensures consistent ordering across different cases.
+         *
+         * @param fields Comma-separated field names (e.g., "name, type")
+         * @param ascending True for ASC order (default), false for DESC order
+         * @return ORDER BY clause string (e.g., "name COLLATE NOCASE, type COLLATE NOCASE ASC")
+         */
+        std::string buildOrderByClause(const std::string& fields, bool ascending = true) const;
+
+        /**
+         * @brief Sets document limits for configured indices
+         *
+         * @param limits JSON object mapping index names to limit values (0 = unlimited)
+         * @return true if limits were set successfully, false otherwise
+         */
+        bool setDocumentLimits(const nlohmann::json& limits);
+
+        /**
+         * @brief Fetches document limits from agentd
+         *
+         * Queries agentd for document limits configuration for the syscollector module.
+         * Sends the command "getdoclimits syscollector" to agentd.
+         *
+         * Works on both Unix/Linux (via socket) and Windows (via agcom_dispatch).
+         *
+         * If agentd is not available or limits are not configured for
+         * syscollector, returns an empty optional.
+         *
+         * Expected response format from agentd:
+         * "ok {\"wazuh-states-inventory-packages\": 10000, ...}"
+         *
+         * @return Optional JSON with limits if available, empty optional otherwise
+         */
+        std::optional<nlohmann::json> fetchDocumentLimitsFromAgentd();
+
+        /**
+         * @brief Initializes document counts from database for all tables
+         */
+        void initializeDocumentCounts();
+
+        /**
+         * @brief Checks if document limit has been reached for a given table/index
+         *
+         * @param table Table name to check
+         * @param data JSON data for the record
+         * @param result Callback result type (INSERTED, MODIFIED, DELETED)
+         * @return true if within limit and should process, false if limit reached
+         */
+        bool checkDocumentLimit(const std::string& table, const nlohmann::json& data, ReturnTypeCallback result);
+
         std::shared_ptr<ISysInfo>                                                m_spInfo;
         std::function<void(const std::string&)>                                  m_reportDiffFunction;
         std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> m_persistDiffFunction;
         std::function<void(const modules_log_level_t, const std::string&)>       m_logFunction;
+
+        AgentdQueryFunc                                                          m_agentdQuery;
         unsigned int                                                             m_intervalValue;
         uint32_t                                                                 m_integrityIntervalValue;
         bool                                                                     m_scanOnStart;
@@ -300,6 +420,16 @@ class EXPORTED Syscollector final
         std::vector<std::string>                                                 m_disabledCollectorsIndicesWithData;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocolVD;
         std::vector<std::pair<std::string, nlohmann::json>>*                     m_failedItems;  // Pointer to list of items that failed validation (for deferred deletion)
+        std::vector<std::pair<std::string, nlohmann::json>>*                     m_itemsToUpdateSynced;  // Pointer to list of items that passed limit check (for deferred synced=1 update)
+
+        // Document limits configuration (0 = unlimited)
+        std::map<std::string, size_t>                                            m_documentLimits;
+
+        // Current document counts per index (tracks items with synced=1)
+        std::map<std::string, size_t>                                            m_documentCounts;
+
+        // Mutex for thread-safe access to limits and counts
+        std::mutex                                                               m_limitsMutex;
 };
 
 

@@ -102,6 +102,14 @@ EXPORTED void syscollector_unlock_scan_mutex();
 // Recovery process function
 EXPORTED void syscollector_run_recovery_process();
 
+// Query function type for agentd communication (cross-platform)
+// Fills output_buffer with JSON response on success
+// Returns true on success, false on error
+typedef bool (*agentd_query_func_t)(const char* command, char* output_buffer, size_t buffer_size);
+
+// Set agentd query function (must be called before syscollector_start)
+EXPORTED void syscollector_set_agentd_query_func(agentd_query_func_t queryFunc);
+
 #ifdef __cplusplus
 }
 #endif

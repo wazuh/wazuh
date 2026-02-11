@@ -62,6 +62,7 @@ class IDBSync
         virtual void closeAndDeleteDatabase() = 0;
 
         /// @brief Gets the concatenated checksums from all the elements of a table
+        /// @param tableName Name of the table to query
         /// @return the concatenated checksum
         virtual std::string getConcatenatedChecksums(const std::string& tableName) = 0;
 
