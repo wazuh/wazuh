@@ -181,6 +181,31 @@ bool mapAStoECS(const std::string& ip,
     return mapAS;
 }
 
+/**
+ * @brief Generates an expression for geographic and AS number enrichment of events.
+ *
+ * Creates a term-based operation that enriches events with GeoIP and AS number data.
+ * The function retrieves an IP address from the event (supporting both single values
+ * and array formats), then maps the corresponding geographic and/or AS information
+ * to ECS-compliant fields based on the provided configuration.
+ *
+ * @param cityLocator Shared pointer to the geo locator implementation for geographic lookups
+ * @param asLocator Shared pointer to the AS locator implementation for AS number lookups
+ * @param mappingConfig Configuration object specifying:
+ *                      - originIpPath: Path to the source IP field in the event
+ *                      - asEcsPath: Optional path for AS number ECS field mapping
+ *                      - geoEcsPath: Optional path for geographic ECS field mapping
+ *                      - dotPath: Dot notation path used for trace logging
+ * @param trace Boolean flag to enable detailed trace logging of enrichment results
+ *
+ * @return base::Expression A Term expression that performs the enrichment operation.
+ *                          The operation:
+ *                          - Extracts the source IP from the event
+ *                          - Maps AS and/or geographic data based on configuration
+ *                          - Returns success with optional trace message if enrichment
+ *                            criteria are met (at least one mapping configured)
+ *                          - Returns failure if IP not found or no enrichment succeeds
+ */
 base::Expression getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& cityLocator,
                                    const std::shared_ptr<geo::ILocator>& asLocator,
                                    const MappingConfig& mappingConfig,
@@ -263,6 +288,34 @@ base::Expression getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& cityLoc
     return base::Term<base::EngineOp>::create("geo_as_enrichment", opFn);
 };
 
+/**
+ * @brief Builds a geo enrichment expression that combines multiple geo-location data sources.
+ *
+ * This function creates a composite enrichment expression by combining ASN (Autonomous System Number)
+ * and CITY geo-location locators. It processes multiple mapping configurations and returns a traceable
+ * expression that can be used to enrich data with geographic information.
+ *
+ * @param geoManager Shared pointer to the geo manager interface responsible for managing
+ *                   geo-location data sources and locators.
+ * @param mappingConfigs Vector of mapping configurations that define how geo-location data
+ *                       should be applied and mapped to the enrichment expression.
+ * @param trace Boolean flag indicating whether tracing information should be included in
+ *              the generated expression for logtest/tester.
+ *
+ * @return A pair containing:
+ *         - first: A base::Expression representing the complete geo enrichment expression
+ *                  with optional tracing capability.
+ *         - second: A string constant (GEO_ENRICHMENT_TRACEABLE_NAMES) identifying the
+ *                   enrichment expression for reference and tracing.
+ *
+ * @throws std::runtime_error If the ASN locator cannot be retrieved from the geo manager,
+ *                            with message "Error getting geo asn locator: " + error details.
+ * @throws std::runtime_error If the CITY locator cannot be retrieved from the geo manager,
+ *                            with message "Error getting geo city locator: " + error details.
+ *
+ * @note The function combines individual enrichment terms into a single Chain expression
+ *       for efficient processing of geographic data enrichment.
+ */
 std::pair<base::Expression, std::string> geoEnrichmentBuilder(const std::shared_ptr<geo::IManager>& geoManager,
                                                               const std::vector<MappingConfig>& mappingConfigs,
                                                               bool trace)

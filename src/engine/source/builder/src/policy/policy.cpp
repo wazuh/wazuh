@@ -69,13 +69,12 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
             auto builderIt = registry->get<builders::EnrichmentBuilder>(enrichPlugin);
             if (base::isError(builderIt))
             {
-                continue; // Remove this line to make it throw when all enrichment plugins are available
+                continue; // TODO: Remove this line to make it throw when all enrichment plugins are available
                 throw std::runtime_error(fmt::format(
                     "Enrichment plugin '{}' not found: {}", enrichPlugin, base::getError(builderIt).message));
             }
             auto builder = base::getResponse<builders::EnrichmentBuilder>(builderIt);
             auto [exp, traceable] = builder(trace);
-            // TODO: Make success traceable
             enrichmentExp->getOperands().push_back(exp);
             m_assets.insert(base::Name(traceable));
         }
