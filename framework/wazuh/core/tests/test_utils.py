@@ -10,9 +10,9 @@ from io import StringIO
 from requests import exceptions
 from shutil import copyfile, Error
 from tempfile import TemporaryDirectory, NamedTemporaryFile
-from unittest.mock import call, MagicMock, Mock, mock_open, patch, ANY
+from unittest.mock import call, MagicMock, Mock, mock_open, patch, ANY, sentinel
 from xml.etree.ElementTree import Element
-from wazuh.core.common import OSSEC_TMP_PATH
+from wazuh.core.common import OSSEC_TMP_PATH, WAZUH_LOCALTIME_PATH
 
 import pytest
 from defusedxml.ElementTree import parse
@@ -2040,17 +2040,52 @@ def test_get_utc_now():
     date = utils.get_utc_now()
     assert date == datetime.datetime.now(datetime.timezone.utc)
 
-
-@freeze_time('1970-01-01')
-def test_get_utc_strptime():
+@pytest.mark.parametrize('is_at_utc', [True, False])
+@patch('wazuh.core.utils.get_localtime')
+def test_get_utc_strptime(mock_get_localtime, is_at_utc):
     """Test if the result is the expected date."""
-    mock_date = '1970-01-01'
-    default_format = '%Y-%M-%d'
 
-    date = utils.get_utc_strptime(mock_date, default_format)
+    mock_date = '2026/01/28 03:30:15'
+    mock_tz =  datetime.timezone.utc if is_at_utc else datetime.timezone(datetime.timedelta(hours=-3))
+    mock_get_localtime.return_value = mock_tz
+    date_str_format = "%Y/%m/%d %H:%M:%S"
+
+    date = utils.get_utc_strptime(mock_date, date_str_format, is_at_utc)
     assert isinstance(date, datetime.datetime)
-    assert date == datetime.datetime(1970, 1, 1, 0, 1, tzinfo=datetime.timezone.utc)
 
+    if is_at_utc:
+        assert date == datetime.datetime(2026, 1, 28, 3, 30, 15, tzinfo=datetime.timezone.utc)
+    else:
+        assert date == datetime.datetime(2026, 1, 28, 6, 30, 15, tzinfo=datetime.timezone.utc)
+
+@pytest.mark.parametrize(
+    'wazuh_localtime, system_localtime',
+    [
+        pytest.param(None, sentinel.system_tz, id='system_fallback'),
+        pytest.param(sentinel.wazuh_tz, sentinel.system_tz, id='wazuh'),
+        pytest.param(None, None, id='utc_fallback'),
+    ]
+)
+@patch('wazuh.core.utils.gettz')
+def test_get_localtime(mock_gettz, wazuh_localtime, system_localtime):
+    """Test if the result is the expected timezone."""
+
+    mock_gettz.side_effect = [wazuh_localtime, system_localtime]
+
+    timezone = utils.get_localtime()
+
+    calls = [call(WAZUH_LOCALTIME_PATH)]
+
+    if wazuh_localtime is None:
+        calls.append(call())
+
+    mock_gettz.assert_has_calls(calls)
+
+    assert timezone is (
+        wazuh_localtime
+        if wazuh_localtime is not None
+        else system_localtime or timezone.utc
+    )
 
 @pytest.mark.parametrize(
     "new_conf, original_conf, unchanged_limits_conf",

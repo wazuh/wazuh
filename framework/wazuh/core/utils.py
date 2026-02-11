@@ -13,7 +13,8 @@ import sys
 import tempfile
 import typing
 from copy import deepcopy
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
+from dateutil.tz import gettz
 from functools import wraps
 from itertools import groupby, chain
 from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, path
@@ -2312,6 +2313,22 @@ def get_date_from_timestamp(timestamp: float) -> datetime:
     return datetime.fromtimestamp(timestamp, tz=timezone.utc)
 
 
+def get_localtime() -> tzinfo:
+    """Function to return the localtime timezone.
+
+    Returns
+    -------
+    timezone : tzinfo
+        The localtime timezone. Wazuh custom localtime has precedence over the
+        system one. If none is found, UTC is returned.   """
+    if (tz := gettz(common.WAZUH_LOCALTIME_PATH)) is not None:
+        return tz
+    if (tz := gettz()) is not None:
+        return tz
+
+    return timezone.utc
+
+
 def get_utc_now() -> datetime:
     """Function to return the current date.
 
@@ -2323,7 +2340,7 @@ def get_utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def get_utc_strptime(date: str, datetime_format: str) -> datetime:
+def get_utc_strptime(date: str, datetime_format: str, date_is_at_utc: bool = True) -> datetime:
     """Function to transform str to date.
 
     Parameters
@@ -2332,13 +2349,24 @@ def get_utc_strptime(date: str, datetime_format: str) -> datetime:
         String to be transformed.
     datetime_format: str
         Datetime pattern.
+    date_is_at_utc: bool
+        Whether the input date string is in UTC or not.
 
     Returns
     -------
     date: datetime
         The current date.
     """
-    return datetime.strptime(date, datetime_format).replace(tzinfo=timezone.utc)
+
+    dt = datetime.strptime(date, datetime_format)
+
+    if date_is_at_utc:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.replace(tzinfo=get_localtime()).astimezone(timezone.utc)
+
+    return dt
+
 
 def check_if_wazuh_agent_version(version_str: str) -> bool:
     """Check if the string has the expected wazuh agent version format.

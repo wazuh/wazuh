@@ -66,7 +66,7 @@ packaging==25.0
 pathable==0.4.3
 pathlib==1.0.1
 proto-plus==1.26.0
-protobuf==5.29.5
+protobuf==5.29.6
 psutil==5.9.0
 pyarrow==14.0.1
 pyasn1==0.4.8
@@ -76,7 +76,7 @@ PyJWT==2.10.1
 pyparsing==2.4.7
 python-dateutil==2.8.1
 python-json-logger==2.0.2
-python-multipart==0.0.20
+python-multipart==0.0.22
 pytz==2020.1
 PyYAML==5.4.1
 referencing==0.31.1
