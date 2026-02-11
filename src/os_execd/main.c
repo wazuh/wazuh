@@ -12,6 +12,7 @@
 
 #include "shared.h"
 #include "execd.h"
+#include "startup_gate_op.h"
 
 
 /* Prototypes */
@@ -169,6 +170,8 @@ int main(int argc, char **argv)
     if ((m_queue = StartMQ(EXECQUEUE, READ, 0)) < 0) {
         merror_exit(QUEUE_ERROR, EXECQUEUE, strerror(errno));
     }
+
+    startup_gate_wait_for_ready(ARGV0);
 
     /* The real daemon Now */
     ExecdStart(m_queue);

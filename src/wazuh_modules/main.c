@@ -11,6 +11,7 @@
 
 #include "wmodules.h"
 #include <sys/types.h>
+#include "startup_gate_op.h"
 
 static void wm_help();                  // Print help.
 static void wm_setup();                 // Setup function. Exits on error.
@@ -95,6 +96,8 @@ int main(int argc, char **argv)
         exit(EXIT_SUCCESS);
 
     minfo(STARTUP_MSG, (int)getpid());
+
+    startup_gate_wait_for_ready(ARGV0);
 
     // Run modules
 

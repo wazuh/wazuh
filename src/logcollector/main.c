@@ -23,6 +23,7 @@
 
 #include "os_regex/os_regex.h"
 #include "logcollector.h"
+#include "startup_gate_op.h"
 
 /* Prototypes */
 static void help_logcollector(char * home_path) __attribute__((noreturn));
@@ -190,6 +191,8 @@ int main(int argc, char **argv)
     if ((logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
+
+    startup_gate_wait_for_ready(ARGV0);
 
     /* Main loop */
     LogCollectorStart();
