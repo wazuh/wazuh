@@ -101,6 +101,12 @@ endif()
 if(TARGET FilesystemWrapper)
   set(FILESYSTEM_WRAPPER_LIB FilesystemWrapper)
 endif()
+if(TARGET dbsync)
+  set(DBSYNC_LIB dbsync)
+endif()
+if(TARGET agent_sync_protocol)
+  set(SYNC_PROTOCOL_LIB agent_sync_protocol)
+endif()
 
 add_library(
   SCAImpl STATIC
