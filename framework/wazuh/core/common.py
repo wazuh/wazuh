@@ -226,7 +226,6 @@ WAZUH_LOCALTIME_PATH = os.path.join(WAZUH_PATH, 'etc', 'localtime')
 # ================================================ Wazuh path - Sockets ================================================
 ANALYSISD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'analysis')
 AR_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'ar')
-EXECQ_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'execq')
 AUTHD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth')
 WCOM_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'com')
 CONTROL_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'control')
