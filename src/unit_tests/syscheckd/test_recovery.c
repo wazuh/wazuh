@@ -29,7 +29,7 @@
 
 int64_t __wrap_fim_db_get_last_sync_time(const char* table_name);
 void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp);
-cJSON* __wrap_fim_db_get_every_element(const char* table_name);
+cJSON* __wrap_fim_db_get_every_sync_element(const char* table_name);
 char* __wrap_fim_db_calculate_table_checksum(const char* table_name);
 int __wrap_fim_db_increase_each_entry_version(const char* table_name);
 cJSON* __wrap_build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *file_data);
@@ -53,7 +53,7 @@ void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t t
     check_expected(timestamp);
 }
 
-cJSON* __wrap_fim_db_get_every_element(const char* table_name) {
+cJSON* __wrap_fim_db_get_every_sync_element(const char* table_name) {
     check_expected(table_name);
     return mock_ptr_type(cJSON*);
 }
@@ -169,9 +169,9 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);
     will_return(__wrap_fim_db_increase_each_entry_version, 0);
 
-    // Expect fim_db_get_every_element call
-    expect_string(__wrap_fim_db_get_every_element, table_name, FIMDB_FILE_TABLE_NAME);
-    will_return(__wrap_fim_db_get_every_element, test_items);
+    // Expect fim_db_get_every_sync_element call
+    expect_string(__wrap_fim_db_get_every_sync_element, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_get_every_sync_element, test_items);
 
     // Expect asp_clear_in_memory_data call
     expect_value(__wrap_asp_clear_in_memory_data, handle, handle);
@@ -225,9 +225,9 @@ static void test_fim_recovery_persist_table_and_resync_failure(void **state) {
     expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);
     will_return(__wrap_fim_db_increase_each_entry_version, 0);
 
-    // Expect fim_db_get_every_element call
-    expect_string(__wrap_fim_db_get_every_element, table_name, FIMDB_FILE_TABLE_NAME);
-    will_return(__wrap_fim_db_get_every_element, test_items);
+    // Expect fim_db_get_every_sync_element call
+    expect_string(__wrap_fim_db_get_every_sync_element, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_get_every_sync_element, test_items);
 
     // Expect asp_clear_in_memory_data call
     expect_value(__wrap_asp_clear_in_memory_data, handle, handle);
@@ -288,9 +288,9 @@ static void test_fim_recovery_persist_table_and_resync_null_items(void **state) 
     expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);
     will_return(__wrap_fim_db_increase_each_entry_version, 0);
 
-    // Expect fim_db_get_every_element to return NULL (error)
-    expect_string(__wrap_fim_db_get_every_element, table_name, FIMDB_FILE_TABLE_NAME);
-    will_return(__wrap_fim_db_get_every_element, NULL);
+    // Expect fim_db_get_every_sync_element to return NULL (error)
+    expect_string(__wrap_fim_db_get_every_sync_element, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_get_every_sync_element, NULL);
 
     // Expect one merror call when items is NULL
     expect_any(__wrap__merror, formatted_msg);

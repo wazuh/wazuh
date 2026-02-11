@@ -328,13 +328,20 @@ STATIC void handle_orphaned_delete_registry_key(const char* path,
     char registry_key_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(id_source_string, -1, registry_key_sha1);
 
+    // Read sync flag from result_json
+    int sync_flag = 0;
+    cJSON* sync_json = cJSON_GetObjectItem(result_json, "sync");
+    if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+        sync_flag = sync_json->valueint;
+    }
+
     // Validate and persist the orphaned delete event
     // Note: For orphaned deletes, we don't mark for deletion from DBSync since the item is already deleted
     char item_desc[PATH_MAX + 64];
     snprintf(item_desc, sizeof(item_desc), "registry key %s", path);
     validate_and_persist_fim_event(stateful_event, registry_key_sha1, OPERATION_DELETE,
                                     FIM_REGISTRY_KEYS_SYNC_INDEX, document_version,
-                                    item_desc, false, NULL, NULL);
+                                    item_desc, false, NULL, NULL, sync_flag);
 
     cJSON_Delete(stateful_event);
 }
@@ -499,13 +506,20 @@ STATIC void handle_orphaned_delete_registry_value(const char* path,
     char registry_value_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(id_source_string, -1, registry_value_sha1);
 
+    // Read sync flag from result_json
+    int sync_flag = 0;
+    cJSON* sync_json = cJSON_GetObjectItem(result_json, "sync");
+    if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+        sync_flag = sync_json->valueint;
+    }
+
     // Validate and persist the orphaned delete event
     // Note: For orphaned deletes, we don't mark for deletion from DBSync since the item is already deleted
     char item_desc[PATH_MAX + 128];
     snprintf(item_desc, sizeof(item_desc), "registry value %s:%s", path, value);
     validate_and_persist_fim_event(stateful_event, registry_value_sha1, OPERATION_DELETE,
                                     FIM_REGISTRY_VALUES_SYNC_INDEX, document_version,
-                                    item_desc, false, NULL, NULL);
+                                    item_desc, false, NULL, NULL, sync_flag);
 
     cJSON_Delete(stateful_event);
 }
@@ -533,6 +547,7 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     int arch = -1;
     char iso_time[32];
     Operation_t sync_operation = OPERATION_NO_OP;
+    int sync_flag = 0;
 
     fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
 
@@ -564,20 +579,92 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
+    // Extract version early so it's available for deferred sync items
+    cJSON *version_aux = NULL;
+    cJSON *new_data = cJSON_GetObjectItem(result_json, "new");
+    if (new_data != NULL) {
+        // For MODIFIED events, version is in the "new" object
+        version_aux = cJSON_GetObjectItem(new_data, "version");
+    } else {
+        // For INSERTED/DELETED events, version is at the top level
+        version_aux = cJSON_GetObjectItem(result_json, "version");
+    }
+
+    uint64_t document_version = 0;
+    if (version_aux != NULL) {
+        document_version = (uint64_t)version_aux->valueint;
+    }
+
     switch (resultType) {
         case INSERTED:
             event_data->evt_data->type = FIM_ADD;
             sync_operation = OPERATION_CREATE;
+            // For CREATE events: determine if within limit and defer sync flag update
+            if (syscheck.registry_key_limit > 0) {
+                sync_flag = (synced_docs_registry_keys < syscheck.registry_key_limit) ? 1 : 0;
+            } else {
+                sync_flag = 1;
+            }
+            // Add to deferred list if sync_flag should be 1
+            if (sync_flag == 1 && event_data->pending_sync_updates != NULL) {
+                synced_docs_registry_keys++;
+                cJSON* sync_item = cJSON_CreateObject();
+                if (sync_item != NULL) {
+                    cJSON_AddStringToObject(sync_item, "path", path);
+                    cJSON_AddStringToObject(sync_item, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+                    cJSON_AddNumberToObject(sync_item, "version", (double)document_version);
+                    add_pending_sync_item(event_data->pending_sync_updates, sync_item, 1);
+                    cJSON_Delete(sync_item);
+                } else {
+                    merror("Failed to create cJSON object for deferred sync item");
+                }
+            }
             break;
 
         case MODIFIED:
             event_data->evt_data->type = FIM_MODIFICATION;
             sync_operation = OPERATION_MODIFY;
+
+            // Get the old sync flag value to track synced documents and determine if promotion is needed
+            old_data = cJSON_GetObjectItem(result_json, "old");
+            cJSON *sync_json = cJSON_GetObjectItem(old_data, "sync");
+            if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+                sync_flag = sync_json->valueint;
+                // NOTE: We don't add to deferred list here because syncRow preserves the sync flag
+                // when it's not in the input data. The sync flag is already 1 after the transaction.
+            }
+
+            if (sync_flag == 0 && syscheck.registry_key_limit > 0) { // Promote
+                if(synced_docs_registry_keys < syscheck.registry_key_limit){
+                    synced_docs_registry_keys++;
+                    cJSON* sync_item = cJSON_CreateObject();
+                    if (sync_item != NULL) {
+                        cJSON_AddStringToObject(sync_item, "path", path);
+                        cJSON_AddStringToObject(sync_item, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+                        cJSON_AddNumberToObject(sync_item, "version", (double)document_version);
+                        add_pending_sync_item(event_data->pending_sync_updates, sync_item, 1);
+                        cJSON_Delete(sync_item);
+                        sync_flag = 1;
+                    } else {
+                        merror("Failed to create cJSON object for deferred sync item");
+                    }
+                }
+            }
             break;
 
         case DELETED:
             event_data->evt_data->type = FIM_DELETE;
             sync_operation = OPERATION_DELETE;
+            // For DELETE events: entry is NULL, read sync flag from DB result
+            {
+            cJSON *sync_json = cJSON_GetObjectItem(result_json, "sync");
+                if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+                    sync_flag = sync_json->valueint;
+                    if (sync_flag == 1) {
+                        synced_docs_registry_keys--;
+                    }
+                }
+            }
             break;
 
         case MAX_ROWS:
@@ -669,24 +756,6 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     char registry_key_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(id_source_string, -1, registry_key_sha1);
 
-    cJSON *version_aux = NULL;
-    // For MODIFIED events, version is in the "new" object
-    cJSON *new_data = cJSON_GetObjectItem(result_json, "new");
-    if (new_data != NULL) {
-        version_aux = cJSON_GetObjectItem(new_data, "version");
-    } else {
-        // For INSERTED/DELETED events, version is at the top level
-        version_aux = cJSON_GetObjectItem(result_json, "version");
-    }
-
-    uint64_t document_version = 0;
-    if (version_aux != NULL) {
-        document_version = (uint64_t)version_aux->valueint;
-    } else {
-        mdebug1("Couldn't find version for '%s", path);
-        goto end; // LCOV_EXCL_LINE
-    }
-
     // Calculate checksum
     const char* sha1_hash;
     if (event_data->key != NULL) {
@@ -730,7 +799,7 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     bool validation_passed = validate_and_persist_fim_event(stateful_event, registry_key_sha1, sync_operation,
                                                              FIM_REGISTRY_KEYS_SYNC_INDEX, document_version,
                                                              item_desc, mark_for_deletion,
-                                                             event_data->failed_keys, failed_key);
+                                                             event_data->failed_keys, failed_key, sync_flag);
 
     // If validation passed, we need to free failed_key (it wasn't added to the list)
     // If validation failed, failed_key was added to the list and will be freed later
@@ -767,6 +836,7 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     int arch = -1;
     char iso_time[32];
     Operation_t sync_operation = OPERATION_NO_OP;
+    int sync_flag = 0;
 
     fim_val_txn_context_t *event_data = (fim_val_txn_context_t *) user_data;
 
@@ -790,6 +860,22 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         value = event_data->data->value;
     }
 
+    // Extract version early so it's available for deferred sync items
+    cJSON *version_aux = NULL;
+    cJSON *new_data = cJSON_GetObjectItem(result_json, "new");
+    if (new_data != NULL) {
+        // For MODIFIED events, version is in the "new" object
+        version_aux = cJSON_GetObjectItem(new_data, "version");
+    } else {
+        // For INSERTED/DELETED events, version is at the top level
+        version_aux = cJSON_GetObjectItem(result_json, "version");
+    }
+
+    uint64_t document_version = 0;
+    if (version_aux != NULL) {
+        document_version = (uint64_t)version_aux->valueint;
+    }
+
     if (event_data->config == NULL) {
         event_data->config = fim_registry_configuration(path, arch);
         if (event_data->config == NULL) {
@@ -806,11 +892,59 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         case INSERTED:
             event_data->evt_data->type = FIM_ADD;
             sync_operation = OPERATION_CREATE;
+            // For CREATE events: determine if within limit and defer sync flag update
+            if (syscheck.registry_value_limit > 0) {
+                sync_flag = (synced_docs_registry_values < syscheck.registry_value_limit) ? 1 : 0;
+            } else {
+                sync_flag = 1;
+            }
+            // Add to deferred list if sync_flag should be 1
+            if (sync_flag == 1 && event_data->pending_sync_updates != NULL) {
+                synced_docs_registry_values++;
+                cJSON* sync_item = cJSON_CreateObject();
+                if (sync_item != NULL) {
+                    cJSON_AddStringToObject(sync_item, "path", path);
+                    cJSON_AddStringToObject(sync_item, "value", value);
+                    cJSON_AddStringToObject(sync_item, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+                    cJSON_AddNumberToObject(sync_item, "version", (double)document_version);
+                    add_pending_sync_item(event_data->pending_sync_updates, sync_item, 1);
+                    cJSON_Delete(sync_item);
+                } else {
+                    merror("Failed to create cJSON object for deferred sync item");
+                }
+            }
             break;
 
         case MODIFIED:
             event_data->evt_data->type = FIM_MODIFICATION;
             sync_operation = OPERATION_MODIFY;
+
+            // Get the old sync flag value to track synced documents and determine if promotion is needed
+            old_data = cJSON_GetObjectItem(result_json, "old");
+            cJSON *sync_json = cJSON_GetObjectItem(old_data, "sync");
+            if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+                sync_flag = sync_json->valueint;
+                // NOTE: We don't add to deferred list here because syncRow preserves the sync flag
+                // when it's not in the input data. The sync flag is already 1 after the transaction.
+            }
+
+            if (sync_flag == 0 && syscheck.registry_value_limit > 0) { // Promote
+                if(synced_docs_registry_values < syscheck.registry_value_limit){
+                    synced_docs_registry_values++;
+                    cJSON* sync_item = cJSON_CreateObject();
+                    if (sync_item != NULL) {
+                        cJSON_AddStringToObject(sync_item, "path", path);
+                        cJSON_AddStringToObject(sync_item, "value", value);
+                        cJSON_AddStringToObject(sync_item, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+                        cJSON_AddNumberToObject(sync_item, "version", (double)document_version);
+                        add_pending_sync_item(event_data->pending_sync_updates, sync_item, 1);
+                        cJSON_Delete(sync_item);
+                        sync_flag = 1;
+                    } else {
+                        merror("Failed to create cJSON object for deferred sync item");
+                    }
+                }
+            }
             break;
 
         case DELETED:
@@ -819,6 +953,16 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
             }
             event_data->evt_data->type = FIM_DELETE;
             sync_operation = OPERATION_DELETE;
+            // For DELETE events: entry is NULL, read sync flag from DB result
+            {
+            cJSON *sync_json = cJSON_GetObjectItem(result_json, "sync");
+                if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+                    sync_flag = sync_json->valueint;
+                    if (sync_flag == 1) {
+                        synced_docs_registry_values--;
+                    }
+                }
+            }
             break;
 
         case MAX_ROWS:
@@ -911,24 +1055,6 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         send_syscheck_msg(stateless_event);
     }
 
-    cJSON *version_aux = NULL;
-    // For MODIFIED events, version is in the "new" object
-    cJSON *new_data = cJSON_GetObjectItem(result_json, "new");
-    if (new_data != NULL) {
-        version_aux = cJSON_GetObjectItem(new_data, "version");
-    } else {
-        // For INSERTED/DELETED events, version is at the top level
-        version_aux = cJSON_GetObjectItem(result_json, "version");
-    }
-
-    uint64_t document_version = 0;
-    if (version_aux != NULL) {
-        document_version = (uint64_t)version_aux->valueint;
-    } else {
-        mdebug1("Couldn't find version for '%s", path);
-        goto end; // LCOV_EXCL_LINE
-    }
-
     // Calculate checksum
     const char* sha1_hash;
     if (event_data->data != NULL) {
@@ -981,7 +1107,7 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     bool validation_passed = validate_and_persist_fim_event(stateful_event, registry_value_sha1, sync_operation,
                                                              FIM_REGISTRY_VALUES_SYNC_INDEX, document_version,
                                                              item_desc, mark_for_deletion,
-                                                             event_data->failed_values, failed_value);
+                                                             event_data->failed_values, failed_value, sync_flag);
 
     // If validation passed, we need to free failed_value (it wasn't added to the list)
     // If validation failed, failed_value was added to the list and will be freed later
@@ -1928,11 +2054,29 @@ void fim_registry_scan() {
     OSList_SetFreeDataPointer(failed_keys, (void (*)(void *))free);
     OSList_SetFreeDataPointer(failed_values, (void (*)(void *))free);
 
+    // Create lists for pending sync flag updates
+    OSList *pending_sync_keys = OSList_Create();
+    OSList *pending_sync_values = OSList_Create();
+    if (!pending_sync_keys || !pending_sync_values) {
+        merror("Failed to create pending sync lists for registry");
+        if (pending_sync_keys) OSList_Destroy(pending_sync_keys);
+        if (pending_sync_values) OSList_Destroy(pending_sync_values);
+        if (failed_keys) OSList_Destroy(failed_keys);
+        if (failed_values) OSList_Destroy(failed_values);
+        return;
+    }
+    OSList_SetFreeDataPointer(pending_sync_keys, free_pending_sync_item);
+    OSList_SetFreeDataPointer(pending_sync_values, free_pending_sync_item);
+
+    // Initialize synced docs counters from database before scan
+    synced_docs_registry_keys = fim_db_count_synced_docs(FIMDB_REGISTRY_KEY_TABLENAME);
+    synced_docs_registry_values = fim_db_count_synced_docs(FIMDB_REGISTRY_VALUE_TABLENAME);
+
     event_data_t evt_data_registry_key = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
-    fim_key_txn_context_t txn_ctx_reg = { .evt_data = &evt_data_registry_key, .config = NULL, .failed_keys = failed_keys };
+    fim_key_txn_context_t txn_ctx_reg = { .evt_data = &evt_data_registry_key, .config = NULL, .failed_keys = failed_keys, .pending_sync_updates = pending_sync_keys };
     TXN_HANDLE regkey_txn_handler = fim_db_transaction_start(FIMDB_REGISTRY_KEY_TXN_TABLE, registry_key_transaction_callback, &txn_ctx_reg);
     event_data_t evt_data_registry_value = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
-    fim_val_txn_context_t txn_ctx_regval = { .evt_data = &evt_data_registry_value, .config = NULL, .failed_values = failed_values };
+    fim_val_txn_context_t txn_ctx_regval = { .evt_data = &evt_data_registry_value, .config = NULL, .failed_values = failed_values, .pending_sync_updates = pending_sync_values };
     TXN_HANDLE regval_txn_handler = fim_db_transaction_start(FIMDB_REGISTRY_VALUE_TXN_TABLE,
                                                              registry_value_transaction_callback, &txn_ctx_regval);
 
@@ -1966,6 +2110,16 @@ void fim_registry_scan() {
     fim_db_transaction_deleted_rows(regkey_txn_handler, registry_key_transaction_callback, &txn_ctx_reg);
     regkey_txn_handler = NULL;
     regval_txn_handler = NULL;
+
+    // Process pending sync flag updates after transaction commit
+    if (pending_sync_keys != NULL) {
+        process_pending_sync_updates(FIMDB_REGISTRY_KEY_TABLENAME, pending_sync_keys);
+        OSList_Destroy(pending_sync_keys);
+    }
+    if (pending_sync_values != NULL) {
+        process_pending_sync_updates(FIMDB_REGISTRY_VALUE_TABLENAME, pending_sync_values);
+        OSList_Destroy(pending_sync_values);
+    }
 
     // Delete registry keys and values that failed schema validation (outside transaction)
     cleanup_failed_registry_keys(failed_keys);

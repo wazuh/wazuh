@@ -382,7 +382,7 @@ When a checksum mismatch is detected for a table:
 
 1. **Version Increment**: All entries in the table have their version incremented by 1
    - Uses DBSync's `increaseEachEntryVersion()` method
-2. **Data Extraction**: All elements are retrieved from the affected table using `getEveryElement()`
+2. **Data Extraction**: All elements are retrieved from the affected table using `getEverySyncElement()`
 3. **Memory Preparation**: In-memory sync data is cleared via `clearInMemoryData()`
 4. **Stateful Message Rebuild**: Each inventory item is:
    - Converted to ECS format

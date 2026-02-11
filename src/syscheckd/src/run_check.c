@@ -10,6 +10,8 @@
 
 
 // SCHED_BATCH is Linux specific and is only picked up with _GNU_SOURCE
+#include "agent_sync_protocol_c_interface_types.h"
+#include "debug_op.h"
 #include "recovery.h"
 #ifdef __linux__
 #include <sched.h>
@@ -362,7 +364,8 @@ bool validate_and_persist_fim_event(
     const char* item_description,
     bool mark_for_deletion,
     OSList* failed_list,
-    void* failed_item_data
+    void* failed_item_data,
+    int sync_flag
 ) {
     bool validation_passed = true;
 
@@ -393,8 +396,8 @@ bool validate_and_persist_fim_event(
         os_free(msg);
     }
 
-    // Persist stateful event only if validation passed (or validation is disabled)
-    if (validation_passed) {
+    // Persist stateful event only if validation passed (or validation is disabled) AND sync_flag is 1
+    if (validation_passed && sync_flag == 1) {
         persist_syscheck_msg(id, operation, index, stateful_event, document_version);
     }
 
@@ -984,6 +987,9 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                         bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i],
                                                                                            syscheck.sync_handle);
                         if (full_sync_required) {
+                            // if (fim_db_get_count_file_entry() > limit) {
+                            //     mwarn("Document count for table %s exceeds the limit (%d). Only %d documents will be synchronized.", table_names[i], limit, limit);
+                            // }
                             fim_recovery_persist_table_and_resync(table_names[i],
                                                                   syscheck.sync_handle,
                                                                   directories_snapshot);

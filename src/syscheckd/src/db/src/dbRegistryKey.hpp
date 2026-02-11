@@ -51,6 +51,7 @@ class RegistryKey final : public DBItem
 
             m_time = fim->registry_entry.key->mtime;
             m_version = fim->registry_entry.key->version;
+            m_sync = fim->registry_entry.key->sync;
             createJSON();
             createFimEntry();
         }
@@ -67,6 +68,7 @@ class RegistryKey final : public DBItem
             m_owner = fim.at("owner");
             m_time = fim.at("mtime");
             m_version = fim.at("version");
+            m_sync = fim.at("sync").get<int>() != 0;
             createFimEntry();
             createJSON();
         }
@@ -93,6 +95,7 @@ class RegistryKey final : public DBItem
         int m_version;
         std::unique_ptr<fim_entry, FimRegistryKeyDeleter> m_fimEntry;
         std::unique_ptr<nlohmann::json> m_statementConf;
+        bool m_sync;
 
         void createFimEntry();
         void createJSON();

@@ -32,7 +32,8 @@ bool __wrap_validate_and_persist_fim_event(
     const char* item_description,
     bool mark_for_deletion,
     OSList* failed_list,
-    void* failed_item_data
+    void* failed_item_data,
+    int sync_flag
 );
 
 void __wrap_cleanup_failed_fim_files(OSList* failed_paths);

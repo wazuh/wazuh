@@ -86,8 +86,8 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         merror("Failed to increase version for each entry in %s", table_name);
         return;
     }
-    // Get all items from the table
-    cJSON* items = fim_db_get_every_element(table_name);
+    // Get all synced items from the table
+    cJSON* items = fim_db_get_every_element(table_name, "WHERE sync=1");
     if (!items) {
         merror("Failed to retrieve elements from table: %s", table_name);
         return;

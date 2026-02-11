@@ -17,13 +17,13 @@ const auto insertFileStatement = R"({
         "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
         "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":18277083,
         "mtime":1578075431, "path":"/etc/wgetrc", "permissions":"-rw-rw-r--", "size":4925,
-        "uid":"0", "owner":"fakeUser", "version":1
+        "uid":"0", "owner":"fakeUser", "version":1, "sync":1
     }
 )"_json;
 const auto insertRegistryKeyStatement = R"({
         "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":"0", "group_":"root", "architecture":1,
         "mtime":1578075431, "path":"HKEY_LOCAL_MACHINE\\SOFTWARE", "permissions":"-rw-rw-r--",
-        "uid":"0", "owner":"fakeUser", "version":1
+        "uid":"0", "owner":"fakeUser", "version":1, "sync":1
     }
 )"_json;
 
@@ -32,7 +32,7 @@ const auto insertRegistryValueStatement = R"({
         "size":4925, "type":0, "hash_md5":"4b531524aa13c8a54614100b570b3dc7",
         "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
         "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a",
-        "architecture":0, "path":"/tmp/pathTestRegistry", "version":1
+        "architecture":0, "path":"/tmp/pathTestRegistry", "version":1, "sync":1
     }
 )"_json;
 
@@ -270,6 +270,13 @@ TEST_F(DBTestFixture, TestFimDBCalculateTableChecksumWithEntries)
         // Insert a file entry
         ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
 
+        // Set sync flag to 1 for the inserted entry
+        pending_sync_item_t item;
+        item.json = cJSON_Parse(insertFileStatement.dump().c_str());
+        item.sync_value = 1;
+        fim_db_set_sync_flag(const_cast<char*>(FIMDB_FILE_TABLE_NAME), &item, 1);
+        cJSON_Delete(item.json);
+
         // Calculate checksum
         char* checksum = fim_db_calculate_table_checksum(FIMDB_FILE_TABLE_NAME);
         ASSERT_TRUE(checksum != nullptr);
@@ -295,7 +302,7 @@ TEST_F(DBTestFixture, TestFimDBCalculateTableChecksumNullParameter)
 TEST_F(DBTestFixture, TestFimDBGetEveryElementEmptyTable)
 {
     EXPECT_NO_THROW({
-        cJSON* elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME);
+        cJSON* elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME, NULL);
         ASSERT_TRUE(elements != nullptr);
         ASSERT_TRUE(cJSON_IsArray(elements));
         ASSERT_EQ(cJSON_GetArraySize(elements), 0);
@@ -312,7 +319,7 @@ TEST_F(DBTestFixture, TestFimDBGetEveryElementWithSingleEntry)
         ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
 
         // Get all elements
-        cJSON* elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME);
+        cJSON* elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME, NULL);
         ASSERT_TRUE(elements != nullptr);
         ASSERT_TRUE(cJSON_IsArray(elements));
         ASSERT_EQ(cJSON_GetArraySize(elements), 1);
@@ -351,7 +358,7 @@ TEST_F(DBTestFixture, TestFimDBGetEveryElementWithMultipleEntries)
         ASSERT_EQ(fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added), FIMDB_OK);
 
         // Get all elements
-        cJSON* elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME);
+        cJSON* elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME, NULL);
         ASSERT_TRUE(elements != nullptr);
         ASSERT_TRUE(cJSON_IsArray(elements));
         ASSERT_EQ(cJSON_GetArraySize(elements), 2);
@@ -363,7 +370,7 @@ TEST_F(DBTestFixture, TestFimDBGetEveryElementWithMultipleEntries)
 TEST_F(DBTestFixture, TestFimDBGetEveryElementNullParameter)
 {
     EXPECT_NO_THROW({
-        cJSON* elements = fim_db_get_every_element(nullptr);
+        cJSON* elements = fim_db_get_every_element(nullptr, NULL);
         ASSERT_TRUE(elements == nullptr);
     });
 }
@@ -386,7 +393,7 @@ TEST_F(DBTestFixture, TestFimDBIncreaseEachEntryVersionSingleEntry)
         ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
 
         // Get the entry and verify initial version
-        cJSON* elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME);
+        cJSON* elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME, NULL);
         ASSERT_TRUE(elements != nullptr);
         ASSERT_EQ(cJSON_GetArraySize(elements), 1);
 
@@ -401,7 +408,7 @@ TEST_F(DBTestFixture, TestFimDBIncreaseEachEntryVersionSingleEntry)
         ASSERT_EQ(result, 0);
 
         // Verify version was increased to 2
-        elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME);
+        elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME, NULL);
         ASSERT_TRUE(elements != nullptr);
         ASSERT_EQ(cJSON_GetArraySize(elements), 1);
 
@@ -437,7 +444,7 @@ TEST_F(DBTestFixture, TestFimDBIncreaseEachEntryVersionMultipleEntries)
         ASSERT_EQ(fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added), FIMDB_OK);
 
         // Verify all entries have version 1
-        cJSON* elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME);
+        cJSON* elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME, NULL);
         ASSERT_TRUE(elements != nullptr);
         ASSERT_EQ(cJSON_GetArraySize(elements), 3);
 
@@ -455,7 +462,7 @@ TEST_F(DBTestFixture, TestFimDBIncreaseEachEntryVersionMultipleEntries)
         ASSERT_EQ(result, 0);
 
         // Verify all entries now have version 2
-        elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME);
+        elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME, NULL);
         ASSERT_TRUE(elements != nullptr);
         ASSERT_EQ(cJSON_GetArraySize(elements), 3);
 

@@ -173,6 +173,11 @@ class EXPORTED DB final
          */
         int64_t getLastSyncTime(const std::string& tableName);
 
+        int countSyncedDocs(const std::string& tableName);
+
+        std::vector<nlohmann::json> getDocumentsToPromote(std::string tableName, int numberOfDocumentsToPromote);
+
+        std::vector<nlohmann::json> getDocumentsToDemote(std::string tableName, int numberOfDocumentsToDemote);
     private:
         DB() = default;
         ~DB() = default;

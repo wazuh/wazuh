@@ -50,6 +50,7 @@ constexpr auto CREATE_FILE_DB_STATEMENT
     hash_sha256 TEXT,
     mtime INTEGER,
     version INTEGER NOT NULL DEFAULT 1,
+    sync INTEGER DEFAULT 0,
     PRIMARY KEY(path)) WITHOUT ROWID;
     CREATE INDEX IF NOT EXISTS path_index ON file_entry (path);
     CREATE INDEX IF NOT EXISTS inode_index ON file_entry (device, inode);)"
@@ -68,6 +69,7 @@ constexpr auto CREATE_REGISTRY_KEY_DB_STATEMENT
     architecture TEXT CHECK (architecture IN ('[x32]', '[x64]')),
     checksum TEXT NOT NULL,
     version INTEGER NOT NULL DEFAULT 1,
+    sync INTEGER DEFAULT 0,
     PRIMARY KEY (architecture, path)) WITHOUT ROWID;
     CREATE INDEX IF NOT EXISTS path_index ON registry_key (path);)"
 };
@@ -85,6 +87,7 @@ constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
     hash_sha256 TEXT,
     checksum TEXT NOT NULL,
     version INTEGER NOT NULL DEFAULT 1,
+    sync INTEGER DEFAULT 0,
     PRIMARY KEY(path, architecture, value)
     FOREIGN KEY (path) REFERENCES registry_key(path)
     FOREIGN KEY (architecture) REFERENCES registry_key(architecture)) WITHOUT ROWID;

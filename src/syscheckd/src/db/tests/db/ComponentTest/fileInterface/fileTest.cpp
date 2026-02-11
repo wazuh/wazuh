@@ -21,7 +21,7 @@ const auto insertStatement1 = R"({
         "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
         "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":18277083,
         "mtime":1578075431, "path":"/etc/wgetrc", "permissions":"-rw-rw-r--", "size":4925,
-        "uid":"0", "owner":"fakeUser", "version":1}]
+        "uid":"0", "owner":"fakeUser", "version":1, "sync":0}]
     }
 )"_json;
 const auto insertStatement2 = R"({
@@ -30,7 +30,7 @@ const auto insertStatement2 = R"({
         "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
         "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":18277083,
         "mtime":1578075431, "path":"/tmp/test.txt", "permissions":"-rw-rw-r--", "size":4925,
-        "uid":"0", "owner":"fakeUser", "version":1}]
+        "uid":"0", "owner":"fakeUser", "version":1, "sync":0}]
     }
 )"_json;
 const auto insertStatement3 = R"({
@@ -39,7 +39,7 @@ const auto insertStatement3 = R"({
         "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
         "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":99997083,
         "mtime":1578075431, "path":"/tmp/test2.txt", "permissions":"-rw-rw-r--", "size":4925,
-        "uid":"0", "owner":"fakeUser", "version":1}]
+        "uid":"0", "owner":"fakeUser", "version":1, "sync":0}]
     }
 )"_json;
 const auto insertStatement4 = R"({
@@ -48,7 +48,7 @@ const auto insertStatement4 = R"({
         "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
         "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810881,
         "mtime":1578075431, "path":"/tmp/test3.txt", "permissions":"-rw-rw-r--", "size":4925,
-        "uid":"0", "owner":"fakeUser", "version":1}]
+        "uid":"0", "owner":"fakeUser", "version":1, "sync":0}]
     }
 )"_json;
 const auto updateStatement1 = R"({
@@ -57,7 +57,7 @@ const auto updateStatement1 = R"({
         "hash_md5":"d6719d8eaa46012a9de38103d5f284e4", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58a",
         "hash_sha256":"0211f049f5b1121fbd034adf7b81ea521d615b5bd8df0e77c8ec8a363459ead1", "inode":18457083,
         "mtime":1578075435, "path":"/etc/wgetrc", "permissions":"-rw-rw-rw-", "size":4925,
-        "uid":"1000", "owner":"testuser", "version":1}]
+        "uid":"1000", "owner":"testuser", "version":1, "sync":0}]
     }
 )"_json;
 const auto updateStatement2 = R"({
@@ -66,7 +66,7 @@ const auto updateStatement2 = R"({
         "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
         "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":18277083,
         "mtime":1578075431, "path":"/tmp/test.txt", "permissions":"-rw-rw-r--", "size":4800,
-        "uid":"0", "owner":"fakeUser", "version":1}]
+        "uid":"0", "owner":"fakeUser", "version":1, "sync":0}]
     }
 )"_json;
 
@@ -169,7 +169,7 @@ TEST_F(DBTestFixture, TestFimDBWithUTF8Path)
         "data":[{"attributes":"10", "checksum":"abc123", "device":1234, "gid":"0", "group_":"root",
         "hash_md5":"deadbeefdeadbeefdeadbeefdeadbeef", "hash_sha1":"abc", "hash_sha256":"abc",
         "inode":8888, "mtime":1578075431, "path":"/tmp/naïve.txt", "permissions":"-rw-rw-r--",
-        "size":4925, "uid":"0", "owner":"utf8User", "version":1}]
+        "size":4925, "uid":"0", "owner":"utf8User", "version":1, "sync":0}]
     })"_json;
 
     EXPECT_NO_THROW({

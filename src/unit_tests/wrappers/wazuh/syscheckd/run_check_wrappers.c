@@ -45,7 +45,8 @@ bool __wrap_validate_and_persist_fim_event(
     __attribute__((unused)) const char* item_description,
     __attribute__((unused)) bool mark_for_deletion,
     __attribute__((unused)) OSList* failed_list,
-    __attribute__((unused)) void* failed_item_data
+    __attribute__((unused)) void* failed_item_data,
+    __attribute__((unused)) int sync_flag
 ) {
     // Tests can override this return value with will_return if needed
     // to simulate validation failures

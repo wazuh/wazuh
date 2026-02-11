@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#include "cJSON.h"
 #include "cjsonSmartDeleter.hpp"
 #include "db.h"
 #include "db.hpp"
@@ -16,6 +17,8 @@
 #include "fimCommonDefs.h"
 #include "fimDB.hpp"
 #include "json.hpp"
+#include "syscheck.h"
+#include <cstring>
 
 enum SEARCH_FIELDS
 {
@@ -59,7 +62,8 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
                                    "hash_sha1",
                                    "hash_sha256",
                                    "mtime",
-                                   "version"})
+                                   "version",
+                                   "sync"})
                       .rowFilter(std::string("WHERE path=\"") + encodedPath + "\"")
                       .orderByOpt(FILE_PRIMARY_KEY)
                       .distinctOpt(false)
@@ -454,6 +458,139 @@ void fim_db_clean_file_table()
     catch (const std::exception& err)
     {
         FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+
+    // LCOV_EXCL_STOP
+}
+
+
+int fim_db_set_sync_flag(char* table_name, pending_sync_item_t* item, int sync_value)
+{
+    if (!item)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid item provided to fim_db_set_sync_flag");
+        return -1;
+    }
+
+    if (sync_value != 0 && sync_value != 1)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid sync value provided to fim_db_set_sync_flag");
+        return -1;
+    }
+
+    try
+    {
+        const cJSON* json_path = cJSON_GetObjectItem(item->json, "path");
+        char* path = cJSON_GetStringValue(json_path);
+        std::string encodedPath = path;
+        FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
+
+        const cJSON* json_version = cJSON_GetObjectItem(item->json, "version");
+        int version = cJSON_GetNumberValue(json_version);
+
+        // Build log message with table-specific fields
+        std::string log_msg = "Setting sync flag to " + std::to_string(sync_value) + " for path: " + std::string(path);
+
+#ifdef WIN32
+
+        if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) != 0)
+        {
+            const cJSON* json_architecture = cJSON_GetObjectItem(item->json, "architecture");
+
+            if (json_architecture)
+            {
+                char* architecture = cJSON_GetStringValue(json_architecture);
+
+                if (architecture)
+                {
+                    log_msg += ", architecture: " + std::string(architecture);
+                }
+            }
+        }
+
+        if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0)
+        {
+            const cJSON* json_value = cJSON_GetObjectItem(item->json, "value");
+
+            if (json_value)
+            {
+                char* value = cJSON_GetStringValue(json_value);
+
+                if (value)
+                {
+                    log_msg += ", value: " + std::string(value);
+                }
+            }
+        }
+
+#endif
+
+        log_msg += " (version: " + std::to_string(version) + ")";
+        FIMDB::instance().logFunction(LOG_DEBUG_VERBOSE, log_msg);
+
+        // Build update JSON with path, sync field, and version
+        nlohmann::json rowData;
+        rowData["path"] = encodedPath;
+        rowData["sync"] = sync_value;
+        rowData["version"] = version;
+
+        if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) != 0)
+        {
+            const cJSON* json_architecture = cJSON_GetObjectItem(item->json, "architecture");
+            char* architecture = cJSON_GetStringValue(json_architecture);
+            rowData["architecture"] = architecture;
+        }
+
+        if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0)
+        {
+            const cJSON* json_value = cJSON_GetObjectItem(item->json, "value");
+            char* value = cJSON_GetStringValue(json_value);
+            rowData["value"] = value;
+        }
+
+        nlohmann::json updateData;
+        updateData["table"] = table_name;
+        updateData["data"] = nlohmann::json::array();
+        updateData["data"].push_back(rowData);
+
+        // Execute update
+        bool updateSucceeded = false;
+        ReturnTypeCallback receivedType = ReturnTypeCallback::SELECTED; // Default value
+        FIMDB::instance().updateItem(updateData,
+                                     [&updateSucceeded, &receivedType](ReturnTypeCallback type, const nlohmann::json&)
+        {
+            receivedType = type;
+
+            if (type == ReturnTypeCallback::MODIFIED)
+            {
+                updateSucceeded = true;
+            }
+        });
+
+        if (updateSucceeded)
+        {
+            FIMDB::instance().logFunction(LOG_DEBUG_VERBOSE,
+                                          std::string("Successfully updated sync flag to ") + std::to_string(sync_value) + " for path: " + path);
+        }
+        else
+        {
+            FIMDB::instance().logFunction(LOG_WARNING,
+                                          std::string("Failed to update sync flag for path: ") + path +
+                                          ", received callback type: " + std::to_string(static_cast<int>(receivedType)));
+        }
+
+        return updateSucceeded ? 0 : -1;
+    }
+    catch (const no_entry_found& err)
+    {
+        FIMDB::instance().logFunction(LOG_INFO, std::string("Entry not found: ") + err.what());
+        return -1;
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        return -1;
     }
 
     // LCOV_EXCL_STOP
