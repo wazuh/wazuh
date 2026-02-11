@@ -1224,6 +1224,6 @@ stages:
       params:
         agents_list: '001,002'
         file_path: "{custom_wpk_path:s}"
-        version: 'Wazuh v999.999.999'
+        version: 'v999.999.999'
     response:
       <<: *filters_not_matching_response
