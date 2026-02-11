@@ -97,6 +97,10 @@ int main(int argc, char **argv)
 
     minfo(STARTUP_MSG, (int)getpid());
 
+    // Configure signal handling before startup gate wait so SIGTERM
+    // triggers graceful cleanup even when modules are blocked.
+    wm_signals_configure();
+
     startup_gate_wait_for_ready(ARGV0);
 
     // Run modules
@@ -110,9 +114,6 @@ int main(int argc, char **argv)
 
     // Start com request thread
     w_create_thread(wmcom_main, NULL);
-
-    // Signal management
-    wm_signals_configure();
 
     // Wait for threads
 
