@@ -227,6 +227,7 @@ static int poll_interval_time = 0;
 
 /* This variable is used to prevent flooding when group files exceed the maximum size */
 static int reported_path_size_exceeded = 0;
+static bool handshake_groups_ready = false;
 
 /* Hash table for agent data */
 OSHash *agent_data_hash;
@@ -246,6 +247,41 @@ void free_file_time(void *data) {
 }
 
 /**
+ * @brief Resolve merged sum for an agent group or multigroup name.
+ * @param group_name Agent group string (single group or CSV multigroup)
+ * @param merged_sum Buffer to store resolved merged sum
+ * @return true when merged sum was resolved, false otherwise
+ */
+STATIC bool get_group_merged_sum(const char *group_name, os_md5 merged_sum) {
+    group_t *group_data = NULL;
+
+    if (!group_name || !group_name[0] || !merged_sum) {
+        return false;
+    }
+
+    if (!handshake_groups_ready || !groups || !multi_groups) {
+        return false;
+    }
+
+    w_mutex_lock(&files_mutex);
+
+    if (strchr(group_name, MULTIGROUP_SEPARATOR)) {
+        group_data = OSHash_Get_ex(multi_groups, group_name);
+    } else {
+        group_data = OSHash_Get_ex(groups, group_name);
+    }
+
+    if (group_data && group_data->merged_sum[0]) {
+        snprintf(merged_sum, sizeof(os_md5), "%s", group_data->merged_sum);
+        w_mutex_unlock(&files_mutex);
+        return true;
+    }
+
+    w_mutex_unlock(&files_mutex);
+    return false;
+}
+
+/**
  * @brief Build JSON payload for handshake ACK response
  * @param limits Pointer to module limits structure
  * @param agent_id Agent ID string for fetching groups (can be NULL)
@@ -256,6 +292,7 @@ STATIC char* build_handshake_json(const module_limits_t *limits, const char *age
     char *cluster_name = NULL;
     char *cluster_node = NULL;
     char *agent_groups_csv = NULL;
+    os_md5 merged_sum = {0};
 
     if (!limits) {
         return NULL;
@@ -343,6 +380,10 @@ STATIC char* build_handshake_json(const module_limits_t *limits, const char *age
                         group = strtok_r(NULL, ",", &saveptr);
                     }
                     os_free(groups_copy);
+                }
+
+                if (get_group_merged_sum(agent_groups_csv, merged_sum)) {
+                    cJSON_AddStringToObject(root, "merged_sum", merged_sum);
                 }
             }
             os_free(agent_groups_csv);
@@ -2021,6 +2062,7 @@ void manager_init()
     }
 
     OSHash_SetFreeDataPointer(pending_data, (void (*)(void *))free_pending_data);
+    handshake_groups_ready = true;
 }
 
 /**

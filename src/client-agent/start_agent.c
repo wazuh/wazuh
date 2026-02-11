@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "agentd.h"
 #include "os_net/os_net.h"
+#include "../os_crypto/md5/md5_op.h"
 
 #ifdef WAZUH_UNIT_TESTING
     // Remove static qualifier when unit testing
@@ -228,6 +229,40 @@ STATIC bool parse_agent_groups(const cJSON *root, char *agent_groups, size_t age
 }
 
 /**
+ * @brief Parse optional merged_sum from handshake JSON
+ * @param root Root JSON object
+ * @param merged_sum Buffer to store merged sum
+ * @param merged_sum_size Size of merged_sum buffer
+ * @return true always (field is optional)
+ */
+STATIC bool parse_optional_merged_sum(const cJSON *root, char *merged_sum, size_t merged_sum_size) {
+    if (!merged_sum || merged_sum_size == 0) {
+        return true;
+    }
+
+    merged_sum[0] = '\0';
+
+    cJSON *merged = cJSON_GetObjectItem(root, "merged_sum");
+    if (!merged) {
+        return true;
+    }
+
+    if (!cJSON_IsString(merged) || !merged->valuestring) {
+        mdebug1("Invalid 'merged_sum' type in handshake JSON, ignoring field");
+        return true;
+    }
+
+    if (strlen(merged->valuestring) == 32) {
+        strncpy(merged_sum, merged->valuestring, merged_sum_size - 1);
+        merged_sum[merged_sum_size - 1] = '\0';
+    } else {
+        mdebug1("Invalid 'merged_sum' value in handshake JSON, ignoring field");
+    }
+
+    return true;
+}
+
+/**
  * @brief Parse JSON payload from handshake ACK response
  * @param json_str JSON string to parse
  * @param limits Pointer to module limits structure to populate
@@ -237,12 +272,15 @@ STATIC bool parse_agent_groups(const cJSON *root, char *agent_groups, size_t age
  * @param cluster_node_size Size of cluster_node buffer
  * @param agent_groups Buffer to store agent groups as CSV
  * @param agent_groups_size Size of agent_groups buffer
+ * @param merged_sum Buffer to store expected merged hash from manager (optional)
+ * @param merged_sum_size Size of merged_sum buffer
  * @return 0 on success, -1 on error (all fields are required)
  */
 STATIC int parse_handshake_json(const char *json_str, module_limits_t *limits,
                                 char *cluster_name, size_t cluster_name_size,
                                 char *cluster_node, size_t cluster_node_size,
-                                char *agent_groups, size_t agent_groups_size) {
+                                char *agent_groups, size_t agent_groups_size,
+                                char *merged_sum, size_t merged_sum_size) {
     if (!json_str || !limits) {
         return -1;
     }
@@ -256,7 +294,8 @@ STATIC int parse_handshake_json(const char *json_str, module_limits_t *limits,
     if (!parse_limits(root, limits) ||
         !parse_cluster_name(root, cluster_name, cluster_name_size) ||
         !parse_cluster_node(root, cluster_node, cluster_node_size) ||
-        !parse_agent_groups(root, agent_groups, agent_groups_size)) {
+        !parse_agent_groups(root, agent_groups, agent_groups_size) ||
+        !parse_optional_merged_sum(root, merged_sum, merged_sum_size)) {
         cJSON_Delete(root);
         return -1;
     }
@@ -349,6 +388,7 @@ void start_agent(int is_startup)
 {
 
     if (is_startup) {
+        startup_gate_initialize();
         w_agentd_keys_init();
     }
 
@@ -568,10 +608,12 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                             char cluster_name_buffer[256] = {0};
                             char cluster_node_buffer[256] = {0};
                             char agent_groups_buffer[OS_SIZE_65536] = {0};
+                            os_md5 merged_sum_buffer = {0};
                             if (parse_handshake_json(json_start, &agent_module_limits,
                                                       cluster_name_buffer, sizeof(cluster_name_buffer),
                                                       cluster_node_buffer, sizeof(cluster_node_buffer),
-                                                      agent_groups_buffer, sizeof(agent_groups_buffer)) == 0) {
+                                                      agent_groups_buffer, sizeof(agent_groups_buffer),
+                                                      merged_sum_buffer, sizeof(merged_sum_buffer)) == 0) {
                                 minfo("Module limits received from manager");
 
                                 mdebug2("Received FIM limits: file=%d, registry_key=%d, registry_value=%d",
@@ -609,12 +651,15 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                 strncpy(agent_agent_groups, agent_groups_buffer, sizeof(agent_agent_groups) - 1);
                                 agent_agent_groups[sizeof(agent_agent_groups) - 1] = '\0';
                                 minfo("Agent groups: %s", agent_agent_groups);
+
+                                startup_gate_process_handshake(is_startup, merged_sum_buffer);
                             } else {
                                 mwarn("Error parsing handshake JSON, will retry handshake");
                                 return false;
                             }
                         } else {
                             minfo("No handshake JSON after ACK, using defaults");
+                            startup_gate_process_handshake(is_startup, NULL);
                         }
 
                         minfo(AG_CONNECTED, agt->server[server_id].rip,
