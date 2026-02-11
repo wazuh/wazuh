@@ -80,9 +80,13 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
             m_assets.insert(base::Name(traceable));
         }
 
-        auto [exp, traceable] = builders::enrichment::getSpaceEnrichment(policyData, trace);
-        enrichmentExp->getOperands().push_back(exp);
-        m_assets.insert(base::Name(traceable));
+        // Mapping space name (disable trace)
+        {
+            auto [exp, traceable] = builders::enrichment::getSpaceEnrichment(policyData, false);
+            enrichmentExp->getOperands().push_back(exp);
+            m_assets.insert(base::Name(traceable));
+        }
+
         return enrichmentExp;
     }();
 
