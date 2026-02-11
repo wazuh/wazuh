@@ -35,7 +35,8 @@ extern int _s_verify_counter;
 extern int parse_handshake_json(const char *json_str, module_limits_t *limits,
                                 char *cluster_name, size_t cluster_name_size,
                                 char *cluster_node, size_t cluster_node_size,
-                                char *agent_groups, size_t agent_groups_size);
+                                char *agent_groups, size_t agent_groups_size,
+                                char *merged_sum, size_t merged_sum_size);
 
 int __wrap_send_msg(const char *msg, ssize_t msg_length) {
     check_expected(msg);
@@ -470,6 +471,7 @@ static void test_parse_handshake_json_full_payload(void **state) {
     char cluster_name[256] = {0};
     char cluster_node[256] = {0};
     char agent_groups[1024] = {0};
+    char merged_sum[sizeof(os_md5)] = {0};
     int ret;
 
     const char *json_str =
@@ -486,13 +488,15 @@ static void test_parse_handshake_json_full_payload(void **state) {
         "},"
         "\"cluster_name\":\"test-cluster\","
         "\"cluster_node\":\"test-node\","
-        "\"agent_groups\":[\"default\",\"webservers\"]"
+        "\"agent_groups\":[\"default\",\"webservers\"],"
+        "\"merged_sum\":\"0123456789abcdef0123456789abcdef\""
         "}";
 
     module_limits_init(&limits);
     ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
                                cluster_node, sizeof(cluster_node),
-                               agent_groups, sizeof(agent_groups));
+                               agent_groups, sizeof(agent_groups),
+                               merged_sum, sizeof(merged_sum));
 
     assert_int_equal(ret, 0);
     assert_int_equal(limits.fim.file, 200000);
@@ -516,6 +520,7 @@ static void test_parse_handshake_json_full_payload(void **state) {
     assert_string_equal(cluster_name, "test-cluster");
     assert_string_equal(cluster_node, "test-node");
     assert_string_equal(agent_groups, "default,webservers");
+    assert_string_equal(merged_sum, "0123456789abcdef0123456789abcdef");
 }
 
 static void test_parse_handshake_json_missing_syscollector(void **state) {
@@ -542,7 +547,7 @@ static void test_parse_handshake_json_missing_syscollector(void **state) {
     expect_any(__wrap__mdebug1, formatted_msg);
     ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
                                cluster_node, sizeof(cluster_node),
-                               agent_groups, sizeof(agent_groups));
+                               agent_groups, sizeof(agent_groups), NULL, 0);
 
     assert_int_equal(ret, -1);
 }
@@ -575,7 +580,7 @@ static void test_parse_handshake_json_with_cluster_name(void **state) {
     module_limits_init(&limits);
     ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
                                cluster_node, sizeof(cluster_node),
-                               agent_groups, sizeof(agent_groups));
+                               agent_groups, sizeof(agent_groups), NULL, 0);
 
     assert_int_equal(ret, 0);
     assert_string_equal(cluster_name, "wazuh-cluster");
@@ -610,7 +615,7 @@ static void test_parse_handshake_json_no_cluster_name(void **state) {
     expect_any(__wrap__mdebug1, formatted_msg);
     ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
                                cluster_node, sizeof(cluster_node),
-                               agent_groups, sizeof(agent_groups));
+                               agent_groups, sizeof(agent_groups), NULL, 0);
 
     assert_int_equal(ret, -1);
 }
@@ -629,7 +634,7 @@ static void test_parse_handshake_json_invalid_json(void **state) {
     expect_any(__wrap__mdebug1, formatted_msg);
     ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
                                cluster_node, sizeof(cluster_node),
-                               agent_groups, sizeof(agent_groups));
+                               agent_groups, sizeof(agent_groups), NULL, 0);
 
     assert_int_equal(ret, -1);
 }
@@ -648,7 +653,7 @@ static void test_parse_handshake_json_no_limits_object(void **state) {
     expect_any(__wrap__mdebug1, formatted_msg);
     ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
                                cluster_node, sizeof(cluster_node),
-                               agent_groups, sizeof(agent_groups));
+                               agent_groups, sizeof(agent_groups), NULL, 0);
 
     assert_int_equal(ret, -1);
 }
@@ -666,13 +671,13 @@ static void test_parse_handshake_json_null_params(void **state) {
     /* Test with NULL json_str */
     ret = parse_handshake_json(NULL, &limits, cluster_name, sizeof(cluster_name),
                                cluster_node, sizeof(cluster_node),
-                               agent_groups, sizeof(agent_groups));
+                               agent_groups, sizeof(agent_groups), NULL, 0);
     assert_int_equal(ret, -1);
 
     /* Test with NULL limits */
     ret = parse_handshake_json(json_str, NULL, cluster_name, sizeof(cluster_name),
                                cluster_node, sizeof(cluster_node),
-                               agent_groups, sizeof(agent_groups));
+                               agent_groups, sizeof(agent_groups), NULL, 0);
     assert_int_equal(ret, -1);
 }
 
@@ -690,7 +695,7 @@ static void test_parse_handshake_json_empty_string(void **state) {
     expect_any(__wrap__mdebug1, formatted_msg);
     ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
                                cluster_node, sizeof(cluster_node),
-                               agent_groups, sizeof(agent_groups));
+                               agent_groups, sizeof(agent_groups), NULL, 0);
 
     assert_int_equal(ret, -1);
 }
@@ -723,7 +728,7 @@ static void test_parse_handshake_json_with_cluster_node(void **state) {
     module_limits_init(&limits);
     ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
                                cluster_node, sizeof(cluster_node),
-                               agent_groups, sizeof(agent_groups));
+                               agent_groups, sizeof(agent_groups), NULL, 0);
 
     assert_int_equal(ret, 0);
     assert_string_equal(cluster_name, "wazuh-cluster");
@@ -759,7 +764,7 @@ static void test_parse_handshake_json_no_cluster_node(void **state) {
     expect_any(__wrap__mdebug1, formatted_msg);
     ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
                                cluster_node, sizeof(cluster_node),
-                               agent_groups, sizeof(agent_groups));
+                               agent_groups, sizeof(agent_groups), NULL, 0);
 
     assert_int_equal(ret, -1);
 }
@@ -793,7 +798,7 @@ static void test_parse_handshake_json_no_agent_groups(void **state) {
     expect_any(__wrap__mdebug1, formatted_msg);
     ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
                                cluster_node, sizeof(cluster_node),
-                               agent_groups, sizeof(agent_groups));
+                               agent_groups, sizeof(agent_groups), NULL, 0);
 
     assert_int_equal(ret, -1);
 }
@@ -829,7 +834,7 @@ static void test_parse_handshake_json_empty_agent_groups(void **state) {
     expect_any(__wrap__mdebug1, formatted_msg);
     ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
                                cluster_node, sizeof(cluster_node),
-                               agent_groups, sizeof(agent_groups));
+                               agent_groups, sizeof(agent_groups), NULL, 0);
 
     /* Empty agent_groups is now allowed - returns success */
     assert_int_equal(ret, 0);
