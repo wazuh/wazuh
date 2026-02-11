@@ -100,6 +100,13 @@ class AgentInfoImpl
         /// @return true if stateless event should be generated, false otherwise
         bool shouldGenerateStatelessEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table) const;
 
+        /// @brief Categorize metadata changes to determine sync flag routing
+        /// Sets m_clusterNameChanged as side effect; returns true if non-cluster metadata changed
+        /// @param result Type of change (INSERTED, MODIFIED, DELETED)
+        /// @param data Event data from DBSync callback
+        /// @return true if non-cluster-name, non-cluster-node metadata changed
+        bool categorizeMetadataChanges(ReturnTypeCallback result, const nlohmann::json& data);
+
         /// @brief Update the global metadata provider with current agent metadata
         /// @param agentMetadata Agent metadata JSON
         /// @param groups List of agent groups
@@ -285,4 +292,7 @@ class AgentInfoImpl
 
         /// @brief Mutex for synchronizing access to m_dBSync (prevents race conditions during cleanup/transactions)
         std::mutex m_dbSyncMutex;
+
+        /// @brief Flag set during updateChanges callback when cluster_name changed
+        bool m_clusterNameChanged = false;
 };
