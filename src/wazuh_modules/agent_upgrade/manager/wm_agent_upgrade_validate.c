@@ -16,7 +16,7 @@
 #ifdef WAZUH_UNIT_TESTING
 // Redefine ossec_version
 #undef __ossec_version
-#define __ossec_version "v3.13.0"
+#define __ossec_version "v5.0.0"
 #endif
 
 // Mutex needed to download a WPK file
@@ -156,8 +156,6 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *pla
         if (tmp_agent_version = strchr(wazuh_version, 'v'), tmp_agent_version) {
 
             if (compare_wazuh_versions(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT, true) < 0) {
-                return_code = WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED;
-            } else if (compare_wazuh_versions(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT_MACOS, true) < 0 && !strcmp(platform, "darwin")) {
                 return_code = WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED;
             } else if (WM_UPGRADE_UPGRADE == command) {
                 wm_upgrade_task *upgrade_task = (wm_upgrade_task *)task;
