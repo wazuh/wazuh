@@ -155,7 +155,7 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
 
     while (pEnumerator)
     {
-        HRESULT hr = pEnumerator->Next(WBEM_INFINITE, 1, &pclsObj, &uReturn);
+        pEnumerator->Next(WBEM_INFINITE, 1, &pclsObj, &uReturn);
 
         if (0 == uReturn)
         {
@@ -163,7 +163,7 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
         }
 
         VARIANT vtProp;
-        hr = pclsObj->Get(L"HotFixID", 0, &vtProp, 0, 0);
+        HRESULT hr = pclsObj->Get(L"HotFixID", 0, &vtProp, 0, 0);
 
         if (SUCCEEDED(hr) && vtProp.vt == VT_BSTR)
         {
@@ -223,7 +223,7 @@ void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
     }
 
     LONG historyCount;
-    hres = comHelper.GetCount(pHistory, historyCount);
+    comHelper.GetCount(pHistory, historyCount);
 
     for (LONG i = 0; i < historyCount; ++i)
     {

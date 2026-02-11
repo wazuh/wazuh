@@ -50,6 +50,16 @@ endif()
 
 # Collect all source files from the various subdirectories
 file(GLOB SHARED_CORE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
+
+# Remove server-only files that use features not available on Windows
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  list(
+    REMOVE_ITEM
+    SHARED_CORE_SRC
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/batch_queue_op.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/http_op.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/indexed_queue_op.c")
+endif()
 file(GLOB OS_CRYPTO_BLOWFISH_SRC
      "${CMAKE_CURRENT_SOURCE_DIR}/os_crypto/blowfish/*.c")
 file(GLOB OS_CRYPTO_MD5_SRC "${CMAKE_CURRENT_SOURCE_DIR}/os_crypto/md5/*.c")

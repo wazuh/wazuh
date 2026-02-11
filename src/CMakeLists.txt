@@ -1,5 +1,15 @@
 cmake_minimum_required(VERSION 3.12.4)
 
+# Force ranlib and windres for scan-build cross-compilation compatibility
+# Must be set BEFORE project() command to take effect
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  # Set the correct cross-compilation tools
+  set(CMAKE_RANLIB "i686-w64-mingw32-ranlib" CACHE FILEPATH "Ranlib for Windows cross-compilation" FORCE)
+  set(CMAKE_RC_COMPILER "i686-w64-mingw32-windres" CACHE FILEPATH "Resource compiler for Windows cross-compilation" FORCE)
+  set(CMAKE_C_ARCHIVE_FINISH "<CMAKE_RANLIB> <TARGET>")
+  set(CMAKE_CXX_ARCHIVE_FINISH "<CMAKE_RANLIB> <TARGET>")
+endif()
+
 project(Wazuh)
 
 enable_testing()
@@ -67,6 +77,24 @@ endif()
 # symbols as dllimport. We link these through delay import stubs.
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DPCRE2_EXP_DECL= -DBUILDING_LIBCURL=)
+
+  # Add system include paths for scan-build cross-compilation compatibility
+  # These paths are needed when using clang static analyzer wrappers with mingw
+  set(MINGW_SYSTEM_INCLUDES
+    "-isystem/usr/lib/gcc/i686-w64-mingw32/13-posix/include/c++"
+    "-isystem/usr/lib/gcc/i686-w64-mingw32/13-posix/include/c++/i686-w64-mingw32"
+    "-isystem/usr/lib/gcc/i686-w64-mingw32/13-posix/include/c++/backward"
+    "-isystem/usr/lib/gcc/i686-w64-mingw32/13-posix/include"
+    "-isystem/usr/lib/gcc/i686-w64-mingw32/13-posix/include-fixed"
+    "-isystem/usr/lib/gcc/i686-w64-mingw32/13-posix/../../../../i686-w64-mingw32/include"
+  )
+
+  # Add flags directly to compiler to work around scan-build issues with response files
+  add_compile_options(${MINGW_SYSTEM_INCLUDES})
+
+  # Disable response files for scan-build compatibility
+  set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES OFF)
+  set(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES OFF)
 endif()
 
 # Set Wine as crosscompiling emulator for Windows unit tests

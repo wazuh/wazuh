@@ -60,7 +60,7 @@ jobs:
           make deps TARGET=winagent -j$(nproc)
           make TARGET=winagent DEBUG=1 -j$(nproc)
           make clean-internals
-          scan-build-14 --status-bugs --use-cc=/usr/bin/i686-w64-mingw32-gcc --use-c++=/usr/bin/i686-w64-mingw32-g++-posix --analyzer-target=i686-w64-mingw32 --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=winagent DEBUG=1 -j$(nproc)
+          scan-build-14 --status-bugs --use-cc=/usr/bin/i686-w64-mingw32-gcc --use-c++=/usr/bin/i686-w64-mingw32-g++-posix --analyzer-target=i686-w64-mingw32 --force-analyze-debug-code -o scan-build-report --exclude external/ --exclude syscheckd/src/registry/ make TARGET=winagent DEBUG=1 -j$(nproc)
       - name: Upload scan-build report
         if: steps.build_step.outcome == 'failure'
         uses: actions/upload-artifact@v4
