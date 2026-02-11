@@ -33,7 +33,7 @@ cd ../../
 PWD=`pwd`
 
 # Logging the call
-echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/logs/active-responses.log
+echo "$(date '+%Y/%m/%d %H:%M:%S') $0 $1 $2 $3 $4 $5" >> ${PWD}/logs/active-responses.log
 
 # Rules and decoders test
 if [ "$TYPE" = "manager" ]; then
