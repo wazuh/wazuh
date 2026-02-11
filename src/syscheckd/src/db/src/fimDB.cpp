@@ -53,9 +53,9 @@ void FIMDB::executeQuery(const nlohmann::json& item, ResultCallbackData callback
     {
         m_dbsyncHandler->selectRows(item, callbackData);
     }
-    else
+    else if (m_loggingFunction)
     {
-        throw std::runtime_error("FIMDB is not initialized or is shutting down");
+        m_loggingFunction(LOG_DEBUG, "Query not executed: FIMDB is not initialized or is shutting down");
     }
 }
 
