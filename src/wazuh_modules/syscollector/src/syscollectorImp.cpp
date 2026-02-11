@@ -304,7 +304,7 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
                 // The event will still be sent as stateless (below)
                 if (m_logFunction)
                 {
-                    m_logFunction(LOG_DEBUG, "Document limit reached for table " + table + ", skipping persistence");
+                    m_logFunction(LOG_DEBUG_VERBOSE, "Document limit reached for table " + table + ", skipping persistence");
                 }
             }
             else
@@ -2377,7 +2377,7 @@ std::vector<nlohmann::json> Syscollector::fetchAllFromTable(const std::string& t
         if (m_logFunction)
         {
             std::string filterInfo = rowFilterClause.empty() ? " (no limit filter)" : " with synced=1";
-            m_logFunction(LOG_DEBUG, "Fetched " + std::to_string(results.size()) + " rows" + filterInfo +
+            m_logFunction(LOG_DEBUG_VERBOSE, "Fetched " + std::to_string(results.size()) + " rows" + filterInfo +
                           " from table " + tableName + " (excluded " + std::to_string(excludeIds.size()) + " DataValue items)");
         }
     }
@@ -3165,7 +3165,7 @@ bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
 
                     if (m_logFunction)
                     {
-                        m_logFunction(LOG_INFO, "Document limit set to unlimited for index '" + index +
+                        m_logFunction(LOG_DEBUG, "Document limit set to unlimited for index '" + index +
                                       "' (promoted " + std::to_string(promoted) + " unsynced items, total synced: " +
                                       std::to_string(currentCount + promoted) + ")");
                     }
@@ -3292,7 +3292,7 @@ bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
 
                     if (m_logFunction)
                     {
-                        m_logFunction(LOG_INFO, "Document limit set for index '" + index + "': " +
+                        m_logFunction(LOG_DEBUG, "Document limit set for index '" + index + "': " +
                                       std::to_string(newLimit) +
                                       " (current synced count: " + std::to_string(currentCount) + ")");
                     }
@@ -3341,7 +3341,7 @@ std::optional<nlohmann::json> Syscollector::fetchDocumentLimitsFromAgentd()
         {
             if (m_logFunction)
             {
-                m_logFunction(LOG_INFO, "Failed to fetch document limits from agentd, retrying...");
+                m_logFunction(LOG_DEBUG, "Failed to fetch document limits from agentd, retrying...");
             }
 
             std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -3356,7 +3356,7 @@ std::optional<nlohmann::json> Syscollector::fetchDocumentLimitsFromAgentd()
 
             if (m_logFunction)
             {
-                m_logFunction(LOG_INFO, "Successfully fetched document limits from agentd");
+                m_logFunction(LOG_DEBUG, "Successfully fetched document limits from agentd");
                 m_logFunction(LOG_DEBUG, "Document limits received:   " + limitsJson.dump());
             }
 
@@ -3376,7 +3376,7 @@ std::optional<nlohmann::json> Syscollector::fetchDocumentLimitsFromAgentd()
     // Only reaches here if stopped before any attempt
     if (m_logFunction)
     {
-        m_logFunction(LOG_INFO, "Document limits fetch aborted by stop signal");
+        m_logFunction(LOG_DEBUG, "Document limits fetch aborted by stop signal");
     }
 
     return std::nullopt;
@@ -3525,7 +3525,7 @@ bool Syscollector::checkDocumentLimit(const std::string& table,
             // Not synced, don't generate DELETE event
             if (m_logFunction)
             {
-                m_logFunction(LOG_DEBUG,
+                m_logFunction(LOG_DEBUG_VERBOSE,
                               "Skipping DELETE event for non-synced record in table '" + table +
                               "' (synced=0).");
             }
@@ -3568,7 +3568,7 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG, reason + ": No unsynced items available to promote for index '" + index + "'");
+            m_logFunction(LOG_DEBUG_VERBOSE, reason + ": No unsynced items available to promote for index '" + index + "'");
         }
 
         return 0;
@@ -3579,7 +3579,7 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
 
     if (m_logFunction)
     {
-        m_logFunction(LOG_INFO, reason + ": Promoting " + std::to_string(toPromote) +
+        m_logFunction(LOG_DEBUG, reason + ": Promoting " + std::to_string(toPromote) +
                       " unsynced items for index '" + index + "'");
     }
 
@@ -3610,7 +3610,7 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
 
     if (m_logFunction)
     {
-        m_logFunction(LOG_DEBUG, "promoteUnsyncedItems: orderByClause='" + orderByClause +
+        m_logFunction(LOG_DEBUG_VERBOSE, "promoteUnsyncedItems: orderByClause='" + orderByClause +
                       "', query=" + selectQuery.query().dump());
     }
 
@@ -3642,7 +3642,7 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
         {
             if (m_logFunction)
             {
-                m_logFunction(LOG_ERROR, "Failed to promote record in table " + tableName +
+                m_logFunction(LOG_DEBUG, "Failed to promote record in table " + tableName +
                               ": " + std::string(e.what()));
             }
         }
@@ -3655,7 +3655,7 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
 
         if (m_logFunction)
         {
-            m_logFunction(LOG_INFO, reason + ": Successfully promoted " +
+            m_logFunction(LOG_DEBUG, reason + ": Successfully promoted " +
                           std::to_string(itemsToMarkSynced.size()) + " records for index '" + index + "'");
         }
     }
@@ -3702,7 +3702,7 @@ void Syscollector::promoteItemsAfterScan()
         {
             if (m_logFunction)
             {
-                m_logFunction(LOG_DEBUG, "Index '" + index + "' is at limit (" +
+                m_logFunction(LOG_DEBUG_VERBOSE, "Index '" + index + "' is at limit (" +
                               std::to_string(limit) + "), no items to promote");
             }
 
@@ -3711,7 +3711,7 @@ void Syscollector::promoteItemsAfterScan()
 
         if (m_logFunction)
         {
-            m_logFunction(LOG_INFO, "Index '" + index + "' has " +
+            m_logFunction(LOG_DEBUG_VERBOSE, "Index '" + index + "' has " +
                           std::to_string(availableSpace) + " available slots (current: " +
                           std::to_string(currentCount) + ", limit: " + std::to_string(limit) +
                           "). Promoting items with deterministic ordering.");
@@ -3726,7 +3726,7 @@ void Syscollector::promoteItemsAfterScan()
 
         if (m_logFunction && promoted > 0)
         {
-            m_logFunction(LOG_INFO, "Successfully promoted " + std::to_string(promoted) +
+            m_logFunction(LOG_DEBUG_VERBOSE, "Successfully promoted " + std::to_string(promoted) +
                           " items for index '" + index + "' (new count: " +
                           std::to_string(m_documentCounts[index]) + ")");
         }
@@ -4517,7 +4517,7 @@ void Syscollector::updateSyncedFlagInDB(const std::vector<std::pair<std::string,
 
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG, "Updated synced=" + std::to_string(syncedValue) +
+            m_logFunction(LOG_DEBUG_VERBOSE, "Updated synced=" + std::to_string(syncedValue) +
                           " for " + std::to_string(itemsToUpdate.size()) + " item(s) in DBSync");
         }
     }

@@ -4512,7 +4512,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_ValidInput_UnlimitedPackages)
     EXPECT_TRUE(logCapture->contains(LOG_INFO, "Document limits successfully configured from agentd"))
             << "Expected success message about document limits";
 
-    EXPECT_TRUE(logCapture->contains(LOG_INFO, "Document limit set to unlimited for index 'wazuh-states-inventory-packages'"))
+    EXPECT_TRUE(logCapture->contains(LOG_DEBUG, "Document limit set to unlimited for index 'wazuh-states-inventory-packages'"))
             << "Expected info log about unlimited packages";
 }
 
@@ -4780,7 +4780,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_ValidInput_NumericLimit)
 
     // When currentCount (0) < newLimit (100), it attempts to promote unsynced items
     // Since there are no unsynced items, it logs a DEBUG message
-    EXPECT_TRUE(logCapture->contains(LOG_DEBUG, "Document limit increased from 0 to 100: No unsynced items available to promote"))
+    EXPECT_TRUE(logCapture->contains(LOG_DEBUG_VERBOSE, "Document limit increased from 0 to 100: No unsynced items available to promote"))
             << "Expected debug log about no unsynced items to promote";
 }
 
@@ -4871,12 +4871,12 @@ TEST_F(SyscollectorImpTest, DocumentLimits_EndToEnd_Summary)
             << "Expected success message about document limits";
 
     // Verify that limits were set for each index
-    EXPECT_TRUE(logCapture->contains(LOG_DEBUG, "Document limit increased from 0 to 50"))
+    EXPECT_TRUE(logCapture->contains(LOG_DEBUG_VERBOSE, "Document limit increased from 0 to 50"))
             << "Expected packages limit to be set to 50";
 
-    EXPECT_TRUE(logCapture->contains(LOG_INFO, "Document limit set to unlimited for index 'wazuh-states-inventory-processes'"))
+    EXPECT_TRUE(logCapture->contains(LOG_DEBUG, "Document limit set to unlimited for index 'wazuh-states-inventory-processes'"))
             << "Expected processes to be unlimited (0)";
 
-    EXPECT_TRUE(logCapture->contains(LOG_DEBUG, "Document limit increased from 0 to 10"))
+    EXPECT_TRUE(logCapture->contains(LOG_DEBUG_VERBOSE, "Document limit increased from 0 to 10"))
             << "Expected hotfixes limit to be set to 10";
 }
