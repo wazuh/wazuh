@@ -234,10 +234,12 @@ endif()
 add_subdirectory(syscheckd)
 
 # Wazuh Modules
-add_subdirectory(wazuh_modules/agent_info)
-add_subdirectory(wazuh_modules/sca)
-if(ENABLE_SYSC)
-  add_subdirectory(wazuh_modules/syscollector)
+if(NOT "${TARGET}" STREQUAL "server")
+  add_subdirectory(wazuh_modules/agent_info)
+  add_subdirectory(wazuh_modules/sca)
+  if(ENABLE_SYSC)
+    add_subdirectory(wazuh_modules/syscollector)
+  endif()
 endif()
 
 # Wazuh Modules - Server only

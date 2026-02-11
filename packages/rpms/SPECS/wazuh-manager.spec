@@ -708,9 +708,6 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/lib/libagent_metadata.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libagent_sync_protocol.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libschema_validator.so
-%attr(750, root, wazuh) %{_localstatedir}/lib/libsyscollector.so
-%attr(750, root, wazuh) %{_localstatedir}/lib/libsca.so
-%attr(750, root, wazuh) %{_localstatedir}/lib/libagent_info.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libsysinfo.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libjemalloc.so.2
 %attr(750, root, wazuh) %{_localstatedir}/lib/libstdc++.so.6

@@ -34,7 +34,6 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     }
 
     // Allocate memory
-
     if ((cur_wmodule = *wmodules)) {
         cur_wmodule_exists = *wmodules;
         int found = 0;
@@ -66,11 +65,10 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     }
 
     // Get children
-
     if (children = OS_GetElementsbyNode(xml, node), !children) {
         mdebug1("Empty configuration for module '%s'", node->values[0]);
     }
-
+    
     // Select module by name
 
     //osQuery monitor module
@@ -82,10 +80,14 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     }
 #ifdef ENABLE_SYSC
     else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)) {
+#ifdef CLIENT
         if (wm_syscollector_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
+#else
+        mdebug1("Syscollector scan is disabled for the manager. Skipping.");
+#endif
     }
 #endif
     else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name)) {

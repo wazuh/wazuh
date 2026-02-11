@@ -885,7 +885,6 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroupsWithInvalidHash)
                       "test_path", nullptr, m_logFunction, m_queryModuleFunction,
                       m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
 
-    m_agentInfo->setIsAgent(true);
 
     m_agentInfo->start(1, 86400, []()
     {
