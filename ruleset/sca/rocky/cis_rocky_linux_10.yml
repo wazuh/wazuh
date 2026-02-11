@@ -1,20 +1,34 @@
+# Security Configuration Assessment
+# CIS Checks for Rocky Linux 10
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# Based on:
+# Center for Internet Security Rocky Linux 10 Benchmark v1.0.0 - 09-30-2025
+
 policy:
-  id: ""
-  file: ""
-  name: ""
-  description: ""
+  id: "cis_rocky_linux_10"
+  file: "cis_rocky_linux_10.yml"
+  name: "CIS Rocky Linux 10 Benchmark v1.0.0"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Rocky Linux 10 systems running on x86_64 platforms.This document was tested against Rocky Linux 10."
   references:
+    - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
-  title: ""
-  description: ""
+  title: "Check RL10 family platform."
+  description: "Requirements for running the policy against Rocky Linux 10 family."
   condition: any
   rules:
+    - 'f:/etc/redhat-release -> r:^Rocky Linux && r:release 10'
 
 variables:
+  $sshd_file: /etc/ssh/sshd_config
 
 checks:
-
 
   # 1.1.1.2 Ensure freevxfs kernel module is not available. (Automated)
    - id: 18500
@@ -116,8 +130,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - "c:modprobe -n -v overlay -> r:install /bin/false|install /bin/true|Module overlay not found"
+      - "not c:lsmod -> r:overlay"
 
   # 1.1.1.7 Ensure squashfs kernel module is not available. (Automated)
    - id: 18505
@@ -176,8 +192,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - "c:modprobe -n -v firewire-core -> r:install /bin/false|install /bin/true|Module firewire-core not found"
+      - "not c:lsmod -> r:firewire-core"
 
   # 1.1.1.10 Ensure usb-storage kernel module is not available. (Automated)
    - id: 18508
@@ -265,8 +283,10 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:findmnt --kernel /tmp -> r:^/tmp\s'
+      - "c:systemctl is-enabled tmp.mount -> r:enabled|static|generated"
 
   # 1.1.2.1.2 Ensure nodev option set on /tmp partition. (Automated)
    - id: 18511
@@ -285,8 +305,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:findmnt --kernel /tmp -> r:nodev"
 
   # 1.1.2.1.3 Ensure nosuid option set on /tmp partition. (Automated)
    - id: 18512
@@ -352,8 +373,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:findmnt --kernel /dev/shm -> r:^/dev/shm\s'
 
   # 1.1.2.2.2 Ensure nodev option set on /dev/shm partition. (Automated)
    - id: 18515
@@ -372,8 +394,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:findmnt --kernel /dev/shm -> r:nodev"
 
   # 1.1.2.2.3 Ensure nosuid option set on /dev/shm partition. (Automated)
    - id: 18516
@@ -392,8 +415,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:findmnt --kernel /dev/shm -> r:nosuid"
 
   # 1.1.2.2.4 Ensure noexec option set on /dev/shm partition. (Automated)
    - id: 18517
@@ -412,8 +436,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:findmnt --kernel /dev/shm -> r:noexec"
 
   # 1.1.2.3.1 Ensure separate partition exists for /home. (Automated)
    - id: 18518
@@ -435,8 +460,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:findmnt --kernel /home -> r:^/home\s'
 
   # 1.1.2.3.2 Ensure nodev option set on /home partition. (Automated)
    - id: 18519
@@ -455,8 +481,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:findmnt --kernel /home -> r:nodev"
 
   # 1.1.2.3.3 Ensure nosuid option set on /home partition. (Automated)
    - id: 18520
@@ -499,8 +526,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:findmnt --kernel /var -> r:^/var\s'
 
   # 1.1.2.4.2 Ensure nodev option set on /var partition. (Automated)
    - id: 18522
@@ -519,8 +547,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:findmnt --kernel /var -> r:nodev"
 
   # 1.1.2.4.3 Ensure nosuid option set on /var partition. (Automated)
    - id: 18523
@@ -668,8 +697,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:findmnt --kernel /var/log -> r:nodev"
 
   # 1.1.2.6.3 Ensure nosuid option set on /var/log partition. (Automated)
    - id: 18530
@@ -729,8 +759,9 @@ checks:
        - iso_27001-2013: ["A.12.4.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:findmnt --kernel /var/log/audit -> r:^/var/log/audit\s'
 
   # 1.1.2.7.2 Ensure nodev option set on /var/log/audit partition. (Automated)
    - id: 18533
@@ -791,25 +822,11 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:findmnt --kernel /var/log/audit -> r:noexec"
 
-  # 1.2.1.1 Ensure GPG keys are configured. (Manual)
-   - id: 18536
-     title: "Ensure GPG keys are configured."
-     description: "The RPM Package Manager implements GPG key signing to verify package integrity during and after installation."
-     rationale: "It is important to ensure that updates are obtained from a valid source to protect against spoofing that could lead to the inadvertent installation of malware on the system. To this end, verify that GPG keys are configured correctly for your system."
-     remediation: "Update your package manager GPG keys in accordance with site policy."
-     compliance:
-       - cis: ["1.2.1.1"]
-       - cis_csc_v8: ["7.3", "7.4"]
-       - cis_csc_v7: ["3.4", "3.5"]
-       - cmmc_v2.0: ["SI.L1-3.14.1"]
-       - nist_sp_800-53: ["SI-2(2)"]
-       - pci_dss_v3.2.1: ["6.2"]
-       - soc_2: ["CC7.1"]
-     condition:
-     rules:
+  # 1.2.1.1 Ensure GPG keys are configured. (Manual) - Not Implemented
 
   # 1.2.1.2 Ensure gpgcheck is configured. (Automated)
    - id: 18537
@@ -825,43 +842,13 @@ checks:
        - nist_sp_800-53: ["SI-2(2)"]
        - pci_dss_v3.2.1: ["6.2"]
        - soc_2: ["CC7.1"]
-     condition:
+     condition: any
      rules:
+      - 'f:/etc/dnf/dnf.conf -> r:^\s*gpgcheck\s*=\s*1|^\s*gpgcheck\s*=\s*true|^\s*gpgcheck\s*=\s*yes'
+      - 'd:/etc/yum.repos.d/ -> r:.*\.repo -> r:^\s*gpgcheck\s*=\s*1|^\s*gpgcheck\s*=\s*true|^\s*gpgcheck\s*=\s*yes'
 
-  # 1.2.1.3 Ensure repo_gpgcheck is globally activated. (Manual)
-   - id: 18538
-     title: "Ensure repo_gpgcheck is globally activated."
-     description: "The repo_gpgcheck option, found in the main section of the /etc/dnf/dnf.conf and individual /etc/yum.repos.d/* files, will perform a GPG signature check on the repodata."
-     rationale: "It is important to ensure that the repository data signature is always checked prior to installation to ensure that the software is not tampered with in any way."
-     impact: "Not all repositories, notably RedHat, support repo_gpgcheck. Take care to set this value to false (default) for particular repositories that do not support it. If enabled on repositories that do not support repo_gpgcheck installation of packages will fail. Research is required by the user to determine which repositories are configured on the local system and, from that list, which support repo_gpgcheck."
-     remediation: "Global configuration Edit /etc/dnf/dnf.conf and set repo_gpgcheck=1 in the [main] section. Example: [main] repo_gpgcheck=1 Per repository configuration First check that the particular repository support GPG checking on the repodata. Edit any failing files in /etc/yum.repos.d/* and set all instances starting with repo_gpgcheck to 1."
-     compliance:
-       - cis: ["1.2.1.3"]
-       - cis_csc_v8: ["7.3"]
-       - cis_csc_v7: ["3.4"]
-       - cmmc_v2.0: ["SI.L1-3.14.1"]
-       - nist_sp_800-53: ["SI-2(2)"]
-       - pci_dss_v3.2.1: ["6.2"]
-       - soc_2: ["CC7.1"]
-     condition:
-     rules:
-
-  # 1.2.1.4 Ensure package manager repositories are configured. (Manual)
-   - id: 18539
-     title: "Ensure package manager repositories are configured."
-     description: "Systems need to have the respective package manager repositories configured to ensure that the system is able to receive the latest patches and updates."
-     rationale: "If a system's package repositories are misconfigured, important patches may not be identified or a rogue repository could introduce compromised software."
-     remediation: "Configure your package manager repositories according to site policy."
-     compliance:
-       - cis: ["1.2.1.4"]
-       - cis_csc_v8: ["7.3", "7.4"]
-       - cis_csc_v7: ["3.4", "3.5"]
-       - cmmc_v2.0: ["SI.L1-3.14.1"]
-       - nist_sp_800-53: ["SI-2(2)"]
-       - pci_dss_v3.2.1: ["6.2"]
-       - soc_2: ["CC7.1"]
-     condition:
-     rules:
+  # 1.2.1.3 Ensure repo_gpgcheck is globally activated. (Manual) - Not Implemented
+  # 1.2.1.4 Ensure package manager repositories are configured. (Manual) - Not Implemented
 
   # 1.2.1.5 Ensure weak dependencies are configured. (Automated)
    - id: 18540
@@ -880,25 +867,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/dnf/dnf.conf -> r:^\s*install_weak_deps\s*=\s*0|^\s*install_weak_deps\s*=\s*no|^\s*install_weak_deps\s*=\s*false'
 
-  # 1.2.2.1 Ensure updates, patches, and additional security software are installed. (Manual)
-   - id: 18541
-     title: "Ensure updates, patches, and additional security software are installed."
-     description: "Security vulnerabilities and functional improvements are regularly addressed through software updates and patches."
-     rationale: "Unpatched software can expose systems to known vulnerabilities that may be exploited by attackers. It is recommended that operating system updates be performed on enterprise assets through automated patch management on a monthly, or more frequent, basis."
-     remediation: "Use your package manager to update all packages on the system according to site policy. The following command will install all available updates: # dnf update Once the update process is complete, verify if reboot is required to load changes. dnf needs-restarting -r."
-     compliance:
-       - cis: ["1.2.2.1"]
-       - cis_csc_v8: ["7.3", "7.4"]
-       - cis_csc_v7: ["3.4", "3.5"]
-       - cmmc_v2.0: ["SI.L1-3.14.1"]
-       - nist_sp_800-53: ["SI-2(2)"]
-       - pci_dss_v3.2.1: ["6.2"]
-       - soc_2: ["CC7.1"]
-     condition:
-     rules:
+  # 1.2.2.1 Ensure updates, patches, and additional security software are installed. (Manual) - Not Implemented
 
   # 1.3.1.1 Ensure SELinux is installed. (Automated)
    - id: 18542
@@ -917,8 +890,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:rpm -q libselinux -> r:^libselinux-"
 
   # 1.3.1.2 Ensure SELinux is not disabled in bootloader configuration. (Automated)
    - id: 18543
@@ -959,8 +933,10 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:sestatus -> r:^Loaded policy name:\s+targeted$|^Loaded policy name:\s+mls$'
+      - 'f:/etc/selinux/config -> r:^\s*SELINUXTYPE\s*=\s*targeted|^\s*SELINUXTYPE\s*=\s*mls'
 
   # 1.3.1.4 Ensure the SELinux mode is not disabled. (Automated)
    - id: 18545
@@ -981,8 +957,10 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:getenforce -> r:^Enforcing$|^Permissive$"
+      - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing|\s*SELINUX\s*=\s*permisive'
 
   # 1.3.1.5 Ensure the SELinux mode is enforcing. (Automated)
    - id: 18546
@@ -1008,30 +986,7 @@ checks:
      rules:
       - "c:getenforce -> r:^Enforcing$"
 
-  # 1.3.1.6 Ensure no unconfined services exist. (Manual)
-   - id: 18547
-     title: "Ensure no unconfined services exist."
-     description: "Unconfined processes run in unconfined domains."
-     rationale: "For unconfined processes, SELinux policy rules are applied, but policy rules exist that allow processes running in unconfined domains almost all access. Processes running in unconfined domains fall back to using DAC rules exclusively. If an unconfined process is compromised, SELinux does not prevent an attacker from gaining access to system resources and data, but of course, DAC rules are still used. SELinux is a security enhancement on top of DAC rules – it does not replace them."
-     impact: "Confining a service that inherently requires unconfined access to function may disrupt its intended operations. This restriction may lead to downtime, degraded performance, or loss in functionality. It is crucial to analyze and adjust SELinux policies in accordance with site security policies and operational requirements."
-     remediation: "Investigate any unconfined processes found during the audit action. If necessary create a customize SELinux policy to allow necessary actions for the service. Warning: Knowledge about creating and configuring SELinux policies is needed. A Basic example on how to create a policy is included below. 1. Identify the unconfined service: determine the name and process of the service 2. Identify the functionality: determine if the functionality is required for operations 3. Create or add to the custom allow list in the SELinux policy configuration Example SELinux policy configuration: service_allowlist_policy.te # Example SELinux policy configuration for allowing access to specific actions and resources for a service module my_service 1.0; require { type my_service_t; type system_resource_t; class file { read write execute }; class dir { read write add_name }; class tcp_socket name_connect; } allow my_service_t system_resource_t:file { read write execute }; # Allow my_service_t to read, write, and execute files with the system_resource_t context allow my_service_t system_resource_t:dir { read write add_name }; # Allow my_service_t to read and write to directories with the system_resource_t context allow my_service_t system_resource_t:tcp_socket name_connect; # Allow my_service_t to establish TCP connections 4. Compile the policy # checkmodule -M -, -o service_allowlist_policy.mod service_allowlist_policy.te 5. Create the package # semodule_package -o service_allowlist_policy.pp -m service_allowlist_policy.mod 6. Load the policy # semodule -i service_allowlist_policy.pp 7. Apply the policy to the service # chcon -t se service_allowlist_policy /path/to/service_binary."
-     references:
-       - 'https://nb.fedorapeople.org/cvsfedora/web/html/docs/selinux-guide/f10/en-'
-       - 'https://access.redhat.com/documentation/en-'
-       - 'https://access.redhat.com/documentation/id-'
-     compliance:
-       - cis: ["1.3.1.6"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  # 1.3.1.6 Ensure no unconfined services exist. (Manual) - Not Implemented
 
   # 1.3.1.7 Ensure the MCS Translation Service (mcstrans) is not installed. (Automated)
    - id: 18548
@@ -1089,8 +1044,10 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*set superusers'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*password'
 
   # 1.4.2 Ensure access to bootloader config is configured. (Automated)
    - id: 18551
@@ -1126,8 +1083,10 @@ checks:
        - cis: ["1.5.1"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+      - 'not f:/etc/security/limits.conf -> n:^\s*hard\s*core\s*=\s*(/d+) compare != 0'
+      - 'not d:/etc/security/limits.d/ -> r:.* && n:^\s*hard\s*core\s*=\s*(/d+) compare != 0'
 
   # 1.5.2 Ensure fs.protected_hardlinks is configured. (Automated)
    - id: 18553
@@ -1139,8 +1098,9 @@ checks:
        - cis: ["1.5.2"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+      - "c:sysctl fs.protected_hardlinks -> r:^fs\\.protected_hardlinks = 1"
 
   # 1.5.3 Ensure fs.protected_symlinks is configured. (Automated)
    - id: 18554
@@ -1152,8 +1112,9 @@ checks:
        - cis: ["1.5.3"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+      - "c:sysctl fs.protected_symlinks -> r:^fs\\.protected_symlinks = 1"
 
   # 1.5.4 Ensure fs.suid_dumpable is configured. (Automated)
    - id: 18555
@@ -1165,8 +1126,9 @@ checks:
        - cis: ["1.5.4"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+      - "c:sysctl fs.suid_dumpable -> r:^fs\\.suid_dumpable = 0"
 
   # 1.5.5 Ensure kernel.dmesg_restrict is configured. (Automated)
    - id: 18556
@@ -1185,8 +1147,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:sysctl kernel.dmesg_restrict -> r:^kernel\\.dmesg_restrict = 1"
 
   # 1.5.6 Ensure kernel.kptr_restrict is configured. (Automated)
    - id: 18557
@@ -1198,8 +1161,9 @@ checks:
        - cis: ["1.5.6"]
        - cis_csc_v7: ["4.8", "9.2"]
        - iso_27001-2013: ["A.12.4.3", "A.13.1.3"]
-     condition:
+     condition: all
      rules:
+      - "c:sysctl kernel.kptr_restrict -> r:^kernel\\.kptr_restrict = 1|^kernel\\.kptr_restrict = 2"
 
   # 1.5.7 Ensure kernel.yama.ptrace_scope is configured. (Automated)
    - id: 18558
@@ -1216,8 +1180,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:sysctl kernel.yama.ptrace_scope -> r:^kernel\\.yama.ptrace_scope = 1"
 
   # 1.5.8 Ensure kernel.randomize_va_space is configured. (Automated)
    - id: 18559
@@ -1232,8 +1197,9 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - "c:sysctl kernel.randomize_va_space -> r:^kernel\\.randomize_va_space = 2"
 
   # 1.5.9 Ensure systemd-coredump ProcessSizeMax is configured. (Automated)
    - id: 18560
@@ -1245,8 +1211,9 @@ checks:
        - cis: ["1.5.9"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/systemd/coredump.conf.d/ -> r:.*\.conf -> r:^\s*ProcessSizeMax\s*=\s*0'
 
   # 1.5.10 Ensure systemd-coredump Storage is configured. (Automated)
    - id: 18561
@@ -1258,8 +1225,9 @@ checks:
        - cis: ["1.5.10"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/systemd/coredump.conf.d/ -> r:.*\.conf -> r:^\s*Storage\s*=\s*none'
 
   # 1.6.1 Ensure system wide crypto policy is not set to legacy. (Automated)
    - id: 18562
@@ -1280,8 +1248,9 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+      - 'not f:/etc/crypto-policies/config -> r:LEGACY'
 
   # 1.6.2 Ensure system wide crypto policy disables sha1 hash and signature support. (Automated)
    - id: 18563
@@ -1302,8 +1271,9 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/cryptopolicies/state/CURRENT.pol -> r:^\s*sha1_in_certs\s*=\s*0'
 
   # 1.6.3 Ensure system wide crypto policy macs are configured. (Automated)
    - id: 18564
