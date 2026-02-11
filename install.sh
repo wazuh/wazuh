@@ -924,6 +924,7 @@ A clean installation is required for managers."
                     ct="0"
                 fi
 
+                fi
             fi
         fi
     fi

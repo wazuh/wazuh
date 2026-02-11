@@ -341,13 +341,6 @@ w_err_t w_auth_validate_data(char *response,
         }
     }
 
-    /* Check whether the agent name is the same as the manager */
-    if (result != OS_INVALID && !strcmp(agentname, shost)) {
-        merror("Invalid agent name %s (same as manager)", agentname);
-        snprintf(response, OS_SIZE_2048, "ERROR: Invalid agent name: %s", agentname);
-        result = OS_INVALID;
-    }
-
     /* Check for duplicate name */
     if (result != OS_INVALID && (index = OS_IsAllowedName(&keys, agentname), index >= 0)) {
         if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, &config.force_options, &str_result)) {
