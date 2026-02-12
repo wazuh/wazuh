@@ -804,13 +804,19 @@ main()
             pidir_service_name="wazuh-manager"
         fi
 
-        if getPreinstalledDirByType && isWazuhInstalled "$PREINSTALLEDDIR"; then
-            PRE_TYPE=$(getPreinstalledType)
-            if [ "X$INSTYPE" = "Xagent" ] && [ "X$PRE_TYPE" != "Xagent" ]; then
-                PREINSTALLEDDIR=""
-            elif [ "X$INSTYPE" != "Xagent" ] && [ "X$PRE_TYPE" = "Xagent" ]; then
+        if getPreinstalledDirByType; then
+            if isWazuhInstalled "$PREINSTALLEDDIR"; then
+                PRE_TYPE=$(getPreinstalledType)
+                if [ "X$INSTYPE" = "Xagent" ] && [ "X$PRE_TYPE" != "Xagent" ]; then
+                    PREINSTALLEDDIR=""
+                elif [ "X$INSTYPE" != "Xagent" ] && [ "X$PRE_TYPE" = "Xagent" ]; then
+                    PREINSTALLEDDIR=""
+                fi
+            else
                 PREINSTALLEDDIR=""
             fi
+        else
+            PREINSTALLEDDIR=""
         fi
 
         if [ "X$PREINSTALLEDDIR" != "X" ]; then
@@ -859,63 +865,66 @@ main()
                     USER_OLD_VERSION=`getPreinstalledVersion`
                     USER_OLD_NAME=`getPreinstalledName`
 
+                    if [ "X${USER_INSTALL_TYPE}" = "X" ]; then
+                        USER_INSTALL_TYPE="${INSTYPE}"
+                    fi
 
-                # Validate upgrade constraints for Wazuh 5.0.0
-                if [ -n "$USER_OLD_VERSION" ]; then
-                    OLD_MAJOR=$(echo "$USER_OLD_VERSION" | sed 's/^v//' | cut -d. -f1)
-                    OLD_MINOR=$(echo "$USER_OLD_VERSION" | sed 's/^v//' | cut -d. -f2)
+                    # Validate upgrade constraints for Wazuh 5.0.0
+                    if [ -n "$USER_OLD_VERSION" ]; then
+                        OLD_MAJOR=$(echo "$USER_OLD_VERSION" | sed 's/^v//' | cut -d. -f1)
+                        OLD_MINOR=$(echo "$USER_OLD_VERSION" | sed 's/^v//' | cut -d. -f2)
 
-                    UPGRADE_BLOCKED="no"
-                    ERROR_MESSAGE=""
+                        UPGRADE_BLOCKED="no"
+                        ERROR_MESSAGE=""
 
-                    if [ "$USER_INSTALL_TYPE" = "agent" ]; then
-                        # Agent: Block upgrades from < 4.14.0
-                        if [ -n "$OLD_MAJOR" ] && [ -n "$OLD_MINOR" ]; then
-                            if [ "$OLD_MAJOR" -lt 4 ] || { [ "$OLD_MAJOR" -eq 4 ] && [ "$OLD_MINOR" -lt 14 ]; }; then
+                        if [ "$USER_INSTALL_TYPE" = "agent" ]; then
+                            # Agent: Block upgrades from < 4.14.0
+                            if [ -n "$OLD_MAJOR" ] && [ -n "$OLD_MINOR" ]; then
+                                if [ "$OLD_MAJOR" -lt 4 ] || { [ "$OLD_MAJOR" -eq 4 ] && [ "$OLD_MINOR" -lt 14 ]; }; then
+                                    UPGRADE_BLOCKED="yes"
+                                    ERROR_MESSAGE="Current version: $USER_OLD_VERSION
+Target version:  5.0.0
+
+Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later."
+                                fi
+                            fi
+                        else
+                            # Manager: Block all upgrades from 4.x
+                            if [ -n "$OLD_MAJOR" ] && [ "$OLD_MAJOR" -lt 5 ]; then
                                 UPGRADE_BLOCKED="yes"
                                 ERROR_MESSAGE="Current version: $USER_OLD_VERSION
 Target version:  5.0.0
 
-Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later."
-                            fi
-                        fi
-                    else
-                        # Manager: Block all upgrades from 4.x
-                        if [ -n "$OLD_MAJOR" ] && [ "$OLD_MAJOR" -lt 5 ]; then
-                            UPGRADE_BLOCKED="yes"
-                            ERROR_MESSAGE="Current version: $USER_OLD_VERSION
-Target version:  5.0.0
-
 Upgrade to Wazuh 5.0.0 is not supported from version 4.x.
 A clean installation is required for managers."
+                            fi
                         fi
-                    fi
 
-                    if [ "$UPGRADE_BLOCKED" = "yes" ]; then
-                        echo ""
-                        echo "═════════════════════════════════════════════════════════════════"
-                        echo "  UPGRADE BLOCKED: Incompatible version detected"
-                        echo "═════════════════════════════════════════════════════════════════"
-                        echo ""
-                        echo "$ERROR_MESSAGE"
-                        echo ""
-                        echo "Required action:"
-                        if [ "$USER_INSTALL_TYPE" = "agent" ]; then
-                            echo "  1. Upgrade to version 4.14.0 or later first"
-                            echo "  2. Then upgrade to 5.0.0"
-                        else
-                            echo "  1. Backup your configuration"
-                            echo "  2. Perform a clean installation of 5.0.0"
-                            echo "  3. Restore your configuration"
+                        if [ "$UPGRADE_BLOCKED" = "yes" ]; then
+                            echo ""
+                            echo "═════════════════════════════════════════════════════════════════"
+                            echo "  UPGRADE BLOCKED: Incompatible version detected"
+                            echo "═════════════════════════════════════════════════════════════════"
+                            echo ""
+                            echo "$ERROR_MESSAGE"
+                            echo ""
+                            echo "Required action:"
+                            if [ "$USER_INSTALL_TYPE" = "agent" ]; then
+                                echo "  1. Upgrade to version 4.14.0 or later first"
+                                echo "  2. Then upgrade to 5.0.0"
+                            else
+                                echo "  1. Backup your configuration"
+                                echo "  2. Perform a clean installation of 5.0.0"
+                                echo "  3. Restore your configuration"
+                            fi
+                            echo ""
+                            echo "For more information, visit:"
+                            echo "  https://documentation.wazuh.com/current/upgrade-guide/"
+                            echo "═════════════════════════════════════════════════════════════════"
+                            echo ""
+                            exit 1
                         fi
-                        echo ""
-                        echo "For more information, visit:"
-                        echo "  https://documentation.wazuh.com/current/upgrade-guide/"
-                        echo "═════════════════════════════════════════════════════════════════"
-                        echo ""
-                        exit 1
                     fi
-                fi
 
                 ct="1"
 

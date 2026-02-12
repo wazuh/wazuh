@@ -25,7 +25,7 @@ case "$1" in
             OLD_VERSION="$2"
             OLD_MAJOR=$(echo "$OLD_VERSION" | cut -d. -f1)
 
-            if [ "$OLD_MAJOR" = "4" ]; then
+            if [ -n "$OLD_MAJOR" ] && [ "$OLD_MAJOR" -le 4 ] 2>/dev/null; then
                 cat <<EOF
 ==============================================================
 ERROR: Direct upgrade from Wazuh Manager 4.X to 5.X is not supported.

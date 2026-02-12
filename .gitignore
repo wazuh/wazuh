@@ -70,6 +70,12 @@ src/wazuh-syscheckd
 src/wazuh-integratord
 src/wazuh-keystore
 src/wazuh-keystore-testtool
+src/wazuh-manager-authd
+src/wazuh-manager-db
+src/wazuh-manager-execd
+src/wazuh-manager-modulesd
+src/wazuh-manager-monitord
+src/wazuh-manager-remoted
 
 # Active responses
 src/firewall-drop
