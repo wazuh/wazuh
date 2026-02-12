@@ -222,7 +222,7 @@ if [ $1 = 2 ]; then
 
   if [ -n "${OLD_VERSION}" ]; then
     OLD_MAJOR=$(echo "${OLD_VERSION}" | sed 's/^v//' | cut -d. -f1)
-    if [ "${OLD_MAJOR}" = "4" ]; then
+    if [ -n "${OLD_MAJOR}" ] && [ "${OLD_MAJOR}" -le 4 ] 2>/dev/null; then
       cat <<EOF
 ==============================================================
 ERROR: Direct upgrade from Wazuh Manager 4.X to 5.X is not supported.
