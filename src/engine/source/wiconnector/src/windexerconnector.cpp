@@ -56,19 +56,29 @@ enum class IndexResourceType
 
 IndexResourceType fromIndexName(std::string_view indexName)
 {
-    // Static regex patterns compiled once
-    static const std::array<std::pair<std::regex, IndexResourceType>, 4> patterns = {
-        {{std::regex(R"(.*-kvdbs$)"), IndexResourceType::KVDB},
-         {std::regex(R"(.*-decoders$)"), IndexResourceType::DECODER},
-         {std::regex(R"(.*-integrations$)"), IndexResourceType::INTEGRATION_DECODER},
-         {std::regex(R"(.*-policies$)"), IndexResourceType::POLICY}}};
+    static const std::regex kvdbPattern(R"(.*-kvdbs$)");
+    static const std::regex decoderPattern(R"(.*-decoders$)");
+    static const std::regex integrationPattern(R"(.*-integrations$)");
+    static const std::regex policyPattern(R"(.*-policies$)");
 
-    for (const auto& [pattern, resourceType] : patterns)
+    if (std::regex_match(indexName.begin(), indexName.end(), kvdbPattern))
     {
-        if (std::regex_match(indexName.begin(), indexName.end(), pattern))
-        {
-            return resourceType;
-        }
+        return IndexResourceType::KVDB;
+    }
+
+    if (std::regex_match(indexName.begin(), indexName.end(), decoderPattern))
+    {
+        return IndexResourceType::DECODER;
+    }
+
+    if (std::regex_match(indexName.begin(), indexName.end(), integrationPattern))
+    {
+        return IndexResourceType::INTEGRATION_DECODER;
+    }
+
+    if (std::regex_match(indexName.begin(), indexName.end(), policyPattern))
+    {
+        return IndexResourceType::POLICY;
     }
 
     throw IndexerConnectorException("Cannot determine resource type from index name: " + std::string(indexName));
