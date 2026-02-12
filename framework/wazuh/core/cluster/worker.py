@@ -17,7 +17,7 @@ from typing import Union
 
 from wazuh.core import cluster as metadata, common, exception, utils, analysis
 from wazuh.core.cluster import client, cluster, common as c_common
-from wazuh.core.cluster.utils import log_subprocess_execution
+from wazuh.core.cluster.utils import log_subprocess_execution, safe_join
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.exception import WazuhException
 from wazuh.core.utils import safe_move, get_utc_now
@@ -789,7 +789,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             data_ : dict
                 File metadata such as modification time, whether it's a merged file or not, etc.
             """
-            full_filename_path = os.path.join(common.WAZUH_PATH, filename)
+            full_filename_path = safe_join(common.WAZUH_PATH, filename)
 
             if data_['merged']:  # worker nodes can only receive agent-groups files
                 # Split merged file into individual files inside zipdir (directory containing unzipped files),
@@ -797,7 +797,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 # The TYPE string used in the 'unmerge_info' function is a placeholder. It corresponds to the
                 # directory inside '{wazuh_path}/queue/' path.
                 for name, content, _ in cluster.unmerge_info('TYPE', zip_path, filename_):
-                    full_unmerged_name = os.path.join(common.WAZUH_PATH, name)
+                    full_unmerged_name = safe_join(common.WAZUH_PATH, name)
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
                     with open(tmp_unmerged_path, 'wb') as f:
                         f.write(content)
@@ -810,7 +810,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 if not os.path.exists(os.path.dirname(full_filename_path)):
                     utils.mkdir_with_mode(os.path.dirname(full_filename_path))
                 # Move the file from zipdir (directory containing unzipped files) to <wazuh_path>/filename.
-                safe_move(os.path.join(zip_path, filename_), full_filename_path,
+                safe_move(safe_join(zip_path, filename_), full_filename_path,
                           permissions=cluster_items['files'][data_['cluster_item_key']]['permissions'],
                           ownership=(common.wazuh_uid(), common.wazuh_gid())
                           )
@@ -835,7 +835,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 for file_to_remove in files:
                     try:
                         result_logs['debug2'][file_to_remove].append(f"Remove file: '{file_to_remove}'")
-                        file_path = os.path.join(common.WAZUH_PATH, file_to_remove)
+                        file_path = safe_join(common.WAZUH_PATH, file_to_remove)
                         try:
                             os.remove(file_path)
                         except OSError as e:
@@ -856,7 +856,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                    if cluster_items['files'][data['cluster_item_key']]['remove_subdirs_if_empty'])
         for directory in directories_to_check:
             try:
-                full_path = os.path.join(common.WAZUH_PATH, directory)
+                full_path = safe_join(common.WAZUH_PATH, directory)
                 dir_files = set(os.listdir(full_path))
                 if not dir_files or dir_files.issubset(set(cluster_items['files']['excluded_files'])):
                     shutil.rmtree(full_path)
