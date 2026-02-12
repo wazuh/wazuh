@@ -11,6 +11,10 @@ inputs:
   tested_docker:
     description: 'image:tag of tested Docker'
     required: true
+  package_path:
+    description: 'Path to mount inside container for the new package'
+    required: false
+    default: '/tmp'
 
 runs:
   using: 'composite'
@@ -20,6 +24,6 @@ runs:
       run: |
         sudo docker run \
           -v ${{ github.action_path }}/:/tests \
-          -v /tmp/:/packages \
+          -v ${{ inputs.package_path }}:/packages \
           --entrypoint '/bin/bash' ${{ inputs.tested_docker }} \
           -c "/tests/smoke_upgrade_test.sh ${{ inputs.old_package_url }} ${{ inputs.expected_upgrade_version }}"
