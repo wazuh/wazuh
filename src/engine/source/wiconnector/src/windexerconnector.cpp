@@ -459,4 +459,176 @@ bool WIndexerConnector::existsPolicy(std::string_view space)
     return totalHits > 0;
 }
 
+bool WIndexerConnector::existsIndex(std::string_view indexName)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    try
+    {
+        // Try a simple count query with size=0
+        nlohmann::json query = R"({"match_all": {}})"_json;
+        nlohmann::json source = {{"includes", nlohmann::json::array()}, {"excludes", nlohmann::json::array()}};
+        
+        // If the index doesn't exist, this will throw an exception
+        m_indexerConnectorAsync->search(indexName, 0, query, source);
+        return true;
+    }
+    catch (const IndexerConnectorException&)
+    {
+        return false;
+    }
+}
+
+std::vector<json::Json> WIndexerConnector::query(std::string_view indexName, 
+                                                  std::string_view queryStr, 
+                                                  std::size_t maxResults)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    std::vector<json::Json> results;
+    
+    // Parse query string
+    nlohmann::json query = nlohmann::json::parse(queryStr, nullptr, false);
+    if (query.is_discarded())
+    {
+        throw std::runtime_error("Invalid query JSON");
+    }
+
+    // Use Point In Time for pagination if maxResults > m_maxHitsPerRequest
+    if (maxResults > m_maxHitsPerRequest)
+    {
+        auto pit = m_indexerConnectorAsync->createPointInTime({std::string(indexName)}, PIT_KEEP_ALIVE, true);
+        
+        auto pitGuard = std::unique_ptr<decltype(pit), std::function<void(decltype(pit)*)>>(
+            &pit,
+            [this](auto* p)
+            {
+                try
+                {
+                    m_indexerConnectorAsync->deletePointInTime(*p);
+                }
+                catch (const IndexerConnectorException& e)
+                {
+                    LOG_WARNING_L("pitGuard", "[indexer-connector] Error deleting Point In Time (PIT): {}", e.what());
+                }
+            });
+
+        nlohmann::json sort = getSortCriteria();
+        std::optional<nlohmann::json> searchAfter = std::nullopt;
+        
+        size_t retrievedSoFar = 0;
+        bool moreHits = true;
+
+        do
+        {
+            size_t batchSize = std::min(m_maxHitsPerRequest, maxResults - retrievedSoFar);
+            nlohmann::json hits = m_indexerConnectorAsync->search(pit, batchSize, query, sort, searchAfter);
+
+            const auto& hitArray = hits["hits"];
+            if (!hitArray.is_array() || hitArray.empty())
+            {
+                break;
+            }
+
+            for (const auto& hit : hitArray)
+            {
+                if (!hit.contains("_source") || !hit["_source"].is_object())
+                {
+                    LOG_WARNING("[indexer-connector] Hit without _source, skipping");
+                    continue;
+                }
+                
+                // Store the complete hit including _id
+                nlohmann::json fullDoc = hit["_source"];
+                if (hit.contains("_id"))
+                {
+                    fullDoc["_id"] = hit["_id"];
+                }
+                
+                try
+                {
+                    results.emplace_back(fullDoc.dump().c_str());
+                }
+                catch (const std::exception& e)
+                {
+                    LOG_WARNING("[indexer-connector] Failed to parse document: {}", e.what());
+                }
+            }
+
+            retrievedSoFar += hitArray.size();
+            moreHits = retrievedSoFar < maxResults;
+            
+            if (moreHits && hitArray.size() == batchSize)
+            {
+                searchAfter = getSearchAfter(hits);
+            }
+            else
+            {
+                break;
+            }
+
+        } while (moreHits);
+    }
+    else
+    {
+        // Simple query without PIT for small result sets
+        nlohmann::json source = nlohmann::json::object();
+        nlohmann::json hits = m_indexerConnectorAsync->search(indexName, maxResults, query, source);
+        
+        const auto& hitArray = hits["hits"];
+        if (hitArray.is_array())
+        {
+            for (const auto& hit : hitArray)
+            {
+                if (!hit.contains("_source") || !hit["_source"].is_object())
+                {
+                    continue;
+                }
+                
+                nlohmann::json fullDoc = hit["_source"];
+                if (hit.contains("_id"))
+                {
+                    fullDoc["_id"] = hit["_id"];
+                }
+                
+                try
+                {
+                    results.emplace_back(fullDoc.dump().c_str());
+                }
+                catch (const std::exception& e)
+                {
+                    LOG_WARNING("[indexer-connector] Failed to parse document: {}", e.what());
+                }
+            }
+        }
+    }
+
+    return results;
+}
+
+std::size_t WIndexerConnector::getIndexDocumentCount(std::string_view indexName)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    // Query with size=0 just to get the total count
+    nlohmann::json query = R"({"match_all": {}})"_json;
+    nlohmann::json source = {{"includes", nlohmann::json::array()}, {"excludes", nlohmann::json::array()}};
+    
+    nlohmann::json hits = m_indexerConnectorAsync->search(indexName, 0, query, source);
+    
+    return getTotalHits(hits);
+}
+
 }; // namespace wiconnector

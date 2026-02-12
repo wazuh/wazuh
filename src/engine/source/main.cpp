@@ -26,6 +26,7 @@
 #include <cmcrud/cmcrudservice.hpp>
 #include <cmstore/cmstore.hpp>
 #include <cmsync/cmsync.hpp>
+#include <iocsync/iocsync.hpp>
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
 #include <defs/defs.hpp>
@@ -236,6 +237,8 @@ int main(int argc, char* argv[])
     std::shared_ptr<cm::store::CMStore> cmStore;
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
     std::shared_ptr<cm::sync::CMSync> cmSyncService;
+    std::shared_ptr<ioc::sync::IocSync> iocSyncService;
+    std::shared_ptr<kvdbioc::KVDBManager> kvdbiocManager;
 
     try
     {
@@ -541,6 +544,39 @@ int main(int argc, char* argv[])
                                        }});
         }
 
+        // IOCSync
+        if (enableProcessing)
+        {
+            // Create KVDB IOC Manager
+            auto kvdbIocPath = confManager.get<std::string>(conf::key::KVDB_IOC_PATH);
+            kvdbiocManager = std::make_shared<kvdbioc::KVDBManager>(kvdbIocPath, store);
+            LOG_INFO("KVDB IOC Manager initialized.");
+
+            // Create IOC Sync Service
+            iocSyncService = std::make_shared<ioc::sync::IocSync>(indexerConnector, kvdbiocManager, store);
+            LOG_INFO("IOC Sync Service initialized.");
+
+            // Add IOC sync to scheduler
+            auto iocSyncInterval =  5;// confManager.get<std::size_t>(conf::key::IOC_SYNC_INTERVAL);
+            if (iocSyncInterval > 0)
+            {
+                scheduler->scheduleTask(
+                    "ioc-sync-task",
+                    scheduler::TaskConfig {.interval = iocSyncInterval,
+                                           .CPUPriority = 0,
+                                           .timeout = 0,
+                                           .taskFunction = [iocSyncService]()
+                                           {
+                                               iocSyncService->synchronize();
+                                           }});
+                LOG_INFO("IOC Sync task scheduled with interval: {} seconds", iocSyncInterval);
+            }
+            else
+            {
+                LOG_INFO("IOC Sync task disabled (interval = 0)");
+            }
+        }
+
         // Geo sync
         {
             auto geoSyncInterval = confManager.get<std::size_t>(conf::key::GEO_SYNC_INTERVAL);
@@ -688,6 +724,7 @@ int main(int argc, char* argv[])
         {
             // Synchronize on startup
             cmSyncService->synchronize();
+            iocSyncService->synchronize();
 
             while (g_engineLocalServer->isRunning())
             {

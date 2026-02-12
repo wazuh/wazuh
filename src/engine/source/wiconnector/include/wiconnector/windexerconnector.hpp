@@ -98,6 +98,23 @@ public:
     bool existsPolicy(std::string_view space) override;
 
     /**
+     * @copydoc IWIndexerConnector::existsIndex
+     */
+    bool existsIndex(std::string_view indexName) override;
+
+    /**
+     * @copydoc IWIndexerConnector::query
+     */
+    std::vector<json::Json> query(std::string_view indexName, 
+                                  std::string_view query, 
+                                  std::size_t maxResults) override;
+
+    /**
+     * @copydoc IWIndexerConnector::getIndexDocumentCount
+     */
+    std::size_t getIndexDocumentCount(std::string_view indexName) override;
+
+    /**
      * @brief Shuts down the indexer connector, releasing resources and stopping operations.
      *
      * This method ensures that the underlying asynchronous indexer connector is properly
