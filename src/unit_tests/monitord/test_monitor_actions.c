@@ -28,7 +28,7 @@
 
 #include "client-config.h"
 #include "store_op.h"
-#include "../monitord/monitord.h"
+#include "monitord.h"
 #include "defs.h"
 #include "shared.h"
 #include "config.h"

@@ -15,7 +15,7 @@
 #include <shared.h>
 #include <pthread.h>
 #include <openssl/evp.h>
-#include "../external/sqlite/sqlite3.h"
+#include "sqlite3.h"
 #include "syscheck_op.h"
 #include "wazuhdb_op.h"
 #include "regex_op.h"

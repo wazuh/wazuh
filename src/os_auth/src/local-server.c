@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#include <external/cJSON/cJSON.h>
+#include <cJSON.h>
 #include <pthread.h>
 #include <sys/wait.h>
 #include "auth.h"

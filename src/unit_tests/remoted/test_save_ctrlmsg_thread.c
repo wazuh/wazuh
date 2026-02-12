@@ -15,14 +15,14 @@
 #include <stdlib.h>
 
 #include "shared.h"
-#include "../../remoted/remoted.h"
+#include "remoted.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/wazuh/shared/queue_linked_op_wrappers.h"
 
 #include "../wrappers/wazuh/remoted/queue_wrappers.h"
 #include "../wrappers/wazuh/remoted/manager_wrappers.h"
-#include "../../remoted/secure.c"
+#include "secure.c"
 
 void * save_control_thread(void * control_msg_queue);
 

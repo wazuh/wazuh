@@ -55,11 +55,6 @@ file(GLOB logcollector_lib ${SRC_FOLDER}/build/logcollector/CMakeFiles/logcollec
 list(REMOVE_ITEM logcollector_lib ${SRC_FOLDER}/build/logcollector/CMakeFiles/logcollector_lib.dir/src/main.c.obj)
 list(APPEND obj_files ${logcollector_lib})
 
-# Add monitord objects
-file(GLOB monitord_lib ${SRC_FOLDER}/monitord/*.o)
-list(REMOVE_ITEM monitord_lib ${SRC_FOLDER}/monitord/main.o)
-list(APPEND obj_files ${monitord_lib})
-
 # Add client-agent objects
 file(GLOB client_agent_lib ${SRC_FOLDER}/build/client-agent/CMakeFiles/agentd_lib.dir/src/*.obj)
 list(REMOVE_ITEM client_agent_lib ${SRC_FOLDER}/build/client-agent/CMakeFiles/agentd_lib.dir/src/main.c.obj)

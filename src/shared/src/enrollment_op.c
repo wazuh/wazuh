@@ -8,7 +8,7 @@
  */
 
 #include "check_cert_op.h"
-#include "../../os_auth/auth.h"
+#include "auth.h"
 #include "os_net.h"
 #include "shared.h"
 #include "sec.h"

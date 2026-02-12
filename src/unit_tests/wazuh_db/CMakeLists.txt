@@ -1,6 +1,7 @@
-
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
+include_directories(${SRC_FOLDER}/wazuh_db/include)
+include_directories(${SRC_FOLDER}/wazuh_db/src)
 
 list(APPEND wdb_tests_names "test_wdb_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_last_insert_rowid \
@@ -127,13 +128,6 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mu
 add_compile_options(-Wall)
 link_directories(${SRC_FOLDER}/build/lib)
 
-# Wazuh-DB objects
-FILE(GLOB wazuh_db_objects ${SRC_FOLDER}/wazuh_db/*.o)
-list(REMOVE_ITEM wazuh_db_objects ${SRC_FOLDER}/wazuh_db/main.o)
-
-# Add wazuh_modules object files needed by wazuh_db
-list(APPEND wazuh_db_objects ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/wm_task_general.c.o)
-
 # Compilig tests
 list(LENGTH wdb_tests_names count)
 math(EXPR count "${count} - 1")
@@ -141,12 +135,14 @@ foreach(counter RANGE ${count})
     list(GET wdb_tests_names ${counter} test_name)
     list(GET wdb_tests_flags ${counter} test_flags)
 
-    add_executable(${test_name} ${test_name}.c ${wazuh_db_objects})
+    add_executable(${test_name} ${test_name}.c)
 
     target_link_libraries(
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
+        wdb_lib
+        wazuh_modulesd_lib
         ${TEST_DEPS}
         router
     )

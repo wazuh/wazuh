@@ -59,6 +59,7 @@ set_target_properties(addagent_lib PROPERTIES LINKER_LANGUAGE C)
 # Enable WAZUH_UNIT_TESTING to export static functions for unit tests
 if(UNIT_TEST)
   target_compile_definitions(addagent_lib PRIVATE WAZUH_UNIT_TESTING)
+  target_compile_options(addagent_lib PRIVATE -O0 -g)
 endif()
 
 target_link_libraries(addagent_lib PUBLIC wazuhext pthread wazuh)

@@ -11,7 +11,7 @@
 
 #include "wazuhdb_op.h"
 #include "wdb.h"
-#include "external/cJSON/cJSON.h"
+#include "cJSON.h"
 #include "wdb_state.h"
 
 sqlite3 * wdb_global_pre(void **wdb_ctx)

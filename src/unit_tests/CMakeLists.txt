@@ -54,6 +54,7 @@ include_directories(${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/)
 include_directories(${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent/)
 include_directories(${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/manager/)
 include_directories(${SRC_FOLDER}/wazuh_modules/src/task_manager/)
+include_directories(${SRC_FOLDER}/wazuh_db/include/)
 add_definitions(-DWAZUH_UNIT_TESTING)
 
 # Find libwazuh_test (contains test wrappers for unit testing)

@@ -243,15 +243,14 @@ include_directories(${SRC_FOLDER}/external/simdjson/include/)
 include_directories(${SRC_FOLDER}/external/zlib/)
 include_directories(${SRC_FOLDER}/external/zlib/contrib/)
 
-# Data Provider
-add_subdirectory(data_provider)
-
-# Engine - Server only
-if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
-  add_subdirectory(engine)
+# Helper variables
+set(IS_AGENT FALSE)
+if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
+  set(IS_AGENT TRUE)
 endif()
 
-# Shared Modules
+# Common modules (all targets)
+add_subdirectory(data_provider)
 add_subdirectory(shared_modules/agent_metadata)
 add_subdirectory(shared_modules/dbsync)
 add_subdirectory(shared_modules/file_helper)
@@ -260,50 +259,31 @@ add_subdirectory(shared_modules/http-request)
 add_subdirectory(shared_modules/schema_validator)
 add_subdirectory(shared_modules/sync_protocol)
 add_subdirectory(shared_modules/utils)
+add_subdirectory(shared)
+add_subdirectory(config)
+add_subdirectory(syscheckd)
+add_subdirectory(rootcheck)
+add_subdirectory(wazuh_modules)
+add_subdirectory(active-response)
+add_subdirectory(os_execd)
+add_subdirectory(logcollector)
 
-# Shared Modules - Server only
-if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
+# Agent-only modules
+if(IS_AGENT)
+  add_subdirectory(client-agent)
+  add_subdirectory(addagent)
+endif()
+
+# Server-only modules
+if(NOT IS_AGENT)
+  add_subdirectory(engine)
   add_subdirectory(shared_modules/content_manager)
   add_subdirectory(shared_modules/indexer_connector)
   add_subdirectory(shared_modules/keystore)
   add_subdirectory(shared_modules/router)
-endif()
-
-# Shared (libwazuh)
-add_subdirectory(shared)
-
-# Config
-add_subdirectory(config)
-
-# Syscheckd
-add_subdirectory(syscheckd)
-
-# Rootcheck
-add_subdirectory(rootcheck)
-
-# Wazuh modulesd
-add_subdirectory(wazuh_modules)
-
-# Active response
-add_subdirectory(active-response)
-
-# Execd
-add_subdirectory(os_execd)
-
-# Logcollector
-add_subdirectory(logcollector)
-
-# Agentd - Agent only
-if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
-  add_subdirectory(client-agent)
-endif()
-
-# Addagent (manage_agents) - Agent only
-if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
-  add_subdirectory(addagent)
-endif()
-
-# Util (verify-agent-conf) - Server only
-if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   add_subdirectory(util)
+  add_subdirectory(remoted)
+  add_subdirectory(monitord)
+  add_subdirectory(os_auth)
+  add_subdirectory(wazuh_db)
 endif()

@@ -16,7 +16,7 @@
 
 #include "os_err.h"
 #include "shared.h"
-#include "../../os_auth/auth.h"
+#include "auth.h"
 #include "sec.h"
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"

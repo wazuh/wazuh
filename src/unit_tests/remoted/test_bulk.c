@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "../../remoted/bulk.h"
+#include "bulk.h"
 #include "shared.h"
 
 /*

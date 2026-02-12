@@ -1,30 +1,29 @@
 # Generate execd library
 if(${TARGET} STREQUAL "winagent")
-  file(GLOB execd_files
-       ${SRC_FOLDER}/build/os_execd/CMakeFiles/execd_lib.dir/src/*.obj)
-  list(REMOVE_ITEM execd_files ${SRC_FOLDER}/build/os_execd/CMakeFiles/execd_lib.dir/src/main.c.obj)
+  # On winagent, execd objects are already in DEPENDENCIES_O (winagent.cmake).
+  # Creating a separate library from the same objects would cause duplicate globals.
 else()
   file(GLOB execd_files
        ${SRC_FOLDER}/build/os_execd/CMakeFiles/execd_lib.dir/src/*.o)
   list(REMOVE_ITEM execd_files ${SRC_FOLDER}/build/os_execd/CMakeFiles/execd_lib.dir/src/main.c.o)
+
+  add_library(EXECD_O STATIC ${execd_files})
+
+  set_source_files_properties(
+      ${execd_files}
+      PROPERTIES
+      EXTERNAL_OBJECT true
+      GENERATED true
+  )
+
+  set_target_properties(
+      EXECD_O
+      PROPERTIES
+      LINKER_LANGUAGE C
+  )
+
+  target_link_libraries(EXECD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 endif()
-
-add_library(EXECD_O STATIC ${execd_files})
-
-set_source_files_properties(
-    ${execd_files}
-    PROPERTIES
-    EXTERNAL_OBJECT true
-    GENERATED true
-)
-
-set_target_properties(
-    EXECD_O
-    PROPERTIES
-    LINKER_LANGUAGE C
-)
-
-target_link_libraries(EXECD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 if(${TARGET} STREQUAL "winagent")
     link_directories(${SRC_FOLDER}/build/bin)
@@ -67,17 +66,24 @@ foreach(counter RANGE ${count})
 
     add_executable(${execd_test_name} ${execd_test_name}.c)
 
-    target_link_libraries(
-        ${execd_test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        EXECD_O
-        ${TEST_DEPS}
-    )
-
     if(${TARGET} STREQUAL "winagent")
-          target_link_libraries(${execd_test_name} fimdb)
-    endif(${TARGET} STREQUAL "winagent")
+        # On winagent, execd objects come from DEPENDENCIES_O (in TEST_DEPS)
+        target_link_libraries(
+            ${execd_test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            ${TEST_DEPS}
+        )
+        target_link_libraries(${execd_test_name} fimdb)
+    else()
+        target_link_libraries(
+            ${execd_test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            EXECD_O
+            ${TEST_DEPS}
+        )
+    endif()
 
     if(NOT execd_test_flags STREQUAL " ")
         target_link_libraries(

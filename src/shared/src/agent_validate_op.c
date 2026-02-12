@@ -12,7 +12,7 @@
 #include "agent_validate_op.h"
 #include "md5_op.h"
 #include "os_err.h"
-#include "../../wazuh_db/wdb.h"
+#include "wdb.h"
 #include <time.h>
 
 #define str_startwith(x, y) strncmp(x, y, strlen(y))

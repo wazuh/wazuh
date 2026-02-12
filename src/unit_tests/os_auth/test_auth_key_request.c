@@ -15,8 +15,8 @@
 #include <string.h>
 
 #include "shared.h"
-#include "../../os_auth/auth.h"
-#include "../../os_auth/key_request.h"
+#include "auth.h"
+#include "../../os_auth/src/key_request.h"
 #include "sec.h"
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"

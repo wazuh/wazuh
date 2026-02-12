@@ -18,6 +18,7 @@
 #include "wm_sca.h"
 #include "syscheck_op.h"
 #include "agentd.h"
+#include "sendmsg.h"
 #include "state.h"
 
 /* Global variables */

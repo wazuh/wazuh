@@ -15,7 +15,7 @@
 #include "os_err.h"
 #include "string_op.h"
 #include "wazuhdb_queries_op.h"
-#include "wazuh_db/wdb.h"
+#include "wdb.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #define static

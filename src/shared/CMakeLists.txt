@@ -20,6 +20,7 @@ include_directories(
   ${SRC_FOLDER}/client-agent/include
   ${SRC_FOLDER}/config/include
   ${SRC_FOLDER}/logcollector/include
+  ${SRC_FOLDER}/os_auth/include
   ${SRC_FOLDER}/shared_modules/dbsync/include
   ${SRC_FOLDER}/syscheckd/include
   ${SRC_FOLDER}/data_provider/include
@@ -29,6 +30,7 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/manager
   ${SRC_FOLDER}/wazuh_modules/src/task_manager
+  ${SRC_FOLDER}/wazuh_db/include
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${CMAKE_CURRENT_SOURCE_DIR}/error_messages
   ${CMAKE_CURRENT_SOURCE_DIR}/os_crypto/md5

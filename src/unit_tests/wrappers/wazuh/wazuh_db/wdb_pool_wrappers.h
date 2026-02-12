@@ -7,19 +7,18 @@
  * Foundation
  */
 
-
 #ifndef WDB_POOL_WRAPPERS_H
 #define WDB_POOL_WRAPPERS_H
 
-#include "../../../../wazuh_db/wdb.h"
+#include "wdb.h"
 
-wdb_t * __wrap_wdb_pool_get(const char * name);
+wdb_t* __wrap_wdb_pool_get(const char* name);
 
-wdb_t * __wrap_wdb_pool_get_or_create(const char * name);
+wdb_t* __wrap_wdb_pool_get_or_create(const char* name);
 
-void __wrap_wdb_pool_leave(__attribute__((unused))wdb_t * node);
+void __wrap_wdb_pool_leave(__attribute__((unused)) wdb_t* node);
 
-char ** __wrap_wdb_pool_keys();
+char** __wrap_wdb_pool_keys();
 
 void __wrap_wdb_pool_clean();
 

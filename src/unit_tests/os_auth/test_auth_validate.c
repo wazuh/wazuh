@@ -16,7 +16,7 @@
 
 #include "os_err.h"
 #include "shared.h"
-#include "../../os_auth/auth.h"
+#include "auth.h"
 #include "sec.h"
 
 #include "../wrappers/posix/dirent_wrappers.h"

@@ -123,9 +123,6 @@ int w_agentd_get_buffer_lenght();
 /* Initialize sender structure */
 void sender_init();
 
-/* Send message to server */
-int send_msg(const char *msg, ssize_t msg_length);
-
 /* Extract the shared files */
 char *getsharedfiles(void);
 

@@ -9,6 +9,7 @@
  */
 
 #include "agentd.h"
+#include "sendmsg.h"
 #include <shared.h>
 #include <pthread.h>
 #include <request_op.h>

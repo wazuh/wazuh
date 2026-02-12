@@ -13,7 +13,7 @@
 #include "sha256_op.h"
 #include "os_net.h"
 #include "authd-config.h"
-#include "../../os_auth/auth.h"
+#include "auth.h"
 #include "wazuhdb_queries_op.h"
 
 #ifdef WAZUH_UNIT_TESTING

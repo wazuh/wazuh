@@ -1,27 +1,26 @@
 # Generate logcollector library
 if(${TARGET} STREQUAL "winagent")
-  file(GLOB logcollector_files
-       ${SRC_FOLDER}/build/logcollector/CMakeFiles/logcollector_lib.dir/src/*.obj)
-  list(REMOVE_ITEM logcollector_files ${SRC_FOLDER}/build/logcollector/CMakeFiles/logcollector_lib.dir/src/main.c.obj)
+  # On winagent, logcollector objects are already in DEPENDENCIES_O (winagent.cmake).
+  # Creating a separate library from the same objects would cause duplicate globals.
 else()
   file(GLOB logcollector_files
        ${SRC_FOLDER}/build/logcollector/CMakeFiles/logcollector_lib.dir/src/*.o)
   list(REMOVE_ITEM logcollector_files ${SRC_FOLDER}/build/logcollector/CMakeFiles/logcollector_lib.dir/src/main.c.o)
-endif()
 
-add_library(LOGCOLLECTOR_O STATIC ${logcollector_files})
-set_source_files_properties(
-    ${logcollector_files}
-    PROPERTIES
-    EXTERNAL_OBJECT true
-    GENERATED true
-)
-set_target_properties(
-    LOGCOLLECTOR_O
-    PROPERTIES
-    LINKER_LANGUAGE C
-)
-target_link_libraries(LOGCOLLECTOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+  add_library(LOGCOLLECTOR_O STATIC ${logcollector_files})
+  set_source_files_properties(
+      ${logcollector_files}
+      PROPERTIES
+      EXTERNAL_OBJECT true
+      GENERATED true
+  )
+  set_target_properties(
+      LOGCOLLECTOR_O
+      PROPERTIES
+      LINKER_LANGUAGE C
+  )
+  target_link_libraries(LOGCOLLECTOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+endif()
 
 if(${TARGET} STREQUAL "winagent")
     link_directories(${SRC_FOLDER}/build/bin)
@@ -162,17 +161,25 @@ foreach(counter RANGE ${count})
     list(GET logcollector_names ${counter} logcollector_test_name)
     list(GET logcollector_flags ${counter} logcollector_test_flags)
     add_executable(${logcollector_test_name} ${logcollector_test_name}.c)
-    target_link_libraries(
-        ${logcollector_test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        LOGCOLLECTOR_O
-        ${TEST_DEPS}
-    )
 
     if(${TARGET} STREQUAL "winagent")
+        # On winagent, logcollector objects come from DEPENDENCIES_O (in TEST_DEPS)
+        target_link_libraries(
+            ${logcollector_test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            ${TEST_DEPS}
+        )
         target_link_libraries(${logcollector_test_name} fimdb)
-    endif(${TARGET} STREQUAL "winagent")
+    else()
+        target_link_libraries(
+            ${logcollector_test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            LOGCOLLECTOR_O
+            ${TEST_DEPS}
+        )
+    endif()
 
     if(NOT logcollector_test_flags STREQUAL " ")
         target_link_libraries(

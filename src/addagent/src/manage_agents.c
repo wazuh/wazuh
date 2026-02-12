@@ -15,14 +15,9 @@
 #include "manage_agents.h"
 #include "debug_op.h"
 #include "defs.h"
-#include "md5_op.h"
-#include <cJSON.h>
 #include "os_err.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "authd-config.h"
-#include "wazuhdb_queries_op.h"
-#include "wazuh_db/wdb.h"
 
 #if defined(__hppa__)
 static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)

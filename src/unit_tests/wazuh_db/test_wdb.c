@@ -15,7 +15,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "../wazuh_db/wdb.h"
+#include "wdb.h"
 #include "wazuhdb_op.h"
 #include "hash_op.h"
 

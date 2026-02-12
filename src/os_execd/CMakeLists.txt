@@ -63,6 +63,7 @@ set_target_properties(execd_lib PROPERTIES LINKER_LANGUAGE C)
 if(UNIT_TEST)
   target_compile_definitions(execd_lib PRIVATE WAZUH_UNIT_TESTING)
   target_compile_definitions(execd_lib PRIVATE _FORTIFY_SOURCE=0)
+  target_compile_options(execd_lib PRIVATE -O0 -g)
 endif()
 
 target_link_libraries(execd_lib PUBLIC wazuhext pthread config

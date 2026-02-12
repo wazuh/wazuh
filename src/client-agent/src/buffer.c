@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include "shared.h"
 #include "agentd.h"
+#include "sendmsg.h"
 #include "state.h"
 
 #ifdef WIN32

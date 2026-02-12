@@ -57,6 +57,7 @@ set_target_properties(logcollector_lib PROPERTIES LINKER_LANGUAGE C)
 # Enable WAZUH_UNIT_TESTING to export static functions for unit tests
 if(UNIT_TEST)
   target_compile_definitions(logcollector_lib PRIVATE WAZUH_UNIT_TESTING)
+  target_compile_options(logcollector_lib PRIVATE -O0 -g)
 endif()
 
 # Enable EVENTCHANNEL_SUPPORT for Windows builds

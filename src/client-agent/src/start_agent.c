@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "agentd.h"
+#include "sendmsg.h"
 #include "os_net.h"
 
 #ifdef WAZUH_UNIT_TESTING

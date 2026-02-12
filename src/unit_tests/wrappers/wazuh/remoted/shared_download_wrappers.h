@@ -12,7 +12,7 @@
 #ifndef SHARED_DOWNLOAD_WRAPPERS_H
 #define SHARED_DOWNLOAD_WRAPPERS_H
 
-#include "../../remoted/shared_download.h"
+#include "../../../../remoted/src/shared_download.h"
 
 remote_files_group * __wrap_w_parser_get_group(const char * name);
 

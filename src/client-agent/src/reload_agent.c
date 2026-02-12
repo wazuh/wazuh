@@ -18,6 +18,7 @@
 #include "client-config.h"
 #include "wmodules.h"
 #include "agentd.h"
+#include "sendmsg.h"
 
 static const char AG_IN_RCON[] = "wazuh: Invalid remote configuration";
 

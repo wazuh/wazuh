@@ -39,7 +39,7 @@ include_directories(
   ${SRC_FOLDER}/shared_modules/router/include
   ${SRC_FOLDER}/shared_modules/sync_protocol/include
   ${SRC_FOLDER}/syscheckd/include
-  ${SRC_FOLDER}/wazuh_db/helpers)
+  ${SRC_FOLDER}/wazuh_db/include)
 
 # Submodule include directories
 include_directories(

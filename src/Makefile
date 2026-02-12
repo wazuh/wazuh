@@ -503,11 +503,6 @@ settings:
 	@echo "    CC                ${CC}"
 	@echo "    MAKE              ${MAKE}"
 
-BUILD_SERVER+=wazuh-remoted
-BUILD_SERVER+=wazuh-monitord
-BUILD_SERVER+=wazuh-authd
-BUILD_SERVER+=wazuh-db
-
 BUILD_CMAKE_PROJECTS+=build_wazuh_cmake
 
 ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}: ${libstdc++_path}
@@ -525,21 +520,18 @@ $(error Do not use 'server' directly, use 'TARGET=server')
 endif
 server: external ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
-	${MAKE} ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},local)
 $(error Do not use 'local' directly, use 'TARGET=local')
 endif
 local: external ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
-	${MAKE} ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},hybrid)
 $(error Do not use 'hybrid' directly, use 'TARGET=hybrid')
 endif
 hybrid: external ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
-	${MAKE} ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},agent)
 $(error Do not use 'agent' directly, use 'TARGET=agent')
@@ -1364,7 +1356,7 @@ else
 WAZUH_STATIC_LIB = libwazuh.a
 endif
 
-$(BUILD_SERVER) $(WINDOWS_BINS): $(BUILD_LIBS)
+$(WINDOWS_BINS): $(BUILD_LIBS)
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 LIBS_TEST=-lcmocka
@@ -1374,23 +1366,6 @@ OSSEC_CFLAGS+=${CFLAGS_TEST}
 OSSEC_LDFLAGS+=${CFLAGS_TEST}
 OSSEC_LIBS+=${LIBS_TEST}
 endif
-
-#### Wazuh DB ####
-
-wdb_sql := $(wildcard wazuh_db/*.sql)
-wdblib_c := $(wildcard wazuh_db/wdb*.c)
-wdbhelpers_c := $(wildcard wazuh_db/helpers/*.c)
-wdblib_o := $(wdblib_c:.c=.o) $(wdb_sql:.sql=.o)
-wdb_o := wazuh_db/main.o $(wdblib_o:.c=.o) $(wdb_c:.c=.o) $(wdb_sql:.sql=.o)
-
-wazuh_db/schema_%.o: wazuh_db/schema_%.sql
-	${QUIET_CC}echo 'const char *'$(word 2, $(subst /, ,$(subst .,_,$<))) '= "'"`cat $< | tr -d \"\n\"`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
-
-wazuh_db/%.o: wazuh_db/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-db\" -c $^ -o $@
-
-wazuh-db: ${wdb_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter -lconfig -lwazuh_modulesd_lib ${WAZUH_STATIC_LIB} ${OSSEC_LIBS} -o $@
 
 #### Wazuh cmake ###
 build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
@@ -1416,39 +1391,6 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 endif
 endif
-
-#### remoted #########
-
-remoted_c := $(wildcard remoted/*.c)
-remoted_o := $(remoted_c:.c=.o)
-
-remoted/%.o: remoted/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS}  -DPORTABLE_UNALIGNED_ACCESS=0 -I./remoted -DARGV0=\"wazuh-remoted\" -c $^ -o $@
-
-wazuh-remoted: ${remoted_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter -lconfig -lwazuh_modulesd_lib ${WAZUH_STATIC_LIB} ${OSSEC_LIBS} -o $@
-
-#### Monitor #######
-
-monitor_c := $(wildcard monitord/*.c)
-monitor_o := $(monitor_c:.c=.o)
-
-monitord/%.o: monitord/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-monitord\" -c $< -o $@
-
-wazuh-monitord: ${monitor_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lconfig -lwazuh_modulesd_lib ${WAZUH_STATIC_LIB} ${OSSEC_LIBS} -o $@
-
-#### os_auth #######
-
-os_auth_c := ${wildcard os_auth/*.c}
-os_auth_o := $(os_auth_c:.c=.o)
-
-os_auth/%.o: os_auth/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -I./os_auth -DARGV0=\"wazuh-authd\" -c $^ -o $@
-
-wazuh-authd: os_auth/main-server.o os_auth/local-server.o os_auth/config.o os_auth/authcom.o os_auth/auth.o os_auth/key_request.o os_auth/generate_cert.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter -lconfig -lwazuh_modulesd_lib ${WAZUH_STATIC_LIB} ${OSSEC_LIBS} -o $@
 
 ### wazuh-gtest-gmock ###
 
@@ -1686,19 +1628,17 @@ clean-internals:
 	rm -f wazuh-slack
 	rm -f firewall-drop
 # Wazuh binaries
-	rm -f ${remoted_o}
-	rm -f ${monitor_o}
-	rm -f ${os_auth_o}
-	rm -f ${wdb_o}
-	rm -f wazuh_db/*.o
 	rm -rf build
-	rm -f $(BUILD_SERVER)
 	rm -f wazuh-keystore
 	rm -f wazuh-agentd
 	rm -f wazuh-execd
 	rm -f wazuh-logcollector
 	rm -f wazuh-syscheckd
 	rm -f wazuh-modulesd
+	rm -f wazuh-remoted
+	rm -f wazuh-monitord
+	rm -f wazuh-authd
+	rm -f wazuh-db
 	rm -f manage_agents
 	rm -f verify-agent-conf
 # Compilation libraries

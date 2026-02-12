@@ -12,9 +12,10 @@
 #ifndef WDBQUERIESOP_H
 #define WDBQUERIESOP_H
 
-#include "../../wazuh_db/wdb.h"
+#include "wdb.h"
 
-typedef enum global_db_access {
+typedef enum global_db_access
+{
     WDB_INSERT_AGENT,
     WDB_INSERT_AGENT_GROUP,
     WDB_UPDATE_AGENT_NAME,
@@ -49,18 +50,19 @@ typedef enum global_db_access {
  * @param[in] register_ip The agent register IP.
  * @param[in] internal_key The client key of the agent.
  * @param[in] group The agent group.
- * @param[in] keep_date If 1, the addition date will be taken from agents-timestamp. If 0, the addition date is the current time.
+ * @param[in] keep_date If 1, the addition date will be taken from agents-timestamp. If 0, the addition date is the
+ * current time.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_insert_agent(int id,
-                     const char *name,
-                     const char *ip,
-                     const char *register_ip,
-                     const char *internal_key,
-                     const char *group,
+                     const char* name,
+                     const char* ip,
+                     const char* register_ip,
+                     const char* internal_key,
+                     const char* group,
                      int keep_date,
-                     int *sock);
+                     int* sock);
 
 /**
  * @brief Insert a new group.
@@ -69,7 +71,7 @@ int wdb_insert_agent(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_insert_group(const char *name, int *sock);
+int wdb_insert_group(const char* name, int* sock);
 
 /**
  * @brief Update agent name in global.db.
@@ -79,7 +81,7 @@ int wdb_insert_group(const char *name, int *sock);
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_update_agent_name(int id, const char *name, int *sock);
+int wdb_update_agent_name(int id, const char* name, int* sock);
 
 /**
  * @brief Update agent data in global.db.
@@ -88,7 +90,7 @@ int wdb_update_agent_name(int id, const char *name, int *sock);
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_update_agent_data(agent_info_data *agent_data, int *sock);
+int wdb_update_agent_data(agent_info_data* agent_data, int* sock);
 
 /**
  * @brief Update agent's last keepalive and modifies the cluster synchronization status.
@@ -99,7 +101,7 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock);
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_keepalive(int id, const char *connection_status, const char *sync_status, int *sock);
+int wdb_update_agent_keepalive(int id, const char* connection_status, const char* sync_status, int* sock);
 
 /**
  * @brief Update agent's connection status.
@@ -111,7 +113,8 @@ int wdb_update_agent_keepalive(int id, const char *connection_status, const char
  * @param[in] status_code Enum with the status code to be set.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock, agent_status_code_t status_code);
+int wdb_update_agent_connection_status(
+    int id, const char* connection_status, const char* sync_status, int* sock, agent_status_code_t status_code);
 
 /**
  * @brief Update agent's last keepalive and modifies the cluster synchronization status.
@@ -123,33 +126,34 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, co
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_status_code(int id, agent_status_code_t status_code, const char *version, const char *sync_status, int *sock);
+int wdb_update_agent_status_code(
+    int id, agent_status_code_t status_code, const char* version, const char* sync_status, int* sock);
 
 /**
  * @brief Returns an array containing the ID of every agent (except 0), ended with -1.
  * This method creates and sends a command to WazuhDB to receive the ID of every agent.
- * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
- * The array is heap allocated memory that must be freed by the caller.
+ * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is
+ * obtained. The array is heap allocated memory that must be freed by the caller.
  *
  * @param [in] include_manager flag to include the manager on agents list
  * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Pointer to the array, on success.
  * @retval NULL on errors.
  */
-int* wdb_get_all_agents(bool include_manager, int *sock);
+int* wdb_get_all_agents(bool include_manager, int* sock);
 
 /**
  * @brief Returns a RB tree containing the ID of every agent (except 0).
  * This method creates and sends a command to WazuhDB to receive the ID of every agent.
- * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
- * The RB tree is heap allocated memory that must be freed by the caller.
+ * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is
+ * obtained. The RB tree is heap allocated memory that must be freed by the caller.
  *
  * @param [in] include_manager flag to include the manager on agents list
  * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Pointer to the RB tree, on success.
  * @retval NULL on errors.
  */
-rb_tree* wdb_get_all_agents_rbtree(bool include_manager, int *sock);
+rb_tree* wdb_get_all_agents_rbtree(bool include_manager, int* sock);
 
 /**
  * @brief Find agent id by name and address.
@@ -159,7 +163,7 @@ rb_tree* wdb_get_all_agents_rbtree(bool include_manager, int *sock);
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns id if success. OS_INVALID on error.
  */
-int wdb_find_agent(const char *name, const char *ip, int *sock);
+int wdb_find_agent(const char* name, const char* ip, int* sock);
 
 /**
  * @brief Returns a JSON with all the agent's information.
@@ -168,7 +172,7 @@ int wdb_find_agent(const char *name, const char *ip, int *sock);
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return JSON* with the information on success or NULL on failure.
  */
-cJSON* wdb_get_agent_info(int id, int *sock);
+cJSON* wdb_get_agent_info(int id, int* sock);
 
 /**
  * @brief Returns a JSON with all the agent's labels.
@@ -177,7 +181,7 @@ cJSON* wdb_get_agent_info(int id, int *sock);
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return JSON* with the labels on success or NULL on failure.
  */
-cJSON* wdb_get_agent_labels(int id, int *sock);
+cJSON* wdb_get_agent_labels(int id, int* sock);
 
 /**
  * @brief Get name from agent table in global.db by using its ID.
@@ -188,7 +192,7 @@ cJSON* wdb_get_agent_labels(int id, int *sock);
  * @retval "" when the agent is not found.
  * @retval NULL on database failure.
  */
-char* wdb_get_agent_name(int id, int *sock);
+char* wdb_get_agent_name(int id, int* sock);
 
 /**
  * @brief Get group from agent table in global.db by using its ID.
@@ -197,7 +201,7 @@ char* wdb_get_agent_name(int id, int *sock);
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return A string with the agent group on success or NULL on failure.
  */
-char* wdb_get_agent_group(int id, int *sock);
+char* wdb_get_agent_group(int id, int* sock);
 
 /**
  * @brief Find group by name.
@@ -206,7 +210,7 @@ char* wdb_get_agent_group(int id, int *sock);
  * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns id if success or OS_INVALID on failure.
  */
-int wdb_find_group(const char *name, int *sock);
+int wdb_find_group(const char* name, int* sock);
 
 /**
  * @brief Update groups table.
@@ -215,7 +219,7 @@ int wdb_find_group(const char *name, int *sock);
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns OS_SUCCESS if success or OS_INVALID on failure.
  */
-int wdb_update_groups(const char *dirname, int *sock);
+int wdb_update_groups(const char* dirname, int* sock);
 
 /**
  * @brief Delete an agent from agent table in global.db by using its ID.
@@ -224,7 +228,7 @@ int wdb_update_groups(const char *dirname, int *sock);
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_remove_agent(int id, int *sock);
+int wdb_remove_agent(int id, int* sock);
 
 /**
  * @brief Delete group.
@@ -233,7 +237,7 @@ int wdb_remove_agent(int id, int *sock);
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_remove_group_db(const char *name, int *sock);
+int wdb_remove_group_db(const char* name, int* sock);
 
 /**
  * @brief Set the groups of an agent using a comma separated string to represent the groups.
@@ -244,7 +248,7 @@ int wdb_remove_group_db(const char *name, int *sock);
  * @param[in] sync_status The sync_status to ask the addition (optional).
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_set_agent_groups_csv(int id, char* groups_csv, char* mode, char* sync_status, int *sock);
+int wdb_set_agent_groups_csv(int id, char* groups_csv, char* mode, char* sync_status, int* sock);
 
 /**
  * @brief Set the groups of an agent using a string array to represent the groups.
@@ -257,7 +261,7 @@ int wdb_set_agent_groups_csv(int id, char* groups_csv, char* mode, char* sync_st
 
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_status,int *sock);
+int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_status, int* sock);
 
 /**
  * @brief Reset the connection_status column of every agent (excluding the manager).
@@ -269,7 +273,7 @@ int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_sta
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_reset_agents_connection(const char *sync_status, int *sock);
+int wdb_reset_agents_connection(const char* sync_status, int* sock);
 
 /**
  * @brief Returns an array containing the ID of every agent (excluding the manager) that matches
@@ -282,22 +286,22 @@ int wdb_reset_agents_connection(const char *sync_status, int *sock);
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Pointer to the array, on success. NULL on errors.
  */
-int* wdb_get_agents_by_connection_status(const char* connection_status, int *sock);
+int* wdb_get_agents_by_connection_status(const char* connection_status, int* sock);
 
 /**
  * @brief Set agents as disconnected based on the keepalive and return an array containing
  * the ID of every agent that had been set as disconnected.
  * This method creates and sends a command to WazuhDB to set as disconnected all the
  * agents (excluding the manager) with a last_keepalive before the specified keepalive threshold.
- * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent is covered.
- * The array is heap-allocated memory that must be freed by the caller.
+ * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent is
+ * covered. The array is heap-allocated memory that must be freed by the caller.
  *
  * @param [in] keepalive The keepalive threshold before which an agent should be set as disconnected.
  * @param [in] sync_status String with the cluster synchronization status to be set.
  * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Pointer to the array, on success. NULL if no agents were set as disconnected or an error ocurred.
  */
-int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock);
+int* wdb_disconnect_agents(int keepalive, const char* sync_status, int* sock);
 
 /**
  * @brief Get the agent first registration date.
@@ -317,7 +321,7 @@ time_t get_agent_date_added(int agent_id);
  * @param[in] limit Limit number of rows returned.
  * @return Returns pointer to the array of agents ids, on success. NULL on errors.
  */
-int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock, int last_id, int limit);
+int* wdb_get_agents_ids_of_current_node(const char* connection_status, int* sock, int last_id, int limit);
 
 /**
  * @brief Returns a JSON array containing the group and group_hash assigned to all agents,
@@ -326,6 +330,6 @@ int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns pointer to the array of groups/group_hash, on success. NULL on errors.
  */
-cJSON* wdb_get_distinct_agent_groups(int *sock);
+cJSON* wdb_get_distinct_agent_groups(int* sock);
 
 #endif
