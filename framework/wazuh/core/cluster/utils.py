@@ -380,6 +380,35 @@ def get_cluster_items():
     except Exception as e:
         raise WazuhError(3005, str(e))
 
+@lru_cache()
+def safe_join(base_path: str, *paths: str) -> str:
+    """Join two paths and ensure the resulting path is within the base path.
+    Parameters
+    ----------
+    base_path : str
+        The base directory path.
+    paths : str
+        The paths to be joined with the base path. Absolute paths will be treated as relative to the base path.
+    Returns
+    -------
+    str
+        The safely joined path.
+    Raises
+    ------
+    WazuhInternalError
+        If the resulting path is outside the base path.
+    """
+
+    safe_paths = [p.lstrip(os.sep).lstrip("/") for p in paths]
+
+    base = os.path.normpath(base_path)
+    final_path = os.path.normpath(os.path.join(base, *safe_paths))
+
+    if os.path.commonpath([base, final_path]) != base:
+        raise WazuhInternalError(3003, extra_message=f"unsafe path '{final_path}'")
+
+    return final_path
+
 
 @lru_cache()
 def read_config(config_file=common.OSSEC_CONF):
