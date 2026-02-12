@@ -18,7 +18,7 @@
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 
 #include "syscheck.h"
-#include "external/cJSON/cJSON.h"
+#include "cJSON.h"
 
 // External function declarations from syscheck.c
 extern void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation);
