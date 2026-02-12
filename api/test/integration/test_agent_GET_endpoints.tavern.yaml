@@ -86,25 +86,25 @@ stages:
         data:
           affected_items:
             - id: '004'
-              version: 'Wazuh v{wazuh_version:s}'
+              version: 'v{wazuh_version:s}'
             - id: '003'
-              version: 'Wazuh v{wazuh_version:s}'
+              version: 'v{wazuh_version:s}'
             - id: '002'
-              version: 'Wazuh v{wazuh_version:s}'
+              version: 'v{wazuh_version:s}'
             - id: '001'
-              version: 'Wazuh v{wazuh_version:s}'
+              version: 'v{wazuh_version:s}'
             - id: '008'
-              version: 'Wazuh v4.14.1'
+              version: 'v4.14.1'
             - id: '007'
-              version: 'Wazuh v4.14.1'
+              version: 'v4.14.1'
             - id: '006'
-              version: 'Wazuh v4.14.1'
+              version: 'v4.14.1'
             - id: '005'
-              version: 'Wazuh v4.14.1'
+              version: 'v4.14.1'
             - id: '010'
-              version: 'Wazuh v4.9.2'
+              version: 'v4.9.2'
             - id: '009'
-              version: 'Wazuh v4.9.2'
+              version: 'v4.9.2'
             - id: '012'
             - id: '011'
           failed_items: []
@@ -127,25 +127,25 @@ stages:
             - id: '011'
             - id: '012'
             - id: '009'
-              version: 'Wazuh v4.9.2'
+              version: 'v4.9.2'
             - id: '010'
-              version: 'Wazuh v4.9.2'
+              version: 'v4.9.2'
             - id: '005'
-              version: 'Wazuh v4.14.1'
+              version: 'v4.14.1'
             - id: '006'
-              version: 'Wazuh v4.14.1'
+              version: 'v4.14.1'
             - id: '007'
-              version: 'Wazuh v4.14.1'
+              version: 'v4.14.1'
             - id: '008'
-              version: 'Wazuh v4.14.1'
+              version: 'v4.14.1'
             - id: '001'
-              version: 'Wazuh v{wazuh_version:s}'
+              version: 'v{wazuh_version:s}'
             - id: '002'
-              version: 'Wazuh v{wazuh_version:s}'
+              version: 'v{wazuh_version:s}'
             - id: '003'
-              version: 'Wazuh v{wazuh_version:s}'
+              version: 'v{wazuh_version:s}'
             - id: '004'
-              version: 'Wazuh v{wazuh_version:s}'
+              version: 'v{wazuh_version:s}'
           failed_items: [ ]
           total_affected_items: 13
           total_failed_items: 0
@@ -423,7 +423,7 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        version: 'Wazuh v4.9.2'
+        version: 'v4.9.2'
     response: &old_wazuh_agents_response
       status_code: 200
       json:
@@ -2875,10 +2875,10 @@ stages:
         error: 0
         data:
           affected_items:
-            - version: 'Wazuh v4.14.1'
-            - version: 'Wazuh v4.14.1'
-            - version: 'Wazuh v4.14.1'
-            - version: 'Wazuh v{wazuh_version:s}'
+            - version: 'v4.14.1'
+            - version: 'v4.14.1'
+            - version: 'v4.14.1'
+            - version: 'v{wazuh_version:s}'
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
@@ -3814,7 +3814,7 @@ stages:
             - id: '005'
               status: active
               name: wazuh-agent5
-              version: 'Wazuh v4.14.1'
+              version: 'v4.14.1'
               status_code: 0
               group:
                 - default
@@ -4575,7 +4575,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: '001,002'
-        version: 'Wazuh v999.999.999'
+        version: 'v999.999.999'
     response:
       status_code: 200
       json:

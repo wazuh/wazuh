@@ -147,6 +147,17 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
                    'node01',strftime('%s','now','-4 days'),
                     strftime('%s','now','-5 seconds'),'updated','active','default', 'synced');
 
+-- Connected agent with a new version format
+INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
+                   os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
+                   last_keepalive, status, connection_status, `group`, group_config_status) VALUES (10,'agent-10','172.17.0.901',
+                   'b7efaafcde1bb0f3d3cbbf5b32e6335878305f4e6a19bec2d065f5e53e134e65', 'Ubuntu','24.04.3 LTS','24','04',
+                   'Xenial','ubuntu',
+                   'Linux |agent-10 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
+                   'v5.0.0','ab73af41699f13fgt81903b5f23d8d00','f8d49771911ed9d5c45bdfa40babd065','master',
+                   'node01',strftime('%s','now','-3 days'),
+                    strftime('%s','now','-10 minutes'),'updated','active', 'default', 'synced');
+
 
 -- Create group-1 and group-2
 INSERT INTO `group` (id, name) VALUES (1, 'group-1');
