@@ -69,8 +69,6 @@ static void* wm_database_main(wm_database *data);
 static void wm_database_destroy(wm_database *data);
 // Read config
 cJSON *wm_database_dump(const wm_database *data);
-// Update manager information
-static void wm_sync_manager();
 
 #ifndef LOCAL
 
@@ -109,9 +107,7 @@ void* wm_database_main(wm_database *data) {
 
     // Check if it is a worker node
     is_worker = w_is_worker();
-
-    // Manager name synchronization
-    wm_sync_manager();
+    
 
     // During the startup, both workers and master nodes should perform the
     // agents synchronization with the database using the keys. In advance,
@@ -203,45 +199,7 @@ void* wm_database_main(wm_database *data) {
     return NULL;
 }
 
-// Update manager information
-void wm_sync_manager() {
-    agent_info_data *manager_data = NULL;
-    char *os_uname = NULL;
 
-    os_calloc(1, sizeof(agent_info_data), manager_data);
-    os_calloc(1, sizeof(os_data), manager_data->osd);
-    os_calloc(HOST_NAME_MAX, sizeof(char), manager_data->manager_host);
-
-    if (gethostname(manager_data->manager_host, HOST_NAME_MAX) == 0)
-        wdb_update_agent_name(0, manager_data->manager_host, &wdb_wmdb_sock);
-    else
-        mterror(WM_DATABASE_LOGTAG, "Couldn't get manager's hostname: %s.", strerror(errno));
-
-    /* Get node name of the manager in cluster */
-    manager_data->node_name = get_node_name();
-
-    if ((os_uname = strdup(getuname()))) {
-        char *ptr;
-
-        if ((ptr = strstr(os_uname, " - ")))
-            *ptr = '\0';
-
-        parse_uname_string(os_uname, manager_data->osd);
-
-        manager_data->id = 0;
-        os_strdup(os_uname, manager_data->osd->os_uname);
-        os_strdup(__ossec_name " " __ossec_version, manager_data->version);
-        os_strdup(AGENT_CS_ACTIVE, manager_data->connection_status);
-        os_strdup("synced", manager_data->sync_status);
-        os_strdup("synced", manager_data->group_config_status);
-
-        wdb_update_agent_data(manager_data, &wdb_wmdb_sock);
-
-        os_free(os_uname);
-    }
-
-    wdb_free_agent_info_data(manager_data);
-}
 
 #ifndef LOCAL
 
