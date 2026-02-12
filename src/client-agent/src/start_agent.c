@@ -13,6 +13,7 @@
 #include "sendmsg.h"
 #include "os_net.h"
 #include "../os_crypto/md5/md5_op.h"
+#include <ctype.h>
 
 #ifdef WAZUH_UNIT_TESTING
     // Remove static qualifier when unit testing
@@ -229,12 +230,28 @@ STATIC bool parse_agent_groups(const cJSON *root, char *agent_groups, size_t age
     return true;
 }
 
+STATIC bool is_valid_md5_hash(const char *hash) {
+    size_t i;
+
+    if (!hash || strlen(hash) != 32) {
+        return false;
+    }
+
+    for (i = 0; i < 32; i++) {
+        if (!isxdigit((unsigned char)hash[i])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 /**
  * @brief Parse optional merged_sum from handshake JSON
  * @param root Root JSON object
  * @param merged_sum Buffer to store merged sum
  * @param merged_sum_size Size of merged_sum buffer
- * @return true always (field is optional)
+ * @return true when field is absent or valid, false when field is malformed
  */
 STATIC bool parse_optional_merged_sum(const cJSON *root, char *merged_sum, size_t merged_sum_size) {
     if (!merged_sum || merged_sum_size == 0) {
@@ -249,16 +266,17 @@ STATIC bool parse_optional_merged_sum(const cJSON *root, char *merged_sum, size_
     }
 
     if (!cJSON_IsString(merged) || !merged->valuestring) {
-        mdebug1("Invalid 'merged_sum' type in handshake JSON, ignoring field");
-        return true;
+        mdebug1("Invalid 'merged_sum' type in handshake JSON");
+        return false;
     }
 
-    if (strlen(merged->valuestring) == 32) {
-        strncpy(merged_sum, merged->valuestring, merged_sum_size - 1);
-        merged_sum[merged_sum_size - 1] = '\0';
-    } else {
-        mdebug1("Invalid 'merged_sum' value in handshake JSON, ignoring field");
+    if (!is_valid_md5_hash(merged->valuestring)) {
+        mdebug1("Invalid 'merged_sum' value in handshake JSON");
+        return false;
     }
+
+    strncpy(merged_sum, merged->valuestring, merged_sum_size - 1);
+    merged_sum[merged_sum_size - 1] = '\0';
 
     return true;
 }

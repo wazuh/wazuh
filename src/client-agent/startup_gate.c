@@ -107,7 +107,7 @@ void startup_gate_process_handshake(bool is_startup, const char *merged_sum) {
 
     if (!startup_gate_valid_md5(merged_sum)) {
         startup_gate_expected_sum[0] = '\0';
-        startup_gate_set_locked(true, "legacy_handshake");
+        startup_gate_set_locked(false, "invalid_handshake_hash");
         w_mutex_unlock(&startup_gate_mutex);
         return;
     }

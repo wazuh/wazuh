@@ -843,6 +843,43 @@ static void test_parse_handshake_json_empty_agent_groups(void **state) {
     assert_string_equal(agent_groups, "");
 }
 
+static void test_parse_handshake_json_invalid_merged_sum(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    char merged_sum[sizeof(os_md5)] = {0};
+    int ret;
+
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":100000,\"registry_key\":50000,\"registry_value\":50000},"
+            "\"syscollector\":{"
+                "\"hotfixes\":1000,\"packages\":50000,\"processes\":50000,"
+                "\"ports\":50000,\"network_iface\":100,\"network_protocol\":100,"
+                "\"network_address\":100,\"hardware\":1,\"os_info\":1,"
+                "\"users\":100,\"groups\":100,\"services\":10000,\"browser_extensions\":100"
+            "},"
+            "\"sca\":{\"checks\":10000}"
+        "},"
+        "\"cluster_name\":\"wazuh-cluster\","
+        "\"cluster_node\":\"wazuh-node\","
+        "\"agent_groups\":[\"default\"],"
+        "\"merged_sum\":\"0123456789abcdef0123456789abcdez\""
+        "}";
+
+    module_limits_init(&limits);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups),
+                               merged_sum, sizeof(merged_sum));
+
+    assert_int_equal(ret, -1);
+}
+
 /* send_agent_stopped_message */
 static void test_send_agent_stopped_message(void **state) {
 
@@ -870,6 +907,7 @@ int main(void) {
         cmocka_unit_test(test_parse_handshake_json_no_cluster_name),
         cmocka_unit_test(test_parse_handshake_json_no_agent_groups),
         cmocka_unit_test(test_parse_handshake_json_empty_agent_groups),
+        cmocka_unit_test(test_parse_handshake_json_invalid_merged_sum),
         cmocka_unit_test(test_parse_handshake_json_invalid_json),
         cmocka_unit_test(test_parse_handshake_json_no_limits_object),
         cmocka_unit_test(test_parse_handshake_json_null_params),
