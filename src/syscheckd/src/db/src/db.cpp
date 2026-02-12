@@ -243,12 +243,27 @@ std::vector<nlohmann::json> DB::getDocumentsToPromote(std::string tableName, int
         }
     }};
 
+    // Determine ORDER BY based on table primary keys for deterministic results
+    std::string orderBy;
+    if (tableName == FIMDB_FILE_TABLE_NAME)
+    {
+        orderBy = "path, version";
+    }
+    else if (tableName == FIMDB_REGISTRY_KEY_TABLENAME)
+    {
+        orderBy = "path, architecture, version";
+    }
+    else if (tableName == FIMDB_REGISTRY_VALUE_TABLENAME)
+    {
+        orderBy = "path, architecture, value, version";
+    }
+
     const std::string filter = "WHERE sync = 0";
     auto selectQuery {SelectQuery::builder()
                       .table(tableName)
                       .columnList({"*"})
                       .rowFilter(filter)
-                      .orderByOpt("")
+                      .orderByOpt(orderBy)
                       .countOpt(numberOfDocumentsToPromote)
                       .distinctOpt(false)
                       .build()};
@@ -263,18 +278,22 @@ std::vector<nlohmann::json> DB::getDocumentsToDemote(std::string tableName, int 
 
     // Note: we include the version in the query since we'll pass it to the sync flag update so that it doesn't get increased with the update. We want the version value to stay the same after a sync flag update.
     std::string primaryKeys;
+    std::string orderBy;
 
     if (tableName == FIMDB_FILE_TABLE_NAME )
     {
         primaryKeys = "path, version";
+        orderBy = "path, version";
     }
     else if (tableName == FIMDB_REGISTRY_KEY_TABLENAME )
     {
         primaryKeys = "architecture, path, version";
+        orderBy = "path, architecture, version";
     }
     else if (tableName == FIMDB_REGISTRY_VALUE_TABLENAME )
     {
         primaryKeys = "path, architecture, value, version";
+        orderBy = "path, architecture, value, version";
     }
 
     auto callback {[&documents](ReturnTypeCallback type, const nlohmann::json & jsonResult)
@@ -290,7 +309,7 @@ std::vector<nlohmann::json> DB::getDocumentsToDemote(std::string tableName, int 
                       .table(tableName)
                       .columnList({primaryKeys})
                       .rowFilter(filter)
-                      .orderByOpt("")
+                      .orderByOpt(orderBy)
                       .countOpt(numberOfDocumentsToDemote)
                       .distinctOpt(false)
                       .build()};

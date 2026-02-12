@@ -283,7 +283,7 @@ class EXPORTED Syscollector final
          * It uses a DBSync transaction to ensure all updates are atomic and properly committed to disk.
          *
          * @param itemsToUpdate Vector of (table_name, json_data) pairs to update
-         * @param syncedValue Value to set for sync flag (0 or 1)
+         * @param syncValue Value to set for sync flag (0 or 1)
          */
         void updateSyncFlagInDB(const std::vector<std::pair<std::string, nlohmann::json>>& itemsToUpdate, int syncValue) const;
 

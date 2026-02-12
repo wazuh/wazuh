@@ -1792,8 +1792,8 @@ void Syscollector::scan()
 
     // Vector to accumulate items that passed document limit check for deferred sync=1 update
     // All scan functions will use this shared vector to collect items to update
-    std::vector<std::pair<std::string, nlohmann::json>> itemsToUpdateSynced;
-    m_itemsToUpdateSync = &itemsToUpdateSynced;
+    std::vector<std::pair<std::string, nlohmann::json>> itemsToUpdateSync;
+    m_itemsToUpdateSync = &itemsToUpdateSync;
 
     m_logFunction(LOG_INFO, "Starting evaluation.");
     TRY_CATCH_TASK(scanHardware);
@@ -1811,7 +1811,7 @@ void Syscollector::scan()
     // Update sync=1 flag for all items that passed document limit check (unlimited items)
     // This must be done BEFORE processVDDataContext so that DataContext queries
     // can filter by sync=1 and only include items within document limits
-    updateSyncFlagInDB(itemsToUpdateSynced, 1);
+    updateSyncFlagInDB(itemsToUpdateSync, 1);
 
     // Promote items to fill available slots after scan completes
     // This calculates available space (limit - current count) and promotes
@@ -2860,7 +2860,7 @@ int Syscollector::setVersion(int version)
                     nlohmann::json input;
                     input["table"] = tableName;
                     input["data"] = nlohmann::json::array({row});
-                    input["options"]["ignore"] = nlohmann::json::array({"synced"});
+                    input["options"]["ignore"] = nlohmann::json::array({"sync"});
 
                     txn.syncTxnRow(input);
                 }
@@ -3463,7 +3463,7 @@ bool Syscollector::checkDocumentLimit(const std::string& table,
     // Check if the record is already synced (sync=1)
     bool isAlreadySynced = false;
 
-    if (data.contains("synced") && data["sync"].is_number())
+    if (data.contains("sync") && data["sync"].is_number())
     {
         isAlreadySynced = (data["sync"].get<int>() == 1);
     }
@@ -4503,7 +4503,7 @@ void Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, n
 
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG_VERBOSE, "Updated synced=" + std::to_string(syncValue) +
+            m_logFunction(LOG_DEBUG_VERBOSE, "Updated sync=" + std::to_string(syncValue) +
                           " for " + std::to_string(itemsToUpdate.size()) + " item(s) in DBSync");
         }
     }

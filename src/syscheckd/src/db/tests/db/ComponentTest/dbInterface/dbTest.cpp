@@ -487,3 +487,274 @@ TEST_F(DBTestFixture, TestFimDBIncreaseEachEntryVersionNullParameter)
     });
 }
 
+// Tests for fim_db_count_synced_docs
+
+TEST_F(DBTestFixture, TestFimDBCountSyncedDocsEmptyTable)
+{
+    EXPECT_NO_THROW({
+        int count = fim_db_count_synced_docs(FIMDB_FILE_TABLE_NAME);
+        ASSERT_EQ(count, 0);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBCountSyncedDocsOnlySynced)
+{
+    // Insert entries and set sync=1
+    auto fileStatement1 = insertFileStatement;
+    fileStatement1["path"] = "/etc/test1.txt";
+    fileStatement1["inode"] = 11111;
+    const auto fileFIMTest1 {std::make_unique<FileItem>(fileStatement1)};
+
+    auto fileStatement2 = insertFileStatement;
+    fileStatement2["path"] = "/etc/test2.txt";
+    fileStatement2["inode"] = 22222;
+    const auto fileFIMTest2 {std::make_unique<FileItem>(fileStatement2)};
+
+    EXPECT_NO_THROW({
+        ASSERT_EQ(fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added), FIMDB_OK);
+        ASSERT_EQ(fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added), FIMDB_OK);
+
+        // Manually set sync flag to 1 for both entries
+        pending_sync_item_t item1;
+        item1.json = cJSON_Parse(fileStatement1.dump().c_str());
+        item1.sync_value = 1;
+        fim_db_set_sync_flag(const_cast<char*>(FIMDB_FILE_TABLE_NAME), &item1, 1);
+        cJSON_Delete(item1.json);
+
+        pending_sync_item_t item2;
+        item2.json = cJSON_Parse(fileStatement2.dump().c_str());
+        item2.sync_value = 1;
+        fim_db_set_sync_flag(const_cast<char*>(FIMDB_FILE_TABLE_NAME), &item2, 1);
+        cJSON_Delete(item2.json);
+
+        int count = fim_db_count_synced_docs(FIMDB_FILE_TABLE_NAME);
+        ASSERT_EQ(count, 2);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBCountSyncedDocsOnlyUnsynced)
+{
+    // Insert entries with sync=0
+    auto fileStatement1 = insertFileStatement;
+    fileStatement1["path"] = "/etc/test1.txt";
+    fileStatement1["inode"] = 11111;
+    fileStatement1["sync"] = 0;
+    const auto fileFIMTest1 {std::make_unique<FileItem>(fileStatement1)};
+
+    auto fileStatement2 = insertFileStatement;
+    fileStatement2["path"] = "/etc/test2.txt";
+    fileStatement2["inode"] = 22222;
+    fileStatement2["sync"] = 0;
+    const auto fileFIMTest2 {std::make_unique<FileItem>(fileStatement2)};
+
+    EXPECT_NO_THROW({
+        ASSERT_EQ(fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added), FIMDB_OK);
+        ASSERT_EQ(fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added), FIMDB_OK);
+
+        int count = fim_db_count_synced_docs(FIMDB_FILE_TABLE_NAME);
+        ASSERT_EQ(count, 0);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBCountSyncedDocsNullParameter)
+{
+    EXPECT_NO_THROW({
+        int count = fim_db_count_synced_docs(nullptr);
+        ASSERT_EQ(count, 0);
+    });
+}
+
+// Tests for fim_db_get_documents_to_promote
+
+TEST_F(DBTestFixture, TestFimDBGetDocumentsToPromoteEmptyTable)
+{
+    EXPECT_NO_THROW({
+        cJSON* docs = fim_db_get_documents_to_promote((char*)FIMDB_FILE_TABLE_NAME, 10);
+        ASSERT_TRUE(docs != nullptr);
+        ASSERT_EQ(cJSON_GetArraySize(docs), 0);
+        cJSON_Delete(docs);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetDocumentsToPromoteOnlyUnsynced)
+{
+    // Insert entries with sync=0 (to be promoted)
+    auto fileStatement1 = insertFileStatement;
+    fileStatement1["path"] = "/etc/unsynced1.txt";
+    fileStatement1["inode"] = 11111;
+    fileStatement1["sync"] = 0;
+    const auto fileFIMTest1 {std::make_unique<FileItem>(fileStatement1)};
+
+    auto fileStatement2 = insertFileStatement;
+    fileStatement2["path"] = "/etc/unsynced2.txt";
+    fileStatement2["inode"] = 22222;
+    fileStatement2["sync"] = 0;
+    const auto fileFIMTest2 {std::make_unique<FileItem>(fileStatement2)};
+
+    EXPECT_NO_THROW({
+        ASSERT_EQ(fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added), FIMDB_OK);
+        ASSERT_EQ(fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added), FIMDB_OK);
+
+        cJSON* docs = fim_db_get_documents_to_promote((char*)FIMDB_FILE_TABLE_NAME, 10);
+        ASSERT_TRUE(docs != nullptr);
+        ASSERT_EQ(cJSON_GetArraySize(docs), 2);
+
+        // Verify documents contain all fields (full documents for promoting)
+        cJSON* doc = cJSON_GetArrayItem(docs, 0);
+        ASSERT_TRUE(cJSON_GetObjectItem(doc, "path") != nullptr);
+        ASSERT_TRUE(cJSON_GetObjectItem(doc, "checksum") != nullptr);
+        ASSERT_TRUE(cJSON_GetObjectItem(doc, "size") != nullptr);
+
+        cJSON_Delete(docs);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetDocumentsToPromoteWithLimit)
+{
+    // Insert 5 unsynced entries
+    for (int i = 0; i < 5; i++)
+    {
+        auto fileStatement = insertFileStatement;
+        fileStatement["path"] = "/etc/unsynced" + std::to_string(i) + ".txt";
+        fileStatement["inode"] = 10000 + i;
+        fileStatement["sync"] = 0;
+        const auto fileFIMTest {std::make_unique<FileItem>(fileStatement)};
+        ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
+    }
+
+    EXPECT_NO_THROW({
+        // Request only 3 documents
+        cJSON* docs = fim_db_get_documents_to_promote((char*)FIMDB_FILE_TABLE_NAME, 3);
+        ASSERT_TRUE(docs != nullptr);
+        ASSERT_EQ(cJSON_GetArraySize(docs), 3);
+        cJSON_Delete(docs);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetDocumentsToPromoteAllSynced)
+{
+    // Insert only synced entries - should return empty array
+    auto fileStatement = insertFileStatement;
+    fileStatement["path"] = "/etc/synced.txt";
+    fileStatement["inode"] = 11111;
+    const auto fileFIMTest {std::make_unique<FileItem>(fileStatement)};
+
+    EXPECT_NO_THROW({
+        ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
+
+        // Set sync=1
+        pending_sync_item_t item;
+        item.json = cJSON_Parse(fileStatement.dump().c_str());
+        item.sync_value = 1;
+        fim_db_set_sync_flag(const_cast<char*>(FIMDB_FILE_TABLE_NAME), &item, 1);
+        cJSON_Delete(item.json);
+
+        cJSON* docs = fim_db_get_documents_to_promote((char*)FIMDB_FILE_TABLE_NAME, 10);
+        ASSERT_TRUE(docs != nullptr);
+        ASSERT_EQ(cJSON_GetArraySize(docs), 0);
+        cJSON_Delete(docs);
+    });
+}
+
+// Tests for fim_db_get_documents_to_demote
+
+TEST_F(DBTestFixture, TestFimDBGetDocumentsToDemoteEmptyTable)
+{
+    EXPECT_NO_THROW({
+        cJSON* docs = fim_db_get_documents_to_demote((char*)FIMDB_FILE_TABLE_NAME, 10);
+        ASSERT_TRUE(docs != nullptr);
+        ASSERT_EQ(cJSON_GetArraySize(docs), 0);
+        cJSON_Delete(docs);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetDocumentsToDemoteOnlySynced)
+{
+    // Insert entries with sync=1 (to be demoted)
+    auto fileStatement1 = insertFileStatement;
+    fileStatement1["path"] = "/etc/synced1.txt";
+    fileStatement1["inode"] = 11111;
+    const auto fileFIMTest1 {std::make_unique<FileItem>(fileStatement1)};
+
+    auto fileStatement2 = insertFileStatement;
+    fileStatement2["path"] = "/etc/synced2.txt";
+    fileStatement2["inode"] = 22222;
+    const auto fileFIMTest2 {std::make_unique<FileItem>(fileStatement2)};
+
+    EXPECT_NO_THROW({
+        ASSERT_EQ(fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added), FIMDB_OK);
+        ASSERT_EQ(fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added), FIMDB_OK);
+
+        // Manually set sync flag to 1 for both entries
+        pending_sync_item_t item1;
+        item1.json = cJSON_Parse(fileStatement1.dump().c_str());
+        item1.sync_value = 1;
+        fim_db_set_sync_flag(const_cast<char*>(FIMDB_FILE_TABLE_NAME), &item1, 1);
+        cJSON_Delete(item1.json);
+
+        pending_sync_item_t item2;
+        item2.json = cJSON_Parse(fileStatement2.dump().c_str());
+        item2.sync_value = 1;
+        fim_db_set_sync_flag(const_cast<char*>(FIMDB_FILE_TABLE_NAME), &item2, 1);
+        cJSON_Delete(item2.json);
+
+        cJSON* docs = fim_db_get_documents_to_demote((char*)FIMDB_FILE_TABLE_NAME, 10);
+        ASSERT_TRUE(docs != nullptr);
+        ASSERT_EQ(cJSON_GetArraySize(docs), 2);
+
+        // Verify documents only contain primary keys (path and version for files)
+        cJSON* doc = cJSON_GetArrayItem(docs, 0);
+        ASSERT_TRUE(cJSON_GetObjectItem(doc, "path") != nullptr);
+        ASSERT_TRUE(cJSON_GetObjectItem(doc, "version") != nullptr);
+
+        cJSON_Delete(docs);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetDocumentsToDemoteWithLimit)
+{
+    // Insert 5 synced entries
+    for (int i = 0; i < 5; i++)
+    {
+        auto fileStatement = insertFileStatement;
+        fileStatement["path"] = "/etc/synced" + std::to_string(i) + ".txt";
+        fileStatement["inode"] = 10000 + i;
+        const auto fileFIMTest {std::make_unique<FileItem>(fileStatement)};
+        ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
+
+        // Set sync=1 for this entry
+        pending_sync_item_t item;
+        item.json = cJSON_Parse(fileStatement.dump().c_str());
+        item.sync_value = 1;
+        fim_db_set_sync_flag(const_cast<char*>(FIMDB_FILE_TABLE_NAME), &item, 1);
+        cJSON_Delete(item.json);
+    }
+
+    EXPECT_NO_THROW({
+        // Request only 3 documents
+        cJSON* docs = fim_db_get_documents_to_demote((char*)FIMDB_FILE_TABLE_NAME, 3);
+        ASSERT_TRUE(docs != nullptr);
+        ASSERT_EQ(cJSON_GetArraySize(docs), 3);
+        cJSON_Delete(docs);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetDocumentsToDemoteAllUnsynced)
+{
+    // Insert only unsynced entries - should return empty array
+    auto fileStatement = insertFileStatement;
+    fileStatement["path"] = "/etc/unsynced.txt";
+    fileStatement["inode"] = 11111;
+    fileStatement["sync"] = 0;
+    const auto fileFIMTest {std::make_unique<FileItem>(fileStatement)};
+
+    EXPECT_NO_THROW({
+        ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
+
+        cJSON* docs = fim_db_get_documents_to_demote((char*)FIMDB_FILE_TABLE_NAME, 10);
+        ASSERT_TRUE(docs != nullptr);
+        ASSERT_EQ(cJSON_GetArraySize(docs), 0);
+        cJSON_Delete(docs);
+    });
+}
+

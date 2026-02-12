@@ -987,9 +987,6 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                         bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i],
                                                                                            syscheck.sync_handle);
                         if (full_sync_required) {
-                            // if (fim_db_get_count_file_entry() > limit) {
-                            //     mwarn("Document count for table %s exceeds the limit (%d). Only %d documents will be synchronized.", table_names[i], limit, limit);
-                            // }
                             fim_recovery_persist_table_and_resync(table_names[i],
                                                                   syscheck.sync_handle,
                                                                   directories_snapshot);

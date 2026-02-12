@@ -210,16 +210,6 @@ class EXPORTED DBSync : public IDBSync
         void increaseEachEntryVersion(const std::string& tableName) override;
 
         /**
-         * @brief Increase the version column for entries in a table using a filter.
-         *
-         * @param tableName Name of the table to update.
-         * @param rowFilter Filter applied to the query.
-         * @throws dbsync_error if any database operation fails.
-         */
-        void increaseEachEntryVersion(const std::string& tableName,
-                                      const std::string& rowFilter) override;
-
-        /**
          * @brief Get all synced elements from a table (WHERE sync = 1).
          *
          * @param tableName Name of the table to query.

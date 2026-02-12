@@ -224,7 +224,6 @@ STATIC void handle_orphaned_delete(const char* path,
     // Validate and persist the orphaned delete event
     // Note: For orphaned deletes, we don't mark for deletion from DBSync since the item is already deleted
     // Orphaned deletes are always synced (sync_flag=1) to ensure cleanup on manager
-    // j: see if this is necesary
     char item_desc[PATH_MAX + 32];
     snprintf(item_desc, sizeof(item_desc), "file %s", path);
     validate_and_persist_fim_event(stateful_event, file_path_sha1, OPERATION_DELETE,

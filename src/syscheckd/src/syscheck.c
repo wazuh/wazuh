@@ -116,9 +116,16 @@ void add_pending_sync_item(OSList *pending_items, const cJSON *json, int sync_va
     item->sync_value = sync_value;
 
     OSList_AddData(pending_items, item);
+
     const cJSON* path = cJSON_GetObjectItem(json, "path");
     const cJSON* version = cJSON_GetObjectItem(json, "version");
-    mdebug2("Added item to pending sync list: %s (version: %d, sync: %d)", cJSON_GetStringValue(path), (int)cJSON_GetNumberValue(version), sync_value);
+
+    if (cJSON_IsString(path) && cJSON_IsNumber(version)) {
+        mdebug2("Added item to pending sync list: %s (version: %d, sync: %d)",
+                cJSON_GetStringValue(path), (int)cJSON_GetNumberValue(version), sync_value);
+    } else {
+        mdebug2("Added item to pending sync list (sync: %d)", sync_value);
+    }
 }
 
 void process_pending_sync_updates(char* table_name, OSList *pending_items) {
@@ -147,7 +154,7 @@ void process_pending_sync_updates(char* table_name, OSList *pending_items) {
  * @param full_doc Full document JSON
  * @return cJSON object with only primary keys and version, or NULL on error
  */
-static cJSON* extract_primary_keys(const char* table_name, const cJSON* full_doc) {
+cJSON* extract_primary_keys(const char* table_name, const cJSON* full_doc) {
     cJSON* keys = cJSON_CreateObject();
     if (!keys) {
         return NULL;
