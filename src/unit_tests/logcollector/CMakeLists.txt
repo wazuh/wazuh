@@ -26,7 +26,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 if(${TARGET} STREQUAL "winagent")
     list(APPEND logcollector_names "test_read_win_event_channel")
     list(APPEND logcollector_flags "-Wl,--wrap,wstr_split -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
-                                    -Wl,--wrap=is_fim_shutdown -Wl,--wrap,convert_windows_string \
+                                    -Wl,--wrap=is_fim_shutdown -Wl,--wrap,convert_windows_string -Wl,--wrap=SendMSG \
                                     ${DEBUG_OP_WRAPPERS}")
 else()
     list(APPEND logcollector_names "test_logcollector")
