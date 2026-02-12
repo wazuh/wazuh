@@ -74,7 +74,7 @@ int ClientConf(const char *cfgfile)
     }
 
 #ifdef CLIENT
-    startup_hash_block = getDefine_Int("agent", "startup_hash_block", 0, 1);
+    startup_hash_block = getDefine_Int_WithDefault("agent", "startup_hash_block", 0, 1, 1);
     if(agt->flags.remote_conf = getDefine_Int("agent", "remote_conf", 0, 1), agt->flags.remote_conf) {
         remote_conf = agt->flags.remote_conf;
         ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &agt->labels, agt);

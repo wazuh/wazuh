@@ -14,6 +14,7 @@
 
 /* Run-time definitions */
 int getDefine_Int(const char *high_name, const char *low_name, int min, int max) __attribute__((nonnull));
+int getDefine_Int_WithDefault(const char *high_name, const char *low_name, int min, int max, int default_value) __attribute__((nonnull));
 
 
 /**
