@@ -330,10 +330,6 @@ TEST_F(ScaTest, Run_ExecutesScanLoopWithValidPolicy)
     EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_))
     .WillRepeatedly(::testing::Return());
 
-    // Mock getEverySyncElement to return empty (no existing policies in DB)
-    EXPECT_CALL(*mockDBSync, getEverySyncElement(::testing::_))
-    .WillRepeatedly(::testing::Return(std::vector<nlohmann::json> {}));
-
     // Create a mock yamlToJsonFunc that returns valid policy JSON
     auto yamlToJsonFunc = [](const std::string&) -> nlohmann::json
     {
@@ -400,8 +396,6 @@ TEST_F(ScaTest, Run_WithPausedState_SkipsScanIteration)
     .WillRepeatedly(::testing::Return(nullptr));
     EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_))
     .WillRepeatedly(::testing::Return());
-    EXPECT_CALL(*mockDBSync, getEverySyncElement(::testing::_))
-    .WillRepeatedly(::testing::Return(std::vector<nlohmann::json> {}));
 
     // Create yamlToJsonFunc
     auto yamlToJsonFunc = [](const std::string&) -> nlohmann::json

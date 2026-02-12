@@ -218,7 +218,7 @@ EXPORTED void fim_db_update_last_sync_time(const char* table_name);
  * @brief Get all elements from a table with optional filter.
  *
  * @param table_name Name of the table to query.
- * @param row_filter Optional SQL WHERE clause filter (e.g., "sync=1"). Pass NULL or "" for no filter.
+ * @param row_filter Optional SQL WHERE clause to filter rows (e.g., "WHERE sync=1"). Pass NULL or "" for no filter.
  * @return cJSON array containing all matching table elements (must be freed with cJSON_Delete), NULL on error.
  */
 EXPORTED cJSON* fim_db_get_every_element(const char* table_name, const char* row_filter);

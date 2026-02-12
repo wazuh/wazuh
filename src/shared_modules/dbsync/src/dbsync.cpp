@@ -954,28 +954,6 @@ void DBSync::increaseEachEntryVersion(const std::string& tableName)
 
 }
 
-std::vector<nlohmann::json> DBSync::getEverySyncElement(const std::string& tableName)
-{
-    std::vector<nlohmann::json> elements;
-    auto callback {[&elements](ReturnTypeCallback type, const nlohmann::json & jsonResult)
-    {
-        if (ReturnTypeCallback::SELECTED == type)
-        {
-            elements.push_back(jsonResult);
-        }
-    }};
-
-    auto selectQuery {SelectQuery::builder()
-                      .table(tableName)
-                      .columnList({"*"})
-                      .rowFilter("WHERE sync = 1")
-                      .build()};
-
-    selectRows(selectQuery.query(), callback);
-
-    return elements;
-}
-
 DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
                      const nlohmann::json& tables,
                      const unsigned int    threadNumber,
