@@ -28,7 +28,7 @@ include_directories(${SRC_FOLDER}/external/sqlite/)
 
 # Platform-specific definitions
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  add_definitions(-DWIN32=1 -D_POSIX_C_SOURCE -DPSAPI_VERSION=1 -DCLIENT)
+  add_definitions(-DWIN32=1 -D_POSIX_C_SOURCE -DPSAPI_VERSION=1)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   add_definitions(-DDarwin -DHIGHFIRST)
 endif()
@@ -55,22 +55,6 @@ function(add_active_response_executable name source)
 
     # Add system libraries
     target_link_libraries(${name} PRIVATE pthread rt dl m)
-
-    # Check if Alpine (needs libintl)
-    if(EXISTS "/etc/os-release")
-      file(READ "/etc/os-release" OS_RELEASE_CONTENT)
-      if(OS_RELEASE_CONTENT MATCHES "Alpine Linux")
-        target_link_libraries(${name} PRIVATE intl)
-      endif()
-    endif()
-
-    # Check if Arch Linux (needs additional libraries)
-    if(EXISTS "/etc/os-release")
-      file(READ "/etc/os-release" OS_RELEASE_CONTENT)
-      if(OS_RELEASE_CONTENT MATCHES "Arch Linux")
-        target_link_libraries(${name} PRIVATE nghttp2 brotlidec psl)
-      endif()
-    endif()
 
   elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     # macOS: Add rpath for @executable_path/../../lib, plus pthread

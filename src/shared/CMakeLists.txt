@@ -314,6 +314,10 @@ set_target_properties(
 # Add compile definitions
 target_compile_definitions(wazuh PRIVATE ARGV0="wazuh")
 
+if(OS_BIG_ENDIAN)
+  add_definitions(-DOS_BIG_ENDIAN)
+endif(OS_BIG_ENDIAN)
+
 if(CA_NAME)
   target_compile_definitions(wazuh PRIVATE CA_NAME="${CA_NAME}")
 endif()

@@ -63,6 +63,10 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 add_definitions(-DARGV0="wazuh-modulesd")
 add_definitions(-DGROUPGLOBAL="wazuh")
 
+if(INOTIFY_ENABLED)
+  add_definitions(-DINOTIFY_ENABLED)
+endif(INOTIFY_ENABLED)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN32=1 -DWIN_EXPORT)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")

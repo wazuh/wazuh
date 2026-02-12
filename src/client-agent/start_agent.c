@@ -352,9 +352,6 @@ void start_agent(int is_startup)
         w_agentd_keys_init();
     }
 
-    #ifdef ONEWAY_ENABLED
-        return;
-    #endif
     int current_server_id = agt->rip_id;
     while (1) {
         // (max_retries - 1) attempts

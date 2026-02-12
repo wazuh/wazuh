@@ -14,7 +14,6 @@ uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
 uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
 uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 
-
 ifeq (${TARGET}, winagent)
 WAZUH_LIB_OUTPUT_PATH := win32/
 STRIP_TOOL := i686-w64-mingw32-strip
@@ -124,6 +123,9 @@ endif
 ifneq (,$(filter ${DISABLE_JEMALLOC},YES yes y Y 1))
 CMAKE_OPTS+=-DDISABLE_JEMALLOC=ON
 endif
+ifneq (,$(filter ${USE_BIG_ENDIAN},YES yes y Y 1))
+CMAKE_OPTS+=-DOS_BIG_ENDIAN=ON
+endif
 CMAKE_OPTS+=-DCA_NAME='${CA_NAME}' -DIMAGE_TRUST_CHECKS=${IMAGE_TRUST_CHECKS}
 ifneq (${TARGET},winagent)
 ifneq (,$(filter ${USE_INOTIFY},YES auto yes y Y 1))
@@ -155,9 +157,6 @@ endif
 else
 USE_SELINUX=no
 endif
-
-ONEWAY?=no
-CLEANFULL?=no
 
 DEFINES=-DOSSECHIDS
 DEFINES+=-DUSER=\"${WAZUH_USER}\"
@@ -229,7 +228,6 @@ else
 	    # There is a bug in the delay load mechanism for MinGW 32-bits executables (https://www.sourceware.org/bugzilla/show_bug.cgi?id=22676)
 		# The workaround is to remove the __declspec(dllimport) from the function declaration in the executables (https://www.sourceware.org/bugzilla/show_bug.cgi?id=14339)
 		SHARED=dll
-		DEFINES_EVENTCHANNEL=-D_WIN32_WINNT=0x600
 		# We link against a patched libwinpthread.a library that no contains version.o (version.rc) to avoid including the resource in the executables due to the "--whole-archive" flag
 		OSSEC_CFLAGS+=-Wl,-L,win32/ -Wl,-Bstatic,--whole-archive -lwinpthreadpatched -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
 		OSSEC_LDFLAGS+=-Wl,-L,win32/ -Wl,-Bstatic,--whole-archive -lwinpthreadpatched -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
@@ -250,7 +248,6 @@ else
 	DEFINES+=-DCA_NAME='${CA_NAME}'
 endif
 
-
 # Check if symbol table should be included in release
 ifeq (${uname_S},Linux)
 	SYMBOLS_IN_RELEASE = YES
@@ -259,7 +256,6 @@ else ifeq (${uname_S},Darwin)
 else ifeq (${TARGET},winagent)
 	SYMBOLS_IN_RELEASE = YES
 endif
-
 
 ifneq (,$(SYMBOLS_IN_RELEASE))
 	OSSEC_CFLAGS+=-g
@@ -284,14 +280,6 @@ ifeq (${TARGET}, winagent)
 	OSSEC_LDFLAGS+=-Lbuild/bin -Lbuild/lib
 else
 	OSSEC_LDFLAGS+=-Lbuild/lib
-endif
-
-ifneq (,$(filter ${CLEANFULL},YES yes y Y 1))
-	DEFINES+=-DCLEANFULL
-endif
-
-ifneq (,$(filter ${ONEWAY},YES yes y Y 1))
-	DEFINES+=-DONEWAY_ENABLED
 endif
 
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
@@ -422,7 +410,6 @@ ifneq (,$(filter ${USE_BIG_ENDIAN},YES yes y Y 1))
 	DEFINES+=-DOS_BIG_ENDIAN
 endif
 
-
 ####################
 #### Target ########
 ####################
@@ -439,7 +426,6 @@ ifeq (${TARGET},local)
 	DEFINES+=-DLOCAL
 endif
 
-
 .PHONY: build
 build: ${TARGET}
 ifneq (${TARGET},failtarget)
@@ -450,7 +436,6 @@ ifneq (${TARGET},failtarget)
 	${QUIET_ENDCOLOR}
 endif
 	@echo
-
 
 .PHONY: failtarget
 failtarget:
@@ -468,8 +453,6 @@ help: failtarget
 	@echo "   make V=yes                   						Display full compiler messages. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DEBUG=yes               						Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make INSTALLDIR=/path        						Wazuh's installation path. Mandatory when compiling the python interpreter from sources using PYTHON_SOURCE."
-	@echo "   make ONEWAY=yes              						Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make CLEANFULL=yes           						Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make RESOURCES_URL           						Set the Wazuh resources URL"
 	@echo "   make EXTERNAL_SRC_ONLY=yes   						Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building."
 	@echo "   make USE_INOTIFY=yes         						Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
@@ -501,8 +484,6 @@ settings:
 	@echo "    DEBUG:              ${DEBUG}"
 	@echo "    INSTALLDIR:         ${INSTALLDIR}"
 	@echo "    DATABASE:           ${DATABASE}"
-	@echo "    ONEWAY:             ${ONEWAY}"
-	@echo "    CLEANFULL:          ${CLEANFULL}"
 	@echo "    RESOURCES_URL:      ${RESOURCES_URL}"
 	@echo "    EXTERNAL_SRC_ONLY:  ${EXTERNAL_SRC_ONLY}"
 	@echo "    HTTP_REQUEST_BRANCH:${HTTP_REQUEST_BRANCH}"
@@ -704,7 +685,6 @@ ifeq (${uname_S},Darwin)
 EXTERNAL_LIBS += ${LIBPLIST_LIB}
 endif
 
-
 .PHONY: external test_external
 external: test_external $(EXTERNAL_LIBS) $(JEMALLOC_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
 
@@ -750,7 +730,6 @@ ifeq ($(findstring BSD,${uname_S}), BSD)
 	OPENSSL_FLAGS += no-asm
 endif
 endif
-
 
 ${CRYPTO_LIB}: ${OPENSSL_LIB}
 
@@ -943,7 +922,6 @@ else
 	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" --disable-ldap --without-libidn2 --without-brotli --without-nghttp2 --without-librtmp --without-zstd --without-libpsl
 endif
 endif
-
 
 #### procps #########
 
@@ -1453,7 +1431,6 @@ $(WAZUHEXT_LIB): $(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF)
 $(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF): $(EXTERNAL_LIBS) win32/version-dll.o
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $(WAZUHEXT_DLL) -static-libgcc -Wl,--export-all-symbols -Wl,--add-stdcall-alias -Wl,--whole-archive $^ -Wl,--no-whole-archive -Wl,--output-def,$(WAZUHEXT_LIB_DEF) ${OSSEC_LIBS}
 
-
 else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
@@ -1470,7 +1447,6 @@ os_execd/%.o: os_execd/%.c
 
 wazuh-execd: ${os_execd_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${LINKER_START_GROUP} -lconfig -lwazuh_modulesd_lib ${WAZUH_STATIC_LIB} ${LINKER_END_GROUP} ${OSSEC_LIBS} -o $@
-
 
 #### logcollectord ####
 
@@ -1517,10 +1493,8 @@ addagent_o := $(addagent_c:.c=.o)
 addagent/%.o: addagent/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./addagent -DARGV0=\"manage_agents\" -c $^ -o $@
 
-
 manage_agents: ${addagent_o} ${WAZUH_STATIC_LIB}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
 
 #### Util ##########
 
@@ -1540,7 +1514,6 @@ util/%.o: util/%.c
 verify-agent-conf: util/verify-agent-conf.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lconfig -lwazuh_modulesd_lib ${WAZUH_STATIC_LIB} libwazuhext.so ${OSSEC_LIBS} -o $@
 
-
 #### Monitor #######
 
 monitor_c := $(wildcard monitord/*.c)
@@ -1551,7 +1524,6 @@ monitord/%.o: monitord/%.c
 
 wazuh-monitord: ${monitor_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lconfig -lwazuh_modulesd_lib ${WAZUH_STATIC_LIB} ${OSSEC_LIBS} -o $@
-
 
 #### os_auth #######
 
@@ -1703,7 +1675,6 @@ win32/setup-iis.exe: win32/win_service_rk.o win32/setup-iis.o
 
 win32/os_win32ui.exe: win32/ui_resource.o win32/version-app.o win32/win_service_rk.o ${win32_ui_o}
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} $^ ${WAZUH_STATIC_LIB} ${WAZUHEXT_LIB} ${OSSEC_LIBS} -I./syscheckd/include -mwindows -o $@
-
 
 ####################
 #### Clean #########

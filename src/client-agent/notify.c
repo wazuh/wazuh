@@ -217,7 +217,6 @@ void run_notify()
     tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 1] = '\0';
     curr_time = time(0);
 
-#ifndef ONEWAY_ENABLED
     /* Check if the server has responded */
     if ((curr_time - available_server) > agt->max_time_reconnect_try) {
         /* If response is not available, set lock and wait for it */
@@ -232,7 +231,6 @@ void run_notify()
         os_delwait();
         w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
     }
-#endif
 
     /* Check if time has elapsed */
     if ((curr_time - g_saved_time) < agt->notify_time) {
