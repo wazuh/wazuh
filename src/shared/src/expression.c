@@ -11,7 +11,7 @@
 #include "expression.h"
 
 #ifdef WAZUH_UNIT_TESTING
-#include "../unit_tests/wrappers/externals/pcre2/pcre2_wrappers.h"
+#include "../../unit_tests/wrappers/externals/pcre2/pcre2_wrappers.h"
 #else
 #define w_pcre2_match_data_create_from_pattern pcre2_match_data_create_from_pattern
 #define w_pcre2_match                          pcre2_match

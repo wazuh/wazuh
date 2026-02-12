@@ -14,7 +14,7 @@
 #include <stdio.h>
 
 #include "wrappers/common.h"
-#include "../../../syscheckd/include/syscheck.h"
+#include "syscheck.h"
 #include "../../../syscheckd/src/whodata/syscheck_audit.h"
 
 #include "wrappers/externals/procpc/readproc_wrappers.h"

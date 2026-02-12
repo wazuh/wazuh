@@ -24,7 +24,7 @@
 #include "os_net.h"
 #include <unistd.h>
 #else
-#include "../client-agent/agentd.h"
+#include "agentd.h"
 // Forward declaration - agcom_dispatch is available in the same process on Windows
 extern size_t agcom_dispatch(char * command, char ** output);
 #endif

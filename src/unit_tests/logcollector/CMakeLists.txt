@@ -1,6 +1,14 @@
 # Generate logcollector library
-file(GLOB logcollector_files
-    ${SRC_FOLDER}/logcollector/*.o)
+if(${TARGET} STREQUAL "winagent")
+  file(GLOB logcollector_files
+       ${SRC_FOLDER}/build/logcollector/CMakeFiles/logcollector_lib.dir/src/*.obj)
+  list(REMOVE_ITEM logcollector_files ${SRC_FOLDER}/build/logcollector/CMakeFiles/logcollector_lib.dir/src/main.c.obj)
+else()
+  file(GLOB logcollector_files
+       ${SRC_FOLDER}/build/logcollector/CMakeFiles/logcollector_lib.dir/src/*.o)
+  list(REMOVE_ITEM logcollector_files ${SRC_FOLDER}/build/logcollector/CMakeFiles/logcollector_lib.dir/src/main.c.o)
+endif()
+
 add_library(LOGCOLLECTOR_O STATIC ${logcollector_files})
 set_source_files_properties(
     ${logcollector_files}

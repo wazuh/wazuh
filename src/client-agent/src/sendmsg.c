@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "agentd.h"
+#include "state.h"
 #include "os_net.h"
 
 static pthread_mutex_t send_mutex;

@@ -21,6 +21,7 @@ include_directories(
   ${SRC_FOLDER}/external/openssl/include/
   ${SRC_FOLDER}/external/zlib/
   ${SRC_FOLDER}/addagent
+  ${SRC_FOLDER}/client-agent/include
   ${SRC_FOLDER}/config/include
   ${SRC_FOLDER}/shared/error_messages
   ${SRC_FOLDER}/shared/os_crypto/md5

@@ -10,7 +10,7 @@
 
 #include "shared.h"
 #ifdef WIN32
-#include "os_execd/execd.h"
+#include "execd.h"
 #endif
 #include "md5_op.h"
 #include "os_net.h"
@@ -18,6 +18,7 @@
 #include "wm_sca.h"
 #include "syscheck_op.h"
 #include "agentd.h"
+#include "state.h"
 
 /* Global variables */
 static FILE *fp = NULL;

@@ -27,7 +27,7 @@
 #include "../wrappers/wazuh/syscheckd/run_realtime_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/win_whodata_wrappers.h"
 
-#include "../syscheckd/include/syscheck.h"
+#include "syscheck.h"
 #include "../syscheckd/src/db/include/db.h"
 #include "syscheck-config.h"
 

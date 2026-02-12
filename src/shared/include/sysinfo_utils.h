@@ -10,7 +10,7 @@
 #ifndef SYSINFO_UTILS_H_
 #define SYSINFO_UTILS_H_
 
-#include "../data_provider/include/sysInfo.h"
+#include "sysInfo.h"
 #include "shared.h"
 
 /**

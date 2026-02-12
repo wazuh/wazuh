@@ -18,11 +18,11 @@
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
-#include "../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
-#include "../unit_tests/wrappers/windows/fileapi_wrappers.h"
-#include "../unit_tests/wrappers/windows/handleapi_wrappers.h"
-#include "../unit_tests/wrappers/windows/stat64_wrappers.h"
-#include "../unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#include "../../unit_tests/wrappers/windows/fileapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/handleapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/stat64_wrappers.h"
+#include "../../unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
 #endif
 #endif
 

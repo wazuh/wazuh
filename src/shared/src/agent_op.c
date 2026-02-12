@@ -12,15 +12,15 @@
 #include "shared.h"
 #include "sha256_op.h"
 #include "os_net.h"
-#include "../addagent/manage_agents.h"
+#include "../../addagent/manage_agents.h"
 #include "authd-config.h"
-#include "../os_auth/auth.h"
+#include "../../os_auth/auth.h"
 #include "wazuhdb_queries_op.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
 #ifdef WIN32
-#include "../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#include "../../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
 #endif
 #endif
 

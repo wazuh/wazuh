@@ -1,7 +1,13 @@
 # Generate client-agent library
-file(GLOB client-agent_files
-    ${SRC_FOLDER}/client-agent/*.o
-    ${SRC_FOLDER}/monitord/*.o)
+if(${TARGET} STREQUAL "winagent")
+  file(GLOB client-agent_files
+       ${SRC_FOLDER}/build/client-agent/CMakeFiles/agentd_lib.dir/src/*.obj)
+  list(REMOVE_ITEM client-agent_files ${SRC_FOLDER}/build/client-agent/CMakeFiles/agentd_lib.dir/src/main.c.obj)
+else()
+  file(GLOB client-agent_files
+       ${SRC_FOLDER}/build/client-agent/CMakeFiles/agentd_lib.dir/src/*.o)
+  list(REMOVE_ITEM client-agent_files ${SRC_FOLDER}/build/client-agent/CMakeFiles/agentd_lib.dir/src/main.c.o)
+endif()
 
 list(REMOVE_ITEM client-agent_files ${SRC_FOLDER}/client-agent/main.o)
 

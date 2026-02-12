@@ -16,7 +16,7 @@
     // Remove static qualifier when unit testing
     #define STATIC
     #ifdef WIN32
-            #include "unit_tests/wrappers/wazuh/client-agent/start_agent.h"
+            #include "../../unit_tests/wrappers/wazuh/client-agent/start_agent.h"
             #define recv wrap_recv
     #endif
 

@@ -294,7 +294,7 @@ OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
 WAZUH_MODULES_INC := $(shell find ./wazuh_modules -type d -name include)
 WAZUH_MODULES_SRC := $(shell find ./wazuh_modules -type d -name src)
-OSSEC_CFLAGS+=-I./ -I./shared/include/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include/curl -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_SQLITE} -I${EXTERNAL_RPM}/builddir/output/include -I./active-response/include -I./config/include -I./shared/error_messages -I./shared/os_crypto/md5 -I./shared/os_crypto/sha1 -I./shared/os_crypto/sha256 -I./shared/os_crypto/md5_sha1_sha256 -I./shared/os_crypto/blowfish -I./shared/os_crypto/signature -I./shared/os_net -I./shared/os_regex -I./shared/os_xml -I./data_provider/include/ -I./shared_modules/ -I./shared_modules/agent_metadata/include -I./shared_modules/common/ -I./shared_modules/content_manager/include -I./shared_modules/dbsync/include -I./shared_modules/router/include -I./shared_modules/sync_protocol/include -I./syscheckd/include -I./rootcheck/include $(addprefix -I,$(WAZUH_MODULES_INC)) $(addprefix -I,$(WAZUH_MODULES_SRC)) -I./wazuh_modules/src/agent_upgrade -I./wazuh_modules/src/agent_upgrade/agent -I./wazuh_modules/src/agent_upgrade/manager -I./wazuh_modules/src/task_manager
+OSSEC_CFLAGS+=-I./ -I./shared/include/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include/curl -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_SQLITE} -I${EXTERNAL_RPM}/builddir/output/include -I./active-response/include -I./config/include -I./client-agent/include -I./logcollector/include -I./os_execd/include -I./shared/error_messages -I./shared/os_crypto/md5 -I./shared/os_crypto/sha1 -I./shared/os_crypto/sha256 -I./shared/os_crypto/md5_sha1_sha256 -I./shared/os_crypto/blowfish -I./shared/os_crypto/signature -I./shared/os_net -I./shared/os_regex -I./shared/os_xml -I./data_provider/include/ -I./shared_modules/ -I./shared_modules/agent_metadata/include -I./shared_modules/common/ -I./shared_modules/content_manager/include -I./shared_modules/dbsync/include -I./shared_modules/router/include -I./shared_modules/sync_protocol/include -I./syscheckd/include -I./rootcheck/include $(addprefix -I,$(WAZUH_MODULES_INC)) $(addprefix -I,$(WAZUH_MODULES_SRC)) -I./wazuh_modules/src/agent_upgrade -I./wazuh_modules/src/agent_upgrade/agent -I./wazuh_modules/src/agent_upgrade/manager -I./wazuh_modules/src/task_manager
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -512,8 +512,6 @@ settings:
 	@echo "    CC                ${CC}"
 	@echo "    MAKE              ${MAKE}"
 
-BUILD_SERVER+=wazuh-execd -
-BUILD_SERVER+=wazuh-logcollector -
 BUILD_SERVER+=wazuh-remoted
 ifeq (,$(filter ${TEST},YES yes y Y 1))
 BUILD_SERVER+=utils
@@ -522,9 +520,6 @@ BUILD_SERVER+=wazuh-monitord
 BUILD_SERVER+=wazuh-authd
 BUILD_SERVER+=wazuh-db
 
-BUILD_AGENT+=wazuh-agentd
-BUILD_AGENT+=wazuh-logcollector
-BUILD_AGENT+=wazuh-execd
 BUILD_AGENT+=manage_agents
 
 BUILD_CMAKE_PROJECTS+=build_wazuh_cmake
@@ -1437,32 +1432,6 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 endif
 endif
 
-#### os_execd #####
-
-os_execd_c := $(wildcard os_execd/*.c)
-os_execd_o := $(os_execd_c:.c=.o)
-
-os_execd/%.o: os_execd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-execd\" -c $^ -o $@
-
-wazuh-execd: ${os_execd_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${LINKER_START_GROUP} -lconfig -lwazuh_modulesd_lib ${WAZUH_STATIC_LIB} ${LINKER_END_GROUP} ${OSSEC_LIBS} -o $@
-
-#### logcollectord ####
-
-os_logcollector_c := $(wildcard logcollector/*.c)
-os_logcollector_o := $(os_logcollector_c:.c=.o)
-os_logcollector_eventchannel_o := $(os_logcollector_c:.c=-event.o)
-
-logcollector/%.o: logcollector/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-logcollector\" -c $^ -o $@
-
-logcollector/%-event.o: logcollector/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DEVENTCHANNEL_SUPPORT -DARGV0=\"wazuh-logcollector\" -c $^ -o $@
-
-wazuh-logcollector: ${os_logcollector_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lconfig -lwazuh_modulesd_lib ${WAZUH_STATIC_LIB} ${OSSEC_LIBS} -o $@
-
 #### remoted #########
 
 remoted_c := $(wildcard remoted/*.c)
@@ -1473,17 +1442,6 @@ remoted/%.o: remoted/%.c
 
 wazuh-remoted: ${remoted_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lrouter -lconfig -lwazuh_modulesd_lib ${WAZUH_STATIC_LIB} ${OSSEC_LIBS} -o $@
-
-#### wazuh-agentd ####
-
-client_agent_c := $(wildcard client-agent/*.c)
-client_agent_o := $(client_agent_c:.c=.o)
-
-client-agent/%.o: client-agent/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -I./client-agent -DARGV0=\"wazuh-agentd\" -c $^ -o $@
-
-wazuh-agentd: ${client_agent_o} monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ -lagent_metadata -lconfig -lwazuh_modulesd_lib ${WAZUH_STATIC_LIB} ${OSSEC_LIBS} -o $@
 
 #### addagent ######
 
@@ -1655,11 +1613,11 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
 
-win32/wazuh-agent.exe: win32/wazuh_agent_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) $(filter-out os_execd/main.o, ${os_execd_o}) monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ -ldbsync -lwazuh-syscheckd -l:libfimdb.lib -lagent_metadata -llibagent_sync_protocol -lschema_validator -lconfig -lwazuh-modulesd ${WAZUH_STATIC_LIB} libwazuhext.lib -lrootcheck ${OSSEC_LIBS} -o $@
+win32/wazuh-agent.exe: win32/wazuh_agent_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ -ldbsync -lwazuh-agentd -lwazuh-logcollector -lwazuh-execd -lwazuh-syscheckd -l:libfimdb.lib -lagent_metadata -llibagent_sync_protocol -lschema_validator -lconfig -lwazuh-modulesd ${WAZUH_STATIC_LIB} libwazuhext.lib -lrootcheck ${OSSEC_LIBS} -o $@
 
-win32/wazuh-agent-eventchannel.exe: win32/wazuh_agent_eventchannel_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) $(filter-out os_execd/main.o, ${os_execd_o}) monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ -ldbsync -lwazuh-syscheckd-event -l:libfimdb.lib -lagent_metadata -llibagent_sync_protocol -lschema_validator -lconfig -lwazuh-modulesd ${WAZUH_STATIC_LIB} libwazuhext.lib -lrootcheck ${OSSEC_LIBS} -lwevtapi -o $@
+win32/wazuh-agent-eventchannel.exe: win32/wazuh_agent_eventchannel_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ -ldbsync -lwazuh-agentd -lwazuh-logcollector-event -lwazuh-execd -lwazuh-syscheckd-event -l:libfimdb.lib -lagent_metadata -llibagent_sync_protocol -lschema_validator -lconfig -lwazuh-modulesd ${WAZUH_STATIC_LIB} libwazuhext.lib -lrootcheck ${OSSEC_LIBS} -lwevtapi -o $@
 
 win32/manage_agents.exe: win32/manage_agents_resource.o win32/version-app.o win32/win_service_rk.o ${addagent_o}
 	${OSSEC_CCBIN} -DARGV0=\"manage-agents\" -DMA ${OSSEC_LDFLAGS} $^ ${WAZUH_STATIC_LIB} ${WAZUHEXT_LIB} ${OSSEC_LIBS} -o $@
@@ -1761,10 +1719,7 @@ clean-internals:
 	rm -f $(BUILD_SERVER)
 	rm -f $(BUILD_AGENT)
 	rm -f $(BUILD_LIBS)
-	rm -f ${os_execd_o}
-	rm -f ${os_logcollector_o} ${os_logcollector_eventchannel_o}
 	rm -f ${remoted_o}
-	rm -f ${client_agent_o}
 	rm -f ${addagent_o}
 	rm -f default-firewall-drop pf npf ipfw firewalld-drop disable-account host-deny ip-customblock restart-wazuh route-null kaspersky wazuh-slack firewall-drop
 	rm -f ${util_o} ${util_programs}
@@ -1782,6 +1737,9 @@ clean-internals:
 	rm -f libwazuh.a
 	rm -f libwazuh_test.a
 	rm -f wazuh-keystore
+	rm -f wazuh-agentd
+	rm -f wazuh-execd
+	rm -f wazuh-logcollector
 	rm -f wazuh-syscheckd
 	rm -f wazuh-modulesd
 	rm -f shared/*.o

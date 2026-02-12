@@ -15,9 +15,9 @@
 #include "sha1_op.h"
 #include "signature.h"
 #include "wmodules.h"
-#include "external/zlib/zlib.h"
-#include "client-agent/agentd.h"
-#include "logcollector/logcollector.h"
+#include "zlib.h"
+#include "agentd.h"
+#include "logcollector.h"
 #include "rootcheck.h"
 
 static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);

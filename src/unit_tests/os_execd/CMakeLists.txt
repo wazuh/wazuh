@@ -1,7 +1,13 @@
 # Generate execd library
-file(GLOB execd_files
-    ${SRC_FOLDER}/os_execd/*.o
-    ${SRC_FOLDER}/active-response/*.o)
+if(${TARGET} STREQUAL "winagent")
+  file(GLOB execd_files
+       ${SRC_FOLDER}/build/os_execd/CMakeFiles/execd_lib.dir/src/*.obj)
+  list(REMOVE_ITEM execd_files ${SRC_FOLDER}/build/os_execd/CMakeFiles/execd_lib.dir/src/main.c.obj)
+else()
+  file(GLOB execd_files
+       ${SRC_FOLDER}/build/os_execd/CMakeFiles/execd_lib.dir/src/*.o)
+  list(REMOVE_ITEM execd_files ${SRC_FOLDER}/build/os_execd/CMakeFiles/execd_lib.dir/src/main.c.o)
+endif()
 
 add_library(EXECD_O STATIC ${execd_files})
 

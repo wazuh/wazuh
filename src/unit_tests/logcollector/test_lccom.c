@@ -14,8 +14,8 @@
 #include <stdio.h>
 
 #include "shared.h"
-#include "../../logcollector/state.h"
-#include "../../logcollector/logcollector.h"
+#include "../../logcollector/src/state.h"
+#include "logcollector.h"
 #include "wmodules.h"
 #include "os_net.h"
 

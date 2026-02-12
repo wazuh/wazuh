@@ -8,7 +8,7 @@
  */
 
 #include "check_cert_op.h"
-#include "../os_auth/auth.h"
+#include "../../os_auth/auth.h"
 #include "os_net.h"
 #include "shared.h"
 #include "sec.h"
@@ -29,10 +29,10 @@
     #define assert(expression) mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 
     #ifndef WIN32
-        #include "../unit_tests/wrappers/posix/unistd_wrappers.h"
+        #include "../../unit_tests/wrappers/posix/unistd_wrappers.h"
     #else
-        #include "../unit_tests/wrappers/windows/winsock_wrappers.h"
-        #include "../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+        #include "../../unit_tests/wrappers/windows/winsock_wrappers.h"
+        #include "../../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
     #endif
 #endif
 

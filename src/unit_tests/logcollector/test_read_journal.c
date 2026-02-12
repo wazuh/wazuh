@@ -16,8 +16,8 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "../../logcollector/logcollector.h"
-#include "../../logcollector/journal_log.h"
+#include "logcollector.h"
+#include "journal_log.h"
 #include "shared.h"
 #include "../wrappers/common.h"
 

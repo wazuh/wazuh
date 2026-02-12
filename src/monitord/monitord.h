@@ -17,6 +17,7 @@
 #endif
 
 #include "global-config.h"
+#include "log_rotate.h"
 
 /* Forward declarations */
 typedef struct _monitor_config monitor_config;
@@ -30,8 +31,6 @@ typedef struct _monitor_config monitor_config;
 void Monitord(void) __attribute__((noreturn));
 void manage_files(int cday, int cmon, int cyear);
 void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext);
-void OS_CompressLog(const char *logfile);
-void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations);
 int delete_old_agent(const char *agent_id);
 int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short day_wait);
 

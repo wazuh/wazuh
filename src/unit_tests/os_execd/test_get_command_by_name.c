@@ -15,7 +15,7 @@
 #include <string.h>
 
 #include "shared.h"
-#include "../../os_execd/execd.h"
+#include "execd.h"
 
 static void test_custom_command(void **state) {
     (void)state;

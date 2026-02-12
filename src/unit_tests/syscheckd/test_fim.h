@@ -1,7 +1,7 @@
 #ifndef __TEST_FIM_H
 #define __TEST_FIM_H
 
-#include "../syscheckd/include/syscheck.h"
+#include "syscheck.h"
 #include "syscheck-config.h"
 
 #include "wrappers/posix/pthread_wrappers.h"

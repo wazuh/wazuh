@@ -13,7 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "../syscheckd/include/syscheck.h"
+#include "syscheck.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "shared.h"

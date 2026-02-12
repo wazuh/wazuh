@@ -7,7 +7,7 @@
  * Foundation
  */
 
-#include "../../../syscheckd/include/syscheck.h"
+#include "syscheck.h"
 #include "ebpf_wrappers.h"
 #include <setjmp.h>
 #include <cmocka.h>

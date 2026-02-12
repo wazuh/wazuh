@@ -10,9 +10,9 @@
 
 #ifdef WIN32
 #include "shared.h"
-#include "client-agent/agentd.h"
-#include "logcollector/logcollector.h"
-#include "os_execd/execd.h"
+#include "agentd.h"
+#include "logcollector.h"
+#include "execd.h"
 #include "wmodules.h"
 #include "sysInfo.h"
 #include "sym_load.h"

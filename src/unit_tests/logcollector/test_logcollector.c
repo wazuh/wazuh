@@ -14,7 +14,7 @@
 #include <stdio.h>
 
 #include "shared.h"
-#include "../../logcollector/logcollector.h"
+#include "logcollector.h"
 #include <math.h>
 #include <pthread.h>
 #include "sha1_op.h"

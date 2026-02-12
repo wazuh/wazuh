@@ -15,7 +15,7 @@
 #include <time.h>
 
 #include "shared.h"
-#include "../../logcollector/state.h"
+#include "../../logcollector/src/state.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"

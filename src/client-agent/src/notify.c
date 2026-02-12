@@ -12,6 +12,7 @@
 #include "md5_op.h"
 #include "os_net.h"
 #include "agentd.h"
+#include "state.h"
 #include "metadata_provider.h"
 #include "cJSON.h"
 

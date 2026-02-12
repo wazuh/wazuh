@@ -13,7 +13,7 @@
 #include "os_regex.h"
 #include "os_net.h"
 #include "wmodules.h"
-#include "../external/cJSON/cJSON.h"
+#include "cJSON.h"
 #include "execd.h"
 #include "active_responses.h"
 
@@ -33,7 +33,7 @@ STATIC OSHash *repeated_hash;
 
 #ifdef WIN32
 #ifdef WAZUH_UNIT_TESTING
-    #include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+    #include "../../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
 #endif
 static pthread_mutex_t timeout_list_mutex;
 extern w_queue_t * winexec_queue;

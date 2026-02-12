@@ -15,11 +15,11 @@
 #include "os_net.h"
 
 #ifdef WIN32
-#include "../os_execd/execd.h"
-#include "../client-agent/agentd.h"
+#include "execd.h"
+#include "agentd.h"
 #include "syscheck.h"
 #include "wmodules.h"
-#include "../logcollector/logcollector.h"
+#include "logcollector.h"
 #include "wm_agent_upgrade_agent.h"
 #endif
 

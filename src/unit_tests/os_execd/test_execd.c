@@ -19,8 +19,8 @@
 #include "os_regex.h"
 #include "os_net.h"
 #include "wmodules.h"
-#include "../external/cJSON/cJSON.h"
-#include "../os_execd/execd.h"
+#include "../../external/cJSON/cJSON.h"
+#include "execd.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/libc/stdio_wrappers.h"

@@ -9,8 +9,8 @@
  */
 
 #include "shared.h"
-#include "monitord.h"
-#include "../external/zlib/zlib.h"
+#include "log_rotate.h"
+#include "zlib.h"
 
 
 /* gzip a log file */

@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "../../logcollector/logcollector.h"
+#include "logcollector.h"
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "shared.h"
 #include "../wrappers/common.h"

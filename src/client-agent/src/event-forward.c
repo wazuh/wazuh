@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "agentd.h"
+#include "state.h"
 #include "os_net.h"
 #include "sec.h"
 

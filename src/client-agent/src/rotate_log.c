@@ -9,7 +9,7 @@
 
 #include "shared.h"
 #include "agentd.h"
-#include "monitord/monitord.h"
+#include "log_rotate.h"
 
 #ifdef WIN32
 #define localtime_r(x, y) localtime_s(y, x)

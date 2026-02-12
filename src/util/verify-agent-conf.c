@@ -11,7 +11,7 @@
 #include "shared.h"
 #include "localfile-config.h"
 #include "config.h"
-#include "logcollector/logcollector.h"
+#include "logcollector.h"
 
 #undef ARGV0
 #define ARGV0 "verify-agent-conf"

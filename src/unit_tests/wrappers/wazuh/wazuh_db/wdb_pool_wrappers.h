@@ -11,7 +11,7 @@
 #ifndef WDB_POOL_WRAPPERS_H
 #define WDB_POOL_WRAPPERS_H
 
-#include "../wazuh_db/wdb.h"
+#include "../../../../wazuh_db/wdb.h"
 
 wdb_t * __wrap_wdb_pool_get(const char * name);
 

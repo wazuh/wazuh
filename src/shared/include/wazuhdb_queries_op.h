@@ -12,7 +12,7 @@
 #ifndef WDBQUERIESOP_H
 #define WDBQUERIESOP_H
 
-#include "../wazuh_db/wdb.h"
+#include "../../wazuh_db/wdb.h"
 
 typedef enum global_db_access {
     WDB_INSERT_AGENT,

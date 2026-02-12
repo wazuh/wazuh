@@ -15,9 +15,9 @@
 
 #ifdef WAZUH_UNIT_TESTING
     #ifdef WIN32
-        #include "../unit_tests/wrappers/windows/url_wrappers.h"
+        #include "../../unit_tests/wrappers/windows/url_wrappers.h"
     #else
-        #include "../unit_tests/wrappers/wazuh/shared/url_wrappers.h"
+        #include "../../unit_tests/wrappers/wazuh/shared/url_wrappers.h"
     #endif
 #endif
 

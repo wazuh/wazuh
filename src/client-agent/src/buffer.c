@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include "shared.h"
 #include "agentd.h"
+#include "state.h"
 
 #ifdef WIN32
 #include <winsock2.h>

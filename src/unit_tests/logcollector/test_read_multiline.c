@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "../../logcollector/logcollector.h"
+#include "logcollector.h"
 #include "shared.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"

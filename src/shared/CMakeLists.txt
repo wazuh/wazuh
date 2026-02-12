@@ -17,10 +17,12 @@ include_directories(
   ${SRC_FOLDER}/external/bzip2/
   ${SRC_FOLDER}/external/zlib/
   ${SRC_FOLDER}/active-response/include
-  ${SRC_FOLDER}/client-agent
+  ${SRC_FOLDER}/client-agent/include
   ${SRC_FOLDER}/config/include
+  ${SRC_FOLDER}/logcollector/include
   ${SRC_FOLDER}/shared_modules/dbsync/include
   ${SRC_FOLDER}/syscheckd/include
+  ${SRC_FOLDER}/data_provider/include
   ${SRC_FOLDER}/wazuh_modules/include
   ${SRC_FOLDER}/wazuh_modules/src
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade

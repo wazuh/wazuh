@@ -8,7 +8,7 @@
  */
 
 #include "shared.h"
-#include "monitord.h"
+#include "log_rotate.h"
 
 #ifdef WIN32
 #define mkdir(x, y) _mkdir(x)

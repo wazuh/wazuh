@@ -12,12 +12,12 @@
 
 #include "shared.h"
 #include "wmodules.h"
-#include "client-agent/agentd.h"
-#include "logcollector/logcollector.h"
+#include "agentd.h"
+#include "logcollector.h"
 #include "wmodules.h"
 #include "os_win.h"
 #include "os_net.h"
-#include "os_execd/execd.h"
+#include "execd.h"
 #include "md5_op.h"
 #include "external/cJSON/cJSON.h"
 
