@@ -21,7 +21,6 @@ namespace
 {
 
 const base::Name KVDB_STORE_NAME {"kvdb-ioc/status/0"}; ///< Store document name for KVDB state
-
 /**
  * @brief Represents the persisted state of a KVDB instance
  */
@@ -643,6 +642,31 @@ void KVDBManager::saveStateToStore()
     json::Json j {};
     j.setArray();
 
+    std::unordered_map<std::string, std::string> previousInstancePaths;
+    try
+    {
+        auto optDoc = m_store->readDoc(KVDB_STORE_NAME);
+        if (!base::isError(optDoc))
+        {
+            const auto& persisted = base::getResponse(optDoc);
+            if (auto optArray = persisted.getArray(); optArray.has_value())
+            {
+                for (const auto& jState : *optArray)
+                {
+                    auto dbState = DBState::fromJson(jState);
+                    if (dbState.hasInstance())
+                    {
+                        previousInstancePaths.emplace(dbState.getName(), dbState.getInstancePath());
+                    }
+                }
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        LOG_DEBUG("[KVDB IOC] Could not preload previous persisted paths: {}.", e.what());
+    }
+
     {
         std::shared_lock<std::shared_mutex> lk(m_registryMutex);
         for (const auto& [name, handle] : m_handles)
@@ -657,6 +681,14 @@ void KVDBManager::saveStateToStore()
                     auto absPath = std::filesystem::path(instance->path());
                     auto relPath = std::filesystem::relative(absPath, m_root);
                     dbState.setInstancePath(relPath.string());
+                }
+            }
+            else
+            {
+                auto it = previousInstancePaths.find(name);
+                if (it != previousInstancePaths.end())
+                {
+                    dbState.setInstancePath(it->second);
                 }
             }
 

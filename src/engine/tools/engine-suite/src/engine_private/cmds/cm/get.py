@@ -8,16 +8,15 @@ def run(args):
     # Get the params
     api_socket: str = args['api_socket']
 
-    json_request = dict()
-    json_request['space'] = args['space']
-    json_request['uuid'] = args['uuid']
-    json_request['asJson'] = args['json']
+    req = crud.resourceGet_Request()
+    req.space = args['space']
+    req.uuid = args['uuid']
+    req.asJson = args['json']
 
     # Create the api request
     try:
         client = APIClient(api_socket)
-        error, response = client.jsend(
-            json_request, crud.resourceGet_Request(), crud.resourceGet_Response())
+        error, response = client.send(req, crud.resourceGet_Response())
 
         if error:
             sys.exit(f'Error getting asset or collection: {error}')

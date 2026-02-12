@@ -2,8 +2,12 @@
 #define KVDBIOC_HELPERS_HPP
 
 #include <array>
+#include <optional>
 #include <stdexcept>
+#include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include <base/json.hpp>
 
@@ -33,27 +37,58 @@ enum class IOCType
     DB_COUNT = UNKNOWN
 };
 
-/**
- * @brief Parse a string into an IOCType enum value.
- *
- * @param key The string representation of the IOC type.
- * @return IOCType The corresponding enum value, or IOCType::UNKNOWN if not recognized.
- */
-inline constexpr IOCType parseIOCType(std::string_view key)
+struct IOCTypeInfo
 {
-    if (key == "connection")
-        return IOCType::CONNECTION;
-    else if (key == "url_full")
-        return IOCType::URL_FULL;
-    else if (key == "url_domain")
-        return IOCType::URL_DOMAIN;
-    else if (key == "hash_md5")
-        return IOCType::HASH_MD5;
-    else if (key == "hash_sha1")
-        return IOCType::HASH_SHA1;
-    else if (key == "hash_sha256")
-        return IOCType::HASH_SHA256;
-    return IOCType::UNKNOWN;
+    std::string_view typeKey; ///< Value expected in IOC "/type"
+    IOCType type;
+    std::string_view dbName; ///< Target KVDB name
+};
+
+// Single source of truth: add new types ONLY here.
+constexpr std::array<IOCTypeInfo, 6> IOC_TYPE_TABLE {{
+    {"connection", IOCType::CONNECTION, "ioc_connections"},
+    {"url_full", IOCType::URL_FULL, "ioc_urls_full"},
+    {"url_domain", IOCType::URL_DOMAIN, "ioc_urls_domain"},
+    {"hash_md5", IOCType::HASH_MD5, "ioc_hashes_md5"},
+    {"hash_sha1", IOCType::HASH_SHA1, "ioc_hashes_sha1"},
+    {"hash_sha256", IOCType::HASH_SHA256, "ioc_hashes_sha256"},
+}};
+
+inline std::optional<IOCTypeInfo> findIOCTypeInfo(std::string_view key) noexcept
+{
+    for (const auto& e : IOC_TYPE_TABLE)
+    {
+        if (e.typeKey == key)
+        {
+            return e;
+        }
+    }
+    return std::nullopt;
+}
+
+inline IOCType parseIOCType(std::string_view key) noexcept
+{
+    auto info = findIOCTypeInfo(key);
+    return info ? info->type : IOCType::UNKNOWN;
+}
+
+/**
+ * @brief Get the list of supported IOC types
+ *
+ * This function returns all IOC type strings defined in IOC_TYPE_TABLE.
+ * When adding new IOC types, only update IOC_TYPE_TABLE - no need to modify this function.
+ *
+ * @return std::vector<std::string_view> List of supported IOC type strings
+ */
+inline std::vector<std::string_view> getSupportedIocTypes()
+{
+    std::vector<std::string_view> out;
+    out.reserve(IOC_TYPE_TABLE.size());
+    for (const auto& e : IOC_TYPE_TABLE)
+    {
+        out.push_back(e.typeKey);
+    }
+    return out;
 }
 
 /**
@@ -89,30 +124,6 @@ inline std::string getTypeFromIOC(const json::Json& iocDoc)
 }
 
 /**
- * @brief Get the DB name corresponding to a given IOC type.
- *
- * @param type The IOCType enum value representing the type of the IOC.
- * @return std::string_view The name of the database corresponding to the IOC type.
- * @throws std::runtime_error if the IOC type is unknown.
- */
-inline constexpr std::string_view dbNameFromType(IOCType type)
-{
-    switch (type)
-    {
-        case IOCType::CONNECTION: return "ioc_connections";
-        case IOCType::URL_FULL: return "ioc_urls_full";
-        case IOCType::URL_DOMAIN: return "ioc_urls_domain";
-        case IOCType::HASH_MD5: return "ioc_hashes_md5";
-        case IOCType::HASH_SHA1: return "ioc_hashes_sha1";
-        case IOCType::HASH_SHA256: return "ioc_hashes_sha256";
-        default: throw std::runtime_error("Unknown IOC type");
-    }
-}
-
-inline constexpr std::array<std::string_view, static_cast<size_t>(IOCType::DB_COUNT)> DB_NAMES = {
-    "ioc_connections", "ioc_urls_full", "ioc_urls_domain", "ioc_hashes_md5", "ioc_hashes_sha1", "ioc_hashes_sha256"};
-
-/**
  * @brief Initialize the required databases in the KVDB if they don't already exist.
  *
  * @param manager The KVDB manager instance to use for DB operations.
@@ -121,9 +132,10 @@ inline constexpr std::array<std::string_view, static_cast<size_t>(IOCType::DB_CO
  */
 inline void initializeDBs(const std::shared_ptr<IKVDBManager>& manager, std::string_view suffix = "")
 {
-    for (const auto& dbName : DB_NAMES)
+    for (const auto& entry : IOC_TYPE_TABLE)
     {
-        std::string fullDbName = suffix.empty() ? std::string(dbName) : std::string(dbName) + std::string(suffix);
+        std::string fullDbName =
+            suffix.empty() ? std::string(entry.dbName) : std::string(entry.dbName) + std::string(suffix);
 
         if (!manager->exists(fullDbName))
         {
@@ -143,10 +155,14 @@ inline std::pair<std::string, std::string> getDbAndKeyFromIOC(const json::Json& 
 {
     std::string key = getKeyFromIOC(iocDoc);
     std::string typeStr = getTypeFromIOC(iocDoc);
-    IOCType type = parseIOCType(typeStr);
-    std::string dbName = std::string(dbNameFromType(type));
 
-    return {dbName, key};
+    auto info = findIOCTypeInfo(typeStr);
+    if (!info)
+    {
+        throw std::runtime_error("Unknown IOC type: " + typeStr);
+    }
+
+    return {std::string {info->dbName}, key};
 }
 
 /**
@@ -182,6 +198,23 @@ inline void updateValueInDB(const std::shared_ptr<IKVDBManager>& manager,
     }
     candidateValue.appendJson(newValue);
     manager->put(dbName, key, candidateValue.str());
+}
+
+/**
+ * @brief Get the target DB name for a given IOC type string.
+ *
+ * @param typeStr The IOC type as a string, expected to match one of the entries in IOC_TYPE_TABLE.
+ * @return std::string_view The corresponding DB name for the given IOC type.
+ * @throw std::runtime_error if the IOC type is unknown.
+ */
+inline std::string_view getDbNameFromType(std::string_view typeStr)
+{
+    auto info = findIOCTypeInfo(typeStr);
+    if (!info)
+    {
+        throw std::runtime_error("Unknown IOC type: " + std::string(typeStr));
+    }
+    return info->dbName;
 }
 
 } // namespace kvdbioc::details

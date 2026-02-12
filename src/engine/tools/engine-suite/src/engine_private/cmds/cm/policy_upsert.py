@@ -9,21 +9,20 @@ def run(args):
     # Get the params
     api_socket: str = args['api_socket']
 
-    json_request = dict()
-    json_request['space'] = args['space']
+    req = crud.policyPost_Request()
+    req.space = args['space']
 
     content = args['content']
     # Read all content from stdin
     if not content:
         content = sys.stdin.read()
 
-    json_request['ymlContent'] = content
+    req.ymlContent = content
 
     # Create the api request
     try:
         client = APIClient(api_socket)
-        error, response = client.jsend(
-            json_request, crud.policyPost_Request(), engine.GenericStatus_Response())
+        error, response = client.send(req, engine.GenericStatus_Response())
 
         if error:
             sys.exit(f'Error upserting policy: {error}')

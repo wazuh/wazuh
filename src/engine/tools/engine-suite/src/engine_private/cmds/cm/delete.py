@@ -9,15 +9,14 @@ def run(args):
     # Get the params
     api_socket: str = args['api_socket']
 
-    json_request = dict()
-    json_request['space'] = args['space']
-    json_request['uuid'] = args['uuid']
+    req = crud.resourceDelete_Request()
+    req.space = args['space']
+    req.uuid = args['uuid']
 
     # Create the api request
     try:
         client = APIClient(api_socket)
-        error, response = client.jsend(
-            json_request, crud.resourceDelete_Request(), engine.GenericStatus_Response())
+        error, response = client.send(req, engine.GenericStatus_Response())
 
         if error:
             sys.exit(f'Error deleting resource: {error}')
