@@ -191,10 +191,10 @@ void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManage
 
         // Perform hot-swap for ALL temporary databases to production
         size_t dbsUpdated = 0;
-        for (const auto& dbName : kvdbioc::details::DB_NAMES)
+        for (const auto& entry : kvdbioc::details::IOC_TYPE_TABLE)
         {
-            std::string tmpDbName = std::string(dbName) + tmpSuffix;
-            std::string originalDbName = std::string(dbName);
+            std::string tmpDbName = std::string(entry.dbName) + tmpSuffix;
+            std::string originalDbName = std::string(entry.dbName);
 
             if (!kvdbManager->exists(originalDbName))
             {

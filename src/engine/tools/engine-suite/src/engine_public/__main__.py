@@ -5,9 +5,9 @@ from importlib.metadata import metadata
 from shared.default_settings import Constants as DefaultSettings
 from engine_public.cmds.cm.policy_validate import configure as configure_policy_validate
 from engine_public.cmds.cm.validate import configure as configure_validate
-from engine_public.cmds.cm.logtest_cleanup import configure as configure_logtest_cleanup
 from engine_public.cmds.ioc.state import configure as configure_ioc_state
 from engine_public.cmds.ioc.update import configure as configure_ioc_update
+from engine_public.cmds.tester.logtest_cleanup import configure as configure_logtest_cleanup
 
 def parse_args():
     meta = metadata('engine-suite')
@@ -52,7 +52,22 @@ def parse_args():
 
     configure_policy_validate(cm_subparsers)
     configure_validate(cm_subparsers)
-    configure_logtest_cleanup(cm_subparsers)
+
+    # ==========================================================
+    # Logtest commands (operate INSIDE a namespace → require --space)
+    # ==========================================================
+    logtest_parser = subparsers.add_parser(
+        'logtest',
+        help='Logtest operations'
+    )
+
+    logtest_subparsers = logtest_parser.add_subparsers(
+        title='logtest commands',
+        required=True,
+        dest='logtest_command'
+    )
+
+    configure_logtest_cleanup(logtest_subparsers)
 
     # ==========================================================
     # IOC commands (Indicator of Compromise operations)

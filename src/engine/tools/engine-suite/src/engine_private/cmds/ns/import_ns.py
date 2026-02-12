@@ -14,22 +14,21 @@ def run(args):
     # Create API client
     client = APIClient(api_socket)
 
-    json_request = dict()
-    json_request['space'] = args['space']
+    req = crud.namespaceImport_Request()
+    req.space = args['space']
 
     content = args['jsonContent']
     # Read all content from stdin
     if not content:
         content = sys.stdin.read()
 
-    json_request['jsonContent'] = content
-    json_request['force'] = args['force']
+    req.jsonContent = content
+    req.force = args['force']
 
     # Create the api request
     try:
         client = APIClient(api_socket)
-        error, response = client.jsend(
-            json_request, crud.namespaceImport_Request(), engine.GenericStatus_Response())
+        error, response = client.send(req, engine.GenericStatus_Response())
 
         if error:
             sys.exit(f'Error importing namespace: {error}')

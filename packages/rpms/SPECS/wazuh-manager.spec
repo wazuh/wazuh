@@ -562,7 +562,6 @@ rm -fr %{buildroot}
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/agent-template.conf
 %attr(660, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/shared/default/*
 %dir %attr(755, root, root) %{_localstatedir}/engine
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/kvdb
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema/allowed-fields
