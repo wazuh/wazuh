@@ -30,6 +30,7 @@
 static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 static void _init_masks(void);
 static const char *__gethour(const char *str, char *ossec_hour, const size_t ossec_hour_len) __attribute__((nonnull));
+static int parse_define_int_value(const char *high_name, const char *low_name, const char *value, int min, int max) __attribute__((nonnull));
 
 /**
  * @brief Convert the netmask from an integer value, valid from 0 to 128.
@@ -260,7 +261,6 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
 {
     int ret;
     char *value;
-    char *pt;
 
     /* Try to read from the local define file */
     value = _read_file(high_name, low_name, OSSEC_LDEFINES);
@@ -271,7 +271,45 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
         }
     }
 
-    pt = value;
+    ret = parse_define_int_value(high_name, low_name, value, min, max);
+
+    /* Clear memory */
+    free(value);
+
+    return (ret);
+}
+
+int getDefine_Int_WithDefault(const char *high_name, const char *low_name, int min, int max, int default_value)
+{
+    int ret;
+    char *value;
+    char default_text[32];
+
+    /* Try to read from the local define file */
+    value = _read_file(high_name, low_name, OSSEC_LDEFINES);
+    if (!value) {
+        value = _read_file(high_name, low_name, OSSEC_DEFINES);
+    }
+
+    if (!value) {
+        snprintf(default_text, sizeof(default_text), "%d", default_value);
+        ret = parse_define_int_value(high_name, low_name, default_text, min, max);
+        return ret;
+    }
+
+    ret = parse_define_int_value(high_name, low_name, value, min, max);
+
+    /* Clear memory */
+    free(value);
+
+    return ret;
+}
+
+static int parse_define_int_value(const char *high_name, const char *low_name, const char *value, int min, int max)
+{
+    int ret;
+    const char *pt = value;
+
     while (*pt != '\0') {
         if (!isdigit((int)*pt)) {
             merror_exit(INV_DEF, high_name, low_name, value);
@@ -284,10 +322,7 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
         merror_exit(INV_DEF, high_name, low_name, value);
     }
 
-    /* Clear memory */
-    free(value);
-
-    return (ret);
+    return ret;
 }
 
 /* Check if IP_address is present at that_IP

@@ -113,7 +113,7 @@ void startup_gate_wait_for_ready(const char *module_name) {
     char last_reason[OS_SIZE_128] = {0};
     const char *name = module_name && module_name[0] ? module_name : "module";
 
-    if (!getDefine_Int("agent", "startup_hash_block", 0, 1)) {
+    if (!getDefine_Int_WithDefault("agent", "startup_hash_block", 0, 1, 1)) {
         return;
     }
 
