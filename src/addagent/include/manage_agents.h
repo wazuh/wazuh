@@ -18,7 +18,6 @@
 #define ARGV0 "manage_agents"
 #endif
 
-/* Only keep what is unique to manage_agents.h */
 char *read_from_user(void);
 int k_import(const char *cmdimport);
 char *chomp(char *str);

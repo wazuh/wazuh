@@ -104,16 +104,14 @@ endif()
 
 # Build Windows active responses
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  # Windows active responses are output in win32/ directory They need
-  # win_stubs.c and resource files (.rc)
+  # Windows active responses need win_stubs.c and resource files (.rc)
 
   # Common Windows source files
   set(WIN_STUBS ${SRC_FOLDER}/win32/win_stubs.c)
-  # version-app.o is pre-built by the main Makefile winagent target
-  set(WIN_VERSION_APP ${SRC_FOLDER}/win32/version-app.o)
 
   # Enable RC language for resource files
   enable_language(RC)
+  set(WIN_VERSION_APP ${SRC_FOLDER}/${RESOURCE_APP_OBJ})
 
   # restart-wazuh.exe
   add_executable(

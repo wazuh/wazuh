@@ -30,7 +30,6 @@
 #define ARGV0 "wazuh-authd"
 #endif
 
-#include "../addagent/manage_agents.h"
 #include "os_net.h"
 #include "authd-config.h"
 #include <pthread.h>

@@ -10,7 +10,7 @@
 
 #include "manage_agents.h"
 #include "md5_op.h"
-#include "external/cJSON/cJSON.h"
+#include <cJSON.h>
 #include <stdlib.h>
 #include "authd-config.h"
 

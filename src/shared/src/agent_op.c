@@ -12,7 +12,6 @@
 #include "shared.h"
 #include "sha256_op.h"
 #include "os_net.h"
-#include "../../addagent/manage_agents.h"
 #include "authd-config.h"
 #include "../../os_auth/auth.h"
 #include "wazuhdb_queries_op.h"

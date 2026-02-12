@@ -13,7 +13,6 @@
 #include "sec.h"
 #include "remoted_op.h"
 #include "wazuhdb_queries_op.h"
-#include "manage_agents.h" // FILE_SIZE
 #include <cJSON.h>
 #include "router.h"
 #include "sym_load.h"

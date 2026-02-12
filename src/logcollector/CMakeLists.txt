@@ -59,6 +59,12 @@ if(UNIT_TEST)
   target_compile_definitions(logcollector_lib PRIVATE WAZUH_UNIT_TESTING)
 endif()
 
+# Enable EVENTCHANNEL_SUPPORT for Windows builds
+if(EVENTCHANNEL_SUPPORT)
+  target_compile_definitions(logcollector_lib PUBLIC EVENTCHANNEL_SUPPORT
+                                                     _WIN32_WINNT=0x600)
+endif()
+
 target_link_libraries(logcollector_lib PUBLIC wazuhext pthread config
                                               wazuh_modulesd_lib wazuh)
 

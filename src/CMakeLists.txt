@@ -297,3 +297,13 @@ add_subdirectory(logcollector)
 if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
   add_subdirectory(client-agent)
 endif()
+
+# Addagent (manage_agents) - Agent only
+if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
+  add_subdirectory(addagent)
+endif()
+
+# Util (verify-agent-conf) - Server only
+if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
+  add_subdirectory(util)
+endif()

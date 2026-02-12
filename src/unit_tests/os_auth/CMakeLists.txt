@@ -1,9 +1,7 @@
 # Generate os_auth library
 file(GLOB os_auth_files
-    ${SRC_FOLDER}/os_auth/*.o
-    ${SRC_FOLDER}/addagent/*.o)
+    ${SRC_FOLDER}/os_auth/*.o)
 list(REMOVE_ITEM os_auth_files ${SRC_FOLDER}/os_auth/main-server.o)
-list(REMOVE_ITEM os_auth_files ${SRC_FOLDER}/addagent/main.o)
 
 add_library(OS_AUTH_O STATIC ${os_auth_files})
 

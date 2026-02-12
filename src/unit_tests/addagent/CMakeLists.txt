@@ -1,26 +1,18 @@
 # Generate addagent library
-# Temporay fix because it will be deleted by https://github.com/wazuh/wazuh/issues/30924
-# Define the required addagent object files explicitly
-set(REQUIRED_ADDAGENT_OBJECTS
-    ${SRC_FOLDER}/addagent/manage_agents.o
-    ${SRC_FOLDER}/addagent/manage_keys.o
-    ${SRC_FOLDER}/addagent/read_from_user.o
-)
+if(${TARGET} STREQUAL "winagent")
+  file(GLOB addagent_files
+       ${SRC_FOLDER}/build/addagent/CMakeFiles/addagent_lib.dir/src/*.obj)
+  list(REMOVE_ITEM addagent_files ${SRC_FOLDER}/build/addagent/CMakeFiles/addagent_lib.dir/src/main.c.obj)
+else()
+  file(GLOB addagent_files
+       ${SRC_FOLDER}/build/addagent/CMakeFiles/addagent_lib.dir/src/*.o)
+  list(REMOVE_ITEM addagent_files ${SRC_FOLDER}/build/addagent/CMakeFiles/addagent_lib.dir/src/main.c.o)
+endif()
 
-# Add custom target to build addagent object files using make
-add_custom_target(build_addagent_objects
-    COMMAND ${CMAKE_MAKE_PROGRAM} TARGET=${TARGET} addagent/manage_agents.o addagent/manage_keys.o addagent/read_from_user.o
-    WORKING_DIRECTORY ${SRC_FOLDER}
-    COMMENT "Building addagent object files"
-)
-
-add_library(ADDAGENT_O STATIC ${REQUIRED_ADDAGENT_OBJECTS})
-
-# Make ADDAGENT_O depend on building the object files first
-add_dependencies(ADDAGENT_O build_addagent_objects)
+add_library(ADDAGENT_O STATIC ${addagent_files})
 
 set_source_files_properties(
-    ${REQUIRED_ADDAGENT_OBJECTS}
+    ${addagent_files}
     PROPERTIES
     EXTERNAL_OBJECT true
     GENERATED true
