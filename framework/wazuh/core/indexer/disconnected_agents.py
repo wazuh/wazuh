@@ -70,8 +70,6 @@ class DisconnectedAgentSyncTasks:
         # `setup_task_logger`) or `manager` + `logger` from older tests.
         if server is not None:
             self.logger = server.setup_task_logger("disconnected_agent_sync_task")
-        elif logger is not None:
-            self.logger = logger
         else:
             # Fallback to a dummy logger
             import logging
