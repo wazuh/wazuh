@@ -245,6 +245,7 @@ std::vector<nlohmann::json> DB::getDocumentsToPromote(std::string tableName, int
 
     // Determine ORDER BY based on table primary keys for deterministic results
     std::string orderBy;
+
     if (tableName == FIMDB_FILE_TABLE_NAME)
     {
         orderBy = "path, version";

@@ -469,7 +469,7 @@ add_executable(test_recovery test_recovery.c)
 target_compile_options(test_recovery PRIVATE "-Wall")
 
 set(RECOVERY_BASE_FLAGS "-Wl,--wrap,fim_db_get_last_sync_time -Wl,--wrap,fim_db_update_last_sync_time_value \
-                         -Wl,--wrap,fim_db_get_every_sync_element -Wl,--wrap,fim_db_calculate_table_checksum \
+                         -Wl,--wrap,fim_db_get_every_element -Wl,--wrap,fim_db_calculate_table_checksum \
                          -Wl,--wrap,fim_db_increase_each_entry_version \
                          -Wl,--wrap,asp_clear_in_memory_data -Wl,--wrap,asp_persist_diff_in_memory \
                          -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_requires_full_sync \
