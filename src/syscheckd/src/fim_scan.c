@@ -23,7 +23,7 @@
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
-#include "../unit_tests/wrappers/windows/stat64_wrappers.h"
+#include "../../unit_tests/wrappers/windows/stat64_wrappers.h"
 #endif
 /* Remove static qualifier when unit testing */
 #define static

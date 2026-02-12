@@ -22,7 +22,7 @@ include_directories(
   ${SRC_FOLDER}/external/zlib/
   ${SRC_FOLDER}/addagent
   ${SRC_FOLDER}/config/include
-  ${SRC_FOLDER}/error_messages
+  ${SRC_FOLDER}/shared/error_messages
   ${SRC_FOLDER}/shared/os_crypto/md5
   ${SRC_FOLDER}/shared/os_crypto/md5_sha1_sha256
   ${SRC_FOLDER}/shared/os_crypto/sha1
@@ -35,8 +35,10 @@ include_directories(
   ${SRC_FOLDER}/shared_modules/agent_metadata/include
   ${SRC_FOLDER}/shared_modules/common/
   ${SRC_FOLDER}/shared_modules/content_manager/include
+  ${SRC_FOLDER}/shared_modules/dbsync/include
   ${SRC_FOLDER}/shared_modules/router/include
   ${SRC_FOLDER}/shared_modules/sync_protocol/include
+  ${SRC_FOLDER}/syscheckd/include
   ${SRC_FOLDER}/wazuh_db/helpers)
 
 # Submodule include directories

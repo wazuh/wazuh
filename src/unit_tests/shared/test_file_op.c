@@ -18,7 +18,7 @@
 #include <errno.h>
 #include "defs.h"
 #include "file_op.h"
-#include "../error_messages/error_messages.h"
+#include "error_messages.h"
 #include "../wrappers/common.h"
 #include "../wrappers/libc/stdlib_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"

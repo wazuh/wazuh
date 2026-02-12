@@ -84,7 +84,7 @@ typedef struct _reg_path_struct {
 
 #endif
 
-#include "../syscheckd/include/syscheck.h"
+#include "syscheck.h"
 #include "os_net.h"
 
 #define FILE_ATTRIBUTE_INTEGRITY_STREAM         0x00008000

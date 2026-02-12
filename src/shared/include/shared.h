@@ -196,7 +196,7 @@ extern const char *__local_name;
 #ifndef WAZUH_UNIT_TESTING
 #define FOREVER() 1
 #else
-#include "../unit_tests/wrappers/common.h"
+#include "../../unit_tests/wrappers/common.h"
 #endif
 
 #include "debug_op.h"
@@ -260,7 +260,7 @@ extern const char *__local_name;
 #include "atomic.h"
 #include "binaries_op.h"
 #include "logging_helper.h"
-#include "../shared_modules/dbsync/include/dbsync.h"
+#include "dbsync.h"
 
 #ifdef WIN32
 #include <utf8_winapi_wrapper.h>

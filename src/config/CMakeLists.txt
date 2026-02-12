@@ -17,12 +17,14 @@ include_directories(
   ${SRC_FOLDER}/external/cJSON/
   ${SRC_FOLDER}/external/bzip2/
   ${SRC_FOLDER}/external/sqlite/
-  ${SRC_FOLDER}/error_messages
+  ${SRC_FOLDER}/shared/error_messages
   ${SRC_FOLDER}/shared/os_crypto/md5_sha1_sha256
   ${SRC_FOLDER}/shared/os_crypto/sha1
   ${SRC_FOLDER}/shared/os_regex
   ${SRC_FOLDER}/shared/os_net
   ${SRC_FOLDER}/shared/os_xml
+  ${SRC_FOLDER}/shared_modules/dbsync/include
+  ${SRC_FOLDER}/syscheckd/include
   ${SRC_FOLDER}/wazuh_modules/include
   ${SRC_FOLDER}/wazuh_modules/src
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade

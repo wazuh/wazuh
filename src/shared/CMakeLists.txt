@@ -19,7 +19,8 @@ include_directories(
   ${SRC_FOLDER}/active-response/include
   ${SRC_FOLDER}/client-agent
   ${SRC_FOLDER}/config/include
-  ${SRC_FOLDER}/error_messages
+  ${SRC_FOLDER}/shared_modules/dbsync/include
+  ${SRC_FOLDER}/syscheckd/include
   ${SRC_FOLDER}/wazuh_modules/include
   ${SRC_FOLDER}/wazuh_modules/src
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade
@@ -27,6 +28,7 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/manager
   ${SRC_FOLDER}/wazuh_modules/src/task_manager
   ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/error_messages
   ${CMAKE_CURRENT_SOURCE_DIR}/os_crypto/md5
   ${CMAKE_CURRENT_SOURCE_DIR}/os_crypto/sha1
   ${CMAKE_CURRENT_SOURCE_DIR}/os_crypto/sha256
