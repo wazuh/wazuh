@@ -223,12 +223,18 @@ STATIC void handle_orphaned_delete(const char* path,
 
     // Validate and persist the orphaned delete event
     // Note: For orphaned deletes, we don't mark for deletion from DBSync since the item is already deleted
-    // Orphaned deletes are always synced (sync_flag=1) to ensure cleanup on manager
     char item_desc[PATH_MAX + 32];
     snprintf(item_desc, sizeof(item_desc), "file %s", path);
+
+    cJSON* sync_json = cJSON_GetObjectItem(result_json, "sync");
+    if (sync_json == NULL) {
+        mdebug1("Couldn't find sync for orphaned delete '%s'", path);
+        return;
+    }
+    int sync_value = (int)cJSON_GetNumberValue(sync_json);
     validate_and_persist_fim_event(stateful_event, file_path_sha1, OPERATION_DELETE,
                                     FIM_FILES_SYNC_INDEX, document_version,
-                                    item_desc, false, NULL, NULL, 1);
+                                    item_desc, false, NULL, NULL, sync_value);
 
     cJSON_Delete(stateful_event);
 }
