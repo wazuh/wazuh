@@ -1,31 +1,17 @@
-- name: startup hash gate disabled
-  description: startup hash gate stays disabled when internal option is set to 0
-  configuration_parameters:
-  metadata:
-    scenario: disabled
-    local_internal_options:
-      agent.startup_hash_block: '0'
-
 - name: startup hash gate legacy handshake
   description: startup hash gate unblocks with legacy manager handshake without merged_sum
   configuration_parameters:
   metadata:
     scenario: legacy
-    local_internal_options:
-      agent.startup_hash_block: '1'
 
 - name: startup hash gate hash match
   description: startup hash gate unblocks when local merged.mg hash matches handshake merged_sum
   configuration_parameters:
   metadata:
     scenario: hash_match
-    local_internal_options:
-      agent.startup_hash_block: '1'
 
 - name: startup hash gate hash mismatch update
   description: startup hash gate blocks on mismatch and unblocks after merged.mg update
   configuration_parameters:
   metadata:
     scenario: hash_mismatch_update
-    local_internal_options:
-      agent.startup_hash_block: '1'

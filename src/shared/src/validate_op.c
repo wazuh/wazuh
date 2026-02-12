@@ -279,32 +279,6 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
     return (ret);
 }
 
-int getDefine_Int_WithDefault(const char *high_name, const char *low_name, int min, int max, int default_value)
-{
-    int ret;
-    char *value;
-    char default_text[32];
-
-    /* Try to read from the local define file */
-    value = _read_file(high_name, low_name, OSSEC_LDEFINES);
-    if (!value) {
-        value = _read_file(high_name, low_name, OSSEC_DEFINES);
-    }
-
-    if (!value) {
-        snprintf(default_text, sizeof(default_text), "%d", default_value);
-        ret = parse_define_int_value(high_name, low_name, default_text, min, max);
-        return ret;
-    }
-
-    ret = parse_define_int_value(high_name, low_name, value, min, max);
-
-    /* Clear memory */
-    free(value);
-
-    return ret;
-}
-
 static int parse_define_int_value(const char *high_name, const char *low_name, const char *value, int min, int max)
 {
     int ret;

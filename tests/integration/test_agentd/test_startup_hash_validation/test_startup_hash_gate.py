@@ -243,7 +243,7 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
                                      configure_local_internal_options, truncate_monitored_files,
                                      clean_keys, add_keys, daemons_handler, preserve_merged_mg):
     '''
-    description: Validate startup hash gate states for disabled, legacy, hash match and hash mismatch/update scenarios.
+    description: Validate startup hash gate states for legacy, hash match and hash mismatch/update scenarios.
 
     wazuh_min_version: 4.12.0
 
@@ -281,18 +281,13 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
     scenario = test_metadata['scenario']
     remoted_server = None
 
-    expected_pre_ready = scenario == 'disabled'
-    expected_pre_reason = 'disabled' if scenario == 'disabled' else 'waiting_handshake'
-    _wait_startup_gate_status(expected_pre_ready, expected_pre_reason)
+    _wait_startup_gate_status(False, 'waiting_handshake')
 
     limits_config = None
     expected_hash = None
     merged_update_content = None
 
-    if scenario == 'disabled':
-        _write_merged_mg(b'disabled-scenario-merged-content\n')
-        limits_config = _build_limits_config('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
-    elif scenario == 'legacy':
+    if scenario == 'legacy':
         limits_config = None
     elif scenario == 'hash_match':
         local_merged_content = b'startup-hash-validation-hash-match\n'
@@ -314,10 +309,6 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
         remoted_server.start()
 
         wait_connect()
-
-        if scenario == 'disabled':
-            _wait_startup_gate_status(True, 'disabled')
-            return
 
         if scenario == 'legacy':
             _wait_startup_gate_status(True, 'legacy_handshake')
