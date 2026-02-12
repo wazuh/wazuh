@@ -6,10 +6,6 @@ asgiref==3.7.2
 async-timeout==5.0.1
 asyncinotify==4.3.2
 attrs==23.1.0
-azure-core==1.38.0
-azure-storage-blob==12.20.0
-boto3==1.34.135
-botocore==1.34.135
 cachetools==4.1.0
 certifi==2024.7.4
 cffi==1.16.0
