@@ -24,6 +24,7 @@
 extern void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation);
 extern void add_pending_sync_item(OSList *pending_items, const cJSON *json, int sync_value);
 extern void process_pending_sync_updates(char* table_name, OSList *pending_items);
+extern cJSON* extract_primary_keys(const char* table_name, const cJSON* full_doc);
 
 // Local wrapper declarations (defined per-test-file like test_recovery.c)
 cJSON* __wrap_build_stateful_event_file(const char* path, const char* sha1_hash,
