@@ -18,10 +18,15 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
+#include "../wrappers/wazuh/shared/agent_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 
 #include "syscheck.h"
+#include "cJSON.h"
+
+/* External function declarations for testing */
+extern bool fetch_document_limits_from_agentd(void);
 
 /* setup/teardowns */
 static int setup_group(void **state) {
@@ -469,12 +474,171 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 
 #endif
 
+/* Tests for fetch_document_limits_from_agentd */
+
+void test_fetch_document_limits_success(void **state) {
+    (void) state;
+
+    const char *json_response = "{\"file\": 100, \"registry_key\": 200, \"registry_value\": 300}";
+
+    // Initialize limits to different values
+    syscheck.file_limit = 0;
+    syscheck.registry_key_limit = 0;
+    syscheck.registry_value_limit = 0;
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, json_response);
+    will_return(__wrap_w_query_agentd, true);
+
+    assert_true(fetch_document_limits_from_agentd());
+    assert_int_equal(syscheck.file_limit, 100);
+    assert_int_equal(syscheck.registry_key_limit, 200);
+    assert_int_equal(syscheck.registry_value_limit, 300);
+}
+
+void test_fetch_document_limits_query_failure(void **state) {
+    (void) state;
+
+    syscheck.file_limit = 50;
+    syscheck.registry_key_limit = 60;
+    syscheck.registry_value_limit = 70;
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, NULL);
+    will_return(__wrap_w_query_agentd, false);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Failed to query agentd for document limits");
+
+    assert_false(fetch_document_limits_from_agentd());
+    // Limits should remain unchanged
+    assert_int_equal(syscheck.file_limit, 50);
+    assert_int_equal(syscheck.registry_key_limit, 60);
+    assert_int_equal(syscheck.registry_value_limit, 70);
+}
+
+void test_fetch_document_limits_invalid_json(void **state) {
+    (void) state;
+
+    const char *invalid_json = "not valid json {";
+
+    syscheck.file_limit = 50;
+    syscheck.registry_key_limit = 60;
+    syscheck.registry_value_limit = 70;
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, invalid_json);
+    will_return(__wrap_w_query_agentd, true);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Failed to parse getdoclimits fim response");
+
+    assert_false(fetch_document_limits_from_agentd());
+    // Limits should remain unchanged
+    assert_int_equal(syscheck.file_limit, 50);
+    assert_int_equal(syscheck.registry_key_limit, 60);
+    assert_int_equal(syscheck.registry_value_limit, 70);
+}
+
+void test_fetch_document_limits_missing_fields(void **state) {
+    (void) state;
+
+    const char *json_response = "{\"file\": 100}";
+
+    syscheck.file_limit = 0;
+    syscheck.registry_key_limit = 50;
+    syscheck.registry_value_limit = 60;
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, json_response);
+    will_return(__wrap_w_query_agentd, true);
+
+    assert_true(fetch_document_limits_from_agentd());
+    // Only file_limit should be updated
+    assert_int_equal(syscheck.file_limit, 100);
+    // Others should remain unchanged
+    assert_int_equal(syscheck.registry_key_limit, 50);
+    assert_int_equal(syscheck.registry_value_limit, 60);
+}
+
+void test_fetch_document_limits_negative_values(void **state) {
+    (void) state;
+
+    const char *json_response = "{\"file\": -100, \"registry_key\": 200, \"registry_value\": -300}";
+
+    syscheck.file_limit = 50;
+    syscheck.registry_key_limit = 0;
+    syscheck.registry_value_limit = 70;
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, json_response);
+    will_return(__wrap_w_query_agentd, true);
+
+    assert_true(fetch_document_limits_from_agentd());
+    // Negative values should not update
+    assert_int_equal(syscheck.file_limit, 50);
+    assert_int_equal(syscheck.registry_key_limit, 200);
+    assert_int_equal(syscheck.registry_value_limit, 70);
+}
+
+void test_fetch_document_limits_partial_data(void **state) {
+    (void) state;
+
+    const char *json_response = "{\"registry_key\": 150}";
+
+    syscheck.file_limit = 10;
+    syscheck.registry_key_limit = 0;
+    syscheck.registry_value_limit = 30;
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, json_response);
+    will_return(__wrap_w_query_agentd, true);
+
+    assert_true(fetch_document_limits_from_agentd());
+    // Only registry_key_limit should be updated
+    assert_int_equal(syscheck.file_limit, 10);
+    assert_int_equal(syscheck.registry_key_limit, 150);
+    assert_int_equal(syscheck.registry_value_limit, 30);
+}
+
+void test_fetch_document_limits_empty_json(void **state) {
+    (void) state;
+
+    const char *json_response = "{}";
+
+    syscheck.file_limit = 10;
+    syscheck.registry_key_limit = 20;
+    syscheck.registry_value_limit = 30;
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, json_response);
+    will_return(__wrap_w_query_agentd, true);
+
+    assert_true(fetch_document_limits_from_agentd());
+    // All limits should remain unchanged
+    assert_int_equal(syscheck.file_limit, 10);
+    assert_int_equal(syscheck.registry_key_limit, 20);
+    assert_int_equal(syscheck.registry_value_limit, 30);
+}
+
 int main(void) {
     int ret;
     const struct CMUnitTest tests[] = {
             cmocka_unit_test_setup_teardown(test_fim_initialize, setup_syscheck_config, teardown_syscheck_config),
             cmocka_unit_test(test_read_internal),
             cmocka_unit_test(test_read_internal_debug),
+            cmocka_unit_test(test_fetch_document_limits_success),
+            cmocka_unit_test(test_fetch_document_limits_query_failure),
+            cmocka_unit_test(test_fetch_document_limits_invalid_json),
+            cmocka_unit_test(test_fetch_document_limits_missing_fields),
+            cmocka_unit_test(test_fetch_document_limits_negative_values),
+            cmocka_unit_test(test_fetch_document_limits_partial_data),
+            cmocka_unit_test(test_fetch_document_limits_empty_json),
     };
         /* Windows specific tests */
 #ifdef TEST_WINAGENT

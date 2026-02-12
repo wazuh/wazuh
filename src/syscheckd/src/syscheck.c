@@ -351,8 +351,13 @@ static int fim_send_binary_msg(int queue, const void* message, size_t message_le
  * @return true if limits were successfully fetched and parsed, false otherwise.
  */
 bool fetch_document_limits_from_agentd(){
-    char json_buffer[OS_MAXSTR];
-    w_query_agentd(SYSCHECK, "getdoclimits fim", json_buffer, sizeof(json_buffer));
+    char json_buffer[OS_MAXSTR] = {0};
+
+    if (!w_query_agentd(SYSCHECK, "getdoclimits fim", json_buffer, sizeof(json_buffer)))
+    {
+        mdebug1("Failed to query agentd for document limits");
+        return false;
+    }
 
     cJSON* root = cJSON_Parse(json_buffer);
     if (!root)
@@ -489,12 +494,13 @@ void fim_initialize() {
             if (limit == 0) { // If moving from limited agent to unlimited, promote everything
                 limit = INT_MAX;
             }
-            if (*synced_docs_ptr < limit) { // Limit increased
+            if (*synced_docs_ptr < limit) { // Limit might have increased
                 int document_count = limit - *synced_docs_ptr;
                 cJSON* docs_to_promote = fim_db_get_documents_to_promote(table_name, document_count);
 
-                if (docs_to_promote) {
+                if (docs_to_promote) { // Limit has increased
                     // Send promoted documents to persistent queue as CREATE events
+                    minfo("Document limit increased from  %d to %d for index %s. Currently synced documents: %d", *synced_docs_ptr, limit, table_name, *synced_docs_ptr + cJSON_GetArraySize(docs_to_promote));
                     persist_sync_documents(table_name, docs_to_promote, OPERATION_CREATE);
 
                     OSList* pending_sync_updates = OSList_Create();
@@ -518,11 +524,12 @@ void fim_initialize() {
                     }
                     cJSON_Delete(docs_to_promote);
                 }
-            } else if (*synced_docs_ptr > limit) { // Limit decreased
+            } else if (*synced_docs_ptr > limit) { // Limit might have decreased
                 int document_count = *synced_docs_ptr - limit;
                 cJSON* docs_to_demote = fim_db_get_documents_to_demote(table_name, document_count);
 
-                if (docs_to_demote) {
+                if (docs_to_demote) { // Limit has decreased
+                    minfo("Document limit decreased from %d to %d for table %s. Currently synced documents: %d", document_count, limit, table_name, limit);
                     // Send demoted documents to persistent queue as DELETE events
                     persist_sync_documents(table_name, docs_to_demote, OPERATION_DELETE);
 
