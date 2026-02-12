@@ -139,8 +139,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
     restart-wazuh PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/win32
                              OUTPUT_NAME restart-wazuh)
-  target_link_libraries(restart-wazuh PRIVATE wazuh wintrust psapi crypt32
-                                              shlwapi)
+  target_link_libraries(
+    restart-wazuh PRIVATE wazuh ${SRC_FOLDER}/libwazuhext.lib wintrust psapi
+                          crypt32 shlwapi)
 
   # route-null.exe
   add_executable(
@@ -150,7 +151,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
     route-null PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/win32
                           OUTPUT_NAME route-null)
-  target_link_libraries(route-null PRIVATE wazuh wintrust psapi crypt32 shlwapi)
+  target_link_libraries(route-null PRIVATE wazuh ${SRC_FOLDER}/libwazuhext.lib
+                                           wintrust psapi crypt32 shlwapi)
 
   # netsh.exe
   add_executable(netsh ${CMAKE_CURRENT_SOURCE_DIR}/src/netsh.c ${WIN_STUBS}
@@ -158,5 +160,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_compile_definitions(netsh PRIVATE ARGV0="netsh")
   set_target_properties(netsh PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                          ${SRC_FOLDER}/win32 OUTPUT_NAME netsh)
-  target_link_libraries(netsh PRIVATE wazuh wintrust psapi crypt32 shlwapi)
+  target_link_libraries(netsh PRIVATE wazuh ${SRC_FOLDER}/libwazuhext.lib
+                                      wintrust psapi crypt32 shlwapi)
 endif()

@@ -1662,15 +1662,6 @@ win32/wazuh_agent_resource.o: win32/wazuh-agent.rc
 win32/manage_agents_resource.o: win32/manage_agents.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
-win32/restart_wazuh_resource.o: win32/restart-wazuh.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/route_null_resource.o: win32/route-null.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/netsh_resource.o: win32/netsh.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
 win32/wazuh_agent_eventchannel_resource.o: win32/wazuh-agent-eventchannel.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
