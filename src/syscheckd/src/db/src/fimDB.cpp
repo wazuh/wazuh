@@ -45,6 +45,7 @@ void FIMDB::updateItem(const nlohmann::json& item, ResultCallbackData callbackDa
     }
 }
 
+// trigger
 void FIMDB::executeQuery(const nlohmann::json& item, ResultCallbackData callbackData)
 {
     m_dbsyncHandler->selectRows(item, callbackData);
