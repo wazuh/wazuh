@@ -1,5 +1,5 @@
 - name: num_watch_deleting_folder_scheduled
-  description: Check if number of watchs is correct after deleting a monitored folder
+  description: Check if number of watches is correct after deleting a monitored folder
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/testdir1]
     FREQUENCY: 15
@@ -12,7 +12,7 @@
     action: 'delete'
 
 - name: num_watch_deleting_folder_realtime
-  description: Check if number of watchs is correct after deleting a monitored folder
+  description: Check if number of watches is correct after deleting a monitored folder
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/testdir1]
     FREQUENCY: 15
@@ -24,8 +24,8 @@
     watches_after: 0
     action: 'delete'
 
-- name: num_watch_deleting_folder_realtime
-  description: Check if number of watchs is correct after renaming a monitored folder
+- name: num_watch_renaming_folder_realtime
+  description: Check if number of watches is correct after renaming a monitored folder
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/testdir1]
     FREQUENCY: 15
@@ -37,8 +37,8 @@
     watches_after: 0
     action: 'rename'
 
-- name: num_watch_deleting_folder_realtime
-  description: Check if number of watchs is correct after some time on a monitored folder
+- name: num_watch_persistence_realtime
+  description: Check if number of watches is correct after some time on a monitored folder
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/testdir1]
     FREQUENCY: 40

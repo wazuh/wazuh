@@ -18,10 +18,10 @@ void FIMDB::init(std::function<void(modules_log_level_t, const std::string&)> ca
                  const int fileLimit,
                  const int registryLimit)
 {
+    std::lock_guard<std::shared_timed_mutex> lock(m_handlersMutex);
     m_dbsyncHandler = dbsyncHandler;
-    m_loggingFunction = callbackLogWrapper;
+    m_loggingFunction = std::move(callbackLogWrapper);
     m_stopping = false;
-    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
     FIMDBCreator<OS_TYPE>::setLimits(m_dbsyncHandler, fileLimit, registryLimit);
 }
 
@@ -29,25 +29,34 @@ void FIMDB::removeItem(const nlohmann::json& item)
 {
     std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
 
-    if (!m_stopping)
+    if (!m_stopping && m_dbsyncHandler)
     {
         m_dbsyncHandler->deleteRows(item);
     }
 }
 
-void FIMDB::updateItem(const nlohmann::json& item, ResultCallbackData callbackData)
+void FIMDB::updateItem(const nlohmann::json& item, ResultCallbackData& callbackData)
 {
     std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
 
-    if (!m_stopping)
+    if (!m_stopping && m_dbsyncHandler)
     {
         m_dbsyncHandler->syncRow(item, callbackData);
     }
 }
 
-void FIMDB::executeQuery(const nlohmann::json& item, ResultCallbackData callbackData)
+void FIMDB::executeQuery(const nlohmann::json& item, ResultCallbackData& callbackData)
 {
-    m_dbsyncHandler->selectRows(item, callbackData);
+    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
+
+    if (!m_stopping && m_dbsyncHandler)
+    {
+        m_dbsyncHandler->selectRows(item, callbackData);
+    }
+    else if (m_loggingFunction)
+    {
+        m_loggingFunction(LOG_DEBUG, "Query not executed: FIMDB is not initialized or is shutting down");
+    }
 }
 
 void FIMDB::teardown()
