@@ -501,12 +501,12 @@ cJSON* fim_db_get_every_element(const char* table_name, const char* row_filter)
         };
 
         auto selectQuery = SelectQuery::builder()
-                            .table(table_name)
-                            .columnList({"*"})
-                            .rowFilter(filter)
-                            .orderByOpt("")
-                            .distinctOpt(false)
-                            .build();
+                           .table(table_name)
+                           .columnList({"*"})
+                           .rowFilter(filter)
+                           .orderByOpt("")
+                           .distinctOpt(false)
+                           .build();
 
         FIMDB::instance().executeQuery(selectQuery.query(), callback);
 
