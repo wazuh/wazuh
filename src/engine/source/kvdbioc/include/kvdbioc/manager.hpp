@@ -51,6 +51,10 @@ public:
 
     void add(std::string_view dbName) override;
 
+    bool exists(std::string_view dbName) const override;
+
+    bool hasInstance(std::string_view dbName) const override;
+
     void put(std::string_view dbName, std::string_view key, std::string_view value) override;
 
     void hotSwap(std::string_view sourceDb, std::string_view targetDb) override;

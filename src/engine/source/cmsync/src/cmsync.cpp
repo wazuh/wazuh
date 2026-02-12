@@ -1,11 +1,10 @@
-#include <chrono>
 #include <set>
 #include <stdexcept>
-#include <thread>
 #include <utility>
 
 #include <base/logging.hpp>
 #include <base/utils/generator.hpp>
+#include <base/utils/retryUtils.hpp>
 
 #include <cmsync/cmsync.hpp>
 
@@ -15,64 +14,6 @@ namespace
 const base::Name STORE_NAME_CMSYNC {"cmsync/status/0"};          ///< Name of the internal store document
 const base::Name ALLOW_ALL_FILTER_NAME {"filter/allow-all/0"};   ///< Name of the Allow All Filter
 const cm::store::NamespaceId DUMMY_NAMESPACE_ID {"dummy_ns_id"}; ///< Dummy namespace ID
-
-/**
- * @brief Execute an operation with retry logic
- *
- * @tparam Func Callable type that performs the operation
- * @param operation The operation to execute
- * @param operationName Name of the operation for logging purposes
- * @param maxAttempts Maximum number of retry attempts
- * @param waitSeconds Seconds to wait between retries
- * @return decltype(auto) Result of the operation
- * @throw std::exception if all retry attempts fail
- */
-template<typename Func>
-decltype(auto)
-executeWithRetry(Func&& operation, std::string_view operationName, std::size_t maxAttempts, std::size_t waitSeconds)
-{
-    for (std::size_t attempt = 1; attempt <= maxAttempts; ++attempt)
-    {
-        try
-        {
-            return operation();
-        }
-        catch (const std::exception& e)
-        {
-            LOG_WARNING_L(
-                operationName.data(), "[CMSync::{}] Attempt {}/{}: {}", operationName, attempt, maxAttempts, e.what());
-            if (attempt < maxAttempts)
-            {
-                std::this_thread::sleep_for(std::chrono::seconds(waitSeconds));
-            }
-            else
-            {
-                throw;
-            }
-        }
-    }
-    throw std::runtime_error(fmt::format("Unreachable code in CMSync::{}", operationName));
-}
-
-/**
- * @brief Locks a weak pointer and returns a shared pointer.
- *
- * @tparam T Type of the resource
- * @param weakPtr Weak pointer to lock
- * @param resourceName Name of the resource for error messages
- * @return std::shared_ptr<T> Shared pointer to the resource
- * @throw std::runtime_error if the resource is not available
- */
-template<typename T>
-std::shared_ptr<T> lockWeakPtr(const std::weak_ptr<T>& weakPtr, const std::string& resourceName)
-{
-    auto sharedPtr = weakPtr.lock();
-    if (!sharedPtr)
-    {
-        throw std::runtime_error(resourceName + " resource is not available");
-    }
-    return sharedPtr;
-}
 
 /**
  * @brief Create a Allow All Filter
@@ -237,24 +178,27 @@ CMSync::~CMSync() = default;
 
 bool CMSync::existSpaceInRemote(std::string_view space)
 {
-    auto indexerPtr = lockWeakPtr(m_indexerPtr, "IndexerConnector");
+    auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
 
-    return executeWithRetry([&indexerPtr, space]() { return indexerPtr->existsPolicy(space); },
-                            fmt::format("exist '{}' space in wazuh-indexer", space),
-                            m_attemps,
-                            m_waitSeconds);
+    return base::utils::executeWithRetry([&indexerPtr, space]() { return indexerPtr->existsPolicy(space); },
+                                         fmt::format("exist '{}' space in wazuh-indexer", space),
+                                         "CMSync",
+                                         m_attemps,
+                                         m_waitSeconds);
 }
 
 void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::NamespaceId& dstNamespace)
 {
-    auto indexerPtr = lockWeakPtr(m_indexerPtr, "IndexerConnector");
-    auto cmcrudPtr = lockWeakPtr(m_cmcrudPtr, "CMCrudService");
+    auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
+    auto cmcrudPtr = base::utils::lockWeakPtr(m_cmcrudPtr, "CMCrudService");
 
     // Download policy from wazuh-indexer
-    auto policyResource = executeWithRetry([&indexerPtr, originSpace]() { return indexerPtr->getPolicy(originSpace); },
-                                           fmt::format("downloadNamespace('{}')", originSpace),
-                                           m_attemps,
-                                           m_waitSeconds);
+    auto policyResource =
+        base::utils::executeWithRetry([&indexerPtr, originSpace]() { return indexerPtr->getPolicy(originSpace); },
+                                      fmt::format("downloadNamespace('{}')", originSpace),
+                                      "CMSync",
+                                      m_attemps,
+                                      m_waitSeconds);
 
     // Create destNamespace
     try
@@ -285,18 +229,19 @@ void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::Na
 
 std::string CMSync::getPolicyHashFromRemote(std::string_view space)
 {
-    auto indexerPtr = lockWeakPtr(m_indexerPtr, "Indexer Connector");
+    auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "Indexer Connector");
 
-    return executeWithRetry([&indexerPtr, space]() { return indexerPtr->getPolicyHash(space); },
-                            fmt::format("getPolicyHashFromRemote('{}')", space),
-                            m_attemps,
-                            m_waitSeconds);
+    return base::utils::executeWithRetry([&indexerPtr, space]() { return indexerPtr->getPolicyHash(space); },
+                                         fmt::format("getPolicyHashFromRemote('{}')", space),
+                                         "CMSync",
+                                         m_attemps,
+                                         m_waitSeconds);
 }
 
 cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view originSpace)
 {
 
-    auto cmcrudPtr = lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
+    auto cmcrudPtr = base::utils::lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
 
     // Generate a unique namespace ID
     const auto newNs = [&]() -> cm::store::NamespaceId
@@ -345,7 +290,7 @@ cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view origi
 
 void CMSync::syncNamespaceInRoute(const SyncedNamespace& nsState, const cm::store::NamespaceId& newNamespaceId)
 {
-    auto routerPtr = lockWeakPtr(m_router, "RouterAPI");
+    auto routerPtr = base::utils::lockWeakPtr(m_router, "RouterAPI");
 
     // If the route exists, hot-swap the namespace
     if (routerPtr->existsEntry(nsState.getRouteName()))
@@ -433,7 +378,7 @@ void CMSync::removeSpaceFromSync(std::string_view space)
 void CMSync::loadStateFromStore()
 {
 
-    auto storePtr = lockWeakPtr(m_store, "Store");
+    auto storePtr = base::utils::lockWeakPtr(m_store, "Store");
 
     auto optDoc = storePtr->readDoc(STORE_NAME_CMSYNC);
     if (base::isError(optDoc))
@@ -460,7 +405,7 @@ void CMSync::loadStateFromStore()
 void CMSync::dumpStateToStore()
 {
 
-    auto storePtr = lockWeakPtr(m_store, "StoreInternal");
+    auto storePtr = base::utils::lockWeakPtr(m_store, "StoreInternal");
 
     json::Json j {};
     j.setArray();
@@ -481,7 +426,7 @@ void CMSync::synchronize()
 
     LOG_DEBUG("[CM::Sync] Checking for namespace updates to synchronize");
 
-    const auto cmcrudPtr = lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
+    const auto cmcrudPtr = base::utils::lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
     std::unique_lock lock(m_mutex); // Lock the sync process, only 1 at a time
 
     for (auto& nsState : m_namespacesState)
@@ -503,7 +448,7 @@ void CMSync::synchronize()
             // Check if has a valid route of cm_sync in the router
             bool validRoute = [&]() -> bool
             {
-                auto routerPtr = lockWeakPtr(m_router, "RouterAPI");
+                auto routerPtr = base::utils::lockWeakPtr(m_router, "RouterAPI");
                 if (!routerPtr->existsEntry(nsState.getRouteName()))
                 {
                     return false;
@@ -571,7 +516,7 @@ void CMSync::synchronize()
             // Delete old namespace if it exists and is different from the new one
             if (oldNsId != DUMMY_NAMESPACE_ID && oldNsId != newNsId)
             {
-                auto cmcrudPtr = lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
+                auto cmcrudPtr = base::utils::lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
                 try
                 {
                     cmcrudPtr->deleteNamespace(oldNsId);

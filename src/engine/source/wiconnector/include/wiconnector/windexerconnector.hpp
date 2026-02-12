@@ -58,6 +58,14 @@ private:
     std::shared_mutex m_mutex;
     std::size_t m_maxHitsPerRequest {100};
 
+    std::size_t queryByBatches(std::string_view indexName,
+                               std::string_view query,
+                               std::size_t batchSize,
+                               const std::function<void(const json::Json&)>& onDocument,
+                               const std::optional<std::string_view>& sourceFilter = std::nullopt);
+
+    bool existsIndex(std::string_view indexName);
+
 public:
     WIndexerConnector() = delete;
     ~WIndexerConnector();
@@ -96,6 +104,27 @@ public:
      * @copydoc IWIndexerConnector::existsPolicy
      */
     bool existsPolicy(std::string_view space) override;
+
+    /**
+     * @copydoc IWIndexerConnector::existsIocDataIndex
+     */
+    bool existsIocDataIndex() override;
+
+    /**
+     * @copydoc IWIndexerConnector::getDefaultIocTypes
+     */
+    std::vector<std::string> getDefaultIocTypes() override;
+
+    /**
+     * @copydoc IWIndexerConnector::getIocTypeHashes
+     */
+    std::unordered_map<std::string, std::string> getIocTypeHashes() override;
+
+    /**
+     * @copydoc IWIndexerConnector::streamIocsByType
+     */
+    std::size_t
+    streamIocsByType(std::string_view iocType, std::size_t batchSize, const IocRecordCallback& onIoc) override;
 
     /**
      * @brief Shuts down the indexer connector, releasing resources and stopping operations.

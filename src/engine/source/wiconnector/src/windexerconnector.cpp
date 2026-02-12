@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <array>
 #include <optional>
 #include <regex>
 #include <string>
@@ -23,10 +25,26 @@ namespace
  */
 const std::vector<std::string> POLICY_ALIASES = {".cti-kvdbs", ".cti-decoders", ".cti-integrations", ".cti-policies"};
 
-constexpr std::string_view PIT_KEEP_ALIVE {"5m"};          ///< Keep alive duration for Point In Time
-constexpr std::string_view POLICY_INDEX {".cti-policies"}; ///< Policy index name
-constexpr std::size_t SINGLE_RESULT_SIZE {1};              ///< Size for single result queries
-constexpr std::size_t HASH_QUERY_SIZE {1};                 ///< Size for hash query (expecting single result)
+constexpr std::string_view PIT_KEEP_ALIVE {"5m"};                     ///< Keep alive duration for Point In Time
+constexpr std::string_view POLICY_INDEX {".cti-policies"};            ///< Policy index name
+constexpr std::string_view IOC_INDEX {".cti-iocs"};                   ///< IOC index name
+constexpr std::string_view IOC_HASHES_DOC_ID {"__ioc_type_hashes__"}; ///< IOC hash manifest document ID
+constexpr std::size_t SINGLE_RESULT_SIZE {1};                         ///< Size for single result queries
+constexpr std::size_t HASH_QUERY_SIZE {1};                            ///< Size for hash query (expecting single result)
+constexpr std::size_t SAFE_STREAM_PAGE_SIZE {1000};                   ///< Hard cap for streaming page size
+const std::array<std::string_view, 4> DEFAULT_IOC_TYPES = {"ipv4-addr", "domain-name", "url", "file"};
+const std::array<std::string_view, 12> IOC_SOURCE_FILTER_INCLUDES = {"document.name",
+                                                                     "document.type",
+                                                                     "document.id",
+                                                                     "document.software.type",
+                                                                     "document.software.name",
+                                                                     "document.software.alias",
+                                                                     "document.confidence",
+                                                                     "document.first_seen",
+                                                                     "document.last_seen",
+                                                                     "document.feed.name",
+                                                                     "document.tags",
+                                                                     "document.provider"};
 
 /// @brief Types of indexer resources
 enum class IndexResourceType
@@ -39,19 +57,29 @@ enum class IndexResourceType
 
 IndexResourceType fromIndexName(std::string_view indexName)
 {
-    // Static regex patterns compiled once
-    static const std::array<std::pair<std::regex, IndexResourceType>, 4> patterns = {
-        {{std::regex(R"(.*-kvdbs$)"), IndexResourceType::KVDB},
-         {std::regex(R"(.*-decoders$)"), IndexResourceType::DECODER},
-         {std::regex(R"(.*-integrations$)"), IndexResourceType::INTEGRATION_DECODER},
-         {std::regex(R"(.*-policies$)"), IndexResourceType::POLICY}}};
+    static const std::regex kvdbPattern(R"(.*-kvdbs$)");
+    static const std::regex decoderPattern(R"(.*-decoders$)");
+    static const std::regex integrationPattern(R"(.*-integrations$)");
+    static const std::regex policyPattern(R"(.*-policies$)");
 
-    for (const auto& [pattern, resourceType] : patterns)
+    if (std::regex_match(indexName.begin(), indexName.end(), kvdbPattern))
     {
-        if (std::regex_match(indexName.begin(), indexName.end(), pattern))
-        {
-            return resourceType;
-        }
+        return IndexResourceType::KVDB;
+    }
+
+    if (std::regex_match(indexName.begin(), indexName.end(), decoderPattern))
+    {
+        return IndexResourceType::DECODER;
+    }
+
+    if (std::regex_match(indexName.begin(), indexName.end(), integrationPattern))
+    {
+        return IndexResourceType::INTEGRATION_DECODER;
+    }
+
+    if (std::regex_match(indexName.begin(), indexName.end(), policyPattern))
+    {
+        return IndexResourceType::POLICY;
     }
 
     throw IndexerConnectorException("Cannot determine resource type from index name: " + std::string(indexName));
@@ -130,6 +158,48 @@ json::Json extractDocumentFromHit(const nlohmann::json& hit)
             "Failed to parse document JSON: '{}'. Original error: {}", source["document"].dump(), e.what()));
     }
 }
+
+std::unordered_map<std::string, std::string> parseIocHashesDocument(const json::Json& hashesDoc)
+{
+    const auto parsed = nlohmann::json::parse(hashesDoc.str(), nullptr, false);
+    if (parsed.is_discarded() || !parsed.is_object())
+    {
+        throw IndexerConnectorException("Invalid __ioc_type_hashes__ document format");
+    }
+
+    std::unordered_map<std::string, std::string> typeHashes;
+    for (auto it = parsed.begin(); it != parsed.end(); ++it)
+    {
+        const auto& iocType = it.key();
+        const auto& iocObject = it.value();
+
+        if (!iocObject.is_object() || !iocObject.contains("hash") || !iocObject["hash"].is_object()
+            || !iocObject["hash"].contains("sha256") || !iocObject["hash"]["sha256"].is_string())
+        {
+            continue;
+        }
+
+        const auto hash = iocObject["hash"]["sha256"].get<std::string>();
+        if (!hash.empty())
+        {
+            typeHashes.emplace(iocType, hash);
+        }
+    }
+
+    return typeHashes;
+}
+
+std::string buildIocSourceFilter()
+{
+    nlohmann::json includes = nlohmann::json::array();
+    for (const auto field : IOC_SOURCE_FILTER_INCLUDES)
+    {
+        includes.push_back(field);
+    }
+
+    return nlohmann::json {{"includes", std::move(includes)}, {"excludes", nlohmann::json::array()}}.dump();
+}
+
 } // namespace
 
 /****************************************************************************************
@@ -457,6 +527,225 @@ bool WIndexerConnector::existsPolicy(std::string_view space)
     size_t totalHits = getTotalHits(hits);
 
     return totalHits > 0;
+}
+
+bool WIndexerConnector::existsIndex(std::string_view indexName)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    try
+    {
+        // Try a simple count query with size=0
+        nlohmann::json query = R"({"match_all": {}})"_json;
+        nlohmann::json source = {{"includes", nlohmann::json::array()}, {"excludes", nlohmann::json::array()}};
+
+        // If the index doesn't exist, this will throw an exception
+        m_indexerConnectorAsync->search(indexName, 0, query, source);
+        return true;
+    }
+    catch (const IndexerConnectorException&)
+    {
+        return false;
+    }
+}
+
+bool WIndexerConnector::existsIocDataIndex()
+{
+    return existsIndex(IOC_INDEX);
+}
+
+std::vector<std::string> WIndexerConnector::getDefaultIocTypes()
+{
+    std::vector<std::string> iocTypes;
+    iocTypes.reserve(DEFAULT_IOC_TYPES.size());
+
+    for (const auto iocType : DEFAULT_IOC_TYPES)
+    {
+        iocTypes.emplace_back(iocType);
+    }
+
+    return iocTypes;
+}
+
+std::unordered_map<std::string, std::string> WIndexerConnector::getIocTypeHashes()
+{
+    std::optional<json::Json> hashesDoc = std::nullopt;
+    const std::string queryBody = fmt::format(R"({{"ids": {{"values": ["{}"]}}}})", IOC_HASHES_DOC_ID);
+
+    queryByBatches(IOC_INDEX,
+                   queryBody,
+                   1,
+                   [&hashesDoc](const json::Json& doc)
+                   {
+                       if (hashesDoc.has_value())
+                       {
+                           return;
+                       }
+
+                       auto docCopy = doc;
+                       docCopy.erase("/_id");
+                       hashesDoc = std::move(docCopy);
+                   });
+
+    if (!hashesDoc.has_value())
+    {
+        throw IndexerConnectorException(
+            fmt::format("Hash document '{}' not found in index '{}'", IOC_HASHES_DOC_ID, IOC_INDEX));
+    }
+
+    return parseIocHashesDocument(*hashesDoc);
+}
+
+std::size_t
+WIndexerConnector::streamIocsByType(std::string_view iocType, std::size_t batchSize, const IocRecordCallback& onIoc)
+{
+    if (iocType.empty())
+    {
+        throw std::runtime_error("iocType cannot be empty");
+    }
+
+    if (!onIoc)
+    {
+        throw std::runtime_error("onIoc callback cannot be empty");
+    }
+
+    const std::string queryBody = fmt::format(R"({{"term": {{"document.type": "{}"}}}})", iocType);
+    const auto sourceFilter = buildIocSourceFilter();
+    std::size_t streamedDocs = 0;
+    queryByBatches(
+        IOC_INDEX,
+        queryBody,
+        batchSize,
+        [&iocType, &onIoc, &streamedDocs](const json::Json& doc)
+        {
+            auto optName = doc.getString("/document/name");
+            if (!optName.has_value() || optName->empty())
+            {
+                LOG_WARNING("[indexer-connector] IOC document without document.name field, skipping");
+                return;
+            }
+
+            auto optDocument = doc.getJson("/document");
+            if (!optDocument.has_value())
+            {
+                LOG_WARNING("[indexer-connector] IOC document without /document object, skipping");
+                return;
+            }
+
+            onIoc(*optName, optDocument->str());
+            ++streamedDocs;
+        },
+        sourceFilter);
+
+    return streamedDocs;
+}
+
+std::size_t WIndexerConnector::queryByBatches(std::string_view indexName,
+                                              std::string_view queryStr,
+                                              std::size_t batchSize,
+                                              const std::function<void(const json::Json&)>& onDocument,
+                                              const std::optional<std::string_view>& sourceFilter)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    if (!onDocument)
+    {
+        throw std::runtime_error("onDocument callback cannot be empty");
+    }
+
+    nlohmann::json query = nlohmann::json::parse(queryStr, nullptr, false);
+    if (query.is_discarded())
+    {
+        throw std::runtime_error("Invalid query JSON");
+    }
+
+    std::optional<nlohmann::json> source = std::nullopt;
+    if (sourceFilter.has_value())
+    {
+        const auto parsedSource = nlohmann::json::parse(sourceFilter.value(), nullptr, false);
+        if (parsedSource.is_discarded())
+        {
+            throw std::runtime_error("Invalid source filter JSON");
+        }
+
+        source = parsedSource;
+    }
+
+    const std::size_t effectiveBatchSize = std::max<std::size_t>(1, std::min(batchSize, SAFE_STREAM_PAGE_SIZE));
+
+    auto pit = m_indexerConnectorAsync->createPointInTime({std::string(indexName)}, PIT_KEEP_ALIVE, true);
+
+    auto pitGuard = std::unique_ptr<decltype(pit), std::function<void(decltype(pit)*)>>(
+        &pit,
+        [this](auto* p)
+        {
+            try
+            {
+                m_indexerConnectorAsync->deletePointInTime(*p);
+            }
+            catch (const IndexerConnectorException& e)
+            {
+                LOG_WARNING_L("pitGuard", "[indexer-connector] Error deleting Point In Time (PIT): {}", e.what());
+            }
+        });
+
+    nlohmann::json sort = getSortCriteria();
+    std::optional<nlohmann::json> searchAfter = std::nullopt;
+    std::size_t processedDocs = 0;
+
+    while (true)
+    {
+        nlohmann::json hits =
+            m_indexerConnectorAsync->search(pit, effectiveBatchSize, query, sort, searchAfter, source);
+
+        const auto& hitArray = hits["hits"];
+        if (!hitArray.is_array() || hitArray.empty())
+        {
+            break;
+        }
+
+        for (const auto& hit : hitArray)
+        {
+            if (!hit.contains("_source") || !hit["_source"].is_object())
+            {
+                LOG_WARNING("[indexer-connector] Hit without _source, skipping");
+                continue;
+            }
+
+            nlohmann::json fullDoc = hit["_source"];
+            if (hit.contains("_id"))
+            {
+                fullDoc["_id"] = hit["_id"];
+            }
+
+            try
+            {
+                onDocument(json::Json {fullDoc.dump().c_str()});
+                ++processedDocs;
+            }
+            catch (const std::exception& e)
+            {
+                LOG_WARNING("[indexer-connector] Failed to parse/process document: {}", e.what());
+            }
+        }
+
+        if (hitArray.size() < effectiveBatchSize)
+        {
+            break;
+        }
+
+        searchAfter = getSearchAfter(hits);
+    }
+
+    return processedDocs;
 }
 
 }; // namespace wiconnector

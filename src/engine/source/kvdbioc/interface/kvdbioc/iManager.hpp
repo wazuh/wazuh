@@ -44,6 +44,23 @@ public:
     virtual void add(std::string_view dbName) = 0;
 
     /**
+     * @brief Check if a database exists in the manager registry.
+     *
+     * @param dbName DB identifier
+     * @return true if the DB exists, false otherwise
+     */
+    virtual bool exists(std::string_view dbName) const = 0;
+
+    /**
+     * @brief Check if a database has a valid instance (physical database).
+     * This verifies not only that the handle exists, but also that it has an active instance.
+     *
+     * @param dbName DB identifier
+     * @return true if the DB exists and has a valid instance, false otherwise
+     */
+    virtual bool hasInstance(std::string_view dbName) const = 0;
+
+    /**
      * @brief Add a key-value pair to the DB.
      *
      * @param dbName DB identifier
@@ -92,7 +109,7 @@ public:
      * Use case: Batch lookup for multiple IPs/domains in IOC database.
      */
     virtual std::vector<std::optional<json::Json>> multiGet(std::string_view dbName,
-                                                              const std::vector<std::string_view>& keys) const = 0;
+                                                            const std::vector<std::string_view>& keys) const = 0;
 
     /**
      * @brief Remove database and all its versions.
