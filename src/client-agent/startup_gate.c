@@ -69,7 +69,7 @@ static bool startup_gate_hash_matches_local(void) {
 }
 
 void startup_gate_initialize(void) {
-    const bool enabled = startup_hash_block && agt->flags.remote_conf;
+    const bool enabled = agt->flags.remote_conf;
 
     w_mutex_lock(&startup_gate_mutex);
 

@@ -19,11 +19,6 @@
 #include "validate_op.h"
 
 int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max);
-int __wrap_getDefine_Int_WithDefault(const char *high_name,
-                                     const char *low_name,
-                                     int min,
-                                     int max,
-                                     int default_value);
 
 int __wrap_OS_IsValidIP(const char* ip_address, os_ip* final_ip);
 

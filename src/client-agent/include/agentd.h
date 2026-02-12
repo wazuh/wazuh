@@ -253,7 +253,6 @@ extern int size_rotate_read;
 extern int timeout;
 extern int interval;
 extern int remote_conf;
-extern int startup_hash_block;
 extern int min_eps;
 
 

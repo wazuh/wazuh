@@ -25,7 +25,6 @@ agent *agt;
 anti_tampering *atc;
 #endif
 int remote_conf;
-int startup_hash_block;
 int min_eps;
 int rotate_log;
 int agent_debug_level;
@@ -74,7 +73,6 @@ int ClientConf(const char *cfgfile)
     }
 
 #ifdef CLIENT
-    startup_hash_block = getDefine_Int_WithDefault("agent", "startup_hash_block", 0, 1, 1);
     if(agt->flags.remote_conf = getDefine_Int("agent", "remote_conf", 0, 1), agt->flags.remote_conf) {
         remote_conf = agt->flags.remote_conf;
         ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &agt->labels, agt);
@@ -251,7 +249,6 @@ cJSON *getAgentInternalOptions(void) {
     cJSON_AddNumberToObject(agent,"min_eps",min_eps);
 #ifdef CLIENT
     cJSON_AddNumberToObject(agent,"remote_conf",remote_conf);
-    cJSON_AddNumberToObject(agent,"startup_hash_block",startup_hash_block);
 #endif
 
     cJSON_AddItemToObject(internals,"agent",agent);

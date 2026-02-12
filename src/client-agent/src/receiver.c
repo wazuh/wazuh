@@ -257,11 +257,11 @@ int receive_msg()
                                     }
                                     clear_merged_hash_cache();
                                     if (agt->flags.remote_conf && !verifyRemoteConf()) {
-                                        const bool gate_was_blocked = startup_hash_block && !startup_gate_is_ready();
+                                        const bool gate_was_blocked = !startup_gate_is_ready();
                                         bool gate_released = false;
 
                                         startup_gate_refresh_from_local_hash();
-                                        gate_released = startup_hash_block && gate_was_blocked && startup_gate_is_ready();
+                                        gate_released = gate_was_blocked && startup_gate_is_ready();
 
                                         if (agt->flags.auto_restart || gate_released) {
                                             if (gate_released && !agt->flags.auto_restart) {
