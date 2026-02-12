@@ -10,7 +10,7 @@ set -euo pipefail
 
 WAZUH_HOST_DIR=/wazuh_host
 WAZUH_ROOT_DIR=/wazuh #Important: Do not change this path
-WAZUH_INSTALLDIR=/var/ossec
+WAZUH_INSTALLDIR=/var/wazuh-manager
 CPYTHON_DIR=$WAZUH_ROOT_DIR/src/external/cpython
 OUTPUT_DIR=/output
 
