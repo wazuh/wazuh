@@ -147,6 +147,17 @@ jobs:
             exit 1
           fi
 
+      - name: Checking files after installation
+        run: |
+          python3 -m venv venv
+          source venv/bin/activate
+          python3 -m pip install -r .github/actions/check_files/requirements.txt
+          sudo /Library/Ossec/bin/wazuh-control stop
+          echo "Running check_files.py (base comparison)"
+          sudo python3 .github/actions/check_files/check_files.py -f ".github/actions/check_files/macos_agent_$(uname -m).csv" --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec'
+          echo "Running check_files.py (actual state dump)"
+          sudo python3 .github/actions/check_files/check_files.py -b 'macos_actual_state.csv' --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec'
+
       - name: Uninstall package
         run: |
           sudo /bin/rm -r /Library/Ossec
@@ -366,6 +377,17 @@ jobs:
             echo "The installation could not be completed."
             exit 1
           fi
+
+      - name: Checking files after installation
+        run: |
+          python3 -m venv venv
+          source venv/bin/activate
+          python3 -m pip install -r .github/actions/check_files/requirements.txt
+          sudo /Library/Ossec/bin/wazuh-control stop
+          echo "Running check_files.py (base comparison)"
+          sudo python3 .github/actions/check_files/check_files.py -f ".github/actions/check_files/macos_agent_$(uname -m).csv" --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec'
+          echo "Running check_files.py (actual state dump)"
+          sudo python3 .github/actions/check_files/check_files.py -b 'macos_actual_state.csv' --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec'
 
       - name: Uninstall package
         run: |

@@ -205,6 +205,17 @@ jobs:
             exit 1
           fi
 
+      - name: CSV filename Formation
+        run: |
+          echo "CSV_FILENAME=${{ env.SYSTEM }}_linux_agent_${{ matrix.arch }}.csv" | tee -a $GITHUB_ENV
+
+      - name: Check installed files
+        uses: ./.github/actions/check_files
+        with:
+          expected_files: ${{ env.CSV_FILENAME }}
+          wazuh_uid: ${{ env.WAZUH_UID }}
+          wazuh_gid: ${{ env.WAZUH_GID }}
+
       - name: Test uninstall package
         uses: ./.github/actions/5_builderpackage_linux-smoke-uninstall-test
         with:
@@ -464,6 +475,17 @@ jobs:
             echo "The installation could not be completed."
             exit 1
           fi
+
+      - name: CSV filename Formation
+        run: |
+          echo "CSV_FILENAME=${{ env.SYSTEM }}_linux_agent_${{ matrix.arch }}.csv" | tee -a $GITHUB_ENV
+
+      - name: Check installed files
+        uses: ./.github/actions/check_files
+        with:
+          expected_files: ${{ env.CSV_FILENAME }}
+          wazuh_uid: ${{ env.WAZUH_UID }}
+          wazuh_gid: ${{ env.WAZUH_GID }}
 
       - name: Test uninstall package
         uses: ./.github/actions/5_builderpackage_linux-smoke-uninstall-test

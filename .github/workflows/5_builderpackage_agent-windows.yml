@@ -242,6 +242,23 @@ jobs:
             exit 1
           }
 
+      - name: Set up Python virtual environment
+        shell: pwsh
+        run: |
+          python -m venv checkfiles_env
+          & checkfiles_env\Scripts\Activate.ps1
+          python -m pip install --upgrade pip
+          python -m pip install -r .github/actions/check_files/requirements.txt
+
+      - name: Check installed files
+        shell: pwsh
+        run: |
+          & checkfiles_env\Scripts\Activate.ps1
+          net stop WazuhSvc
+          python .github/actions/check_files/check_files.py -f .github/actions/check_files/windows_agent_base.csv --wazuh_gid -1 --wazuh_uid -1 --directory "C:\Program Files (x86)\ossec-agent"
+          python .github/actions/check_files/check_files.py -b windows_actual_state.csv --wazuh_gid -1 --wazuh_uid -1 --directory "C:\Program Files (x86)\ossec-agent"
+          Get-Content windows_actual_state.csv
+
       - name: Get last stable version
         id: last-stable-version
         uses: ./.github/actions/5_builderpackage_get-last-stable-version
