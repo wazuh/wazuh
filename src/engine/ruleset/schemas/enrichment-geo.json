@@ -7,18 +7,6 @@
     "as_field": "destination.as",
     "geo_field": "destination.geo"
   },
-  "f5_bigip.log.mgmt_ip": {
-    "geo_field": "f5_bigip.log.geo"
-  },
-  "f5_bigip.log.node": {
-    "geo_field": "f5_bigip.log.geo"
-  },
-  "f5_bigip.log.src.ip": {
-    "geo_field": "f5_bigip.log.src.geo"
-  },
-  "f5_bigip.log.x_forwarded_for_header_value": {
-    "geo_field": "f5_bigip.log.geo"
-  },
   "host.ip": {
     "geo_field": "host.geo"
   },
