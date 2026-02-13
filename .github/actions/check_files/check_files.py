@@ -195,7 +195,7 @@ def handle_special_cases(result, item):
     """
     Handle special cases, such as specific files requiring different metadata.
     """
-    if item == '/var/ossec/api/configuration/auth/htpasswd':
+    if item == '/var/wazuh-manager/api/configuration/auth/htpasswd':
         result['group_name'] = 'root'
         result['mode'] = '0777'
         result['type'] = 'link'
@@ -250,7 +250,7 @@ def get_current_items(scan_path='/var/ossec', size_check=False, ignore_names=[])
     ACTION
 
     Parameters:
-        - param1: 
+        - param1:
     Return:
 
     Example:
@@ -280,7 +280,7 @@ def csv_to_dict(file_path, key_column):
     Finds key on dict and check each field inside, if not return the differences
 
     Parameters:
-        - param1: 
+        - param1:
     Return:
 
     Example:

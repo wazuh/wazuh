@@ -29,11 +29,7 @@
 
 #define TEST_MAX_DATES 5
 
-#ifdef TEST_SERVER
-#define WM_COMMAND_TEST_LOGTAG "wazuh-manager-modulesd:command"
-#else
 #define WM_COMMAND_TEST_LOGTAG "wazuh-modulesd:command"
-#endif
 
 static wmodule *command_module;
 static OS_XML *lxml;
