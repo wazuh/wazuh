@@ -1835,7 +1835,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     // fim_send_scan_info
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
-
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
 }
 
@@ -1893,6 +1894,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
 }
 
@@ -1970,6 +1972,7 @@ static void test_fim_scan_realtime_enabled(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
 
     assert_int_equal(syscheck.realtime->queue_overflow, false);
@@ -2026,6 +2029,7 @@ static void test_fim_scan_no_limit(void **state) {
     // In fim_scan
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
 }
 
@@ -2416,6 +2420,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
 }
 
@@ -2479,6 +2485,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
 }
 
@@ -2535,6 +2542,7 @@ static void test_fim_scan_no_limit(void **state) {
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
 }
 
@@ -3467,7 +3475,11 @@ static void test_transaction_callback_add(void **state) {
 
     // validate_and_persist_fim_event wrapper returns validation success
     will_return(__wrap_validate_and_persist_fim_event, true);
-
+#ifndef TEST_WINAGENT
+    expect_string(__wrap__mdebug2, formatted_msg, "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=/etc/a_test_file.txt");
+#else
+    expect_string(__wrap__mdebug2, formatted_msg, "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=c:\\windows\\a_test_file.txt");
+#endif
     transaction_callback(INSERTED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_ADD);
 

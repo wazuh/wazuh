@@ -84,3 +84,7 @@ bool __wrap_w_query_agentd(const char *module, const char *query, char *output, 
 
     return mock_type(bool);
 }
+
+bool __wrap_fetch_document_limits_from_agentd() {
+    return mock_type(bool);
+}

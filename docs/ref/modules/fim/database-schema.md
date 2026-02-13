@@ -39,6 +39,8 @@ CREATE TABLE IF NOT EXISTS file_entry (
     hash_sha1 TEXT,
     hash_sha256 TEXT,
     mtime INTEGER,
+    version INTEGER NOT NULL DEFAULT 1,
+    sync INTEGER DEFAULT 0,
     PRIMARY KEY(path)
 ) WITHOUT ROWID;
 
@@ -65,6 +67,8 @@ CREATE INDEX IF NOT EXISTS inode_index ON file_entry (device, inode);
 | `hash_sha1` | TEXT | SHA1 hash of file contents |
 | `hash_sha256` | TEXT | SHA256 hash of file contents |
 | `mtime` | INTEGER | Last modification time (Unix timestamp) |
+| `version` | INTEGER | Document version for change tracking (incremented on updates) |
+| `sync` | INTEGER | Synchronization flag (0=not synced, 1=synced to indexer) |
 
 ---
 
@@ -83,6 +87,8 @@ CREATE TABLE IF NOT EXISTS registry_key (
     mtime INTEGER,
     architecture TEXT CHECK (architecture IN ('[x32]', '[x64]')),
     checksum TEXT NOT NULL,
+    version INTEGER NOT NULL DEFAULT 1,
+    sync INTEGER DEFAULT 0,
     PRIMARY KEY (architecture, path)
 ) WITHOUT ROWID;
 
@@ -102,6 +108,8 @@ CREATE INDEX IF NOT EXISTS path_index ON registry_key (path);
 | `mtime` | INTEGER | Last modification time |
 | `architecture` | TEXT | Architecture (`[x32]` or `[x64]`) |
 | `checksum` | TEXT | Registry key checksum |
+| `version` | INTEGER | Document version for change tracking (incremented on updates) |
+| `sync` | INTEGER | Synchronization flag (0=not synced, 1=synced to indexer) |
 
 **Primary Key:** `(architecture, path)` - Allows same path in different architectures
 
@@ -122,6 +130,8 @@ CREATE TABLE IF NOT EXISTS registry_data (
     hash_sha1 TEXT,
     hash_sha256 TEXT,
     checksum TEXT NOT NULL,
+    version INTEGER NOT NULL DEFAULT 1,
+    sync INTEGER DEFAULT 0,
     PRIMARY KEY(path, architecture, value),
     FOREIGN KEY (path) REFERENCES registry_key(path),
     FOREIGN KEY (architecture) REFERENCES registry_key(architecture)
@@ -143,6 +153,8 @@ CREATE INDEX IF NOT EXISTS key_name_index ON registry_data (path, value);
 | `hash_sha1` | TEXT | SHA1 hash of value data |
 | `hash_sha256` | TEXT | SHA256 hash of value data |
 | `checksum` | TEXT | Value checksum for change detection |
+| `version` | INTEGER | Document version for change tracking (incremented on updates) |
+| `sync` | INTEGER | Synchronization flag (0=not synced, 1=synced to indexer) |
 
 **Primary Key:** `(path, architecture, value)` - Unique per registry value
 **Foreign Keys:** References `registry_key` table

@@ -251,6 +251,7 @@ set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int -Wl,--w
                          -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                          -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
                          -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
+                         -Wl,--wrap,w_query_agentd -Wl,--wrap,OS_ConnectUnixDomain \
                          ${DEBUG_OP_WRAPPERS}")
 list(APPEND syscheckd_tests_names "syscheck")
 if(${TARGET} STREQUAL "winagent")
@@ -451,12 +452,14 @@ set(FIM_SYNC_LIMITS_BASE_FLAGS "-Wl,--wrap,validate_and_persist_fim_event \
                                 -Wl,--wrap,fim_db_get_documents_to_promote \
                                 -Wl,--wrap,fim_db_get_documents_to_demote \
                                 -Wl,--wrap,fim_db_count_synced_docs \
-                                -Wl,--wrap,fim_db_sync_row_update \
+                                -Wl,--wrap,fim_db_set_sync_flag \
                                 ${DEBUG_OP_WRAPPERS}")
 
 target_link_libraries(test_fim_sync_limits SYSCHECK_O ${TEST_DEPS})
 if(${TARGET} STREQUAL "winagent")
-  target_link_libraries(test_fim_sync_limits "${FIM_SYNC_LIMITS_BASE_FLAGS}" fimdb)
+  target_link_libraries(test_fim_sync_limits "${FIM_SYNC_LIMITS_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=fim_db_teardown" fimdb)
 else()
   target_link_libraries(test_fim_sync_limits "${FIM_SYNC_LIMITS_BASE_FLAGS}")
 endif()

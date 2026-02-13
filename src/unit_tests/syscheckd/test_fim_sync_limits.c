@@ -170,15 +170,11 @@ static void test_persist_sync_documents_promote_files_success(void **state) {
     will_return(__wrap_build_stateful_event_file, event1);
 
     // Expect validate_and_persist_fim_event for first document
-    expect_any(__wrap_validate_and_persist_fim_event, stateful_event);
-    expect_any(__wrap_validate_and_persist_fim_event, id);
     expect_value(__wrap_validate_and_persist_fim_event, operation, OPERATION_CREATE);
     expect_string(__wrap_validate_and_persist_fim_event, index, FIM_FILES_SYNC_INDEX);
     expect_value(__wrap_validate_and_persist_fim_event, document_version, 1);
     expect_string(__wrap_validate_and_persist_fim_event, item_description, "file /tmp/test1.txt");
     expect_value(__wrap_validate_and_persist_fim_event, mark_for_deletion, false);
-    expect_value(__wrap_validate_and_persist_fim_event, failed_list, NULL);
-    expect_value(__wrap_validate_and_persist_fim_event, failed_item_data, NULL);
     expect_value(__wrap_validate_and_persist_fim_event, sync_flag, 1);
     will_return(__wrap_validate_and_persist_fim_event, true);
 
@@ -191,15 +187,11 @@ static void test_persist_sync_documents_promote_files_success(void **state) {
     will_return(__wrap_build_stateful_event_file, event2);
 
     // Expect validate_and_persist_fim_event for second document
-    expect_any(__wrap_validate_and_persist_fim_event, stateful_event);
-    expect_any(__wrap_validate_and_persist_fim_event, id);
     expect_value(__wrap_validate_and_persist_fim_event, operation, OPERATION_CREATE);
     expect_string(__wrap_validate_and_persist_fim_event, index, FIM_FILES_SYNC_INDEX);
     expect_value(__wrap_validate_and_persist_fim_event, document_version, 2);
     expect_string(__wrap_validate_and_persist_fim_event, item_description, "file /tmp/test2.txt");
     expect_value(__wrap_validate_and_persist_fim_event, mark_for_deletion, false);
-    expect_value(__wrap_validate_and_persist_fim_event, failed_list, NULL);
-    expect_value(__wrap_validate_and_persist_fim_event, failed_item_data, NULL);
     expect_value(__wrap_validate_and_persist_fim_event, sync_flag, 1);
     will_return(__wrap_validate_and_persist_fim_event, true);
 
@@ -209,6 +201,7 @@ static void test_persist_sync_documents_promote_files_success(void **state) {
     // Call function
     persist_sync_documents(FIMDB_FILE_TABLE_NAME, docs, OPERATION_CREATE);
 
+    // Clean up (event1 and event2 are freed by persist_sync_documents)
     cJSON_Delete(docs);
 }
 
@@ -223,15 +216,11 @@ static void test_persist_sync_documents_demote_files_success(void **state) {
     cJSON_AddItemToArray(docs, doc1);
 
     // Expect validate_and_persist_fim_event with DELETE operation
-    expect_any(__wrap_validate_and_persist_fim_event, stateful_event);
-    expect_any(__wrap_validate_and_persist_fim_event, id);
     expect_value(__wrap_validate_and_persist_fim_event, operation, OPERATION_DELETE);
     expect_string(__wrap_validate_and_persist_fim_event, index, FIM_FILES_SYNC_INDEX);
     expect_value(__wrap_validate_and_persist_fim_event, document_version, 1);
     expect_string(__wrap_validate_and_persist_fim_event, item_description, "file /tmp/test1.txt");
     expect_value(__wrap_validate_and_persist_fim_event, mark_for_deletion, false);
-    expect_value(__wrap_validate_and_persist_fim_event, failed_list, NULL);
-    expect_value(__wrap_validate_and_persist_fim_event, failed_item_data, NULL);
     expect_value(__wrap_validate_and_persist_fim_event, sync_flag, 1);
     will_return(__wrap_validate_and_persist_fim_event, true);
 
@@ -326,12 +315,11 @@ static void test_persist_sync_documents_promote_registry_keys_success(void **sta
     will_return(__wrap_build_stateful_event_registry_key, event1);
 
     // Expect validate_and_persist_fim_event
-    expect_any(__wrap_validate_and_persist_fim_event, stateful_event);
-    expect_any(__wrap_validate_and_persist_fim_event, id);
     expect_value(__wrap_validate_and_persist_fim_event, operation, OPERATION_CREATE);
     expect_string(__wrap_validate_and_persist_fim_event, index, FIM_REGISTRY_KEYS_SYNC_INDEX);
     expect_value(__wrap_validate_and_persist_fim_event, document_version, 1);
     expect_string(__wrap_validate_and_persist_fim_event, item_description, "registry key HKEY_LOCAL_MACHINE\\Software\\Test");
+    expect_value(__wrap_validate_and_persist_fim_event, mark_for_deletion, false);
     expect_value(__wrap_validate_and_persist_fim_event, sync_flag, 1);
     will_return(__wrap_validate_and_persist_fim_event, true);
 
@@ -340,6 +328,7 @@ static void test_persist_sync_documents_promote_registry_keys_success(void **sta
 
     persist_sync_documents(FIMDB_REGISTRY_KEY_TABLENAME, docs, OPERATION_CREATE);
 
+    // Clean up (event1 is freed by persist_sync_documents)
     cJSON_Delete(docs);
 }
 
@@ -356,12 +345,11 @@ static void test_persist_sync_documents_demote_registry_values_success(void **st
     cJSON_AddItemToArray(docs, doc1);
 
     // Expect validate_and_persist_fim_event with DELETE
-    expect_any(__wrap_validate_and_persist_fim_event, stateful_event);
-    expect_any(__wrap_validate_and_persist_fim_event, id);
     expect_value(__wrap_validate_and_persist_fim_event, operation, OPERATION_DELETE);
     expect_string(__wrap_validate_and_persist_fim_event, index, FIM_REGISTRY_VALUES_SYNC_INDEX);
     expect_value(__wrap_validate_and_persist_fim_event, document_version, 1);
     expect_string(__wrap_validate_and_persist_fim_event, item_description, "registry value HKEY_LOCAL_MACHINE\\Software\\Test:TestValue");
+    expect_value(__wrap_validate_and_persist_fim_event, mark_for_deletion, false);
     expect_value(__wrap_validate_and_persist_fim_event, sync_flag, 1);
     will_return(__wrap_validate_and_persist_fim_event, true);
 
@@ -482,12 +470,15 @@ static void test_add_pending_sync_item_success(void **state) {
 
     // Create pending list
     OSList* pending = OSList_Create();
-    OSList_SetFreeDataPointer(pending, free);
+    OSList_SetFreeDataPointer(pending, free_pending_sync_item);
 
     // Create test item
     cJSON* item = cJSON_CreateObject();
     cJSON_AddStringToObject(item, "path", "/tmp/test.txt");
     cJSON_AddNumberToObject(item, "version", 1);
+
+    // Expect mdebug2 with count
+    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: /tmp/test.txt (version: 1, sync: 1)");
 
     // Add to pending list
     add_pending_sync_item(pending, item, 1);
@@ -505,35 +496,36 @@ static void test_process_pending_sync_updates_files(void **state) {
 
     // Create pending list with items
     OSList* pending = OSList_Create();
-    OSList_SetFreeDataPointer(pending, free);
+    OSList_SetFreeDataPointer(pending, free_pending_sync_item);
 
     // Add test items
     cJSON* item1 = cJSON_CreateObject();
     cJSON_AddStringToObject(item1, "path", "/tmp/test1.txt");
     cJSON_AddNumberToObject(item1, "version", 1);
+    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: /tmp/test1.txt (version: 1, sync: 1)");
     add_pending_sync_item(pending, item1, 1);
 
     cJSON* item2 = cJSON_CreateObject();
     cJSON_AddStringToObject(item2, "path", "/tmp/test2.txt");
     cJSON_AddNumberToObject(item2, "version", 2);
+    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: /tmp/test2.txt (version: 2, sync: 1)");
     add_pending_sync_item(pending, item2, 1);
 
-    // Expect fim_db_sync_row_update calls
-    expect_string(__wrap_fim_db_sync_row_update, table_name, FIMDB_FILE_TABLE_NAME);
-    expect_string(__wrap_fim_db_sync_row_update, path, "/tmp/test1.txt");
-    expect_value(__wrap_fim_db_sync_row_update, arch, NULL);
-    expect_value(__wrap_fim_db_sync_row_update, value, NULL);
-    expect_value(__wrap_fim_db_sync_row_update, sync_value, 1);
-    will_return(__wrap_fim_db_sync_row_update, 0);
+    // Expect fim_db_set_sync_flag calls
+    expect_string(__wrap_fim_db_set_sync_flag, table_name, FIMDB_FILE_TABLE_NAME);
+    expect_any(__wrap_fim_db_set_sync_flag, item);
+    expect_value(__wrap_fim_db_set_sync_flag, sync_value, 1);
+    will_return(__wrap_fim_db_set_sync_flag, 0);
 
-    expect_string(__wrap_fim_db_sync_row_update, table_name, FIMDB_FILE_TABLE_NAME);
-    expect_string(__wrap_fim_db_sync_row_update, path, "/tmp/test2.txt");
-    expect_value(__wrap_fim_db_sync_row_update, arch, NULL);
-    expect_value(__wrap_fim_db_sync_row_update, value, NULL);
-    expect_value(__wrap_fim_db_sync_row_update, sync_value, 1);
-    will_return(__wrap_fim_db_sync_row_update, 0);
+    expect_string(__wrap_fim_db_set_sync_flag, table_name, FIMDB_FILE_TABLE_NAME);
+    expect_any(__wrap_fim_db_set_sync_flag, item);
+    expect_value(__wrap_fim_db_set_sync_flag, sync_value, 1);
+    will_return(__wrap_fim_db_set_sync_flag, 0);
 
     // Process updates
+    expect_string(__wrap__mdebug2, formatted_msg, "Setting sync=1 for path: /tmp/test1.txt");
+    expect_string(__wrap__mdebug2, formatted_msg, "Setting sync=1 for path: /tmp/test2.txt");
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 2 pending sync flag updates");
     process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending);
 
     // Clean up
