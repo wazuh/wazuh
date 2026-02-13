@@ -72,12 +72,12 @@ jobs:
           rm ./etc/preloaded-vars.conf
 
           # Generate dummy SSL certificates for indexer module
-          sudo mkdir -p /var/ossec/etc/certs
+          sudo mkdir -p $INSTALLATION_DIR/etc/certs
           sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
-            -keyout /var/ossec/etc/certs/root-ca.pem -out /var/ossec/etc/certs/root-ca.pem \
+            -keyout $INSTALLATION_DIR/etc/certs/root-ca.pem -out $INSTALLATION_DIR/etc/certs/root-ca.pem \
             -days 1 -subj "/CN=test" 2>/dev/null
           sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
-            -keyout /var/ossec/etc/certs/server-key.pem -out /var/ossec/etc/certs/server.pem \
+            -keyout $INSTALLATION_DIR/etc/certs/server-key.pem -out $INSTALLATION_DIR/etc/certs/server.pem \
             -days 1 -subj "/CN=test" 2>/dev/null
           sudo $INSTALLATION_DIR/bin/wazuh-control restart
       # Download and install integration tests framework.
@@ -104,7 +104,7 @@ jobs:
           sudo tail -F $INSTALLATION_DIR/logs/wazuh-manager.log >> /tmp/wazuh-logs/wazuh-manager.log 2>/dev/null &
           sudo tail -F $INSTALLATION_DIR/logs/cluster.log >> /tmp/wazuh-logs/cluster.log 2>/dev/null &
           cd tests/integration
-          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python -m pytest --tier 0 --tier 1 test_api/ --html=results.html --self-contained-html
+          sudo WAZUH_PATH="$INSTALLATION_DIR" GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python -m pytest --tier 0 --tier 1 test_api/ --html=results.html --self-contained-html
       # Collect logs if tests fail
       - name: Collect logs on failure
         if: failure()

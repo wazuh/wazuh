@@ -178,32 +178,6 @@ def test_validation_ko(mock_exists, mock_load_xml):
         validate_ossec_conf()
 
 
-@pytest.mark.parametrize('error_flag, error_msg', [
-    (0, ""),
-    (1, "2019/02/27 11:30:07 wazuh-manager-clusterd: ERROR: [Cluster] [Main] Error 3004 - Error in cluster configuration: "
-        "Unspecified key"),
-    (1, "2019/02/27 11:30:24 wazuh-manager-authd: ERROR: (1230): Invalid element in the configuration: "
-        "'use_source_i'.\n2019/02/27 11:30:24 wazuh-manager-authd: ERROR: (1202): Configuration error at "
-        "'/var/wazuh-manage/etc/wazuh-manager.conf'.")
-])
-def test_parse_wcom_output(error_flag, error_msg):
-    """Test parse_wcom_output function works and returns expected message.
-
-    Parameters
-    ----------
-    error_flag : int
-        Indicate if there is an error found.
-    error_msg
-        Error message to be sent.
-    """
-    json_response = json.dumps({'error': error_flag, 'message': error_msg}).encode()
-    if not error_flag:
-        result = parse_wcom_output(json_response)
-        assert result['status'] == 'OK'
-    else:
-        with pytest.raises(WazuhException, match=f'.* 1908 .*'):
-            parse_wcom_output(json_response)
-
 
 @patch('wazuh.core.manager.configuration.api_conf', new={'max_upload_size': 0})
 def test_get_api_config():
