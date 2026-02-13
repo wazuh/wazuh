@@ -2823,15 +2823,6 @@
     "f5_bigip.log.base_mac": {
       "type": "keyword"
     },
-    "f5_bigip.log.bigip_management.ip": {
-      "type": "ip"
-    },
-    "f5_bigip.log.bigip_management.ip2": {
-      "type": "ip"
-    },
-    "f5_bigip.log.bigip_management.ip_2": {
-      "type": "ip"
-    },
     "f5_bigip.log.blocking_exception_reason": {
       "type": "keyword"
     },
@@ -2884,12 +2875,6 @@
       "type": "keyword"
     },
     "f5_bigip.log.classification_reason": {
-      "type": "keyword"
-    },
-    "f5_bigip.log.client.ip": {
-      "type": "ip"
-    },
-    "f5_bigip.log.client.ip_geo_location": {
       "type": "keyword"
     },
     "f5_bigip.log.client.ip_route_domain": {
@@ -3231,9 +3216,6 @@
     "f5_bigip.log.dest.fqdn": {
       "type": "keyword"
     },
-    "f5_bigip.log.dest.ip": {
-      "type": "ip"
-    },
     "f5_bigip.log.dest.ipint_categories": {
       "type": "keyword"
     },
@@ -3245,9 +3227,6 @@
     },
     "f5_bigip.log.dest.zone": {
       "type": "keyword"
-    },
-    "f5_bigip.log.destination.ip": {
-      "type": "ip"
     },
     "f5_bigip.log.destination.port": {
       "type": "long"
@@ -3393,9 +3372,6 @@
     "f5_bigip.log.drop_reason": {
       "type": "keyword"
     },
-    "f5_bigip.log.dst.geo": {
-      "type": "keyword"
-    },
     "f5_bigip.log.enforced_by": {
       "type": "keyword"
     },
@@ -3448,18 +3424,6 @@
       "type": "keyword"
     },
     "f5_bigip.log.fragment": {
-      "type": "keyword"
-    },
-    "f5_bigip.log.geo.code": {
-      "type": "keyword"
-    },
-    "f5_bigip.log.geo.country": {
-      "type": "keyword"
-    },
-    "f5_bigip.log.geo.info": {
-      "type": "keyword"
-    },
-    "f5_bigip.log.geo.location": {
       "type": "keyword"
     },
     "f5_bigip.log.global_bigiq_conf": {
@@ -3515,9 +3479,6 @@
     },
     "f5_bigip.log.http.request": {
       "type": "keyword"
-    },
-    "f5_bigip.log.http.request_host": {
-      "type": "ip"
     },
     "f5_bigip.log.http.status": {
       "type": "keyword"
@@ -3606,12 +3567,6 @@
     "f5_bigip.log.machine_id": {
       "type": "keyword"
     },
-    "f5_bigip.log.management.ip_address": {
-      "type": "ip"
-    },
-    "f5_bigip.log.management.ip_address_2": {
-      "type": "ip"
-    },
     "f5_bigip.log.marketing_name": {
       "type": "keyword"
     },
@@ -3629,9 +3584,6 @@
     },
     "f5_bigip.log.method": {
       "type": "keyword"
-    },
-    "f5_bigip.log.mgmt_ip": {
-      "type": "ip"
     },
     "f5_bigip.log.micro_service.hostname": {
       "type": "keyword"
@@ -3681,9 +3633,6 @@
     "f5_bigip.log.new_request_status": {
       "type": "keyword"
     },
-    "f5_bigip.log.node": {
-      "type": "ip"
-    },
     "f5_bigip.log.node_port": {
       "type": "long"
     },
@@ -3713,9 +3662,6 @@
     },
     "f5_bigip.log.policy.name": {
       "type": "keyword"
-    },
-    "f5_bigip.log.pool.ip": {
-      "type": "ip"
     },
     "f5_bigip.log.pool.ip_route_domain": {
       "type": "keyword"
@@ -3903,9 +3849,6 @@
     "f5_bigip.log.server.hit_count": {
       "type": "long"
     },
-    "f5_bigip.log.server.ip": {
-      "type": "ip"
-    },
     "f5_bigip.log.server.latency.max": {
       "type": "long"
     },
@@ -3978,9 +3921,6 @@
     "f5_bigip.log.source.fqdn": {
       "type": "keyword"
     },
-    "f5_bigip.log.source.ip": {
-      "type": "ip"
-    },
     "f5_bigip.log.source.ip_route_domain": {
       "type": "keyword"
     },
@@ -3995,12 +3935,6 @@
     },
     "f5_bigip.log.source.user_group": {
       "type": "keyword"
-    },
-    "f5_bigip.log.src.geo": {
-      "type": "keyword"
-    },
-    "f5_bigip.log.src.ip": {
-      "type": "ip"
     },
     "f5_bigip.log.src.port": {
       "type": "long"
@@ -4031,9 +3965,6 @@
     },
     "f5_bigip.log.sub_violations": {
       "type": "keyword"
-    },
-    "f5_bigip.log.subnet.ip": {
-      "type": "ip"
     },
     "f5_bigip.log.subnet.name": {
       "type": "keyword"
@@ -4374,9 +4305,6 @@
     "f5_bigip.log.transaction_outcome": {
       "type": "keyword"
     },
-    "f5_bigip.log.translated.dest.ip": {
-      "type": "ip"
-    },
     "f5_bigip.log.translated.dest.port": {
       "type": "long"
     },
@@ -4385,9 +4313,6 @@
     },
     "f5_bigip.log.translated.route_domain": {
       "type": "keyword"
-    },
-    "f5_bigip.log.translated.source.ip": {
-      "type": "ip"
     },
     "f5_bigip.log.translated.source.port": {
       "type": "long"
@@ -4443,9 +4368,6 @@
     "f5_bigip.log.vip": {
       "type": "keyword"
     },
-    "f5_bigip.log.virtual.ip": {
-      "type": "ip"
-    },
     "f5_bigip.log.virtual.name": {
       "type": "keyword"
     },
@@ -4475,9 +4397,6 @@
     },
     "f5_bigip.log.wl_events": {
       "type": "long"
-    },
-    "f5_bigip.log.x_forwarded_for_header_value": {
-      "type": "ip"
     },
     "faas.coldstart": {
       "type": "boolean"
