@@ -1,6 +1,8 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.14.5]
+
 ## [v4.14.4]
 
 ## [v4.14.3]
