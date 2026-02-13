@@ -115,7 +115,7 @@ add_library(
   src/sca_checksum.cpp
   src/check_condition_evaluator.cpp
   $<$<PLATFORM_ID:Windows>:src/sca_policy_check_win.cpp>
-  ${SRC_FOLDER}/${RESOURCE_OBJ})
+  ${RESOURCE_OBJ_DLL})
 
 # Set position independent code for static library to be linked into shared
 # library

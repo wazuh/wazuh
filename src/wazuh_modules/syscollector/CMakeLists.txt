@@ -65,8 +65,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 file(GLOB SYSCOLLECTOR_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
-add_library(syscollector SHARED ${SYSCOLLECTOR_SRC}
-                                ${SRC_FOLDER}/${RESOURCE_OBJ})
+add_library(syscollector SHARED ${SYSCOLLECTOR_SRC} ${RESOURCE_OBJ_DLL})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(

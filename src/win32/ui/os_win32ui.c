@@ -355,7 +355,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
 
                     }
 
-                    ret_code = os_stop_service();
+                    os_stop_service();
 
                     /* Start WAZUH */
                     ret_code = os_start_service();

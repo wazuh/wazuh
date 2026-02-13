@@ -54,7 +54,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 file(GLOB SCA_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
-add_library(sca SHARED ${SCA_SRC} ${SRC_FOLDER}/${RESOURCE_OBJ})
+add_library(sca SHARED ${SCA_SRC} ${RESOURCE_OBJ_DLL})
 
 target_link_libraries(sca PRIVATE SCAImpl)
 

@@ -42,7 +42,7 @@ link_directories(${SRC_FOLDER}/external/cJSON/)
 file(GLOB DBSYNC_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
      "${CMAKE_CURRENT_SOURCE_DIR}/src/sqlite/*.cpp")
 
-add_library(dbsync SHARED ${DBSYNC_SRC} ${SRC_FOLDER}/${RESOURCE_OBJ})
+add_library(dbsync SHARED ${DBSYNC_SRC} ${RESOURCE_OBJ_DLL})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN_EXPORT)
@@ -64,7 +64,8 @@ if(UNIT_TEST)
   enable_testing()
   add_coverage_libraries(dbsync)
 
-  # Add coverage flags globally for all test executables (including those that compile sources directly)
+  # Add coverage flags globally for all test executables (including those that
+  # compile sources directly)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(--coverage)
     add_link_options(-fprofile-arcs)

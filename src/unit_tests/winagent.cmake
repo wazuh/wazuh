@@ -65,7 +65,9 @@ file(GLOB os_execd_lib ${SRC_FOLDER}/build/os_execd/CMakeFiles/execd_lib.dir/src
 list(APPEND obj_files ${os_execd_lib})
 
 # Add win32 objects
-file(GLOB win32_files ${SRC_FOLDER}/win32/win_service.o ${SRC_FOLDER}/win32/win_utils.o)
+file(GLOB win32_files
+  ${SRC_FOLDER}/build/win32/CMakeFiles/win32_common.dir/win_service.c.obj
+  ${SRC_FOLDER}/build/win32/CMakeFiles/win32_common.dir/win_utils.c.obj)
 list(APPEND obj_files ${win32_files})
 
 add_library(DEPENDENCIES_O STATIC ${obj_files})

@@ -113,7 +113,6 @@ if(TARGET FilesystemWrapper)
 endif()
 
 add_library(AGENT_INFO_IMPL STATIC src/agent_info_impl.cpp)
-# ${SRC_FOLDER}/${RESOURCE_OBJ})
 
 # Set position independent code for static library to be linked into shared
 # library

@@ -111,8 +111,6 @@ HTTP_REQUEST_BRANCH?=1a98c1aa40df0fe82136d790043c2f9cbf1a24c4
 
 ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX} -DEVENTCHANNEL_SUPPORT=ON
-WIN_RESOURCE_OBJ=-DRESOURCE_OBJ=win32/version-dll.o
-WIN_RESOURCE_APP_OBJ=-DRESOURCE_APP_OBJ=win32/version-app.o
 endif
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
@@ -159,64 +157,36 @@ else
 USE_SELINUX=no
 endif
 
-DEFINES=-DOSSECHIDS
-DEFINES+=-DUSER=\"${WAZUH_USER}\"
-DEFINES+=-DGROUPGLOBAL=\"${WAZUH_GROUP}\"
-
 ifneq (${TARGET},winagent)
-		DEFINES+=-D${uname_S}
 ifeq (${uname_S},Linux)
 		PRECOMPILED_OS:=linux
-		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
+		OSSEC_CFLAGS+=-D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_PACMAN}lib/libalpm/ -I${EXTERNAL_LIBARCHIVE}libarchive
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 ifeq (${CHECK_ALPINE},YES)
 		OSSEC_LIBS+=-lintl
-		DEFINES+=-DALPINE
 endif
 		OSSEC_LIBS+=-lrt -ldl -lm
-		OSSEC_LDFLAGS+=-pthread -lrt -ldl
-		USE_AUDIT=yes
 		CC=gcc
-ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
-		OSSEC_CFLAGS+=-I$(EXTERNAL_AUDIT)lib
-endif
 ifeq (${CHECK_ARCHLINUX},YES)
 		ARCH_FLAGS+=-lnghttp2 -lbrotlidec -lpsl
-		OSSEC_LDFLAGS+=-lnghttp2 -lbrotlidec -lpsl
 endif
 else
 ifeq (${uname_S},Darwin)
-	DEFINES+=-DDarwin
-	DEFINES+=-DHIGHFIRST
 	OSSEC_CFLAGS+=-pthread
-	OSSEC_LDFLAGS+=-pthread
-	OSSEC_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../lib"
 	SHARED=dylib
 	OSSEC_LIBS+=-framework Security -framework CoreFoundation -framework SystemConfiguration
 	PRECOMPILED_OS:=darwin
 else
 ifeq (${uname_S},FreeBSD)
-		DEFINES+=-DFreeBSD
 		OSSEC_CFLAGS+=-pthread -I/usr/local/include
-		OSSEC_LDFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-L/usr/local/lib
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		PRECOMPILED_OS:=freebsd
 else
 ifeq (${uname_S},NetBSD)
-		DEFINES+=-DNetBSD
 		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		PRECOMPILED_OS:=netbsd
 else
 ifeq (${uname_S},OpenBSD)
-		DEFINES+=-DOpenBSD
 		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-L/usr/local/lib
-		OSSEC_LDFLAGS+=-Wl,-zorigin '-Wl,-rpath,$$ORIGIN/../lib'
 		PRECOMPILED_OS:=openbsd
 else
 	    # Unknow platform
@@ -231,23 +201,8 @@ else
 		SHARED=dll
 		# We link against a patched libwinpthread.a library that no contains version.o (version.rc) to avoid including the resource in the executables due to the "--whole-archive" flag
 		OSSEC_CFLAGS+=-Wl,-L,win32/ -Wl,-Bstatic,--whole-archive -lwinpthreadpatched -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
-		OSSEC_LDFLAGS+=-Wl,-L,win32/ -Wl,-Bstatic,--whole-archive -lwinpthreadpatched -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
 		PRECOMPILED_OS:=windows
 endif # winagent
-
-ifeq (${IMAGE_TRUST_CHECKS}, 0)
-	DEFINES+=-DIMAGE_TRUST_CHECKS=0
-else ifeq (${IMAGE_TRUST_CHECKS}, 1)
-	DEFINES+=-DIMAGE_TRUST_CHECKS=1
-else ifeq (${IMAGE_TRUST_CHECKS}, 2)
-	DEFINES+=-DIMAGE_TRUST_CHECKS=2
-endif
-
-ifeq (${TARGET}, winagent)
-	DEFINES+=-DCA_NAME='"${CA_NAME}"'
-else
-	DEFINES+=-DCA_NAME='${CA_NAME}'
-endif
 
 # Check if symbol table should be included in release
 ifeq (${uname_S},Linux)
@@ -275,30 +230,10 @@ else
 endif
 
 OSSEC_CFLAGS+=${OFLAGS}
-OSSEC_LDFLAGS+=${OFLAGS}
 
-ifeq (${TARGET}, winagent)
-	OSSEC_LDFLAGS+=-Lbuild/bin -Lbuild/lib
-else
-	OSSEC_LDFLAGS+=-Lbuild/lib
-endif
-
-ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
-        DEFINES+=-DENABLE_AUDIT
-endif
-
-ifeq (${COVERITY}, YES)
-	DEFINES+=-D__coverity__
-endif
-
-OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-WAZUH_MODULES_INC := $(shell find ./wazuh_modules -type d -name include)
-WAZUH_MODULES_SRC := $(shell find ./wazuh_modules -type d -name src)
-OSSEC_CFLAGS+=-I./ -I./shared/include/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include/curl -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_SQLITE} -I${EXTERNAL_RPM}/builddir/output/include -I./active-response/include -I./config/include -I./client-agent/include -I./logcollector/include -I./os_execd/include -I./shared/error_messages -I./shared/os_crypto/md5 -I./shared/os_crypto/sha1 -I./shared/os_crypto/sha256 -I./shared/os_crypto/md5_sha1_sha256 -I./shared/os_crypto/blowfish -I./shared/os_crypto/signature -I./shared/os_net -I./shared/os_regex -I./shared/os_xml -I./data_provider/include/ -I./shared_modules/ -I./shared_modules/agent_metadata/include -I./shared_modules/common/ -I./shared_modules/content_manager/include -I./shared_modules/dbsync/include -I./shared_modules/router/include -I./shared_modules/sync_protocol/include -I./syscheckd/include -I./rootcheck/include $(addprefix -I,$(WAZUH_MODULES_INC)) $(addprefix -I,$(WAZUH_MODULES_SRC)) -I./wazuh_modules/src/agent_upgrade -I./wazuh_modules/src/agent_upgrade/agent -I./wazuh_modules/src/agent_upgrade/manager -I./wazuh_modules/src/task_manager
 
 OSSEC_CFLAGS += ${CFLAGS}
-OSSEC_LDFLAGS += ${LDFLAGS}
 OSSEC_LIBS += $(LIBS)
 
 CCCOLOR="\033[34m"
@@ -380,26 +315,11 @@ endif
 endif #winagent
 
 OSSEC_CC      		=${QUIET_CC}${MING_BASE}${CC}
-OSSEC_CCBIN   		=${QUIET_CCBIN}${MING_BASE}${CC}
-OSSEC_CXXBIN  		=${QUIET_CCBIN}${MING_BASE}${CXX}
 OSSEC_SHARED  		=${QUIET_CCBIN}${MING_BASE}${CC} -shared
 OSSEC_LINK    		=${QUIET_LINK}${MING_BASE}ar -crus
 OSSEC_REMOVE_OBJECT =${QUIET_LINK}${MING_BASE}ar -d
 OSSEC_RANLIB  		=${QUIET_RANLIB}${MING_BASE}ranlib
 OSSEC_WINDRES 		=${QUIET_CCBIN}${MING_BASE}windres
-
-ifneq (,$(filter ${USE_INOTIFY},YES auto yes y Y 1))
-	DEFINES+=-DINOTIFY_ENABLED
-	ifeq (${uname_S},FreeBSD)
-		OSSEC_LDFLAGS+=-L/usr/local/lib -I/usr/local/include
-		OSSEC_LIBS+=-linotify
-		OSSEC_CFLAGS+=-I/usr/local/include
-	endif
-endif
-
-ifneq (,$(filter ${USE_BIG_ENDIAN},YES yes y Y 1))
-	DEFINES+=-DOS_BIG_ENDIAN
-endif
 
 ####################
 #### Target ########
@@ -408,14 +328,6 @@ endif
 ifndef TARGET
 	TARGET=failtarget
 endif # TARGET
-
-ifeq (${TARGET},agent)
-	DEFINES+=-DCLIENT
-endif
-
-ifeq (${TARGET},local)
-	DEFINES+=-DLOCAL
-endif
 
 .PHONY: build
 build: ${TARGET}
@@ -494,11 +406,8 @@ settings:
 	@echo "Pgsql settings:"
 	@echo "    includes:           ${PI}"
 	@echo "    libs:               ${PL}"
-	@echo "Defines:"
-	@echo "    ${DEFINES}"
 	@echo "Compiler:"
 	@echo "    CFLAGS            ${OSSEC_CFLAGS}"
-	@echo "    LDFLAGS           ${OSSEC_LDFLAGS}"
 	@echo "    LIBS              ${OSSEC_LIBS}"
 	@echo "    CC                ${CC}"
 	@echo "    MAKE              ${MAKE}"
@@ -553,16 +462,14 @@ $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
 WINDOWS_CMAKE_MODULES:=win32/wazuh_cmake_modules
-WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/os_win32ui.exe
 
 ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: external win32/libwinpthread-1.dll win32/libwinpthreadpatched.a ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME} win32/version-dll.o win32/version-app.o
+winagent: external win32/libwinpthread-1.dll win32/libwinpthreadpatched.a ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}
 	${MAKE} ${WAZUHEXT_LIB} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lws2_32 -lcrypt32"
 	${MAKE} ${WINDOWS_CMAKE_MODULES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1"
-	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
 	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
@@ -570,7 +477,7 @@ winagent: external win32/libwinpthread-1.dll win32/libwinpthreadpatched.a ${WAZU
 	cd win32/ && ./unix2dos.pl ../../LICENSE > LICENSE.txt
 	cd win32/ && ./unix2dos.pl ../../VERSION.json > VERSION.json
 
-win32/wazuh_cmake_modules: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) win32/version-dll.o win32/version-app.o
+win32/wazuh_cmake_modules: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
 	${MAKE} build_wazuh_cmake
 
 win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
@@ -647,9 +554,7 @@ EXTERNAL_LIBS += $(LIBFFI_LIB)
 endif
 ifeq (${uname_S},Linux)
 EXTERNAL_LIBS += ${DBUS_LIB} ${LUA_LIB} ${RPM_LIB} ${POPT_LIB}
-ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
-endif
 EXTERNAL_LIBS += $(PROCPS_LIB) $(LIBALPM_LIB) $(LIBARCHIVE_LIB)
 endif
 endif
@@ -1345,31 +1250,19 @@ WAZUHEXT_LIB = libwazuhext.lib
 WAZUHEXT_LIB_DEF = libwazuhext.def
 else
 WAZUHEXT_LIB = libwazuhext.$(SHARED)
-WAZUH_LIB = libwazuhshared.$(SHARED)
 endif
-BUILD_LIBS = $(WAZUHEXT_LIB)
-
-# Select which static library to use: libwazuh_test.a for TEST=1, libwazuh.a otherwise
-ifneq (,$(filter ${TEST},YES yes y Y 1))
-WAZUH_STATIC_LIB = libwazuh_test.a
-else
-WAZUH_STATIC_LIB = libwazuh.a
-endif
-
-$(WINDOWS_BINS): $(BUILD_LIBS)
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 LIBS_TEST=-lcmocka
 CFLAGS_TEST=-g -O0 --coverage -DWAZUH_UNIT_TESTING
 
 OSSEC_CFLAGS+=${CFLAGS_TEST}
-OSSEC_LDFLAGS+=${CFLAGS_TEST}
 OSSEC_LIBS+=${LIBS_TEST}
 endif
 
 #### Wazuh cmake ###
 build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
-	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${WIN_RESOURCE_OBJ} ${WIN_RESOURCE_APP_OBJ} ${CMAKE_ENGINE_OPTS} && ${MAKE}
+	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${CMAKE_ENGINE_OPTS} && ${MAKE}
 
 ### libwazuhext #########
 
@@ -1383,7 +1276,7 @@ ifeq (${TARGET}, winagent)
 $(WAZUHEXT_LIB): $(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF)
 	$(DLLTOOL) -D $(WAZUHEXT_DLL) --def $(WAZUHEXT_LIB_DEF) --output-delaylib $@
 
-$(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF): $(EXTERNAL_LIBS) win32/version-dll.o win32/version-app.o
+$(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF): $(EXTERNAL_LIBS) win32/version-dll.o
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $(WAZUHEXT_DLL) -static-libgcc -Wl,--export-all-symbols -Wl,--add-stdcall-alias -Wl,--whole-archive $^ -Wl,--no-whole-archive -Wl,--output-def,$(WAZUHEXT_LIB_DEF) ${OSSEC_LIBS}
 
 else
@@ -1469,62 +1362,11 @@ install_mitre: install_python
 	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${INSTALLDIR}/var/db/mitre.db
 
 ####################
-#### windows #######
+#### Windows #######
 ####################
 
 win32/version-dll.o: win32/version.rc
-	${OSSEC_WINDRES} ${WIN_BUILD_VERSION} ${WIN_BUILD_TYPE} -DVER_TYPE=VFT_DLL -i $< -o $@
-
-win32/version-app.o: win32/version.rc
-	${OSSEC_WINDRES} ${WIN_BUILD_VERSION} ${WIN_BUILD_TYPE} -DVER_TYPE=VFT_APP -i $< -o $@
-
-# For security reasons, all executables must have a manifest
-# except those .exe files that aren't distributed in the final signed .msi
-
-win32/ui_resource.o: win32/ui/win32ui.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/wazuh_agent_resource.o: win32/wazuh-agent.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/wazuh_agent_eventchannel_resource.o: win32/wazuh-agent-eventchannel.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/icon.o: win32/icofile.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32_c := $(wildcard win32/*.c)
-win32_o := $(win32_c:.c=.o)
-
-win32/%.o: win32/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-agent\" -c $^ -o $@
-
-win32/%_rk.o: win32/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-agent\" -c $^ -o $@
-
-win32_ui_c := $(wildcard win32/ui/*.c)
-win32_ui_o := $(win32_ui_c:.c=.o)
-
-win32/ui/%.o: win32/ui/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
-
-win32/wazuh-agent.exe: win32/wazuh_agent_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ -ldbsync -lwazuh-agentd -lwazuh-logcollector -lwazuh-execd -lwazuh-syscheckd -l:libfimdb.lib -lagent_metadata -llibagent_sync_protocol -lschema_validator -lconfig -lwazuh-modulesd ${WAZUH_STATIC_LIB} libwazuhext.lib -lrootcheck ${OSSEC_LIBS} -o $@
-
-win32/wazuh-agent-eventchannel.exe: win32/wazuh_agent_eventchannel_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ -ldbsync -lwazuh-agentd -lwazuh-logcollector-event -lwazuh-execd -lwazuh-syscheckd-event -l:libfimdb.lib -lagent_metadata -llibagent_sync_protocol -lschema_validator -lconfig -lwazuh-modulesd ${WAZUH_STATIC_LIB} libwazuhext.lib -lrootcheck ${OSSEC_LIBS} -lwevtapi -o $@
-
-win32/setup-windows.exe: win32/win_service_rk.o win32/setup-win.o win32/setup-shared.o
-	${OSSEC_CCBIN} -DARGV0=\"setup-windows\" ${OSSEC_LDFLAGS} $^ ${WAZUH_STATIC_LIB} ${WAZUHEXT_LIB} ${OSSEC_LIBS} -o $@
-
-win32/setup-syscheck.exe: win32/win_service_rk.o win32/setup-syscheck.o win32/setup-shared.o
-	${OSSEC_CCBIN} -DARGV0=\"setup-syscheck\" ${OSSEC_LDFLAGS} $^ ${WAZUH_STATIC_LIB} ${WAZUHEXT_LIB} ${OSSEC_LIBS} -o $@
-
-win32/setup-iis.exe: win32/win_service_rk.o win32/setup-iis.o
-	${OSSEC_CCBIN} -DARGV0=\"setup-iis\" ${OSSEC_LDFLAGS} $^ ${WAZUH_STATIC_LIB} ${WAZUHEXT_LIB} ${OSSEC_LIBS} -o $@
-
-win32/os_win32ui.exe: win32/ui_resource.o win32/version-app.o win32/win_service_rk.o ${win32_ui_o}
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} $^ ${WAZUH_STATIC_LIB} ${WAZUHEXT_LIB} ${OSSEC_LIBS} -I./syscheckd/include -mwindows -o $@
+	${OSSEC_WINDRES} -DVER_TYPE=VFT_DLL -i $< -o $@
 
 ####################
 #### Clean #########
@@ -1664,21 +1506,20 @@ clean-windows:
 	rm -f win32/default-ossec-pre6.conf
 	rm -f win32/VERSION.json
 # Active responses
-	rm -f win32/restart-ossec.cmd
-	rm -f win32/route-null.cmd
-	rm -f win32/route-null-2012.cmd
-	rm -f win32/netsh.cmd
-	rm -f win32/netsh-win-2016.cmd
 	rm -f win32/restart-wazuh.exe
 	rm -f win32/route-null.exe
 	rm -f win32/netsh.exe
 # Wazuh binaries
-	rm -f win32/*.o
-	rm -f win32/ui/*.o
-	rm -f ${WINDOWS_BINS}
+	rm -f win32/wazuh-agent.exe
+	rm -f win32/wazuh-agent-eventchannel.exe
+	rm -f win32/setup-windows.exe
+	rm -f win32/setup-syscheck.exe
+	rm -f win32/setup-iis.exe
+	rm -f win32/os_win32ui.exe
 	rm -f win32/manage_agents.exe
-	rm -f win32/wazuh-agent-*.exe
 # Compilation libraries
+	rm -f win32/version-dll.o
+	rm -f win32/libwinpthreadpatched.a
 	rm -f win32/libwinpthread-1.dll
 	rm -f win32/libstdc++-6.dll
 	rm -f win32/libgcc_s_dw2-1.dll

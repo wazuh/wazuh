@@ -82,15 +82,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
                                                pthread wazuh)
 
   if(NOT UNIT_TEST)
-    # Enable RC language for resource files
-    enable_language(RC)
-    set(WIN_VERSION_APP ${SRC_FOLDER}/${RESOURCE_APP_OBJ})
-
     # Build manage_agents.exe Windows executable
     add_executable(
       manage_agents_win
-      ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c ${SRC_FOLDER}/win32/win_service.c
-      ${SRC_FOLDER}/win32/manage_agents.rc ${WIN_VERSION_APP})
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c $<TARGET_OBJECTS:win32_service_rk>
+      ${SRC_FOLDER}/win32/manage_agents.rc ${RESOURCE_OBJ_APP})
     target_compile_definitions(manage_agents_win PRIVATE ARGV0="manage-agents"
                                                          MA _WIN32_WINNT=0x600)
     set_target_properties(

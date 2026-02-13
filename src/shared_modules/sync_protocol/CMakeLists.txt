@@ -78,7 +78,7 @@ add_library(
   ${GENERATED_HEADER}
   src/agent_sync_protocol_c_interface.cpp
   src/sync_message_transport.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../${RESOURCE_OBJ})
+  ${RESOURCE_OBJ_DLL})
 
 if(DEFINED ENV{TARGET} AND "$ENV{TARGET}" STREQUAL "server")
   # Manager build: use Router transport and link router library

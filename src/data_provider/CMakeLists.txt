@@ -168,7 +168,7 @@ endif()
 
 add_library(
   sysinfo SHARED ${SYSINFO_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/src/sysInfo.cpp
-                 ${SRC_FOLDER}/${RESOURCE_OBJ})
+                 ${RESOURCE_OBJ_DLL})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(

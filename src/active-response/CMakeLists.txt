@@ -104,19 +104,14 @@ endif()
 
 # Build Windows active responses
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  # Windows active responses need win_stubs.c and resource files (.rc)
-
-  # Common Windows source files
-  set(WIN_STUBS ${SRC_FOLDER}/win32/win_stubs.c)
-
-  # Enable RC language for resource files
-  enable_language(RC)
-  set(WIN_VERSION_APP ${SRC_FOLDER}/${RESOURCE_APP_OBJ})
+  # Windows active responses need win32_stubs and resource files (.rc)
 
   # restart-wazuh.exe
   add_executable(
-    restart-wazuh ${CMAKE_CURRENT_SOURCE_DIR}/src/restart-wazuh.c ${WIN_STUBS}
-                  ${SRC_FOLDER}/win32/restart-wazuh.rc ${WIN_VERSION_APP})
+    restart-wazuh
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/restart-wazuh.c
+    $<TARGET_OBJECTS:win32_stubs> ${SRC_FOLDER}/win32/restart-wazuh.rc
+    ${RESOURCE_OBJ_APP})
   target_compile_definitions(restart-wazuh PRIVATE ARGV0="restart-wazuh")
   set_target_properties(
     restart-wazuh PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/win32
@@ -127,8 +122,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
   # route-null.exe
   add_executable(
-    route-null ${CMAKE_CURRENT_SOURCE_DIR}/src/route-null.c ${WIN_STUBS}
-               ${SRC_FOLDER}/win32/route-null.rc ${WIN_VERSION_APP})
+    route-null
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/route-null.c $<TARGET_OBJECTS:win32_stubs>
+    ${SRC_FOLDER}/win32/route-null.rc ${RESOURCE_OBJ_APP})
   target_compile_definitions(route-null PRIVATE ARGV0="route-null")
   set_target_properties(
     route-null PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/win32
@@ -137,8 +133,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
                                            wintrust psapi crypt32 shlwapi)
 
   # netsh.exe
-  add_executable(netsh ${CMAKE_CURRENT_SOURCE_DIR}/src/netsh.c ${WIN_STUBS}
-                       ${SRC_FOLDER}/win32/netsh.rc ${WIN_VERSION_APP})
+  add_executable(
+    netsh ${CMAKE_CURRENT_SOURCE_DIR}/src/netsh.c $<TARGET_OBJECTS:win32_stubs>
+          ${SRC_FOLDER}/win32/netsh.rc ${RESOURCE_OBJ_APP})
   target_compile_definitions(netsh PRIVATE ARGV0="netsh")
   set_target_properties(netsh PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                          ${SRC_FOLDER}/win32 OUTPUT_NAME netsh)

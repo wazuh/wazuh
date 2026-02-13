@@ -63,7 +63,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 file(GLOB AGENT_INFO_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
-add_library(agent_info SHARED ${AGENT_INFO_SRC} ${SRC_FOLDER}/${RESOURCE_OBJ})
+add_library(agent_info SHARED ${AGENT_INFO_SRC} ${RESOURCE_OBJ_DLL})
 
 target_link_libraries(agent_info PRIVATE AGENT_INFO_IMPL FileIO
                                          FilesystemWrapper)

@@ -1,10 +1,6 @@
 # Generate win32 library
 file(GLOB win32_files
-    ${SRC_FOLDER}/win32/*.o)
-
-list(REMOVE_ITEM win32_files ${SRC_FOLDER}/win32/main.o)
-
-#${SRC_FOLDER}/monitord/*.o
+    ${SRC_FOLDER}/build/win32/CMakeFiles/win32_common.dir/*.obj)
 
 add_library(WIN32 STATIC ${win32_files})
 

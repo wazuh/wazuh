@@ -243,6 +243,22 @@ include_directories(${SRC_FOLDER}/external/simdjson/include/)
 include_directories(${SRC_FOLDER}/external/zlib/)
 include_directories(${SRC_FOLDER}/external/zlib/contrib/)
 
+# Windows version resource objects
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  enable_language(RC)
+
+  # Version resource for DLLs (VFT_DLL)
+  add_library(version_rc_dll OBJECT ${SRC_FOLDER}/win32/version.rc)
+  target_compile_definitions(version_rc_dll PRIVATE VER_TYPE=VFT_DLL)
+
+  # Version resource for executables (VFT_APP)
+  add_library(version_rc_app OBJECT ${SRC_FOLDER}/win32/version.rc)
+  target_compile_definitions(version_rc_app PRIVATE VER_TYPE=VFT_APP)
+
+  set(RESOURCE_OBJ_DLL $<TARGET_OBJECTS:version_rc_dll>)
+  set(RESOURCE_OBJ_APP $<TARGET_OBJECTS:version_rc_app>)
+endif()
+
 # Helper variables
 set(IS_AGENT FALSE)
 if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
@@ -272,6 +288,11 @@ add_subdirectory(logcollector)
 if(IS_AGENT)
   add_subdirectory(client-agent)
   add_subdirectory(addagent)
+endif()
+
+# Windows agent executables and resources
+if("${TARGET}" STREQUAL "winagent")
+  add_subdirectory(win32)
 endif()
 
 # Server-only modules
