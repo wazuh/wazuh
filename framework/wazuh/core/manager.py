@@ -19,7 +19,7 @@ from api import configuration
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.configuration import get_active_configuration, get_cti_url
+from wazuh.core.configuration import get_active_configuration, get_cti_url, get_ossec_conf
 from wazuh.core.utils import get_utc_now, get_utc_strptime, tail, load_wazuh_xml
 
 OSSEC_LOG_FIELDS = ['timestamp', 'tag', 'level', 'description']
@@ -101,7 +101,6 @@ def get_wazuh_active_logging_format() -> LoggingFormat:
     """
     active_logging = get_active_configuration(component="com", configuration="logging")['logging']
     return LoggingFormat.plain if active_logging['plain'] == "yes" else LoggingFormat.json
-
 
 def get_ossec_logs(limit: int = 2000) -> list:
     """Return last <limit> lines of wazuh-manager.log file.
