@@ -71,7 +71,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/bin/manage_agents,root,root,750,file,-rwxr-x---,190936,0.1
 /var/ossec/bin/wazuh-modulesd,root,root,750,file,-rwxr-x---,711912,0.1
 /var/ossec/bin/wazuh-agentd,root,root,750,file,-rwxr-x---,789888,0.1
-/var/ossec/lib/libwazuhshared.so,root,wazuh,750,file,-rwxr-x---,534876,0.1
 /var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,12362096,0.1
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,541828,0.1
 /var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,1267268,0.1

@@ -702,21 +702,6 @@ InstallCommon()
 
     if [ ${NUNAME} = 'Darwin' ]
     then
-        if [ -f libwazuhshared.dylib ]
-        then
-            ${INSTALL} -m 0750 -o root -g 0 libwazuhshared.dylib ${INSTALLDIR}/lib
-        fi
-    elif [ -f libwazuhshared.so ]
-    then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libwazuhshared.so ${INSTALLDIR}/lib
-
-        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libwazuhshared.so
-        fi
-    fi
-
-    if [ ${NUNAME} = 'Darwin' ]
-    then
         if [ -f build/lib/libdbsync.dylib ]
         then
             ${INSTALL} -m 0750 -o root -g 0 build/lib/libdbsync.dylib ${INSTALLDIR}/lib
@@ -1243,6 +1228,14 @@ InstallServer()
 {
 
     InstallLocal
+    if [ -f libwazuhshared.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libwazuhshared.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libwazuhshared.so
+        fi
+    fi
     if [ -f external/jemalloc/lib/libjemalloc.so.2 ]
     then
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/jemalloc/lib/libjemalloc.so.2 ${INSTALLDIR}/lib

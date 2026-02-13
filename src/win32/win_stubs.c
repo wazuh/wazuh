@@ -10,8 +10,6 @@
 /*
  * Stub implementations for Windows-specific functions that are called
  * from shared library code but are only meaningful in the agent context.
- * These stubs are used when building libwazuhshared.dll for active-response
- * executables that don't have the full agent context.
  */
 
 #ifdef WIN32

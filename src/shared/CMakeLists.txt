@@ -375,43 +375,25 @@ if(UNIT_TEST)
   target_link_libraries(wazuh_test PUBLIC wazuhext)
 endif()
 
-# Create shared library
-if(NOT UNIT_TEST AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  if(APPLE)
-    # macOS: libwazuhshared.dylib
-    add_library(wazuhshared SHARED ${LIBWAZUH_SRC})
+# Create shared library (Linux/server only — used by the engine)
+if(NOT IS_AGENT AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  # Linux: libwazuhshared.so
+  add_library(wazuhshared SHARED ${LIBWAZUH_SRC})
 
-    set_target_properties(
-      wazuhshared
-      PROPERTIES OUTPUT_NAME "wazuhshared"
-                 LIBRARY_OUTPUT_DIRECTORY ${SRC_FOLDER}
-                 INSTALL_NAME_DIR "@rpath"
-                 BUILD_WITH_INSTALL_RPATH TRUE
-                 POSITION_INDEPENDENT_CODE ON)
+  set_target_properties(
+    wazuhshared
+    PROPERTIES OUTPUT_NAME "wazuhshared"
+               LIBRARY_OUTPUT_DIRECTORY ${SRC_FOLDER}
+               BUILD_WITH_INSTALL_RPATH TRUE
+               INSTALL_RPATH "$ORIGIN"
+               POSITION_INDEPENDENT_CODE ON)
 
-    target_compile_definitions(wazuhshared PRIVATE ARGV0="wazuh")
-    # Link with wazuhext (Makefile-built dylib)
-    target_link_libraries(wazuhshared PUBLIC wazuhext)
+  target_compile_definitions(wazuhshared PRIVATE ARGV0="wazuh")
+  # Link with wazuhext using -Wl,--whole-archive (Linux linker flag)
+  target_link_libraries(wazuhshared PUBLIC -Wl,--whole-archive wazuhext
+                                           -Wl,--no-whole-archive)
 
-  else()
-    # Linux: libwazuhshared.so
-    add_library(wazuhshared SHARED ${LIBWAZUH_SRC})
-
-    set_target_properties(
-      wazuhshared
-      PROPERTIES OUTPUT_NAME "wazuhshared"
-                 LIBRARY_OUTPUT_DIRECTORY ${SRC_FOLDER}
-                 BUILD_WITH_INSTALL_RPATH TRUE
-                 INSTALL_RPATH "$ORIGIN"
-                 POSITION_INDEPENDENT_CODE ON)
-
-    target_compile_definitions(wazuhshared PRIVATE ARGV0="wazuh")
-    # Link with wazuhext using -Wl,--whole-archive (Linux linker flag)
-    target_link_libraries(wazuhshared PUBLIC -Wl,--whole-archive wazuhext
-                                             -Wl,--no-whole-archive)
-  endif()
-
-  # Apply common compile definitions to shared library (all platforms)
+  # Apply common compile definitions to shared library
   if(CA_NAME)
     target_compile_definitions(wazuhshared PRIVATE CA_NAME="${CA_NAME}")
   endif()
