@@ -80,7 +80,6 @@ typedef struct _os_channel {
     EVT_HANDLE subscription;
 } os_channel;
 
-STATIC char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags);
 STATIC EVT_HANDLE read_bookmark(os_channel *channel);
 
 wchar_t *convert_unix_string(char *string)
@@ -132,119 +131,6 @@ wchar_t *convert_unix_string(char *string)
     }
 
     return (dest);
-}
-
-STATIC char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
-{
-    char *message = NULL;
-    EVT_HANDLE publisher = NULL;
-    DWORD size = 0;
-    wchar_t *buffer = NULL;
-    int result = 0;
-    DWORD lastError;
-
-    publisher = EvtOpenPublisherMetadata(NULL,
-                                         provider_name,
-                                         NULL,
-                                         0,
-                                         0);
-    if (publisher == NULL) {
-        LSTATUS err = GetLastError();
-        char error_msg[OS_SIZE_1024];
-        memset(error_msg, 0, OS_SIZE_1024);
-        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
-                | FORMAT_MESSAGE_MAX_WIDTH_MASK,
-                NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                (LPTSTR) &error_msg, OS_SIZE_1024, NULL);
-
-        mdebug1(
-            "Could not EvtOpenPublisherMetadata() with flags (%lu) which returned (%lu): %s",
-            flags,
-            err,
-            error_msg);
-        goto cleanup;
-    }
-
-    /* Make initial call to determine buffer size */
-    result = EvtFormatMessage(publisher,
-                              evt,
-                              0,
-                              0,
-                              NULL,
-                              flags,
-                              0,
-                              NULL,
-                              &size);
-
-    if (result) {
-        // We expect failure here because the buffer is null
-        merror(
-            "Could not EvtFormatMessage() to determine buffer size with flags (%lu): unexpected result",
-            flags);
-        goto cleanup;
-    }
-
-    lastError = GetLastError();
-
-    switch (lastError) {
-    case ERROR_INSUFFICIENT_BUFFER:             // 122
-        // Expected case
-        break;
-
-    case ERROR_EVT_MESSAGE_NOT_FOUND:           // 15027
-    case ERROR_EVT_MESSAGE_LOCALE_NOT_FOUND:    // 15033
-         mdebug1(
-            "Could not EvtFormatMessage() to determine buffer size with flags (%lu) which returned (%lu)",
-            flags,
-            lastError);
-        goto cleanup;
-
-    default:
-        merror(
-            "Could not EvtFormatMessage() to determine buffer size with flags (%lu) which returned (%lu)",
-            flags,
-            lastError);
-        goto cleanup;
-    }
-
-    /* Increase buffer size by one due to the difference in the size count between EvtFormatMessage() and
-       WideCharToMultiByte() */
-    size += 1;
-    if ((buffer = calloc(size, sizeof(wchar_t))) == NULL) {
-        merror(
-            "Could not calloc() memory which returned [(%d)-(%s)]",
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
-
-    result = EvtFormatMessage(publisher,
-                              evt,
-                              0,
-                              0,
-                              NULL,
-                              flags,
-                              size,
-                              buffer,
-                              &size);
-    if (result == FALSE) {
-        merror(
-            "Could not EvtFormatMessage() with flags (%lu) which returned (%lu)",
-            flags,
-            GetLastError());
-        goto cleanup;
-    }
-
-    message = convert_windows_string(buffer);
-
-cleanup:
-    free(buffer);
-
-    if (publisher != NULL) {
-        EvtClose(publisher);
-    }
-
-    return (message);
 }
 
 /* Read an existing bookmark (if one exists) */
@@ -422,19 +308,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     PEVT_VARIANT properties_values = NULL;
     DWORD count = 0;
     int result = 0;
-    wchar_t *wprovider_name = NULL;
-    char *msg_sent = NULL;
-    char *provider_name = NULL;
-    char *msg_from_prov = NULL;
     char *xml_event = NULL;
-    char *beg_prov = NULL;
-    char *end_prov = NULL;
-    char *find_prov = NULL;
-    size_t num;
-
-    cJSON *event_json = cJSON_CreateObject();
-
-    os_malloc(OS_MAXSTR, provider_name);
 
     result = EvtRender(NULL,
                        evt,
@@ -479,51 +353,11 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
 
-    find_prov = strstr(xml_event, "Provider Name=");
-
-    if(find_prov){
-        beg_prov = strchr(find_prov, '\'');
-        if(beg_prov){
-            end_prov = strchr(beg_prov+1, '\'');
-
-            if (end_prov){
-                num = end_prov - beg_prov - 1;
-
-                if(num > OS_MAXSTR - 1){
-                    mwarn("The event message has exceeded the maximum size.");
-                    goto cleanup;
-                }
-
-                memcpy(provider_name, beg_prov+1, num);
-                provider_name[num] = '\0';
-                find_prov = '\0';
-                beg_prov = '\0';
-                end_prov = '\0';
-            }
-        }
-    }
-
-     if (provider_name) {
-        wprovider_name = convert_unix_string(provider_name);
-
-        if (wprovider_name && (msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
-            mdebug1(
-                "Could not get message for (%s)",
-                channel->evt_log);
-        }
-        else {
-            cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
-        }
-    }
-
     win_format_event_string(xml_event);
 
-    cJSON_AddStringToObject(event_json, "Event", xml_event);
-    msg_sent = cJSON_PrintUnformatted(event_json);
+    w_logcollector_state_update_file(channel->evt_log, strlen(xml_event));
 
-    w_logcollector_state_update_file(channel->evt_log, strlen(msg_sent));
-
-    if (SendMSG(logr_queue, msg_sent, "EventChannel", WIN_EVT_MQ) < 0) {
+    if (SendMSG(logr_queue, xml_event, "EventChannel", WIN_EVT_MQ) < 0) {
         merror(QUEUE_SEND);
         w_logcollector_state_update_target(channel->evt_log, "agent", true);
     } else {
@@ -535,13 +369,8 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     }
 
 cleanup:
-    os_free(msg_from_prov);
     os_free(xml_event);
-    os_free(msg_sent);
     os_free(properties_values);
-    os_free(provider_name);
-    os_free(wprovider_name);
-    cJSON_Delete(event_json);
 
     return;
 }
