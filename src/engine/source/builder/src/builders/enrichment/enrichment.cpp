@@ -8,6 +8,7 @@ constexpr std::string_view JPATH_ORIGIN_SPACE = "/wazuh/space/name";            
 constexpr std::string_view JPATH_INTEGRATION_CATEGORY = "/wazuh/integration/category"; ///< wazuh.integration.category
 const std::string ENRICHMENT_SPACE_TRACEABLE_NAME = "enrichment/OriginSpace";
 const std::string UNCLASSIFIED_FILTER_TRACEABLE_NAME = "filter/UnclassifiedEvents";
+const std::string DISCARDED_EVENTS_FILTER_TRACEABLE_NAME = "filter/DiscardedEvents";
 
 } // namespace
 namespace builder::builders::enrichment
@@ -77,6 +78,45 @@ std::pair<base::Expression, std::string> getUnclassifiedFilter(const cm::store::
         });
 
     return std::make_pair(makeTraceableSuccessExpression(op, trace), UNCLASSIFIED_FILTER_TRACEABLE_NAME);
+}
+
+std::pair<base::Expression, std::string> getDiscardedEventsFilter(const cm::store::dataType::Policy& policy, bool trace)
+{
+    const bool shouldIndex = policy.shouldIndexDiscardedEvents();
+    const auto discardFieldPath = json::Json::formatJsonPath(syntax::asset::discard::TARGET_FIELD);
+
+    auto op = base::Term<base::EngineOp>::create(
+        DISCARDED_EVENTS_FILTER_TRACEABLE_NAME,
+        [shouldIndex, discardFieldPath, trace](base::Event event) -> base::result::Result<base::Event>
+        {
+            // Policy disables indexing of discarded events
+            if (!shouldIndex)
+            {
+                if (trace)
+                {
+                    return base::result::makeSuccess<decltype(event)>(
+                        event, "Event won't be discarded (index_discarded_events=false)");
+                }
+                return base::result::makeSuccess<decltype(event)>(event);
+            }
+
+            // Check if the discard field exists and is true
+            auto discardValue = event->getBool(discardFieldPath);
+            if (discardValue && discardValue.value() && trace)
+            {
+                return base::result::makeFailure<decltype(event)>(
+                    event, "Event dropped (wazuh.space.event_discarded=true and index_discarded_events=true)");
+            }
+
+            if (trace)
+            {
+                return base::result::makeSuccess<decltype(event)>(
+                    event, "Event won't be discarded (wazuh.space.event_discarded=false)");
+            }
+            return base::result::makeSuccess<decltype(event)>(event);
+        });
+
+    return std::make_pair(makeTraceableSuccessExpression(op, trace), DISCARDED_EVENTS_FILTER_TRACEABLE_NAME);
 }
 
 } // namespace builder::builders::enrichment

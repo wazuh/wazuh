@@ -41,6 +41,7 @@ struct Context
     std::string opName;              // Name of the current operation being built
     std::optional<std::unordered_map<std::string, bool>>
         availableKvdbs; // Available KVDBs: nullopt = no validation, value = validate with this map
+    bool indexDiscardedEvents;       // Policy configuration: whether to index discarded events
 };
 
 /**
@@ -185,6 +186,13 @@ public:
      * @return std::pair<bool, bool> First: exists, Second: is enabled (only valid if exists)
      */
     virtual std::pair<bool, bool> isKvdbAvailable(const std::string& kvdbName) const = 0;
+
+    /**
+     * @brief Get the index discarded events configuration from the policy
+     *
+     * @return bool True if discarded events should be indexed, false otherwise
+     */
+    virtual bool getIndexDiscardedEvents() const = 0 ;
 };
 
 } // namespace builder::builders
