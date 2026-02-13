@@ -390,9 +390,8 @@ if(NOT UNIT_TEST AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
                  POSITION_INDEPENDENT_CODE ON)
 
     target_compile_definitions(wazuhshared PRIVATE ARGV0="wazuh")
-    # Link with wazuhext using -Wl,-all_load (macOS equivalent of
-    # --whole-archive)
-    target_link_libraries(wazuhshared PUBLIC -Wl,-all_load wazuhext)
+    # Link with wazuhext (Makefile-built dylib)
+    target_link_libraries(wazuhshared PUBLIC wazuhext)
 
   else()
     # Linux: libwazuhshared.so
