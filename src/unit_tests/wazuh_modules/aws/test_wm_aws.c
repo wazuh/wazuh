@@ -27,11 +27,7 @@
 
 #define TEST_MAX_DATES 5
 
-#ifdef TEST_SERVER
-#define WM_AWS_TEST_LOGTAG "wazuh-manager-modulesd:aws-s3"
-#else
 #define WM_AWS_TEST_LOGTAG "wazuh-modulesd:aws-s3"
-#endif
 
 static wmodule *aws_module;
 static OS_XML *lxml;

@@ -30,10 +30,6 @@
 
 #define TEST_MAX_DATES 5
 
-#ifdef TEST_SERVER
-#undef WM_AZURE_LOGTAG
-#define WM_AZURE_LOGTAG "wazuh-manager-modulesd:azure-logs"
-#endif
 
 static wmodule *azure_module;
 static OS_XML *lxml;
