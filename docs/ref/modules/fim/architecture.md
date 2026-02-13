@@ -263,6 +263,182 @@ fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &tx
 
 ---
 
+## Document Limits
+
+FIM implements a synchronization limit mechanism to control the number of files/registry entries synchronized to the indexer while maintaining unlimited local monitoring.
+
+### Purpose
+
+Document limits allow agents to:
+- **Track unlimited files/registry entries locally** for complete monitoring coverage
+- **Synchronize only a subset** to the indexer to manage resource usage
+- **Continue generating stateless events** for all changes regardless of sync status
+- **Maintain FIFO prioritization** for sync selection (first detected items are synced first)
+
+### Synchronization Control
+
+Each monitored item has a `sync` flag in the database:
+- `sync=1`: Item is synchronized and will be sent to the indexer
+- `sync=0`: Item is stored locally but not synchronized
+
+All items generate **stateless events** regardless of their sync status. Only items with `sync=1` are added to the **persistent sync queue** for indexer synchronization.
+
+### Limit Enforcement Flow
+
+```
+File/Registry Change Detected
+         │
+         ▼
+Transaction Callback Processing
+         │
+         ├─► Limit = 0 (unlimited) ──────► Set sync=1 ──────► Queue for Sync
+         │
+         └─► Limit > 0 (limited)
+                  │
+                  ├─► Total synced < Limit ──────► Set sync=1 ──────► Queue for Sync
+                  │
+                  └─► Total synced >= Limit ─────► Set sync=0 ──────► Store Locally (no sync)
+```
+
+### State Transition Handling
+
+The implementation uses a **deferred update mechanism** to prevent race conditions during database transactions:
+
+#### INSERT Operations
+```cpp
+// During transaction callback (before commit)
+if (current_sync_count < sync_limit) {
+    add_pending_sync_item(pending_items, document_json, 1);  // Mark for sync=1
+    current_sync_count++;
+} else {
+    add_pending_sync_item(pending_items, document_json, 0);  // Mark for sync=0
+}
+
+// After transaction commits
+process_pending_sync_updates(table_name, pending_items);
+```
+
+#### MODIFY Operations
+```cpp
+// If document currently has sync=0 but slots available
+if (old_sync == 0 && current_sync_count < sync_limit) {
+    add_pending_sync_item(pending_items, document_json, 1);  // Promote to sync=1
+    current_sync_count++;
+}
+// If already sync=1, stays sync=1
+```
+
+#### DELETE Operations
+```cpp
+// If deleted document had sync=1
+if (old_sync == 1) {
+    current_sync_count--;
+}
+```
+
+### Promotion and Demotion on Limit Changes
+
+When the manager sends a new sync limit during agent startup or configuration reload, FIM automatically adjusts which documents are synchronized based on the limit change.
+
+#### Limit Change Detection (During Initialization)
+
+**Process:**
+1. Count currently synced documents: `synced_docs = fim_db_count_synced_docs(table_name)`
+2. Receive new limit from manager configuration
+3. Compare and adjust:
+   - **Limit increased** (`synced_docs < new_limit`): Promote oldest non-synced documents
+   - **Limit decreased** (`synced_docs > new_limit`): Demote newest synced documents
+   - **Special case**: `limit = 0` means unlimited, promote all documents
+
+### Ordering Strategy
+
+Items are selected for synchronization using **FIFO (First-In-First-Out)** based on database insertion order:
+
+**File Table:**
+```sql
+SELECT * FROM file_entry WHERE sync = 0 ORDER BY path, version LIMIT N
+```
+
+**Registry Key Table (Windows):**
+```sql
+SELECT * FROM registry_key WHERE sync = 0 ORDER BY path, architecture, version LIMIT N
+```
+
+**Registry Value Table (Windows):**
+```sql
+SELECT * FROM registry_data WHERE sync = 0 ORDER BY path, architecture, value, version LIMIT N
+```
+
+The primary key ordering ensures **deterministic and consistent** selection across agent restarts.
+
+### Configuration
+
+The sync limit is received from the manager during agent handshake and stored globally:
+
+```c
+extern int synced_docs_files;           // Current count of synced files
+extern int synced_docs_registry_keys;    // Current count of synced registry keys (Windows)
+extern int synced_docs_registry_values;  // Current count of synced registry values (Windows)
+```
+
+**Behavior:**
+- **`sync_limit = 0`** (default): Unlimited synchronization - all items have `sync=1`
+- **`sync_limit > 0`**: Sync only first N items by detection order
+
+### Recovery with Limits
+
+During recovery operations, only items with `sync=1` are synchronized:
+
+```cpp
+void fim_recovery_persist_table_and_resync(const char* table_name, ...) {
+    // Increase version for all entries
+    fim_db_increase_each_entry_version(table_name);
+
+    // Get only synced entries
+    cJSON* items = fim_db_get_every_element(table_name, "WHERE sync=1");
+
+    // Build and persist stateful events for synced items only
+    for (auto& item : items) {
+        cJSON* event = build_stateful_event_file(...);
+        validate_and_persist_fim_event(..., sync_flag=1);
+    }
+}
+```
+
+### Startup Initialization
+
+On module startup, FIM calculates the current count of synced documents:
+
+```cpp
+// Called during fim_initialize()
+synced_docs_files = fim_db_count_synced_docs(FIMDB_FILE_TABLE_NAME);
+
+#ifdef WIN32
+synced_docs_registry_keys = fim_db_count_synced_docs(FIMDB_REGISTRY_KEY_TABLENAME);
+synced_docs_registry_values = fim_db_count_synced_docs(FIMDB_REGISTRY_VALUE_TABLENAME);
+#endif
+```
+
+### Deferred Update Mechanism
+
+To prevent race conditions during database transactions, sync flag updates occur **after** transaction commits:
+
+1. **During Transaction Callback**: Calculate sync flags, add items to pending list
+2. **After Transaction Commits**: Execute `process_pending_sync_updates()` to update database
+
+```cpp
+// Transaction callback adds to pending list
+add_pending_sync_item(pending_items, document_json, sync_value);
+
+// After transaction completes
+process_pending_sync_updates(table_name, pending_items);
+    └─► Updates sync flag in database for each pending item
+```
+
+This ensures the document version doesn't increment unnecessarily during sync flag updates.
+
+---
+
 ## FIM Disabled Cleanup Flow
 
 ### Overview

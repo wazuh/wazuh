@@ -30,7 +30,6 @@
 int64_t __wrap_fim_db_get_last_sync_time(const char* table_name);
 void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp);
 char* __wrap_fim_db_calculate_table_checksum(const char* table_name);
-int __wrap_fim_db_increase_each_entry_version(const char* table_name);
 cJSON* __wrap_build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *file_data);
 
 #ifdef WIN32
@@ -55,11 +54,6 @@ void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t t
 char* __wrap_fim_db_calculate_table_checksum(const char* table_name) {
     check_expected(table_name);
     return mock_ptr_type(char*);
-}
-
-int __wrap_fim_db_increase_each_entry_version(const char* table_name) {
-    check_expected(table_name);
-    return mock_type(int);
 }
 
 cJSON* __wrap_build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *data) {

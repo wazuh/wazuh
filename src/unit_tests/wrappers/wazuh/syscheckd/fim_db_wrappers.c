@@ -194,6 +194,13 @@ int __wrap_fim_db_sync_row_update(const char* table_name, const char* path,
     return mock_type(int);
 }
 
+int __wrap_fim_db_set_sync_flag(char* table_name, pending_sync_item_t* item, int sync_value) {
+    check_expected_ptr(table_name);
+    check_expected_ptr(item);
+    check_expected(sync_value);
+    return mock_type(int);
+}
+
 int __wrap_fim_db_increase_each_entry_version(const char* table_name) {
     check_expected(table_name);
     return mock_type(int);
