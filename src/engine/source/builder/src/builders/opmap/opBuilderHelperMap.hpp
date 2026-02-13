@@ -313,6 +313,26 @@ TransformOp opBuilderHelperEraseCustomFields(const Reference& targetField,
 TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
                                           const std::vector<OpArg>& opArgs,
                                           const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Discard events helper - sets wazuh.space.discard_event and optionally clears fields
+ *
+ * This helper immediately stops event processing pipeline after execution.
+ * Behavior depends on policy's index_discarded_events configuration:
+ * - If true: keeps all fields intact
+ * - If false: removes all fields except preserved ones (integration metadata)
+ *
+ * Usage: wazuh.space.discard_event: +discard_events
+ *
+ * @param targetField target field (must be "wazuh.space.discard_event")
+ * @param opArgs Vector of operation arguments (must be empty)
+ * @param buildCtx Shared pointer to the build context (provides policy config)
+ * @return TransformOp that sets discard flag and conditionally clears fields
+ * @throw std::runtime_error if target field is not wazuh.space.discard_event or if parameters are provided
+ */
+TransformOp opBuilderHelperDiscardEvents(const Reference& targetField,
+                                          const std::vector<OpArg>& opArgs,
+                                          const std::shared_ptr<const IBuildCtx>& buildCtx);
 //*************************************************
 //*           Regex tranform                      *
 //*************************************************

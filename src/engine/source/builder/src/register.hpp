@@ -308,6 +308,8 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
         "erase_custom_fields", {schemf::runtimeValidation(), builders::opBuilderHelperEraseCustomFields});
     registry->template add<builders::OpBuilderEntry>(
         "sanitize_fields", {schemf::runtimeValidation(), builders::opBuilderHelperSanitizeFields});
+    registry->template add<builders::OpBuilderEntry>(
+        "discard_events", {schemf::runtimeValidation(), builders::opBuilderHelperDiscardEvents});
     // HLP Parser helpers
     registry->template add<builders::OpBuilderEntry>(
         "parse_bool", {schemf::STypeToken::create(schemf::Type::BOOLEAN), builders::optransform::boolParseBuilder});

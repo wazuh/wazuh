@@ -34,6 +34,7 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
     buildCtx->setRegistry(registry);
     buildCtx->setValidator(schema);
     buildCtx->context().policyName = m_name;
+    buildCtx->context().indexDiscardedEvents = policyData.shouldIndexDiscardedEvents(); // Set policy configuration
     buildCtx->runState().trace = trace;
     buildCtx->runState().sandbox = sandbox;
     buildCtx->setAllowedFields(allowedFields);
