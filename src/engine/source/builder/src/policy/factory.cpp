@@ -338,7 +338,9 @@ PolicyGraph buildGraph(const BuiltAssets& assets)
     return graph;
 }
 
-base::Expression buildExpression(const PolicyGraph& graph, const base::Expression& enrichmentExpression)
+base::Expression buildExpression(const PolicyGraph& graph,
+                                 const base::Expression& preEnrichmentExpression,
+                                 const base::Expression& enrichmentExpression)
 {
 
     // Phase 1: Pre filters implies Decoders tree
@@ -426,9 +428,10 @@ base::Expression buildExpression(const PolicyGraph& graph, const base::Expressio
     // Phase 1 only fails if pre-filters fail, phase 3 only fails if post-filters fail.
     if (phase3.has_value())
     {
-        return base::And::create(graph.graphName, {phase1, enrichmentExpression, phase3.value()});
+        return base::And::create(graph.graphName,
+                                 {phase1, preEnrichmentExpression, enrichmentExpression, phase3.value()});
     }
-    return base::And::create(graph.graphName, {phase1, enrichmentExpression});
+    return base::And::create(graph.graphName, {phase1, preEnrichmentExpression, enrichmentExpression});
 }
 
 } // namespace builder::policy::factory

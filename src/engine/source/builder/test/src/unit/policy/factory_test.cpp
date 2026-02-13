@@ -21,7 +21,14 @@ namespace
 // Helper function to create a minimal dummy enrichment expression for tests
 base::Expression createDummyEnrichment()
 {
-    return base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
+    return base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
+}
+
+base::Expression createDummyPreEnrichment()
+{
+    auto originSpaceExp = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
+    auto unclassifiedExp = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
+    return base::And::create("preEnrichment", {originSpaceExp, unclassifiedExp});
 }
 } // namespace
 namespace buildgraphtest
@@ -143,7 +150,8 @@ TEST_P(BuildExpression, Graph)
         graph.graphName = "test";
         auto expectedExpr = expected.succCase()(None {});
         auto enrichment = createDummyEnrichment();
-        EXPECT_NO_THROW(got = factory::buildExpression(graph, enrichment));
+        auto preEnrichment = createDummyPreEnrichment();
+        EXPECT_NO_THROW(got = factory::buildExpression(graph, preEnrichment, enrichment));
         builder::test::assertEqualExpr(got, expectedExpr);
     }
     else
@@ -151,7 +159,8 @@ TEST_P(BuildExpression, Graph)
         auto graph = factory::buildGraph(data.builtAssets);
         graph.graphName = "test";
         auto enrichment = createDummyEnrichment();
-        EXPECT_THROW(factory::buildExpression(graph, enrichment), std::runtime_error);
+        auto preEnrichment = createDummyPreEnrichment();
+        EXPECT_THROW(factory::buildExpression(graph, preEnrichment, enrichment), std::runtime_error);
     }
 }
 
@@ -169,8 +178,11 @@ INSTANTIATE_TEST_SUITE_P(
                    {
                        auto decoder = Or::create("DecodersTree/Input", {assetExpr("decoder/asset/0")});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
-                       auto phase2 = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-                       return And::create("test", {phase1, phase2});
+                       auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
+                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
+                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified});
+                       auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
+                       return And::create("test", {phase1, phase2, enrichment});
                    })),
         // Single output - outputs alone are not valid (need decoders)
         BuildT(AD()(RT::DECODER, "decoder/root/0", "DecodersTree/Input")(
@@ -180,9 +192,12 @@ INSTANTIATE_TEST_SUITE_P(
                    {
                        auto decoder = Or::create("DecodersTree/Input", {assetExpr("decoder/root/0")});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
-                       auto phase2 = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
+                       auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
+                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
+                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified});
+                       auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
                        auto output = Broadcast::create("OutputsTree/Input", {assetExpr("output/asset/0")});
-                       return And::create("test", {phase1, phase2, output});
+                       return And::create("test", {phase1, phase2, enrichment, output});
                    })),
         // Decoder with child
         BuildT(AD()(RT::DECODER, "decoder/parent/0", "DecodersTree/Input")(
@@ -196,8 +211,11 @@ INSTANTIATE_TEST_SUITE_P(
                            Implication::create("decoder/parent/0/Node", assetExpr("decoder/parent/0"), childrenOp);
                        auto decoder = Or::create("DecodersTree/Input", {parentExpr});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
-                       auto phase2 = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-                       return And::create("test", {phase1, phase2});
+                       auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
+                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
+                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified});
+                       auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
+                       return And::create("test", {phase1, phase2, enrichment});
                    })),
         // Output with child (need decoder too)
         BuildT(AD()(RT::DECODER, "decoder/root/0", "DecodersTree/Input")(
@@ -207,13 +225,16 @@ INSTANTIATE_TEST_SUITE_P(
                    {
                        auto decoder = Or::create("DecodersTree/Input", {assetExpr("decoder/root/0")});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
-                       auto phase2 = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
+                       auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
+                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
+                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified});
+                       auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
                        auto childExpr = assetExpr("output/child/0");
                        auto childrenOp = Broadcast::create("output/parent/0/Children", {childExpr});
                        auto parentExpr =
                            Implication::create("output/parent/0/Node", assetExpr("output/parent/0"), childrenOp);
                        auto output = Broadcast::create("OutputsTree/Input", {parentExpr});
-                       return And::create("test", {phase1, phase2, output});
+                       return And::create("test", {phase1, phase2, enrichment, output});
                    })),
         // Multiple children
         BuildT(AD()(RT::DECODER, "decoder/parent/0", "DecodersTree/Input")(
@@ -229,8 +250,11 @@ INSTANTIATE_TEST_SUITE_P(
                            Implication::create("decoder/parent/0/Node", assetExpr("decoder/parent/0"), childrenOp);
                        auto decoder = Or::create("DecodersTree/Input", {parentExpr});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
-                       auto phase2 = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-                       return And::create("test", {phase1, phase2});
+                       auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
+                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
+                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified});
+                       auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
+                       return And::create("test", {phase1, phase2, enrichment});
                    })),
         // All types
         BuildT(AD()(RT::DECODER, "decoder/parent/0", "DecodersTree/Input")(
@@ -248,7 +272,10 @@ INSTANTIATE_TEST_SUITE_P(
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
 
                        // Phase 2: Enrichment/IOCs
-                       auto phase2 = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
+                       auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
+                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
+                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified});
+                       auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
 
                        // Phase 3: Outputs
                        auto outputChild = assetExpr("output/child/0");
@@ -257,7 +284,7 @@ INSTANTIATE_TEST_SUITE_P(
                            Implication::create("output/parent/0/Node", assetExpr("output/parent/0"), outputChildren);
                        auto output = Broadcast::create("OutputsTree/Input", {outputParent});
 
-                       return And::create("test", {phase1, phase2, output});
+                       return And::create("test", {phase1, phase2, enrichment, output});
                    }))));
 
 } // namespace buildexpressiontest
@@ -755,8 +782,7 @@ TEST_P(BuildAssets, KVDBAvailability)
     auto buildCtx = std::make_shared<builder::builders::BuildCtx>();
     auto registry = builder::mocks::MockMetaRegistry<builder::builders::OpBuilderEntry,
                                                      builder::builders::StageBuilder,
-                                                     builder::builders::EnrichmentBuilder
-                                                     >::createMock();
+                                                     builder::builders::EnrichmentBuilder>::createMock();
     auto definitionsBuilder = std::make_shared<defs::mocks::MockDefinitionsBuilder>();
     buildCtx->setRegistry(registry);
     auto assetBuilder = std::make_shared<AssetBuilder>(buildCtx, definitionsBuilder);
@@ -1104,7 +1130,8 @@ TEST(OrderPreservation, FullPolicyPreservesDecoderOrder)
     // New structure: And with {phase1 (Chain with decoders), phase2 (IOCs)}
     graph.graphName = "test";
     auto enrichment = createDummyEnrichment();
-    auto expr = factory::buildExpression(graph, enrichment);
+    auto preEnrichment = createDummyPreEnrichment();
+    auto expr = factory::buildExpression(graph, preEnrichment, enrichment);
     ASSERT_TRUE(expr->isAnd()); // Top level is And
 
     auto andExpr = expr->getPtr<base::And>();
@@ -1227,11 +1254,12 @@ TEST(OrderPreservation, DifferentResourceTypesPreserveIndependentOrder)
     // New structure: And with {phase1 (Chain with decoders), phase2 (IOCs), phase3 (outputs)}
     graph.graphName = "test";
     auto enrichment = createDummyEnrichment();
-    auto expr = factory::buildExpression(graph, enrichment);
+    auto preEnrichment = createDummyPreEnrichment();
+    auto expr = factory::buildExpression(graph, preEnrichment, enrichment);
     auto andExpr = expr->getPtr<base::And>();
 
-    // And has 3 operands: phase1 (decoders), phase2 (IOCs), phase3 (outputs)
-    ASSERT_EQ(andExpr->getOperands().size(), 3);
+    // And has 4 operands: phase1 (decoders), phase 2 (preEnrichment), phase 3 (IOCs), phase4 (outputs)
+    ASSERT_EQ(andExpr->getOperands().size(), 4);
 
     // Phase1 is a Chain with decoders Or
     auto phase1 = andExpr->getOperands()[0]->getPtr<base::Chain>();
@@ -1244,8 +1272,8 @@ TEST(OrderPreservation, DifferentResourceTypesPreserveIndependentOrder)
     EXPECT_EQ(decoderOr->getOperands()[1]->getName(), "decoder/D2");
     EXPECT_EQ(decoderOr->getOperands()[2]->getName(), "decoder/D3");
 
-    // Phase3 is outputs Broadcast (index 2, since phase2 is IOCs at index 1)
-    auto outputBroadcast = andExpr->getOperands()[2]->getPtr<base::Broadcast>();
+    // Phase3 is outputs Broadcast (index 3, since phase2 is preEnrichment at index 1 and phase3 is IOCs at index 2)
+    auto outputBroadcast = andExpr->getOperands()[3]->getPtr<base::Broadcast>();
     EXPECT_EQ(outputBroadcast->getName(), "OutputsTree/Input");
     ASSERT_EQ(outputBroadcast->getOperands().size(), 3);
     EXPECT_EQ(outputBroadcast->getOperands()[0]->getName(), "output/O1");
@@ -1434,15 +1462,16 @@ TEST(OrderPreservation, DetectsShuffledOrder)
     auto graph = factory::buildGraph(data.builtAssets);
     graph.graphName = "test";
     auto enrichment = createDummyEnrichment();
-    auto expr = factory::buildExpression(graph, enrichment);
+    auto preEnrichment = createDummyPreEnrichment();
+    auto expr = factory::buildExpression(graph, preEnrichment, enrichment);
 
     // New structure: And with phases
     auto andExpr = expr->getPtr<base::And>();
     ASSERT_GE(andExpr->getOperands().size(), 2);
-    
+
     auto chain = andExpr->getOperands()[0]->getPtr<base::Chain>();
     ASSERT_EQ(chain->getOperands().size(), 1);
-    
+
     auto decoderOp = chain->getOperands()[0]->getPtr<base::Operation>();
 
     // Create a shuffled version of the expected order

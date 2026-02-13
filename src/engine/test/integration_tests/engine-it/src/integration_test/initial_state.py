@@ -177,6 +177,7 @@ def build_integration_yaml(
     integ_uuid: str,
     integ_title: str,
     default_parent: str,
+    category: str,
     decoder_uuid: str,
 ) -> str:
     """
@@ -196,7 +197,7 @@ def build_integration_yaml(
 id: {integ_uuid}
 title: {integ_title}
 enabled: true
-category: other
+category: {category}
 default_parent: {default_parent}
 decoders:
   - "{decoder_uuid}"
@@ -257,6 +258,7 @@ def init_cm_resources(api_client: APIClient):
         integ_uuid=INTEG_WAZUH_CORE_UUID,
         integ_title="wazuh-core-test",
         default_parent=DECODER_TEST_UUID,
+        category="unclassified",
         decoder_uuid=DECODER_TEST_UUID,
     )
 
@@ -264,6 +266,7 @@ def init_cm_resources(api_client: APIClient):
         integ_uuid=INTEG_OTHER_WAZUH_CORE_UUID,
         integ_title="other-wazuh-core-test",
         default_parent=DECODER_TEST_UUID,
+        category="other",
         decoder_uuid=DECODER_OTHER_UUID,
     )
 
