@@ -40,6 +40,7 @@ public:
         m_storeNSReader = nullptr;
         m_allowMissingDependencies = false;
         m_context.availableKvdbs = std::nullopt;
+        m_context.indexDiscardedEvents = false;
     }
 
     ~BuildCtx() = default;
@@ -217,6 +218,13 @@ public:
 
         return {true, it->second};
     }
+
+    /**
+     * @brief Get the index discarded events configuration from the policy
+     *
+     * @return bool True if discarded events should be indexed, false otherwise
+     */
+    inline bool getIndexDiscardedEvents() const override { return m_context.indexDiscardedEvents; }
 };
 
 } // namespace builder::builders

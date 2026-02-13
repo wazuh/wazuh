@@ -20,7 +20,10 @@
  * {
  *   "type": "policy",
  *   "title": "Development 0.0.1",
- *   "root_decoder": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
+ *   "root_decoder": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
+ *   "origin_space": "space1", -> optional, default value "UNDEFINED"
+ *   "index_unclassified_events": true, -> optional, default value false
+ *   "index_discarded_events": true, -> optional, default value false
  *   "filters": [], -->> eash filter has a type [pre-filter|post-filter],
  *   "enrichments": ["file", "domain-name", "ip", "url", "geo"],
  *   "integrations":
@@ -50,6 +53,7 @@ constexpr std::string_view PATH_KEY_OUTPUTS = "/outputs";
 constexpr std::string_view PATH_KEY_TITLE = "/title";
 constexpr std::string_view PATH_KEY_ORIGIN_SPACE = "/origin_space";
 constexpr std::string_view PATH_KEY_HASH = "/hash";
+constexpr std::string_view PATH_KEY_INDEX_DISCARDED_EVENTS = "/index_discarded_events";
 
 } // namespace jsonpolicy
 
@@ -76,6 +80,7 @@ private:
 
     std::string m_hash;             ///< Hash of the policy for integrity verification
     bool m_indexUnclassifiedEvents; ///< Flag indicating whether to index unclassified events
+    bool m_indexDiscardedEvents;    ///< Flag to control discarded event indexing
 
 public:
     ~Policy() = default;
@@ -89,7 +94,8 @@ public:
            std::vector<std::string> outputs,
            std::string_view originSpace = DEFAULT_ORIGIN_SPACE,
            std::string_view hash = "",
-           bool indexUnclassifiedEvents = false)
+           bool indexUnclassifiedEvents = false,
+           bool indexDiscardedEvents = false)
         : m_title(policyTitle)
         , m_rootDecoder(rootDecoder)
         , m_integrations(std::move(integrationsUUIDs))
@@ -99,6 +105,7 @@ public:
         , m_originSpace(originSpace)
         , m_hash(hash)
         , m_indexUnclassifiedEvents(indexUnclassifiedEvents)
+        , m_indexDiscardedEvents(indexDiscardedEvents)
     {
         cm::store::detail::findDuplicateOrInvalidUUID(m_integrations, "Integration");
         cm::store::detail::findDuplicateOrInvalidUUID(m_outputs, "Output");
@@ -273,6 +280,16 @@ public:
             return indexOpt.value_or(false);
         }();
 
+        bool indexDiscardedEvents = [&]() -> bool
+        {
+            auto indexDiscardedOpt = policyJson.getBool(jsonpolicy::PATH_KEY_INDEX_DISCARDED_EVENTS);
+            if (!indexDiscardedOpt.has_value())
+            {
+                return false;
+            }
+            return indexDiscardedOpt.value();
+        }();
+
         return {title,
                 rootDecoder,
                 std::move(integrations),
@@ -281,7 +298,8 @@ public:
                 std::move(outputs),
                 originSpace,
                 policyHash,
-                indexUnclassifiedEvents};
+                indexUnclassifiedEvents,
+                indexDiscardedEvents};
     }
 
     json::Json toJson() const
@@ -319,6 +337,8 @@ public:
 
         policyJson.setBool(m_indexUnclassifiedEvents, jsonpolicy::PATH_KEY_INDEX_UNCLASSIFIED_EVENTS);
 
+        policyJson.setBool(m_indexDiscardedEvents, jsonpolicy::PATH_KEY_INDEX_DISCARDED_EVENTS);
+
         return policyJson;
     }
 
@@ -336,6 +356,7 @@ public:
     const std::string& getOriginSpace() const { return m_originSpace; }
     void setOriginSpace(std::string_view originSpace) { m_originSpace = originSpace; }
     bool shouldIndexUnclassifiedEvents() const { return m_indexUnclassifiedEvents; }
+    bool shouldIndexDiscardedEvents() const { return m_indexDiscardedEvents; }
 };
 
 } // namespace cm::store::dataType
