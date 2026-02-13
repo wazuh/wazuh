@@ -635,7 +635,7 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
             }
 
             if (sync_flag == 0 && syscheck.registry_key_limit > 0) { // Promote
-                if(synced_docs_registry_keys < syscheck.registry_key_limit){
+                if (synced_docs_registry_keys < syscheck.registry_key_limit) {
                     synced_docs_registry_keys++;
                     cJSON* sync_item = cJSON_CreateObject();
                     if (sync_item != NULL) {
@@ -929,7 +929,7 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
             }
 
             if (sync_flag == 0 && syscheck.registry_value_limit > 0) { // Promote
-                if(synced_docs_registry_values < syscheck.registry_value_limit){
+                if (synced_docs_registry_values < syscheck.registry_value_limit) {
                     synced_docs_registry_values++;
                     cJSON* sync_item = cJSON_CreateObject();
                     if (sync_item != NULL) {

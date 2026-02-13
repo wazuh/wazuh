@@ -42,9 +42,6 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
-/**
- * @brief Structure to hold deferred sync update information.
- */
 cJSON* build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *file_data, const OSList *directories_list){
     const directory_t* config = fim_configuration_directory(path, true, directories_list);
 
@@ -258,7 +255,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     char *path = NULL;
     char iso_time[32];
     Operation_t sync_operation = OPERATION_NO_OP;
-    int sync_flag = 1; // Default to sync enabled
+    int sync_flag = 1;
 
     callback_ctx *txn_context = (callback_ctx *) user_data;
 
@@ -347,7 +344,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
             }
 
             if (sync_flag == 0 && syscheck.file_limit > 0) { // Promote
-                if(synced_docs_files < syscheck.file_limit){
+                if (synced_docs_files < syscheck.file_limit) {
                     synced_docs_files++;
                     cJSON* sync_item = cJSON_CreateObject();
                     if (sync_item != NULL) {
@@ -371,7 +368,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
             sync_operation = OPERATION_DELETE;
             // For DELETE events: entry is NULL, read sync flag from DB result
             {
-            cJSON *sync_json = cJSON_GetObjectItem(result_json, "sync");
+                cJSON *sync_json = cJSON_GetObjectItem(result_json, "sync");
                 if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
                     sync_flag = sync_json->valueint;
                     if (sync_flag == 1) {
@@ -473,7 +470,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     }
 
     if (document_version == 0) {
-        mdebug1("Couldn't find version for '%s", path);
+        mdebug1("Couldn't find version for '%s'", path);
         goto end; // LCOV_EXCL_LINE
     }
 
