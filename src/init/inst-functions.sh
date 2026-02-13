@@ -1051,7 +1051,7 @@ installGeoIP()
 
     # Create directories
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${MMDB_PATH}
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${STORE_GEO_PATH}
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${STORE_GEO_PATH}
 
     # Check if GeoIP files exist
     if [ ! -f "${GEOIP_SRC_PATH}/GeoLite2-ASN.mmdb" ] || [ ! -f "${GEOIP_SRC_PATH}/GeoLite2-City.mmdb" ]; then
@@ -1092,8 +1092,8 @@ installGeoIP()
 EOF
 
     # Set proper ownership and permissions
-    chown -R ${WAZUH_USER}:${WAZUH_GROUP} "${DEST_FULL_PATH}/store/geo"
-    find "${DEST_FULL_PATH}/store/geo" -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+    chown ${WAZUH_USER}:${WAZUH_GROUP} "${STORE_GEO_PATH}/0"
+    chmod 640 "${STORE_GEO_PATH}/0"
 
     echo "GeoIP databases installed successfully."
 }
