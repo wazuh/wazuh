@@ -45,6 +45,7 @@ constexpr std::string_view PATH_KEY_INTEGRATIONS = "/integrations";
 constexpr std::string_view PATH_KEY_ROOT_PARENT = "/root_decoder";
 constexpr std::string_view PATH_KEY_FILTERS = "/filters";
 constexpr std::string_view PATH_KEY_ENRICHMENTS = "/enrichments";
+constexpr std::string_view PATH_KEY_INDEX_UNCLASSIFIED_EVENTS = "/index_unclassified_events";
 constexpr std::string_view PATH_KEY_OUTPUTS = "/outputs";
 constexpr std::string_view PATH_KEY_TITLE = "/title";
 constexpr std::string_view PATH_KEY_ORIGIN_SPACE = "/origin_space";
@@ -73,7 +74,8 @@ private:
     std::vector<std::string> m_enrichments;  ///< Enrichments plugins defined in the policy
     std::vector<std::string> m_outputs;      ///< Outputs defined in the policy (optional)
 
-    std::string m_hash;                      ///< Hash of the policy for integrity verification
+    std::string m_hash;             ///< Hash of the policy for integrity verification
+    bool m_indexUnclassifiedEvents; ///< Flag indicating whether to index unclassified events
 
 public:
     ~Policy() = default;
@@ -86,7 +88,8 @@ public:
            std::vector<std::string> enrichments,
            std::vector<std::string> outputs,
            std::string_view originSpace = DEFAULT_ORIGIN_SPACE,
-           std::string_view hash = "")
+           std::string_view hash = "",
+           bool indexUnclassifiedEvents = false)
         : m_title(policyTitle)
         , m_rootDecoder(rootDecoder)
         , m_integrations(std::move(integrationsUUIDs))
@@ -95,6 +98,7 @@ public:
         , m_outputs(std::move(outputs))
         , m_originSpace(originSpace)
         , m_hash(hash)
+        , m_indexUnclassifiedEvents(indexUnclassifiedEvents)
     {
         cm::store::detail::findDuplicateOrInvalidUUID(m_integrations, "Integration");
         cm::store::detail::findDuplicateOrInvalidUUID(m_outputs, "Output");
@@ -246,13 +250,20 @@ public:
             return originSpaceOpt.value();
         }();
 
-        auto policyHash = [&]() -> std::string {
+        auto policyHash = [&]() -> std::string
+        {
             auto hashOpt = policyJson.getString(jsonpolicy::PATH_KEY_HASH);
             if (!hashOpt.has_value() || hashOpt->empty())
             {
                 return "";
             }
             return hashOpt.value();
+        }();
+
+        auto indexUnclassifiedEvents = [&]() -> bool
+        {
+            auto indexOpt = policyJson.getBool(jsonpolicy::PATH_KEY_INDEX_UNCLASSIFIED_EVENTS);
+            return indexOpt.value_or(false);
         }();
 
         return {title,
@@ -262,8 +273,8 @@ public:
                 std::move(enrichments),
                 std::move(outputs),
                 originSpace,
-                policyHash};
-
+                policyHash,
+                indexUnclassifiedEvents};
     }
 
     json::Json toJson() const
@@ -299,11 +310,13 @@ public:
             policyJson.appendString(output, jsonpolicy::PATH_KEY_OUTPUTS);
         }
 
+        policyJson.setBool(m_indexUnclassifiedEvents, jsonpolicy::PATH_KEY_INDEX_UNCLASSIFIED_EVENTS);
+
         return policyJson;
     }
 
-    //Setters
-    // Getters
+    // Setters
+    //  Getters
     const std::string& getTitle() const { return m_title; }
     const std::vector<std::string>& getFiltersUUIDs() const { return m_filters; }
     const std::vector<std::string>& getEnrichments() const { return m_enrichments; }
@@ -315,6 +328,7 @@ public:
     // Getters and setters of optional values
     const std::string& getOriginSpace() const { return m_originSpace; }
     void setOriginSpace(std::string_view originSpace) { m_originSpace = originSpace; }
+    bool shouldIndexUnclassifiedEvents() const { return m_indexUnclassifiedEvents; }
 };
 
 } // namespace cm::store::dataType
