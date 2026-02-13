@@ -73,7 +73,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/bin/wazuh-agentd,root,root,750,file,-rwxr-x---,789888,0.1
 /var/ossec/lib/libwazuhshared.so,root,wazuh,750,file,-rwxr-x---,174668,0.1
 /var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,12362096,0.1
-/var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,492352,0.1
+/var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,541828,0.1
 /var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,1267268,0.1
 /var/ossec/lib/libschema_validator.so,root,wazuh,750,file,-rwxr-x---,398136,0.1
 /var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2717844,0.1
@@ -82,7 +82,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libfimebpf.so,root,wazuh,750,file,-rwxr-x---,43120,0.1
 /var/ossec/lib/modern.bpf.o,root,wazuh,750,file,-rwxr-x---,904752,0.1
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,1984136,0.1
-/var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,751124,0.1
+/var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,866104,0.1
 /var/ossec/lib/libsca.so,root,wazuh,750,file,-rwxr-x---,795908,0.1
 /var/ossec/lib/libagent_info.so,root,wazuh,750,file,-rwxr-x---,416056,0.1
 /var/ossec/lib/libagent_metadata.so,root,wazuh,750,file,-rwxr-x---,8768,0.1
