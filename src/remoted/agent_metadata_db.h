@@ -26,6 +26,8 @@ typedef struct agent_meta
     char* os_type;
     char* arch;
     char* hostname;
+    char* cluster_name;
+    char* cluster_node;
     char** groups;
     size_t groups_count;
     time_t lastmsg;  // Last time a keepalive was received

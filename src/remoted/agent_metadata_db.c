@@ -52,6 +52,8 @@ void agent_meta_clear(agent_meta_t *m) {
     os_free(m->os_type);
     os_free(m->arch);
     os_free(m->hostname);
+    os_free(m->cluster_name);
+    os_free(m->cluster_node);
 
     // Free groups array
     if (m->groups) {
@@ -147,6 +149,8 @@ int agent_meta_snapshot_str(const char *agent_id_str, agent_meta_t *out) {
     if (m->os_type)       { os_strdup(m->os_type,       tmp.os_type);       if (!tmp.os_type)       goto oom_unlock; }
     if (m->arch)          { os_strdup(m->arch,          tmp.arch);          if (!tmp.arch)          goto oom_unlock; }
     if (m->hostname)      { os_strdup(m->hostname,      tmp.hostname);      if (!tmp.hostname)      goto oom_unlock; }
+    if (m->cluster_name)  { os_strdup(m->cluster_name,  tmp.cluster_name);  if (!tmp.cluster_name)  goto oom_unlock; }
+    if (m->cluster_node)  { os_strdup(m->cluster_node,  tmp.cluster_node);  if (!tmp.cluster_node)  goto oom_unlock; }
     tmp.lastmsg = m->lastmsg;
 
     // Deep copy groups array

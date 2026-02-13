@@ -268,7 +268,7 @@ int parse_agent_update_msg (char *msg,
 }
 
 /* Parse JSON keepalive message (5.0+ agents) */
-int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char ***groups_out, size_t *groups_count_out) {
+int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char ***groups_out, size_t *groups_count_out, char **cluster_name_out, char **cluster_node_out) {
     cJSON *root = cJSON_Parse(json_str);
     if (!root) {
         return OS_INVALID;
@@ -390,6 +390,27 @@ int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char
                         os_strdup(group_item->valuestring, (*groups_out)[*groups_count_out]);
                         (*groups_count_out)++;
                     }
+                }
+            }
+        }
+    }
+
+    // Extract cluster info if requested
+    if (cluster_name_out || cluster_node_out) {
+        cJSON *cluster = cJSON_GetObjectItem(root, "cluster");
+        if (cluster) {
+            if (cluster_name_out) {
+                *cluster_name_out = NULL;
+                cJSON *cluster_name = cJSON_GetObjectItem(cluster, "name");
+                if (cluster_name && cJSON_IsString(cluster_name) && cluster_name->valuestring[0]) {
+                    os_strdup(cluster_name->valuestring, *cluster_name_out);
+                }
+            }
+            if (cluster_node_out) {
+                *cluster_node_out = NULL;
+                cJSON *cluster_node = cJSON_GetObjectItem(cluster, "node");
+                if (cluster_node && cJSON_IsString(cluster_node) && cluster_node->valuestring[0]) {
+                    os_strdup(cluster_node->valuestring, *cluster_node_out);
                 }
             }
         }

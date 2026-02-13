@@ -533,7 +533,7 @@ void test_parse_json_keepalive_invalid_json(void **state)
     agent_info_data *agent_data = NULL;
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL, NULL, NULL);
 
     assert_int_equal(OS_INVALID, result);
 
@@ -547,7 +547,7 @@ void test_parse_json_keepalive_missing_agent(void **state)
     agent_info_data *agent_data = NULL;
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL, NULL, NULL);
 
     assert_int_equal(OS_INVALID, result);
 
@@ -567,7 +567,7 @@ void test_parse_json_keepalive_linux_complete(void **state)
     agent_info_data *agent_data = NULL;
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL, NULL, NULL);
 
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("v5.0.0", agent_data->version);
@@ -599,7 +599,7 @@ void test_parse_json_keepalive_windows(void **state)
     agent_info_data *agent_data = NULL;
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL, NULL, NULL);
 
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("v5.0.0", agent_data->version);
@@ -625,7 +625,7 @@ void test_parse_json_keepalive_minimal(void **state)
     agent_info_data *agent_data = NULL;
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-    int result = parse_json_keepalive(json, agent_data, NULL, NULL);
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL, NULL, NULL);
 
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("v5.0.0", agent_data->version);
@@ -648,7 +648,7 @@ void test_parse_json_keepalive_with_groups(void **state)
     char **groups = NULL;
     size_t groups_count = 0;
 
-    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count);
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count, NULL, NULL);
 
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("v5.0.0", agent_data->version);
@@ -679,7 +679,7 @@ void test_parse_json_keepalive_empty_groups(void **state)
     char **groups = NULL;
     size_t groups_count = 0;
 
-    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count);
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count, NULL, NULL);
 
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("v5.0.0", agent_data->version);
@@ -701,7 +701,7 @@ void test_parse_json_keepalive_no_groups(void **state)
     char **groups = NULL;
     size_t groups_count = 0;
 
-    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count);
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count, NULL, NULL);
 
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("v5.0.0", agent_data->version);
@@ -711,6 +711,302 @@ void test_parse_json_keepalive_no_groups(void **state)
     assert_int_equal(0, groups_count);
 
     wdb_free_agent_info_data(agent_data);
+}
+
+/* Test parse_json_keepalive with cluster info (both name and node) */
+static void test_parse_json_keepalive_with_cluster(void **state)
+{
+    const char *json = "{"
+        "\"agent\":{"
+            "\"version\":\"v5.0.0\","
+            "\"os\":{"
+                "\"name\":\"Ubuntu\","
+                "\"version\":\"22.04\","
+                "\"platform\":\"ubuntu\","
+                "\"type\":\"linux\","
+                "\"arch\":\"x86_64\","
+                "\"hostname\":\"test-host\""
+            "}"
+        "},"
+        "\"cluster\":{"
+            "\"name\":\"production\","
+            "\"node\":\"node01\""
+        "}"
+    "}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    char **groups = NULL;
+    size_t groups_count = 0;
+    char *cluster_name = NULL;
+    char *cluster_node = NULL;
+
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count, &cluster_name, &cluster_node);
+
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("v5.0.0", agent_data->version);
+
+    // Verify cluster info was parsed
+    assert_non_null(cluster_name);
+    assert_string_equal("production", cluster_name);
+    assert_non_null(cluster_node);
+    assert_string_equal("node01", cluster_node);
+
+    wdb_free_agent_info_data(agent_data);
+    os_free(cluster_name);
+    os_free(cluster_node);
+}
+
+/* Test parse_json_keepalive with cluster name only */
+static void test_parse_json_keepalive_with_cluster_name_only(void **state)
+{
+    const char *json = "{"
+        "\"agent\":{"
+            "\"version\":\"v5.0.0\","
+            "\"os\":{"
+                "\"name\":\"Ubuntu\","
+                "\"version\":\"22.04\","
+                "\"platform\":\"ubuntu\","
+                "\"type\":\"linux\","
+                "\"arch\":\"x86_64\","
+                "\"hostname\":\"test-host\""
+            "}"
+        "},"
+        "\"cluster\":{"
+            "\"name\":\"production\""
+        "}"
+    "}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    char **groups = NULL;
+    size_t groups_count = 0;
+    char *cluster_name = NULL;
+    char *cluster_node = NULL;
+
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count, &cluster_name, &cluster_node);
+
+    assert_int_equal(OS_SUCCESS, result);
+
+    // Verify only cluster name was parsed
+    assert_non_null(cluster_name);
+    assert_string_equal("production", cluster_name);
+    assert_null(cluster_node);
+
+    wdb_free_agent_info_data(agent_data);
+    os_free(cluster_name);
+}
+
+/* Test parse_json_keepalive with cluster node only */
+static void test_parse_json_keepalive_with_cluster_node_only(void **state)
+{
+    const char *json = "{"
+        "\"agent\":{"
+            "\"version\":\"v5.0.0\","
+            "\"os\":{"
+                "\"name\":\"Ubuntu\","
+                "\"version\":\"22.04\","
+                "\"platform\":\"ubuntu\","
+                "\"type\":\"linux\","
+                "\"arch\":\"x86_64\","
+                "\"hostname\":\"test-host\""
+            "}"
+        "},"
+        "\"cluster\":{"
+            "\"node\":\"node02\""
+        "}"
+    "}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    char **groups = NULL;
+    size_t groups_count = 0;
+    char *cluster_name = NULL;
+    char *cluster_node = NULL;
+
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count, &cluster_name, &cluster_node);
+
+    assert_int_equal(OS_SUCCESS, result);
+
+    // Verify only cluster node was parsed
+    assert_null(cluster_name);
+    assert_non_null(cluster_node);
+    assert_string_equal("node02", cluster_node);
+
+    wdb_free_agent_info_data(agent_data);
+    os_free(cluster_node);
+}
+
+/* Test parse_json_keepalive with empty cluster object */
+static void test_parse_json_keepalive_with_empty_cluster(void **state)
+{
+    const char *json = "{"
+        "\"agent\":{"
+            "\"version\":\"v5.0.0\","
+            "\"os\":{"
+                "\"name\":\"Ubuntu\","
+                "\"version\":\"22.04\","
+                "\"platform\":\"ubuntu\","
+                "\"type\":\"linux\","
+                "\"arch\":\"x86_64\","
+                "\"hostname\":\"test-host\""
+            "}"
+        "},"
+        "\"cluster\":{}"
+    "}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    char **groups = NULL;
+    size_t groups_count = 0;
+    char *cluster_name = NULL;
+    char *cluster_node = NULL;
+
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count, &cluster_name, &cluster_node);
+
+    assert_int_equal(OS_SUCCESS, result);
+
+    // Verify cluster fields are NULL
+    assert_null(cluster_name);
+    assert_null(cluster_node);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
+/* Test parse_json_keepalive with empty cluster strings */
+static void test_parse_json_keepalive_with_empty_cluster_strings(void **state)
+{
+    const char *json = "{"
+        "\"agent\":{"
+            "\"version\":\"v5.0.0\","
+            "\"os\":{"
+                "\"name\":\"Ubuntu\","
+                "\"version\":\"22.04\","
+                "\"platform\":\"ubuntu\","
+                "\"type\":\"linux\","
+                "\"arch\":\"x86_64\","
+                "\"hostname\":\"test-host\""
+            "}"
+        "},"
+        "\"cluster\":{"
+            "\"name\":\"\","
+            "\"node\":\"\""
+        "}"
+    "}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    char **groups = NULL;
+    size_t groups_count = 0;
+    char *cluster_name = NULL;
+    char *cluster_node = NULL;
+
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count, &cluster_name, &cluster_node);
+
+    assert_int_equal(OS_SUCCESS, result);
+
+    // Verify empty strings are not parsed (should be NULL)
+    assert_null(cluster_name);
+    assert_null(cluster_node);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
+/* Test parse_json_keepalive passing NULL for cluster outputs */
+static void test_parse_json_keepalive_cluster_null_outputs(void **state)
+{
+    const char *json = "{"
+        "\"agent\":{"
+            "\"version\":\"v5.0.0\","
+            "\"os\":{"
+                "\"name\":\"Ubuntu\","
+                "\"version\":\"22.04\","
+                "\"platform\":\"ubuntu\","
+                "\"type\":\"linux\","
+                "\"arch\":\"x86_64\","
+                "\"hostname\":\"test-host\""
+            "}"
+        "},"
+        "\"cluster\":{"
+            "\"name\":\"production\","
+            "\"node\":\"node01\""
+        "}"
+    "}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    char **groups = NULL;
+    size_t groups_count = 0;
+
+    // Pass NULL for cluster outputs - should not crash
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count, NULL, NULL);
+
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("v5.0.0", agent_data->version);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
+/* Test parse_json_keepalive with cluster and groups */
+static void test_parse_json_keepalive_with_cluster_and_groups(void **state)
+{
+    const char *json = "{"
+        "\"agent\":{"
+            "\"version\":\"v5.0.0\","
+            "\"os\":{"
+                "\"name\":\"Ubuntu\","
+                "\"version\":\"22.04\","
+                "\"platform\":\"ubuntu\","
+                "\"type\":\"linux\","
+                "\"arch\":\"x86_64\","
+                "\"hostname\":\"test-host\""
+            "},"
+            "\"groups\":[\"web-servers\",\"production\"]"
+        "},"
+        "\"cluster\":{"
+            "\"name\":\"production\","
+            "\"node\":\"node01\""
+        "}"
+    "}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    char **groups = NULL;
+    size_t groups_count = 0;
+    char *cluster_name = NULL;
+    char *cluster_node = NULL;
+
+    int result = parse_json_keepalive(json, agent_data, &groups, &groups_count, &cluster_name, &cluster_node);
+
+    assert_int_equal(OS_SUCCESS, result);
+
+    // Verify both groups and cluster were parsed
+    assert_non_null(groups);
+    assert_int_equal(2, groups_count);
+    assert_string_equal("web-servers", groups[0]);
+    assert_string_equal("production", groups[1]);
+
+    assert_non_null(cluster_name);
+    assert_string_equal("production", cluster_name);
+    assert_non_null(cluster_node);
+    assert_string_equal("node01", cluster_node);
+
+    // Free groups
+    for (size_t i = 0; i < groups_count; i++) {
+        os_free(groups[i]);
+    }
+    os_free(groups);
+
+    wdb_free_agent_info_data(agent_data);
+    os_free(cluster_name);
+    os_free(cluster_node);
 }
 
 int main()
@@ -748,7 +1044,14 @@ int main()
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_minimal, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_with_groups, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_empty_groups, setup_remoted_op, teardown_remoted_op),
-        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_no_groups, setup_remoted_op, teardown_remoted_op)
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_no_groups, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_with_cluster, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_with_cluster_name_only, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_with_cluster_node_only, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_with_empty_cluster, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_with_empty_cluster_strings, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_cluster_null_outputs, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_with_cluster_and_groups, setup_remoted_op, teardown_remoted_op)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
