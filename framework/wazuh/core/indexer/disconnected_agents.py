@@ -108,7 +108,7 @@ class DisconnectedAgentSyncTasks:
         # Flag to ensure cluster-name sync runs only once per process lifecycle
         self._cluster_name_sync_done = False
 
-    async def run(self) -> None:
+    async def run_agent_groups_sync(self) -> None:
         """
         Main task loop for non-connected agent group synchronization.
 
@@ -432,7 +432,7 @@ class DisconnectedAgentSyncTasks:
                 return
             # Read cluster name from ossec.conf
             try:
-                conf = get_ossec_conf(section="cluster", from_import=True)
+                conf = get_ossec_conf(section="cluster")
                 cluster_name = conf.get("cluster", {}).get("name")
             except Exception as e:
                 self.logger.error(f"Failed reading cluster name from ossec.conf: {e}")

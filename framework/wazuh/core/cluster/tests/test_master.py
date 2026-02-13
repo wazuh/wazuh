@@ -1908,6 +1908,6 @@ async def test_disconnected_agent_group_sync_task_run_with_disabled_task(mock_wd
     import asyncio as _asyncio
     with patch('asyncio.sleep', side_effect=_asyncio.CancelledError()):
         with pytest.raises(_asyncio.CancelledError):
-            await task.run()
+            await task.run_agent_groups_sync()
 
     server_mock.setup_task_logger.return_value.info.assert_called()

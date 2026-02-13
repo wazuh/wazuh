@@ -1026,7 +1026,7 @@ class Master(server.AbstractServer):
                                                                   cluster_items=self.cluster_items)
 
         self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update,
-                          self.disconnected_agent_sync.run, self.disconnected_agent_sync.run_cluster_name_sync])
+                          self.disconnected_agent_sync.run_agent_groups_sync, self.disconnected_agent_sync.run_cluster_name_sync])
         # pending API requests waiting for a response
         self.pending_api_requests = {}
 

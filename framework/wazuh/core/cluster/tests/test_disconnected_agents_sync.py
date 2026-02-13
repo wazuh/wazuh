@@ -706,7 +706,7 @@ async def test_run_loop_exception_handling(mock_sleep, task):
         side_effect=Exception("Fatal DB Error"),
     ):
         try:
-            await task.run()
+            await task.run_agent_groups_sync()
         except asyncio.CancelledError:
             pass
 
