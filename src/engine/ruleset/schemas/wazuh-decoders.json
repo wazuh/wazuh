@@ -6267,24 +6267,6 @@
             "string"
           ]
         },
-        "f5_bigip.log.bigip_management.ip": {
-          "description": "Module: ecs\nIndexerType: ip\n\nPrimary management IP address for the F5 BIG-IP device.",
-          "type": [
-            "string"
-          ]
-        },
-        "f5_bigip.log.bigip_management.ip2": {
-          "description": "Module: ecs\nIndexerType: ip\n\nSecondary management IP address for the F5 BIG-IP device.",
-          "type": [
-            "string"
-          ]
-        },
-        "f5_bigip.log.bigip_management.ip_2": {
-          "description": "Module: ecs\nIndexerType: ip\n\nAlternative secondary management IP address for the F5 BIG-IP device.",
-          "type": [
-            "string"
-          ]
-        },
         "f5_bigip.log.blocking_exception_reason": {
           "description": "Module: ecs\nIndexerType: keyword\n\nReason for blocking exception in the F5 BIG-IP log entry.",
           "type": [
@@ -6395,18 +6377,6 @@
         },
         "f5_bigip.log.classification_reason": {
           "description": "Module: ecs\nIndexerType: keyword\n\nReason for classification in the F5 BIG-IP log entry.",
-          "type": [
-            "string"
-          ]
-        },
-        "f5_bigip.log.client.ip": {
-          "description": "Module: ecs\nIndexerType: ip\n\nClient IP address associated with the F5 BIG-IP log entry.",
-          "type": [
-            "string"
-          ]
-        },
-        "f5_bigip.log.client.ip_geo_location": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nGeolocation of the client IP address in the log entry.",
           "type": [
             "string"
           ]
@@ -7241,12 +7211,6 @@
             "string"
           ]
         },
-        "f5_bigip.log.dest.ip": {
-          "description": "Module: ecs\nIndexerType: ip\n\nDestination IP address recorded in F5 BIG-IP logs.",
-          "type": [
-            "string"
-          ]
-        },
         "f5_bigip.log.dest.ipint_categories": {
           "description": "Module: ecs\nIndexerType: keyword\n\nIP intelligence categories for the destination IP in F5 BIG-IP logs.",
           "type": [
@@ -7269,12 +7233,6 @@
         },
         "f5_bigip.log.dest.zone": {
           "description": "Module: ecs\nIndexerType: keyword\n\nDestination network zone identifier in F5 BIG-IP logs.",
-          "type": [
-            "string"
-          ]
-        },
-        "f5_bigip.log.destination.ip": {
-          "description": "Module: ecs\nIndexerType: ip\n\nDestination IP address for network traffic in F5 BIG-IP logs.",
           "type": [
             "string"
           ]
@@ -7596,12 +7554,6 @@
             "string"
           ]
         },
-        "f5_bigip.log.dst.geo": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nGeographic location information for destination in F5 BIG-IP.",
-          "type": [
-            "string"
-          ]
-        },
         "f5_bigip.log.enforced_by": {
           "description": "Module: ecs\nIndexerType: keyword\n\nComponent or policy that enforced the action in F5 BIG-IP.",
           "type": [
@@ -7716,30 +7668,6 @@
             "string"
           ]
         },
-        "f5_bigip.log.geo.code": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nGeographic code from geolocation data in F5 BIG-IP.",
-          "type": [
-            "string"
-          ]
-        },
-        "f5_bigip.log.geo.country": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nCountry from geolocation data in F5 BIG-IP.",
-          "type": [
-            "string"
-          ]
-        },
-        "f5_bigip.log.geo.info": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nGeolocation information in F5 BIG-IP logs.",
-          "type": [
-            "string"
-          ]
-        },
-        "f5_bigip.log.geo.location": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nGeographic location in F5 BIG-IP logs.",
-          "type": [
-            "string"
-          ]
-        },
         "f5_bigip.log.global_bigiq_conf": {
           "description": "Module: ecs\nIndexerType: keyword\n\nGlobal BIG-IQ configuration status in F5 BIG-IP.",
           "type": [
@@ -7848,12 +7776,6 @@
         },
         "f5_bigip.log.http.request": {
           "description": "Module: ecs\nIndexerType: keyword\n\nHTTP request information in F5 BIG-IP logs.",
-          "type": [
-            "string"
-          ]
-        },
-        "f5_bigip.log.http.request_host": {
-          "description": "Module: ecs\nIndexerType: ip\n\nHTTP request host IP address in F5 BIG-IP logs.",
           "type": [
             "string"
           ]
@@ -8040,18 +7962,6 @@
             "string"
           ]
         },
-        "f5_bigip.log.management.ip_address": {
-          "description": "Module: ecs\nIndexerType: ip\n\nManagement IP address of F5 BIG-IP device.",
-          "type": [
-            "string"
-          ]
-        },
-        "f5_bigip.log.management.ip_address_2": {
-          "description": "Module: ecs\nIndexerType: ip\n\nSecondary management IP address of F5 BIG-IP device.",
-          "type": [
-            "string"
-          ]
-        },
         "f5_bigip.log.marketing_name": {
           "description": "Module: ecs\nIndexerType: keyword\n\nMarketing name of F5 BIG-IP product.",
           "type": [
@@ -8092,12 +8002,6 @@
         },
         "f5_bigip.log.method": {
           "description": "Module: ecs\nIndexerType: keyword\n\nRequest method in F5 BIG-IP logs.",
-          "type": [
-            "string"
-          ]
-        },
-        "f5_bigip.log.mgmt_ip": {
-          "description": "Module: ecs\nIndexerType: ip\n\nManagement IP address in F5 BIG-IP logs.",
           "type": [
             "string"
           ]
@@ -8206,12 +8110,6 @@
             "string"
           ]
         },
-        "f5_bigip.log.node": {
-          "description": "Module: ecs\nIndexerType: ip\n\nNode IP address in F5 BIG-IP pool configuration.",
-          "type": [
-            "string"
-          ]
-        },
         "f5_bigip.log.node_port": {
           "description": "Module: ecs\nIndexerType: long\n\nNode port number in F5 BIG-IP pool configuration.",
           "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
@@ -8270,12 +8168,6 @@
         },
         "f5_bigip.log.policy.name": {
           "description": "Module: ecs\nIndexerType: keyword\n\nPolicy name in F5 BIG-IP logs.",
-          "type": [
-            "string"
-          ]
-        },
-        "f5_bigip.log.pool.ip": {
-          "description": "Module: ecs\nIndexerType: ip\n\nPool member IP address in F5 BIG-IP.",
           "type": [
             "string"
           ]
@@ -8690,12 +8582,6 @@
             "string"
           ]
         },
-        "f5_bigip.log.server.ip": {
-          "description": "Module: ecs\nIndexerType: ip\n\nServer IP address in F5 BIG-IP logs.",
-          "type": [
-            "string"
-          ]
-        },
         "f5_bigip.log.server.latency.max": {
           "description": "Module: ecs\nIndexerType: long\n\nMaximum server latency in F5 BIG-IP logs.",
           "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
@@ -8872,12 +8758,6 @@
             "string"
           ]
         },
-        "f5_bigip.log.source.ip": {
-          "description": "Module: ecs\nIndexerType: ip\n\nSource IP address in F5 BIG-IP logs.",
-          "type": [
-            "string"
-          ]
-        },
         "f5_bigip.log.source.ip_route_domain": {
           "description": "Module: ecs\nIndexerType: keyword\n\nSource IP route domain in F5 BIG-IP logs.",
           "type": [
@@ -8906,18 +8786,6 @@
         },
         "f5_bigip.log.source.user_group": {
           "description": "Module: ecs\nIndexerType: keyword\n\nSource user group in F5 BIG-IP logs.",
-          "type": [
-            "string"
-          ]
-        },
-        "f5_bigip.log.src.geo": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nSource geographic location in F5 BIG-IP logs.",
-          "type": [
-            "string"
-          ]
-        },
-        "f5_bigip.log.src.ip": {
-          "description": "Module: ecs\nIndexerType: ip\n\nSource IP address in F5 BIG-IP logs.",
           "type": [
             "string"
           ]
@@ -8980,12 +8848,6 @@
         },
         "f5_bigip.log.sub_violations": {
           "description": "Module: ecs\nIndexerType: keyword\n\nSub-violations detected in F5 BIG-IP logs.",
-          "type": [
-            "string"
-          ]
-        },
-        "f5_bigip.log.subnet.ip": {
-          "description": "Module: ecs\nIndexerType: ip\n\nSubnet IP address in F5 BIG-IP logs.",
           "type": [
             "string"
           ]
@@ -9810,12 +9672,6 @@
             "string"
           ]
         },
-        "f5_bigip.log.translated.dest.ip": {
-          "description": "Module: ecs\nIndexerType: ip\n\nTranslated destination IP address in F5 BIG-IP.",
-          "type": [
-            "string"
-          ]
-        },
         "f5_bigip.log.translated.dest.port": {
           "description": "Module: ecs\nIndexerType: long\n\nTranslated destination port in F5 BIG-IP.",
           "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
@@ -9832,12 +9688,6 @@
         },
         "f5_bigip.log.translated.route_domain": {
           "description": "Module: ecs\nIndexerType: keyword\n\nTranslated route domain in F5 BIG-IP.",
-          "type": [
-            "string"
-          ]
-        },
-        "f5_bigip.log.translated.source.ip": {
-          "description": "Module: ecs\nIndexerType: ip\n\nTranslated source IP address in F5 BIG-IP.",
           "type": [
             "string"
           ]
@@ -9958,12 +9808,6 @@
             "string"
           ]
         },
-        "f5_bigip.log.virtual.ip": {
-          "description": "Module: ecs\nIndexerType: ip\n\nVirtual server name in F5 BIG-IP.",
-          "type": [
-            "string"
-          ]
-        },
         "f5_bigip.log.virtual.name": {
           "description": "Module: ecs\nIndexerType: keyword\n\nVirtual server identifier in F5 BIG-IP.",
           "type": [
@@ -10023,12 +9867,6 @@
           "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
           "type": [
             "number",
-            "string"
-          ]
-        },
-        "f5_bigip.log.x_forwarded_for_header_value": {
-          "description": "Module: ecs\nIndexerType: ip\n\nX-Forwarded-For header value in F5 BIG-IP logs.",
-          "type": [
             "string"
           ]
         },
