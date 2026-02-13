@@ -90,6 +90,11 @@ add_library(
 target_compile_definitions(win32_common PRIVATE OSSECHIDS ARGV0="wazuh-agent"
                                                 _WIN32_WINNT=0x600)
 
+# Enable WAZUH_UNIT_TESTING to activate wrapper macros for unit tests
+if(UNIT_TEST)
+  target_compile_definitions(win32_common PRIVATE WAZUH_UNIT_TESTING)
+endif()
+
 # win32_service_rk: win_service.c compiled WITHOUT OSSECHIDS (for setup/UI
 # tools) Equivalent to the Makefile's "win32/%_rk.o: win32/%.c" pattern rule
 add_library(win32_service_rk OBJECT ${CMAKE_CURRENT_SOURCE_DIR}/win_service.c)
