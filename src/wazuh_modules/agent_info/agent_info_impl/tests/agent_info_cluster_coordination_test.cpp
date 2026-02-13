@@ -147,8 +147,6 @@ TEST_F(AgentInfoClusterCoordinationTest, ClusterNameChange_SetsGroupsSyncFlag)
                       m_mockFileSystem
                   );
 
-    m_agentInfo->setIsAgent(true);
-
     // First run: populates initial data (INSERTED event)
     runSingleIteration();
     m_logOutput.clear();
@@ -190,8 +188,6 @@ TEST_F(AgentInfoClusterCoordinationTest, ClusterNodeChange_NoSyncFlagSet)
                       m_mockFileSystem
                   );
 
-    m_agentInfo->setIsAgent(true);
-
     // First run: populates initial data
     runSingleIteration();
     m_logOutput.clear();
@@ -231,8 +227,6 @@ TEST_F(AgentInfoClusterCoordinationTest, ClusterNameAndClusterNode_OnlyGroupsFla
                       m_mockFileIO,
                       m_mockFileSystem
                   );
-
-    m_agentInfo->setIsAgent(true);
 
     // First run
     runSingleIteration();
@@ -338,8 +332,6 @@ TEST_F(AgentInfoClusterCoordinationTest, ClusterNameAndOtherMetadata_OnlyMetadat
                       m_mockFileSystem
                   );
 
-    m_agentInfo->setIsAgent(true);
-
     // First run
     runSingleIteration();
     m_logOutput.clear();
@@ -440,8 +432,6 @@ TEST_F(AgentInfoClusterCoordinationTest, ClusterNodeAndOtherMetadata_OnlyMetadat
                       m_mockFileIO,
                       m_mockFileSystem
                   );
-
-    m_agentInfo->setIsAgent(true);
 
     // First run
     runSingleIteration();
@@ -544,8 +534,6 @@ TEST_F(AgentInfoClusterCoordinationTest, OtherMetadataOnly_OnlyMetadataFlagSet)
                       m_mockFileSystem
                   );
 
-    m_agentInfo->setIsAgent(true);
-
     // First run
     runSingleIteration();
     m_logOutput.clear();
@@ -582,8 +570,6 @@ TEST_F(AgentInfoClusterCoordinationTest, FirstRun_InsertedEvent_SetsMetadataFlag
                       m_mockFileIO,
                       m_mockFileSystem
                   );
-
-    m_agentInfo->setIsAgent(true);
 
     // First run: INSERTED event should set metadata sync flag (categorizeMetadataChanges returns true for INSERTED)
     runSingleIteration();
