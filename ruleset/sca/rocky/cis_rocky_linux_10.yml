@@ -1295,8 +1295,9 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/crypto-policies/policies/modules/ -> r:.*\.pmod -> r:^\s*mac\s*=\s*-\*-128\*'
 
   # 1.6.4 Ensure system wide crypto policy disables cbc for ssh. (Automated)
    - id: 18565
@@ -1318,8 +1319,9 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/crypto-policies/policies/modules/ -> r:.*\.pmod -> r:^\s*cipher@SSH\s*=\s*-\*-CBC'
 
   # 1.7.1 Ensure /etc/motd is configured. (Automated)
    - id: 18566
@@ -1331,8 +1333,10 @@ checks:
        - cis: ["1.7.1"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: any
      rules:
+      - "not f:/etc/motd"
+      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s'
 
   # 1.7.2 Ensure /etc/issue is configured. (Automated)
    - id: 18567
@@ -1344,8 +1348,9 @@ checks:
        - cis: ["1.7.2"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+      - 'not f:/etc/issue -> r:\\v|\\r|\\m|\\s'
 
   # 1.7.3 Ensure /etc/issue.net is configured. (Automated)
    - id: 18568
@@ -1357,8 +1362,9 @@ checks:
        - cis: ["1.7.3"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s'
 
   # 1.7.4 Ensure access to /etc/motd is configured. (Automated)
    - id: 18569
@@ -1377,8 +1383,10 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: any
      rules:
+      - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - "not f:/etc/motd"
 
   # 1.7.5 Ensure access to /etc/issue is configured. (Automated)
    - id: 18570
@@ -1397,8 +1405,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
 
   # 1.7.6 Ensure access to /etc/issue.net is configured. (Automated)
    - id: 18571
@@ -1417,8 +1426,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
 
   # 1.8.1 Ensure GDM login banner is configured. (Automated)
    - id: 18572
@@ -1452,8 +1462,10 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/dconf/db/local.d/ -> r:. -> r:^\[org/gnome/login-screen\]'
+      - 'd:/etc/dconf/db/local.d/ -> r:. -> r:^disable-user-list\s*\t*=\s*\t*true'
 
   # 1.8.3 Ensure GDM screen lock is configured. (Automated)
    - id: 18574
@@ -1473,8 +1485,10 @@ checks:
        - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
        - pci_dss_v3.2.1: ["8.1.8"]
        - pci_dss_v4.0: ["8.2.8"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/dconf/db/local.d/locks -> r:. -> r:^/org/gnome/desktop/session/idle-delay'
+      - 'd:/etc/dconf/db/local.d/locks -> r:. -> r:^/org/gnome/desktop/screensaver/lock-delay'
 
   # 1.8.4 Ensure GDM automount is configured. (Automated)
    - id: 18575
@@ -1492,8 +1506,10 @@ checks:
        - cmmc_v2.0: ["MP.L2-3.8.7"]
        - hipaa: ["164.310(d)(1)"]
        - iso_27001-2013: ["A.12.2.1"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/dconf/db/local.d/locks -> r:. -> r:^org/gnome/desktop/media-handling/automount'
+      - 'd:/etc/dconf/db/local.d/locks -> r:. -> r:^org/gnome/desktop/media-handling/automount-open'
 
   # 1.8.5 Ensure GDM autorun-never is configured. (Automated)
    - id: 18576
@@ -1508,8 +1524,9 @@ checks:
        - cmmc_v2.0: ["MP.L2-3.8.7"]
        - hipaa: ["164.310(d)(1)"]
        - iso_27001-2013: ["A.12.2.1"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/dconf/db/local.d/locks -> r:. -> r:^/org/gnome/desktop/media-handling/autorun-never'
 
   # 1.8.6 Ensure Xwayland is configured. (Automated)
    - id: 18577
@@ -1527,8 +1544,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/gdm/custom.conf -> r:^\s*WaylandEnable=false'
 
   # 2.1.1 Ensure autofs services are not in use. (Automated)
    - id: 18578
@@ -1586,8 +1604,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'c:rpm -q cockpit-ws -> r:^\s*package\s*cockpit-ws\s*is\s*not\s*installed'
+      - 'not c:systemctl show cockpit.socket cockpit.service -> r:^LoadState=loaded|^ActiveState=active'
 
   # 2.1.4 Ensure dhcp server services are not in use. (Automated)
    - id: 18581
@@ -1837,8 +1857,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - "c:dpkg-query -s telnet-server -> r:package 'snmpd' is not installed"
+      - "not c:systemctl show telnet.service -> r:^LoadState=loaded|^ActiveState=active" 
 
   # 2.1.16 Ensure tftp server services are not in use. (Automated)
    - id: 18593
@@ -1919,8 +1941,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg-query -s gdm3 -> r:package 'gdm3' is not installed"
 
   # 2.1.20 Ensure X window server services are not in use. (Automated)
    - id: 18597
@@ -1957,27 +1980,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/postfix/main.cf -> r:^\s*inet_interfaces\s*=\s*loopback-only'
 
-  # 2.1.22 Ensure only approved services are listening on a network interface. (Manual)
-   - id: 18599
-     title: "Ensure only approved services are listening on a network interface."
-     description: "A network port is identified by its number, the associated IP address, and the type of the communication protocol such as TCP or UDP. A listening port is a network port on which an application or process listens on, acting as a communication endpoint. Each listening port can be open or closed (filtered) using a firewall. In general terms, an open port is a network port that accepts incoming packets from remote locations."
-     rationale: "Services listening on the system pose a potential risk as an attack vector. These services should be reviewed, and if not required, the service should be stopped, and the package containing the service should be removed. If required packages have a dependency, the service should be stopped and masked to reduce the attack surface of the system."
-     impact: "There may be packages that are dependent on the service's package. If the service's package is removed, these dependent packages will be removed as well. Before removing the service's package, review any dependent packages to determine if they are required on the system. - IF - a dependent package is required: stop and mask the <service_name>.socket and <service_name>.service leaving the service's package installed."
-     remediation: "Run the following commands to stop the service and remove the package containing the service: # systemctl stop <service_name>.socket <service_name>.service # dnf remove <package_name> - OR - If required packages have a dependency: Run the following commands to stop and mask the service and socket: # systemctl stop <service_name>.socket <service_name>.service # systemctl mask <service_name>.socket <service_name>.service Note: replace <service_name> with the appropriate service name."
-     compliance:
-       - cis: ["2.1.22"]
-       - cis_csc_v8: ["4.8"]
-       - cis_csc_v7: ["9.2"]
-       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6"]
-     condition:
-     rules:
+  # 2.1.22 Ensure only approved services are listening on a network interface. (Manual) - Not Implemented
 
   # 2.2.1 Ensure ftp client is not installed. (Automated)
    - id: 18600
@@ -2106,8 +2113,9 @@ checks:
        - cis: ["2.3.3"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/sysconfig/chronyd -> r:OPTIONS="-F\s*2"'
 
   # 2.4.1.1 Ensure cron daemon is enabled and active. (Automated)
    - id: 18607
@@ -2141,8 +2149,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/crontab -> r:Access:\s*\t*\(0600/-rw-------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 2.4.1.3 Ensure access to /etc/cron.hourly is configured. (Automated)
    - id: 18609
@@ -2161,8 +2170,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/cron.hourly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 2.4.1.4 Ensure access to /etc/cron.daily is configured. (Automated)
    - id: 18610
@@ -2181,8 +2191,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/cron.daily/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 2.4.1.5 Ensure access to /etc/cron.weekly is configured. (Automated)
    - id: 18611
@@ -2201,8 +2212,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/cron.weekly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 2.4.1.6 Ensure access to /etc/cron.monthly is configured. (Automated)
    - id: 18612
@@ -2221,8 +2233,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/cron.monthly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 2.4.1.7 Ensure access to /etc/cron.yearly is configured. (Automated)
    - id: 18613
@@ -2232,8 +2245,9 @@ checks:
      remediation: "- IF - cron is installed on the system: Run the following commands to set ownership and permissions on the /etc/cron.yearly directory: # chown root:root /etc/cron.yearly/ # chmod og-rwx /etc/cron.yearly/."
      compliance:
        - cis: ["2.4.1.7"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/cron.yearly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 2.4.1.8 Ensure access to /etc/cron.d is configured. (Automated)
    - id: 18614
@@ -2252,8 +2266,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/cron.d/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 2.4.1.9 Ensure access to crontab is configured. (Automated)
    - id: 18615
@@ -2272,8 +2287,11 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "f:/etc/cron.allow"
+      - 'c:stat -Lc "%a" /etc/cron.allow -> r:640|600|400'
+      - 'c:stat -Lc "%U %G" /etc/cron.allow -> r:^root root$'
 
   # 2.4.2.1 Ensure access to at is configured. (Automated)
    - id: 18616
@@ -2292,27 +2310,14 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "f:/etc/at.allow"
+      - 'c:stat -Lc "%a" /etc/at.allow -> r:640|600|400'
+      - 'c:stat -Lc "%U %G" /etc/at.allow -> r:^root root$|^root daemon$'
+      - "c:dpkg-query -s at -> r:Status: install ok installed"
 
-  # 3.1.1 Ensure IPv6 status is identified. (Manual)
-   - id: 18617
-     title: "Ensure IPv6 status is identified."
-     description: "Internet Protocol Version 6 (IPv6) is the most recent version of Internet Protocol (IP). It's designed to supply IP addressing and additional security to support the predicted growth of connected devices. IPv6 is based on 128-bit addressing and can support 340 undecillion, which is 340,282,366,920,938,463,463,374,607,431,768,211,456 unique addresses. Features of IPv6 - Hierarchical addressing and routing infrastructure - Statefull and Stateless configuration - Support for quality of service (QoS) - An ideal protocol for neighboring node interaction."
-     rationale: "IETF RFC 4038 recommends that applications are built with an assumption of dual stack. It is recommended that IPv6 be enabled and configured in accordance with Benchmark recommendations. - IF - dual stack and IPv6 are not used in your environment, IPv6 may be disabled to reduce the attack surface of the system, and recommendations pertaining to IPv6 can be skipped. Note: It is recommended that IPv6 be enabled and configured unless this is against local site policy."
-     impact: "IETF RFC 4038 recommends that applications are built with an assumption of dual stack. When enabled, IPv6 will require additional configuration to reduce risk to the system."
-     remediation: "Enable or disable IPv6 in accordance with system requirements and local site policy."
-     compliance:
-       - cis: ["3.1.1"]
-       - cis_csc_v8: ["4.8"]
-       - cis_csc_v7: ["9.2"]
-       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6"]
-     condition:
-     rules:
+  # 3.1.1 Ensure IPv6 status is identified. (Manual) - Not Implemented
 
   # 3.1.2 Ensure wireless interfaces are not available. (Automated)
    - id: 18618
@@ -2330,8 +2335,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:nmcli radio wifi -> r:^disabled"
+      - "c:nmcli radio wwan -> r:^disabled"
 
   # 3.1.3 Ensure bluetooth services are not in use. (Automated)
    - id: 18619
@@ -2369,8 +2376,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:modprobe -n -v atm -> r:^install /bin/false"
+      - "not c:lsmod -> r:atm"
 
   # 3.2.2 Ensure can kernel module is not available. (Automated)
    - id: 18621
