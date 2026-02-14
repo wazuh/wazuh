@@ -51,26 +51,23 @@ add_compile_options(-ggdb -O0 -g -coverage)
 add_definitions(-DTEST_WINAGENT -DDEBUG -DENABLE_AUDIT -D_WIN32_WINNT=0x600 -DWAZUH_UNIT_TESTING)
 
 # Add logcollector objects
-file(GLOB logcollector_lib ${SRC_FOLDER}/logcollector/*.o)
-list(FILTER logcollector_lib EXCLUDE REGEX ".*-event.o$")
+file(GLOB logcollector_lib ${SRC_FOLDER}/build/logcollector/CMakeFiles/logcollector_lib.dir/src/*.obj)
+list(REMOVE_ITEM logcollector_lib ${SRC_FOLDER}/build/logcollector/CMakeFiles/logcollector_lib.dir/src/main.c.obj)
 list(APPEND obj_files ${logcollector_lib})
 
-# Add monitord objects
-file(GLOB monitord_lib ${SRC_FOLDER}/monitord/*.o)
-list(REMOVE_ITEM monitord_lib ${SRC_FOLDER}/monitord/main.o)
-list(APPEND obj_files ${monitord_lib})
-
 # Add client-agent objects
-file(GLOB client_agent_lib ${SRC_FOLDER}/client-agent/*.o)
-list(REMOVE_ITEM client_agent_lib ${SRC_FOLDER}/client-agent/main.o)
+file(GLOB client_agent_lib ${SRC_FOLDER}/build/client-agent/CMakeFiles/agentd_lib.dir/src/*.obj)
+list(REMOVE_ITEM client_agent_lib ${SRC_FOLDER}/build/client-agent/CMakeFiles/agentd_lib.dir/src/main.c.obj)
 list(APPEND obj_files ${client_agent_lib})
 
-# Add execd objects
-file(GLOB os_execd_lib ${SRC_FOLDER}/os_execd/*.o ${SRC_FOLDER}/active-response/*.o)
+# Add execd objects and active-response objects
+file(GLOB os_execd_lib ${SRC_FOLDER}/build/os_execd/CMakeFiles/execd_lib.dir/src/*.obj ${SRC_FOLDER}/active-response/*.o)
 list(APPEND obj_files ${os_execd_lib})
 
 # Add win32 objects
-file(GLOB win32_files ${SRC_FOLDER}/win32/win_service.o ${SRC_FOLDER}/win32/win_utils.o)
+file(GLOB win32_files
+  ${SRC_FOLDER}/build/win32/CMakeFiles/win32_common.dir/win_service.c.obj
+  ${SRC_FOLDER}/build/win32/CMakeFiles/win32_common.dir/win_utils.c.obj)
 list(APPEND obj_files ${win32_files})
 
 add_library(DEPENDENCIES_O STATIC ${obj_files})

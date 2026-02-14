@@ -1,8 +1,16 @@
 # Generate client-agent library
-file(GLOB client-agent_files
-    ${SRC_FOLDER}/client-agent/*.o
-    ${SRC_FOLDER}/monitord/*.o)
+if(${TARGET} STREQUAL "winagent")
+  # On winagent, agentd objects are already in DEPENDENCIES_O (winagent.cmake).
+  # Creating a separate CLIENT-AGENT library from the same objects would cause
+  # duplicate globals (e.g. agent_state), leading to test failures where the
+  # test modifies one copy but production code reads the other.
+else()
+  file(GLOB client-agent_files
+       ${SRC_FOLDER}/build/client-agent/CMakeFiles/agentd_lib.dir/src/*.o)
+  list(REMOVE_ITEM client-agent_files ${SRC_FOLDER}/build/client-agent/CMakeFiles/agentd_lib.dir/src/main.c.o)
+endif()
 
+if(NOT ${TARGET} STREQUAL "winagent")
 list(REMOVE_ITEM client-agent_files ${SRC_FOLDER}/client-agent/main.o)
 
 add_library(CLIENT-AGENT STATIC ${client-agent_files})
@@ -21,6 +29,7 @@ set_target_properties(
 )
 
 target_link_libraries(CLIENT-AGENT ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+endif()
 
 if(${TARGET} STREQUAL "winagent")
     link_directories(${SRC_FOLDER}/build/bin)
@@ -103,17 +112,24 @@ foreach(counter RANGE ${count})
 
     add_executable(${client-agent_test_name} ${client-agent_test_name}.c)
 
-    target_link_libraries(
-        ${client-agent_test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        CLIENT-AGENT
-        ${TEST_DEPS}
-    )
-
     if(${TARGET} STREQUAL "winagent")
+        # On winagent, agentd objects come from DEPENDENCIES_O (in TEST_DEPS)
+        target_link_libraries(
+            ${client-agent_test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            ${TEST_DEPS}
+        )
         target_link_libraries(${client-agent_test_name} fimdb)
-    endif(${TARGET} STREQUAL "winagent")
+    else()
+        target_link_libraries(
+            ${client-agent_test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            CLIENT-AGENT
+            ${TEST_DEPS}
+        )
+    endif()
 
     if(NOT client-agent_test_flags STREQUAL " ")
         target_link_libraries(

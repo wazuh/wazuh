@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../headers/wazuhdb_op.h"
+#include "wazuhdb_op.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 

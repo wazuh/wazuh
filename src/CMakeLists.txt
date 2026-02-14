@@ -1,5 +1,19 @@
 cmake_minimum_required(VERSION 3.12.4)
 
+# Force ranlib and windres for scan-build cross-compilation compatibility Must
+# be set BEFORE project() command to take effect
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  # Set the correct cross-compilation tools
+  set(CMAKE_RANLIB
+      "i686-w64-mingw32-ranlib"
+      CACHE FILEPATH "Ranlib for Windows cross-compilation" FORCE)
+  set(CMAKE_RC_COMPILER
+      "i686-w64-mingw32-windres"
+      CACHE FILEPATH "Resource compiler for Windows cross-compilation" FORCE)
+  set(CMAKE_C_ARCHIVE_FINISH "<CMAKE_RANLIB> <TARGET>")
+  set(CMAKE_CXX_ARCHIVE_FINISH "<CMAKE_RANLIB> <TARGET>")
+endif()
+
 project(Wazuh)
 
 enable_testing()
@@ -37,8 +51,8 @@ if(FSANITIZE)
   set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
 endif(FSANITIZE)
 
-# Function to link coverage libraries for unit tests
-# Uses plain signature for compatibility with existing plain signature usage
+# Function to link coverage libraries for unit tests Uses plain signature for
+# compatibility with existing plain signature usage
 function(add_coverage_libraries target_name)
   if(UNIT_TEST)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -61,6 +75,31 @@ set(WAZUH_MAIN_PROJECT
 # Define CLIENT for agent builds
 if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
   add_definitions(-DCLIENT)
+endif()
+
+# Keep Make-based Windows semantics for external headers that otherwise declare
+# symbols as dllimport. We link these through delay import stubs.
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_definitions(-DPCRE2_EXP_DECL= -DBUILDING_LIBCURL=)
+
+  # Add system include paths for scan-build cross-compilation compatibility
+  # These paths are needed when using clang static analyzer wrappers with mingw
+  set(MINGW_SYSTEM_INCLUDES
+      "-isystem/usr/lib/gcc/i686-w64-mingw32/13-posix/include/c++"
+      "-isystem/usr/lib/gcc/i686-w64-mingw32/13-posix/include/c++/i686-w64-mingw32"
+      "-isystem/usr/lib/gcc/i686-w64-mingw32/13-posix/include/c++/backward"
+      "-isystem/usr/lib/gcc/i686-w64-mingw32/13-posix/include"
+      "-isystem/usr/lib/gcc/i686-w64-mingw32/13-posix/include-fixed"
+      "-isystem/usr/lib/gcc/i686-w64-mingw32/13-posix/../../../../i686-w64-mingw32/include"
+  )
+
+  # Add flags directly to compiler to work around scan-build issues with
+  # response files
+  add_compile_options(${MINGW_SYSTEM_INCLUDES})
+
+  # Disable response files for scan-build compatibility
+  set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES OFF)
+  set(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES OFF)
 endif()
 
 # Set Wine as crosscompiling emulator for Windows unit tests
@@ -175,7 +214,7 @@ link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
 link_directories(${SRC_FOLDER}/external/simdjson/build/)
 
 # Wazuh headers
-include_directories(${SRC_FOLDER}/headers)
+include_directories(${SRC_FOLDER}/shared/include)
 
 # Shared modules includes
 include_directories(${SRC_FOLDER}/shared_modules/agent_metadata/include)
@@ -204,15 +243,30 @@ include_directories(${SRC_FOLDER}/external/simdjson/include/)
 include_directories(${SRC_FOLDER}/external/zlib/)
 include_directories(${SRC_FOLDER}/external/zlib/contrib/)
 
-# Data Provider
-add_subdirectory(data_provider)
+# Windows version resource objects
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  enable_language(RC)
 
-# Engine - Server only
-if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
-  add_subdirectory(engine)
+  # Version resource for DLLs (VFT_DLL)
+  add_library(version_rc_dll OBJECT ${SRC_FOLDER}/win32/version.rc)
+  target_compile_definitions(version_rc_dll PRIVATE VER_TYPE=VFT_DLL)
+
+  # Version resource for executables (VFT_APP)
+  add_library(version_rc_app OBJECT ${SRC_FOLDER}/win32/version.rc)
+  target_compile_definitions(version_rc_app PRIVATE VER_TYPE=VFT_APP)
+
+  set(RESOURCE_OBJ_DLL $<TARGET_OBJECTS:version_rc_dll>)
+  set(RESOURCE_OBJ_APP $<TARGET_OBJECTS:version_rc_app>)
 endif()
 
-# Shared Modules
+# Helper variables
+set(IS_AGENT FALSE)
+if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
+  set(IS_AGENT TRUE)
+endif()
+
+# Common modules (all targets)
+add_subdirectory(data_provider)
 add_subdirectory(shared_modules/agent_metadata)
 add_subdirectory(shared_modules/dbsync)
 add_subdirectory(shared_modules/file_helper)
@@ -221,27 +275,36 @@ add_subdirectory(shared_modules/http-request)
 add_subdirectory(shared_modules/schema_validator)
 add_subdirectory(shared_modules/sync_protocol)
 add_subdirectory(shared_modules/utils)
+add_subdirectory(shared)
+add_subdirectory(config)
+add_subdirectory(syscheckd)
+add_subdirectory(rootcheck)
+add_subdirectory(wazuh_modules)
+add_subdirectory(active-response)
+add_subdirectory(os_execd)
+add_subdirectory(logcollector)
 
-# Shared Modules - Server only
-if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
+# Agent-only modules
+if(IS_AGENT)
+  add_subdirectory(client-agent)
+  add_subdirectory(addagent)
+endif()
+
+# Windows agent executables and resources
+if("${TARGET}" STREQUAL "winagent")
+  add_subdirectory(win32)
+endif()
+
+# Server-only modules
+if(NOT IS_AGENT)
+  add_subdirectory(engine)
   add_subdirectory(shared_modules/content_manager)
   add_subdirectory(shared_modules/indexer_connector)
   add_subdirectory(shared_modules/keystore)
   add_subdirectory(shared_modules/router)
-endif()
-
-# Syscheckd
-add_subdirectory(syscheckd)
-
-# Wazuh Modules
-add_subdirectory(wazuh_modules/agent_info)
-add_subdirectory(wazuh_modules/sca)
-if(ENABLE_SYSC)
-  add_subdirectory(wazuh_modules/syscollector)
-endif()
-
-# Wazuh Modules - Server only
-if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
-  add_subdirectory(wazuh_modules/inventory_sync)
-  add_subdirectory(wazuh_modules/vulnerability_scanner)
+  add_subdirectory(util)
+  add_subdirectory(remoted)
+  add_subdirectory(monitord)
+  add_subdirectory(os_auth)
+  add_subdirectory(wazuh_db)
 endif()

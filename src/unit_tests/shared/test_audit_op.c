@@ -24,10 +24,10 @@
 #include "../wrappers/wazuh/shared/exec_op_wrappers.h"
 #include "../wrappers/wazuh/shared/binaries_op_wrappers.h"
 #include "../wrappers/common.h"
-#include "../headers/audit_op.h"
-#include "../headers/defs.h"
-#include "../headers/exec_op.h"
-#include "../headers/list_op.h"
+#include "audit_op.h"
+#include "defs.h"
+#include "exec_op.h"
+#include "list_op.h"
 
 #define PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)
 

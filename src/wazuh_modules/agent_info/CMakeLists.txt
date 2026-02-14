@@ -22,13 +22,18 @@ endif(APPLE)
 
 add_subdirectory(agent_info_impl)
 
-include_directories(${SRC_FOLDER}/headers)
+include_directories(${SRC_FOLDER}/shared/include)
+include_directories(${SRC_FOLDER}/shared/error_messages)
+include_directories(${SRC_FOLDER}/shared/os_regex/)
 include_directories(${SRC_FOLDER}/external/bzip2/)
+include_directories(${SRC_FOLDER}/external/curl/include/curl/)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/external/libpcre2/include/)
 include_directories(${SRC_FOLDER}/external/cJSON/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/flatbuffers/include)
+include_directories(${SRC_FOLDER}/external/libyaml/include/)
+include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
 include_directories(${CMAKE_BINARY_DIR}/shared_modules/sync_protocol)
@@ -37,6 +42,7 @@ include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(
   ${SRC_FOLDER}/shared_modules/file_helper/filesystem/include/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/file_io/include/)
+include_directories(${SRC_FOLDER}/syscheckd/include/)
 include_directories(${SRC_FOLDER}/data_provider/include/)
 include_directories(${SRC_FOLDER}/wazuh_modules/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -57,9 +63,10 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 file(GLOB AGENT_INFO_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
-add_library(agent_info SHARED ${AGENT_INFO_SRC} ${SRC_FOLDER}/${RESOURCE_OBJ})
+add_library(agent_info SHARED ${AGENT_INFO_SRC} ${RESOURCE_OBJ_DLL})
 
-target_link_libraries(agent_info PRIVATE AGENT_INFO_IMPL FileIO FilesystemWrapper)
+target_link_libraries(agent_info PRIVATE AGENT_INFO_IMPL FileIO
+                                         FilesystemWrapper)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(

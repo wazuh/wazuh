@@ -12,7 +12,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "../../os_regex/os_regex_match.c"
+#include "os_regex_match.c"
 
 // Tests
 

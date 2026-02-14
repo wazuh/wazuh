@@ -29,7 +29,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/src/extended_sources/services/include)
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/src/extended_sources/browser_extensions/include)
-include_directories(${SRC_FOLDER}/headers/)
+include_directories(${SRC_FOLDER}/shared/include/)
 include_directories(${SRC_FOLDER}/external/sqlite/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/cJSON/)
@@ -168,22 +168,22 @@ endif()
 
 add_library(
   sysinfo SHARED ${SYSINFO_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/src/sysInfo.cpp
-                 ${SRC_FOLDER}/${RESOURCE_OBJ})
+                 ${RESOURCE_OBJ_DLL})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(
-    sysinfo PRIVATE
-    psapi
-    iphlpapi
-    ws2_32
-    wbemuuid
-    uuid
-    ole32
-    oleaut32
-    groups
-    users
-    services
-    browser_extensions)
+    sysinfo
+    PRIVATE psapi
+            iphlpapi
+            ws2_32
+            wbemuuid
+            uuid
+            ole32
+            oleaut32
+            groups
+            users
+            services
+            browser_extensions)
   set_target_properties(
     sysinfo
     PROPERTIES PREFIX ""
@@ -204,15 +204,15 @@ elseif(APPLE)
     message(FATAL_ERROR "CoreFoundation library not found! Aborting...")
   endif()
   target_link_libraries(
-    sysinfo PRIVATE
-    cjson
-    ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a
-    ${iokit_lib}
-    ${corefoundation_lib}
-    groups
-    users
-    services
-    browser_extensions)
+    sysinfo
+    PRIVATE cjson
+            ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a
+            ${iokit_lib}
+            ${corefoundation_lib}
+            groups
+            users
+            services
+            browser_extensions)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 target_link_libraries(sysinfo PRIVATE wazuhext FilesystemWrapper FileIO)
@@ -220,14 +220,14 @@ target_link_libraries(sysinfo PRIVATE wazuhext FilesystemWrapper FileIO)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(CURL_DEP "wazuhext")
   target_link_libraries(
-    sysinfo PRIVATE
-    urlrequest
-    db
-    groups
-    users
-    services
-    dbus-1
-    browser_extensions)
+    sysinfo
+    PRIVATE urlrequest
+            db
+            groups
+            users
+            services
+            dbus-1
+            browser_extensions)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
 if(APPLE)
@@ -242,7 +242,8 @@ if(UNIT_TEST)
   enable_testing()
   add_coverage_libraries(sysinfo)
 
-  # Add coverage flags globally for all test executables (including those that compile sources directly)
+  # Add coverage flags globally for all test executables (including those that
+  # compile sources directly)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(--coverage)
     add_link_options(-fprofile-arcs)

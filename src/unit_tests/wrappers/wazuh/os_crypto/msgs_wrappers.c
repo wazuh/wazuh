@@ -11,8 +11,8 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include "headers/shared.h"
-#include "headers/sec.h"
+#include "shared.h"
+#include "sec.h"
 #include "msgs_wrappers.h"
 
 size_t __wrap_CreateSecMSG(__attribute__((unused)) keystore *keys, const char *msg, size_t msg_length, char *msg_encrypted, unsigned int id) {

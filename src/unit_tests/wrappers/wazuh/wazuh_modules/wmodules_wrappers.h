@@ -12,7 +12,7 @@
 #define WMODULES_WRAPPERS_H
 
 #include <stddef.h>
-#include "../../wazuh_modules/wmodules.h"
+#include "wmodules.h"
 
 int __wrap_wm_sendmsg(int usec,
                       int queue,

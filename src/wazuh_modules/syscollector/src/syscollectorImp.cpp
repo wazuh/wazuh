@@ -25,7 +25,7 @@
 #include "syscollectorTablesDef.hpp"
 #include "agent_sync_protocol.hpp"
 #include "logging_helper.h"
-#include "../../module_query_errors.h"
+#include "module_query_errors.h"
 #include "defs.h"
 #include "schemaValidator.hpp"
 

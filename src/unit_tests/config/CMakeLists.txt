@@ -1,6 +1,11 @@
 # Generate config library
-file(GLOB config_files
-    ${SRC_FOLDER}/config/*.o)
+if(${TARGET} STREQUAL "winagent")
+    file(GLOB config_files
+        ${SRC_FOLDER}/build/config/CMakeFiles/config.dir/src/*.obj)
+else()
+    file(GLOB config_files
+        ${SRC_FOLDER}/build/config/CMakeFiles/config.dir/src/*.c.o)
+endif()
 
 add_library(CONFIG_O STATIC ${config_files})
 

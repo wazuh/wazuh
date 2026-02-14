@@ -16,8 +16,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "../../remoted/bulk.h"
-#include "../../headers/shared.h"
+#include "bulk.h"
+#include "shared.h"
 
 /*
  * Test: test_init_no_hint

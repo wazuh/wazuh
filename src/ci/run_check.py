@@ -183,12 +183,13 @@ def runAStyleFormat(moduleName):
         raise ValueError(errorString)
 
 
-def runCoverage(moduleName):
+def runCoverage(moduleName, target="agent"):
     """
     Execute code coverage for a library unit tests.
 
     Args:
         - moduleName: Library to be analyzed using gcov and lcov tools.
+        - target: Build type. <agent, winagent, server>
 
     Returns:
         - None
@@ -233,12 +234,18 @@ def runCoverage(moduleName):
 
     excludeArgs = " ".join('--exclude="{}"'.format(pattern) for pattern in excludePatterns) if excludePatterns else ""
 
+    # Use mingw gcov for Windows cross-compilation
+    gcovTool = ""
+    if target == "winagent":
+        gcovTool = "--gcov-tool i686-w64-mingw32-gcov"
+
     coverageCommand = "lcov {} --capture --output-file {}/code_coverage.info \
-                       -rc lcov_branch_coverage=0 {} \
-                       --include \"{}/*\" -q".format(folders,
-                                                     reportFolder,
-                                                     excludeArgs,
-                                                     includeDir)
+                       -rc lcov_branch_coverage=0 {} {} \
+                       --include \"{}/*\" --ignore-errors mismatch -q".format(folders,
+                                                                               reportFolder,
+                                                                               gcovTool,
+                                                                               excludeArgs,
+                                                                               includeDir)
     out = subprocess.run(coverageCommand,
                          stdout=subprocess.PIPE,
                          shell=True,
@@ -293,8 +300,9 @@ def runCppCheck(moduleName):
 
     currentDir = utils.moduleDirPath(moduleName)
     # Exclude old per-module build directories to avoid scanning CMake artifacts
-    cppcheckCommand = "cppcheck --force --std=c++17 --quiet -i{}/build -i{}/tests/build {}".format(
-        currentDir, currentDir, currentDir)
+    # Exclude eBPF files (kernel-space code with special macros not understood by cppcheck)
+    cppcheckCommand = "cppcheck --force --std=c++17 --quiet -i{}/build -i{}/tests/build -i{}/src/ebpf {}".format(
+        currentDir, currentDir, currentDir, currentDir)
 
     out = subprocess.run(cppcheckCommand,
                          stdout=subprocess.PIPE,
@@ -348,7 +356,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
         utils.printInfo(msg="Skipping coverage for {} in {} target".format(
                         moduleName, target))
     else:
-        runCoverage(moduleName=moduleName)
+        runCoverage(moduleName=moduleName, target=target)
 
     # We run valgrind for all targets except Windows
     # The memory analysis for Wine will be enabled in #17018

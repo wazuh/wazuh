@@ -14,11 +14,11 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "../../headers/shared.h"
-#include "../../os_xml/os_xml.h"
-#include "../os_xml/os_xml_internal.h"
+#include "shared.h"
+#include "os_xml.h"
+#include "os_xml_internal.h"
 #include "../wrappers/common.h"
-#include "../../headers/defs.h"
+#include "defs.h"
 
 // Struct
 typedef struct test_struct {

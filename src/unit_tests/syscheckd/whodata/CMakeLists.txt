@@ -1,5 +1,6 @@
 include_directories(${SRC_FOLDER}/syscheckd/include)
 include_directories(${SRC_FOLDER}/syscheckd/src)
+include_directories(${SRC_FOLDER}/syscheckd/src/file)
 include_directories(${SRC_FOLDER}/unit_tests)
 include_directories(${SRC_FOLDER}/config)
 

@@ -10,13 +10,13 @@
 
 #ifdef WIN32
 #include "shared.h"
-#include "client-agent/agentd.h"
-#include "logcollector/logcollector.h"
-#include "os_execd/execd.h"
-#include "wazuh_modules/wmodules.h"
+#include "agentd.h"
+#include "logcollector.h"
+#include "execd.h"
+#include "wmodules.h"
 #include "sysInfo.h"
 #include "sym_load.h"
-#include "../os_net/os_net.h"
+#include "os_net.h"
 #include "dll_load_notify.h"
 
 #ifdef WAZUH_UNIT_TESTING

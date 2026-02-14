@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "shared.h"
-#include "../headers/binaries_op.h"
+#include "binaries_op.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 

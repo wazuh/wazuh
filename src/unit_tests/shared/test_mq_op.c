@@ -17,7 +17,7 @@
 #include <cmocka.h>
 #include <unistd.h>
 
-#include "../headers/shared.h"
+#include "shared.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"

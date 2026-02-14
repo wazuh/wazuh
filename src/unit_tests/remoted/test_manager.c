@@ -23,14 +23,14 @@
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/remoted/request_wrappers.h"
 #include "../wrappers/wazuh/remoted/remoted_op_wrappers.h"
-#include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
+#include "../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 
-#include "../wazuh_db/wdb.h"
-#include "../remoted/remoted.h"
-#include "../remoted/shared_download.h"
-#include "../headers/module_limits.h"
-#include "../../remoted/manager.c"
+#include "wdb.h"
+#include "remoted.h"
+#include "shared_download.h"
+#include "module_limits.h"
+#include "manager.c"
 
 int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, int* wdb_sock);
 extern OSHash *agent_data_hash;

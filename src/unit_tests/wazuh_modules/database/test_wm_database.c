@@ -16,8 +16,8 @@
 #include <stdlib.h>
 
 #include <shared.h>
-#include "../../../wazuh_modules/wmodules_def.h"
-#include "../../../wazuh_modules/wm_database.h"
+#include "wmodules_def.h"
+#include "wm_database.h"
 
 #include "../../wrappers/common.h"
 #include "../../wrappers/wazuh/os_crypto/keys_wrappers.h"
@@ -25,7 +25,7 @@
 #include "../../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/rbtree_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/validate_op_wrappers.h"
-#include "../../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
+#include "../../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../../wrappers/libc/stdio_wrappers.h"
 #include "../../wrappers/libc/string_wrappers.h"

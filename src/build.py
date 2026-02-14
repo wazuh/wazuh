@@ -138,7 +138,8 @@ def processArgs():
     elif args.tests:
         run_check.runTests(moduleName=args.tests)
     elif args.coverage:
-        run_check.runCoverage(moduleName=args.coverage)
+        target = args.target if args.target else "agent"
+        run_check.runCoverage(moduleName=args.coverage, target=target)
     elif args.valgrind:
         run_check.runValgrind(moduleName=args.valgrind)
     elif args.cppcheck:

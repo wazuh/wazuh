@@ -1,26 +1,6 @@
-# Generate monitord library
-file(GLOB monitord_files
-    ${SRC_FOLDER}/monitord/*.o)
-
-
-add_library(MONITOR_O STATIC ${monitord_files})
-
-set_source_files_properties(
-    ${monitord_files}
-    PROPERTIES
-    EXTERNAL_OBJECT true
-    GENERATED true
-)
-
-
-set_target_properties(
-    MONITOR_O
-    PROPERTIES
-    LINKER_LANGUAGE C
-)
-
-
-target_link_libraries(MONITOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+link_directories(${SRC_FOLDER}/build/lib)
+include_directories(${SRC_FOLDER}/monitord/include)
+include_directories(${SRC_FOLDER}/monitord/src)
 
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
@@ -52,7 +32,7 @@ foreach(counter RANGE ${count})
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
-        MONITOR_O
+        monitord_lib
         ${TEST_DEPS}
     )
 

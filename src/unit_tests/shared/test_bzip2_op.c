@@ -16,7 +16,7 @@
 
 #include "../wrappers/common.h"
 #include "shared.h"
-#include "../headers/bzip2_op.h"
+#include "bzip2_op.h"
 #include "../wrappers/externals/bzip2/bzlib_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"

@@ -15,7 +15,7 @@
 #include <cmocka.h>
 #include <time.h>
 
-#include "../../../wazuh_modules/wmodules.h"
+#include "wmodules.h"
 
 static size_t echo(void * module, char * query, char ** output) {
     (void)module;

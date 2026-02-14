@@ -23,8 +23,13 @@ list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.c")
 
 # Generate wazuh modules library
-file(GLOB ms_graph ../../../wazuh_modules/*.o)
-list(REMOVE_ITEM ms_graph ../../../wazuh_modules/main.o)
+if(${TARGET} STREQUAL "winagent")
+    file(GLOB_RECURSE ms_graph ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.obj)
+    list(REMOVE_ITEM ms_graph ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.obj)
+else()
+    file(GLOB_RECURSE ms_graph ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+    list(REMOVE_ITEM ms_graph ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
+endif()
 
 add_library(MS_GRAPH_O STATIC ${ms_graph})
 
@@ -59,9 +64,11 @@ foreach(counter RANGE ${count})
     if(${TARGET} STREQUAL "server")
         target_link_libraries(
             ${test_name}
+            -Wl,--start-group
             ${WAZUHLIB}
             ${WAZUHEXT}
             MS_GRAPH_O
+            -Wl,--end-group
             -lcmocka
             -ldl
             -fprofile-arcs

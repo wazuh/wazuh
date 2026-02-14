@@ -33,8 +33,8 @@
 #include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/win_whodata_wrappers.h"
 
-#include "../syscheckd/include/syscheck.h"
-#include "../config/syscheck-config.h"
+#include "syscheck.h"
+#include "syscheck-config.h"
 
 #ifdef TEST_WINAGENT
 // This struct should always reflect the one defined in run_realtime.c

@@ -16,13 +16,12 @@
 #include <errno.h>
 #include <string.h>
 
-#include "../../headers/shared.h"
-#include "../../headers/sec.h"
-#include "../../addagent/manage_agents.h"
+#include "shared.h"
+#include "sec.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
+#include "../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/libc/string_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"

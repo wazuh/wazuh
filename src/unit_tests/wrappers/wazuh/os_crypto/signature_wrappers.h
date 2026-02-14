@@ -7,14 +7,12 @@
  * Foundation
  */
 
-
 #ifndef SIGNATURE_WRAPPERS_H
 #define SIGNATURE_WRAPPERS_H
 
-#include "headers/shared.h"
+#include "shared.h"
 #include <string.h>
 
-int __wrap_w_wpk_unsign(const char * source, const char * target, const char ** ca_store);
-
+int __wrap_w_wpk_unsign(const char* source, const char* target, const char** ca_store);
 
 #endif

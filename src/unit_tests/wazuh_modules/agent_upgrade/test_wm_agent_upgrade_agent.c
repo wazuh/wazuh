@@ -24,9 +24,9 @@
 #include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
 
-#include "../../wazuh_modules/wmodules.h"
-#include "../../wazuh_modules/agent_upgrade/agent/wm_agent_upgrade_agent.h"
-#include "../../headers/shared.h"
+#include "wmodules.h"
+#include "wm_agent_upgrade_agent.h"
+#include "shared.h"
 
 #ifndef TEST_WINAGENT
 void wm_agent_upgrade_listen_messages(const wm_agent_configs* agent_configs);

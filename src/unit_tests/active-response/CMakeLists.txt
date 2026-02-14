@@ -1,24 +1,3 @@
-# Generate active-response library
-file(GLOB active-response_files
-    ${SRC_FOLDER}/active-response/*.o)
-
-add_library(ACTIVE-RESPONSE_O STATIC ${active-response_files})
-
-set_source_files_properties(
-    ${active-response_files}
-    PROPERTIES
-    EXTERNAL_OBJECT true
-    GENERATED true
-)
-
-set_target_properties(
-    ACTIVE-RESPONSE_O
-    PROPERTIES
-    LINKER_LANGUAGE C
-)
-
-target_link_libraries(ACTIVE-RESPONSE_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
-
 # Generate active-response tests
 if(NOT ${TARGET} STREQUAL "winagent")
     list(APPEND active-response_names "test_active-response")
@@ -37,7 +16,6 @@ foreach(counter RANGE ${count})
         ${active-response_test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
-        ACTIVE-RESPONSE_O
         ${TEST_DEPS}
     )
     if(NOT active-response_test_flags STREQUAL " ")

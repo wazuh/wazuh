@@ -13,11 +13,11 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "../../headers/shared.h"
-#include "../../logcollector/state.h"
-#include "../../logcollector/logcollector.h"
-#include "../../wazuh_modules/wmodules.h"
-#include "../../os_net/os_net.h"
+#include "shared.h"
+#include "../../logcollector/src/state.h"
+#include "logcollector.h"
+#include "wmodules.h"
+#include "os_net.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"

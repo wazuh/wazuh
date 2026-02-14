@@ -14,7 +14,7 @@
 #ifdef WIN32
 #include <winsock2.h>
 #include <windows.h>
-#include "../../../../config/syscheck-config.h"
+#include "syscheck-config.h"
 #endif
 
 

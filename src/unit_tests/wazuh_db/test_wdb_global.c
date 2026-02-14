@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../wazuh_db/wdb.h"
+#include "wdb.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
@@ -16,7 +16,7 @@
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/posix/time_wrappers.h"
 #include "../wrappers/wazuh/shared/cluster_op_wrappers.h"
-#include "../../config/wazuh_db-config.h"
+#include "wazuh_db-config.h"
 #include "wazuhdb_op.h"
 
 

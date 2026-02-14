@@ -1,27 +1,9 @@
-# Generate remoted library
-file(GLOB remoted_files
-    ${SRC_FOLDER}/remoted/*.o)
-
 add_compile_options("-g")
-
-add_library(REMOTED_O STATIC ${remoted_files})
-
-set_source_files_properties(
-    ${remoted_files}
-    PROPERTIES
-    EXTERNAL_OBJECT true
-    GENERATED true
-)
-
-set_target_properties(
-    REMOTED_O
-    PROPERTIES
-    LINKER_LANGUAGE C
-)
 
 link_directories(${SRC_FOLDER}/build/lib)
 include_directories(${SRC_FOLDER}/shared_modules/router/include)
-target_link_libraries(REMOTED_O ${WAZUHLIB} ${WAZUHEXT} -lpthread -lrouter)
+include_directories(${SRC_FOLDER}/remoted/include)
+include_directories(${SRC_FOLDER}/remoted/src)
 
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
@@ -133,7 +115,7 @@ foreach(counter RANGE ${count})
         ${remoted_test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
-        REMOTED_O
+        remoted_lib
         ${TEST_DEPS}
     )
 

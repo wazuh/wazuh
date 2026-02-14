@@ -12,8 +12,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "../headers/shared.h"
-#include "../../os_crypto/sha1/sha1_op.h"
+#include "shared.h"
+#include "sha1_op.h"
 #include "../../wrappers/libc/stdio_wrappers.h"
 #include "../../wrappers/common.h"
 

@@ -18,8 +18,10 @@ endif()
 
 # Include directories
 include_directories(include)
+include_directories(src)
 include_directories(${SRC_FOLDER}/external/flatbuffers/include)
 include_directories(${SRC_FOLDER}/shared_modules/schema_validator/include)
+include_directories(${SRC_FOLDER}/wazuh_modules/vulnerability_scanner/src/scanOrchestrator)
 
 file(GLOB INVENTORY_SYNC_SRC "src/*.cpp")
 

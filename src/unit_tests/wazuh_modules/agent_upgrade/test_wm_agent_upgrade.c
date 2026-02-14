@@ -18,9 +18,9 @@
 #include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_agent_wrappers.h"
 
-#include "../../wazuh_modules/wmodules.h"
-#include "../../wazuh_modules/agent_upgrade/wm_agent_upgrade.h"
-#include "../../headers/shared.h"
+#include "wmodules.h"
+#include "wm_agent_upgrade.h"
+#include "shared.h"
 
 void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config);
 void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);

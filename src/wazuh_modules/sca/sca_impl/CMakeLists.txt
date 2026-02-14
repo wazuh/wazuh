@@ -28,7 +28,7 @@ include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/openssl/include/) # needed for
                                                              # hash_helper
 include_directories(${SRC_FOLDER}/external/flatbuffers/include)
-include_directories(${SRC_FOLDER}/headers/)
+include_directories(${SRC_FOLDER}/shared/include/)
 include_directories(${SRC_FOLDER}/wazuh_modules/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(
@@ -115,7 +115,7 @@ add_library(
   src/sca_checksum.cpp
   src/check_condition_evaluator.cpp
   $<$<PLATFORM_ID:Windows>:src/sca_policy_check_win.cpp>
-  ${SRC_FOLDER}/${RESOURCE_OBJ})
+  ${RESOURCE_OBJ_DLL})
 
 # Set position independent code for static library to be linked into shared
 # library

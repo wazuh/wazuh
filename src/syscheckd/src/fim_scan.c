@@ -12,18 +12,18 @@
 #include "syscheck.h"
 #include "syscheck_op.h"
 #include "time_op.h"
-#include "db/include/db.h"
-#include "file/file.h"
-#include "registry/registry.h"
+#include "db.h"
+#include "file.h"
+#include "registry.h"
 #ifdef __linux__
 #ifdef ENABLE_AUDIT
-#include "ebpf/include/ebpf_whodata.h"
+#include "ebpf_whodata.h"
 #endif /* ENABLE_AUDIT */
 #endif /* __linux__ */
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
-#include "../unit_tests/wrappers/windows/stat64_wrappers.h"
+#include "../../unit_tests/wrappers/windows/stat64_wrappers.h"
 #endif
 /* Remove static qualifier when unit testing */
 #define static

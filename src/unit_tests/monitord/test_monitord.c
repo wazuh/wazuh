@@ -21,12 +21,12 @@
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 
-#include "../external/cJSON/cJSON.h"
-#include "../headers/store_op.h"
-#include "../monitord/monitord.h"
-#include "../headers/defs.h"
-#include "../headers/shared.h"
-#include "../config/config.h"
+#include "../../external/cJSON/cJSON.h"
+#include "store_op.h"
+#include "monitord.h"
+#include "defs.h"
+#include "shared.h"
+#include "config.h"
 #include "os_err.h"
 
 /* redefinitons/wrapping */

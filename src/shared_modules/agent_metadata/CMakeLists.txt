@@ -21,9 +21,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/)
 
-add_library(
-  agent_metadata SHARED src/metadata_provider.cpp
-                        ${CMAKE_CURRENT_SOURCE_DIR}/../../${RESOURCE_OBJ})
+add_library(agent_metadata SHARED src/metadata_provider.cpp ${RESOURCE_OBJ_DLL})
 
 target_include_directories(agent_metadata
                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

@@ -14,9 +14,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../wazuh_db/wdb_pool.h"
-#include "../wazuh_db/wdb.h"
-#include "../headers/shared.h"
+#include "wdb_pool.h"
+#include "wdb.h"
+#include "shared.h"
 #include "../wrappers/common.h"
 
 extern wdb_pool_t wdb_pool;

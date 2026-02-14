@@ -13,8 +13,8 @@
 
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
-#include "../../module_query_errors.h"
-#include "../../src/syscollectorTablesDef.hpp"
+#include "module_query_errors.h"
+#include "syscollectorTablesDef.hpp"
 #include "schemaValidator.hpp"
 
 #include <mock_sysinfo.hpp>

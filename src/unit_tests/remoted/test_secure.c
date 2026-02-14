@@ -15,9 +15,9 @@
 #include <stdint.h>
 #include <cmocka.h>
 
-#include "../../headers/shared.h"
-#include "../../remoted/remoted.h"
-#include "../../remoted/secure.c"
+#include "shared.h"
+#include "remoted.h"
+#include "secure.c"
 #include "../wrappers/common.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/linux/socket_wrappers.h"

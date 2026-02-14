@@ -14,8 +14,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../syscheckd/include/syscheck.h"
-#include "../config/syscheck-config.h"
+#include "syscheck.h"
+#include "syscheck-config.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/posix/pthread_wrappers.h"

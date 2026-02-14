@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
-include_directories(${SRC_FOLDER}/headers/)
+include_directories(${SRC_FOLDER}/shared/include/)
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
 set(TEST_FILES
@@ -44,7 +44,7 @@ foreach(TEST_FILE ${TEST_FILES})
             fimebpf
             wazuh)
 
-  # Link gcov for coverage when UNIT_TEST is enabled (libwazuh.a has coverage symbols)
+  # Link gcov for coverage when UNIT_TEST is enabled
   if(UNIT_TEST)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
       target_link_libraries(${TEST_NAME} PRIVATE -fprofile-arcs)

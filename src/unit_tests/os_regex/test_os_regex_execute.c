@@ -8,8 +8,8 @@
 #include <stdint.h>
 
 #include "../../external/cJSON/cJSON.h"
-#include "../../os_regex/os_regex.h"
-#include "../../os_regex/os_regex_internal.h"
+#include "os_regex.h"
+#include "os_regex_internal.h"
 #include "../wrappers/common.h"
 
 #ifndef JSON_PATH_TEST

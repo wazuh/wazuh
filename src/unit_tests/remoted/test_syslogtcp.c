@@ -14,9 +14,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../../remoted/remoted.h"
-#include "../../headers/shared.h"
-#include "../../os_net/os_net.h"
+#include "remoted.h"
+#include "shared.h"
+#include "os_net.h"
 
 
 /* Forward declarations */

@@ -21,7 +21,7 @@
 #include "../../syscheckd/src/recovery/recovery.h"
 #include "../../syscheckd/src/db/include/db.h"
 #include "../../shared_modules/sync_protocol/include/agent_sync_protocol_c_interface.h"
-#include "../config/syscheck-config.h"
+#include "syscheck-config.h"
 #include "../wrappers/wazuh/shared_modules/agent_sync_protocol_wrappers.h"
 #include "../wrappers/wazuh/shared_modules/schema_validator_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"

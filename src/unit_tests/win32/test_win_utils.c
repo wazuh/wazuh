@@ -11,7 +11,7 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include "../../client-agent/agentd.h"
+#include "agentd.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/common.h"
 #include "../../data_provider/include/sysInfo.h"

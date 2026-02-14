@@ -16,13 +16,13 @@
 #include "../../wrappers/common.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
-#include "../../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
+#include "../../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
 
-#include "../../wazuh_modules/wmodules.h"
-#include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_manager.h"
-#include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_tasks.h"
-#include "../../headers/shared.h"
+#include "wmodules.h"
+#include "wm_agent_upgrade_manager.h"
+#include "wm_agent_upgrade_tasks.h"
+#include "shared.h"
 
 int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task);
 int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task);

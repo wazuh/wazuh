@@ -28,49 +28,13 @@ else()
   find_library(SCHEMA_VALIDATOR_LIB NAMES schema_validator HINTS ${SRC_FOLDER}/build/lib REQUIRED)
 endif()
 
-# Generate rootcheck library from object files
-file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
-list(APPEND rootfiles ${SRC_FOLDER}/shared/fs_op.o)
-list(APPEND rootfiles ${SRC_FOLDER}/shared/store_op.o)
-list(APPEND rootfiles ${SRC_FOLDER}/os_regex/os_match.o)
-
-if(${TARGET} STREQUAL "winagent")
-  # Exclude winagent file
-  list(FILTER rootfiles EXCLUDE REGEX ".*_rk.o$")
-
-  # Add test wrappers
-  file(GLOB test_wrapper_files
-       ${SRC_FOLDER}/unit_tests/wrappers/externals/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/externals/audit/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/externals/bzip2/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/externals/cJSON/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/externals/openssl/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/externals/procpc/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/externals/sqlite/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/libc/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/linux/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/posix/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/os_crypto/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/os_net/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/os_regex/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/syscheckd/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_db/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_modules/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/windows/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/windows/libc/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared_modules/*.o
-       )
-  list(APPEND sysfiles ${test_wrapper_files})
-endif()
+# Link against the rootcheck static library built by CMake
+find_library(ROOTCHECK_LIB NAMES rootcheck HINTS ${SRC_FOLDER}/build/lib REQUIRED)
 
 add_library(SYSCHECK_O STATIC ${sysfiles})
-add_library(ROOTCHECK_O STATIC ${rootfiles})
 
 set_source_files_properties(
   ${sysfiles}
-  ${rootfiles}
   PROPERTIES
   EXTERNAL_OBJECT true
   GENERATED true
@@ -78,15 +42,14 @@ set_source_files_properties(
 
 set_target_properties(
   SYSCHECK_O
-  ROOTCHECK_O
   PROPERTIES
   LINKER_LANGUAGE C
   )
 
 if(${TARGET} STREQUAL "winagent")
-  target_link_libraries(SYSCHECK_O ${FIMDB_LIB} ${AGENT_SYNC_PROTOCOL_LIB} ${DBSYNC_LIB} ${SCHEMA_VALIDATOR_LIB} ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+  target_link_libraries(SYSCHECK_O ${FIMDB_LIB} ${AGENT_SYNC_PROTOCOL_LIB} ${DBSYNC_LIB} ${SCHEMA_VALIDATOR_LIB} ${ROOTCHECK_LIB} ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 else()
-  target_link_libraries(SYSCHECK_O ${FIMDB_LIB} ${AGENT_SYNC_PROTOCOL_LIB} ${DBSYNC_LIB} ${SCHEMA_VALIDATOR_LIB} ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread -ldl)
+  target_link_libraries(SYSCHECK_O ${FIMDB_LIB} ${AGENT_SYNC_PROTOCOL_LIB} ${DBSYNC_LIB} ${SCHEMA_VALIDATOR_LIB} ${ROOTCHECK_LIB} ${WAZUHLIB} ${WAZUHEXT} -lpthread -ldl)
 endif()
 
 if(${TARGET} STREQUAL "winagent")
@@ -130,12 +93,11 @@ if(${TARGET} STREQUAL "winagent")
 
   set_target_properties(
     SYSCHECK_EVENT_O
-    ROOTCHECK_O
     PROPERTIES
     LINKER_LANGUAGE C
     )
 
-  target_link_libraries(SYSCHECK_EVENT_O ${FIMDB_LIB} ${AGENT_SYNC_PROTOCOL_LIB} ${DBSYNC_LIB} ${SCHEMA_VALIDATOR_LIB} ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+  target_link_libraries(SYSCHECK_EVENT_O ${FIMDB_LIB} ${AGENT_SYNC_PROTOCOL_LIB} ${DBSYNC_LIB} ${SCHEMA_VALIDATOR_LIB} ${ROOTCHECK_LIB} ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
   add_subdirectory(registry)
 endif()

@@ -22,10 +22,10 @@
 #include "../../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_task_manager_wrappers.h"
 
-#include "../../wazuh_modules/wmodules.h"
-#include "../../wazuh_modules/task_manager/wm_task_manager.h"
-#include "../../wazuh_modules/task_manager/wm_task_manager_tasks.h"
-#include "../../headers/shared.h"
+#include "wmodules.h"
+#include "wm_task_manager.h"
+#include "wm_task_manager_tasks.h"
+#include "shared.h"
 
 int wm_task_manager_init(wm_task_manager *task_config);
 void* wm_task_manager_main(wm_task_manager* task_config);

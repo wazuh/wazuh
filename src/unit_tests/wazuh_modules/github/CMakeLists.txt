@@ -29,8 +29,13 @@ list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.c")
 
 # Generate wazuh modules library
-file(GLOB github ../../../wazuh_modules/*.o)
-list(REMOVE_ITEM github ../../../wazuh_modules/main.o)
+if(${TARGET} STREQUAL "winagent")
+    file(GLOB_RECURSE github ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.obj)
+    list(REMOVE_ITEM github ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.obj)
+else()
+    file(GLOB_RECURSE github ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+    list(REMOVE_ITEM github ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
+endif()
 
 add_library(GITHUB_O STATIC ${github})
 
@@ -70,9 +75,11 @@ foreach(counter RANGE ${count})
     if(${TARGET} STREQUAL "server")
         target_link_libraries(
             ${test_name}
+            -Wl,--start-group
             ${WAZUHLIB}
             ${WAZUHEXT}
             GITHUB_O
+            -Wl,--end-group
             -lcmocka
             -ldl
             -fprofile-arcs
@@ -90,6 +97,7 @@ foreach(counter RANGE ${count})
 
 
     if(NOT test_flags STREQUAL " ")
+        separate_arguments(test_flags)
         target_link_libraries(
             ${test_name}
             ${test_flags}

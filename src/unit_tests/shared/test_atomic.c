@@ -16,7 +16,7 @@
 #include <errno.h>
 #include <string.h>
 
-#include "../../headers/atomic.h"
+#include "atomic.h"
 #include "../wrappers/posix/pthread_wrappers.h"
 
 static void test_atomic_int_get(void **state) {

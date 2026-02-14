@@ -26,12 +26,12 @@
 #include "../wrappers/wazuh/shared/auth_client_wrappers.h"
 #include "../wrappers/wazuh/shared/agent_op_wrappers.h"
 
-#include "../config/client-config.h"
-#include "../headers/store_op.h"
-#include "../monitord/monitord.h"
-#include "../headers/defs.h"
-#include "../headers/shared.h"
-#include "../config/config.h"
+#include "client-config.h"
+#include "store_op.h"
+#include "monitord.h"
+#include "defs.h"
+#include "shared.h"
+#include "config.h"
 
 /* redefinitons/wrapping */
 extern monitor_time_control mond_time_control;

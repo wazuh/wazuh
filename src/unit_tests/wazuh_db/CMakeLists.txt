@@ -1,6 +1,7 @@
-
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
+include_directories(${SRC_FOLDER}/wazuh_db/include)
+include_directories(${SRC_FOLDER}/wazuh_db/src)
 
 list(APPEND wdb_tests_names "test_wdb_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_last_insert_rowid \
@@ -73,19 +74,6 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg -Wl,-
                             -Wl,--wrap,stat -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_close -Wl,--wrap,rename -Wl,--wrap,time \
                             -Wl,--wrap,wdb_exec_stmt_single_column -Wl,--wrap,w_is_single_node -Wl,--wrap,sqlite3_column_text ${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS}")
 
-list(APPEND wdb_tests_names "test_wdb_global_helpers")
-list(APPEND wdb_tests_flags "-Wl,--wrap,strerror \
-                             -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,cJSON_CreateString -Wl,--wrap,cJSON_Parse \
-                             -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddNumberToObject \
-                             -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,cJSON_GetObjectItem \
-                             -Wl,--wrap,cJSON_Delete -Wl,--wrap,time -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap=fgetc\
-                             -Wl,--wrap,fclose -Wl,--wrap,cJSON_AddArrayToObject -Wl,--wrap,remove -Wl,--wrap,opendir -Wl,--wrap,readdir -Wl,--wrap,closedir \
-                             -Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,wdbc_query_parse_json -Wl,--wrap,wdbc_query_parse \
-                             -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,chown \
-                             -Wl,--wrap,chmod -Wl,--wrap,IsDir -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek -Wl,--wrap,get_node_name \
-                             -Wl,--wrap,rbtree_insert -Wl,--wrap,wfopen \
-                             -Wl,--wrap,stat -Wl,--wrap,fgetpos ${DEBUG_OP_WRAPPERS}")
-
 list(APPEND wdb_tests_names "test_wdb")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,strerror -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,time_diff \
                              -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Delete_ex \
@@ -140,10 +128,6 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mu
 add_compile_options(-Wall)
 link_directories(${SRC_FOLDER}/build/lib)
 
-# Wazuh-DB objects
-FILE(GLOB wazuh_db_objects ${SRC_FOLDER}/wazuh_db/*.o)
-list(REMOVE_ITEM wazuh_db_objects ${SRC_FOLDER}/wazuh_db/main.o ${SRC_FOLDER}/wazuh_db/wdb_shared.o)
-
 # Compilig tests
 list(LENGTH wdb_tests_names count)
 math(EXPR count "${count} - 1")
@@ -151,12 +135,14 @@ foreach(counter RANGE ${count})
     list(GET wdb_tests_names ${counter} test_name)
     list(GET wdb_tests_flags ${counter} test_flags)
 
-    add_executable(${test_name} ${test_name}.c ${wazuh_db_objects})
+    add_executable(${test_name} ${test_name}.c)
 
     target_link_libraries(
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
+        wdb_lib
+        wazuh_modulesd_lib
         ${TEST_DEPS}
         router
     )

@@ -1,15 +1,14 @@
 # Find the wazuh shared library
-find_library(WAZUHLIB NAMES libwazuh.a HINTS "${SRC_FOLDER}")
-find_library(WAZUHEXT NAMES libwazuhext.dylib HINTS "${SRC_FOLDER}")
-if(WAZUHEXT)
-  set(uname "Darwin")
+find_library(WAZUHLIB NAMES libwazuh_test.a HINTS "${SRC_FOLDER}")
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  find_library(WAZUHEXT NAMES libwazuhext.dylib HINTS "${SRC_FOLDER}")
 else()
-  set(uname "Linux")
+  find_library(WAZUHEXT NAMES libwazuhext.so HINTS "${SRC_FOLDER}")
 endif()
-find_library(WAZUHEXT NAMES libwazuhext.so HINTS "${SRC_FOLDER}")
 
 if(NOT WAZUHLIB)
-    message(FATAL_ERROR "libwazuh.a not found! Aborting...")
+    message(FATAL_ERROR "libwazuh_test.a not found! Aborting...")
 endif()
 
 if(NOT WAZUHEXT)
@@ -18,14 +17,14 @@ endif()
 
 # Add compiling flags and set tests dependencies
 link_directories("${SRC_FOLDER}/build/lib/")
-if(${uname} STREQUAL "Darwin")
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(TEST_DEPS
         -Wl,-all_load
         ${WAZUHLIB} ${WAZUHEXT}
         -lagent_metadata -lagent_sync_protocol -ldbsync -lschema_validator -lfimdb
         -Wl,-noall_load
         -lpthread -ldl -fprofile-arcs -ftest-coverage)
-    add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -I/usr/local/include -DENABLE_SYSC -DWAZUH_UNIT_TESTING)
+    add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -I/usr/local/include -DWAZUH_UNIT_TESTING)
 else()
     add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -DENABLE_AUDIT -DINOTIFY_ENABLED -fsanitize=address -fsanitize=undefined)
     link_libraries(-fsanitize=address -fsanitize=undefined)

@@ -23,7 +23,7 @@ if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
 endif(APPLE)
 
-include_directories(${SRC_FOLDER}/headers/)
+include_directories(${SRC_FOLDER}/shared/include/)
 include_directories(${SRC_FOLDER}/external/sqlite/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/cJSON/)
@@ -65,8 +65,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 file(GLOB SYSCOLLECTOR_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
-add_library(syscollector SHARED ${SYSCOLLECTOR_SRC}
-                                ${SRC_FOLDER}/${RESOURCE_OBJ})
+add_library(syscollector SHARED ${SYSCOLLECTOR_SRC} ${RESOURCE_OBJ_DLL})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(

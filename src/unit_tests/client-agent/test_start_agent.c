@@ -25,8 +25,8 @@
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"
 #endif
 
-#include "../client-agent/agentd.h"
-#include "../headers/module_limits.h"
+#include "agentd.h"
+#include "module_limits.h"
 
 extern void send_msg_on_startup(void);
 extern bool agent_handshake_to_server(int server_id, bool is_startup);

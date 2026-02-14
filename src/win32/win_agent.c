@@ -11,14 +11,14 @@
 #ifdef WIN32
 
 #include "shared.h"
-#include "wazuh_modules/wmodules.h"
-#include "client-agent/agentd.h"
-#include "logcollector/logcollector.h"
-#include "wazuh_modules/wmodules.h"
+#include "wmodules.h"
+#include "agentd.h"
+#include "logcollector.h"
+#include "wmodules.h"
 #include "os_win.h"
-#include "os_net/os_net.h"
-#include "os_execd/execd.h"
-#include "os_crypto/md5/md5_op.h"
+#include "os_net.h"
+#include "execd.h"
+#include "md5_op.h"
 #include "external/cJSON/cJSON.h"
 
 #ifndef ARGV0

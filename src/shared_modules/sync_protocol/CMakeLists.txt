@@ -78,7 +78,7 @@ add_library(
   ${GENERATED_HEADER}
   src/agent_sync_protocol_c_interface.cpp
   src/sync_message_transport.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../${RESOURCE_OBJ})
+  ${RESOURCE_OBJ_DLL})
 
 if(DEFINED ENV{TARGET} AND "$ENV{TARGET}" STREQUAL "server")
   # Manager build: use Router transport and link router library
@@ -89,14 +89,11 @@ if(DEFINED ENV{TARGET} AND "$ENV{TARGET}" STREQUAL "server")
     agent_sync_protocol PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../router/include)
 
   # Router is built in src/build/lib/
-  target_link_directories(
-    agent_sync_protocol PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../build/lib)
+  target_link_directories(agent_sync_protocol PRIVATE
+                          ${CMAKE_CURRENT_SOURCE_DIR}/../../build/lib)
   target_link_libraries(agent_sync_protocol PRIVATE router)
   message(
-    STATUS
-      "Linking router from: ${CMAKE_CURRENT_SOURCE_DIR}/../../build/lib"
-  )
+    STATUS "Linking router from: ${CMAKE_CURRENT_SOURCE_DIR}/../../build/lib")
 else()
   target_sources(agent_sync_protocol PRIVATE src/mqueue_transport.cpp)
   target_compile_definitions(agent_sync_protocol PRIVATE CLIENT=1)
@@ -112,7 +109,7 @@ target_include_directories(
           ${FLATBUFFERS_ROOT_DIR}/include
           ${CMAKE_CURRENT_SOURCE_DIR}/../../
           ${CMAKE_CURRENT_SOURCE_DIR}/../utils/
-          ${SRC_FOLDER}/headers
+          ${SRC_FOLDER}/shared/include
           ${CMAKE_CURRENT_SOURCE_DIR}/../file_helper/filesystem/include
           ${CMAKE_CURRENT_SOURCE_DIR}/../agent_metadata/include)
 

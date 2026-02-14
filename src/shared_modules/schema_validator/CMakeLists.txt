@@ -113,7 +113,7 @@ add_custom_command(
 # Build the schema_validator library
 add_library(
   schema_validator SHARED src/schemaValidator.cpp src/schemaValidator_c.cpp
-                          ${GENERATED_RESOURCES} ${SRC_FOLDER}/${RESOURCE_OBJ})
+                          ${GENERATED_RESOURCES} ${RESOURCE_OBJ_DLL})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN_EXPORT)

@@ -8,7 +8,7 @@
  */
 
 #include "shared.h"
-#include "../os_crypto/md5/md5_op.h"
+#include "md5_op.h"
 #include "syscheck.h"
 
 
@@ -16,7 +16,7 @@
 #ifdef WAZUH_UNIT_TESTING
 
 #ifdef WIN32
-#include "../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#include "../../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
 #endif
 
 #define static

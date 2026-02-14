@@ -14,9 +14,9 @@ list(APPEND shared_libs "wmodules_scheduling_helpers.h")
 list(APPEND shared_libs "wmodules_scheduling_helpers.c")
 
 # Generate modulesd library
-file(GLOB modulesd_files ../../../wazuh_modules/*.o)
-list(REMOVE_ITEM modulesd_files ../../../wazuh_modules/main.o)
-file(GLOB syscollector_files ../../../wazuh_modules/syscollector/*.o)
+file(GLOB_RECURSE modulesd_files ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+list(REMOVE_ITEM modulesd_files ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
+file(GLOB_RECURSE syscollector_files ../../../build/wazuh_modules/syscollector/CMakeFiles/syscollector.dir/src/*.cpp.o)
 
 add_library(SCHEDULING_MODULESD_O STATIC ${modulesd_files})
 

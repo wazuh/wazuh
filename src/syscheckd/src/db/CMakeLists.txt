@@ -4,6 +4,8 @@ project(fimdb)
 
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
+include_directories(${SRC_FOLDER}/external/libpcre2/include/)
+include_directories(${SRC_FOLDER}/shared/os_regex/)
 include_directories(${SRC_FOLDER}/syscheckd)
 include_directories(${SRC_FOLDER}/syscheckd/src/db/src)
 
@@ -25,7 +27,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     fimdb SHARED
     ${DB_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/src/registry.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/fimDBSpecializationWindows.cpp
-    ${SRC_FOLDER}/${RESOURCE_OBJ})
+    ${RESOURCE_OBJ_DLL})
 else()
   add_definitions(-DOS_TYPE=OSType::OTHERS)
   add_library(fimdb SHARED ${DB_SRC})
@@ -33,9 +35,10 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
-    fimdb PROPERTIES
-    LINK_FLAGS "-Wl,--add-stdcall-alias -Wl,--output-def,libfimdb.def"
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+    fimdb
+    PROPERTIES LINK_FLAGS
+               "-Wl,--add-stdcall-alias -Wl,--output-def,libfimdb.def"
+               RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 elseif(UNIX AND NOT APPLE)
   string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -61,7 +64,8 @@ if(UNIT_TEST)
   enable_testing()
   add_coverage_libraries(fimdb)
 
-  # Add coverage flags globally for all test executables (including those that compile sources directly)
+  # Add coverage flags globally for all test executables (including those that
+  # compile sources directly)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(--coverage)
     add_link_options(-fprofile-arcs)

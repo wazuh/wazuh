@@ -13,8 +13,8 @@
 #include <cmocka.h>
 #include <time.h>
 
-#include "../../config/config.h"
-#include "../../config/indexer-config.h"
+#include "config.h"
+#include "indexer-config.h"
 #include "../wrappers/externals/pcre2/pcre2_wrappers.h"
 
 static char * test_path = "test_output.conf";

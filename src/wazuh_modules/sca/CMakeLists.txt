@@ -22,7 +22,7 @@ endif(APPLE)
 
 add_subdirectory(sca_impl)
 
-include_directories(${SRC_FOLDER}/headers)
+include_directories(${SRC_FOLDER}/shared/include)
 include_directories(${SRC_FOLDER}/external/cJSON/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/flatbuffers/include)
@@ -54,7 +54,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 file(GLOB SCA_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
-add_library(sca SHARED ${SCA_SRC} ${SRC_FOLDER}/${RESOURCE_OBJ})
+add_library(sca SHARED ${SCA_SRC} ${RESOURCE_OBJ_DLL})
 
 target_link_libraries(sca PRIVATE SCAImpl)
 

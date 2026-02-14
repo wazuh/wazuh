@@ -702,21 +702,6 @@ InstallCommon()
 
     if [ ${NUNAME} = 'Darwin' ]
     then
-        if [ -f libwazuhshared.dylib ]
-        then
-            ${INSTALL} -m 0750 -o root -g 0 libwazuhshared.dylib ${INSTALLDIR}/lib
-        fi
-    elif [ -f libwazuhshared.so ]
-    then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libwazuhshared.so ${INSTALLDIR}/lib
-
-        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libwazuhshared.so
-        fi
-    fi
-
-    if [ ${NUNAME} = 'Darwin' ]
-    then
         if [ -f build/lib/libdbsync.dylib ]
         then
             ${INSTALL} -m 0750 -o root -g 0 build/lib/libdbsync.dylib ${INSTALLDIR}/lib
@@ -993,8 +978,8 @@ InstallCommon()
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/.ssh
 
   ./init/fw-check.sh execute
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/*.sh ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/*.py ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/src/*.sh ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/src/*.py ${INSTALLDIR}/active-response/bin/
   ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} firewall-drop ${INSTALLDIR}/active-response/bin/
   ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} default-firewall-drop ${INSTALLDIR}/active-response/bin/
   ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} pf ${INSTALLDIR}/active-response/bin/
@@ -1243,6 +1228,14 @@ InstallServer()
 {
 
     InstallLocal
+    if [ -f libwazuhshared.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libwazuhshared.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libwazuhshared.so
+        fi
+    fi
     if [ -f external/jemalloc/lib/libjemalloc.so.2 ]
     then
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/jemalloc/lib/libjemalloc.so.2 ${INSTALLDIR}/lib

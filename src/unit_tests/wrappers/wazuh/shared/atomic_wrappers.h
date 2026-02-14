@@ -9,14 +9,14 @@
 #ifndef ATOMIC_WRAPPERS
 #define ATOMIC_WRAPPERS
 
-#include "../../../../headers/atomic.h"
+#include "atomic.h"
 
-int __wrap_atomic_int_get(atomic_int_t *atomic);
+int __wrap_atomic_int_get(atomic_int_t* atomic);
 
-void __wrap_atomic_int_set(atomic_int_t *atomic, __attribute__((unused)) int value);
+void __wrap_atomic_int_set(atomic_int_t* atomic, __attribute__((unused)) int value);
 
-int __wrap_atomic_int_inc(atomic_int_t *atomic);
+int __wrap_atomic_int_inc(atomic_int_t* atomic);
 
-int __wrap_atomic_int_dec(atomic_int_t *atomic);
+int __wrap_atomic_int_dec(atomic_int_t* atomic);
 
-#endif //ATOMIC_WRAPPERS
+#endif // ATOMIC_WRAPPERS
