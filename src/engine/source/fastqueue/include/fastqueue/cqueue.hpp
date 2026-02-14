@@ -34,12 +34,18 @@ namespace fastqueue
 {
 
 constexpr int64_t WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 100000; ///< Timeout for the wait_dequeue_timed method
+constexpr size_t MIN_QUEUE_CAPACITY = 8192; ///< Minimum queue capacity (2x BLOCK_SIZE for optimal performance)
 
 /**
  * @brief A thread-safe queue that can be used to pass messages between threads.
  *
  * This class is a wrapper of the BlockingConcurrentQueue class from the moodycamel library.
  * It provides a simple interface to use the queue with optimized block size and index settings.
+ *
+ * @note IMPORTANT: Minimum queue capacity is MIN_QUEUE_CAPACITY (8192 elements).
+ *       This is required for optimal performance with BLOCK_SIZE=4096.
+ *       Attempting to create a queue with smaller capacity will throw std::runtime_error.
+ *
  * @tparam T The type of the data to be stored in the queue.
  * @tparam D The traits class for the queue (default: WQueueTraits with optimized settings).
  */
@@ -58,7 +64,7 @@ public:
      * @brief Construct a new Concurrent Queue object
      *
      * @param capacity The capacity of the queue. (Approximate)
-     * @throw std::runtime_error if the capacity is less than or equal to 0
+     * @throw std::runtime_error if the capacity is less than or equal to 0 or less than MIN_QUEUE_CAPACITY
      */
     explicit CQueue(int capacity)
         : m_queue(capacity)
@@ -67,6 +73,11 @@ public:
         if (capacity <= 0)
         {
             throw std::runtime_error("The capacity of the queue must be greater than 0");
+        }
+        if (static_cast<size_t>(capacity) < MIN_QUEUE_CAPACITY)
+        {
+            throw std::runtime_error("The capacity of the queue must be at least " + std::to_string(MIN_QUEUE_CAPACITY)
+                                     + " elements");
         }
     }
 
