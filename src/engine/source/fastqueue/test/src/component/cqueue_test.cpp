@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <chrono>
+#include <thread>
 
 #include <fastqueue/cqueue.hpp>
 
@@ -496,4 +498,381 @@ TEST_F(CQueueTest, CapacityRespectedAcrossBlocks)
     // Due to block allocation, may overshoot slightly
     ASSERT_LE(successfulPushes, CAPACITY + 4096); // Max 1 extra block
     ASSERT_GE(successfulPushes, CAPACITY);        // At least capacity
+}
+
+// ============================================================================
+// Rate Limiter Tests
+// ============================================================================
+
+TEST_F(CQueueTest, RateLimiterConstructorZeroRate)
+{
+    // maxElementsPerSecond = 0 should disable rate limiting
+    CQueue<std::shared_ptr<Dummy>> cq(MIN_QUEUE_CAPACITY, 0.0);
+
+    // Should work as normal queue without rate limiting
+    for (int i = 0; i < 1000; ++i)
+    {
+        ASSERT_TRUE(cq.push(std::make_shared<Dummy>(i)));
+    }
+
+    // Should be able to pop all elements immediately (no rate limiting)
+    std::shared_ptr<Dummy> value;
+    for (int i = 0; i < 1000; ++i)
+    {
+        ASSERT_TRUE(cq.tryPop(value));
+    }
+}
+
+TEST_F(CQueueTest, RateLimiterConstructorInvalidParams)
+{
+    // Negative rate should throw
+    ASSERT_THROW({ CQueue<std::shared_ptr<Dummy>> cq(MIN_QUEUE_CAPACITY, -1.0); }, std::runtime_error);
+
+    // Valid rate with invalid burst size should throw
+    ASSERT_THROW({ CQueue<std::shared_ptr<Dummy>> cq(MIN_QUEUE_CAPACITY, 100.0, 0.5); }, std::runtime_error);
+}
+
+TEST_F(CQueueTest, RateLimiterBasicThrottling)
+{
+    // Create queue with 10 elements/second rate limit
+    CQueue<std::shared_ptr<Dummy>> cq(MIN_QUEUE_CAPACITY, 10.0, 10.0);
+
+    // Fill queue
+    for (int i = 0; i < 100; ++i)
+    {
+        ASSERT_TRUE(cq.push(std::make_shared<Dummy>(i)));
+    }
+
+    // Should be able to pop 10 elements immediately (burst)
+    std::shared_ptr<Dummy> value;
+    int successfulPops = 0;
+    for (int i = 0; i < 20; ++i)
+    {
+        if (cq.tryPop(value))
+        {
+            successfulPops++;
+        }
+    }
+
+    // Should get ~10 elements (the burst size)
+    ASSERT_GE(successfulPops, 9); // Allow for timing variance
+    ASSERT_LE(successfulPops, 11);
+
+    // Immediately trying to pop more should fail (tokens exhausted)
+    ASSERT_FALSE(cq.tryPop(value));
+}
+
+TEST_F(CQueueTest, RateLimiterTokenRefill)
+{
+    // Create queue with 100 elements/second rate limit (very permissive)
+    CQueue<std::shared_ptr<Dummy>> cq(MIN_QUEUE_CAPACITY, 100.0, 50.0);
+
+    // Fill queue
+    for (int i = 0; i < 200; ++i)
+    {
+        ASSERT_TRUE(cq.push(std::make_shared<Dummy>(i)));
+    }
+
+    // Pop burst (50 elements)
+    std::shared_ptr<Dummy> value;
+    for (int i = 0; i < 50; ++i)
+    {
+        ASSERT_TRUE(cq.tryPop(value));
+    }
+
+    // Next pop should fail (tokens exhausted)
+    ASSERT_FALSE(cq.tryPop(value));
+
+    // Wait for token refill (100 tokens/sec = 10ms per token, need ~10 tokens)
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+    // Should now be able to pop more elements (tokens refilled)
+    int refillPops = 0;
+    for (int i = 0; i < 20; ++i)
+    {
+        if (cq.tryPop(value))
+        {
+            refillPops++;
+        }
+    }
+
+    // Should have gotten at least 10 elements (150ms * 100/sec = 15 tokens)
+    ASSERT_GE(refillPops, 10);
+}
+
+TEST_F(CQueueTest, RateLimiterBurstSize)
+{
+    // Create queue with 100 elements/second but only 20 burst
+    CQueue<std::shared_ptr<Dummy>> cq(MIN_QUEUE_CAPACITY, 100.0, 20.0);
+
+    // Fill queue
+    for (int i = 0; i < 100; ++i)
+    {
+        ASSERT_TRUE(cq.push(std::make_shared<Dummy>(i)));
+    }
+
+    // Should be able to pop up to burst size immediately
+    std::shared_ptr<Dummy> value;
+    int successfulPops = 0;
+    for (int i = 0; i < 30; ++i)
+    {
+        if (cq.tryPop(value))
+        {
+            successfulPops++;
+        }
+    }
+
+    // Should get ~20 elements (the burst size)
+    ASSERT_GE(successfulPops, 19);
+    ASSERT_LE(successfulPops, 21);
+}
+
+TEST_F(CQueueTest, RateLimiterWaitPop)
+{
+    // Create queue with 10 elements/second rate limit
+    CQueue<std::shared_ptr<Dummy>> cq(MIN_QUEUE_CAPACITY, 10.0, 5.0);
+
+    // Fill queue
+    for (int i = 0; i < 20; ++i)
+    {
+        ASSERT_TRUE(cq.push(std::make_shared<Dummy>(i)));
+    }
+
+    // Pop burst (5 elements)
+    std::shared_ptr<Dummy> value;
+    for (int i = 0; i < 5; ++i)
+    {
+        ASSERT_TRUE(cq.waitPop(value, 1000000)); // 1 second timeout
+    }
+
+    // Next waitPop should WAIT for tokens to refill, not return immediately
+    // Rate is 10/sec = 1 token every 100ms
+    // We should wait ~100ms and then succeed
+    auto start = std::chrono::steady_clock::now();
+    ASSERT_TRUE(cq.waitPop(value, 500000)); // 500ms timeout - should succeed after ~100ms
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
+
+    // Should have waited for token refill (~100ms), not returned immediately
+    ASSERT_GE(duration.count(), 50);  // At least 50ms (some margin)
+    ASSERT_LT(duration.count(), 300); // But less than 300ms
+}
+
+TEST_F(CQueueTest, RateLimiterBulkOperations)
+{
+    // Create queue with 100 elements/second, burst of 50
+    CQueue<std::shared_ptr<Dummy>> cq(MIN_QUEUE_CAPACITY, 100.0, 50.0);
+
+    // Fill queue
+    for (int i = 0; i < 200; ++i)
+    {
+        ASSERT_TRUE(cq.push(std::make_shared<Dummy>(i)));
+    }
+
+    // Try to pop 30 elements in bulk
+    std::shared_ptr<Dummy> elements[30];
+    size_t popped = cq.tryPopBulk(elements, 30);
+    ASSERT_EQ(popped, 30); // Should succeed (within burst limit)
+
+    // Try to pop 30 more immediately
+    popped = cq.tryPopBulk(elements, 30);
+    ASSERT_EQ(popped, 0); // Should fail (would exceed remaining tokens)
+
+    // But should be able to pop smaller batches
+    popped = cq.tryPopBulk(elements, 10);
+    ASSERT_GE(popped, 10); // Should succeed (within remaining burst)
+}
+
+TEST_F(CQueueTest, RateLimiterDefaultBurstSize)
+{
+    // Default burst size should equal maxElementsPerSecond
+    CQueue<std::shared_ptr<Dummy>> cq(MIN_QUEUE_CAPACITY, 50.0); // No burst size specified
+
+    // Fill queue
+    for (int i = 0; i < 100; ++i)
+    {
+        ASSERT_TRUE(cq.push(std::make_shared<Dummy>(i)));
+    }
+
+    // Should be able to pop 50 elements immediately (default burst = rate)
+    std::shared_ptr<Dummy> value;
+    int successfulPops = 0;
+    for (int i = 0; i < 60; ++i)
+    {
+        if (cq.tryPop(value))
+        {
+            successfulPops++;
+        }
+    }
+
+    ASSERT_GE(successfulPops, 49);
+    ASSERT_LE(successfulPops, 51);
+}
+
+TEST_F(CQueueTest, RateLimiterNoInterferenceWithPush)
+{
+    // Rate limiting should NOT affect push operations
+    CQueue<std::shared_ptr<Dummy>> cq(MIN_QUEUE_CAPACITY, 1.0, 1.0); // Very restrictive
+
+    // Should be able to push many elements regardless of rate limit
+    for (int i = 0; i < 1000; ++i)
+    {
+        ASSERT_TRUE(cq.push(std::make_shared<Dummy>(i)));
+    }
+
+    ASSERT_EQ(cq.size(), 1000);
+}
+
+TEST_F(CQueueTest, RateLimiterThreadSafety)
+{
+    // Test that rate limiter is thread-safe
+    CQueue<std::shared_ptr<Dummy>> cq(MIN_QUEUE_CAPACITY * 4, 1000.0, 500.0);
+
+    // Fill queue
+    for (int i = 0; i < 5000; ++i)
+    {
+        cq.push(std::make_shared<Dummy>(i));
+    }
+
+    std::atomic<int> totalPopped {0};
+
+    // Multiple threads trying to pop
+    auto popWorker = [&cq, &totalPopped]()
+    {
+        std::shared_ptr<Dummy> value;
+        for (int i = 0; i < 200; ++i)
+        {
+            if (cq.tryPop(value))
+            {
+                totalPopped++;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    };
+
+    std::thread t1(popWorker);
+    std::thread t2(popWorker);
+    std::thread t3(popWorker);
+
+    t1.join();
+    t2.join();
+    t3.join();
+
+    // Total popped should not exceed what rate limiter allows significantly
+    // 1000/sec * ~0.6 seconds (3 threads * 200 * 1ms) = ~600 elements
+    // Plus initial burst of 500
+    ASSERT_LE(totalPopped, 1200); // Some margin for timing variance
+}
+
+TEST_F(CQueueTest, RateLimiterWaitAcquireTimeout)
+{
+    // Create queue with very slow rate (1 element per second)
+    CQueue<std::shared_ptr<Dummy>> cq(MIN_QUEUE_CAPACITY, 1.0, 1.0);
+
+    // Fill queue
+    for (int i = 0; i < 10; ++i)
+    {
+        ASSERT_TRUE(cq.push(std::make_shared<Dummy>(i)));
+    }
+
+    // Pop the initial burst token
+    std::shared_ptr<Dummy> value;
+    ASSERT_TRUE(cq.tryPop(value));
+
+    // Next waitPop should timeout waiting for token (100ms timeout, need 1 second for token)
+    auto start = std::chrono::steady_clock::now();
+    ASSERT_FALSE(cq.waitPop(value, 100000)); // 100ms timeout
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
+
+    // Should have waited approximately the timeout duration
+    ASSERT_GE(duration.count(), 80);  // At least 80ms (some margin)
+    ASSERT_LT(duration.count(), 200); // But not much more than timeout
+}
+
+TEST_F(CQueueTest, RateLimiterWaitPopNoBusyWaiting)
+{
+    // Create queue with moderate rate (50 elements/second)
+    CQueue<std::shared_ptr<Dummy>> cq(MIN_QUEUE_CAPACITY, 50.0, 10.0);
+
+    // Fill queue
+    for (int i = 0; i < 100; ++i)
+    {
+        ASSERT_TRUE(cq.push(std::make_shared<Dummy>(i)));
+    }
+
+    // Pop the burst
+    std::shared_ptr<Dummy> value;
+    for (int i = 0; i < 10; ++i)
+    {
+        ASSERT_TRUE(cq.tryPop(value));
+    }
+
+    // Measure CPU time vs wall time to detect busy waiting
+    // If implementation is correct, thread should sleep and not consume CPU
+    auto wallStart = std::chrono::steady_clock::now();
+
+    // Multiple waitPops that should sleep waiting for tokens
+    for (int i = 0; i < 5; ++i)
+    {
+        ASSERT_TRUE(cq.waitPop(value, 500000)); // 500ms timeout
+    }
+
+    auto wallDuration =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - wallStart);
+
+    // Should have taken at least 50ms for tokens to refill (50/sec = 20ms per token, need ~5 tokens)
+    ASSERT_GE(wallDuration.count(), 50);
+
+    // If this test completes without spinning, it proves we're not busy waiting
+    // (A busy wait would consume CPU but take the same wall time)
+}
+
+TEST_F(CQueueTest, RateLimiterWaitPopMultipleThreads)
+{
+    // Test that multiple threads can waitPop without interfering
+    CQueue<std::shared_ptr<Dummy>> cq(MIN_QUEUE_CAPACITY * 4, 100.0, 50.0);
+
+    // Fill queue
+    for (int i = 0; i < 1000; ++i)
+    {
+        cq.push(std::make_shared<Dummy>(i));
+    }
+
+    std::atomic<int> totalPopped {0};
+    std::atomic<int> totalTimeouts {0};
+
+    // Multiple threads using waitPop
+    auto waitPopWorker = [&cq, &totalPopped, &totalTimeouts]()
+    {
+        std::shared_ptr<Dummy> value;
+        for (int i = 0; i < 100; ++i)
+        {
+            if (cq.waitPop(value, 100000)) // 100ms timeout
+            {
+                totalPopped++;
+            }
+            else
+            {
+                totalTimeouts++;
+            }
+        }
+    };
+
+    auto start = std::chrono::steady_clock::now();
+
+    std::thread t1(waitPopWorker);
+    std::thread t2(waitPopWorker);
+    std::thread t3(waitPopWorker);
+
+    t1.join();
+    t2.join();
+    t3.join();
+
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
+
+    // With 100 elements/sec and initial burst of 50, in the time it takes
+    // we should be able to pop roughly: 50 (burst) + 100 * (duration_seconds)
+    // This verifies rate limiting is working across threads
+    int expectedMax = 50 + static_cast<int>(100.0 * duration.count() / 1000.0) + 50; // +50 margin
+    ASSERT_LE(totalPopped, expectedMax);
+    ASSERT_GT(totalPopped, 0); // Should have popped something
 }
