@@ -44,6 +44,7 @@ if(ENGINE_BUILD_TEST)
   # Component test
   add_executable(fastqueue_ctest
     ${TEST_SRC_COMPONENT_DIR}/cqueue_test.cpp
+    ${TEST_SRC_COMPONENT_DIR}/stdqueue_test.cpp
   )
 
   target_link_libraries(fastqueue_ctest
@@ -69,8 +70,11 @@ add_library(fastqueue_bench INTERFACE)
 target_include_directories(fastqueue_bench INTERFACE ${BENCH_DIR}/include)
 target_link_libraries(fastqueue_bench INTERFACE fastqueue::fastqueue benchmark::benchmark)
 add_library(fastqueue::bench ALIAS fastqueue_bench)
+
 add_executable(fastqueue_benchmark
     ${BENCH_SRC_DIR}/cqueue_bench.cpp
+    ${BENCH_SRC_DIR}/stdqueue_bench.cpp
+    ${BENCH_SRC_DIR}/comparison_bench.cpp
 )
 
 target_include_directories(fastqueue_benchmark
