@@ -30,6 +30,8 @@ jobs:
           # We remove the executables that aren't distributed in the signed installer
           rm -f src/win32/setup-*.exe
           cp src/win32/*.exe src/exe_files/
+          # Copy DLL dependencies required by the executables
+          cp src/win32/*.dll src/exe_files/ 2>/dev/null || true
       - name: Upload Artifact executables
         uses: actions/upload-artifact@v4
         with:
