@@ -6,6 +6,9 @@
 namespace fastqueue
 {
 
+constexpr int64_t WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 100000; ///< Timeout for the wait_dequeue_timed method
+constexpr size_t MIN_QUEUE_CAPACITY = 8192; ///< Minimum queue capacity (2x BLOCK_SIZE for optimal performance)
+
 /**
  * @brief An interface for a fast concurrent queue
  *

@@ -14,7 +14,7 @@ namespace fastqueue
  * @brief Token Bucket rate limiter for controlling dequeue rate
  *
  * Uses a token bucket algorithm to limit the rate at which elements can be dequeued.
- * Thread-safe using atomics.
+ * Thread-safe using atomics. Lockess design to minimize contention.
  */
 class RateLimiter
 {
