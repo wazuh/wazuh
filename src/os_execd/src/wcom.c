@@ -381,7 +381,7 @@ error:
 
 size_t wcom_check_manager_config(char **output) {
     static const char *daemons[] = {"bin/wazuh-manager-authd", "bin/wazuh-manager-remoted",
-                                    "bin/wazuh-manager-execd", "bin/wazuh-manager-analysisd",
+                                    "bin/wazuh-manager-analysisd",
                                     "bin/wazuh-manager-modulesd", "bin/wazuh-manager-clusterd",
                                     NULL
                                     };

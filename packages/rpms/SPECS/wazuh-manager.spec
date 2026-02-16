@@ -694,7 +694,6 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-analysisd
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-authd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-control
-%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-execd
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-monitord
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-remoted
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/verify-agent-conf

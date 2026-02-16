@@ -26,6 +26,7 @@ class MockServerSelector
 {
 public:
     MOCK_METHOD(std::string, getNext, (), ());
+    MOCK_METHOD(bool, isAvailable, (), ());
 
     // Default constructor for GMock
     MockServerSelector() = default;

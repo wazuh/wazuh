@@ -83,7 +83,6 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     else if (!strcmp(node->values[0], "open-scap")) {
         mwarn("Deprecated module 'open-scap' is no longer available.");
     }
-#ifdef ENABLE_SYSC
 #ifdef CLIENT
     else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)) {
         if (wm_syscollector_read(xml, children, cur_wmodule) < 0) {
@@ -95,7 +94,6 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)) {
         mwarn("The '%s' module only works for the agent", node->values[0]);
     }
-#endif
 #endif
 #ifdef CLIENT
     else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name)) {

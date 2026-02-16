@@ -1491,7 +1491,6 @@ clean-internals:
 	rm -f wazuh-manager-monitord
 	rm -f wazuh-manager-authd
 	rm -f wazuh-manager-db
-	rm -f wazuh-manager-execd
 	rm -f manage_agents
 	rm -f verify-agent-conf
 # Compilation libraries

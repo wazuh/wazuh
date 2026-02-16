@@ -1935,6 +1935,7 @@ test_name: PUT /cluster/restart
 
 marks:
   - cluster
+  - skip: execd socket no longer exists in manager after agent-manager separation
 
 stages:
 
@@ -2173,7 +2174,7 @@ stages:
       save:
         json:
           wazuh_version: data.api_version
-  
+
   - name: Enable update check
     request:
       verify: False

@@ -29,7 +29,7 @@ if [ $? = 0 ]; then
 fi
 
 AUTHOR="Wazuh Inc."
-DAEMONS="wazuh-manager-modulesd wazuh-manager-monitord wazuh-manager-analysisd wazuh-manager-execd wazuh-manager-db"
+DAEMONS="wazuh-manager-modulesd wazuh-manager-monitord wazuh-manager-analysisd wazuh-manager-db"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
@@ -396,7 +396,6 @@ restart)
     restart_service
     ;;
 reload)
-    DAEMONS=$(echo $DAEMONS | sed 's/wazuh-manager-execd//')
     restart_service
     ;;
 status)

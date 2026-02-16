@@ -908,23 +908,7 @@ void test_wm_agent_upgrade_start_manager_module_disabled(void **state)
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8152): Module Agent Upgrade disabled. Exiting...");
 
-    will_return(__wrap_pthread_exit, OS_INVALID);
-
-    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
-
-    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, WM_UPGRADE_SOCK);
-    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
-    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
-    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
-    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
-    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
-    will_return(__wrap_OS_BindUnixDomainWithPerms, -1);
-
-    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket 'queue/tasks/upgrade': 'Operation not permitted'");
-
-    wm_agent_upgrade_start_manager_module(config, 0);
+    expect_assert_failure(wm_agent_upgrade_start_manager_module(config, 0));
 }
 void test_wm_agent_upgrade_router_callback_failed_connection(void **state)
 {

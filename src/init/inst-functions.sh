@@ -869,7 +869,6 @@ InstallCommon()
     ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${INSTALLDIR}/bin/
   else
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-manager-execd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-manager-modulesd ${INSTALLDIR}/bin/
   fi
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control

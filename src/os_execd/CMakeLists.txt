@@ -38,14 +38,9 @@ include_directories(
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# Keep agent daemon name for agent/winagent targets and manager daemon name for
-# server/local/hybrid targets.
+# Execd is agent-only and keeps the agent daemon name on all Unix targets.
 set(WAZUH_EXECD_DAEMON_NAME "wazuh-execd")
 set(WAZUH_RUNTIME_GROUP "wazuh")
-if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
-  set(WAZUH_EXECD_DAEMON_NAME "wazuh-manager-execd")
-  set(WAZUH_RUNTIME_GROUP "wazuh-manager")
-endif()
 add_definitions(-DARGV0="${WAZUH_EXECD_DAEMON_NAME}")
 add_definitions(-DGROUPGLOBAL="${WAZUH_RUNTIME_GROUP}")
 

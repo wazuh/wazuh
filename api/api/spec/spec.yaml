@@ -2840,8 +2840,6 @@ components:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-manager-authd:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-manager-execd:
-          $ref: '#/components/schemas/DaemonStatus'
         wazuh-manager-monitord:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-manager-remoted:
@@ -3281,8 +3279,6 @@ components:
           wazuh-manager-analysisd:
             $ref: '#/components/schemas/LogSummary'
           wazuh-manager-authd:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-manager-execd:
             $ref: '#/components/schemas/LogSummary'
           wazuh-manager-monitord:
             $ref: '#/components/schemas/LogSummary'
@@ -7482,7 +7478,6 @@ paths:
                     - wazuh-manager-analysisd: running
                       wazuh-manager-authd: stopped
                       wazuh-manager-monitord: running
-                      wazuh-manager-execd: running
                       wazuh-manager-remoted: running
                       wazuh-manager-apid: running
                       wazuh-manager-clusterd: running

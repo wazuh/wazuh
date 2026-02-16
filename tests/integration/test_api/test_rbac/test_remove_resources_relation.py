@@ -23,7 +23,6 @@ targets:
 daemons:
     - wazuh-manager-apid
     - wazuh-manager-db
-    - wazuh-manager-execd
     - wazuh-manager-analysisd
     - wazuh-manager-remoted
     - wazuh-manager-modulesd

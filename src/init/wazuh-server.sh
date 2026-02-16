@@ -33,7 +33,7 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-DAEMONS="wazuh-manager-clusterd wazuh-manager-modulesd wazuh-manager-monitord wazuh-manager-remoted wazuh-manager-analysisd wazuh-manager-execd wazuh-manager-db wazuh-manager-authd wazuh-manager-apid"
+DAEMONS="wazuh-manager-clusterd wazuh-manager-modulesd wazuh-manager-monitord wazuh-manager-remoted wazuh-manager-analysisd wazuh-manager-db wazuh-manager-authd wazuh-manager-apid"
 DEPRECATED_DAEMONS="ossec-authd"
 
 # Reverse order of daemons
@@ -249,10 +249,9 @@ is_systemd() {
     [ -d /run/systemd/system ]
 }
 
-# Add daemons to execd cgroup if systemd is used in legacy systems
+# Add daemons to the manager cgroup if systemd is used in legacy systems.
 add_to_cgroup()
 {
-    EXECD_PID=$(head -n 1 ${DIR}/var/run/wazuh-manager-execd-*.pid 2>/dev/null)
     CGROUP_PATH="/sys/fs/cgroup/systemd/system.slice/wazuh-manager.service/cgroup.procs"
 
     # Check if cgroup path exists
@@ -263,7 +262,6 @@ add_to_cgroup()
             [ -f "$pidfile" ] || continue
             pid=$(cat "$pidfile" 2>/dev/null)
             [ -z "$pid" ] && continue
-            [ "$pid" = "$EXECD_PID" ] && continue
 
             # Try to write to cgroup, capture any errors
             if ! echo "$pid" >> "$CGROUP_PATH" 2>/dev/null; then
@@ -454,7 +452,7 @@ start_service()
     # to internally create their PID files.
     sleep 2;
 
-    # Add daemons to execd cgroup if systemd is used
+    # Add daemons to the manager cgroup if systemd is used.
     if [ ! -z "$LEGACY_SYSTEMD_VERSION" ]; then
         add_to_cgroup
     fi
@@ -650,7 +648,6 @@ restart)
     restart_service
     ;;
 reload)
-    DAEMONS=$(echo $DAEMONS | sed 's/wazuh-manager-execd//')
     if is_systemd; then
         SYSTEMD_VERSION=$(systemctl --version | awk 'NR==1 {print $2}')
         if [ "$SYSTEMD_VERSION" -le 237 ]; then

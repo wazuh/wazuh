@@ -278,10 +278,10 @@ add_subdirectory(shared)
 add_subdirectory(config)
 add_subdirectory(wazuh_modules)
 add_subdirectory(active-response)
-add_subdirectory(os_execd)
 
 # Agent-only modules
 if(IS_AGENT)
+  add_subdirectory(os_execd)
   add_subdirectory(logcollector)
   add_subdirectory(syscheckd)
   add_subdirectory(rootcheck)

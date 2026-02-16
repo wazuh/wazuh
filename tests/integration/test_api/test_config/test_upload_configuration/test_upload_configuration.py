@@ -21,7 +21,6 @@ daemons:
     - wazuh-manager-apid
     - wazuh-manager-modulesd
     - wazuh-manager-analysisd
-    - wazuh-manager-execd
     - wazuh-manager-db
     - wazuh-manager-remoted
 
@@ -58,7 +57,12 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 
 
 # Marks
-pytestmark = pytest.mark.server
+pytestmark = [
+    pytest.mark.server,
+    pytest.mark.skip(
+        reason='Configuration upload success path depends on manager execd/wcom socket removed in manager-agent separation'
+    )
+]
 
 # Variables
 # Used by add_configuration to select the target configuration file

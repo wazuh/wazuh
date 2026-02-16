@@ -254,7 +254,7 @@ def get_manager_status(cache=False) -> typing.Dict:
         raise WazuhInternalError(1913, extra_message=str(e))
 
     processes = ['wazuh-manager-analysisd', 'wazuh-manager-authd', 'wazuh-manager-monitord',
-                 'wazuh-manager-execd', 'wazuh-manager-remoted', 'wazuh-manager-clusterd',
+                 'wazuh-manager-remoted', 'wazuh-manager-clusterd',
                  'wazuh-manager-modulesd', 'wazuh-manager-db', 'wazuh-manager-apid']
 
     data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), os.path.join(common.WAZUH_PATH, "var", "run")

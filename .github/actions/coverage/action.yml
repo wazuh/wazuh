@@ -77,7 +77,15 @@ runs:
           # Exclude scanContext.hpp
           arguments+="--exclude=*/scanContext.hpp "
 
-          arguments+="--ignore-errors mismatch "
+          lcov_version=$(lcov --version | awk '{print $NF}')
+          lcov_major=${lcov_version%%.*}
+          if [[ "$lcov_major" =~ ^[0-9]+$ ]] && (( lcov_major >= 2 )); then
+            ignore_errors="mismatch,unused"
+          else
+            ignore_errors="mismatch"
+          fi
+          arguments+="--ignore-errors $ignore_errors "
+          echo "Using lcov ignore-errors: $ignore_errors (lcov $lcov_version)"
 
           echo "Executing: lcov $arguments"
           lcov $arguments

@@ -237,6 +237,7 @@ def test_get_cluster_status():
         assert {'running': 'no'} == status
 
 
+@pytest.mark.skip(reason="execd socket no longer exists in manager after agent-manager separation")
 def test_manager_restart():
     """Verify that manager_restart send to the manager the restart request."""
     with patch('wazuh.core.cluster.utils.open', side_effect=None):

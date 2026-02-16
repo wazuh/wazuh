@@ -21,7 +21,6 @@ daemons:
     - wazuh-manager-apid
     - wazuh-manager-modulesd
     - wazuh-manager-analysisd
-    - wazuh-manager-execd
     - wazuh-manager-db
     - wazuh-manager-remoted
 

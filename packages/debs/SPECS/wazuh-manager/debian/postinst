@@ -136,7 +136,7 @@ case "$1" in
     fi
 
     for BIN in wazuh-manager-analysisd wazuh-manager-authd wazuh-manager-db \
-        wazuh-manager-execd wazuh-manager-modulesd wazuh-manager-monitord \
+        wazuh-manager-modulesd wazuh-manager-monitord \
         wazuh-manager-remoted; do
         if [ -f "${DIR}/bin/${BIN}" ]; then
             chown root:${GROUP} "${DIR}/bin/${BIN}"

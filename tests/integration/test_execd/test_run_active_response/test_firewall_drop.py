@@ -9,7 +9,7 @@ type: integration
 
 brief: Active responses execute a script in response to the triggering of specific alerts based
        on the alert level or rule group. These tests will check if the 'active responses',
-       which are executed by the 'wazuh-manager-execd' daemon via scripts, run correctly.
+       which are executed by the 'wazuh-execd' daemon via scripts, run correctly.
 
 components:
     - execd
@@ -21,7 +21,7 @@ targets:
 
 daemons:
     - wazuh-manager-analysisd
-    - wazuh-manager-execd
+    - wazuh-execd
 
 os_platform:
     - linux

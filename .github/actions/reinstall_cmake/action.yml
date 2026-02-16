@@ -12,10 +12,20 @@ runs:
   steps:
       - name: Reinstall CMake
         run: |
-          cmake --version
+          requested_version="${{ inputs.version }}"
+
+          if command -v cmake >/dev/null 2>&1; then
+            current_version="$(cmake --version | awk 'NR==1 {print $3}')"
+            cmake --version
+            if [ "${current_version}" = "${requested_version}" ]; then
+              echo "CMake ${requested_version} is already installed. Skipping reinstallation."
+              exit 0
+            fi
+          fi
+
           sudo chmod +x tools/devContainer/reinstall-cmake.sh
           sudo rm /usr/local/bin/cmake || true
           sudo rm /usr/local/bin/ctest || true
-          sudo tools/devContainer/reinstall-cmake.sh ${{ inputs.version }}
+          sudo tools/devContainer/reinstall-cmake.sh "${requested_version}"
           cmake --version
         shell: bash

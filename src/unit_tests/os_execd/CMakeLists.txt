@@ -32,12 +32,8 @@ endif(${TARGET} STREQUAL "winagent")
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
-# Match the execd ARGV0 used by the target build
-if(${TARGET} STREQUAL "server")
-    set(EXECD_TEST_ARGV0 "wazuh-manager-execd")
-else()
-    set(EXECD_TEST_ARGV0 "wazuh-execd")
-endif()
+# Execd is agent-only.
+set(EXECD_TEST_ARGV0 "wazuh-execd")
 
 # Generate Execd tests
 if(${TARGET} STREQUAL "winagent")
