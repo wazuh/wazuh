@@ -357,14 +357,15 @@ End Function
 Public Function CheckSvcRunning()
     On Error Resume Next
     Set WshShell = CreateObject("WScript.Shell")
+    scPath = WshShell.ExpandEnvironmentStrings("%SystemRoot%") & "\System32\sc.exe"
 
-    Set objExec = WshShell.Exec("sc query OssecSvc")
+    Set objExec = WshShell.Exec(scPath & " query OssecSvc")
     strOutput = objExec.StdOut.ReadAll()
     If InStr(strOutput, "RUNNING") > 0 Then
         Session.Property("OSSECRUNNING") = "Running"
     End If
 
-    Set objExec = WshShell.Exec("sc query WazuhSvc")
+    Set objExec = WshShell.Exec(scPath & " query WazuhSvc")
     strOutput = objExec.StdOut.ReadAll()
     If InStr(strOutput, "RUNNING") > 0 Then
         Session.Property("WAZUHRUNNING") = "Running"
