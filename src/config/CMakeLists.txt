@@ -39,8 +39,15 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   add_definitions(-DDarwin -DHIGHFIRST)
 endif()
 
-# Collect config source files - split into core and wmodules
+# Collect config source files
 file(GLOB CONFIG_CORE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
+
+# Remove agent-only config modules from server builds
+if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
+  list(REMOVE_ITEM CONFIG_CORE_SRC 
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/wmodules-sca.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/wmodules-syscollector.c")
+endif()
 
 # Create config library
 add_library(config STATIC ${CONFIG_CORE_SRC})
