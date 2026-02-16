@@ -287,7 +287,7 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
                 // Store the failed item for deletion after transaction completes
                 if (m_failedItems)
                 {
-                    m_failedItems->push_back({table, aux});
+                    m_failedItems->emplace_back(table, aux);
                 }
             }
 
@@ -436,9 +436,9 @@ std::string Syscollector::getCreateStatement() const
 
 
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
-                        const std::function<void(const std::string&)> reportDiffFunction,
-                        const std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> persistDiffFunction,
-                        const std::function<void(const modules_log_level_t, const std::string&)> logFunction,
+                        std::function<void(const std::string&)> reportDiffFunction,
+                        std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> persistDiffFunction,
+                        std::function<void(const modules_log_level_t, const std::string&)> logFunction,
                         const std::string& dbPath,
                         const std::string& normalizerConfigPath,
                         const std::string& normalizerType,
@@ -522,7 +522,7 @@ void Syscollector::start()
     }
 
     {
-        std::unique_lock<std::mutex> lock{m_scan_mutex};
+        std::scoped_lock<std::mutex> lock{m_scan_mutex};
         m_stopping = false;
     }
 
