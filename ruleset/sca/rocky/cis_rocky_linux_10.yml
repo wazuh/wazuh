@@ -2396,8 +2396,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:modprobe -n -v can -> r:^install /bin/false"
+      - "not c:lsmod -> r:can"
 
   # 3.2.3 Ensure dccp kernel module is not available. (Automated)
    - id: 18622
@@ -2453,8 +2455,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:modprobe -n -v rds -> r:^install /bin/false"
+      - "not c:lsmod -> r:rds"
 
   # 3.2.6 Ensure sctp kernel module is not available. (Automated)
    - id: 18625
@@ -2471,8 +2475,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:modprobe -n -v sctp -> r:^install /bin/false"
+      - "not c:lsmod -> r:sctp"
 
   # 3.3.1.1 Ensure net.ipv4.ip_forward is configured. (Automated)
    - id: 18626
@@ -2490,8 +2496,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.ip_forward -> r:^net.ipv4.ip_forward\s*=\s*0'
 
   # 3.3.1.2 Ensure net.ipv4.conf.all.forwarding is configured. (Automated)
    - id: 18627
@@ -2509,8 +2516,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.ip_forward -> r:^net.ipv4.ip_forward\s*=\s*0'
 
   # 3.3.1.3 Ensure net.ipv4.conf.default.forwarding is configured. (Automated)
    - id: 18628
@@ -2528,8 +2536,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.default.forwarding -> r:^net.ipv4.conf.default.forwarding\s*=\s*0'
 
   # 3.3.1.4 Ensure net.ipv4.conf.all.send_redirects is configured. (Automated)
    - id: 18629
@@ -2547,8 +2556,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0'
 
   # 3.3.1.5 Ensure net.ipv4.conf.default.send_redirects is configured. (Automated)
    - id: 18630
@@ -2566,8 +2576,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0'
 
   # 3.3.1.6 Ensure net.ipv4.icmp_ignore_bogus_error_responses is configured. (Automated)
    - id: 18631
@@ -2584,8 +2595,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1'
 
   # 3.3.1.7 Ensure net.ipv4.icmp_echo_ignore_broadcasts is configured. (Automated)
    - id: 18632
@@ -2602,8 +2614,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1'
 
   # 3.3.1.8 Ensure net.ipv4.conf.all.accept_redirects is configured. (Automated)
    - id: 18633
@@ -2620,8 +2633,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0'
 
   # 3.3.1.9 Ensure net.ipv4.conf.default.accept_redirects is configured. (Automated)
    - id: 18634
@@ -2638,8 +2652,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0'
 
   # 3.3.1.10 Ensure net.ipv4.conf.all.secure_redirects is configured. (Automated)
    - id: 18635
@@ -2656,8 +2671,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0'
 
   # 3.3.1.11 Ensure net.ipv4.conf.default.secure_redirects is configured. (Automated)
    - id: 18636
@@ -2674,8 +2690,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0'
 
   # 3.3.1.12 Ensure net.ipv4.conf.all.rp_filter is configured. (Automated)
    - id: 18637
@@ -2693,8 +2710,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1'
 
   # 3.3.1.13 Ensure net.ipv4.conf.default.rp_filter is configured. (Automated)
    - id: 18638
@@ -2712,8 +2730,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.default.rp_filter -> r:^net.ipv4.conf.default.rp_filter\s*=\s*1'
 
   # 3.3.1.14 Ensure net.ipv4.conf.all.accept_source_route is configured. (Automated)
    - id: 18639
@@ -2730,8 +2749,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0'
 
   # 3.3.1.15 Ensure net.ipv4.conf.default.accept_source_route is configured. (Automated)
    - id: 18640
@@ -2748,8 +2768,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0'
 
   # 3.3.1.16 Ensure net.ipv4.conf.all.log_martians is configured. (Automated)
    - id: 18641
@@ -2767,8 +2788,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^net.ipv4.conf.all.log_martians/s*=/s*1'
 
   # 3.3.1.17 Ensure net.ipv4.conf.default.log_martians is configured. (Automated)
    - id: 18642
@@ -2786,8 +2808,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.default.log_martians -> r:^net.ipv4.conf.default.log_martians/s*=/s*1'
 
   # 3.3.1.18 Ensure net.ipv4.tcp_syncookies is configured. (Automated)
    - id: 18643
@@ -2804,8 +2827,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.tcp_syncookies -> r:^net.ipv4.tcp_syncookies\s*=\s*1'
 
   # 3.3.2.1 Ensure net.ipv6.conf.all.forwarding is configured. (Automated)
    - id: 18644
@@ -2823,8 +2847,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv6.conf.all.forwarding -> r:^net.ipv6.conf.all.forwarding\s*=\s*0'
 
   # 3.3.2.2 Ensure net.ipv6.conf.default.forwarding is configured. (Automated)
    - id: 18645
@@ -2842,8 +2867,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv6.conf.default.forwarding -> r:^net.ipv6.conf.default.forwarding/s*=/s*0'
 
   # 3.3.2.3 Ensure net.ipv6.conf.all.accept_redirects is configured. (Automated)
    - id: 18646
@@ -2860,8 +2886,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv6.conf.all.accept_redirects -> r:^net.ipv6.conf.all.accept_redirects/s*=/s*0'
 
   # 3.3.2.4 Ensure net.ipv6.conf.default.accept_redirects is configured. (Automated)
    - id: 18647
@@ -2878,8 +2905,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv6.conf.default.accept_redirects -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0'
 
   # 3.3.2.5 Ensure net.ipv6.conf.all.accept_source_route is configured. (Automated)
    - id: 18648
@@ -2896,8 +2924,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv6.conf.all.accept_source_route -> r:^net.ipv6.conf.all.accept_source_route\s*=\s*0'
 
   # 3.3.2.6 Ensure net.ipv6.conf.default.accept_source_route is configured. (Automated)
    - id: 18649
@@ -2914,8 +2943,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv6.conf.default.accept_source_route -> r:^net.ipv6.conf.default.accept_source_route\s*=\s*0'
 
   # 3.3.2.7 Ensure net.ipv6.conf.all.accept_ra is configured. (Automated)
    - id: 18650
@@ -2932,8 +2962,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:^net.ipv6.conf.all.accept_ra\s*=\s*0'
 
   # 3.3.2.8 Ensure net.ipv6.conf.default.accept_ra is configured. (Automated)
    - id: 18651
@@ -2950,8 +2981,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv6.conf.default.accept_ra -> r:^net.ipv6.conf.default.accept_ra\s*=\s*0'
 
   # 4.1.1 Ensure firewalld is installed. (Automated)
    - id: 18652
@@ -2970,8 +3002,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
        - pci_dss_v4.0: ["1.2.1", "1.4.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:rpm -q firewalld -> r:^firewalld-"
 
   # 4.1.2 Ensure firewalld backend is configured. (Automated)
    - id: 18653
@@ -2990,8 +3023,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
        - pci_dss_v4.0: ["1.2.1", "1.4.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/firewalld/firewalld.conf -> r:^FirewallBackend=nftables'
 
   # 4.1.3 Ensure firewalld.service is configured. (Automated)
    - id: 18654
@@ -3009,86 +3043,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
        - pci_dss_v4.0: ["1.2.1", "1.4.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:systemctl is-enabled firewalld.service -> r:^enabled"
+      - "c:systemctl is-active firewalld.service -> r:^active"
 
-  # 4.1.4 Ensure firewalld active zone target is configured. (Automated)
-   - id: 18655
-     title: "Ensure firewalld active zone target is configured."
-     description: "FirewallD zones are a network or firewall zone that defines the trust level of the interface used for a connection. There are several pre-defined zones provided by firewalld. A zone target may be set to ACCEPT, %%REJECT%%, or DROP. This can be used to accept, reject, or drop every packet that doesn't match any rule (port, service, etc). The ACCEPT target is used in the trusted zone to accept every packet not matching any rule, e.g. accept all. The %%REJECT%% target is used in the block zone to reject, with default firewall reject type, every packet not matching any rule. The DROP target is used in the drop zone to drop every packet not matching any rule. If the target is not specified, every packet not matching and rule will be rejected. Note: The target may also be set to default. The default target provides a convenient way to implement a \"deny by default, allow by exception\" policy within a firewalld zone, while still allowing essential ICMP traffic."
-     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to allow list acceptable usage than to deny list unacceptable usage."
-     remediation: "Run the following command to update an active zone target and write a permanent firewalld rule: # firewall-cmd --zone={ACTIVE_ZONE} --set-target={TARGET} --permanent Example: # firewall-cmd --zone=public --set-target=DROP --permanent Note: --set-target=default is also acceptable."
-     compliance:
-       - cis: ["4.1.4"]
-       - cis_csc_v8: ["4.4", "4.5"]
-       - cis_csc_v7: ["9.4"]
-       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.1"]
-       - nist_sp_800-53: ["SC-7(5)"]
-       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
-       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-       - soc_2: ["CC6.6"]
-     condition:
-     rules:
-
-  # 4.1.5 Ensure firewalld loopback traffic is configured. (Manual)
-   - id: 18656
-     title: "Ensure firewalld loopback traffic is configured."
-     description: "Every device with networking capabilities has a loopback interface. Loopback traffic refers to network communication where a device sends data to itself, essentially routing the traffic back to its own network interface."
-     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
-     remediation: "1. Run one of the following commands to add the lo interface to the trusted zone. If the lo interface is not currently assigned to a zone: # firewall-cmd --permanent --zone=trusted --add-interface=lo - OR - if the lo interface is currently assigned to a zone: # firewall-cmd --zone=public --change-interface=lo 2. Run the following command to reload firewalld: # firewall-cmd --reload."
-     compliance:
-       - cis: ["4.1.5"]
-       - cis_csc_v8: ["4.4", "4.5"]
-       - cis_csc_v7: ["9.4"]
-       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.1"]
-       - nist_sp_800-53: ["SC-7(5)"]
-       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
-       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-       - soc_2: ["CC6.6"]
-     condition:
-     rules:
-
-  # 4.1.6 Ensure firewalld loopback source address traffic is configured. (Manual)
-   - id: 18657
-     title: "Ensure firewalld loopback source address traffic is configured."
-     description: "Every device with networking capabilities has a loopback interface. Loopback traffic refers to network communication where a device sends data to itself, essentially routing the traffic back to its own network interface. Outbound traffic is data sent from a device to another device or network."
-     rationale: "The loopback interface is the only place that loopback network traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
-     remediation: "Add the appropriate rich rules by running the following commands: # firewall-cmd --permanent --zone={ZONE_NAME} --add-rich-rule='rule family=ipv4 source address=\"127.0.0.1\" destination not address=\"127.0.0.1\" drop' # firewall-cmd --permanent --zone={ZONE_NAME} --add-rich-rule='rule family=ipv6 source address=\"::1\" destination not address=\"::1\" drop' Example script: #!/usr/bin/env bash { while IFS= read -r l_zone; do firewall-cmd --permanent --zone=\"$l_zone\" --add-rich-rule='rule family=ipv4 source address=\"127.0.0.1\" destination not address=\"127.0.0.1\" drop' firewall-cmd --permanent --zone=\"$l_zone\" --add-rich-rule='rule family=ipv6 source address=\"::1\" destination not address=\"::1\" drop' done < <(firewall-cmd --get-zone-of-interface=lo | xargs) } Run the following command to load the updated firewalld rules: # firewall-cmd --reload."
-     compliance:
-       - cis: ["4.1.6"]
-       - cis_csc_v8: ["4.4", "4.5"]
-       - cis_csc_v7: ["9.4"]
-       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.1"]
-       - nist_sp_800-53: ["SC-7(5)"]
-       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
-       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-       - soc_2: ["CC6.6"]
-     condition:
-     rules:
-
-  # 4.1.7 Ensure firewalld services and ports are configured. (Manual)
-   - id: 18658
-     title: "Ensure firewalld services and ports are configured."
-     description: "Services and ports can be accepted, explicitly rejected, or dropped by a zone. For every zone, you can set a default behavior that handles incoming traffic that is not further specified. Such behavior is defined by setting the target of the zone. There are three options - ACCEPT, REJECT, and DROP. - ACCEPT - you accept all incoming packets except those disabled by a specific rule. - REJECT - you disable all incoming packets except those that you have allowed in specific rules and the source machine is informed about the rejection. - DROP - you disable all incoming packets except those that you have allowed in specific rules and no information sent to the source machine. Note: The target may also be set to a fourth option, default. The default target provides a convenient way to implement a \"deny by default, allow by exception\" policy within a firewalld zone, while still allowing essential ICMP traffic."
-     rationale: "To reduce the attack surface of a system, all services and ports should be blocked unless required."
-     remediation: "Run the following command to remove an unnecessary service: # firewall-cmd --remove-service=<service> Example: # firewall-cmd --remove-service=cockpit Run the following command to remove an unnecessary port: # firewall-cmd --remove-port=<port-number>/<port-type> Example: # firewall-cmd --remove-port=25/tcp Run the following command to make new settings persistent: # firewall-cmd --runtime-to-permanent."
-     references:
-       - 'https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/9/html-'
-     compliance:
-       - cis: ["4.1.7"]
-       - cis_csc_v8: ["4.4", "4.5"]
-       - cis_csc_v7: ["9.4"]
-       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.1"]
-       - nist_sp_800-53: ["SC-7(5)"]
-       - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
-       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-       - soc_2: ["CC6.6"]
-     condition:
-     rules:
+  # 4.1.4 Ensure firewalld active zone target is configured. (Automated) - Not Implemented
+  # 4.1.5 Ensure firewalld loopback traffic is configured. (Manual) - Not Implemented
+  # 4.1.6 Ensure firewalld loopback source address traffic is configured. (Manual) - Not Implemented
+  # 4.1.7 Ensure firewalld services and ports are configured. (Manual) - Not Implemented
 
   # 5.1.1 Ensure access to /etc/ssh/sshd_config is configured. (Automated)
    - id: 18659
@@ -3107,8 +3070,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/ssh/sshd_config -> r:Access:\s*\t*\(0600/-rw-------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*root\)\s*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.2 Ensure access to SSH private host key files is configured. (Automated)
    - id: 18660
@@ -3127,8 +3091,11 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/ssh/ssh_host_rsa_key -> r:^Access: \(0\d00/-[\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/ssh/ssh_host_ecdsa_key -> r:^Access: \(0\d00/-[\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/ssh/ssh_host_ed25519_key -> r:^Access: \(0\d00/-[\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.3 Ensure access to SSH public host key files is configured. (Automated)
    - id: 18661
@@ -3147,8 +3114,11 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/ssh/ssh_host_rsa_key.pub -> r:^Access: \(0\d\d\d/-[\w@-][\w@-][\w@-][\w@-]--[\w@-]--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0\d\d\d/-[\w@-][\w@-][\w@-][\w@-]--[\w@-]--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/ssh/ssh_host_ed25519_key.pub -> r:^Access: \(0\d\d\d/-[\w@-][\w@-][\w@-][\w@-]--[\w@-]--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.4 Ensure sshd access is configured. (Automated)
    - id: 18662
@@ -3167,8 +3137,11 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: any
      rules:
+      - 'c:sshd -T -> r:^\s*\t*Allowusers\s*\t*[\w@-]+|^\s*\t*Denyusers\s*\t*[\w@-]+|^\s*\t*Allowgroups\s*\t*[\w@-]+|^\s*\t*Denygroups\s*\t*[\w@-]+'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*\t*Allowusers\s*\t*[\w@-]+|^\s*\t*Denyusers\s*\t*[\w@-]+|^\s*\t*Allowgroups\s*\t*[\w@-]+|^\s*\t*Denygroups\s*\t*[\w@-]+'
+      - 'd:/etc/ssh/sshd_config.d -> r:.* -> r:^\s*\t*Allowusers\s*\t*[\w@-]+|^\s*\t*Denyusers\s*\t*[\w@-]+|^\s*\t*Allowgroups\s*\t*[\w@-]+|^\s*\t*Denygroups\s*\t*[\w@-]+'
 
   # 5.1.5 Ensure sshd Banner is configured. (Automated)
    - id: 18663
@@ -3180,8 +3153,9 @@ checks:
        - cis: ["5.1.5"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+      - "c:sshd -T -> r:^banner && r:/etc/issue\\.net$"
 
   # 5.1.6 Ensure sshd Ciphers are configured. (Automated)
    - id: 18664
@@ -3240,8 +3214,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sshd -T -> r:^disableforwarding\s*\t*yes'
 
   # 5.1.9 Ensure sshd GSSAPIAuthentication is disabled. (Automated)
    - id: 18667
@@ -3257,8 +3232,9 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:sshd -T -> r:^gssapiauthentication\s*\t*no'
 
   # 5.1.10 Ensure sshd HostbasedAuthentication is disabled. (Automated)
    - id: 18668
@@ -3274,8 +3250,10 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:sshd -T -> r:^hostbasedauthentication\s*\t*no'
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*HostBasedAuthentication\\s*\\t*yes"
 
   # 5.1.11 Ensure sshd IgnoreRhosts is enabled. (Automated)
    - id: 18669
@@ -3291,7 +3269,7 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition: all
+     condition: any
      rules:
       - "c:sshd -T -> r:^ignorerhosts yes"
       - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*IgnoreRhosts\\s*\\t*no"
@@ -3349,8 +3327,10 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: any
      rules:
+      - "c:sshd -T -> r:^loglevel VERBOSE|^loglevel INFO"
+      - "not f:/etc/ssh/sshd_config -> !r:^\\s*\\t*loglevel\\s*\\t*VERBOSE|^\\s*\\t*loglevel\\s*\\t*INFO"
 
   # 5.1.15 Ensure sshd MACs are configured. (Automated)
    - id: 18673
@@ -3439,8 +3419,10 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:sshd -T -> r:^permitemptypasswords no"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitEmptyPasswords\\s*\\t*yes"
 
   # 5.1.20 Ensure sshd PermitRootLogin is disabled. (Automated)
    - id: 18678
@@ -3554,8 +3536,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: any
      rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile=\S+\.log'
+      - 'd:/etc/sudoers.d -> \.* -> r:^\s*\t*Defaults\s*\t*logfile=\S+\.log'
 
   # 5.2.4 Ensure users must provide password for escalation. (Automated)
    - id: 18684
@@ -3573,8 +3557,10 @@ checks:
        - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - soc_2: ["CC6.1", "CC6.3"]
-     condition:
+     condition: none
      rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*NOPASSWD'
+      - 'd:/etc/sudoers.d -> r:.* -> r:^\s*\t*NOPASSWD'
 
   # 5.2.5 Ensure re-authentication for privilege escalation is not disabled globally. (Automated)
    - id: 18685
@@ -3591,8 +3577,10 @@ checks:
        - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - soc_2: ["CC6.1", "CC6.3"]
-     condition:
+     condition: none
      rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*!authenticate'
+      - 'd:/etc/sudoers.d -> r:.* -> r:^\s*\t*!authenticate'
 
   # 5.2.6 Ensure sudo timestamp_timeout is configured. (Automated)
    - id: 18686
@@ -3611,8 +3599,10 @@ checks:
        - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - soc_2: ["CC6.1", "CC6.3"]
-     condition:
+     condition: any
      rules:
+      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare =< 15 && n:timestamp_timeout=(\d+) compare != -1'
+      - 'c:sudo -V -> r:Authentication timestamp timeout:\s*\t*5\.0 minutes'
 
   # 5.2.7 Ensure access to the su command is restricted. (Automated)
    - id: 18687
@@ -3631,29 +3621,11 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/pam.d/su -> !r:^\s*\t*# && r:auth\s*\t*required\s*\t*pam_wheel\.so && r:use_uid && r:group=[\w@-]+'
 
-  # 5.3.1.1 Ensure active authselect profile includes pam modules. (Automated)
-   - id: 18688
-     title: "Ensure active authselect profile includes pam modules."
-     description: "A custom profile can be created by copying and customizing one of the default profiles. The default profiles include: local, sssd, and winbind. These profile can be customized to follow site specific requirements. You can select a profile for the authselect utility for a specific host. The profile will be applied to every user logging into the host."
-     rationale: "A custom profile is required to customize many of the pam options. Modifications made to a default profile may be overwritten during an update. When you deploy a profile, the profile is applied to every user logging into the given host."
-     impact: "If local site customizations have been made to the authselect template or files in /etc/pam.d these custom entries should be added to the newly created custom profile before it's applied to the system. Note: The order within the pam stacks is important when adding these entries. Specifically for the password stack, the use_authtok option is important, and should appear on all modules except for the first entry. Example: password requisite pam_pwquality.so local_users_only #<-- Top of password stack, doesn't include use_authtok password required pam_pwhistory.so use_authtok #<-- subsequent entry in password stack, includes use_authtok."
-     remediation: "Perform the following to create a custom authselect profile, with the modules covered in this Benchmark correctly included in the custom profile template files Run the following command to create a custom authselect profile: # authselect create-profile <custom-profile name> <options> Example: # authselect create-profile custom-profile -b local Run the following command to select a custom authselect profile: # authselect select custom/<CUSTOM PROFILE NAME> {with-<OPTIONS>} {--force} Example: # authselect select custom/custom-profile --backup=PAM_CONFIG_BACKUP --force Notes: - The PAM and authselect packages must be versions pam-1.3.1-25 and authselect-1.2.6-1 or newer - The example is based on a custom profile built (copied) from the the local default authselect profile found in /usr/share/authselect/default. - The example does not include the symlink option for the PAM or Metadata files. This is due to the fact that by linking the PAM files future updates to authselect may overwrite local site customizations to the custom profile - The --backup=PAM_CONFIG_BACKUP option will create a backup of the current config. The backup will be stored at /var/lib/authselect/backups/PAM_CONFIG_BACKUP - The --force option will force the overwrite of the existing files and automatically backup system files before writing any change unless the --nobackup option is set. o On a new system where authselect has not been configured. In this case, the --force option will force the selected authselect profile to be active and overwrite the existing files with files generated from the selected authselect profile's templates o On an existing system with a custom configuration. The --force option may be used, but ensure that you note the backup location included as your custom files will be overwritten. This will allow you to review the changes and add any necessary customizations to the template files for the authselect profile. After updating the templates, run the command authselect apply-changes to add these custom entries to the files in /etc/pam.d/ - IF - you receive an error ending with a message similar to: [error] Refusing to activate profile unless those changes are removed or overwrite is requested. Some unexpected changes to the configuration were detected. Use 'select' command instead. This error is caused when the previous configuration was not created by authselect but by other tool or by manual changes and the --force option will be required to enable the authselect profile."
-     references:
-       - 'https://access.redhat.com/documentation/en-'
-       - 'https://docs.oracle.com/en/operating-systems/oracle-linux/9/userauth/OL9-'
-     compliance:
-       - cis: ["5.3.1.1"]
-       - cis_csc_v8: ["16.2"]
-       - cis_csc_v7: ["16.7"]
-       - cmmc_v2.0: ["SI.L1-3.14.1"]
-       - iso_27001-2013: ["A.9.2.6"]
-       - pci_dss_v3.2.1: ["6.3.2"]
-       - pci_dss_v4.0: ["6.3.1"]
-     condition:
-     rules:
+  # 5.3.1.1 Ensure active authselect profile includes pam modules. (Automated) - Not Implemented
 
   # 5.3.1.2 Ensure pam_faillock module is enabled. (Automated)
    - id: 18689
@@ -3671,8 +3643,11 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/pam.d/common-auth -> r:^auth\s*\t*requisite && r:pam_faillock\.so'
+      - 'f:/etc/pam.d/common-auth -> r:^auth\s*\t*\[default=die\] && r:pam_faillock\.so'
+      - 'f:/etc/pam.d/common-account -> r:^account\s*\t*required && r:pam_faillock\.so'
 
   # 5.3.1.3 Ensure pam_pwquality module is enabled. (Automated)
    - id: 18690
@@ -3688,8 +3663,9 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/pam.d/common-password -> r:^password\s*\t*requisite && r:pam_pwquality\.so'
 
   # 5.3.1.4 Ensure pam_pwhistory module is enabled. (Automated)
    - id: 18691
@@ -3705,8 +3681,10 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory\.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:success && r:default\s*=\s*ignore && r:pam_unix\.so && r:use_authtok'
 
   # 5.3.1.5 Ensure pam_unix module is enabled. (Automated)
    - id: 18692
@@ -3737,8 +3715,9 @@ checks:
        - pci_dss_v3.2.1: ["8.1.3"]
        - pci_dss_v4.0: ["8.2.4", "8.2.5"]
        - soc_2: ["CC6.2", "CC6.3"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/security/faillock.conf -> n:^deny\s*\t*=\s*\t*(\d+) compare <= 5'
 
   # 5.3.2.1.2 Ensure password unlock time is configured. (Automated)
    - id: 18694
@@ -3758,8 +3737,10 @@ checks:
        - pci_dss_v3.2.1: ["8.1.3"]
        - pci_dss_v4.0: ["8.2.4", "8.2.5"]
        - soc_2: ["CC6.2", "CC6.3"]
-     condition:
+     condition: any
      rules:
+      - 'f:/etc/security/faillock.conf -> n:^unlock_time\s*\t*=\s*\t*(\d+) compare == 0'
+      - 'f:/etc/security/faillock.conf -> n:^unlock_time\s*\t*=\s*\t*(\d+) compare >= 900'
 
   # 5.3.2.1.3 Ensure password failed attempts lockout includes root account. (Automated)
    - id: 18695
@@ -3779,8 +3760,10 @@ checks:
        - pci_dss_v3.2.1: ["8.1.3"]
        - pci_dss_v4.0: ["8.2.4", "8.2.5"]
        - soc_2: ["CC6.2", "CC6.3"]
-     condition:
+     condition: any
      rules:
+      - "f:/etc/security/faillock.conf -> r:^even_deny_root"
+      - 'f:/etc/security/faillock.conf -> n:^root_unlock_time\s*\t*=\s*\t*(\d+) compare >= 60'
 
   # 5.3.2.2.1 Ensure password number of changed characters is configured. (Automated)
    - id: 18696
@@ -3814,8 +3797,9 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*\t*# && n:\s*\t*minlen\s*\t*=\s*\t*(\d+) compare >= 14'
 
   # 5.3.2.2.3 Ensure password complexity is configured. (Manual)
    - id: 18698
@@ -3831,8 +3815,9 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*\t*# && n:\s*\t*minclass\s*\t*=\s*\t*(\d+) compare >= 4'
 
   # 5.3.2.2.4 Ensure password same consecutive characters is configured. (Automated)
    - id: 18699
@@ -3848,8 +3833,10 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare <=3'
+      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare =0'
 
   # 5.3.2.2.5 Ensure password maximum sequential characters is configured. (Automated)
    - id: 18700
@@ -3865,8 +3852,10 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:maxsequence\s*\t*=\s*\t*(\d+) compare <=3'
+      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:maxsequence\s*\t*=\s*\t*(\d+) compare =0'
 
   # 5.3.2.2.6 Ensure password dictionary check is enabled. (Automated)
    - id: 18701
@@ -3882,8 +3871,9 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:dictcheck\s*\t*=\s*\t*(\d+) compare =0'
 
   # 5.3.2.2.7 Ensure password quality is enforced for the root user. (Automated)
    - id: 18702
@@ -3899,8 +3889,9 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'not c:cat /etc/security/pwquality.conf /etc/security/pwquality.conf.d/*.conf -> r:^enforcing\s*\t*=\s*\t*0'
 
   # 5.3.2.3.1 Ensure password history remember is configured. (Automated)
    - id: 18703
@@ -3918,11 +3909,7 @@ checks:
        - soc_2: ["CC6.1"]
      condition: all
      rules:
-      - "not f:/etc/pam.d/common-password -> r:pam_unix\\.so && r:nullok"
-      - "not f:/etc/pam.d/common-auth -> r:pam_unix\\.so && r:nullok"
-      - "not f:/etc/pam.d/common-account -> r:pam_unix\\.so && r:nullok"
-      - "not f:/etc/pam.d/common-session -> r:pam_unix\\.so && r:nullok"
-      - "not f:/etc/pam.d/common-session-noninteractive -> r:pam_unix\\.so && r:nullok"
+      - 'f:/etc/pam.d/common-password -> r:^password\s*\t*requisite\s*\t*pam_pwhistory\.so && n:remember=(\d+) compare >= 24'
 
   # 5.3.2.3.2 Ensure password history is enforced for the root user. (Automated)
    - id: 18704
@@ -3938,8 +3925,9 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/pam.d/common-password -> r:^password\s*\t*requisite\s*\t*pam_pwhistory\.so && r:enforce_for_root'
 
   # 5.3.2.3.3 Ensure pam_pwhistory includes use_authtok. (Automated)
    - id: 18705
@@ -3958,8 +3946,10 @@ checks:
        - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
        - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*requisite\s*\t*pam_pwhistory\.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:success && r:default\s*=\s*ignore && r:pam_unix\.so && r:use_authtok'
 
   # 5.3.2.4.1 Ensure pam_unix does not include nullok. (Automated)
    - id: 18706
@@ -3975,8 +3965,13 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "not f:/etc/pam.d/common-password -> r:pam_unix\\.so && r:nullok"
+      - "not f:/etc/pam.d/common-auth -> r:pam_unix\\.so && r:nullok"
+      - "not f:/etc/pam.d/common-account -> r:pam_unix\\.so && r:nullok"
+      - "not f:/etc/pam.d/common-session -> r:pam_unix\\.so && r:nullok"
+      - "not f:/etc/pam.d/common-session-noninteractive -> r:pam_unix\\.so && r:nullok"
 
   # 5.3.2.4.2 Ensure pam_unix does not include remember. (Automated)
    - id: 18707
@@ -4059,7 +4054,9 @@ checks:
        - soc_2: ["CC6.1"]
      condition: all
      rules:
-      - "f:/etc/login.defs -> r:^ENCRYPT_METHOD && r:sha512|yescrypt"
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare > 0'
+      - 'not f:/etc/shadow -> !r:^[\w@-]+:[*!+-]: && n:^[\w@-]+:\S*:\d*:\d*:(\d+) compare > 365'
 
   # 5.4.1.2 Ensure minimum password days is configured. (Manual)
    - id: 18711
@@ -4076,8 +4073,10 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/login.defs -> n:^PASS_MIN_DAYS\s*\t*(\d+) compare > 0'
+      - 'f:/etc/shadow -> n:.*:\$.*:.*:(\d+):.*:.*:.*:.*: compare > 0'
 
   # 5.4.1.3 Ensure password expiration warning days is configured. (Automated)
    - id: 18712
@@ -4093,8 +4092,10 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/login.defs -> n:^PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
+      - 'f:/etc/shadow -> n:.*:\$.*:.*:.*:.*:(\d+):.*:.*: compare >= 7'
 
   # 5.4.1.4 Ensure strong password hashing algorithm is configured. (Automated)
    - id: 18713
@@ -4113,8 +4114,9 @@ checks:
        - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
        - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "f:/etc/login.defs -> r:^ENCRYPT_METHOD && r:sha512|yescrypt"
 
   # 5.4.1.5 Ensure inactive password lock is configured. (Automated)
    - id: 18714
@@ -4135,22 +4137,7 @@ checks:
       - "f:/root/.bash_profile -> r:umask && r:0027|0077"
       - "f:/root/.bashrc -> r:umask && r:0027|0077"
 
-  # 5.4.1.6 Ensure all users last password change date is in the past. (Automated)
-   - id: 18715
-     title: "Ensure all users last password change date is in the past."
-     description: "All users should have a password change date in the past."
-     rationale: "If a user's recorded password change date is in the future, then they could bypass any set password expiration."
-     remediation: "Investigate any users with a password change date in the future and correct them. Locking the account, expiring the password, or resetting the password manually may be appropriate."
-     compliance:
-       - cis: ["5.4.1.6"]
-       - cis_csc_v8: ["5.2"]
-       - cis_csc_v7: ["4.4"]
-       - cmmc_v2.0: ["IA.L2-3.5.7"]
-       - iso_27001-2013: ["A.9.4.3"]
-       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-       - soc_2: ["CC6.1"]
-     condition:
-     rules:
+  # 5.4.1.6 Ensure all users last password change date is in the past. (Automated) - Not Implemented
 
   # 5.4.2.1 Ensure root is the only UID 0 account. (Automated)
    - id: 18716
@@ -4169,8 +4156,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'not f:/etc/passwd -> !r:^# && !r:^root: && r:^[\w@-]+:[\w@-]+:0:'
 
   # 5.4.2.2 Ensure root is the only GID 0 account. (Automated)
    - id: 18717
@@ -4189,8 +4177,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'not f:/etc/passwd -> !r:^# && !r:^root: && r:^[\w@-]+:[\w@-]+:\d+:0:'
 
   # 5.4.2.3 Ensure group root is the only GID 0 group. (Automated)
    - id: 18718
@@ -4209,8 +4198,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'not f:/etc/group -> !r:^# && !r:^root: && r:^[\w@-]+:[\w@-]+:0:'
 
   # 5.4.2.4 Ensure root account access is controlled. (Automated)
    - id: 18719
@@ -4230,21 +4220,12 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: any
      rules:
+      - 'c:passwd -S root -> r:root\s*\t*L'
+      - 'c:passwd -S root -> r:root\s*\t*P'
 
-  # 5.4.2.5 Ensure root path integrity. (Automated)
-   - id: 18720
-     title: "Ensure root path integrity."
-     description: "The root user can execute any command on the system and could be fooled into executing programs unintentionally if the PATH is not set correctly."
-     rationale: "Including the current working directory (.) or other writable directory in root's executable path makes it likely that an attacker can gain superuser access by forcing an administrator operating as root to execute a Trojan horse program."
-     remediation: "Correct or justify any: - Locations that are not directories - Empty directories (::) - Trailing (:) - Current working directory (.) - Non root owned directories - Directories that less restrictive than mode 0755."
-     compliance:
-       - cis: ["5.4.2.5"]
-       - cis_csc_v8: ["0.0"]
-       - cis_csc_v7: ["0.0"]
-     condition:
-     rules:
+  # 5.4.2.5 Ensure root path integrity. (Automated) - Not Implemented
 
   # 5.4.2.6 Ensure root user umask is configured. (Automated)
    - id: 18721
@@ -4263,48 +4244,13 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "f:/root/.bash_profile -> r:umask && r:0027|0077"
+      - "f:/root/.bashrc -> r:umask && r:0027|0077"
 
-  # 5.4.2.7 Ensure system accounts do not have a valid login shell. (Automated)
-   - id: 18722
-     title: "Ensure system accounts do not have a valid login shell."
-     description: "There are a number of accounts provided with most distributions that are used to manage applications and are not intended to provide an interactive shell. Furthermore, a user may add special accounts that are not intended to provide an interactive shell."
-     rationale: "It is important to make sure that accounts that are not being used by regular users are prevented from being used to provide an interactive shell. By default, most distributions set the password field for these accounts to an invalid string, but it is also recommended that the shell field in the password file be set to the nologin shell. This prevents the account from potentially being used to run any commands."
-     remediation: "Run the following command to set the shell for any service accounts returned by the audit to nologin: # usermod -s $(command -v nologin) <user> Example script: #!/usr/bin/env bash { l_valid_shells=\"^($( awk -F\\/ '$NF != \"nologin\" {print}' /etc/shells | sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' | paste -s -d '|' - ))$\" awk -v pat=\"$l_valid_shells\" -F: '($1!~/^(root|halt|sync|shutdown|nfsnobody)$/ && ($3<'\"$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs)\"' || $3 == 65534) && $(NF) ~ pat) {system (\"usermod -s '\"$(command -v nologin)\"' \" $1)}' /etc/passwd }."
-     compliance:
-       - cis: ["5.4.2.7"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
-
-  # 5.4.2.8 Ensure accounts without a valid login shell are locked. (Automated)
-   - id: 18723
-     title: "Ensure accounts without a valid login shell are locked."
-     description: "There are a number of accounts provided with most distributions that are used to manage applications. Additionally, a administrator may add special accounts that are not intended for interactive use."
-     rationale: "It is important to make sure that accounts that are not intended for interactive use are prevented from being used interactively. By default, most distributions set the password field for these accounts to an invalid string, but it is also recommended that these accounts are locked. This prevents these accounts from potentially being used to run any commands."
-     remediation: "Run the following command to lock any non-root accounts without a valid login shell returned by the audit: # usermod -L <user> Example script:: #!/usr/bin/env bash { l_valid_shells=\"^($(awk -F\\/ '$NF != \"nologin\" {print}' /etc/shells | sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' | paste -s -d '|' - ))$\" while IFS= read -r l_user; do passwd -S \"$l_user\" | awk '$2 !~ /^L/ {system (\"usermod -L \" $1)}' done < <(awk -v pat=\"$l_valid_shells\" -F: '($1 != \"root\" && $(NF) !~ pat) {print $1}' /etc/passwd) }."
-     compliance:
-       - cis: ["5.4.2.8"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  # 5.4.2.7 Ensure system accounts do not have a valid login shell. (Automated) - Not Implemented
+  # 5.4.2.8 Ensure accounts without a valid login shell are locked. (Automated) - Not Implemented
 
   # 5.4.3.1 Ensure nologin is not listed in /etc/shells. (Automated)
    - id: 18724
@@ -4316,8 +4262,9 @@ checks:
        - cis: ["5.4.3.1"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+      - "not f:/etc/shells -> !r:^# && r:nologin"
 
   # 5.4.3.2 Ensure default user shell timeout is configured. (Automated)
    - id: 18725
@@ -4335,11 +4282,11 @@ checks:
        - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
        - pci_dss_v3.2.1: ["8.1.8"]
        - pci_dss_v4.0: ["8.2.8"]
-     condition: any
+     condition: all
      rules:
-      - "f:/etc/profile -> r:umask && r:027|0027"
-      - "f:/etc/login.defs -> r:umask && r:027|0027"
-      - "f:/etc/default/login -> r:umask && r:027|0027"
+      - 'c:sh -c "cat /etc/bashrc /etc/profile /etc/profile.d/*.sh" -> n:TMOUT\s*\t*=\s*\t*(\d+) compare <= 900 && n:TMOUT\s*\t*=\s*\t*(\d+) compare > 0'
+      - 'c:sh -c "cat /etc/bashrc /etc/profile /etc/profile.d/*.sh" -> r:readonly\s*\t*TMOUT'
+      - 'c:sh -c "cat /etc/bashrc /etc/profile /etc/profile.d/*.sh" -> r:export\s*\t*TMOUT'
 
   # 5.4.3.3 Ensure default user umask is configured. (Automated)
    - id: 18726
@@ -4358,8 +4305,12 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: any
      rules:
+      - "f:/etc/profile -> r:umask && r:027|0027"
+      - "f:/etc/login.defs -> r:umask && r:027|0027"
+      - "f:/etc/default/login -> r:umask && r:027|0027"
+      - 'd:/etc/profile.d -> r:.+\.sh$ -> r:umask && r:027|0027'
 
   # 6.1.1 Ensure AIDE is installed. (Automated)
    - id: 18727
@@ -4380,8 +4331,9 @@ checks:
        - pci_dss_v3.2.1: ["10.2.1", "11.5"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:rpm -q aide -> r:aide-"
 
   # 6.1.2 Ensure filesystem integrity is regularly checked. (Automated)
    - id: 18728
@@ -4421,7 +4373,12 @@ checks:
        - cis_csc_v7: ["0.0"]
      condition: all
      rules:
-      - "f:/etc/aide/aide.conf"
+      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/auditctl\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
+      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/auditd\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
+      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/ausearch\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
+      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/aureport\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
+      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/autrace\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
+      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/augenrules\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
 
   # 6.2.1.1 Ensure journald service is active. (Automated)
    - id: 18730
@@ -4439,28 +4396,11 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: all
      rules:
+      - "c:systemctl is-active systemd-journald.service -> r:active"
 
-  # 6.2.1.2 Ensure journald log file access is configured. (Manual)
-   - id: 18731
-     title: "Ensure journald log file access is configured."
-     description: "Journald will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
-     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
-     remediation: "If the default configuration is not appropriate for the site specific requirements, copy /usr/lib/tmpfiles.d/systemd.conf to /etc/tmpfiles.d/systemd.conf and modify as required. Requirements is either 0640 or site policy if that is less restrictive."
-     compliance:
-       - cis: ["6.2.1.2"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  # 6.2.1.2 Ensure journald log file access is configured. (Manual) - Not Implemented
 
   # 6.2.1.3 Ensure journald log file rotation is configured. (Manual)
    - id: 18732
@@ -4480,19 +4420,16 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/systemd/journald.conf -> r:^SystemMaxUse\s*\t*=\s*\t*\d+'
+      - 'f:/etc/systemd/journald.conf -> r:^SystemKeepFree\s*\t*=\s*\t*\d+'
+      - 'f:/etc/systemd/journald.conf -> r:^RuntimeMaxUse\s*\t*=\s*\t*\d+'
+      - 'f:/etc/systemd/journald.conf -> r:^RuntimeKeepFree\s*\t*=\s*\t*\d+'
+      - 'f:/etc/systemd/journald.conf -> r:^MaxFileSec\s*\t*=\s*\t*\d+'
+      - 'd:/etc/systemd/journald.conf.d -> r:.*\.conf -> r:^SystemMaxUse\s*\t*=\s*\t*\d+|^SystemKeepFree\s*\t*=\s*\t*\d+|^RuntimeMaxUse\s*\t*=\s*\t*\d+|^RuntimeKeepFree\s*\t*=\s*\t*\d+|^MaxFileSec\s*\t*=\s*\t*\d+'
 
-  # 6.2.1.4 Ensure only one logging system is in use. (Automated)
-   - id: 18733
-     title: "Ensure only one logging system is in use."
-     description: "Best practices recommend that a single centralized logging system be used for log management, choose a single service either rsyslog - OR - journald to be used as a single centralized logging system."
-     rationale: "Configuring only one logging service either rsyslog - OR - journald avoids redundancy, optimizes resources, simplifies configuration and management, and ensures consistency."
-     impact: "Transitioning from one logging service to another can be complex and time consuming, it involves reconfiguration and may result in data loss if not managed and reconfigured correctly."
-     compliance:
-       - cis: ["6.2.1.4"]
-     condition:
-     rules:
+  # 6.2.1.4 Ensure only one logging system is in use. (Automated) - Not Implemented
 
   # 6.2.2.1.1 Ensure systemd-journal-remote is installed. (Automated)
    - id: 18734
@@ -4510,8 +4447,10 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q systemd-journal-remote -> r:^systemd-journal-remote-"
+      - 'c:systemctl show rsyslog.service -> r:^LoadState=loaded|^ActiveState=active'
 
   # 6.2.2.1.2 Ensure systemd-journal-upload authentication is configured. (Manual)
    - id: 18735
@@ -4531,8 +4470,11 @@ checks:
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
      condition: all
      rules:
-      - "not c:systemctl is-enabled systemd-journal-remote.socket systemd-journal-remote.service -> r:^enabled"
-      - "not c:systemctl is-active systemd-journal-remote.socket systemd-journal-remote.service -> r:^active"
+      - 'c:cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf -> r:^URL\s*\t*=\s*\t*[\w@-]+'
+      - 'c:cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf -> r:^ServerKeyFile\s*\t*=\s*\t*/[\w@-]+'
+      - 'c:cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf -> r:^ServerCertificateFile\s*\t*=\s*\t*/[\w@-]+'
+      - 'c:cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf -> r:^TrustedCertificateFile\s*\t*=\s*\t*/[\w@-]+'
+      - 'not c:systemctl show rsyslog.service -> r:^LoadState=loaded|^ActiveState=active'
 
   # 6.2.2.1.3 Ensure systemd-journal-upload is enabled and active. (Automated)
    - id: 18736
@@ -4550,8 +4492,10 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: any
      rules:
+      - 'c:systemctl show rsyslog.service -> r:^LoadState=loaded|^ActiveState=active'
+      - 'c:systemctl show systemd-journal-upload.service -> r:^UnitFileState=enabled|^ActiveState=active'
 
   # 6.2.2.1.4 Ensure systemd-journal-remote service is not in use. (Automated)
    - id: 18737
@@ -4568,8 +4512,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "not c:systemctl is-enabled systemd-journal-remote.socket systemd-journal-remote.service -> r:^enabled"
+      - "not c:systemctl is-active systemd-journal-remote.socket systemd-journal-remote.service -> r:^active"
 
   # 6.2.2.2 Ensure journald ForwardToSyslog is disabled. (Automated)
    - id: 18738
@@ -4589,9 +4535,10 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition: all
+     condition: any
      rules:
-      - "c:dpkg-query -s rsyslog -> r:^Status: install ok installed"
+      - 'not f:/etc/systemd/journald.conf -> !r:^# && r:ForwardToSyslog\s*=\s*yes'
+      - 'not d:/etc/systemd/journald.conf.d -> r:.* -> !r:^# && r:ForwardToSyslog\s*=\s*yes'
 
   # 6.2.2.3 Ensure journald Compress is configured. (Automated)
    - id: 18739
@@ -4612,8 +4559,10 @@ checks:
        - pci_dss_v3.2.1: ["10.2", "10.3", "10.7"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: any
      rules:
+      - 'f:/etc/systemd/journald.conf -> r:^Compress\s*\t*=\s*\t*yes'
+      - 'c:systemctl show rsyslog.service -> r:^LoadState=loaded|^ActiveState=active'
 
   # 6.2.2.4 Ensure journald Storage is configured. (Automated)
    - id: 18740
@@ -4633,8 +4582,10 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: any
      rules:
+      - 'f:/etc/systemd/journald.conf -> r:^Storage\s*\t*=\s*\t*persistent'
+      - 'c:systemctl show rsyslog.service -> r:^LoadState=loaded|^ActiveState=active'
 
   # 6.2.3.1 Ensure rsyslog is installed. (Automated)
    - id: 18741
@@ -4652,8 +4603,9 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: all
      rules:
+      - "c:rpm -q rsyslog -> r:^rsyslog-"
 
   # 6.2.3.2 Ensure rsyslog service is enabled and active. (Automated)
    - id: 18742
@@ -4694,10 +4646,9 @@ checks:
        - pci_dss_v3.2.1: ["10.2", "10.3", "10.5.3", "10.5.4"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "10.3.3", "5.3.4", "6.4.1", "6.4.2"]
        - soc_2: ["PL1.4"]
-     condition: any
+     condition: all
      rules:
-      - "c:systemctl show systemd-journald.service -> r:^LoadState=loaded|^ActiveState=active"
-      - "c:systemctl show rsyslog.service -> r:^LoadState=loaded|^ActiveState=active"
+      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
 
   # 6.2.3.4 Ensure rsyslog log file creation mode is configured. (Automated)
    - id: 18744
@@ -4721,27 +4672,10 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - "c:dpkg-query -s auditd -> r:^Status: install ok installed"
-      - "c:dpkg-query -s audispd-plugins -> r:^Status: install ok installed"
+      - 'd:/etc/rsyslog.d -> r:.*\.conf -> r:^\$FileCreateMode && r:0640|0600|0400'
+      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode && r:0640|0600|0400'
 
-  # 6.2.3.5 Ensure rsyslog logging is configured. (Manual)
-   - id: 18745
-     title: "Ensure rsyslog logging is configured."
-     description: "The /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files specifies rules for logging and which files are to be used to log certain classes of messages."
-     rationale: "A great deal of important security-related information is sent via rsyslog (e.g., successful and failed su attempts, failed login attempts, root login attempts, etc.). Note: This recommendation only applies if rsyslog is the chosen method for client side logging. Do not apply this recommendation if journald is used."
-     remediation: "Edit the following lines in the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files as appropriate for your environment. Note: The below configuration is shown for example purposes only. Due care should be given to how the organization wishes to store log data. *.emerg :omusrmsg:* auth,authpriv.* /var/log/secure mail.* -/var/log/mail mail.info -/var/log/mail.info mail.warning -/var/log/mail.warn mail.err /var/log/mail.err cron.* /var/log/cron *.=warning;*.=err -/var/log/warn *.crit /var/log/warn *.*;mail.none;news.none -/var/log/messages local0,local1.* -/var/log/localmessages local2,local3.* -/var/log/localmessages local4,local5.* -/var/log/localmessages local6,local7.* -/var/log/localmessages Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog."
-     compliance:
-       - cis: ["6.2.3.5"]
-       - cis_csc_v8: ["8.2"]
-       - cis_csc_v7: ["6.2", "6.3"]
-       - cmmc_v2.0: ["AU.L2-3.3.1"]
-       - hipaa: ["164.312(b)"]
-       - iso_27001-2013: ["A.12.4.1"]
-       - nist_sp_800-53: ["AU-7"]
-       - pci_dss_v3.2.1: ["10.2", "10.3"]
-       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
-     rules:
+  # 6.2.3.5 Ensure rsyslog logging is configured. (Manual) - Not Implemented
 
   # 6.2.3.6 Ensure rsyslog is configured to send logs to a remote log host. (Manual)
    - id: 18746
@@ -4761,8 +4695,10 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/rsyslog.d -> r:.*\.conf -> r:^\*\.\* action.+target='
+      - 'f:/etc/rsyslog.conf -> r:^\*\.\* action.+target='
 
   # 6.2.3.7 Ensure rsyslog is not configured to receive logs from a remote client. (Automated)
    - id: 18747
@@ -4781,26 +4717,14 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: none
      rules:
+      - 'f:/etc/rsyslog.conf -> r:^\s*\t*module\(load="imtcp"\)'
+      - 'd:/etc/rsyslog.d -> r:.*\.conf -> r:^\s*\t*module\(load="imtcp"\)'
+      - 'f:/etc/rsyslog.conf -> r:^\s*\t*input\(type="imtcp" port="514"\)'
+      - 'd:/etc/rsyslog.d -> r:.*\.conf -> r:^\s*\t*input\(type="imtcp" port="514"\)'
 
-  # 6.2.3.8 Ensure rsyslog logrotate is configured. (Manual)
-   - id: 18748
-     title: "Ensure rsyslog logrotate is configured."
-     description: "The system includes the capability of rotating log files regularly to avoid filling up the system with logs or making the logs unmanageably large. The file /etc/logrotate.d/rsyslog is the configuration file used to rotate log files created by rsyslog."
-     rationale: "By keeping the log files smaller and more manageable, a system administrator can easily archive these files to another system and spend less time looking through inordinately large log files. Note: This recommendation only applies if rsyslog is the chosen method for client side logging. Do not apply this recommendation if systemd-journald is used."
-     remediation: "Edit /etc/logrotate.conf and /etc/logrotate.d/* to ensure logs are rotated according to site policy. Example logrotate configuration that specifies log files be rotated weekly, keep 4 backlogs, compress old log files, ignores missing and empty log files, postrotate to reload rsyslog service after logs are rotated /var/log/rsyslog/*.log { weekly rotate 4 compress missingok notifempty postrotate /usr/bin/systemctl reload rsyslog.service >/dev/null || true endscript }."
-     references:
-       - 'https://www.rsyslog.com/doc/tutorials/log_rotation_fix_size.html'
-     compliance:
-       - cis: ["6.2.3.8"]
-       - cis_csc_v8: ["8.3"]
-       - cis_csc_v7: ["6.4"]
-       - iso_27001-2013: ["A.12.4.1"]
-       - pci_dss_v3.2.1: ["10.7"]
-       - soc_2: ["A1.1"]
-     condition:
-     rules:
+  # 6.2.3.8 Ensure rsyslog logrotate is configured. (Manual) - Not Implemented
 
   # 6.2.4.1 Ensure access to all logfiles has been configured. (Automated)
    - id: 18749
@@ -4819,8 +4743,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: none
      rules:
+      - 'c:find /var/log -type f -ls -> r:-[\w@-][\w@-][\w@-][\w@-]w[\w@-][\w@-][\w@-][\w@-]|-[\w@-][\w@-][\w@-][\w@-][\w@-]x[\w@-][\w@-][\w@-]|-[\w@-][\w@-][\w@-][\w@-][\w@-][\w@-][\w@-]w[\w@-]|-[\w@-][\w@-][\w@-][\w@-][\w@-][\w@-]r[\w@-][\w@-]|-[\w@-][\w@-][\w@-][\w@-][\w@-][\w@-][\w@-][\w@-]x'
 
   # 6.3.1.1 Ensure auditd packages are installed. (Automated)
    - id: 18750
@@ -4839,8 +4764,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - "c:rpm -q audit -> r:^audit-"
+      - "c:rpm -q audit-libs -> r:^audit-libs-"
 
   # 6.3.1.2 Ensure auditing for processes that start prior to auditd is enabled. (Automated)
    - id: 18751
@@ -4878,8 +4805,9 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: all
      rules:
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && n:audit_backlog_limit=(\d+) compare >= 8192'
 
   # 6.3.1.4 Ensure auditd service is enabled and active. (Automated)
    - id: 18753
@@ -4915,8 +4843,10 @@ checks:
        - iso_27001-2013: ["A.12.4.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: all
      rules:
+      - "f:/etc/audit/auditd.conf"
+      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file\s*\t*=\s*\t*\d+'
 
   # 6.3.2.2 Ensure audit logs are not automatically deleted. (Automated)
    - id: 18755
@@ -4931,8 +4861,10 @@ checks:
        - iso_27001-2013: ["A.12.4.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: all
      rules:
+      - "f:/etc/audit/auditd.conf"
+      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file_action\s*\t*=\s*\t*keep_logs'
 
   # 6.3.2.3 Ensure system is disabled when audit logs are full. (Automated)
    - id: 18756
@@ -4952,8 +4884,11 @@ checks:
        - pci_dss_v3.2.1: ["10.2", "10.3", "10.7"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/audit/auditd.conf -> r:^\s*space_left_action\s*=\s*email'
+      - 'f:/etc/audit/auditd.conf -> r:^\s*action_mail_acct\s*=\s*root'
+      - 'f:/etc/audit/auditd.conf -> r:^\s*admin_space_left_action\s*=\s*halt|^\s*admin_space_left_action\s*=\s*single'
 
   # 6.3.2.4 Ensure system warns when audit logs are low on space. (Automated)
    - id: 18757
@@ -4973,8 +4908,10 @@ checks:
        - pci_dss_v3.2.1: ["10.2", "10.3", "10.7"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/audit/auditd.conf -> r:space_left_action\s*\t*= && r:email|exec|single|halt'
+      - 'f:/etc/audit/auditd.conf -> r:admin_space_left_action\s*\t*= && r:single|halt'
 
   # 6.3.3.1 Ensure modification of the /etc/sudoers file is collected. (Automated)
    - id: 18758
@@ -4992,8 +4929,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditctl -l -> r:-a always,exit -F path=/etc/sudoers -F perm=wa && r:-a always,exit -F dir=/etc/sudoers.d -F perm=wa'
 
   # 6.3.3.2 Ensure actions as another user are always logged. (Automated)
    - id: 18759
@@ -5013,8 +4951,13 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
 
   # 6.3.3.3 Ensure events that modify the sudo log file are collected. (Automated)
    - id: 18760
@@ -5032,8 +4975,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/var/log/sudo\.log && r:-p wa && r:-k sudo_log_file'
+      - "c:auditctl -l -> r:^-w && r:/var/log/sudo\\.log && r:-p wa && r:-k sudo_log_file"
 
   # 6.3.3.4 Ensure events that modify date and time information are collected. (Automated)
    - id: 18761
@@ -5051,8 +4996,18 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S clock_settime && r:-F a0=0x0'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-F a0=0x0'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k time-change|-F key=time-change && r:^-w && r:/etc/localtime && r:-p wa'
+      - "c:auditctl -l -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex"
+      - "c:auditctl -l -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex"
+      - "c:auditctl -l -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S clock_settime && r:-F a0=0x0"
+      - "c:auditctl -l -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-F a0=0x0"
+      - "c:auditctl -l -> r:-k time-change|-F key=time-change && r:^-w && r:/etc/localtime && r:-p wa"
 
   # 6.3.3.5 Ensure events that modify sethostname and setdomainname are collected. (Automated)
    - id: 18762
@@ -5070,8 +5025,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditctl -l -> r:-a always,exit -S sethostname,setdomainname'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:a always,exit -F arch=b64 -S sethostname,setdomainname -F key=system-locale'
 
   # 6.3.3.6 Ensure events that modify /etc/issue and /etc/issue.net are collected. (Automated)
    - id: 18763
@@ -5089,8 +5046,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditctl -l -> r:-a always,exit -F path=/etc/issue -F perm=wa && r:-a always,exit -F path=/etc/issue.net -F perm=wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:a always,exit -F arch=b64 -S all -F path=/etc/issue -F perm=wa -F key=system-locale /etc/audit/rules.d/50-etc_issue_system_locale.rules:-a always,exit -F arch=b64 -S all -F path=/etc/issue.net -F perm=wa -F key=system-locale'
 
   # 6.3.3.7 Ensure events that modify /etc/hosts and /etc/hostname are collected. (Automated)
    - id: 18764
@@ -5108,8 +5067,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditctl -l -> r:-a always,exit -F path=/etc/hosts -F perm=wa && r:-a always,exit -F path=/etc/hostname -F perm=wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S all -F path=/etc/hosts -F perm=wa -F key=system-locale /etc/audit/rules.d/50-etc_host_system_locale.rules:-a always,exit -F arch=b64 -S all -F path=/etc/hostname -F perm=wa -F key=system-locale'
 
   # 6.3.3.8 Ensure events that modify /etc/sysconfig/network and /etc/NetworkManager/system-connections/ are collected. (Automated)
    - id: 18765
@@ -5127,8 +5088,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditctl -l -> r:-a always,exit -F path=/etc/sysconfig/network -F perm=wa && r:-a always,exit -F dir=/etc/NetworkManager/system-connections/ -F perm=wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S all -F path=/etc/syconfig/network -F perm=wa -F key=system-locale /etc/audit/rules.d/50-etc_sysconfig_system_locale.rules:-a always,exit -F arch=b64 -S all -F dir=/etc/NetworkManager/system-connections/ -F perm=wa -F key=system-locale'
 
   # 6.3.3.9 Ensure events that modify /etc/NetworkManager directory are collected. (Automated)
    - id: 18766
@@ -5146,28 +5109,12 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditctl -l -> r:-a always,exit -F dir=/etc/NetworkManager/ -F perm=wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S all -F dir=/etc/NetworkManager/ -F perm=wa -F key=system-locale'
 
-  # 6.3.3.10 Ensure use of privileged commands are collected. (Automated)
-   - id: 18767
-     title: "Ensure use of privileged commands are collected."
-     description: "Monitor privileged programs, those that have the setuid and/or setgid bit set on execution, to determine if unprivileged users are running these commands."
-     rationale: "Execution of privileged commands by non-privileged users could be an indication of someone trying to gain unauthorized access to the system."
-     impact: "Both the audit and remediation section of this recommendation will traverse all mounted file systems that is not mounted with either noexec or nosuid mount options. If there are large file systems without these mount options, such traversal will be significantly detrimental to the performance of the system. Before running either the audit or remediation section, inspect the output of the following command to determine exactly which file systems will be traversed: # findmnt -n -l -k -it $(awk '/nodev/ { print $2 }' /proc/filesystems | paste -sd,) | grep -Pv \"noexec|nosuid\" To exclude a particular file system due to adverse performance impacts, update the audit and remediation sections by adding a sufficiently unique string to the grep statement. The above command can be used to test the modified exclusions."
-     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor the use of privileged commands. Example script: #!/usr/bin/env bash { UID_MIN=$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs) AUDIT_RULE_FILE=\"/etc/audit/rules.d/50-privileged.rules\" NEW_DATA=() for PARTITION in $(findmnt -n -l -k -it $(awk '/nodev/ { print $2 }' /proc/filesystems | paste -sd,) | grep -Pv \"noexec|nosuid\" | awk '{print $1}'); do readarray -t DATA < <(find \"${PARTITION}\" -xdev -perm /6000 -type f | awk -v UID_MIN=${UID_MIN} '{print \"-a always,exit -F arch=b64 -S all -F path=\" $1 \" -F perm=x -F auid>=\"UID_MIN\" -F auid!=unset -k privileged\" }') for ENTRY in \"${DATA[@]}\"; do NEW_DATA+=(\"${ENTRY}\") done done readarray &> /dev/null -t OLD_DATA < \"${AUDIT_RULE_FILE}\" COMBINED_DATA=( \"${OLD_DATA[@]}\" \"${NEW_DATA[@]}\" ) printf '%s\\n' \"${COMBINED_DATA[@]}\" | sort -u > \"${AUDIT_RULE_FILE}\" } Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi Special mount points If there are any special mount points that are not visible by default from just scanning /, change the PARTITION variable to the appropriate partition and re-run the remediation."
-     compliance:
-       - cis: ["6.3.3.10"]
-       - cis_csc_v8: ["8.5"]
-       - cis_csc_v7: ["6.2"]
-       - cmmc_v2.0: ["AU.L2-3.3.1"]
-       - iso_27001-2013: ["A.12.4.1"]
-       - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-       - soc_2: ["CC5.2", "CC7.2"]
-     condition:
-     rules:
+  # 6.3.3.10 Ensure use of privileged commands are collected. (Automated) - Not Implemented
 
   # 6.3.3.11 Ensure unsuccessful file access attempts are collected. (Automated)
    - id: 18768
@@ -5185,8 +5132,16 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
 
   # 6.3.3.12 Ensure events that modify /etc/group information are collected. (Automated)
    - id: 18769
@@ -5207,8 +5162,24 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/group && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/passwd && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/gshadow && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/shadow && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/security/opasswd && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/nsswitch\.conf && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/pam\.conf && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/pam\.d && r:-p wa'
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/group && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/passwd && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/gshadow && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/shadow && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/security/opasswd && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/nsswitch\\.conf && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/pam\\.conf && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/pam\\.d && r:-p wa"
 
   # 6.3.3.13 Ensure events that modify /etc/passwd information are collected. (Automated)
    - id: 18770
@@ -5229,8 +5200,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditctl -l -> r:-a always,exit -F path=/etc/passwd -F perm=wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S all -F path=/etc/passwd -F perm=wa -F key=identity'
 
   # 6.3.3.14 Ensure events that modify /etc/shadow and /etc/gshadow are collected. (Automated)
    - id: 18771
@@ -5251,8 +5224,11 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditctl -l -> r:-a always,exit -F path=/etc/gshadow -F perm=wa && r:-a always,exit -F path=/etc/shadow -F perm=wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S all -F path=/etc/gshadow -F perm=wa -F key=identity'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S all -F path=/etc/shadow -F perm=wa -F key=identity'
 
   # 6.3.3.15 Ensure events that modify /etc/security/opasswd are collected. (Automated)
    - id: 18772
@@ -5273,8 +5249,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditctl -l -> r:-a always,exit -F path=/etc/security/opasswd -F perm=wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S all -F path=/etc/security/opasswd -F perm=wa -F key=identity'
 
   # 6.3.3.16 Ensure events that modify /etc/nsswitch.conf file are collected. (Automated)
    - id: 18773
@@ -5295,8 +5273,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditctl -l -> r:-a always,exit -F path=/etc/nsswitch.conf -F perm=wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S all -F path=/etc/nsswitch.conf -F perm=wa -F key=identity'
 
   # 6.3.3.17 Ensure events that modify /etc/pam.conf and /etc/pam.d/ information are collected. (Automated)
    - id: 18774
@@ -5317,8 +5297,11 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditctl -l -> r:-a always,exit -F path=/etc/pam.conf -F perm-wa && r:-a always,exit -F dir=/etc/pam.d -F perm=wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S all -F path=/etc/pam.conf -F perm-wa -F key=identity'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S all -F dir=/etc/pam.d -F perm=wa -F key=identity'
 
   # 6.3.3.18 Ensure discretionary access control permission modification events chmod,fchmod,fchmodat,fchmodat2 are collected. (Automated)
    - id: 18775
@@ -5336,8 +5319,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditctl -l -> r:-a always,exit -F arch=b64 -S chmod,fchmod,fchmodat,fchmodat2 -F auid>=1000 -F auid!=unset -F key=perm_mod'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S chmod,fchmod,fchmodat,fchmodat2 -F auid>=1000 -F auid!=-1 -F key=perm_mod'
 
   # 6.3.3.19 Ensure discretionary access control permission modification events chown,fchown,lchown,fchownat are collected. (Automated)
    - id: 18776
@@ -5355,8 +5340,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditctl -l -> r:-a always,exit -F arch=b64 -S chown,fchown,lchown,fchownat -F auid>=1000 -F auid!=unset -F key=perm_mod'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S chown,fchown,lchown,fchownat -F auid>=1000 -F auid!=-1 -F key=perm_mod'
 
   # 6.3.3.20 Ensure discretionary access control permission modification events setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr collected. (Automated)
    - id: 18777
@@ -5374,8 +5361,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditctl -l -> r:-a always,exit -F arch=b64 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=unset -F key=perm_mod'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=-1 -F key=perm_mod'
 
   # 6.3.3.21 Ensure successful file system mounts are collected. (Automated)
    - id: 18778
@@ -5393,8 +5382,12 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
 
   # 6.3.3.22 Ensure session initiation information is collected. (Automated)
    - id: 18779
@@ -5412,8 +5405,14 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k session|-F key=session && r:^-w && r:/var/run/utmp && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k session|-F key=session && r:^-w && r:/var/log/wtmp && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k session|-F key=session && r:^-w && r:/var/log/btmp && r:-p wa'
+      - "c:auditctl -l -> r:-k session|-F key=session && r:^-w && r:/var/run/utmp && r:-p wa"
+      - "c:auditctl -l -> r:-k session|-F key=session && r:^-w && r:/var/log/wtmp && r:-p wa"
+      - "c:auditctl -l -> r:-k session|-F key=session && r:^-w && r:/var/log/btmp && r:-p wa"
 
   # 6.3.3.23 Ensure login and logout events are collected. (Automated)
    - id: 18780
@@ -5431,8 +5430,12 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k logins|-F key=logins && r:^-w && r:/var/log/lastlog && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k logins|-F key=logins && r:^-w && r:/var/run/faillock && r:-p wa'
+      - "c:auditctl -l -> r:-k logins|-F key=logins && r:^-w && r:/var/log/lastlog && r:-p wa"
+      - "c:auditctl -l -> r:-k logins|-F key=logins && r:^-w && r:/var/run/faillock && r:-p wa"
 
   # 6.3.3.24 Ensure unlink file deletion events by users are collected. (Automated)
    - id: 18781
@@ -5450,8 +5453,12 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
 
   # 6.3.3.25 Ensure rename file deletion events by users are collected. (Automated)
    - id: 18782
@@ -5469,8 +5476,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditctl -l -> r:-a always,exit -S rename,renameat,renameat2 -F auid>=1000 -F auid!=unset'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S rename,renameat,renameat2 -F auid>=1000 -F auid!=-1 -F key=delete'
 
   # 6.3.3.26 Ensure events that modify the system's Mandatory Access Controls are collected. (Automated)
    - id: 18783
@@ -5488,8 +5497,13 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/usr/share/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy'
+      - "c:auditctl -l -> r:^-w && r:/etc/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy"
+      - "c:auditctl -l -> r:^-w && r:/usr/share/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy"
 
   # 6.3.3.27 Ensure successful and unsuccessful attempts to use the chcon command are collected. (Automated)
    - id: 18784
@@ -5507,8 +5521,11 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|key=perm_chng'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|key=perm_chng'
 
   # 6.3.3.28 Ensure successful and unsuccessful attempts to use the setfacl command are collected. (Automated)
    - id: 18785
@@ -5526,8 +5543,11 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
 
   # 6.3.3.29 Ensure successful and unsuccessful attempts to use the chacl command are collected. (Automated)
    - id: 18786
@@ -5545,8 +5565,11 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
 
   # 6.3.3.30 Ensure successful and unsuccessful attempts to use the usermod command are collected. (Automated)
    - id: 18787
@@ -5564,8 +5587,11 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/sbin/usermod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k usermod|-F key=usermod'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/sbin/usermod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k usermod|-F key=usermod'
 
   # 6.3.3.31 Ensure kernel module loading unloading and modification is collected. (Automated)
    - id: 18788
@@ -5583,8 +5609,19 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'c:auditctl -l-> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - "c:ls -l /usr/sbin/lsmod -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/rmmod -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/insmod -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/modinfo -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/modprobe -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/depmod -> r:/bin/kmod"
 
   # 6.3.3.32 Ensure kernel "init_module" and "finit_module" loading unloading and modification is collected. (Automated)
    - id: 18789
@@ -5602,8 +5639,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S init_module,finit_module,delete_module,create_module,query_module -F auid>=1000 -F auid!=unset -k kernel_modules'
+      - 'c:auditctl -l -> r:-a always,exit -S init_module,finit_module,delete_module,create_module,query_module -F auid>=1000 -F auid!=unset'
 
   # 6.3.3.33 Ensure kernel "delete_module" loading unloading and modification is collected. (Automated)
    - id: 18790
@@ -5621,8 +5660,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S delete_module -F auid>=1000 -F auid!=-1 -F key=kernel_modules'
+      - 'c:auditctl -l -> r:-a always,exit -S init_module,finit_module,delete_module,create_module,query_module -F auid>=1000 -F auid!=unset'
 
   # 6.3.3.34 Ensure kernel query_module loading unloading and modification is collected. (Automated)
    - id: 18791
@@ -5640,8 +5681,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-a always,exit -F arch=b64 -S query_module -F auid>=1000 -F auid!=-1 -F key=kernel_modules'
+      - 'c:auditctl -l -> r:-a always,exit-S query_module -F auid>=1000 -F auid!=unset'
 
   # 6.3.3.35 Ensure the audit configuration is loaded regardless of errors. (Automated)
    - id: 18792
@@ -5659,8 +5702,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-c'
 
   # 6.3.3.36 Ensure the audit configuration is immutable. (Automated)
    - id: 18793
@@ -5679,8 +5723,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3", "7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "7.1", "9.4.5"]
        - soc_2: ["CC5.2", "CC6.1", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-e\s*\t*2'
 
   # 6.3.3.37 Ensure the running and on disk configuration is the same. (Manual)
    - id: 18794
@@ -5698,48 +5743,12 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:augenrules --check -> r:augenrules: && r:No\s*\t*change'
 
-  # 6.3.4.1 Ensure the audit log file directory mode is configured. (Automated)
-   - id: 18795
-     title: "Ensure the audit log file directory mode is configured."
-     description: "The audit log directory contains audit log files."
-     rationale: "Audit information includes all information including: audit records, audit settings and audit reports. This information is needed to successfully audit system activity. This information must be protected from unauthorized modification or deletion. If this information were to be compromised, forensic analysis and discovery of the true source of potentially malicious system activity is impossible to achieve."
-     remediation: "Run the following command to configure the audit log directory to have a mode of \"0750\" or less permissive: # chmod g-w,o-rwx \"$(dirname \"$(awk -F= '/^\\s*log_file\\s*/{print $2}' /etc/audit/auditd.conf | xargs)\")\"."
-     compliance:
-       - cis: ["6.3.4.1"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
-
-  # 6.3.4.2 Ensure audit log files mode is configured. (Automated)
-   - id: 18796
-     title: "Ensure audit log files mode is configured."
-     description: "Audit log files contain information about the system and system activity."
-     rationale: "Access to audit records can reveal system and configuration data to attackers, potentially compromising its confidentiality."
-     remediation: "Run the following command to remove more permissive mode than 0640 from audit log files: # [ -f /etc/audit/auditd.conf ] && find \"$(dirname $(awk -F \"=\" '/^\\s*log_file/ {print $2}' /etc/audit/auditd.conf | xargs))\" -type f -perm /0137 -exec chmod u-x,g-wx,o-rwx {} +."
-     compliance:
-       - cis: ["6.3.4.2"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  # 6.3.4.1 Ensure the audit log file directory mode is configured. (Automated) - Not Implemented
+  # 6.3.4.2 Ensure audit log files mode is configured. (Automated) - Not Implemented
 
   # 6.3.4.3 Ensure audit log files owner is configured. (Automated)
    - id: 18797
@@ -5758,8 +5767,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/audit/auditd.conf -> r:^log_group\s*\t*= && r:adm|root'
 
   # 6.3.4.4 Ensure audit log files group owner is configured. (Automated)
    - id: 18798
@@ -5778,8 +5788,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/audit/auditd.conf -> r:^log_group\s*\t*= && r:adm|root'
 
   # 6.3.4.5 Ensure audit configuration files mode is configured. (Automated)
    - id: 18799
@@ -5798,8 +5809,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:sh -c "find /etc/audit/ -type f \\( -name ''*.conf'' -o -name ''*.rules'' \\) -exec stat -Lc ''%a'' {} + | grep -cvE ''^(000|040|200|400|600|240|440|640)''" -> n:^(\d+) compare == 0'
 
   # 6.3.4.6 Ensure audit configuration files owner is configured. (Automated)
    - id: 18800
@@ -5818,8 +5830,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:sh -c "find /etc/audit/ -type f \\( -name ''*.conf'' -o -name ''*.rules'' \\) -exec stat -Lc ''%U'' {} + | grep -cvE ''^root''" -> n:^(\d+) compare == 0'
 
   # 6.3.4.7 Ensure audit configuration files group owner is configured. (Automated)
    - id: 18801
@@ -5838,8 +5851,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:sh -c "find /etc/audit/ -type f \\( -name ''*.conf'' -o -name ''*.rules'' \\) -exec stat -Lc ''%G'' {} + | grep -cvE ''^root''" -> n:^(\d+) compare == 0'
 
   # 6.3.4.8 Ensure audit tools mode is configured. (Automated)
    - id: 18802
@@ -5858,8 +5872,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat -c "%n %a" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:[\w@-]+ && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
 
   # 6.3.4.9 Ensure audit tools owner is configured. (Automated)
    - id: 18803
@@ -5878,8 +5893,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat -Lc "%U" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^root$'
 
   # 6.3.4.10 Ensure audit tools group owner is configured. (Automated)
    - id: 18804
@@ -5898,8 +5914,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat -Lc "%G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^root$'
 
   # 7.1.1 Ensure access to /etc/passwd is configured. (Automated)
    - id: 18805
@@ -5918,8 +5935,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 7.1.2 Ensure access to /etc/passwd- is configured. (Automated)
    - id: 18806
@@ -5938,8 +5956,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/passwd- -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 7.1.3 Ensure access to /etc/group is configured. (Automated)
    - id: 18807
@@ -5958,8 +5977,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/group -> r:^Access:\s*\(0644/-rw-r--r--\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 7.1.4 Ensure access to /etc/group- is configured. (Automated)
    - id: 18808
@@ -5978,8 +5998,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/group- -> r:^Access:\s*\(0644/-rw-r--r--\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 7.1.5 Ensure access to /etc/shadow is configured. (Automated)
    - id: 18809
@@ -5998,8 +6019,10 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: any
      rules:
+      - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 7.1.6 Ensure access to /etc/shadow- is configured. (Automated)
    - id: 18810
@@ -6018,8 +6041,10 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: any
      rules:
+      - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 7.1.7 Ensure access to /etc/gshadow is configured. (Automated)
    - id: 18811
@@ -6038,8 +6063,10 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: any
      rules:
+      - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 7.1.8 Ensure access to /etc/gshadow- is configured. (Automated)
    - id: 18812
@@ -6058,8 +6085,10 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: any
      rules:
+      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 7.1.9 Ensure access to /etc/shells is configured. (Automated)
    - id: 18813
@@ -6078,8 +6107,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/shells -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 7.1.10 Ensure access to /etc/security/opasswd is configured. (Automated)
    - id: 18814
@@ -6098,68 +6128,14 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat -c "%a %U %G" /etc/security/opasswd -> r:^600\s+root\s+root$'
+      - 'c:stat -c "%a %U %G" /etc/security/opasswd.old -> r:^600\s+root\s+root$'
 
-  # 7.1.11 Ensure world writable files and directories are secured. (Automated)
-   - id: 18815
-     title: "Ensure world writable files and directories are secured."
-     description: "World writable files are the least secure. Data in world-writable files can be modified and compromised by any user on the system. World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity. See the chmod(2) man page for more information. Setting the sticky bit on world writable directories prevents users from deleting or renaming files in that directory that are not owned by them."
-     rationale: "Data in world-writable files can be modified and compromised by any user on the system. World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity. This feature prevents the ability to delete or rename files in world writable directories (such as /tmp) that are owned by another user."
-     remediation: "- World Writable Files: o It is recommended that write access is removed from other with the command ( chmod o-w <filename> ), but always consult relevant vendor documentation to avoid breaking any application dependencies on a given file. - World Writable Directories: o Set the sticky bit on all world writable directories with the command ( chmod a+t <directory_name> ) Run the following script to: - Remove other write permission from any world writable files - Add the sticky bit to all world writable directories #!/usr/bin/env bash { l_smask='01000' a_file=() a_dir=() a_path=(-path \"*/containers/storage/*\" -o -path \"*/containerd/*\" -o -path \"*/kubelet/*\" -o -path \"/sys/*\" -o -path \"/snap/*\" -o -path \"/boot/efi/*\") while IFS= read -r l_mount; do while IFS= read -r -d $'\\0' l_file; do if [ -e \"$l_file\" ]; then l_mode=\"$(stat -Lc '%#a' \"$l_file\")\" if [ -f \"$l_file\" ]; then # Remove excess permissions from WW files echo -e \" - File: \\\"$l_file\\\" is mode: \\\"$l_mode\\\"\\n - removing write permission on \\\"$l_file\\\" from \\\"other\\\"\" chmod o-w \"$l_file\" fi if [ -d \"$l_file\" ]; then # Add sticky bit if [ ! $(( $l_mode & $l_smask )) -gt 0 ]; then echo -e \" - Directory: \\\"$l_file\\\" is mode: \\\"$l_mode\\\" and doesn't have the sticky bit set\\n - Adding the sticky bit\" chmod a+t \"$l_file\" fi fi fi done < <(find \"$l_mount\" -mount -xdev \\( \"${a_path[@]}\" \\) \\( -type f - o -type d \\) -perm -0002 -print0 2> /dev/null) done < <(findmnt -Dkerno fstype,target | awk '($1 !~ /^\\s*(nfs|proc|cifs|smb|vfat|iso9660|efivarfs|selinuxfs|ncpfs)/ && $2 !~ /^(\\/run|\\/tmp|\\/var\\/tmp)(\\/|$)/){print $2}') }."
-     compliance:
-       - cis: ["7.1.11"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
-
-  # 7.1.12 Ensure no files or directories without an owner and a group exist. (Automated)
-   - id: 18816
-     title: "Ensure no files or directories without an owner and a group exist."
-     description: "Administrators may delete users or groups from the system and neglect to remove all files and/or directories owned by those users or groups."
-     rationale: "A new user or group who is assigned a deleted user's user ID or group ID may then end up \"owning\" a deleted user or group's files, and thus have more access on the system than was intended."
-     remediation: "Remove or set ownership and group ownership of these files and/or directories to an active user on the system as appropriate."
-     compliance:
-       - cis: ["7.1.12"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
-
-  # 7.1.13 Ensure SUID and SGID files are reviewed. (Manual)
-   - id: 18817
-     title: "Ensure SUID and SGID files are reviewed."
-     description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SUID or SGID program is to enable users to perform functions (such as changing their password) that require root privileges."
-     rationale: "There are valid reasons for SUID and SGID programs, but it is important to identify and review such programs to ensure they are legitimate. Review the files returned by the action in the audit section and check to see if system binaries have a different checksum than what from the package. This is an indication that the binary may have been replaced."
-     remediation: "Ensure that no rogue SUID or SGID programs have been introduced into the system. Review the files returned by the action in the Audit section and confirm the integrity of these binaries."
-     compliance:
-       - cis: ["7.1.13"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  # 7.1.11 Ensure world writable files and directories are secured. (Automated) - Not Implemented
+  # 7.1.12 Ensure no files or directories without an owner and a group exist. (Automated) - Not Implemented
+  # 7.1.13 Ensure SUID and SGID files are reviewed. (Manual) - Not Implemented
 
   # 7.2.1 Ensure accounts in /etc/passwd use shadowed passwords. (Automated)
    - id: 18818
@@ -6178,8 +6154,9 @@ checks:
        - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
        - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'not f:/etc/passwd -> !r:^[\w@-]+:x:'
 
   # 7.2.2 Ensure /etc/shadow password fields are not empty. (Automated)
    - id: 18819
@@ -6195,8 +6172,9 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'not f:/etc/shadow -> !r:^# && r:^[\w@-]+::'
 
   # 7.2.3 Ensure all groups in /etc/passwd exist in /etc/group. (Automated)
    - id: 18820
@@ -6215,8 +6193,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/group -> !r:^# && r:shadow:[\w@-]*:\d+:$'
 
   # 7.2.4 Ensure no duplicate UIDs exist. (Automated)
    - id: 18821
@@ -6228,8 +6207,9 @@ checks:
        - cis: ["7.2.4"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+      - 'c:sh -c "cut -f3 -d\":\" /etc/passwd | sort | uniq -dc | wc -l" -> n:^(\d+)$ compare == 0'
 
   # 7.2.5 Ensure no duplicate GIDs exist. (Automated)
    - id: 18822
@@ -6241,8 +6221,9 @@ checks:
        - cis: ["7.2.5"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: any
      rules:
+      - 'c:sh -c "cut -f3 -d\":\" /etc/group | sort | uniq -dc | wc -l" -> n:^(\d+)$ compare == 0'
 
   # 7.2.6 Ensure no duplicate user names exist. (Automated)
    - id: 18823
@@ -6254,8 +6235,9 @@ checks:
        - cis: ["7.2.6"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+      - 'c:sh -c "cut -f1 -d\":\" /etc/passwd | sort | uniq -dc | wc -l" -> n:^(\d+)$ compare == 0'
 
   # 7.2.7 Ensure no duplicate group names exist. (Automated)
    - id: 18824
@@ -6267,45 +6249,9 @@ checks:
        - cis: ["7.2.7"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+      - 'c:sh -c "cut -f1 -d\":\" /etc/group | sort | uniq -dc | wc -l" -> n:^(\d+)$ compare == 0'
 
-  # 7.2.8 Ensure local interactive user home directories are configured. (Automated)
-   - id: 18825
-     title: "Ensure local interactive user home directories are configured."
-     description: "The user home directory is space defined for the particular user to set local environment variables and to store personal files. While the system administrator can establish secure permissions for users' home directories, the users can easily override these. Users can be defined in /etc/passwd without a home directory or with a home directory that does not actually exist."
-     rationale: "Since the user is accountable for files stored in the user home directory, the user must be the owner of the directory. Group or world-writable user home directories may enable malicious users to steal or modify other users' data or to gain another user's system privileges. If the user's home directory does not exist or is unassigned, the user will be placed in \"/\" and will not be able to write any files or have local environment variables set."
-     remediation: "If a local interactive users' home directory is undefined and/or doesn't exist, follow local site policy and perform one of the following: - Lock the user account - Remove the user from the system - Create a directory for the user. If undefined, edit /etc/passwd and add the absolute path to the directory to the last field of the user. Run the following script to: - Remove excessive permissions from local interactive users home directories - Update the home directory's owner #!/usr/bin/env bash { a_output=() a_output2=() a_exists2=() a_mode2=() a_owner2=() l_valid_shells=\"^($( awk -F\\/ '$NF != \"nologin\" {print}' /etc/shells | sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' | paste -s -d '|' - ))$\" l_mask='0027'; l_max=\"$( printf '%o' $(( 0777 & ~$l_mask)) )\" l_users=\"$(awk -v pat=\"$l_valid_shells\" -F: '$(NF) ~ pat { print $1 \" \" $(NF-1) }' /etc/passwd | wc -l)\" [ \"$l_users\" -gt 10000 ] && printf '%s\\n' \"\" \" ** INFO **\" \\ \" $l_users Local interactive users found on the system\" \" This may be a long running process\" \" **********\" while IFS=\" \" read -r l_user l_home; do if [ -d \"$l_home\" ]; then while IFS=: read -r l_own l_mode; do if [ \"$l_user\" != \"$l_own\" ]; then a_owner2+=(\" - User: \\\"$l_user\\\" Home \\\"$l_home\\\" is owned by: \\\"$l_own\\\"\" \\ \" changing owner to: \\\"$l_user\\\"\") && chown \"$l_user\" \"$l_home\" fi if [ $(( $l_mode & $l_mask )) -gt 0 ]; then a_mode2+=(\" - User: \\\"$l_user\\\" Home \\\"$l_home\\\" is mode: \\\"$l_mode\\\"\" \\ \" changing to mode: \\\"$l_max\\\" or more restrictive\") chmod g-w,o-rwx \"$l_home\" fi done <<< \"$(stat -Lc '%U:%#a' \"$l_home\")\" else a_exists2+=(\" - User: \\\"$l_user\\\" Home Directory: \\\"$l_home\\\" Doesn't exist\") fi done <<< \"$(awk -v pat=\"$l_valid_shells\" -F: '$(NF) ~ pat { print $1 \" \" $(NF-1) }' /etc/passwd)\" [ \"${#a_exists2[@]}\" -gt 0 ] && a_output2+=(\"${a_exists2[@]}\") [ \"${#a_mode2[@]}\" -gt 0 ] && a_output2+=(\"${a_mode2[@]}\") [ \"${#a_owner2[@]}\" -gt 0 ] && a_output2+=(\"${a_owner2[@]}\") if [ \"${#a_output2[@]}\" -gt 0 ]; then printf '%s\\n' \"\" \"${a_output2[@]}\" else printf '%s\\n' \"\" \"- No changes required\" fi }."
-     compliance:
-       - cis: ["7.2.8"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
-
-  # 7.2.9 Ensure local interactive user dot files access is configured. (Automated)
-   - id: 18826
-     title: "Ensure local interactive user dot files access is configured."
-     description: "While the system administrator can establish secure permissions for users' \"dot\" files, the users can easily override these. - .forward file specifies an email address to forward the user's mail to. - .rhost file provides the \"remote authentication\" database for the rcp, rlogin, and rsh commands and the rcmd() function. These files bypass the standard password-based user authentication mechanism. They specify remote hosts and users that are considered trusted (i.e. are allowed to access the local system without supplying a password) - .netrc file contains data for logging into a remote host or passing authentication to an API. - .bash_history file keeps track of the user’s commands."
-     rationale: "User configuration files with excessive or incorrect access may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
-     remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user dot file permissions and determine the action to be taken in accordance with site policy. The following script will: - remove excessive permissions on dot files within interactive users' home directories - change ownership of dot files within interactive users' home directories to the user - change group ownership of dot files within interactive users' home directories to the user's primary group list .forward and .rhost files to be investigated and manually deleted - #!/usr/bin/env bash { a_output2=(); a_output3=() l_maxsize=\"1000\" # Maximum number of local interactive users before warning (Default 1,000) l_valid_shells=\"^($( awk -F\\/ '$NF != \"nologin\" {print}' /etc/shells | sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' | paste -s -d '|' - ))$\" a_user_and_home=() # Create array with local users and their home directories while read -r l_local_user l_local_user_home; do # Populate array with users and user home location [[ -n \"$l_local_user\" && -n \"$l_local_user_home\" ]] && a_user_and_home+=(\"$l_local_user:$l_local_user_home\") done <<< \"$(awk -v pat=\"$l_valid_shells\" -F: '$(NF) ~ pat { print $1 \" \" $(NF-1) }' /etc/passwd)\" l_asize=\"${#a_user_and_home[@]}\" # Here if we want to look at number of users before proceeding [ \"${#a_user_and_home[@]}\" -gt \"$l_maxsize\" ] && printf '%s\\n' \"\" \" ** INFO **\" \\ \" - \\\"$l_asize\\\" Local interactive users found on the system\" \\ \" - This may be a long running check\" \"\" file_access_fix() { a_access_out=() l_max=\"$( printf '%o' $(( 0777 & ~$l_mask)) )\" if [ $(( $l_mode & $l_mask )) -gt 0 ]; then printf '%s\\n' \"\" \" - File: \\\"$l_hdfile\\\" is mode: \\\"$l_mode\\\" and should be mode: \\\"$l_max\\\" or more restrictive\" \\ \" Updating file: \\\"$l_hdfile\\\" to be mode: \\\"$l_max\\\" or more restrictive\" chmod \"$l_change\" \"$l_hdfile\" fi if [[ ! \"$l_owner\" =~ ($l_user) ]]; then printf '%s\\n' \"\" \" - File: \\\"$l_hdfile\\\" owned by: \\\"$l_owner\\\" and should be owned by \\\"${l_user//|/ or }\\\"\" \\ \" Updating file: \\\"$l_hdfile\\\" to be owned by \\\"${l_user//|/ or }\\\"\" chown \"$l_user\" \"$l_hdfile\" fi if [[ ! \"$l_gowner\" =~ ($l_group) ]]; then printf '%s\\n' \"\" \" - File: \\\"$l_hdfile\\\" group owned by: \\\"$l_gowner\\\" and should be group owned by \\\"${l_group//|/ or }\\\"\" \\ \" Updating file: \\\"$l_hdfile\\\" to be group owned by \\\"${l_group//|/ or }\\\"\" chgrp \"$l_group\" \"$l_hdfile\" fi } while IFS=: read -r l_user l_home; do a_dot_file=(); a_netrc=(); a_netrc_warn=(); a_bhout=(); a_hdirout=() if [ -d \"$l_home\" ]; then l_group=\"$(id -gn \"$l_user\" | xargs)\";l_group=\"${l_group// /|}\" while IFS= read -r -d $'\\0' l_hdfile; do while read -r l_mode l_owner l_gowner; do case \"$(basename \"$l_hdfile\")\" in .forward | .rhost ) a_dot_file+=(\" - File: \\\"$l_hdfile\\\" exists\" \" Please review and manually delete this file\") ;; .netrc ) l_mask='0177'; l_change=\"u-x,go-rwx\"; file_access_fix a_netrc_warn+=(\" - File: \\\"$l_hdfile\\\" exists\") ;; .bash_history ) l_mask='0177'; l_change=\"u-x,go-rwx\"; file_access_fix ;; * ) l_mask='0133'; l_change=\"u-x,go-wx\"; file_access_fix ;; esac done < <(stat -Lc '%#a %U %G' \"$l_hdfile\") done < <(find \"$l_home\" -xdev -type f -name '.*' -print0) fi [ \"${#a_dot_file[@]}\" -gt 0 ] && a_output2+=(\" - User: \\\"$l_user\\\" Home Directory: \\\"$l_home\\\"\" \"${a_dot_file[@]}\") [ \"${#a_netrc_warn[@]}\" -gt 0 ] && a_output3+=(\" - User: \\\"$l_user\\\" Home Directory: \\\"$l_home\\\"\" \"${a_netrc_warn[@]}\") done <<< \"$(printf '%s\\n' \"${a_user_and_home[@]}\")\" [ \"${#a_output3[@]}\" -gt 0 ] && printf '%s\\n' \"\" \" ** WARNING **\" \"${a_output3[@]}\" \"\" [ \"${#a_output2[@]}\" -gt 0 ] && printf '%s\\n' \"\" \"${a_output2[@]}\" }."
-     compliance:
-       - cis: ["7.2.9"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  # 7.2.8 Ensure local interactive user home directories are configured. (Automated) - Not Implemented
+  # 7.2.9 Ensure local interactive user dot files access is configured. (Automated) - Not Implemented
