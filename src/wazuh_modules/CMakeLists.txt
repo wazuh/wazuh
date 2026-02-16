@@ -85,15 +85,14 @@ set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 
-# Modules - always built
-add_subdirectory(agent_info)
-add_subdirectory(sca)
-add_subdirectory(syscollector)
-
 # Modules - Server only
 if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   add_subdirectory(inventory_sync)
   add_subdirectory(vulnerability_scanner)
+else()
+  add_subdirectory(agent_info)
+  add_subdirectory(sca)
+  add_subdirectory(syscollector)
 endif()
 
 if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
@@ -124,10 +123,7 @@ if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   # Server build
   target_link_libraries(
     wazuh_modulesd_lib
-    PUBLIC agent_info
-           sca
-           syscollector
-           sysinfo
+    PUBLIC sysinfo
            wazuhext
            pthread
            config
