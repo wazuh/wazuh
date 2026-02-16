@@ -1859,7 +1859,6 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 
         scan();
     }
-    m_spDBSync.reset(nullptr);
     m_cv.notify_all();
 }
 
