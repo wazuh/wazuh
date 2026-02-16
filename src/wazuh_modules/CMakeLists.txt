@@ -60,8 +60,16 @@ include_directories(
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-add_definitions(-DARGV0="wazuh-modulesd")
-add_definitions(-DGROUPGLOBAL="wazuh")
+# Keep agent daemon name for agent/winagent targets and manager daemon name for
+# server/local/hybrid targets.
+set(WAZUH_MODULESD_DAEMON_NAME "wazuh-modulesd")
+set(WAZUH_RUNTIME_GROUP "wazuh")
+if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
+  set(WAZUH_MODULESD_DAEMON_NAME "wazuh-manager-modulesd")
+  set(WAZUH_RUNTIME_GROUP "wazuh-manager")
+endif()
+add_definitions(-DARGV0="${WAZUH_MODULESD_DAEMON_NAME}")
+add_definitions(-DGROUPGLOBAL="${WAZUH_RUNTIME_GROUP}")
 
 if(INOTIFY_ENABLED)
   add_definitions(-DINOTIFY_ENABLED)
@@ -186,10 +194,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
             schema_validator)
   # Only build Linux executable when not running unit tests
 elseif(NOT UNIT_TEST)
-  add_executable(wazuh-modulesd "${SRC_FOLDER}/wazuh_modules/src/main.c")
+  add_executable(${WAZUH_MODULESD_DAEMON_NAME}
+                 "${SRC_FOLDER}/wazuh_modules/src/main.c")
   set_target_properties(
-    wazuh-modulesd PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
-                                                ${SRC_FOLDER})
-  target_link_libraries(wazuh-modulesd PRIVATE wazuh_modulesd_lib)
+    ${WAZUH_MODULESD_DAEMON_NAME}
+    PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER})
+  target_link_libraries(${WAZUH_MODULESD_DAEMON_NAME}
+                        PRIVATE wazuh_modulesd_lib)
   string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
 endif()

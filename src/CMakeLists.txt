@@ -77,11 +77,6 @@ if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
   add_definitions(-DCLIENT)
 endif()
 
-# Define WAZUH_MANAGER for manager builds
-if("${TARGET}" STREQUAL "server")
-  add_definitions(-DWAZUH_MANAGER)
-endif()
-
 # Keep Make-based Windows semantics for external headers that otherwise declare
 # symbols as dllimport. We link these through delay import stubs.
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -281,15 +276,15 @@ add_subdirectory(shared_modules/sync_protocol)
 add_subdirectory(shared_modules/utils)
 add_subdirectory(shared)
 add_subdirectory(config)
-add_subdirectory(syscheckd)
-add_subdirectory(rootcheck)
 add_subdirectory(wazuh_modules)
 add_subdirectory(active-response)
 add_subdirectory(os_execd)
-add_subdirectory(logcollector)
 
 # Agent-only modules
 if(IS_AGENT)
+  add_subdirectory(logcollector)
+  add_subdirectory(syscheckd)
+  add_subdirectory(rootcheck)
   add_subdirectory(client-agent)
   add_subdirectory(addagent)
 endif()

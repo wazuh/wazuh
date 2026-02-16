@@ -38,11 +38,9 @@ set(TEST_DEPS
     ${WAZUHEXT}
     -lagent_metadata
     -lrouter
-    -lfimebpf
     -lagent_sync_protocol
     -ldbsync
     -lschema_validator
-    -lfimdb
     -Wl,--end-group
     -lpthread
     -ldl

@@ -334,18 +334,6 @@ ifndef TARGET
 	TARGET=failtarget
 endif # TARGET
 
-ifeq (${TARGET},agent)
-	DEFINES+=-DCLIENT
-endif
-
-ifeq (${TARGET},local)
-	DEFINES+=-DLOCAL
-endif
-
-ifneq (,$(filter ${TARGET},server))
-	DEFINES+=-DWAZUH_MANAGER
-endif
-
 .PHONY: build
 build: ${TARGET}
 ifneq (${TARGET},failtarget)
@@ -1498,6 +1486,12 @@ clean-internals:
 	rm -f wazuh-monitord
 	rm -f wazuh-authd
 	rm -f wazuh-db
+	rm -f wazuh-manager-modulesd
+	rm -f wazuh-manager-remoted
+	rm -f wazuh-manager-monitord
+	rm -f wazuh-manager-authd
+	rm -f wazuh-manager-db
+	rm -f wazuh-manager-execd
 	rm -f manage_agents
 	rm -f verify-agent-conf
 # Compilation libraries

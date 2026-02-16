@@ -95,11 +95,7 @@ runs:
 
           echo "Executing: lcov $arguments"
           echo "Include files: $include_files"
-          option=""
           option="--ignore-errors mismatch"
-          if dpkg --compare-versions $(lcov --version | rev | cut -d ' ' -f1 | rev) ge 2.0-1; then
-             option="--ignore-errors unused,mismatch"
-          fi
           lcov $arguments ${option}
 
       # Generate the HTML coverage report and capture coverage data

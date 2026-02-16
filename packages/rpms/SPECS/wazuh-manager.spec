@@ -761,8 +761,6 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libjemalloc.so.2
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libstdc++.so.6
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libgcc_s.so.1
-%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libfimdb.so
-%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libfimebpf.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libbpf.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/modern.bpf.o
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libcontent_manager.so
