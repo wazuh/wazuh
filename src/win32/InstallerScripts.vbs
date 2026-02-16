@@ -355,25 +355,22 @@ Private Function GetVersion()
 End Function
 
 Public Function CheckSvcRunning()
-	Set wmi = GetObject("winmgmts://./root/cimv2")
+    On Error Resume Next
+    Set WshShell = CreateObject("WScript.Shell")
 
-    SERVICE = "OssecSvc"
-    Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
-
-    If svc.Count <> 0 Then
-        state = wmi.Get("Win32_Service.Name='" & SERVICE & "'").State
-        Session.Property("OSSECRUNNING") = state
+    Set objExec = WshShell.Exec("sc query OssecSvc")
+    strOutput = objExec.StdOut.ReadAll()
+    If InStr(strOutput, "RUNNING") > 0 Then
+        Session.Property("OSSECRUNNING") = "Running"
     End If
 
-    SERVICE = "WazuhSvc"
-    Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
-
-    If svc.Count <> 0 Then
-        state = wmi.Get("Win32_Service.Name='" & SERVICE & "'").State
-        Session.Property("WAZUHRUNNING") = state
+    Set objExec = WshShell.Exec("sc query WazuhSvc")
+    strOutput = objExec.StdOut.ReadAll()
+    If InStr(strOutput, "RUNNING") > 0 Then
+        Session.Property("WAZUHRUNNING") = "Running"
     End If
 
-	CheckSvcRunning = 0
+    CheckSvcRunning = 0
 End Function
 
 Public Function KillGUITask()
