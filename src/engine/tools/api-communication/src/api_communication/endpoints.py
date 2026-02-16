@@ -89,6 +89,8 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str]:
         return None, 'tester/table/get'
     if isinstance(message, tester.RunPost_Request):
         return None, 'tester/run/post'
+    if isinstance(message, tester.LogtestDelete_Request):
+        return None, 'logtest'
 
     # Archiver
     if isinstance(message, archiver.ArchiverActivate_Request):

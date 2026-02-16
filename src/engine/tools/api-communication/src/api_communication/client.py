@@ -11,6 +11,7 @@ from google.protobuf.message import Message
 from api_communication.endpoints import get_endpoint
 from api_communication.proto.engine_pb2 import GenericStatus_Response
 from api_communication.proto.engine_pb2 import ReturnStatus
+import api_communication.proto.tester_pb2 as tester
 
 
 DEFAULT_TIMEOUT = 10
@@ -63,6 +64,19 @@ class APIClient:
         msg += f': {error}'
         return msg
 
+    @staticmethod
+    def _get_http_method(message: Message) -> str:
+        if isinstance(message, tester.LogtestDelete_Request):
+            return "delete"
+        return "post"
+
+    @staticmethod
+    def _send_http(client: httpx.Client, method: str, url: str, body: str, header: dict, timeout: Optional[int] = None):
+        if method == "delete":
+            # Older httpx versions don't accept body args on delete() directly.
+            return client.request("DELETE", url, content=body, headers=header, timeout=timeout)
+        return client.post(url, content=body, headers=header, timeout=timeout)
+
     def send_recv(self, message: Message) -> Tuple[Optional[str], dict]:
         """Send a message to the API socket and receive the response
 
@@ -89,8 +103,13 @@ class APIClient:
         # Send the request
         try:
             client = httpx.Client(transport=self.transport)
-            response = client.post(
-                f'http://localhost/{endpoint}', data=body, headers=header, timeout=DEFAULT_TIMEOUT)
+            method = self._get_http_method(message)
+            response = self._send_http(client,
+                                       method,
+                                       f'http://localhost/{endpoint}',
+                                       body,
+                                       header,
+                                       DEFAULT_TIMEOUT)
 
             if response.status_code != 200:
                 # Check if the error contains a message
@@ -128,8 +147,12 @@ class APIClient:
         response: httpx.Response = None
         try:
             client = httpx.Client(transport=self.transport)
-            response = client.post(
-                f'http://localhost/{endpoint}', data=body, headers=header)
+            method = self._get_http_method(reqProtoMsg)
+            response = self._send_http(client,
+                                       method,
+                                       f'http://localhost/{endpoint}',
+                                       body,
+                                       header)
 
         except httpx.HTTPError as e:
             return f'HTTP error: {self._set_error_msg(e)}', {}

@@ -53,6 +53,9 @@ namespace wazuh {
 namespace api {
 namespace engine {
 namespace tester {
+class LogtestDelete_Request;
+struct LogtestDelete_RequestDefaultTypeInternal;
+extern LogtestDelete_RequestDefaultTypeInternal _LogtestDelete_Request_default_instance_;
 class PublicRunPost_Request;
 struct PublicRunPost_RequestDefaultTypeInternal;
 extern PublicRunPost_RequestDefaultTypeInternal _PublicRunPost_Request_default_instance_;
@@ -101,6 +104,7 @@ extern TableGet_ResponseDefaultTypeInternal _TableGet_Response_default_instance_
 }  // namespace wazuh
 }  // namespace com
 PROTOBUF_NAMESPACE_OPEN
+template<> ::com::wazuh::api::engine::tester::LogtestDelete_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::tester::LogtestDelete_Request>(Arena*);
 template<> ::com::wazuh::api::engine::tester::PublicRunPost_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::tester::PublicRunPost_Request>(Arena*);
 template<> ::com::wazuh::api::engine::tester::Result* Arena::CreateMaybeMessage<::com::wazuh::api::engine::tester::Result>(Arena*);
 template<> ::com::wazuh::api::engine::tester::Result_AssetTrace* Arena::CreateMaybeMessage<::com::wazuh::api::engine::tester::Result_AssetTrace>(Arena*);
@@ -2691,6 +2695,124 @@ class PublicRunPost_Request final :
   union { Impl_ _impl_; };
   friend struct ::TableStruct_tester_2eproto;
 };
+// -------------------------------------------------------------------
+
+class LogtestDelete_Request final :
+    public ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.tester.LogtestDelete_Request) */ {
+ public:
+  inline LogtestDelete_Request() : LogtestDelete_Request(nullptr) {}
+  explicit PROTOBUF_CONSTEXPR LogtestDelete_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  LogtestDelete_Request(const LogtestDelete_Request& from);
+  LogtestDelete_Request(LogtestDelete_Request&& from) noexcept
+    : LogtestDelete_Request() {
+    *this = ::std::move(from);
+  }
+
+  inline LogtestDelete_Request& operator=(const LogtestDelete_Request& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline LogtestDelete_Request& operator=(LogtestDelete_Request&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const LogtestDelete_Request& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const LogtestDelete_Request* internal_default_instance() {
+    return reinterpret_cast<const LogtestDelete_Request*>(
+               &_LogtestDelete_Request_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    14;
+
+  friend void swap(LogtestDelete_Request& a, LogtestDelete_Request& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(LogtestDelete_Request* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(LogtestDelete_Request* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  LogtestDelete_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<LogtestDelete_Request>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyFrom;
+  inline void CopyFrom(const LogtestDelete_Request& from) {
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl(*this, from);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeFrom;
+  void MergeFrom(const LogtestDelete_Request& from) {
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl(*this, from);
+  }
+  public:
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "com.wazuh.api.engine.tester.LogtestDelete_Request";
+  }
+  protected:
+  explicit LogtestDelete_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.tester.LogtestDelete_Request)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+  };
+  friend struct ::TableStruct_tester_2eproto;
+};
 // ===================================================================
 
 
@@ -4614,9 +4736,15 @@ inline void PublicRunPost_Request::set_allocated_trace_level(std::string* trace_
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.PublicRunPost_Request.trace_level)
 }
 
+// -------------------------------------------------------------------
+
+// LogtestDelete_Request
+
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------

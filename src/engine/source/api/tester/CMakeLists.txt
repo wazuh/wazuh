@@ -40,6 +40,7 @@ if(ENGINE_BUILD_TEST)
         GTest::gtest_main
         router::mocks
         api::adapter::test
+        cmstore::mocks
     )
     gtest_discover_tests(api_tester_utest)
 endif()
