@@ -21,8 +21,7 @@ int* __wrap_wdb_get_agents_ids_of_current_node(const char* status,
                                                __attribute__((unused)) int* sock,
                                                int last_id,
                                                int limit);
-int* __wrap_wdb_get_all_agents(bool include_manager, int* sock);
-rb_tree* __wrap_wdb_get_all_agents_rbtree(bool include_manager, int* sock);
+rb_tree* __wrap_wdb_get_all_agents_rbtree(int* sock);
 int __wrap_wdb_update_agent_keepalive(int id,
                                       const char* connection_status,
                                       const char* sync_status,

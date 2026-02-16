@@ -7,8 +7,6 @@
 #include "stringHelper.h"
 #include "timeHelper.h"
 
-#include "../../../module_query_errors.h"
-#include "../../../wmodules.h"
 #include <dbsync.hpp>
 #include <file_io_utils.hpp>
 #include <filesystem_wrapper.hpp>
