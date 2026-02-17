@@ -125,9 +125,9 @@ function get_msi_version {
     write-output "$(Get-Date -format u) - Extracting the version from MSI file." >> .\upgrade\upgrade.log
     try {
         # Extracting the version using msiexec and waiting for it to complete
-        Start-Process -FilePath "msiexec.exe" -ArgumentList "/a", "`"$msiPath`"", "/qn", "TARGETDIR=$env:TEMP", "/lv*", "`".\upgrade\msi_output.txt`"" -Wait
+        Start-Process -FilePath "msiexec.exe" -ArgumentList "/a", "`"$msiPath`"", "/qn", "TARGETDIR=$env:TEMP", "/lv*", "`".\upgrade\msi_output.log`"" -Wait
 
-        $msi_version = Get-MSIProductVersion ".\upgrade\msi_output.txt"
+        $msi_version = Get-MSIProductVersion ".\upgrade\msi_output.log"
         return $msi_version
 
     } catch {
