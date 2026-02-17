@@ -360,18 +360,26 @@ Public Function CheckSvcRunning()
     scPath = WshShell.ExpandEnvironmentStrings("%SystemRoot%") & "\System32\sc.exe"
 
     Set objExec = WshShell.Exec(scPath & " query OssecSvc")
-    strOutput = objExec.StdOut.ReadAll()
-    If InStr(strOutput, "RUNNING") > 0 Then
+    If IsStateRunning(objExec.StdOut.ReadAll()) Then
         Session.Property("OSSECRUNNING") = "Running"
     End If
 
     Set objExec = WshShell.Exec(scPath & " query WazuhSvc")
-    strOutput = objExec.StdOut.ReadAll()
-    If InStr(strOutput, "RUNNING") > 0 Then
+    If IsStateRunning(objExec.StdOut.ReadAll()) Then
         Session.Property("WAZUHRUNNING") = "Running"
     End If
 
     CheckSvcRunning = 0
+End Function
+
+Private Function IsStateRunning(scOutput)
+    IsStateRunning = False
+    For Each line In Split(scOutput, vbCrLf)
+        If InStr(line, "STATE") > 0 And InStr(line, ": 4 ") > 0 Then
+            IsStateRunning = True
+            Exit For
+        End If
+    Next
 End Function
 
 Public Function KillGUITask()
