@@ -884,6 +884,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_deb(void **sta
     wm_upgrade_task *task = state[1];
     char *versions = NULL;
 
+    agent->agent_id = 15;
     os_strdup("centos", agent->platform);
     os_strdup("8", agent->major_version);
     os_strdup("x86_64", agent->architecture);
@@ -896,6 +897,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_deb(void **sta
     os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-manager-modulesd:agent-upgrade");
+    expect_string(__wrap__mtwarn, formatted_msg, "(8169): Agent '15' with platform 'centos' won't be upgraded using package 'deb' without the force option. Ignoring...");
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/rpm/x86_64/versions");
     expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
@@ -915,6 +917,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_deb_force(void
     wm_upgrade_task *task = state[1];
     char *versions = NULL;
 
+    agent->agent_id = 20;
     os_strdup("centos", agent->platform);
     os_strdup("8", agent->major_version);
     os_strdup("x86_64", agent->architecture);
@@ -928,7 +931,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_deb_force(void
     os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8170): Agent '0' with platform 'centos' will be upgraded using package 'deb'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8170): Agent '20' with platform 'centos' will be upgraded using package 'deb'");
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/deb/amd64/versions");
     expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
