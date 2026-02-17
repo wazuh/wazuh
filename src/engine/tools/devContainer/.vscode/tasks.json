@@ -288,7 +288,7 @@
                 "--num-callers=20",
                 "--show-leak-kinds=definite,indirect",
                 "--log-file=ValgrindPRs.log",
-                "/var/ossec/bin/wazuh-remoted",
+                "/var/wazuh-manager/bin/wazuh-remoted",
                 "-f",
                 "-d"
             ],
