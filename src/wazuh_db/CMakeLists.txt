@@ -38,8 +38,16 @@ include_directories(
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-add_definitions(-DARGV0="wazuh-db")
-add_definitions(-DGROUPGLOBAL="wazuh")
+set(WAZUH_RUNTIME_GROUP "wazuh")
+set(WAZUH_RUNTIME_USER "wazuh")
+if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
+  set(WAZUH_RUNTIME_GROUP "wazuh-manager")
+  set(WAZUH_RUNTIME_USER "wazuh-manager")
+endif()
+
+add_definitions(-DARGV0="wazuh-manager-db")
+add_definitions(-DGROUPGLOBAL="${WAZUH_RUNTIME_GROUP}")
+add_definitions(-DUSER="${WAZUH_RUNTIME_USER}")
 
 set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
@@ -89,16 +97,16 @@ endif(UNIX)
 # Only build Unix executable when not running unit tests (server-only, no
 # Windows)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT UNIT_TEST)
-  add_executable(wazuh-db "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
+  add_executable(wazuh-manager-db "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
   set_target_properties(
-    wazuh-db PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
-                                          ${SRC_FOLDER})
-  target_link_libraries(wazuh-db PRIVATE wdb_lib)
+    wazuh-manager-db PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
+                                                  ${SRC_FOLDER})
+  target_link_libraries(wazuh-manager-db PRIVATE wdb_lib)
 
   if(APPLE)
     set_target_properties(
-      wazuh-db PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
-                          INSTALL_RPATH "@executable_path/../lib")
+      wazuh-manager-db PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
+                                  INSTALL_RPATH "@executable_path/../lib")
   else()
     string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
   endif()

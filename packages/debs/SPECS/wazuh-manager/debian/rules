@@ -20,7 +20,7 @@ export PKG_DIR=debian/wazuh-manager
 export TARGET_DIR=${CURDIR}/${PKG_DIR}
 
 # Package build options
-export INSTALLATION_DIR="/var/ossec"
+export INSTALLATION_DIR="/var/wazuh-manager"
 export INSTALLATION_SCRIPTS_DIR="${INSTALLATION_DIR}/packages_files/manager_installation_scripts"
 export JOBS="5"
 export DEBUG_ENABLED="no"
@@ -49,9 +49,10 @@ override_dh_install:
 	USER_DIR="$(INSTALLATION_DIR)" \
 	USER_DELETE_DIR="y" \
 	USER_ENABLE_ACTIVE_RESPONSE="y" \
-	USER_ENABLE_SYSCHECK="y" \
-	USER_ENABLE_ROOTCHECK="y" \
-	USER_ENABLE_SYSCOLLECTOR="y" \
+	USER_ENABLE_SYSCHECK="n" \
+	USER_ENABLE_ROOTCHECK="n" \
+	USER_ENABLE_SYSCOLLECTOR="n" \
+	USER_ENABLE_SCA="n" \
 	USER_UPDATE="n" \
 	USER_ENABLE_EMAIL="n" \
 	USER_WHITE_LIST="n" \

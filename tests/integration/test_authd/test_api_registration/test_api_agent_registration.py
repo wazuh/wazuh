@@ -7,7 +7,7 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: These tests will check if the 'wazuh-authd' daemon correctly handles the enrollment requests
+brief: These tests will check if the 'wazuh-manager-authd' daemon correctly handles the enrollment requests
        from the API.
 
 tier: 0
@@ -20,7 +20,7 @@ components:
     - manager
 
 daemons:
-    - wazuh-authd
+    - wazuh-manager-authd
     - wazuh-api
 
 os_platform:

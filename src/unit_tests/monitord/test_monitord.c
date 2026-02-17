@@ -29,6 +29,11 @@
 #include "config.h"
 #include "os_err.h"
 
+#ifdef TEST_SERVER
+#undef ARGV0
+#define ARGV0 "wazuh-manager-monitord"
+#endif
+
 /* redefinitons/wrapping */
 
 int __wrap_ReadConfig(int modules, const char *cfgfile, __attribute__((unused)) void *d1, __attribute__((unused)) void *d2) {

@@ -3,19 +3,6 @@ test_name: DELETE /agents/{agent_id}/group/{group_id}
 
 stages:
 
-    # DELETE /agents/000/group/group1
-  - name: Try to remove agent 000 (manager) from group1
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group/group1"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
-      json:
-        error: 1703
-
     # DELETE /agents/999/group/group1
   - name: Try to remove non existing agent from group1
     request:
@@ -128,19 +115,6 @@ test_name: DELETE /agents/{agent_id}/group
 
 stages:
 
-    # DELETE /agents/000/group
-  - name: Try to remove agent 000 (manager) from all groups
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
-      json:
-        error: 1703
-
     # DELETE /agents/999/group
   - name: Try to remove non existing agent from all groups
     request:
@@ -224,8 +198,8 @@ stages:
       json:
         error: 1710
 
-    # DELETE /agents/group?group_id=group1&agents_list=000,002
-  - name: Try to remove agents 000 and 002(not assigned to group1) from group1
+    # DELETE /agents/group?group_id=group1&agents_list=002
+  - name: Try to remove agent 002(not assigned to group1) from group1
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/group"
@@ -233,7 +207,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: 000,002
+        agents_list: "002"
         group_id: group1
     response:
       status_code: 200
@@ -243,15 +217,11 @@ stages:
           affected_items: []
           failed_items:
             - error:
-                code: 1703
-              id:
-                - "000"
-            - error:
                 code: 1734
               id:
                 - "002"
           total_affected_items: 0
-          total_failed_items: 2
+          total_failed_items: 1
 
     # DELETE /agents/group?group1&agents_list=998,999
   - name: Try to remove agents 998 and 999 from group1
@@ -577,28 +547,6 @@ stages:
                 - '999'
           total_affected_items: 0
           total_failed_items: 2
-
-    # DELETE /agents?agents_list=000
-  - name: Try to delete agent 000 (manager)
-    request:
-      verify: False
-      <<: *delete_agents
-      params:
-        agents_list: '000'
-        status: 'all'
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1703
-              id:
-                - '000'
-          total_affected_items: 0
-          total_failed_items: 1
 
     # DELETE /agents?agents_list=004&status=wrong
   - name: Try to delete agent with a wrong status

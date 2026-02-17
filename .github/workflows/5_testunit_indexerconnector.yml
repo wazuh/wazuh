@@ -13,7 +13,7 @@ on:
 
 jobs:
   indexerconnector-modules:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master

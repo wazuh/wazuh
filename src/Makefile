@@ -93,8 +93,13 @@ EXTERNAL_LIBBPF=external/libbpf-bootstrap/
 EXTERNAL_DBUS=external/dbus/
 endif
 # XXX Becareful NO EXTRA Spaces here
-WAZUH_GROUP?=wazuh
+ifeq ($(TARGET),server)
+WAZUH_USER?=wazuh-manager
+WAZUH_GROUP?=wazuh-manager
+else
 WAZUH_USER?=wazuh
+WAZUH_GROUP?=wazuh
+endif
 SHARED=so
 SELINUX_MODULE=selinux/wazuh.mod
 SELINUX_ENFORCEMENT=selinux/wazuh.te
@@ -1481,6 +1486,11 @@ clean-internals:
 	rm -f wazuh-monitord
 	rm -f wazuh-authd
 	rm -f wazuh-db
+	rm -f wazuh-manager-modulesd
+	rm -f wazuh-manager-remoted
+	rm -f wazuh-manager-monitord
+	rm -f wazuh-manager-authd
+	rm -f wazuh-manager-db
 	rm -f manage_agents
 	rm -f verify-agent-conf
 # Compilation libraries

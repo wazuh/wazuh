@@ -111,7 +111,7 @@ int main(int argc, char ** argv)
     modules |= WAZUHDB;
     modules |= CCLUSTER;
 
-    // Read ossec.conf
+    // Read wazuh configuration file
     if (ReadConfig(modules, OSSECCONF, &gconfig, NULL) < 0) {
         merror_exit("Invalid configuration block for Wazuh-DB.");
     }
@@ -213,14 +213,14 @@ int main(int argc, char ** argv)
 
     os_calloc(wconfig.worker_pool_size, sizeof(pthread_t), worker_pool);
 
-    router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/ids", (void*)&wdb_global_pre, (void*)&wdb_global_post);
-    router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/ids/groups/:name", (void*)&wdb_global_pre, (void*)&wdb_global_post);
-    router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/ids/groups", (void*)&wdb_global_pre, (void*)&wdb_global_post);
-    router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/:agent_id/groups", (void*)&wdb_global_pre, (void*)&wdb_global_post);
-    router_register_api_endpoint("wazuh-db","wdb-http.sock", "POST", "/v1/agents/summary", (void*)&wdb_global_pre, (void*)&wdb_global_post);
-    router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/sync", (void*)&wdb_global_pre, (void*)&wdb_global_post);
-    router_register_api_endpoint("wazuh-db","wdb-http.sock", "POST", "/v1/agents/sync", (void*)&wdb_global_pre, (void*)&wdb_global_post);
-    router_register_api_endpoint("wazuh-db","wdb-http.sock", "POST", "/v1/agents/restartinfo", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-manager-db","wdb-http.sock", "GET", "/v1/agents/ids", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-manager-db","wdb-http.sock", "GET", "/v1/agents/ids/groups/:name", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-manager-db","wdb-http.sock", "GET", "/v1/agents/ids/groups", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-manager-db","wdb-http.sock", "GET", "/v1/agents/:agent_id/groups", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-manager-db","wdb-http.sock", "POST", "/v1/agents/summary", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-manager-db","wdb-http.sock", "GET", "/v1/agents/sync", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-manager-db","wdb-http.sock", "POST", "/v1/agents/sync", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-manager-db","wdb-http.sock", "POST", "/v1/agents/restartinfo", (void*)&wdb_global_pre, (void*)&wdb_global_post);
 
     router_start_api("wdb-http.sock");
 

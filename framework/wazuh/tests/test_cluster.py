@@ -41,8 +41,10 @@ def test_read_config_wrapper_exception(mock_read_config):
     assert list(result.failed_items.keys())[0] == WazuhError(1001)
 
 
-@patch('wazuh.cluster.read_config', return_value=default_config)
-def test_node_wrapper(mock_read_config):
+@patch('wazuh.cluster.get_node', return_value={'cluster': default_config["name"],
+                                               'node': default_config["node_name"],
+                                               'type': default_config["node_type"]})
+def test_node_wrapper(mock_get_node):
     """Verify that the node_wrapper returns the default node information."""
     result = cluster.get_node_wrapper()
     assert result.affected_items == [{'cluster': default_config["name"],

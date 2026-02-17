@@ -29,6 +29,8 @@
 
 #define TEST_MAX_DATES 5
 
+#define WM_COMMAND_TEST_LOGTAG "wazuh-modulesd:command"
+
 static wmodule *command_module;
 static OS_XML *lxml;
 extern int test_mode;
@@ -294,11 +296,11 @@ void test_validate_command_checksums_success(void **state) {
     expect_wm_validate_command("/test/file.sh", command->sha1_hash, SHA1SUM, 1);
     expect_wm_validate_command("/test/file.sh", command->sha256_hash, SHA256SUM, 1);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:command");
+    expect_string(__wrap__mtdebug1, tag, WM_COMMAND_TEST_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "MD5 checksum verification was successful for command '/test/file.sh --debug'.");
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:command");
+    expect_string(__wrap__mtdebug1, tag, WM_COMMAND_TEST_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "SHA1 checksum verification was successful for command '/test/file.sh --debug'.");
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:command");
+    expect_string(__wrap__mtdebug1, tag, WM_COMMAND_TEST_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "SHA256 checksum verification was successful for command '/test/file.sh --debug'.");
 
     assert_int_equal(validate_command_checksums(command, "/test/file.sh"), 0);
@@ -310,9 +312,9 @@ void test_validate_command_checksums_failure(void **state) {
     expect_wm_validate_command("/test/file.sh", command->md5_hash, MD5SUM, 1);
     expect_wm_validate_command("/test/file.sh", command->sha1_hash, SHA1SUM, 0);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:command");
+    expect_string(__wrap__mtdebug1, tag, WM_COMMAND_TEST_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "MD5 checksum verification was successful for command '/test/file.sh --debug'.");
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:command");
+    expect_string(__wrap__mterror, tag, WM_COMMAND_TEST_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "SHA1 checksum verification failed for command '/test/file.sh --debug'.");
 
     assert_int_equal(validate_command_checksums(command, "/test/file.sh"), -1);

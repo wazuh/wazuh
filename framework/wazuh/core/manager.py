@@ -48,7 +48,7 @@ def status() -> dict:
 
 
 def get_ossec_log_fields(log: str, log_format: LoggingFormat = LoggingFormat.plain) -> Union[tuple, None]:
-    """Get ossec.log log fields.
+    """Get wazuh-manager.log log fields.
 
     Parameters
     ----------
@@ -105,12 +105,12 @@ def get_wazuh_active_logging_format() -> LoggingFormat:
     LoggingFormat
         Wazuh active log format. Can either be `plain` or `json`. If it has both types, `plain` will be returned.
     """
-    active_logging = get_active_configuration(agent_id="000", component="com", configuration="logging")['logging']
+    active_logging = get_active_configuration(component="com", configuration="logging")['logging']
     return LoggingFormat.plain if active_logging['plain'] == "yes" else LoggingFormat.json
 
 
 def get_ossec_logs(limit: int = 2000) -> list:
-    """Return last <limit> lines of ossec.log file.
+    """Return last <limit> lines of wazuh-manager.log file.
 
     Parameters
     ----------
@@ -137,7 +137,7 @@ def get_ossec_logs(limit: int = 2000) -> list:
         if log_fields:
             date, tag, level, description = log_fields
 
-            # We transform local time (ossec.log) to UTC with ISO8601 maintaining time integrity
+            # We transform local time (wazuh log file) to UTC with ISO8601 maintaining time integrity
             timestamp = date.astimezone(timezone.utc).strftime(common.DATE_FORMAT)
             log_line = {'timestamp': timestamp, 'tag': tag, 'level': level, 'description': description}
             logs.append(log_line)

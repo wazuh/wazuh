@@ -900,7 +900,7 @@ def test_master_handler_end_receiving_integrity_checksums(end_receiving_file_moc
 @patch('wazuh.core.cluster.common.Handler.update_chunks_wdb', return_value={'updated_chunks': 1})
 @patch('wazuh.core.cluster.common.Handler.get_chunks_in_task_id', return_value='chunks')
 async def test_master_handler_sync_wazuh_db_info(get_chunks_mock, update_chunks_mock, send_request_mock):
-    """Check that the wazuh-db data reception task is created and chunks are obtained and updated in DB."""
+    """Check that the wazuh-manager-db data reception task is created and chunks are obtained and updated in DB."""
     class LoggerMock:
         """Auxiliary class."""
 
@@ -1507,7 +1507,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
                                  enable_ssl=False)
 
     warning_mock.assert_has_calls([call("In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory "
-                                        "'/dev/shm' must be accessible by the 'wazuh' user. Check that this file has "
+                                        "'/dev/shm' must be accessible by the 'wazuh-manager' user. Check that this file has "
                                         "permissions to be accessed by all users. Changing the file permissions to 777 "
                                         "will solve this issue."),
                                    call('The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 '
@@ -1520,7 +1520,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
                                  enable_ssl=False)
 
     warning_mock.assert_has_calls([call("In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory "
-                                        "'/dev/shm' must be accessible by the 'wazuh' user. Check that this file has "
+                                        "'/dev/shm' must be accessible by the 'wazuh-manager' user. Check that this file has "
                                         "permissions to be accessed by all users. Changing the file permissions to 777 "
                                         "will solve this issue."),
                                    call('The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 '

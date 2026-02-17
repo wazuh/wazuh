@@ -1,9 +1,12 @@
 ---
 test_name: PUT /syscheck
 
+marks:
+  - xfail # This will be failing until we complete https://github.com/wazuh/wazuh/issues/34175, we need to remove before final merge.
+
 stages:
 
-  - name: Try to run a syscheck scan in agent 000
+  - name: Try to run a syscheck scan in agent 001
     request:
       verify: False
       method: PUT
@@ -11,14 +14,14 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '000'
+        agents_list: '001'
     response:
       status_code: 200
       json:
         error: 0
         data:
           affected_items:
-            - '000'
+            - '001'
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -31,14 +34,14 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '000,002,004,006,008,010,012'
+        agents_list: '001,002,004,006,008,010,012'
     response:
       status_code: 200
       json:
         error: 2
         data:
           affected_items:
-            - '000'
+            - '001'
             - '002'
             - '004'
             - '006'

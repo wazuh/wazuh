@@ -1203,39 +1203,6 @@ void test_w_enrollment_request_key(void **state) {
     assert_int_equal(ret, 0);
 }
 
-/**********************************************/
-/******* w_enrollment_extract_agent_name ********/
-void test_w_enrollment_extract_agent_name_localhost_allowed(void **state) {
-    w_enrollment_ctx *cfg = *state;
-    cfg->allow_localhost = true; // Allow localhost
-#ifdef WIN32
-    will_return(wrap_gethostname, "localhost");
-    will_return(wrap_gethostname, 0);
-#else
-    will_return(__wrap_gethostname, "localhost");
-    will_return(__wrap_gethostname, 0);
-#endif
-    char *lhostname = w_enrollment_extract_agent_name(cfg);
-    assert_string_equal( lhostname, "localhost");
-    os_free(lhostname);
-}
-
-void test_w_enrollment_extract_agent_name_localhost_not_allowed(void **state) {
-    w_enrollment_ctx *cfg = *state;
-    cfg->allow_localhost = false; // Do not allow localhost
-#ifdef WIN32
-    will_return(wrap_gethostname, "localhost");
-    will_return(wrap_gethostname, 0);
-#else
-    will_return(__wrap_gethostname, "localhost");
-    will_return(__wrap_gethostname, 0);
-#endif
-    expect_string(__wrap__merror, formatted_msg, "(4104): Invalid hostname: 'localhost'.");
-
-    char *lhostname = w_enrollment_extract_agent_name(cfg);
-    assert_int_equal( lhostname, NULL);
-}
-
 /******* w_enrollment_load_pass ********/
 void test_w_enrollment_load_pass_null_cert(void **state) {
     expect_assert_failure(w_enrollment_load_pass(NULL));
@@ -1359,9 +1326,6 @@ int main() {
         // w_enrollment_request_key (wrapper)
         cmocka_unit_test(test_w_enrollment_request_key_null_cfg),
         cmocka_unit_test_setup_teardown(test_w_enrollment_request_key, test_setup_w_enrollment_request_key, test_teardown_w_enrollment_request_key),
-        // w_enrollment_extract_agent_name
-        cmocka_unit_test_setup_teardown(test_w_enrollment_extract_agent_name_localhost_allowed, test_setup_context, test_teardown_context),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_extract_agent_name_localhost_not_allowed, test_setup_context, test_teardown_context),
         // w_enrollment_load_pass
         cmocka_unit_test(test_w_enrollment_load_pass_null_cert),
         cmocka_unit_test_setup_teardown(test_w_enrollment_load_pass_empty_file, test_setup_enrollment_load_pass, test_teardown_enrollment_load_pass),

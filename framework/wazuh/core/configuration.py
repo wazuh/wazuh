@@ -14,7 +14,7 @@ from io import StringIO
 from os import path as os_path
 from os import remove
 from types import MappingProxyType
-from typing import List, Union
+from typing import List, Optional, Union
 
 from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
@@ -287,7 +287,7 @@ def _conf2json(src_xml: str, dst_json: dict):
 
 
 def _ossecconf2json(xml_conf: str) -> dict:
-    """Return ossec.conf in JSON from XML.
+    """Return wazuh-manager.conf in JSON from XML.
 
     Parameters
     ----------
@@ -297,7 +297,7 @@ def _ossecconf2json(xml_conf: str) -> dict:
     Returns
     -------
     dict
-        Final JSON with the ossec.conf content.
+        Final JSON with the wazuh-manager.conf content.
     """
     final_json = {}
 
@@ -516,7 +516,7 @@ def _merged_mg2json(file_path: str) -> List[dict]:
 # Main functions
 def get_ossec_conf(section: str = None, field: str = None, conf_file: str = common.OSSEC_CONF,
                    from_import: bool = False, distinct: bool = False) -> dict:
-    """Return ossec.conf (manager) as dictionary.
+    """Return wazuh-manager.conf (manager) as dictionary.
 
     Parameters
     ----------
@@ -545,7 +545,7 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
     Returns
     -------
     dict
-        ossec.conf (manager) as dictionary.
+        wazuh-manager.conf (manager) as dictionary.
     """
     try:
         # Read XML
@@ -557,7 +557,7 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
         if not from_import:
             raise WazuhError(1101, extra_message=str(e))
         else:
-            print(f"wazuh-apid: There is an error in the ossec.conf file: {str(e)}")
+            print(f"wazuh-manager-apid: There is an error in the wazuh-manager.conf file: {str(e)}")
             sys.exit(0)
 
     if section:
@@ -930,11 +930,11 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
             # Example of raw output
             # 2019/01/08 14:51:09 verify-agent-conf: ERROR: (1230):
             # Invalid element in the configuration: 'agent_conf'.\n2019/01/08 14:51:09 verify-agent-conf: ERROR: (1207):
-            # Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
+            # Syscheck remote configuration in '/var/wazuh-manager/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
             # \n\n
             # Example of desired output:
             # Invalid element in the configuration: 'agent_conf'.
-            # Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
+            # Syscheck remote configuration in '/var/wazuh-manager/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
                                               r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
             if output_regex:
@@ -999,17 +999,17 @@ def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.con
         raise WazuhError(1111)
 
 
-def get_active_configuration(agent_id: str, component: str, configuration: str) -> dict:
-    """Get an agent's component active configuration.
+def get_active_configuration(component: str, configuration: str, agent_id: Optional[str] = None) -> dict:
+    """Get server or agent component active configuration.
 
     Parameters
     ----------
-    agent_id : str
-        Agent ID. All possible values from 000 onwards.
     component : str
         Selected agent's component.
     configuration : str
         Configuration to get, written on disk.
+    agent_id : Optional[str], default None
+        Agent ID. If None, gets manager configuration.
 
     Raises
     ------
@@ -1037,11 +1037,11 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
     component_socket_mapping = {'agent': 'analysis', 'analysis': 'analysis', 'auth': 'auth',
                                 'com': 'com', 'integrator': 'integrator',
                                 'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor',
-                                'request': 'remote', 'syscheck': 'syscheck', 'wazuh-db': 'wdb', 'wmodules': 'wmodules'}
+                                'request': 'remote', 'syscheck': 'syscheck', 'wazuh-manager-db': 'wdb', 'wmodules': 'wmodules'}
     component_socket_dir_mapping = {'agent': 'sockets', 'analysis': 'sockets',
                                     'auth': 'sockets', 'com': 'sockets', 'integrator': 'sockets',
                                     'logcollector': 'sockets', 'mail': 'sockets', 'monitor': 'sockets',
-                                    'request': 'sockets', 'syscheck': 'sockets', 'wazuh-db': 'db',
+                                    'request': 'sockets', 'syscheck': 'sockets', 'wazuh-manager-db': 'db',
                                     'wmodules': 'sockets'}
 
     if not component or not configuration:
@@ -1146,7 +1146,7 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
 
         return rec_msg_ok, rec_msg
 
-    rec_error, rec_data = get_active_configuration_agent() if agent_id != '000' else get_active_configuration_manager()
+    rec_error, rec_data = get_active_configuration_agent() if agent_id is not None else get_active_configuration_manager()
 
     if rec_error == 'ok' or rec_error == 0:
         data = json.loads(rec_data) if isinstance(rec_data, str) else rec_data
@@ -1166,7 +1166,7 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
 
 
 def write_ossec_conf(new_conf: str):
-    """Replace the current wazuh configuration (ossec.conf) with the provided configuration.
+    """Replace the current wazuh configuration (wazuh-manager.conf) with the provided configuration.
 
     Parameters
     ----------
@@ -1186,7 +1186,7 @@ def write_ossec_conf(new_conf: str):
 
 
 def update_check_is_enabled() -> bool:
-    """Read the ossec.conf and check UPDATE_CHECK_OSSEC_FIELD value.
+    """Read the wazuh-manager.conf and check UPDATE_CHECK_OSSEC_FIELD value.
 
     Returns
     -------

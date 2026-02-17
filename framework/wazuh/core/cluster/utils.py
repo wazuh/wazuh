@@ -173,9 +173,9 @@ def parse_haproxy_helper_config(helper_config: dict) -> dict:
 
 
 def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typing.Dict:
-    """Read cluster configuration from ossec.conf.
+    """Read cluster configuration from wazuh-manager.conf.
 
-    If some fields are missing in the ossec.conf cluster configuration, they are replaced
+    If some fields are missing in the wazuh-manager.conf cluster configuration, they are replaced
     with default values.
     If there is no cluster configuration at all, the default configuration is marked as disabled.
 
@@ -206,7 +206,7 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         config_cluster = get_ossec_conf(section='cluster', conf_file=config_file, from_import=from_import)['cluster']
     except WazuhException as e:
             if e.code == 1106:
-                # If no cluster configuration is present in ossec.conf, return the default configuration.
+                # If no cluster configuration is present in wazuh configuration file, return the default configuration.
                 return cluster_default_configuration
 
             raise WazuhError(3006, extra_message=e.message)
@@ -253,9 +253,9 @@ def get_manager_status(cache=False) -> typing.Dict:
     except (PermissionError, FileNotFoundError) as e:
         raise WazuhInternalError(1913, extra_message=str(e))
 
-    processes = ['wazuh-analysisd', 'wazuh-authd', 'wazuh-monitord',
-                 'wazuh-execd', 'wazuh-logcollector', 'wazuh-remoted',
-                 'wazuh-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd', 'wazuh-db', 'wazuh-apid']
+    processes = ['wazuh-manager-analysisd', 'wazuh-manager-authd', 'wazuh-manager-monitord',
+                 'wazuh-manager-remoted', 'wazuh-manager-clusterd',
+                 'wazuh-manager-modulesd', 'wazuh-manager-db', 'wazuh-manager-apid']
 
     data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), os.path.join(common.WAZUH_PATH, "var", "run")
     for process in processes:
@@ -291,7 +291,7 @@ def get_cluster_status() -> typing.Dict:
         Cluster status.
     """
     try:
-        cluster_status = {"running": "yes" if get_manager_status()['wazuh-clusterd'] == 'running' else "no"}
+        cluster_status = {"running": "yes" if get_manager_status()['wazuh-manager-clusterd'] == 'running' else "no"}
     except WazuhInternalError:
         cluster_status = {"running": "no"}
 
@@ -427,14 +427,14 @@ class ClusterFilter(logging.Filter):
 
 class ClusterLogger(WazuhLogger):
     """
-    Define the logger used by wazuh-clusterd.
+    Define the logger used by wazuh-manager-clusterd.
     """
 
     def setup_logger(self):
         """
         Set ups cluster logger. In addition to super().setup_logger() this method adds:
             * A filter to add tag and subtags to cluster logs
-            * Sets log level based on the "debug_level" parameter received from wazuh-clusterd binary.
+            * Sets log level based on the "debug_level" parameter received from wazuh-manager-clusterd binary.
         """
         super().setup_logger()
         self.logger.addFilter(ClusterFilter(tag='Cluster', subtag='Main'))
@@ -476,7 +476,7 @@ def process_spawn_sleep(child):
         Process child number.
     """
     pid = os.getpid()
-    pyDaemonModule.create_pid(f'wazuh-clusterd_child_{child}', pid)
+    pyDaemonModule.create_pid(f'wazuh-manager-clusterd_child_{child}', pid)
 
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     signal.signal(signal.SIGTERM, signal.SIG_IGN)

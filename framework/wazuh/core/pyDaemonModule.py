@@ -14,10 +14,10 @@ import psutil
 from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError
 
-API_MAIN_PROCESS = 'wazuh-apid'
-API_LOCAL_REQUEST_PROCESS = 'wazuh-apid_exec'
-API_SECURITY_EVENTS_PROCESS = 'wazuh-apid_events'
-API_AUTHENTICATION_PROCESS = 'wazuh-apid_auth'
+API_MAIN_PROCESS = 'wazuh-manager-apid'
+API_LOCAL_REQUEST_PROCESS = 'wazuh-manager-apid_exec'
+API_SECURITY_EVENTS_PROCESS = 'wazuh-manager-apid_events'
+API_AUTHENTICATION_PROCESS = 'wazuh-manager-apid_auth'
 
 
 def pyDaemon():

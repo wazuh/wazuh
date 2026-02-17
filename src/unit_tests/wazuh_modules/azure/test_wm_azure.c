@@ -30,6 +30,7 @@
 
 #define TEST_MAX_DATES 5
 
+
 static wmodule *azure_module;
 static OS_XML *lxml;
 extern int test_mode;

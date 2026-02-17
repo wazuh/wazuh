@@ -22,7 +22,7 @@ components:
     - manager
 
 daemons:
-    - wazuh-db
+    - wazuh-manager-db
 
 os_platform:
     - linux
@@ -47,7 +47,7 @@ os_version:
     - Red Hat 6
 
 references:
-    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-db.html
+    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-manager-db.html
 
 tags:
     - wazuh_db
@@ -74,8 +74,8 @@ daemons_handler_configuration = {'all_daemons': True}
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
 def test_get_groups_integrity(daemons_handler, test_metadata, create_groups):
     '''
-    description: Check that every input message using the 'get-groups-integrity' command in wazuh-db socket generates
-                 the proper output to wazuh-db socket. To do this, it performs a query to the socket with a command
+    description: Check that every input message using the 'get-groups-integrity' command in wazuh-manager-db socket generates
+                 the proper output to wazuh-manager-db socket. To do this, it performs a query to the socket with a command
                  taken from the list of test_metadata's 'input' field, and compare the result with the test_metadata's
                  'output' field.
 

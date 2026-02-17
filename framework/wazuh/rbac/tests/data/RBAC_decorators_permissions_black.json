@@ -11,7 +11,7 @@
     "function_params": {
       "agent_list": []
     },
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"]},
     "allowed_resources": [[]],
     "result": "allow"
   },
@@ -27,8 +27,8 @@
     "function_params": {
       "call_func": true
     },
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
-    "allowed_resources": [["000", "001", "002", "003", "004", "005"]]
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"]},
+    "allowed_resources": [["001", "002", "003", "004", "005"]]
   },
   {
     "rbac": {
@@ -43,8 +43,8 @@
         "post_proc_kwargs": null
     },
     "function_params": {},
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1":  ["001", "003", "005"]},
-    "allowed_resources": [["000", "002", "004"]]
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"], "agent:group:group1":  ["001", "003", "005"]},
+    "allowed_resources": [["002", "004"]]
   },
   {
     "rbac": {
@@ -61,8 +61,8 @@
     "function_params": {
       "call_func": false
     },
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1":  ["001", "003", "005"]},
-    "allowed_resources": [["000", "002", "004"]]
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"], "agent:group:group1":  ["001", "003", "005"]},
+    "allowed_resources": [["002", "004"]]
   },
   {
     "rbac": {
@@ -77,8 +77,8 @@
         "post_proc_kwargs": null
     },
     "function_params": {},
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
-    "allowed_resources": [["000", "002", "003", "004", "005"]]
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"]},
+    "allowed_resources": [["002", "003", "004", "005"]]
   },
   {
     "rbac": {
@@ -170,8 +170,7 @@
     "rbac": {
       "agent:delete": {
         "agent:group:group1": "deny",
-        "agent:id:*": "allow",
-        "agent:id:000": "deny"
+        "agent:id:*": "allow"
       }
     },
     "decorator_params": {
@@ -181,9 +180,9 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "agent_list": ["000", "001", "002", "005", "099"]
+      "agent_list": ["001", "002", "005", "099"]
     },
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1": ["001", "005", "099", "098"]},
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"], "agent:group:group1": ["001", "005", "099", "098"]},
     "allowed_resources": [["001", "002", "005", "099"]]
   },
   {
@@ -201,35 +200,16 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "agent_list": ["000", "001", "002", "005", "099"]
+      "agent_list": ["001", "002", "005", "099"]
     },
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1": ["001", "005", "099", "098"], "agent:group:group2": ["002", "005", "004", "001"]},
-    "allowed_resources": [["000", "099"]]
-  },
-  {
-    "rbac": {
-      "agent:delete": {
-        "agent:group:group1": "allow",
-        "agent:group:group2": "deny",
-        "agent:id:000": "deny"
-      }
-    },
-    "decorator_params": {
-        "actions": ["agent:delete"],
-        "resources": ["agent:id:{agent_list}"],
-        "post_proc_func": null,
-        "post_proc_kwargs": null
-    },
-    "function_params": {
-      "agent_list": ["000", "001", "002", "005", "099"]
-    },
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1": ["001", "005", "099", "098"], "agent:group:group2": ["002", "005", "004", "001"]},
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"], "agent:group:group1": ["001", "005", "099", "098"], "agent:group:group2": ["002", "005", "004", "001"]},
     "allowed_resources": [["099"]]
   },
   {
     "rbac": {
       "agent:delete": {
-        "agent:id:000": "deny"
+        "agent:group:group1": "allow",
+        "agent:group:group2": "deny"
       }
     },
     "decorator_params": {
@@ -239,9 +219,27 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "agent_list": ["000", "097", "099"]
+      "agent_list": ["001", "002", "005", "099"]
     },
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"], "agent:group:group1": ["001", "005", "099", "098"], "agent:group:group2": ["002", "005", "004", "001"]},
+    "allowed_resources": [["099"]]
+  },
+  {
+    "rbac": {
+      "agent:delete": {
+        "agent:id:001": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:delete"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": ["097", "099"]
+    },
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"]},
     "allowed_resources": [["097", "099"]]
   },
   {
@@ -449,7 +447,7 @@
     "function_params": {
       "agent_list": null
     },
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1": []},
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"], "agent:group:group1": []},
     "allowed_resources": [[]],
     "exception": "4000"
   },
@@ -537,13 +535,11 @@
     "rbac": {
       "agent:read": {
         "agent:group:*": "allow",
-        "agent:group:group1": "deny",
-        "agent:id:000": "allow"
+        "agent:group:group1": "deny"
       },
       "agent:update": {
         "agent:group:*": "deny",
-        "agent:group:group1": "allow",
-        "agent:id:000": "deny"
+        "agent:group:group1": "allow"
       }
     },
     "decorator_params": {
@@ -563,10 +559,10 @@
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/ossec.conf": "deny",
-        "node:id:worker2&file:path:etc/ossec.conf": "allow",
+        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
-        "node:id:*&file:path:etc/ossec.conf": "deny"
+        "node:id:*&file:path:etc/wazuh-manager.conf": "deny"
       }
     },
     "decorator_params": {
@@ -584,10 +580,10 @@
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/ossec.conf": "deny",
-        "node:id:worker2&file:path:etc/ossec.conf": "allow",
+        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
-        "node:id:*&file:path:etc/ossec.conf": "deny"
+        "node:id:*&file:path:etc/wazuh-manager.conf": "deny"
       }
     },
     "decorator_params": {
@@ -597,7 +593,7 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/ossec.conf"]
+      "path": ["etc/wazuh-manager.conf"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
     "allowed_resources": [[]]
@@ -605,10 +601,10 @@
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/ossec.conf": "deny",
-        "node:id:worker2&file:path:etc/ossec.conf": "allow",
+        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
-        "node:id:*&file:path:etc/ossec.conf": "deny"
+        "node:id:*&file:path:etc/wazuh-manager.conf": "deny"
       }
     },
     "decorator_params": {
@@ -618,7 +614,7 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/ossec.conf"]
+      "path": ["etc/wazuh-manager.conf"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
     "allowed_resources": [[]]
@@ -634,18 +630,18 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/ossec.conf"]
+      "path": ["etc/wazuh-manager.conf"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
-    "allowed_resources": [["etc/ossec.conf"]]
+    "allowed_resources": [["etc/wazuh-manager.conf"]]
   },
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
-        "node:id:*&file:path:etc/ossec.conf": "deny",
-        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+        "node:id:*&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
       }
     },
     "decorator_params": {
@@ -655,18 +651,18 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/ossec.conf"]
+      "path": ["etc/wazuh-manager.conf"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
-    "allowed_resources": [["etc/ossec.conf"]]
+    "allowed_resources": [["etc/wazuh-manager.conf"]]
   },
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
-        "node:id:*&file:path:etc/ossec.conf": "deny",
-        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+        "node:id:*&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
       }
     },
     "decorator_params": {
@@ -676,7 +672,7 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/ossec.conf"]
+      "path": ["etc/wazuh-manager.conf"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
     "allowed_resources": [[]]
@@ -684,10 +680,10 @@
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
-        "node:id:*&file:path:etc/ossec.conf": "allow",
-        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+        "node:id:*&file:path:etc/wazuh-manager.conf": "allow",
+        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
       }
     },
     "decorator_params": {
@@ -697,18 +693,18 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/ossec.conf"]
+      "path": ["etc/wazuh-manager.conf"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
-    "allowed_resources": [["etc/ossec.conf"]]
+    "allowed_resources": [["etc/wazuh-manager.conf"]]
   },
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
         "node:id:*&file:path:*": "allow",
-        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
       }
     },
     "decorator_params": {
@@ -718,19 +714,19 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/ossec.conf"]
+      "path": ["etc/wazuh-manager.conf"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
-      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
-    "allowed_resources": [["etc/ossec.conf"]]
+      "file:path:*": ["etc/wazuh-manager.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+    "allowed_resources": [["etc/wazuh-manager.conf"]]
   },
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
         "node:id:*&file:path:*": "allow",
-        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
       }
     },
     "decorator_params": {
@@ -743,16 +739,16 @@
       "path": null
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
-      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
-    "allowed_resources": [["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
+      "file:path:*": ["etc/wazuh-manager.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+    "allowed_resources": [["etc/wazuh-manager.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
   },
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
         "node:id:master-node&file:path:*": "allow",
-        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
       }
     },
     "decorator_params": {
@@ -765,16 +761,16 @@
       "path": null
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
-      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+      "file:path:*": ["etc/wazuh-manager.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
     "allowed_resources": [["etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
   },
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
         "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
         "node:id:master-node&file:path:*": "allow",
-        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
       }
     },
     "decorator_params": {
@@ -787,8 +783,8 @@
       "path": null
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
-      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
-    "allowed_resources": [["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
+      "file:path:*": ["etc/wazuh-manager.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+    "allowed_resources": [["etc/wazuh-manager.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
   },
   {
     "rbac": {
@@ -804,16 +800,16 @@
       "path": null
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
-      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
-    "allowed_resources": [["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
+      "file:path:*": ["etc/wazuh-manager.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+    "allowed_resources": [["etc/wazuh-manager.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
   },
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/ossec.conf": "deny",
-        "node:id:master-node&file:path:etc/ossec.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:master-node&file:path:etc/wazuh-manager.conf": "deny",
         "node:id:master-node&file:path:etc/rules/local_rules.xml": "allow",
-        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
       }
     },
     "decorator_params": {
@@ -823,7 +819,7 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/ossec.conf"]
+      "path": ["etc/wazuh-manager.conf"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
     "allowed_resources": [[]]
@@ -831,10 +827,10 @@
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:worker1&file:path:etc/ossec.conf": "deny",
-        "node:id:master-node&file:path:etc/ossec.conf": "deny",
+        "node:id:worker1&file:path:etc/wazuh-manager.conf": "deny",
+        "node:id:master-node&file:path:etc/wazuh-manager.conf": "deny",
         "node:id:master-node&file:path:etc/rules/local_rules.xml": "deny",
-        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+        "node:id:worker2&file:path:etc/wazuh-manager.conf": "allow"
       }
     },
     "decorator_params": {
@@ -844,17 +840,17 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/ossec.conf"]
+      "path": ["etc/wazuh-manager.conf"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
-    "allowed_resources": [["etc/ossec.conf"]]
+    "allowed_resources": [["etc/wazuh-manager.conf"]]
   },
   {
     "rbac": {
       "cluster:read_file": {
-        "node:id:master-node&file:path:etc/ossec.conf": "deny",
+        "node:id:master-node&file:path:etc/wazuh-manager.conf": "deny",
         "node:id:master-node&file:path:etc/rules/local_rules.xml": "deny",
-        "node:id:worker1&file:path:etc/ossec.conf": "allow"
+        "node:id:worker1&file:path:etc/wazuh-manager.conf": "allow"
       }
     },
     "decorator_params": {
@@ -864,10 +860,10 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/ossec.conf"]
+      "path": ["etc/wazuh-manager.conf"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
-    "allowed_resources": [["etc/ossec.conf"]]
+    "allowed_resources": [["etc/wazuh-manager.conf"]]
   },
   {
     "rbac": {
@@ -880,10 +876,10 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "path": ["etc/ossec.conf"]
+      "path": ["etc/wazuh-manager.conf"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
-    "allowed_resources": [["etc/ossec.conf"]]
+    "allowed_resources": [["etc/wazuh-manager.conf"]]
   },
   {
     "rbac": {
@@ -900,7 +896,7 @@
     "function_params": {
       "path": ["etc/rules/local_rules.xml"]
     },
-    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"], "file:path:*": ["etc/ossec.conf"]},
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"], "file:path:*": ["etc/wazuh-manager.conf"]},
     "allowed_resources": [["etc/rules/local_rules.xml"]]
   }
 ]

@@ -28,13 +28,13 @@ elif platform == "win32":
     agentd_state_file = "C:\\Program Files (x86)\\ossec-agent\\wazuh-agent.state"
     enable_disk_monitoring_win()
 else:
-    agentd_state_file = "/var/ossec/var/run/wazuh-agentd.state"
+    agentd_state_file = "/var/wazuh-manager/var/run/wazuh-agentd.state"
 
 
 wazuh_binaries = {
-    "manager": set(["wazuh-analysisd", "wazuh-authd", "wazuh-execd",
-                "wazuh-logcollector", "wazuh-monitord", "wazuh-syscheckd",
-                "wazuh-remoted", "wazuh-modulesd", "wazuh-clusterd", "wazuh-db", ]),
+    "manager": set(["wazuh-manager-analysisd", "wazuh-manager-authd",
+                "wazuh-manager-monitord", "wazuh-manager-remoted", "wazuh-manager-modulesd",
+                "wazuh-manager-clusterd", "wazuh-manager-db", ]),
     "agent": set(["wazuh-agentd", "wazuh-execd", "wazuh-logcollector",
               "wazuh-syscheckd", "wazuh-modulesd", ]),
     "winagent": set(["wazuh-agent.exe", ])

@@ -19,13 +19,15 @@ build_wazuh_test_flags() {
 
 build_wazuh_unit_tests() {
     local target=$1
+    local gcov_path
+    gcov_path=$(command -v gcov-13 || command -v gcov)
     echo "Building Wazuh Unit Tests for target: $target"
     mkdir -p "$GITHUB_WORKSPACE/src/unit_tests/build"
     cd "$GITHUB_WORKSPACE/src/unit_tests/build"
     if [[ $target == "agent" ]]; then
-        cmake -DTARGET=${target} ..
+        cmake -DTARGET=${target} -DGCOV_PATH="${gcov_path}" ..
     elif [[ $target == "server" ]]; then
-        cmake -DTARGET=${target} ..
+        cmake -DTARGET=${target} -DGCOV_PATH="${gcov_path}" ..
     elif [[ $target == "winagent" ]]; then
         cmake -DTARGET=${target} -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake ..
     fi

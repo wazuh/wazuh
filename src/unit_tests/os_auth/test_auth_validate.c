@@ -184,20 +184,16 @@ static void test_w_auth_validate_data(void **state) {
     assert_int_equal(err, OS_INVALID);
     assert_string_equal(response, "ERROR: Duplicate agent name: "EXISTENT_AGENT1"");
 
-   /* Manager name */
+   /* Manager name (allowed) */
    char host_name[512];
     if (gethostname(host_name, sizeof(shost) - 1) < 0) {
         strncpy(host_name, "localhost", sizeof(host_name) - 1);
         host_name[sizeof(host_name) - 1] = '\0';
     }
-    char err_response[2048];
-    snprintf(err_response, 2048, "ERROR: Invalid agent name: %s", host_name) ;
-    char merror_message[2048];
-    snprintf(merror_message, 2048, "Invalid agent name %s (same as manager)", host_name);
-    expect_string(__wrap__merror, formatted_msg, merror_message);
-    err = w_auth_validate_data(response,NEW_IP1, host_name, NULL, NULL);
-    assert_int_equal(err, OS_INVALID);
-    assert_string_equal(response, err_response);
+    response[0] = '\0';
+    err = w_auth_validate_data(response, NEW_IP1, host_name, NULL, NULL);
+    assert_int_equal(err, OS_SUCCESS);
+    assert_string_equal(response, "");
 
     /* Check no agent was deleted*/
     assert_true(keys.keysize == 3);

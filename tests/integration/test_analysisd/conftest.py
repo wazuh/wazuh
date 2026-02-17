@@ -21,7 +21,7 @@ from wazuh_testing.utils import callbacks, file
 @pytest.fixture()
 def prepare_custom_rules_file(request, test_metadata):
     """Configure a syscollector custom rules for testing.
-    Restarting wazuh-analysisd is required to apply this changes.
+    Restarting wazuh-manager-analysisd is required to apply this changes.
     """
     data_dir = getattr(request.module, 'RULES_SAMPLE_PATH')
     source_rule = os.path.join(data_dir, test_metadata['rules_file'])
@@ -57,7 +57,7 @@ def configure_local_rules(request, test_configuration):
 @pytest.fixture()
 def configure_remove_tags(request, test_metadata):
     """Configure a custom settting for testing. Restart Wazuh is needed for applying the configuration. """
-    # Remove test case tags from ossec.conf
+    # Remove test case tags from wazuh configuration file
     file.replace_regex_in_file(test_metadata['remove_tags'], [''] * len(test_metadata['remove_tags']), WAZUH_CONF_PATH)
 
 

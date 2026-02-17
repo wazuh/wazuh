@@ -259,7 +259,7 @@ void test_wm_agent_send_task_information_master_ok(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8157): Sending message to task_manager module: '[{\"module\":\"upgrade_module\","
                                                                                                       "\"command\":\"upgrade\","
                                                                                                       "\"agent\":12},{"
@@ -277,7 +277,7 @@ void test_wm_agent_send_task_information_master_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, strlen(response) + 1);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8158): Receiving message from task_manager module: '[{\"error\":0,"
                                                                                                           "\"data\":\"Success\","
                                                                                                           "\"agent\":12,"
@@ -329,7 +329,7 @@ void test_wm_agent_send_task_information_master_json_err(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8157): Sending message to task_manager module: '[{\"module\":\"upgrade_module\","
                                                                                                       "\"command\":\"upgrade\","
                                                                                                       "\"agent\":12},{"
@@ -347,7 +347,7 @@ void test_wm_agent_send_task_information_master_json_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, strlen(response) + 1);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8105): Response from task manager does not have a valid JSON format.");
 
     cJSON *output = wm_agent_send_task_information_master(input);
@@ -399,7 +399,7 @@ void test_wm_agent_send_task_information_master_recv_error(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8157): Sending message to task_manager module: '[{\"module\":\"upgrade_module\","
                                                                                                       "\"command\":\"upgrade\","
                                                                                                       "\"agent\":12},{"
@@ -417,7 +417,7 @@ void test_wm_agent_send_task_information_master_recv_error(void **state)
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, -1);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8111): Error in recv(): 'Success'");
 
     cJSON *output = wm_agent_send_task_information_master(input);
@@ -469,7 +469,7 @@ void test_wm_agent_send_task_information_master_sockterr_error(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8157): Sending message to task_manager module: '[{\"module\":\"upgrade_module\","
                                                                                                       "\"command\":\"upgrade\","
                                                                                                       "\"agent\":12},{"
@@ -487,7 +487,7 @@ void test_wm_agent_send_task_information_master_sockterr_error(void **state)
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8112): Response size is bigger than expected.");
 
     cJSON *output = wm_agent_send_task_information_master(input);
@@ -523,7 +523,7 @@ void test_wm_agent_send_task_information_master_connect_error(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, OS_SOCKTERR);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8104): Cannot connect to 'queue/tasks/task'. Could not reach task manager module.");
 
     cJSON *output = wm_agent_send_task_information_master(input);
@@ -580,7 +580,7 @@ void test_wm_agent_send_task_information_worker(void **state)
     will_return(__wrap_w_create_sendsync_payload, 0);
     will_return(__wrap_w_create_sendsync_payload, cluster_request);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8168): Sending sendsync message to task manager in master node: '{\"daemon_name\":\"task-manager\","
                                                                                                                       "\"message\":[{\"module\":\"upgrade_module\","
                                                                                                                                     "\"command\":\"upgrade\","
@@ -594,7 +594,7 @@ void test_wm_agent_send_task_information_worker(void **state)
     will_return(__wrap_w_send_clustered_message, response);
     will_return(__wrap_w_send_clustered_message, 1);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8158): Receiving message from task_manager module: '[{\"error\":0,"
                                                                                                           "\"data\":\"Success\","
                                                                                                           "\"agent\":12,"
@@ -654,7 +654,7 @@ void test_wm_agent_upgrade_send_tasks_information_master(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8157): Sending message to task_manager module: '[{\"module\":\"upgrade_module\","
                                                                                                       "\"command\":\"upgrade\","
                                                                                                       "\"agent\":12},{"
@@ -672,7 +672,7 @@ void test_wm_agent_upgrade_send_tasks_information_master(void **state)
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, strlen(response) + 1);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8158): Receiving message from task_manager module: '[{\"error\":0,"
                                                                                                           "\"data\":\"Success\","
                                                                                                           "\"agent\":12,"
@@ -738,7 +738,7 @@ void test_wm_agent_upgrade_send_tasks_information_worker(void **state)
     will_return(__wrap_w_create_sendsync_payload, 0);
     will_return(__wrap_w_create_sendsync_payload, cluster_request);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8168): Sending sendsync message to task manager in master node: '{\"daemon_name\":\"task-manager\","
                                                                                                                       "\"message\":[{\"module\":\"upgrade_module\","
                                                                                                                                     "\"command\":\"upgrade\","
@@ -752,7 +752,7 @@ void test_wm_agent_upgrade_send_tasks_information_worker(void **state)
     will_return(__wrap_w_send_clustered_message, response);
     will_return(__wrap_w_send_clustered_message, 1);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8158): Receiving message from task_manager module: '[{\"error\":0,"
                                                                                                           "\"data\":\"Success\","
                                                                                                           "\"agent\":12,"

@@ -95,12 +95,15 @@ runs:
 
           echo "Executing: lcov $arguments"
           echo "Include files: $include_files"
-          option=""
-          option="--ignore-errors mismatch"
-          if dpkg --compare-versions $(lcov --version | rev | cut -d ' ' -f1 | rev) ge 2.0-1; then
-             option="--ignore-errors unused,mismatch"
+          lcov_version=$(lcov --version | awk '{print $NF}')
+          lcov_major=${lcov_version%%.*}
+          if [[ "$lcov_major" =~ ^[0-9]+$ ]] && (( lcov_major >= 2 )); then
+            ignore_errors="mismatch,unused"
+          else
+            ignore_errors="mismatch"
           fi
-          lcov $arguments ${option}
+          echo "Using lcov ignore-errors: $ignore_errors (lcov $lcov_version)"
+          lcov $arguments --ignore-errors "$ignore_errors"
 
       # Generate the HTML coverage report and capture coverage data
       - name: Generate coverage report and extract coverage data

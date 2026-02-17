@@ -591,6 +591,9 @@ stages:
 ---
 test_name: PUT /cluster/restart
 
+marks:
+  - skip: execd socket no longer exists in manager after agent-manager separation
+
 stages:
 
   - name: Restart cluster

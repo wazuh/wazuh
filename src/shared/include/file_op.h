@@ -371,10 +371,10 @@ int cldir_ex(const char *name);
  * Example:
  * @code
  * const char *preserve[] = {"keep.txt", "subfolder/important.conf", NULL};
- * cldir_ex_ignore("/var/ossec/etc/shared", preserve);
- * // Preserves: /var/ossec/etc/shared/keep.txt
- * //            /var/ossec/etc/shared/subfolder/important.conf
- * //            /var/ossec/etc/shared/subfolder/ (directory kept because it has preserved file)
+ * cldir_ex_ignore("/var/wazuh-manager/etc/shared", preserve);
+ * // Preserves: /var/wazuh-manager/etc/shared/keep.txt
+ * //            /var/wazuh-manager/etc/shared/subfolder/important.conf
+ * //            /var/wazuh-manager/etc/shared/subfolder/ (directory kept because it has preserved file)
  * // Deletes:   Everything else
  * @endcode
  */

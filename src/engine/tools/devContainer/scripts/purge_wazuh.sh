@@ -1,5 +1,5 @@
 #!/bin/env bash
-# Script to remove Wazuh manager and agent from the system 
+# Script to remove Wazuh manager and agent from the system
 
 if [ "$(id -u)" -ne 0 ]; then
     echo "This script must be run as root or with sudo."
@@ -22,7 +22,7 @@ fi
 
 # Check if WAZUH_HOME is set
 if [ -z "$WAZUH_HOME" ]; then
-    WAZUH_HOME="/var/ossec"
+    WAZUH_HOME="/var/wazuh-manager"
 fi
 
 if [ ! -d "$WAZUH_HOME" ]; then
@@ -32,7 +32,7 @@ fi
 
 # Umount proc filesystem if it exists (Mounted for development purposes)
 if mountpoint -q ${WAZUH_HOME/proc}; then
-    umount /var/ossec/proc
+    umount /var/wazuh-manager/proc
 fi
 
 
@@ -80,4 +80,16 @@ if getent group wazuh >/dev/null 2>&1; then
     groupdel wazuh
 else
     echo "Group 'wazuh' does not exist."
+fi
+
+# Remove Wazuh user and group
+if id -u wazuh-manager >/dev/null 2>&1; then
+    userdel -r wazuh-manager
+else
+    echo "User 'wazuh-manager' does not exist."
+fi
+if getent group wazuh-manager >/dev/null 2>&1; then
+    groupdel wazuh-manager
+else
+    echo "Group 'wazuh-manager' does not exist."
 fi

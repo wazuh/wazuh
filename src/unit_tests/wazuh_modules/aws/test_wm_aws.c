@@ -27,6 +27,8 @@
 
 #define TEST_MAX_DATES 5
 
+#define WM_AWS_TEST_LOGTAG "wazuh-modulesd:aws-s3"
+
 static wmodule *aws_module;
 static OS_XML *lxml;
 extern int test_mode;
@@ -142,7 +144,7 @@ void test_interval_execution(void **state) {
         will_return(__wrap_wm_state_io, -1);
     }
 
-    expect_string_count(__wrap__mterror, tag, "wazuh-modulesd:aws-s3", TEST_MAX_DATES + 1);
+    expect_string_count(__wrap__mterror, tag, WM_AWS_TEST_LOGTAG, TEST_MAX_DATES + 1);
     expect_string_count(__wrap__mterror, formatted_msg, "Couldn't save running state.", TEST_MAX_DATES + 1);
     expect_any_always(__wrap__mtinfo, tag);
     expect_any_always(__wrap__mtinfo, formatted_msg);

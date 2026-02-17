@@ -58,7 +58,7 @@ std::string getJsonIndexerCnf()
     const auto readEngineCnfFn = getFunction<ReadEngineCnfFnType>("get_indexer_cnf");
 
     char errBuf[1024] = {0};
-    char* result = readEngineCnfFn("etc/ossec.conf", errBuf, sizeof(errBuf));
+    char* result = readEngineCnfFn("etc/wazuh-manager.conf", errBuf, sizeof(errBuf));
     if (!result)
     {
         throw std::runtime_error(fmt::format("get_indexer_cnf failed: {}", errBuf));

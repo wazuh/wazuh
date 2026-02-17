@@ -32,6 +32,9 @@ endif(${TARGET} STREQUAL "winagent")
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
+# Execd is agent-only.
+set(EXECD_TEST_ARGV0 "wazuh-execd")
+
 # Generate Execd tests
 if(${TARGET} STREQUAL "winagent")
     list(APPEND execd_names "test_win_execd")
@@ -65,6 +68,7 @@ foreach(counter RANGE ${count})
     list(GET execd_flags ${counter} execd_test_flags)
 
     add_executable(${execd_test_name} ${execd_test_name}.c)
+    target_compile_definitions(${execd_test_name} PRIVATE ARGV0="${EXECD_TEST_ARGV0}")
 
     if(${TARGET} STREQUAL "winagent")
         # On winagent, execd objects come from DEPENDENCIES_O (in TEST_DEPS)

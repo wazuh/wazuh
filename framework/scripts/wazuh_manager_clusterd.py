@@ -51,10 +51,10 @@ def exit_handler(signum, frame):
     main_logger.info(f'SIGNAL [({signum})-({signal.Signals(signum).name})] received. Exit...')
 
     # Terminate cluster's child processes
-    pyDaemonModule.delete_child_pids('wazuh-clusterd', cluster_pid, main_logger)
+    pyDaemonModule.delete_child_pids('wazuh-manager-clusterd', cluster_pid, main_logger)
 
     # Remove cluster's pidfile
-    pyDaemonModule.delete_pid('wazuh-clusterd', cluster_pid)
+    pyDaemonModule.delete_pid('wazuh-manager-clusterd', cluster_pid)
 
     if callable(original_sig_handler):
         original_sig_handler(signum, frame)
@@ -131,7 +131,7 @@ async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_it
     except (FileNotFoundError, PermissionError):
         main_logger.warning(
             "In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory '/dev/shm' must be "
-            "accessible by the 'wazuh' user. Check that this file has permissions to be accessed by all users. "
+            "accessible by the 'wazuh-manager' user. Check that this file has permissions to be accessed by all users. "
             "Changing the file permissions to 777 will solve this issue.")
         main_logger.warning(
             "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.")
@@ -196,13 +196,13 @@ def get_script_arguments() -> argparse.Namespace:
 
 
 def main():
-    """Main function of the wazuh-clusterd script in charge of starting the cluster process."""
+    """Main function of the wazuh-manager-clusterd script in charge of starting the cluster process."""
     import wazuh.core.cluster.cluster
 
     # Set correct permissions on cluster.log file
     if os.path.exists(f'{common.WAZUH_PATH}/logs/cluster.log'):
         os.chown(f'{common.WAZUH_PATH}/logs/cluster.log', common.wazuh_uid(), common.wazuh_gid())
-        os.chmod(f'{common.WAZUH_PATH}/logs/cluster.log', 0o660)
+        os.chmod(f'{common.WAZUH_PATH}/logs/cluster.log', 0o660)  # nosec B103
 
     try:
         cluster_configuration = cluster_utils.read_config(config_file=args.config_file)
@@ -223,7 +223,7 @@ def main():
     wazuh.core.cluster.cluster.clean_up()
 
     # Check for unused PID files
-    clean_pid_files('wazuh-clusterd')
+    clean_pid_files('wazuh-manager-clusterd')
 
     # Foreground/Daemon
     if not args.foreground:
@@ -235,7 +235,7 @@ def main():
         os.setuid(common.wazuh_uid())
 
     pid = os.getpid()
-    pyDaemonModule.create_pid('wazuh-clusterd', pid)
+    pyDaemonModule.create_pid('wazuh-manager-clusterd', pid)
     if args.foreground:
         print(f"Starting cluster in foreground (pid: {pid})")
 
@@ -246,12 +246,12 @@ def main():
         main_logger.info("SIGINT received. Bye!")
     except MemoryError:
         main_logger.error("Directory '/tmp' needs read, write & execution "
-                          "permission for 'wazuh' user")
+                          "permission for 'wazuh-manager' user")
     except Exception as e:
         main_logger.error(f"Unhandled exception: {e}")
     finally:
-        pyDaemonModule.delete_child_pids('wazuh-clusterd', pid, main_logger)
-        pyDaemonModule.delete_pid('wazuh-clusterd', pid)
+        pyDaemonModule.delete_child_pids('wazuh-manager-clusterd', pid, main_logger)
+        pyDaemonModule.delete_pid('wazuh-manager-clusterd', pid)
 
 
 if __name__ == '__main__':

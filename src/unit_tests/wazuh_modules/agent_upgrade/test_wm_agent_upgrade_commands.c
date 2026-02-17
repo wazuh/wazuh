@@ -1141,7 +1141,7 @@ void test_wm_agent_upgrade_process_agent_result_command_done(void **state)
     cJSON_AddNumberToObject(response_json, "error", WM_UPGRADE_SUCCESS);
     cJSON_AddStringToObject(response_json, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8164): Received upgrade notification from agent '25'. Error code: '0', message: 'Success'");
 
     // wm_agent_upgrade_parse_task_module_request
@@ -1212,7 +1212,7 @@ void test_wm_agent_upgrade_process_agent_result_command_failed(void **state)
     cJSON_AddNumberToObject(response_json, "error", WM_UPGRADE_SUCCESS);
     cJSON_AddStringToObject(response_json, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8164): Received upgrade notification from agent '25'. Error code: '2', message: 'Error message'");
 
     // wm_agent_upgrade_parse_task_module_request
@@ -1480,7 +1480,7 @@ void test_wm_agent_upgrade_process_upgrade_custom_command_no_agents(void **state
 
     will_return(__wrap_wm_agent_upgrade_get_agent_ids, NULL);
 
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtwarn, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtwarn, formatted_msg, "(8160): There are no valid agents to upgrade.");
 
     // wm_agent_upgrade_parse_response
@@ -1726,7 +1726,7 @@ void test_wm_agent_upgrade_process_upgrade_command_no_agents(void **state)
 
     will_return(__wrap_wm_agent_upgrade_get_agent_ids, NULL);
 
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtwarn, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtwarn, formatted_msg, "(8160): There are no valid agents to upgrade.");
 
     // wm_agent_upgrade_parse_response

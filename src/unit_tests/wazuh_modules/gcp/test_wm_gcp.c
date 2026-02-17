@@ -23,6 +23,7 @@
 #include "../../wrappers/wazuh/shared/time_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 
+
 void wm_gcp_pubsub_run(const wm_gcp_pubsub *data);
 cJSON *wm_gcp_pubsub_dump(const wm_gcp_pubsub *data);
 void wm_gcp_pubsub_destroy(wm_gcp_pubsub * data);

@@ -109,7 +109,7 @@ cp /path/to/certificate etc/wpk_root.pem
 
 ```
 <active-response>
-  <ca_store>/var/ossec/etc/wpk_root.pem</ca_store>
+  <ca_store>/var/wazuh-manager/etc/wpk_root.pem</ca_store>
   <ca_store>/path/to/certificate</ca_store>
 </active-response>
 ```
@@ -119,7 +119,7 @@ cp /path/to/certificate etc/wpk_root.pem
 Get the WPK package into the Wazuh manager and run:
 
 ```
-/var/ossec/bin/agent_upgrade -a 001 -f path/to/myagent.wpk -x upgrade.sh
+/var/wazuh-manager/bin/agent_upgrade -a 001 -f path/to/myagent.wpk -x upgrade.sh
 ```
 
 - `-a 001` specifies the agent to upgrade.
@@ -172,7 +172,7 @@ In the same way, the root CA certificate must be installed in the agent prior to
 Run this command from the manager:
 
 ```
-/var/ossec/bin/agent_upgrade -a 001 -r https://example.com/repo
+/var/wazuh-manager/bin/agent_upgrade -a 001 -r https://example.com/repo
 ```
 
 - `-a 001` specifies the agent to upgrade.

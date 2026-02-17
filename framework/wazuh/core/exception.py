@@ -26,7 +26,7 @@ class WazuhException(Exception):
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
         1000: {'message': 'Wazuh Internal Error',
-               'remediation': 'Please, check `WAZUH_HOME/logs/ossec.log`, `WAZUH_HOME/logs/cluster.log` and '
+               'remediation': 'Please, check `WAZUH_HOME/logs/wazuh-manager.log`, `WAZUH_HOME/logs/cluster.log` and '
                               '`WAZUH_HOME/logs/api.log` to get more information about the error'},
         1001: 'Error importing module',
         1002: 'Error executing command',
@@ -35,7 +35,7 @@ class WazuhException(Exception):
         1005: {'message': 'Error reading file',
                'remediation': 'Please, ensure you have the right file permissions in Wazuh directories'},
         1006: {'message': 'File/directory does not exist or there is a problem with the permissions',
-               'remediation': 'Please, check if path to file/directory is correct and `wazuh` '
+               'remediation': 'Please, check if path to file/directory is correct and `wazuh-manager` '
                               'has the appropriate permissions'},
         1010: 'Unable to connect to queue',
         1011: 'Error communicating with queue',
@@ -93,7 +93,7 @@ class WazuhException(Exception):
                               f"configurations"},
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
-        1119: "Directory '/tmp' needs read, write & execution permission for 'wazuh' user",
+        1119: "Directory '/tmp' needs read, write & execution permission for 'wazuh-manager' user",
         1121: {'message': "Error connecting with socket",
                'remediation': "Please ensure the selected module is running and properly configured"},
         1123: {
@@ -107,7 +107,7 @@ class WazuhException(Exception):
                'remediation': 'Please, provide a valid ossec configuration'
                },
         1126: {'message': 'Error updating ossec configuration',
-               'remediation': 'Please, ensure `WAZUH_PATH/etc/ossec.conf` has the proper permissions and ownership.'
+               'remediation': 'Please, ensure `WAZUH_PATH/etc/wazuh-manager.conf` has the proper permissions and ownership.'
                },
         1127: {'message': 'Protected section was modified',
                'remediation': 'To solve this, either revert the changes made to this section or disable the protection '
@@ -165,10 +165,6 @@ class WazuhException(Exception):
         # Agents: 1700 - 1799
         1701: {'message': 'Agent does not exist',
                'remediation': 'Please, use `GET /agents?select=id,name` to find all available agents'
-               },
-        1703: {'message': 'Action not available for Manager (agent 000)',
-               'remediation': 'Please, use `GET /agents?select=id,name` to find all available agents and make sure you '
-                              'select an agent other than 000'
                },
         1705: {'message': 'There is an agent with the same name',
                'remediation': 'Please choose another name'
@@ -248,7 +244,7 @@ class WazuhException(Exception):
         1743: 'Error running Wazuh syntax validator',
         1745: "Agent only belongs to 'default' and it cannot be unassigned from this group.",
         1750: {'message': 'Could not send restart command, active-response is disabled in the agent',
-               'remediation': "You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`"},
+               'remediation': "You can activate it in agents' `WAZUH_HOME/etc/wazuh-manager.conf`"},
         1751: {'message': 'Could not assign agent to group',
                'remediation': 'Agent already belongs to specified group, please select another agent'},
         1752: {'message': 'Could not force single group for the agent'},
@@ -302,15 +298,15 @@ class WazuhException(Exception):
         2007: {'message': 'Error retrieving data from Wazuh DB'},
         2008: {'message': 'Corrupted RBAC database',
                'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
-        2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
+        2009: {'message': 'Pagination error. Response from wazuh-manager-db was over the maximum socket buffer size'},
         2010: {'message': 'The requested read operation did not complete fully'},
-        2011: {'message': 'Could not connect to the wazuh-db unix socket'},
-        2012: {'message': 'Invalid wazuh-db HTTP request'},
+        2011: {'message': 'Could not connect to the wazuh-manager-db unix socket'},
+        2012: {'message': 'Invalid wazuh-manager-db HTTP request'},
         2013: {'message': 'Error sending HTTP request'},
-        2014: {'message': 'The wazuh-db client connection timeout has been exceeded'},
+        2014: {'message': 'The wazuh-manager-db client connection timeout has been exceeded'},
         2015: {'message': 'Invalid request URL scheme'},
         2016: {'message': 'Invalid unix socket path'},
-        2017: {'message': 'Could not retrieve agents synchronization information from wazuh-db'},
+        2017: {'message': 'Could not retrieve agents synchronization information from wazuh-manager-db'},
 
         # External services
         2100: {'message': 'Error in CTI service request'},
@@ -349,7 +345,7 @@ class WazuhException(Exception):
         3024: "Length of command exceeds limit defined in wazuh.cluster.common.Handler.cmd_len.",
         3025: {'message': "Could not decrypt message",
                'remediation': "Check the cluster key is correct in the worker's "
-                              f"[ossec.conf](https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/reference/"
+                              f"[wazuh-manager.conf](https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/reference/"
                               f"ossec-conf/cluster.html#key)"
                               ", ensure it is the same that the master's."},
         3026: "Error sending request: Memory error. Request chunk size divided by 2.",

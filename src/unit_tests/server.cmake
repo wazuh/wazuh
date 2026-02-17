@@ -38,11 +38,9 @@ set(TEST_DEPS
     ${WAZUHEXT}
     -lagent_metadata
     -lrouter
-    -lfimebpf
     -lagent_sync_protocol
     -ldbsync
     -lschema_validator
-    -lfimdb
     -Wl,--end-group
     -lpthread
     -ldl
@@ -56,5 +54,3 @@ add_subdirectory(os_auth)
 add_subdirectory(os_crypto)
 add_subdirectory(wazuh_modules)
 add_subdirectory(monitord)
-add_subdirectory(logcollector)
-add_subdirectory(os_execd)

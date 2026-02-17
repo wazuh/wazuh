@@ -7,7 +7,7 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: The wazuh-analysisd daemon uses a series of decoders and rules to analyze and interpret logs and events and
+brief: The wazuh-manager-analysisd daemon uses a series of decoders and rules to analyze and interpret logs and events and
        generate alerts when the decoded information matches the established rules. The 'if_sid' option is used to
        associate a rule to a parent rule by referencing the rule ID of the parent. This test module checks that when
        a null rule_id is used, the rule is ignored.
@@ -21,7 +21,7 @@ targets:
     - manager
 
 daemons:
-    - wazuh-analysisd
+    - wazuh-manager-analysisd
 
 os_platform:
     - linux

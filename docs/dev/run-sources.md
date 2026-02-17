@@ -28,7 +28,7 @@ Alternatively, configure environment variables as described in `etc/preloaded-va
 USER_LANGUAGE="en" \
 USER_NO_STOP="y" \
 USER_INSTALL_TYPE="server" \
-USER_DIR="/var/ossec" \
+USER_DIR="/var/wazuh-manager" \
 USER_ENABLE_SYSCHECK="y" \
 USER_ENABLE_ROOTCHECK="y" \
 USER_WHITE_LIST="n" \
@@ -44,13 +44,13 @@ USER_AUTO_START="n" \
 After installation, start the manager:
 
 ```bash
-/var/ossec/bin/wazuh-control start
+/var/wazuh-manager/bin/wazuh-control start
 ```
 
 To verify the server is running:
 
 ```bash
-/var/ossec/bin/wazuh-control status
+/var/wazuh-manager/bin/wazuh-control status
 ```
 
 ## Agent for UNIX
@@ -159,13 +159,13 @@ Get-Service -Name wazuh
 The main server configuration file is located at:
 
 ```
-/var/ossec/etc/ossec.conf
+/var/wazuh-manager/etc/wazuh-manager.conf
 ```
 
 After modifying the configuration, restart the server:
 
 ```bash
-/var/ossec/bin/wazuh-control restart
+/var/wazuh-manager/bin/wazuh-control restart
 ```
 
 ### Agent Configuration
@@ -189,7 +189,13 @@ Restart-Service -Name wazuh
 
 ## Stopping Services
 
-### Server/Agent on UNIX
+### Server on UNIX
+
+```bash
+/var/wazuh-manager/bin/wazuh-control stop
+```
+
+### Agent on UNIX
 
 ```bash
 /var/ossec/bin/wazuh-control stop
@@ -203,7 +209,21 @@ Stop-Service -Name wazuh
 
 ## Logs
 
-### Server/Agent Logs on UNIX
+### Server Logs on UNIX
+
+Logs are located in `/var/wazuh-manager/logs/`:
+
+- `wazuh-manager.log` - Main Wazuh log
+- `alerts/alerts.log` - Security alerts
+- Individual component logs in `/var/wazuh-manager/logs/`
+
+To monitor logs in real-time:
+
+```bash
+tail -f /var/wazuh-manager/logs/wazuh-manager.log
+```
+
+### Agent Logs on UNIX
 
 Logs are located in `/var/ossec/logs/`:
 

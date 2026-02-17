@@ -2,7 +2,7 @@
 # prerm script for wazuh-manager
 
 set -e
-DIR="/var/ossec"
+DIR="/var/wazuh-manager"
 
 case "$1" in
     upgrade|deconfigure)
@@ -37,9 +37,9 @@ case "$1" in
       if [ -f ${DIR}/etc/local_internal_options.conf ]; then
         cp -p ${DIR}/etc/local_internal_options.conf ${DIR}/tmp/conffiles
       fi
-      # Save the ossec.conf
-      if [ -f ${DIR}/etc/ossec.conf ]; then
-        cp -p ${DIR}/etc/ossec.conf ${DIR}/tmp/conffiles
+      # Save the wazuh-manager.conf
+      if [ -f ${DIR}/etc/wazuh-manager.conf ]; then
+        cp -p ${DIR}/etc/wazuh-manager.conf ${DIR}/tmp/conffiles
       fi
 
       # Save the rootcheck files

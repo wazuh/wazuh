@@ -38,8 +38,11 @@ include_directories(
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-add_definitions(-DARGV0="wazuh-execd")
-add_definitions(-DGROUPGLOBAL="wazuh")
+# Execd is agent-only and keeps the agent daemon name on all Unix targets.
+set(WAZUH_EXECD_DAEMON_NAME "wazuh-execd")
+set(WAZUH_RUNTIME_GROUP "wazuh")
+add_definitions(-DARGV0="${WAZUH_EXECD_DAEMON_NAME}")
+add_definitions(-DGROUPGLOBAL="${WAZUH_RUNTIME_GROUP}")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN32=1 -DWIN_EXPORT)
@@ -87,16 +90,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
                                             wazuh_modulesd_lib wazuh)
   # Only build Unix executable when not running unit tests
 elseif(NOT UNIT_TEST)
-  add_executable(wazuh-execd "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
+  add_executable(${WAZUH_EXECD_DAEMON_NAME}
+                 "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
   set_target_properties(
-    wazuh-execd PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
-                                             ${SRC_FOLDER})
-  target_link_libraries(wazuh-execd PRIVATE execd_lib)
+    ${WAZUH_EXECD_DAEMON_NAME}
+    PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER})
+  target_link_libraries(${WAZUH_EXECD_DAEMON_NAME} PRIVATE execd_lib)
 
   if(APPLE)
     set_target_properties(
-      wazuh-execd PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
-                             INSTALL_RPATH "@executable_path/../lib")
+      ${WAZUH_EXECD_DAEMON_NAME} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
+                                             INSTALL_RPATH
+                                             "@executable_path/../lib")
   else()
     string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
   endif()

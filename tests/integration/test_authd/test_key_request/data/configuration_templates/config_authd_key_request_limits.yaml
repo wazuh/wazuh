@@ -30,9 +30,9 @@
     - ssl_verify_host:
         value: 'no'
     - ssl_manager_cert:
-        value: '/var/ossec/etc/sslmanager.cert'
+        value: '/var/wazuh-manager/etc/sslmanager.cert'
     - ssl_manager_key:
-        value: '/var/ossec/etc/sslmanager.key'
+        value: '/var/wazuh-manager/etc/sslmanager.key'
     - ssl_auto_negotiate:
         value: 'no'
     - key_request:
@@ -40,7 +40,7 @@
         - enabled:
             value: 'yes'
         - exec_path:
-            value: '/var/ossec/framework/python/bin/python3 /tmp/fetch_keys.py -s'
+            value: '/var/wazuh-manager/framework/python/bin/python3 /tmp/fetch_keys.py -s'
         - timeout:
             value: TIMEOUT
         - threads:

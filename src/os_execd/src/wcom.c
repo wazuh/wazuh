@@ -226,7 +226,7 @@ size_t wcom_restart(char ** output) {
         static char command[OS_FLSIZE];
         snprintf(command, sizeof(command), "%s/%s", AR_BINDIR, "restart-wazuh.exe");
         char *cmd[2] = { command, NULL };
-        char *cmd_parameters = "{\"version\":1,\"origin\":{\"name\":\"\",\"module\":\"wazuh-execd\"},\"command\":\"add\",\"parameters\":{\"extra_args\":[],\"alert\":{},\"program\":\"restart-wazuh.exe\"}}";
+        char *cmd_parameters = "{\"version\":1,\"origin\":{\"name\":\"\",\"module\":\"" ARGV0 "\"},\"command\":\"add\",\"parameters\":{\"extra_args\":[],\"alert\":{},\"program\":\"restart-wazuh.exe\"}}";
         wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
         if (wfd) {
             /* Send alert to AR script */
@@ -285,7 +285,7 @@ size_t wcom_reload(char ** output) {
         static char command[OS_FLSIZE];
         snprintf(command, sizeof(command), "%s/%s", AR_BINDIR, "restart-wazuh.exe");
         char *cmd[2] = { command, NULL };
-        char *cmd_parameters = "{\"version\":1,\"origin\":{\"name\":\"\",\"module\":\"wazuh-execd\"},\"command\":\"add\",\"parameters\":{\"extra_args\":[],\"alert\":{},\"program\":\"restart-wazuh.exe\"}}";
+        char *cmd_parameters = "{\"version\":1,\"origin\":{\"name\":\"\",\"module\":\"" ARGV0 "\"},\"command\":\"add\",\"parameters\":{\"extra_args\":[],\"alert\":{},\"program\":\"restart-wazuh.exe\"}}";
         wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
         if (wfd) {
             // Send alert to AR script
@@ -380,9 +380,9 @@ error:
 }
 
 size_t wcom_check_manager_config(char **output) {
-    static const char *daemons[] = {"bin/wazuh-authd", "bin/wazuh-remoted",
-                                    "bin/wazuh-execd", "bin/wazuh-analysisd", "bin/wazuh-logcollector",
-                                    "bin/wazuh-syscheckd", "bin/wazuh-modulesd", "bin/wazuh-clusterd",
+    static const char *daemons[] = {"bin/wazuh-manager-authd", "bin/wazuh-manager-remoted",
+                                    "bin/wazuh-manager-analysisd",
+                                    "bin/wazuh-manager-modulesd", "bin/wazuh-manager-clusterd",
                                     NULL
                                     };
 

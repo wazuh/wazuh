@@ -80,7 +80,7 @@ class DisconnectedAgentSyncTasks:
         # Allow injecting an indexer client for tests
         self._indexer_client_override = indexer_client
 
-        # Use from_import=True to avoid raising during tests when ossec.conf
+        # Use from_import=True to avoid raising during tests when wazuh configuration file
         # does not contain the indexer section. The config is only used for
         # informational purposes here.
         try:
@@ -557,10 +557,7 @@ class DisconnectedAgentSyncTasks:
 
         invalid_agents = []
         for agent_id in agent_list:
-            if agent_id == "000":
-                result.add_failed_item(id_="000", error=WazuhError(1703))
-                invalid_agents.append(agent_id)
-            elif agent_id not in system_agents:
+            if agent_id not in system_agents:
                 result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
                 invalid_agents.append(agent_id)
 

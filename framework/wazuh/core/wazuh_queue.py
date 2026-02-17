@@ -4,7 +4,6 @@
 
 import json
 import socket
-from typing import Any
 
 from wazuh.core.common import origin_module
 from wazuh.core.exception import WazuhError, WazuhInternalError
@@ -93,11 +92,11 @@ class WazuhQueue(BaseQueue):
     # Messages
     HC_SK_RESTART = "syscheck restart"  # syscheck restart
     HC_FORCE_RECONNECT = "force_reconnect"  # force reconnect command
-    RESTART_AGENTS = "restart-ossec0"  # Agents, not manager (000)
+    RESTART_AGENTS = "restart-ossec0"  # Agents
     RESTART_AGENTS_JSON = json.dumps(create_wazuh_socket_message(origin={'module': origin_module.get()},
                                                                  command="restart-wazuh0",
                                                                  parameters={"extra_args": [],
-                                                                             "alert": {}}))  # Agents, not manager (000)
+                                                                             "alert": {}}))  # Agents
 
     # Types
     AR_TYPE = "ar-message"
@@ -106,7 +105,7 @@ class WazuhQueue(BaseQueue):
         """Send message to agent.
 
         Active-response
-          Agents: /var/ossec/queue/alerts/ar
+          Agents: /var/wazuh-manager/queue/alerts/ar
             - Existing command:
               - (msg_to_agent) [] NNS 001 restart-ossec0 arg1 arg2 arg3
               - (msg_to_agent) [] ANN (null) restart-ossec0 arg1 arg2 arg3
@@ -116,7 +115,7 @@ class WazuhQueue(BaseQueue):
           Agents with version >= 4.2.0:
             - Existing and custom commands:
               - (msg_to_agent) [] NNS 001 {JSON message}
-          Manager: /var/ossec/queue/alerts/execq
+          Manager: /var/wazuh-manager/queue/alerts/execq
             - Existing or custom command:
               - {JSON message}
 
@@ -155,7 +154,7 @@ class WazuhQueue(BaseQueue):
 
         # AR
         if msg_type == WazuhQueue.AR_TYPE:
-            socket_msg = create_wazuh_queue_socket_msg(flag, str_agent_id, msg) if agent_id != '000' else msg
+            socket_msg = create_wazuh_queue_socket_msg(flag, str_agent_id, msg)
             # Return message
             ret_msg = "Command sent."
 

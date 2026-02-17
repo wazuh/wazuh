@@ -20,7 +20,7 @@ targets:
     - agent
 
 daemons:
-    - wazuh-analysisd
+    - wazuh-manager-analysisd
     - wazuh-execd
 
 os_platform:

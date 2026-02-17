@@ -1117,10 +1117,10 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Show the config of wazuh-db/internal on master
+  - name: Show the config of wazuh-manager-db/internal on master
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wazuh-db/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wazuh-manager-db/internal"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1139,10 +1139,10 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Show the config of wazuh-db/wdb on master
+  - name: Show the config of wazuh-manager-db/wdb on master
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wazuh-db/wdb"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wazuh-manager-db/wdb"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1373,12 +1373,12 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Read logs with filters -> tag=wazuh-analysisd, limit=1 {node_id}
+  - name: Read logs with filters -> tag=wazuh-manager-analysisd, limit=1 {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
-        tag: wazuh-analysisd
+        tag: wazuh-manager-analysisd
         limit: 1
     response:
       status_code: 200
@@ -1391,12 +1391,12 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Read logs with filters -> tag=wazuh-syscheckd, limit=2 {node_id}
+  - name: Read logs with filters -> tag=wazuh-manager-remoted, limit=2 {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
-        tag: wazuh-syscheckd
+        tag: wazuh-manager-remoted
         limit: 2
     response:
       status_code: 200
@@ -1405,9 +1405,9 @@ stages:
         data:
           affected_items:
             - <<: *cluster_log
-              tag: wazuh-syscheckd
+              tag: wazuh-manager-remoted
             - <<: *cluster_log
-              tag: wazuh-syscheckd
+              tag: wazuh-manager-remoted
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -1447,19 +1447,19 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Read logs with filters by query (tag=wazuh-syscheckd, level=info) {node_id}
+  - name: Read logs with filters by query (tag=wazuh-manager-remoted, level=info) {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
-        q: tag=wazuh-syscheckd;level=info
+        q: tag=wazuh-manager-remoted;level=info
     response:
       status_code: 200
       verify_response_with:
         - function: tavern_utils:test_expected_value
           extra_kwargs:
             key: "tag"
-            expected_values: "wazuh-syscheckd"
+            expected_values: "wazuh-manager-remoted"
         - function: tavern_utils:test_expected_value
           extra_kwargs:
             key: "level"
@@ -1566,14 +1566,14 @@ stages:
         error: 2
         data:
           affected_items:
-            - name: wazuh-remoted
-            - name: wazuh-db
+            - name: wazuh-manager-remoted
+            - name: wazuh-manager-db
           total_affected_items: 2
           failed_items:
-            - id: [ wazuh-analysisd ]
+            - id: [ wazuh-manager-analysisd ]
           total_failed_items: 1
 
-  # GET /cluster/{node_id}/daemons/stats?daemons_list=wazuh-remoted
+  # GET /cluster/{node_id}/daemons/stats?daemons_list=wazuh-manager-remoted
   - name: Get statistics from a single daemon from {node_id}
     request:
       verify: False
@@ -1582,19 +1582,19 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        daemons_list: wazuh-remoted
+        daemons_list: wazuh-manager-remoted
     response:
       status_code: 200
       json:
         error: 0
         data:
           affected_items:
-            - name: wazuh-remoted
+            - name: wazuh-manager-remoted
           total_affected_items: 1
           failed_items: []
           total_failed_items: 0
 
-  # GET /cluster/{node_id}/daemons/stats?daemons_list=wazuh-remoted,wazuh-db
+  # GET /cluster/{node_id}/daemons/stats?daemons_list=wazuh-manager-remoted,wazuh-manager-db
   - name: Get statistics from a list of daemons from {node_id}
     request:
       verify: False
@@ -1603,15 +1603,15 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        daemons_list: wazuh-remoted,wazuh-db
+        daemons_list: wazuh-manager-remoted,wazuh-manager-db
     response:
       status_code: 200
       json:
         error: 0
         data:
           affected_items:
-            - name: wazuh-remoted
-            - name: wazuh-db
+            - name: wazuh-manager-remoted
+            - name: wazuh-manager-db
           total_affected_items: 2
           failed_items: []
           total_failed_items: 0
@@ -1935,6 +1935,7 @@ test_name: PUT /cluster/restart
 
 marks:
   - cluster
+  - skip: execd socket no longer exists in manager after agent-manager separation
 
 stages:
 
@@ -2173,7 +2174,7 @@ stages:
       save:
         json:
           wazuh_version: data.api_version
-  
+
   - name: Enable update check
     request:
       verify: False

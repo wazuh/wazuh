@@ -8,7 +8,7 @@ from os.path import exists
 from wazuh import Wazuh
 from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.utils import manager_restart, read_cluster_config, running_in_master_node
+from wazuh.core.cluster.utils import manager_restart, running_in_master_node
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_update_information_template, get_ossec_logs, \
@@ -47,7 +47,7 @@ def ossec_log(level: str = None, tag: str = None, offset: int = 0, limit: int = 
               sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
               complementary_search: bool = False, search_in_fields: list = None,
               q: str = '', select: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
-    """Get logs from ossec.log.
+    """Get logs from wazuh-manager.log.
 
     Parameters
     ----------
@@ -107,7 +107,7 @@ def ossec_log(level: str = None, tag: str = None, offset: int = 0, limit: int = 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def ossec_log_summary() -> AffectedItemsWazuhResult:
-    """Summary of ossec.log.
+    """Summary of wazuh-manager.log.
 
     Returns
     -------
@@ -251,7 +251,7 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
                                       )
 
     try:
-        data = configuration.get_active_configuration(agent_id='000', component=component, configuration=config)
+        data = configuration.get_active_configuration(component=component, configuration=config)
         len(data.keys()) > 0 and result.affected_items.append(data)
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
@@ -332,7 +332,7 @@ def get_basic_info() -> AffectedItemsWazuhResult:
 
 @expose_resources(actions=['cluster:update_config'], resources=[f'node:id:{node_id}'])
 def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
-    """Replace wazuh configuration (ossec.conf) with the provided configuration.
+    """Replace wazuh configuration (wazuh-manager.conf) with the provided configuration.
 
     Parameters
     ----------

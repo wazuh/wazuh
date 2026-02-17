@@ -23,7 +23,7 @@ int __wrap_pthread_rwlock_wrlock(pthread_rwlock_t *rwlock);
 
 int __wrap_pthread_rwlock_unlock(pthread_rwlock_t *rwlock);
 
-int __wrap_pthread_exit();
+void __wrap_pthread_exit(void *value_ptr);
 
 int __wrap_pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex);
 
