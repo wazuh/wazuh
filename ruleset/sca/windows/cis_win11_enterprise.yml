@@ -1448,7 +1448,7 @@ checks:
 
   # 2.3.17.2 (L1) Ensure 'User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode' is set to 'Prompt for consent on the secure desktop' or higher (Automated)
   - id: 26065
-    title: "Ensure 'User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode' is set to 'Prompt for consent on the secure desktop'."
+    title: "Ensure 'User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode' is set to 'Prompt for consent on the secure desktop' or higher."
     description: "This policy setting controls the behavior of the elevation prompt for administrators. The recommended state for this setting is: Prompt for consent on the secure desktop. Configuring this setting to Prompt for credentials on the secure desktop also conforms to the benchmark."
     rationale: "One of the risks that the UAC feature introduced with Windows Vista is trying to mitigate is that of malicious software running under elevated credentials without the user or administrator being aware of its activity. This setting raises awareness to the administrator of elevated privilege operations and permits the administrator to prevent a malicious program from elevating its privilege when the program attempts to do so."
     impact: "When an operation (including execution of a Windows binary) requires elevation of privilege, the user is prompted on the secure desktop to select either Permit or Deny. If the user selects Permit, the operation continues with the user's highest available privilege."
@@ -4682,7 +4682,7 @@ checks:
     impact: "Warning: Many existing print configurations may be using the older named pipes protocol and therefore will cease to function."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Negotiate or higher: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure RPC listener settings: Configure protocol options for incoming RPC connections Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (and newer)."
     compliance:
-      - cis: ["18.7.5"]
+      - cis: ["18.7.6"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC'
@@ -6900,7 +6900,7 @@ checks:
 
  # 18.10.9.2.8 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Save BitLocker recovery information to AD DS for operating system drives' is set to 'Enabled: True' (Automated)
   - id: 26325
-    title: "Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Allow data recovery agent' is set to 'Enabled: False'."
+    title: "Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Save BitLocker recovery information to AD DS for operating system drives' is set to 'Enabled: True'"
     description: "This policy setting allows you to control how BitLocker-protected operating system drives are recovered in the absence of the required startup key information. This policy setting is applied when you turn on BitLocker. In \"Save BitLocker recovery information to Active Directory Domain Services\", choose which BitLocker recovery information to store in AD DS for operating system drives. If you select \"Backup recovery password and key package\", both the BitLocker recovery password and key package are stored in AD DS. Storing the key package supports recovering data from a drive that has been physically corrupted. If you select \"Backup recovery password only\", only the recovery password is stored in AD DS. The recommended state for this setting is: Enabled: True (checked)."
     rationale: "Should a user lose their primary means for accessing an encrypted OS volume, or should the system not pass its boot time integrity checks, the system will go into recovery mode. If the recovery key has not been backed up to Active Directory, the user would need to have saved the recovery key to another location such as a USB flash drive, or have printed the recovery password, and now have access to one of those in order to recovery the system. If the user is unable to produce the recovery key, then the user will be denied access to the encrypted volume and subsequently any data that is stored there."
     impact: "BitLocker recovery information for the operating system drive will be backed up to AD DS. Users will need to be domain connected to turn on BitLocker. This policy is not FIPS complaint."
