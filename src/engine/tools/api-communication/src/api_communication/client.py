@@ -158,7 +158,7 @@ class APIClient:
                 return f'Error {response.status_code} while sending request', {}
 
             if response.status_code == 413:
-                return f'Payload too large: {response.text}', {}
+                return response.text or "Payload too large.", {}
 
         # Response from server endpoint handler
         try:

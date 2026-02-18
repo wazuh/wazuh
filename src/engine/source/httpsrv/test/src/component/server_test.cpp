@@ -465,6 +465,54 @@ TEST_P(BodyRouteTest, PayloadUnlimitedAcceptsLargePayload)
     ASSERT_EQ(receivedSize.load(), kBigPayload);
 }
 
+TEST_P(BodyRouteTest, HandlerCustom413BodyIsPreserved)
+{
+    auto [method, route, /*cliReq*/ _] = GetParam();
+
+    if (method != httpsrv::Method::POST && method != httpsrv::Method::PUT)
+    {
+        GTEST_SKIP() << "No request body for this method in current parametrization.";
+    }
+
+    constexpr size_t kLimitBytes = 16;
+    constexpr const char* kCustomBody = R"({"status":"ERROR","error":"custom 413 from handler"})";
+
+    m_srv->stop();
+    m_srv.reset();
+    m_srv = std::make_shared<httpsrv::Server>("test", kLimitBytes);
+
+    std::atomic<int> handlerCalls {0};
+    auto handler = [&](const httplib::Request&, httplib::Response& res)
+    {
+        handlerCalls++;
+        res.status = httplib::StatusCode::PayloadTooLarge_413;
+        res.set_content(kCustomBody, "application/json");
+    };
+
+    m_srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+    m_srv->start(getSocketPath("test.sock"));
+
+    httplib::Client cli(getSocketPath("test.sock").string(), true);
+    cli.set_address_family(AF_UNIX);
+
+    httplib::Headers headers {{"Content-Type", "text/plain"}};
+
+    httplib::Result res;
+    if (method == httpsrv::Method::POST)
+    {
+        res = cli.Post(route.c_str(), headers, "small", "text/plain");
+    }
+    else // PUT
+    {
+        res = cli.Put(route.c_str(), headers, "small", "text/plain");
+    }
+
+    ASSERT_TRUE(res);
+    ASSERT_EQ(res->status, 413);
+    ASSERT_EQ(res->body, kCustomBody);
+    ASSERT_EQ(handlerCalls.load(), 1);
+}
+
 INSTANTIATE_TEST_SUITE_P(
     ServerP,
     RouteTest,
