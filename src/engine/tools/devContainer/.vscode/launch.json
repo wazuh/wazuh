@@ -169,7 +169,7 @@
             "name": "wazuh-analsysid",
             "type": "cppdbg",
             "request": "launch",
-            "program": "/var/wazuh-manager/bin/wazuh-analysisd",
+            "program": "/var/wazuh-manager/bin/wazuh-manager-analysisd",
            // "additionalSOLibSearchPath": "${workspaceFolder}/wazuh/src/",
             "args": ["-f", "-d"],
             "stopAtEntry": false,
