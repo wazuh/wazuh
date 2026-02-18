@@ -215,6 +215,7 @@ jobs:
         uses: ./.github/actions/check_files
         with:
           expected_files: ${{ env.CSV_FILENAME }}
+          installation_directory: /var/ossec
           wazuh_uid: ${{ env.WAZUH_UID }}
           wazuh_gid: ${{ env.WAZUH_GID }}
 
@@ -488,6 +489,7 @@ jobs:
         uses: ./.github/actions/check_files
         with:
           expected_files: ${{ env.CSV_FILENAME }}
+          installation_directory: /var/ossec
           wazuh_uid: ${{ env.WAZUH_UID }}
           wazuh_gid: ${{ env.WAZUH_GID }}
 
