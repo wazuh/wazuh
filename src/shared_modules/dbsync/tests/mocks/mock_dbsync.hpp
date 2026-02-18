@@ -31,5 +31,4 @@ class MockDBSync : public IDBSync
                     (const std::string& tableName, const std::string& rowFilter),
                     (override));
         MOCK_METHOD(void, increaseEachEntryVersion, (const std::string& tableName), (override));
-        MOCK_METHOD(std::vector<nlohmann::json>, getEveryElement, (const std::string& tableName), (override));
 };

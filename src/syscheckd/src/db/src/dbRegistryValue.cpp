@@ -30,6 +30,7 @@ void RegistryValue::createFimEntry()
             value->type = m_type;
             value->architecture = m_architecture;
             value->version = m_version;
+            value->sync = m_sync;
             std::snprintf(value->hash_md5, sizeof(value->hash_md5), "%s", m_md5.c_str());
             std::snprintf(value->hash_sha1, sizeof(value->hash_sha1), "%s", m_sha1.c_str());
             std::snprintf(value->hash_sha256, sizeof(value->hash_sha256), "%s", m_sha256.c_str());

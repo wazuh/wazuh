@@ -71,6 +71,10 @@ extern int sys_debug_level;
 extern int audit_queue_full_reported;
 extern int ebpf_kernel_queue_full_reported;
 
+extern int synced_docs_files;
+extern int synced_docs_registry_keys;
+extern int synced_docs_registry_values;
+
 typedef enum fim_event_type
 {
     FIM_ADD,
@@ -127,6 +131,13 @@ typedef struct diff_data
     char* compress_tmp_file;
     char* diff_file;
 } diff_data;
+
+// Stores items that need their sync flag changed
+typedef struct pending_sync_item
+{
+    cJSON *json; // Contains the fields of the table's primary key and the current version of the document
+    int sync_value;
+} pending_sync_item_t;
 
 #ifdef WIN32
 /* Flags to know if a directory/file's watcher has been removed */
@@ -349,7 +360,8 @@ bool validate_and_persist_fim_event(
     const char* item_description,
     bool mark_for_deletion,
     OSList* failed_list,
-    void* failed_item_data
+    void* failed_item_data,
+    int sync_flag
 ) __attribute__((nonnull(1,2,4,6)));
 
 /**
@@ -372,6 +384,29 @@ void cleanup_failed_registry_keys(OSList* failed_keys);
  * @param failed_values OSList containing failed_registry_value_t structures. Can be NULL.
  */
 void cleanup_failed_registry_values(OSList* failed_values);
+
+/**
+ * @brief Add a pending sync item to the list.
+ *
+ * @param pending_items OSList to store pending sync items.
+ * @param json The JSON object containing path and version.
+ * @param sync_value The sync flag value to set (0 or 1).
+ */
+void add_pending_sync_item(OSList *pending_items, const cJSON *json, int sync_value);
+
+/**
+ * @brief Free function for pending_sync_item_t.
+ *
+ * @param data Pointer to a pending_sync_item_t structure.
+ */
+void free_pending_sync_item(void *data);
+
+/**
+ * @brief Process pending sync flag updates after transaction commit.
+ *
+ * @param pending_items OSList of pending_sync_item_t to update sync flags.
+ */
+void process_pending_sync_updates(char* table_name, OSList *pending_items);
 
 /**
  * @brief Send a log message

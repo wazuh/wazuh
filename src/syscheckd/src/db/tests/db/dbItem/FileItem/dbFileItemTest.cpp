@@ -91,7 +91,7 @@ TEST_F(FileItemTest, fileItemConstructorFromJSON)
             "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
             "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810881,
             "mtime":1578075431, "path":"/etc/wgetrc", "permissions":"-rw-rw-r--", "size":4925,
-            "uid":"0", "owner":"fakeUser", "version":1
+            "uid":"0", "owner":"fakeUser", "version":1, "sync":0
         }
     )"_json;
     EXPECT_NO_THROW({
@@ -131,7 +131,7 @@ TEST_F(FileItemTest, getFIMEntryWithJSONCtr)
             "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
             "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810881,
             "mtime":1578075431, "path":"/etc/wgetrc", "permissions":"-rw-rw-r--", "size":4925,
-            "uid":"0", "owner":"fakeUser", "version":1
+            "uid":"0", "owner":"fakeUser", "version":1, "sync":0
         }
     )"_json;
     auto file = new FileItem(insertJSON);

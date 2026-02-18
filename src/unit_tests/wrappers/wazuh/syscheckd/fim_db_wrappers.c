@@ -166,3 +166,48 @@ FIMDBErrorCode __wrap_fim_db_file_delete(const char *path) {
     check_expected(path);
     return mock_type(int);
 }
+
+cJSON* __wrap_fim_db_get_documents_to_promote(char* table_name, int count) {
+    check_expected(table_name);
+    check_expected(count);
+    return mock_ptr_type(cJSON*);
+}
+
+cJSON* __wrap_fim_db_get_documents_to_demote(char* table_name, int count) {
+    check_expected(table_name);
+    check_expected(count);
+    return mock_ptr_type(cJSON*);
+}
+
+int __wrap_fim_db_count_synced_docs(char* table_name) {
+    check_expected(table_name);
+    return mock_type(int);
+}
+
+int __wrap_fim_db_sync_row_update(const char* table_name, const char* path,
+                                   const char* arch, const char* value, int sync_value) {
+    check_expected_ptr(table_name);
+    check_expected_ptr(path);
+    if (arch) check_expected_ptr(arch);
+    if (value) check_expected_ptr(value);
+    check_expected(sync_value);
+    return mock_type(int);
+}
+
+int __wrap_fim_db_set_sync_flag(char* table_name, pending_sync_item_t* item, int sync_value) {
+    check_expected_ptr(table_name);
+    check_expected_ptr(item);
+    check_expected(sync_value);
+    return mock_type(int);
+}
+
+int __wrap_fim_db_increase_each_entry_version(const char* table_name) {
+    check_expected(table_name);
+    return mock_type(int);
+}
+
+cJSON* __wrap_fim_db_get_every_element(const char* table_name, const char* row_filter) {
+    check_expected(table_name);
+    check_expected(row_filter);
+    return mock_ptr_type(cJSON*);
+}

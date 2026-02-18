@@ -10,7 +10,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Tests list and flags
 list(APPEND tests_names "test_wm_control")
-list(APPEND tests_flags "-Wl,--wrap,sysinfo_networks -Wl,--wrap,sysinfo_free_result ${DEBUG_OP_WRAPPERS}")
+list(APPEND tests_flags "-Wl,--wrap,sysinfo_networks -Wl,--wrap,sysinfo_free_result -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 list(APPEND use_shared_libs 1)
 
 

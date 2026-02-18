@@ -41,7 +41,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 # Tests list and flags
 list(APPEND tests_names "test_wm_exec")
 list(APPEND WM_EXEC_BASE_FLAGS "-Wl,--wrap,OSList_AddData -Wl,--wrap,OSList_DeleteThisNode \
-                                -Wl,--wrap,OSList_GetFirstNode -Wl,--wrap,OSList_Destroy ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,OSList_GetFirstNode -Wl,--wrap,OSList_Destroy -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
 if(${TARGET} STREQUAL "winagent")
     list(APPEND tests_flags "${WM_EXEC_BASE_FLAGS} -Wl,--wrap,fim_db_init -Wl,--wrap=syscom_dispatch \

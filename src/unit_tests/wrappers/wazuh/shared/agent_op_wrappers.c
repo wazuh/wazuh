@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "agent_op_wrappers.h"
 
@@ -69,4 +70,21 @@ int __wrap_getsockname(int fd, struct sockaddr* addr, __attribute__((unused)) so
         addr->sa_family = mock();
     }
     return ret;
+}
+
+bool __wrap_w_query_agentd(const char *module, const char *query, char *output, size_t output_size) {
+    check_expected(module);
+    check_expected(query);
+
+    const char* mock_output = mock_ptr_type(char*);
+    if (mock_output && output && output_size > 0) {
+        strncpy(output, mock_output, output_size - 1);
+        output[output_size - 1] = '\0';
+    }
+
+    return mock_type(bool);
+}
+
+bool __wrap_fetch_document_limits_from_agentd() {
+    return mock_type(bool);
 }

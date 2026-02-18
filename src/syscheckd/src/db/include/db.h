@@ -215,12 +215,13 @@ EXPORTED int fim_db_increase_each_entry_version(const char* table_name);
 EXPORTED void fim_db_update_last_sync_time(const char* table_name);
 
 /**
- * @brief Get all elements from a table.
+ * @brief Get all elements from a table with optional filter.
  *
  * @param table_name Name of the table to query.
- * @return cJSON array containing all table elements (must be freed with cJSON_Delete), NULL on error.
+ * @param row_filter Optional SQL WHERE clause to filter rows (e.g., "WHERE sync=1"). Pass NULL or "" for no filter.
+ * @return cJSON array containing all matching table elements (must be freed with cJSON_Delete), NULL on error.
  */
-EXPORTED cJSON* fim_db_get_every_element(const char* table_name);
+EXPORTED cJSON* fim_db_get_every_element(const char* table_name, const char* row_filter);
 
 /**
  * @brief Calculate the checksum-of-checksums for a table.
@@ -245,6 +246,33 @@ EXPORTED int64_t fim_db_get_last_sync_time(const char* table_name);
  * @param timestamp Timestamp in seconds since epoch.
  */
 EXPORTED void fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp);
+
+/**
+ * @brief Set the sync flag for a file document.
+ *
+ * @param file_path The file path to update.
+ * @param sync_value The sync value to set (0 or 1).
+ * @param version The version to set for the document.
+ * @return 0 on success, -1 on error or if entry not found.
+ */
+EXPORTED int fim_db_set_sync_flag(char* table_name, pending_sync_item_t* item, int sync_value);
+
+/**
+ * @brief Count the number of synced documents in a table.
+ *
+ * Counts rows where the sync flag is set to 1, indicating they are within
+ * the sync limit and will be synchronized to the manager.
+ *
+ * @param table_name The name of the table to count synced documents from
+ *                   (e.g., FIMDB_FILE_TABLE_NAME, FIMDB_REGISTRY_KEY_TABLENAME,
+ *                   FIMDB_REGISTRY_VALUE_TABLENAME).
+ * @return The count of documents where sync = 1, or 0 on error.
+ */
+EXPORTED int fim_db_count_synced_docs(const char* table_name);
+
+EXPORTED cJSON* fim_db_get_documents_to_promote(char* table_name, int documents);
+
+EXPORTED cJSON* fim_db_get_documents_to_demote(char* table_name, int documents);
 
 #ifdef WIN32
 

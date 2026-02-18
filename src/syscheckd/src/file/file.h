@@ -22,6 +22,9 @@ typedef struct callback_ctx
     const directory_t* config;
     fim_entry* entry;
     OSList* failed_paths;  // List of paths that failed schema validation (to be deleted after transaction)
+
+    // Pending sync flag updates (applied after transaction commit)
+    OSList* pending_sync_updates;  // List of pending_sync_item_t items for sync flag updates
 } callback_ctx;
 
 /**

@@ -208,15 +208,6 @@ class EXPORTED DBSync : public IDBSync
          * @throws dbsync_error if any database operation fails.
          */
         void increaseEachEntryVersion(const std::string& tableName) override;
-
-        /**
-         * @brief Get all elements from a table.
-         *
-         * @param tableName Name of the table to query.
-         * @return Vector of JSON objects containing all table elements.
-         * @throws dbsync_error if any database operation fails.
-         */
-        std::vector<nlohmann::json> getEveryElement(const std::string& tableName) override;
     private:
         DBSYNC_HANDLE m_dbsyncHandle;
         bool m_shouldBeRemoved;

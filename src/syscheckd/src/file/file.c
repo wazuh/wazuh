@@ -9,6 +9,8 @@
 
 #include <cJSON.h>
 #include "file.h"
+#include "debug_op.h"
+#include "fimCommonDefs.h"
 #include "shared.h"
 #include "syscheck.h"
 #include "syscheck-config.h"
@@ -220,9 +222,16 @@ STATIC void handle_orphaned_delete(const char* path,
     // Note: For orphaned deletes, we don't mark for deletion from DBSync since the item is already deleted
     char item_desc[PATH_MAX + 32];
     snprintf(item_desc, sizeof(item_desc), "file %s", path);
+
+    cJSON* sync_json = cJSON_GetObjectItem(result_json, "sync");
+    if (sync_json == NULL) {
+        mdebug1("Couldn't find sync for orphaned delete '%s'", path);
+        return;
+    }
+    int sync_value = (int)cJSON_GetNumberValue(sync_json);
     validate_and_persist_fim_event(stateful_event, file_path_sha1, OPERATION_DELETE,
                                     FIM_FILES_SYNC_INDEX, document_version,
-                                    item_desc, false, NULL, NULL);
+                                    item_desc, false, NULL, NULL, sync_value);
 
     cJSON_Delete(stateful_event);
 }
@@ -246,6 +255,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     char *path = NULL;
     char iso_time[32];
     Operation_t sync_operation = OPERATION_NO_OP;
+    int sync_flag = 1;
 
     callback_ctx *txn_context = (callback_ctx *) user_data;
 
@@ -257,6 +267,22 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         path = cJSON_GetStringValue(json_path);
     } else {
         path = txn_context->entry->file_entry.path;
+    }
+
+    // Extract version early so it's available for deferred sync items
+    cJSON *version_aux = NULL;
+    cJSON *new_data = cJSON_GetObjectItem(result_json, "new");
+    if (new_data != NULL) {
+        // For MODIFIED events, version is in the "new" object
+        version_aux = cJSON_GetObjectItem(new_data, "version");
+    } else {
+        // For INSERTED/DELETED events, version is at the top level
+        version_aux = cJSON_GetObjectItem(result_json, "version");
+    }
+
+    uint64_t document_version = 0;
+    if (version_aux != NULL) {
+        document_version = (uint64_t)version_aux->valueint;
     }
 
     if (txn_context->config == NULL) {
@@ -280,11 +306,58 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         case INSERTED:
             txn_context->event->type = FIM_ADD;
             sync_operation = OPERATION_CREATE;
+            // For CREATE events: determine if within limit and defer sync flag update
+            if (syscheck.file_limit > 0) {
+                sync_flag = (synced_docs_files < syscheck.file_limit) ? 1 : 0;
+                mdebug2("INSERTED: synced_docs_files=%d, file_limit=%d, sync_flag=%d, path=%s",
+                        synced_docs_files, syscheck.file_limit, sync_flag, path);
+            } else {
+                sync_flag = 1;
+                mdebug2("INSERTED: file_limit=0 (unlimited), sync_flag=1, path=%s", path);
+            }
+            // Add to deferred list if sync_flag should be 1
+            if (sync_flag == 1 && txn_context->pending_sync_updates != NULL) {
+                synced_docs_files++;
+                cJSON* sync_item = cJSON_CreateObject();
+                if (sync_item != NULL) {
+                    cJSON_AddStringToObject(sync_item, "path", path);
+                    cJSON_AddNumberToObject(sync_item, "version", (double)document_version);
+                    add_pending_sync_item(txn_context->pending_sync_updates, sync_item, 1);
+                    cJSON_Delete(sync_item);
+                } else {
+                    merror("Failed to create cJSON object for deferred sync item");
+                }
+            }
             break;
 
         case MODIFIED:
             txn_context->event->type = FIM_MODIFICATION;
             sync_operation = OPERATION_MODIFY;
+
+            // Get the old sync flag value to track synced documents and determine if promotion is needed
+            old_data = cJSON_GetObjectItem(result_json, "old");
+            cJSON *sync_json = cJSON_GetObjectItem(old_data, "sync");
+            if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+                sync_flag = sync_json->valueint;
+                // NOTE: We don't add to deferred list here because syncRow preserves the sync flag
+                // when it's not in the input data. The sync flag is already 1 after the transaction.
+            }
+
+            if (sync_flag == 0 && syscheck.file_limit > 0) { // Promote
+                if (synced_docs_files < syscheck.file_limit) {
+                    synced_docs_files++;
+                    cJSON* sync_item = cJSON_CreateObject();
+                    if (sync_item != NULL) {
+                        cJSON_AddStringToObject(sync_item, "path", path);
+                        cJSON_AddNumberToObject(sync_item, "version", (double)document_version);
+                        add_pending_sync_item(txn_context->pending_sync_updates, sync_item, 1);
+                        cJSON_Delete(sync_item);
+                        sync_flag = 1;
+                    } else {
+                        merror("Failed to create cJSON object for deferred sync item");
+                    }
+                }
+            }
             break;
 
         case DELETED:
@@ -293,6 +366,16 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
             }
             txn_context->event->type = FIM_DELETE;
             sync_operation = OPERATION_DELETE;
+            // For DELETE events: entry is NULL, read sync flag from DB result
+            {
+                cJSON *sync_json = cJSON_GetObjectItem(result_json, "sync");
+                if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+                    sync_flag = sync_json->valueint;
+                    if (sync_flag == 1) {
+                        synced_docs_files--;
+                    }
+                }
+            }
             break;
 
         case MAX_ROWS:
@@ -386,21 +469,8 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
-    cJSON *version_aux = NULL;
-    // For MODIFIED events, version is in the "new" object
-    cJSON *new_data = cJSON_GetObjectItem(result_json, "new");
-    if (new_data != NULL) {
-        version_aux = cJSON_GetObjectItem(new_data, "version");
-    } else {
-        // For INSERTED/DELETED events, version is at the top level
-        version_aux = cJSON_GetObjectItem(result_json, "version");
-    }
-
-    uint64_t document_version = 0;
-    if (version_aux != NULL) {
-        document_version = (uint64_t)version_aux->valueint;
-    } else {
-        mdebug1("Couldn't find version for '%s", path);
+    if (document_version == 0) {
+        mdebug1("Couldn't find version for '%s'", path);
         goto end; // LCOV_EXCL_LINE
     }
 
@@ -424,7 +494,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     bool validation_passed = validate_and_persist_fim_event(stateful_event, file_path_sha1, sync_operation,
                                                              FIM_FILES_SYNC_INDEX, document_version,
                                                              item_desc, mark_for_deletion,
-                                                             txn_context->failed_paths, path_copy);
+                                                             txn_context->failed_paths, path_copy, sync_flag);
 
     // If validation passed, we need to free path_copy (it wasn't added to the list)
     // If validation failed, path_copy was added to the list and will be freed later
@@ -1050,8 +1120,6 @@ void fim_file(const char *path,
         OSList_Destroy(failed_paths);
         free_file_data(new_entry.file_entry.data);
     }
-
-    return;
 }
 
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
@@ -1196,12 +1264,22 @@ void fim_file_scan() {
     OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
 
     event_data_t evt_data = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
-    callback_ctx txn_ctx = { .event = &evt_data, .entry = NULL, .config = NULL, .failed_paths = failed_paths };
+
+    // Initialize pending sync updates list for sync flag updates after transaction commit
+    OSList *pending_sync_updates = OSList_Create();
+    if (!pending_sync_updates) {
+        merror("Failed to create pending sync updates list");
+        return;
+    }
+    OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+
+    callback_ctx txn_ctx = { .event = &evt_data, .entry = NULL, .config = NULL, .failed_paths = failed_paths, .pending_sync_updates = pending_sync_updates };
 
     TXN_HANDLE db_transaction_handle = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
     if (db_transaction_handle == NULL) {
         merror(FIM_ERROR_TRANSACTION, FIMDB_FILE_TXN_TABLE);
         OSList_Destroy(failed_paths);
+        OSList_Destroy(pending_sync_updates);
         return;
     }
 
@@ -1232,4 +1310,10 @@ void fim_file_scan() {
     // Delete files that failed schema validation (outside transaction)
     cleanup_failed_fim_files(failed_paths);
     OSList_Destroy(failed_paths);
+
+    // Process pending sync flag updates now that transaction is committed
+    process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending_sync_updates);
+
+    // Cleanup pending sync updates list
+    OSList_Destroy(pending_sync_updates);
 }

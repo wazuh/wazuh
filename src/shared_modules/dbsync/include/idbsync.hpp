@@ -89,9 +89,4 @@ class IDBSync
         /// @param tableName Name of the table to update
         /// @throws std::exception if an error occurs during the version update
         virtual void increaseEachEntryVersion(const std::string& tableName) = 0;
-
-        /// @brief Gets all elements from a table
-        /// @param tableName Name of the table to query
-        /// @return Vector of JSON objects representing all rows in the table
-        virtual std::vector<nlohmann::json> getEveryElement(const std::string& tableName) = 0;
 };

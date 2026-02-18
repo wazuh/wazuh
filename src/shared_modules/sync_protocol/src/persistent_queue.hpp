@@ -47,6 +47,7 @@ class PersistentQueue : public IPersistentQueue
         /// @param data The serialized payload of the message.
         /// @param operation The type of operation (e.g., Upsert, Delete).
         /// @param version Version of the data.
+        /// @param isDataContext Flag to mark data as DataContext (true) or DataValue (false).
         void submit(const std::string& id,
                     const std::string& index,
                     const std::string& data,

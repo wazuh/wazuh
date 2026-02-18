@@ -35,7 +35,7 @@ protected:
         {
             "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":"0", "group_":"root", "architecture":1,
             "mtime":1578075431, "path":"HKEY_LOCAL_MACHINE\\SOFTWARE", "permissions":"-rw-rw-r--",
-            "uid":"0", "owner":"fakeUser", "version":1
+            "uid":"0", "owner":"fakeUser", "version":1, "sync":0
         }
     )"_json;
 };

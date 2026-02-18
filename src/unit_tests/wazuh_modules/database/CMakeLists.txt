@@ -15,7 +15,7 @@ list(APPEND wmdb_tests_flags "-Wl,--wrap,wdb_set_agent_groups -Wl,--wrap,opendir
                               -Wl,--wrap,wdb_insert_agent -Wl,--wrap,rbtree_keys -Wl,--wrap,OS_IsAllowedID -Wl,--wrap,wdb_get_agent_name \
                               -Wl,--wrap,wdb_remove_agent -Wl,--wrap,fopen -Wl,--wrap,wfopen \
                               -Wl,--wrap,wdb_get_agent_name -Wl,--wrap,wdbc_query_ex -Wl,--wrap,popen -Wl,--wrap,so_get_module_handle \
-                              ${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS}")
+                              -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS}")
 
 # Add extra compiling flags
 add_compile_options(-Wall)

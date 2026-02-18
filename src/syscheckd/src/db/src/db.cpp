@@ -205,6 +205,120 @@ int DB::updateVersion(const std::string& tableName, int version)
     return retval;
 }
 
+int DB::countSyncedDocs(const std::string& tableName)
+{
+    int syncedRows = 0;
+    auto callback {[&syncedRows](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    {
+        if (ReturnTypeCallback::SELECTED == type)
+        {
+            syncedRows = jsonResult.at("count");
+        }
+    }};
+
+    const std::string filter = "WHERE sync = 1";
+    auto selectQuery {SelectQuery::builder()
+                      .table(tableName)
+                      .columnList(COUNT_SELECT_TYPE_MAP.at(COUNT_SELECT_TYPE::COUNT_ALL))
+                      .rowFilter(filter)
+                      .orderByOpt("")
+                      .distinctOpt(false)
+                      .build()};
+
+    FIMDB::instance().executeQuery(selectQuery.query(), callback);
+
+    return syncedRows;
+}
+
+std::vector<nlohmann::json> DB::getDocumentsToPromote(std::string tableName, int numberOfDocumentsToPromote)
+{
+    std::vector<nlohmann::json> documents;
+
+    // Select all columns so we can build full stateful events for promoted documents
+    auto callback {[&documents](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    {
+        if (ReturnTypeCallback::SELECTED == type)
+        {
+            documents.push_back(jsonResult);
+        }
+    }};
+
+    // Determine ORDER BY based on table primary keys for deterministic results
+    std::string orderBy;
+
+    if (tableName == FIMDB_FILE_TABLE_NAME)
+    {
+        orderBy = "path, version";
+    }
+    else if (tableName == FIMDB_REGISTRY_KEY_TABLENAME)
+    {
+        orderBy = "path, architecture, version";
+    }
+    else if (tableName == FIMDB_REGISTRY_VALUE_TABLENAME)
+    {
+        orderBy = "path, architecture, value, version";
+    }
+
+    const std::string filter = "WHERE sync = 0";
+    auto selectQuery {SelectQuery::builder()
+                      .table(tableName)
+                      .columnList({"*"})
+                      .rowFilter(filter)
+                      .orderByOpt(orderBy)
+                      .countOpt(numberOfDocumentsToPromote)
+                      .distinctOpt(false)
+                      .build()};
+
+    FIMDB::instance().executeQuery(selectQuery.query(), callback);
+    return documents;
+}
+
+std::vector<nlohmann::json> DB::getDocumentsToDemote(std::string tableName, int numberOfDocumentsToDemote)
+{
+    std::vector<nlohmann::json> documents;
+
+    // Note: we include the version in the query since we'll pass it to the sync flag update so that it doesn't get increased with the update. We want the version value to stay the same after a sync flag update.
+    std::string primaryKeys;
+    std::string orderBy;
+
+    if (tableName == FIMDB_FILE_TABLE_NAME )
+    {
+        primaryKeys = "path, version";
+        orderBy = "path, version";
+    }
+    else if (tableName == FIMDB_REGISTRY_KEY_TABLENAME )
+    {
+        primaryKeys = "architecture, path, version";
+        orderBy = "path, architecture, version";
+    }
+    else if (tableName == FIMDB_REGISTRY_VALUE_TABLENAME )
+    {
+        primaryKeys = "path, architecture, value, version";
+        orderBy = "path, architecture, value, version";
+    }
+
+    auto callback {[&documents](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    {
+        if (ReturnTypeCallback::SELECTED == type)
+        {
+            documents.push_back(jsonResult);
+        }
+    }};
+
+    const std::string filter = "WHERE sync = 1";
+    auto selectQuery {SelectQuery::builder()
+                      .table(tableName)
+                      .columnList({primaryKeys})
+                      .rowFilter(filter)
+                      .orderByOpt(orderBy)
+                      .countOpt(numberOfDocumentsToDemote)
+                      .distinctOpt(false)
+                      .build()};
+
+    FIMDB::instance().executeQuery(selectQuery.query(), callback);
+    return documents;
+}
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -382,7 +496,7 @@ int fim_db_increase_each_entry_version(const char* table_name)
 
     // LCOV_EXCL_STOP
 }
-cJSON* fim_db_get_every_element(const char* table_name)
+cJSON* fim_db_get_every_element(const char* table_name, const char* row_filter)
 {
     if (!table_name)
     {
@@ -394,7 +508,27 @@ cJSON* fim_db_get_every_element(const char* table_name)
 
     try
     {
-        std::vector<nlohmann::json> items = FIMDB::instance().DBSyncHandler()->getEveryElement(table_name);
+        std::string filter = (row_filter && row_filter[0] != '\0') ? row_filter : "";
+        std::vector<nlohmann::json> items;
+
+        // Use SelectQuery to get elements with optional filter
+        auto callback = [&items](ReturnTypeCallback result, const nlohmann::json & data)
+        {
+            if (ReturnTypeCallback::SELECTED == result)
+            {
+                items.push_back(data);
+            }
+        };
+
+        auto selectQuery = SelectQuery::builder()
+                           .table(table_name)
+                           .columnList({"*"})
+                           .rowFilter(filter)
+                           .orderByOpt("")
+                           .distinctOpt(false)
+                           .build();
+
+        FIMDB::instance().executeQuery(selectQuery.query(), callback);
 
         result_array = cJSON_CreateArray();
 
@@ -458,7 +592,7 @@ char* fim_db_calculate_table_checksum(const char* table_name)
     try
     {
         DBSync dbSync(DB::instance().DBSyncHandle());
-        std::string checksum = dbSync.calculateTableChecksum(table_name);
+        std::string checksum = dbSync.calculateTableChecksum(table_name, "WHERE sync = 1");
         result = strdup(checksum.c_str());
     }
     catch (const std::exception& err)
@@ -509,6 +643,124 @@ void fim_db_update_last_sync_time_value(const char* table_name, int64_t timestam
     }
 }
 
+int fim_db_count_synced_docs(const char* table_name)
+{
+    if (!table_name)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return 0;
+    }
+
+    try
+    {
+        return DB::instance().countSyncedDocs(table_name);
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        return 0;
+    }
+}
+
+cJSON* fim_db_get_documents_to_promote(char* table_name, int documents)
+{
+    cJSON* result_array = NULL;
+
+    try
+    {
+        std::vector<nlohmann::json> items = DB::instance().getDocumentsToPromote(table_name, documents);
+
+        result_array = cJSON_CreateArray();
+
+        if (!result_array)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, "Failed to create cJSON array");
+            return NULL;
+        }
+
+        // Convert each nlohmann::json to cJSON and add to array
+        for (const auto& item : items)
+        {
+            // Convert nlohmann::json to string, then parse as cJSON
+            std::string json_str = item.dump();
+            cJSON* c_json = cJSON_Parse(json_str.c_str());
+
+            if (c_json)
+            {
+                cJSON_AddItemToArray(result_array, c_json);
+            }
+            else
+            {
+                FIMDB::instance().logFunction(LOG_ERROR, "Failed to parse JSON item");
+                cJSON_Delete(result_array);
+                return NULL;
+            }
+        }
+
+        return result_array;
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+
+        if (result_array)
+        {
+            cJSON_Delete(result_array);
+        }
+
+        return NULL;
+    }
+}
+
+cJSON* fim_db_get_documents_to_demote(char* table_name, int documents)
+{
+    cJSON* result_array = NULL;
+
+    try
+    {
+        std::vector<nlohmann::json> items = DB::instance().getDocumentsToDemote(table_name, documents);
+
+        result_array = cJSON_CreateArray();
+
+        if (!result_array)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, "Failed to create cJSON array");
+            return NULL;
+        }
+
+        // Convert each nlohmann::json to cJSON and add to array
+        for (const auto& item : items)
+        {
+            // Convert nlohmann::json to string, then parse as cJSON
+            std::string json_str = item.dump();
+            cJSON* c_json = cJSON_Parse(json_str.c_str());
+
+            if (c_json)
+            {
+                cJSON_AddItemToArray(result_array, c_json);
+            }
+            else
+            {
+                FIMDB::instance().logFunction(LOG_ERROR, "Failed to parse JSON item");
+                cJSON_Delete(result_array);
+                return NULL;
+            }
+        }
+
+        return result_array;
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+
+        if (result_array)
+        {
+            cJSON_Delete(result_array);
+        }
+
+        return NULL;
+    }
+}
 #ifdef __cplusplus
 }
 #endif

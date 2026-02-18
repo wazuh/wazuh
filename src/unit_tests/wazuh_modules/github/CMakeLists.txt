@@ -15,7 +15,7 @@ set(WM_GITHUB_BASE_FLAGS "-Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merr
                           -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,wm_sendmsg -Wl,--wrap,OSRegex_Compile \
                           -Wl,--wrap,wm_state_io -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile \
                           -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,wurl_http_request -Wl,--wrap,strftime -Wl,--wrap,gmtime_r \
-                          -Wl,--wrap,isDebug")
+                          -Wl,--wrap,isDebug -Wl,--wrap,w_query_agentd")
 if(${TARGET} STREQUAL "winagent")
     list(APPEND tests_flags "${WM_GITHUB_BASE_FLAGS} -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
                              -Wl,--wrap=fim_db_teardown -Wl,--wrap=_imp__dbsync_initialize")
