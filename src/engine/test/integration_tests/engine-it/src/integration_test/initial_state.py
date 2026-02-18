@@ -124,6 +124,29 @@ def init_geo_store(env_path: Path, test_path: Path):
     print(f"  Initialized geo store: city={db_hash[:8]}...")
 
 
+def init_enrichments_store(env_path: Path):
+    """
+    Initialize geo store structure and JSON metadata for databases.
+    Creates store/geo/mmdb/0 with nested structure for all databases.
+    """
+    enrichment_geo_path = env_path / "store" / "enrichment" / "geo"
+    enrichment_geo_path.mkdir(parents=True, exist_ok=True)
+
+    # Create nested store metadata JSON
+    metadata = {
+        "client.ip": {
+            "as_field": "client.as",
+            "geo_field": "client.geo"
+        }
+    }
+
+    # Write JSON to store/geo/mmdb/0 (single file with nested structure)
+    store_json_path = enrichment_geo_path / "0"
+    with open(store_json_path, "w") as f:
+        json.dump(metadata, f, indent=4)
+
+    print(f"Initialized enrichments")
+
 # ===================================================================
 #  YAML builders (decoders / integrations / filter)
 # ===================================================================
@@ -273,6 +296,9 @@ def init(env_path: Path, test_path: Path):
         print(f"Copying configuration file to {env_path}...")
         config_path = cpy_conf(env_path, test_path)
         print("Configuration file copied.")
+
+        # Init enrichments store with minimal metadata (only client.ip with as and geo fields, no actual data files)
+        init_enrichments_store(env_path)
 
         # Initialize geo databases and store metadata
         print("Initializing geo databases and store...")

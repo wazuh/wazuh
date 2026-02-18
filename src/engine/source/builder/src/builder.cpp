@@ -23,7 +23,8 @@ Builder::Builder(const std::shared_ptr<cm::store::ICMStore>& cmStore,
                  const std::shared_ptr<schemf::IValidator>& schema,
                  const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
                  const std::shared_ptr<IAllowedFields>& allowedFields,
-                 const BuilderDeps& builderDeps)
+                 const BuilderDeps& builderDeps,
+                 const std::shared_ptr<::store::IStore>& store)
     : m_cmStore {cmStore}
     , m_schema {schema}
     , m_definitionsBuilder {definitionsBuilder}
@@ -54,6 +55,7 @@ Builder::Builder(const std::shared_ptr<cm::store::ICMStore>& cmStore,
 
     detail::registerStageBuilders<Registry>(m_registry, builderDeps);
     detail::registerOpBuilders<Registry>(m_registry, builderDeps);
+    detail::registerEnrichmentBuilders<Registry>(m_registry, builderDeps, store);
 }
 
 // TODO: Remove default argument on interface

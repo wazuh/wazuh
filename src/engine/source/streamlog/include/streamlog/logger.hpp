@@ -35,7 +35,7 @@
  *   E.g.
  *   ```cpp
  *   RotationConfig cfg {
- *     "/var/ossec/logs",         // basePath
+ *     "/var/wazuh-manager/logs",         // basePath
  *     "${YYYY}/${MMM}/wazuh-${name}-${DD}.json",
  *     10*1024*1024,              // rotate after 10 MiB
  *     1<<20,                     // 1 MiB write buffer

@@ -9,6 +9,7 @@
 #include <logpar/logpar.hpp>
 #include <schemf/ivalidator.hpp>
 #include <schemf/mockSchema.hpp>
+#include <store/mockStore.hpp>
 
 using namespace base::test;
 using namespace cm::store;
@@ -321,6 +322,7 @@ struct Mocks
     std::shared_ptr<MockSchema> m_spSchemf;
     std::shared_ptr<MockDefinitionsBuilder> m_spDefBuilder;
     std::shared_ptr<MockDefinitions> m_spDef;
+    std::shared_ptr<store::mocks::MockStore> m_spMockStore;
 };
 
 template<typename T>
@@ -338,6 +340,7 @@ public:
         m_spMocks->m_spSchemf = std::make_shared<MockSchema>();
         m_spMocks->m_spDefBuilder = std::make_shared<MockDefinitionsBuilder>();
         m_spMocks->m_spDef = std::make_shared<MockDefinitions>();
+        m_spMocks->m_spMockStore = std::make_shared<store::mocks::MockStore>();
         initializeBuilder();
     }
 
@@ -356,8 +359,18 @@ public:
 
         auto emptyAllowedFields = std::make_shared<builder::AllowedFields>();
 
+        // Configure MockStore to return a valid GeoIP configuration for enrichment/geo/0
+        auto geoConfig = json::Json(R"({
+            "/source/ip": {
+                "geo_field": "/source/geo",
+                "as_field": "/source/as"
+            }
+        })");
+        EXPECT_CALL(*m_spMocks->m_spMockStore, readDoc(base::Name("enrichment/geo/0")))
+            .WillRepeatedly(testing::Return(base::RespOrError<store::Doc>(geoConfig)));
+
         m_spBuilder = std::make_shared<builder::Builder>(
-            m_spMocks->m_spStore, m_spMocks->m_spSchemf, m_spMocks->m_spDefBuilder, emptyAllowedFields, builderDeps);
+            m_spMocks->m_spStore, m_spMocks->m_spSchemf, m_spMocks->m_spDefBuilder, emptyAllowedFields, builderDeps, m_spMocks->m_spMockStore);
     }
 };
 

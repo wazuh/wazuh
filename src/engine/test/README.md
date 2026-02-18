@@ -4,7 +4,7 @@ This directory contains a comprehensive suite of end-to-end tests for the Wazuh-
 
 ## Test Categories
 
-- **Acceptance Tests**: Located in the `acceptance/` directory. These tests focus on performance comparisons between Wazuh-Engine and Wazuh-Analysisd.
+- **Acceptance Tests**: Located in the `acceptance/` directory. These tests focus on performance comparisons between Wazuh-Engine and wazuh-manager-analysisd.
 - **Integration Tests**: Located in the `integration/` directory. These tests cover the integration aspects of the Wazuh-Engine components.
 - **Helper Functions Tests**: Located in the `helpers/` directory. These tests validate the functionality of helper functions used within the assets.
 

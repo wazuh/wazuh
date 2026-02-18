@@ -12,7 +12,7 @@ import (
 
 func main() {
 
-	var sockPath string = os.Getenv("INSTALLDIR") + "/queue/sockets/queue" // Path to unix socket
+	var sockPath string = "/var/wazuh-manager/queue/sockets/queue" // Path to unix socket
 	//var sockPath string = "/workspaces/wazuh-5.x/z_engine_installed/sockets/engine-event.socket" // Path to unix socket
 	var conn net.Conn
 	var logFile string

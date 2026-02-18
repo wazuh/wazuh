@@ -4,10 +4,10 @@ set -euo pipefail
 # Save current directory
 OLD_DIR=$(pwd)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-DEST_DIR="${INSTALLDIR}/etc/certs"
+DEST_DIR="/var/wazuh-manager/etc/certs"
 ORIG_DIR="${SCRIPT_DIR}/certs"
-WAZUH_USER="wazuh"
-WAZUH_GROUP="wazuh"
+WAZUH_USER="wazuh-manager"
+WAZUH_GROUP="wazuh-manager"
 
 # Check if user/group exists
 if ! id -u "${WAZUH_USER}" >/dev/null 2>&1; then

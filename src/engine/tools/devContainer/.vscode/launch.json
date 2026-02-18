@@ -131,7 +131,7 @@
             "program": "${env:ENGINE_BUILD}/wazuh-engine",
             "args": ["-f"],
             "stopAtEntry": false,
-            "cwd": "/var/ossec/",
+            "cwd": "/var/wazuh-manager/",
             "environment": [
                 {
                     "name": "MALLOC_CHECK_",
@@ -169,11 +169,11 @@
             "name": "wazuh-analsysid",
             "type": "cppdbg",
             "request": "launch",
-            "program": "/var/ossec/bin/wazuh-analysisd",
+            "program": "/var/wazuh-manager/bin/wazuh-manager-analysisd",
            // "additionalSOLibSearchPath": "${workspaceFolder}/wazuh/src/",
             "args": ["-f", "-d"],
             "stopAtEntry": false,
-            "cwd": "/var/ossec/",
+            "cwd": "/var/wazuh-manager/",
             "environment": [
                 {
                     "name": "MALLOC_CHECK_",

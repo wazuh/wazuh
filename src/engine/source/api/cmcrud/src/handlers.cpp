@@ -14,7 +14,7 @@
 #include <api/shared/constants.hpp>
 
 namespace {
-    constexpr std::string_view ORGIN_SPACE_TESTING = "testing";
+    constexpr std::string_view ORGIN_SPACE_TESTING = "test";
 }
 namespace api::cmcrud::handlers
 {

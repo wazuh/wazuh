@@ -156,7 +156,8 @@ build_standalone() {
     python3 ${WAZUH_PATH}/src/engine/tools/engine-schema/engine_schema.py generate \
         --output-dir ${WAZUH_PATH}/src/engine/ruleset/schemas/ \
         --wcs-path ${WAZUH_PATH}/src/external/wcs-flat-files/ \
-        --decoder-template ${WAZUH_PATH}/src/engine/ruleset/schemas/wazuh-decoders.template.json || return 1
+        --decoder-template ${WAZUH_PATH}/src/engine/ruleset/schemas/wazuh-decoders.template.json \
+        --exclude-geo ${WAZUH_PATH}/src/engine/ruleset/schemas/exclude-enrichment-geo.json || return 1
 
     # Create standalone package structure
     echo "Creating standalone package structure..."
@@ -169,6 +170,7 @@ build_standalone() {
         ${TEMP_DIR}/data/store/schema/engine-schema \
         ${TEMP_DIR}/data/store/schema/wazuh-logpar-overrides \
         ${TEMP_DIR}/data/store/schema/allowed-fields \
+        ${TEMP_DIR}/data/store/enrichment/geo \
         ${TEMP_DIR}/data/store/geo/mmdb \
         ${TEMP_DIR}/data/kvdb \
         ${TEMP_DIR}/data/tzdb \
@@ -191,6 +193,9 @@ build_standalone() {
     cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/allowed-fields.json ${TEMP_DIR}/data/store/schema/allowed-fields/0
     cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/wazuh-decoders.json ${TEMP_DIR}/schemas/
     cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/wazuh-filters.json ${TEMP_DIR}/schemas/
+
+    # Copy enrichments
+    cp -r ${WAZUH_PATH}/src/engine/ruleset/schemas/enrichment-geo.json ${TEMP_DIR}/data/store/enrichment/geo/0
 
     # Copy geo dbs
     install_geoip "${WAZUH_PATH}" "${TEMP_DIR}"

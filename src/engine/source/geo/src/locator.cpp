@@ -11,6 +11,9 @@
 #include "dbInstance.hpp"
 #include "manager.hpp"
 
+
+// TODO: Improve all methods error handler, now they should return a string view or similar
+// for avoid memory allocations on each call
 namespace
 {
 /**
@@ -368,6 +371,7 @@ base::RespOrError<uint32_t> Locator::getUint32(const std::string& ip, const DotP
     auto eDataResp = getEData(path);
     if (base::isError(eDataResp))
     {
+        auto message = base::getError(eDataResp).message;
         return base::getError(eDataResp);
     }
 
