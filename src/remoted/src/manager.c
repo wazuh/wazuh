@@ -291,6 +291,7 @@ STATIC bool get_group_merged_sum(const char *group_name, os_md5 merged_sum) {
 STATIC char* build_handshake_json(const module_limits_t *limits, const char *agent_id) {
     char *json_str = NULL;
     char *agent_groups_csv = NULL;
+    const char *handshake_groups_csv = NULL;
     os_md5 merged_sum = {0};
 
     if (!limits) {
@@ -358,26 +359,26 @@ STATIC char* build_handshake_json(const module_limits_t *limits, const char *age
         cJSON_AddStringToObject(root, "cluster_node", DEFAULT_NODE_NAME);
     }
 
-    /* Add agent_groups - always include field, agent can fallback to merge.mg if empty */
+    /* Add agent_groups */
     cJSON *groups_array = cJSON_CreateArray();
     if (groups_array) {
         if (agent_id) {
             agent_groups_csv = wdb_get_agent_group(atoi(agent_id), NULL);
-            if (agent_groups_csv && agent_groups_csv[0] != '\0') {
-                char *groups_copy = strdup(agent_groups_csv);
-                if (groups_copy) {
-                    char *saveptr = NULL;
-                    char *group = strtok_r(groups_copy, ",", &saveptr);
-                    while (group) {
-                        cJSON_AddItemToArray(groups_array, cJSON_CreateString(group));
-                        group = strtok_r(NULL, ",", &saveptr);
-                    }
-                    os_free(groups_copy);
-                }
+            handshake_groups_csv = (agent_groups_csv && agent_groups_csv[0] != '\0') ? agent_groups_csv : DEFAULT_GROUP;
 
-                if (get_group_merged_sum(agent_groups_csv, merged_sum)) {
-                    cJSON_AddStringToObject(root, "merged_sum", merged_sum);
+            char *groups_copy = strdup(handshake_groups_csv);
+            if (groups_copy) {
+                char *saveptr = NULL;
+                char *group = strtok_r(groups_copy, ",", &saveptr);
+                while (group) {
+                    cJSON_AddItemToArray(groups_array, cJSON_CreateString(group));
+                    group = strtok_r(NULL, ",", &saveptr);
                 }
+                os_free(groups_copy);
+            }
+
+            if (get_group_merged_sum(handshake_groups_csv, merged_sum)) {
+                cJSON_AddStringToObject(root, "merged_sum", merged_sum);
             }
             os_free(agent_groups_csv);
         }
