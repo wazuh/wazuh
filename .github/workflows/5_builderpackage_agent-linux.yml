@@ -204,6 +204,8 @@ jobs:
             echo "The installation could not be completed."
             exit 1
           fi
+          echo "WAZUH_UID=$(cat $TESTS_PATH/wazuh_uid)" | tee -a $GITHUB_ENV
+          echo "WAZUH_GID=$(cat $TESTS_PATH/wazuh_gid)" | tee -a $GITHUB_ENV
 
       - name: CSV filename Formation
         run: |
@@ -475,6 +477,8 @@ jobs:
             echo "The installation could not be completed."
             exit 1
           fi
+          echo "WAZUH_UID=$(cat $TESTS_PATH/wazuh_uid)" | tee -a $GITHUB_ENV
+          echo "WAZUH_GID=$(cat $TESTS_PATH/wazuh_gid)" | tee -a $GITHUB_ENV
 
       - name: CSV filename Formation
         run: |
