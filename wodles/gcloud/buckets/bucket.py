@@ -60,12 +60,20 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         super().__init__(logger)
         self.bucket_name = bucket_name
         self.bucket = None
-        try:
-            self.client = storage.client.Client.from_service_account_json(credentials_file)
-        except JSONDecodeError as error:
-            raise exceptions.GCloudError(1000, credentials_file=credentials_file) from error
-        except FileNotFoundError as error:
-            raise exceptions.GCloudError(1001, credentials_file=credentials_file) from error
+
+        if credentials_file:
+            # If a credentials file path is provided, use it to create the client.
+            try:
+                self.client = storage.client.Client.from_service_account_json(credentials_file)
+            except JSONDecodeError as error:
+                raise exceptions.GCloudError(1000, credentials_file=credentials_file) from error
+            except FileNotFoundError as error:
+                raise exceptions.GCloudError(1001, credentials_file=credentials_file) from error
+        else:
+            # If no credentials file is provided, instantiate the client directly.
+            # This will attempt to use Application Default Credentials (ADC).
+            self.client = storage.client.Client()
+
         self.project_id = self.client.project
         self.prefix = prefix if not prefix or prefix[-1] == '/' else f'{prefix}/'
         self.delete_file = delete_file
