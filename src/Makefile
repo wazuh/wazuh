@@ -586,7 +586,9 @@ endif
 
 ifeq (${uname_S},Linux)
 ifneq (${TARGET},winagent)
+ifneq (${TARGET},server)
 external: ${LIBBPF_LIB}
+endif
 endif
 endif
 

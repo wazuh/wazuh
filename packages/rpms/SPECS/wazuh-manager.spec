@@ -197,9 +197,7 @@ cp -rp  etc/templates/config/rhel/* ${RPM_BUILD_ROOT}%{_localstatedir}/packages_
 install -m 0440 VERSION.json ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/
 install -m 0640 src/init/*.sh ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/src/init
 
-rm ${RPM_BUILD_ROOT}%{_localstatedir}/lib/modern.bpf.o
 %{_rpmconfigdir}/find-debuginfo.sh
-cp %{_localstatedir}/lib/modern.bpf.o ${RPM_BUILD_ROOT}%{_localstatedir}/lib
 
 exit 0
 
@@ -409,10 +407,6 @@ if [ $1 = 1 ]; then
   # Generating wazuh-manager.conf file
   %{_localstatedir}/packages_files/manager_installation_scripts/gen_ossec.sh conf manager ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/wazuh-manager.conf
   chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.conf
-
-  touch %{_localstatedir}/logs/active-responses.log
-  chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/active-responses.log
-  chmod 0660 %{_localstatedir}/logs/active-responses.log
 
   touch %{_localstatedir}/logs/wazuh-manager.log
   chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/wazuh-manager.log
@@ -673,9 +667,6 @@ rm -fr %{buildroot}
 /usr/lib/systemd/system/wazuh-manager.service
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}
 %attr(440, wazuh-manager, wazuh-manager) %{_localstatedir}/VERSION.json
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/active-response
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/active-response/bin
-%attr(750, root, wazuh-manager) %{_localstatedir}/active-response/bin/*
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/api
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/api/configuration
 %attr(660, root, wazuh-manager) %config(noreplace) %{_localstatedir}/api/configuration/api.yaml
@@ -751,16 +742,10 @@ rm -fr %{buildroot}
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/lib
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libwazuhext.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libwazuhshared.so
-%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libdbsync.so
-%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libagent_metadata.so
-%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libagent_sync_protocol.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libschema_validator.so
-%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libsysinfo.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libjemalloc.so.2
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libstdc++.so.6
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libgcc_s.so.1
-%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libbpf.so
-%attr(750, root, wazuh-manager) %{_localstatedir}/lib/modern.bpf.o
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libcontent_manager.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libindexer_connector.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libinventory_sync.so
@@ -769,7 +754,6 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/librouter.so
 %{_localstatedir}/lib/libpython3.12.so.1.0
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/logs
-%attr(660, wazuh-manager, wazuh-manager)  %ghost %{_localstatedir}/logs/active-responses.log
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/api.log
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/wazuh-manager.log
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/wazuh-manager.json
@@ -801,9 +785,6 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/alerts
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/cluster
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/db
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/diff
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/agent_info
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/agent_info/db
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/rids
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/tasks
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/sockets
