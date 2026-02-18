@@ -32,6 +32,8 @@ jobs:
           cp src/win32/*.exe src/exe_files/
           # Copy DLL dependencies required by the executables
           cp src/win32/*.dll src/exe_files/ 2>/dev/null || true
+          cp src/build/bin/*.dll src/exe_files/ 2>/dev/null || true
+          cp src/*.dll src/exe_files/ 2>/dev/null || true
       - name: Upload Artifact executables
         uses: actions/upload-artifact@v4
         with:
