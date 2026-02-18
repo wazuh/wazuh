@@ -9,10 +9,10 @@
  */
 
 #include "shared.h"
-#include "os_net/os_net.h"
+#include "os_net.h"
 #include "startup_gate_op.h"
 #if defined(CLIENT) && defined(WIN32)
-#include "client-agent/agentd.h"
+#include "agentd.h"
 #endif
 
 #define STARTUP_GATE_COMMAND "getstartupgate"
