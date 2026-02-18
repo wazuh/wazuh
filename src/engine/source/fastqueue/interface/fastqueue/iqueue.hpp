@@ -2,6 +2,7 @@
 #define _FASTQUEUE_IQUEUE_HPP
 
 #include <cstddef>
+#include <cstdint>
 
 namespace fastqueue
 {
@@ -52,7 +53,7 @@ public:
      * wait).
      * @return true if an element was popped successfully, false if timeout occurred or queue is empty.
      */
-    virtual bool waitPop(T& element, int64_t timeout = 0) = 0;
+    virtual bool waitPop(T& element, int64_t timeout) = 0;
 
     /**
      * @brief Try to pop an element from the queue.

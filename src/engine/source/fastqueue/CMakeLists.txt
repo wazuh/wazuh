@@ -71,10 +71,9 @@ target_include_directories(fastqueue_bench INTERFACE ${BENCH_DIR}/include)
 target_link_libraries(fastqueue_bench INTERFACE fastqueue::fastqueue benchmark::benchmark)
 add_library(fastqueue::bench ALIAS fastqueue_bench)
 
+# CQueue benchmarks only
 add_executable(fastqueue_benchmark
     ${BENCH_SRC_DIR}/cqueue_bench.cpp
-    ${BENCH_SRC_DIR}/stdqueue_bench.cpp
-    ${BENCH_SRC_DIR}/comparison_bench.cpp
 )
 
 target_include_directories(fastqueue_benchmark
@@ -87,7 +86,40 @@ target_include_directories(fastqueue_benchmark
 target_link_libraries(fastqueue_benchmark
     PUBLIC
     fastqueue::bench
-    benchmark::benchmark_main
+)
+
+# StdQueue benchmarks only
+add_executable(fastqueue_stdqueue_benchmark
+    ${BENCH_SRC_DIR}/stdqueue_bench.cpp
+)
+
+target_include_directories(fastqueue_stdqueue_benchmark
+    PRIVATE
+    ${BENCH_SRC_DIR}
+    ${SRC_DIR}
+    ${INC_DIR}
+)
+
+target_link_libraries(fastqueue_stdqueue_benchmark
+    PUBLIC
+    fastqueue::bench
+)
+
+# Comparison benchmarks (both implementations)
+add_executable(fastqueue_comparison_benchmark
+    ${BENCH_SRC_DIR}/comparison_bench.cpp
+)
+
+target_include_directories(fastqueue_comparison_benchmark
+    PRIVATE
+    ${BENCH_SRC_DIR}
+    ${SRC_DIR}
+    ${INC_DIR}
+)
+
+target_link_libraries(fastqueue_comparison_benchmark
+    PUBLIC
+    fastqueue::bench
 )
 
 endif(ENGINE_BUILD_BENCHMARK)
