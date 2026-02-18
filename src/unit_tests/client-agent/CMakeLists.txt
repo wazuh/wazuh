@@ -80,6 +80,17 @@ else()
                                     -Wl,--wrap,cJSON_AddBoolToObject ${DEBUG_OP_WRAPPERS}")
 endif()
 
+list(APPEND client-agent_names "test_agcom")
+if(${TARGET} STREQUAL "winagent")
+    list(APPEND client-agent_flags "-Wl,--wrap,getClientConfig -Wl,--wrap,getBufferConfig \
+                                    -Wl,--wrap,getLabelsConfig -Wl,--wrap,getAgentInternalOptions \
+                                    -Wl,--wrap,getAntiTamperingConfig -Wl,--wrap,w_agentd_state_get")
+else()
+    list(APPEND client-agent_flags "-Wl,--wrap,getClientConfig -Wl,--wrap,getBufferConfig \
+                                    -Wl,--wrap,getLabelsConfig -Wl,--wrap,getAgentInternalOptions \
+                                    -Wl,--wrap,getAntiTamperingConfig -Wl,--wrap,w_agentd_state_get")
+endif()
+
 list(APPEND client-agent_names "test_buffer")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap=syscom_dispatch \
