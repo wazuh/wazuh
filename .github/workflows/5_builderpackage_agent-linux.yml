@@ -338,8 +338,15 @@ jobs:
         id: set-arch
         run: |
           arch="${{ matrix.arch }}"
+          # Map to RPM architecture naming (only amd64→x86_64)
+          rpm_arch="$arch"
+          if [ "$arch" = "amd64" ]; then
+            rpm_arch="x86_64"
+          fi
           echo "ARCH=$arch" >> $GITHUB_ENV
+          echo "RPM_ARCH=$rpm_arch" >> $GITHUB_ENV
           echo "arch=$arch" >> $GITHUB_OUTPUT
+          echo "rpm_arch=$rpm_arch" >> $GITHUB_OUTPUT
 
       - name: Set VERSION and CONTAINER_NAME
         run: |
@@ -426,21 +433,25 @@ jobs:
           echo "ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
           echo "SYSTEM=rpm" >> $GITHUB_ENV
 
+      - name: Map architecture for RPM
+        id: map-arch
+        run: |
+          RPM_ARCH="${{ matrix.arch }}"
+          if [ "$RPM_ARCH" = "amd64" ]; then
+            RPM_ARCH="x86_64"
+          fi
+          echo "rpm_arch=$RPM_ARCH" >> $GITHUB_OUTPUT
+
       - name: Download package artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: "wazuh-agent*.rpm"
+          pattern: "*${{ steps.map-arch.outputs.rpm_arch }}*.rpm"
           path: /tmp
           merge-multiple: true
 
       - name: Set PACKAGE_NAME from downloaded files
         run: |
-          # Map architecture names for RPM packages (amd64->x86_64)
-          RPM_ARCH="${{ matrix.arch }}"
-          if [ "$RPM_ARCH" = "amd64" ]; then
-            RPM_ARCH="x86_64"
-          fi
-
+          RPM_ARCH="${{ steps.map-arch.outputs.rpm_arch }}"
           PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name "wazuh-agent*${RPM_ARCH}*.rpm" -exec basename {} \; | grep -v -E "^wazuh-agent-debuginfo" | head -n 1)
           if [ -z "$PACKAGE_NAME" ]; then
             echo "No package found for ${{ matrix.arch }} (searched for ${RPM_ARCH})!"
@@ -542,10 +553,19 @@ jobs:
       fail-fast: false
 
     steps:
+      - name: Map architecture for artifact download
+        id: map-arch
+        run: |
+          RPM_ARCH="${{ matrix.arch }}"
+          if [ "$RPM_ARCH" = "amd64" ]; then
+            RPM_ARCH="x86_64"
+          fi
+          echo "rpm_arch=$RPM_ARCH" >> $GITHUB_OUTPUT
+
       - name: Download all artifacts for this architecture
         uses: actions/download-artifact@v4
         with:
-          pattern: "*${{ matrix.arch }}*"
+          pattern: "*${{ steps.map-arch.outputs.rpm_arch }}*"
           path: /tmp
           merge-multiple: true
 
@@ -559,9 +579,10 @@ jobs:
       - name: Find and upload packages to S3
         run: |
           S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          RPM_ARCH="${{ steps.map-arch.outputs.rpm_arch }}"
 
           # Find and upload main package
-          PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name "wazuh-agent*${{ matrix.arch }}*.rpm" -exec basename {} \; | grep -v -E "^wazuh-agent-debuginfo" | head -n 1)
+          PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name "wazuh-agent*${RPM_ARCH}*.rpm" -exec basename {} \; | grep -v -E "^wazuh-agent-debuginfo" | head -n 1)
           if [ -n "$PACKAGE_NAME" ] && [ -s "/tmp/$PACKAGE_NAME" ]; then
             aws s3 cp /tmp/$PACKAGE_NAME $S3_URI/
             echo "S3 URI: $S3_URI/$PACKAGE_NAME"
@@ -576,7 +597,7 @@ jobs:
           fi
 
           # Find and upload debug symbols
-          SYMBOLS_NAME=$(find /tmp -maxdepth 1 -type f -name "wazuh-agent-debuginfo*${{ matrix.arch }}*.rpm" -exec basename {} \; | head -n 1)
+          SYMBOLS_NAME=$(find /tmp -maxdepth 1 -type f -name "wazuh-agent-debuginfo*${RPM_ARCH}*.rpm" -exec basename {} \; | head -n 1)
           if [ -n "$SYMBOLS_NAME" ] && [ -s "/tmp/$SYMBOLS_NAME" ]; then
             aws s3 cp /tmp/$SYMBOLS_NAME $S3_URI/
             echo "Uploaded debug symbols: $SYMBOLS_NAME"
@@ -585,10 +606,4 @@ jobs:
             if [ -s "/tmp/$SYMBOLS_NAME.sha512" ]; then
               aws s3 cp /tmp/$SYMBOLS_NAME.sha512 $S3_URI/
             fi
-          fi
-          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
-          if [ -s "/tmp/$SYMBOLS_NAME.sha512" ]; then
-            aws s3 cp /tmp/$SYMBOLS_NAME.sha512 $S3_URI/
-          else
-            echo "Warning: Debug symbols checksum file not found, skipping"
           fi
