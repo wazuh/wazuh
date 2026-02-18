@@ -42,12 +42,12 @@ if(${TARGET} STREQUAL "winagent")
                              -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek \
                              -Wl,--wrap,remove -Wl,--wrap,fgetpos -Wl,--wrap=fgetc -Wl,--wrap,fwrite -Wl,--wrap,wfopen \
                              -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
-                             -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown \
+                             -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap,w_query_agentd \
                              -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS}")
 
     list(APPEND execd_names "test_get_command_by_name")
     list(APPEND execd_flags "-Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
-                             -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown \
+                             -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap,w_query_agentd \
                              ${DEBUG_OP_WRAPPERS}")
 else()
     list(APPEND execd_names "test_execd")

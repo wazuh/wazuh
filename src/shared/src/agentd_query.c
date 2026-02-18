@@ -10,7 +10,7 @@
 
 #include "shared.h"
 #include "agentd_query.h"
-#include "os_net/os_net.h"
+#include "os_net.h"
 
 #ifdef WIN32
 extern size_t agcom_dispatch(char * command, char ** output);

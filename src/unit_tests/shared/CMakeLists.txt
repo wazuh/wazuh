@@ -10,7 +10,7 @@ endif(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_names "test_list_op")
 set(LIST_OP_BASE_FLAGS "-Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,pthread_mutex_lock \
                         -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock \
-                        -Wl,--wrap,pthread_rwlock_wrlock ${DEBUG_OP_WRAPPERS}")
+                        -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${LIST_OP_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \

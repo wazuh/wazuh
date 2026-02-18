@@ -119,7 +119,7 @@ set(FIM_SYSCOM_BASE_FLAGS "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckC
                            -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                            -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
                            -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
-                           ${DEBUG_OP_WRAPPERS}")
+                           -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_SYSCOM_BASE_FLAGS} -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=fim_db_init -Wl,--wrap,fim_sync_push_msg \
@@ -155,7 +155,7 @@ set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,lstat -Wl,--wrap,stat \
                                  -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                                  -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
                                  -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
-                                 ${DEBUG_OP_WRAPPERS}")
+                                 -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "fim_diff_changes")
 if(${TARGET} STREQUAL "winagent")
@@ -184,7 +184,7 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
                              -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                              -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
                              -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
-                             ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,w_query_agentd ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "run_realtime")
 if(${TARGET} STREQUAL "winagent")
@@ -221,7 +221,7 @@ set(SYSCHECK_CONFIG_BASE_FLAGS "-Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthr
                                 -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                                 -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
                                 -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
-                                ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "config")
 if(${TARGET} STREQUAL "agent")
@@ -293,7 +293,7 @@ set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,sleep -Wl,--wrap,SendMSGPredicated -Wl,--wr
                           -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                           -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
                           -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
-                          ${DEBUG_OP_WRAPPERS}")
+                          -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "run_check")
 if(${TARGET} STREQUAL "agent")
@@ -418,7 +418,7 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,send_syscheck_msg -Wl,--wrap,persist_sysche
                           -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                           -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
                           -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
-                          ${DEBUG_OP_WRAPPERS}")
+                          -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
 target_link_libraries(test_fim_scan SYSCHECK_O ${TEST_DEPS} fim_shared)
 if(${TARGET} STREQUAL "winagent")
@@ -453,7 +453,7 @@ set(FIM_SYNC_LIMITS_BASE_FLAGS "-Wl,--wrap,validate_and_persist_fim_event \
                                 -Wl,--wrap,fim_db_get_documents_to_demote \
                                 -Wl,--wrap,fim_db_count_synced_docs \
                                 -Wl,--wrap,fim_db_set_sync_flag \
-                                ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
 target_link_libraries(test_fim_sync_limits SYSCHECK_O ${TEST_DEPS})
 if(${TARGET} STREQUAL "winagent")
@@ -480,7 +480,7 @@ set(RECOVERY_BASE_FLAGS "-Wl,--wrap,fim_db_get_last_sync_time -Wl,--wrap,fim_db_
                          -Wl,--wrap,build_stateful_event_file -Wl,--wrap,build_stateful_event_registry_key \
                          -Wl,--wrap,build_stateful_event_registry_value \
                          -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_validate \
-                         ${DEBUG_OP_WRAPPERS}")
+                         -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
 target_link_libraries(test_recovery SYSCHECK_O ${TEST_DEPS})
 if(${TARGET} STREQUAL "winagent")

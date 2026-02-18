@@ -31,7 +31,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                         -Wl,--wrap,fim_recovery_persist_table_and_resync -Wl,--wrap,fim_db_update_last_sync_time \
                         -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                         -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
-                        -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate")
+                        -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
+                        -Wl,--wrap,w_query_agentd")
 
     target_link_libraries(test_audit_healthcheck SYSCHECK_O ${TEST_DEPS})
 
@@ -61,7 +62,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap,fim_recovery_persist_table_and_resync -Wl,--wrap,fim_db_update_last_sync_time \
                               -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                               -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
-                              -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate")
+                              -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
+                              -Wl,--wrap,w_query_agentd")
 
     target_link_libraries(test_audit_rule_handling SYSCHECK_O ${TEST_DEPS})
 
@@ -98,7 +100,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                               -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                               -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
-                              ${DEBUG_OP_WRAPPERS}")
+                              -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
     target_link_libraries(test_syscheck_audit SYSCHECK_O ${TEST_DEPS})
 
@@ -133,7 +135,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                            -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                            -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                            -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
-                           ${DEBUG_OP_WRAPPERS}")
+                           -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
     target_link_libraries(test_audit_parse SYSCHECK_O ${TEST_DEPS})
 
@@ -154,6 +156,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                             "-Wl,--wrap,asp_delete_database"
                             "-Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate"
                             "-Wl,--wrap,fim_db_file_delete"
+                            "-Wl,--wrap,w_query_agentd"
                             ${DEBUG_OP_WRAPPERS})
 
     target_link_libraries(test_syscheck_ebpf SYSCHECK_O ${TEST_DEPS} fimdb)
@@ -193,7 +196,7 @@ else()
                            -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \
                            -Wl,--wrap,fim_db_update_last_sync_time \
                            -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
-                           -Wl,--wrap=QueryDosDeviceA ${DEBUG_OP_WRAPPERS}")
+                           -Wl,--wrap,w_query_agentd -Wl,--wrap=QueryDosDeviceA ${DEBUG_OP_WRAPPERS}")
     target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS} fimdb)
 
     target_link_libraries(test_win_whodata "${WIN_WHODATA_FLAGS}")

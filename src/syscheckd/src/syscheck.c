@@ -425,17 +425,15 @@ void fim_initialize() {
     syscheck.file_limit = 0;
     syscheck.registry_key_limit = 0;
     syscheck.registry_value_limit = 0;
-#ifdef CLIENT
-        while (!fetch_document_limits_from_agentd())
-        {
+    while (!fetch_document_limits_from_agentd())
+    {
         mdebug1("Trying to fetch limits from agentd...");
 #ifdef WIN32
-            Sleep(1000);
+        Sleep(1000);
 #else
-            sleep(1);
+        sleep(1);
 #endif // WIN32
-        }
-#endif // CLIENT
+    }
 
     // Initialize locks before sync handle creation
     w_rwlock_init(&syscheck.directories_lock, NULL);
@@ -463,7 +461,6 @@ void fim_initialize() {
     }
 
 // Check for limit changes
-#ifdef CLIENT
 #ifdef WIN32
     int table_count = 3;
     char* table_names[3] = {FIMDB_FILE_TABLE_NAME, FIMDB_REGISTRY_KEY_TABLENAME, FIMDB_REGISTRY_VALUE_TABLENAME};
@@ -553,7 +550,6 @@ void fim_initialize() {
             }
         }
     }
-#endif // CLIENT
 
     // Initialize schema validator from embedded resources
     if (!schema_validator_is_initialized()) {

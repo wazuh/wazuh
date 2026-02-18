@@ -10,7 +10,7 @@ list(APPEND tests_names "test_wm_command")
 list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
                          -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=_mtdebug1 \
                          -Wl,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER \
-                         -Wl,--wrap=wm_validate_command")
+                         -Wl,--wrap=wm_validate_command -Wl,--wrap=w_query_agentd")
 list(APPEND use_shared_libs 1)
 
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
