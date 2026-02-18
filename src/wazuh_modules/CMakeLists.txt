@@ -22,7 +22,7 @@ include_directories(
   ${SRC_FOLDER}/external/zlib/
   ${SRC_FOLDER}/client-agent/include
   ${SRC_FOLDER}/config/include
-  ${SRC_FOLDER}/shared/error_messages
+  ${SRC_FOLDER}/shared/include/error_messages
   ${SRC_FOLDER}/shared/os_crypto/md5
   ${SRC_FOLDER}/shared/os_crypto/md5_sha1_sha256
   ${SRC_FOLDER}/shared/os_crypto/sha1
@@ -85,11 +85,12 @@ set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 
-# Modules - Server only
 if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
+  # Modules - Server only
   add_subdirectory(inventory_sync)
   add_subdirectory(vulnerability_scanner)
 else()
+  # Modules - Agent only
   add_subdirectory(agent_info)
   add_subdirectory(sca)
   add_subdirectory(syscollector)
@@ -123,16 +124,13 @@ if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   # Server build
   target_link_libraries(
     wazuh_modulesd_lib
-    PUBLIC sysinfo
+    PUBLIC inventory_sync
+           vulnerability_scanner
            wazuhext
            pthread
            config
            wazuh
-           agent_sync_protocol
-           dbsync
-           schema_validator
-           inventory_sync
-           vulnerability_scanner)
+           schema_validator)
 
   # Link jemalloc for server builds (unless explicitly disabled)
   if(NOT DEFINED DISABLE_JEMALLOC OR NOT DISABLE_JEMALLOC)

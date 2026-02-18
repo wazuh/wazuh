@@ -16,7 +16,7 @@ include_directories(
   ${SRC_FOLDER}/shared/os_crypto/md5_sha1_sha256/
   ${SRC_FOLDER}/shared/os_crypto/sha1/
   ${SRC_FOLDER}/shared/os_crypto/sha256/
-  ${SRC_FOLDER}/shared/error_messages/
+  ${SRC_FOLDER}/shared/include/error_messages/
   ${SRC_FOLDER}/external/cJSON/
   ${SRC_FOLDER}/external/curl/include/curl/
   ${SRC_FOLDER}/external/libpcre2/include/
@@ -86,8 +86,8 @@ endif(UNIX)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT UNIT_TEST)
   add_executable(wazuh-manager-remoted "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
   set_target_properties(
-    wazuh-manager-remoted PROPERTIES LINKER_LANGUAGE C
-                                     RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER})
+    wazuh-manager-remoted PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
+                                                       ${SRC_FOLDER})
   target_link_libraries(wazuh-manager-remoted PRIVATE remoted_lib)
 
   if(APPLE)

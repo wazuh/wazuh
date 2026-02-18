@@ -14,7 +14,7 @@ endif()
 # Include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${SRC_FOLDER}/config/include)
-include_directories(${SRC_FOLDER}/shared/error_messages)
+include_directories(${SRC_FOLDER}/shared/include/error_messages)
 include_directories(${SRC_FOLDER}/shared/include)
 include_directories(${SRC_FOLDER}/shared/os_regex)
 include_directories(${SRC_FOLDER}/shared/os_crypto/sha1)

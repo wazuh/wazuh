@@ -16,7 +16,7 @@ include_directories(
   ${SRC_FOLDER}/shared/os_crypto/md5_sha1_sha256/
   ${SRC_FOLDER}/shared/os_crypto/sha1/
   ${SRC_FOLDER}/shared/os_crypto/sha256/
-  ${SRC_FOLDER}/shared/error_messages/
+  ${SRC_FOLDER}/shared/include/error_messages/
   ${SRC_FOLDER}/external/cJSON/
   ${SRC_FOLDER}/external/curl/include/curl/
   ${SRC_FOLDER}/external/libpcre2/include/
@@ -83,14 +83,14 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT UNIT_TEST)
   add_executable(wazuh-manager-monitord
                  "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
   set_target_properties(
-    wazuh-manager-monitord PROPERTIES LINKER_LANGUAGE C
-                                       RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER})
+    wazuh-manager-monitord PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
+                                                        ${SRC_FOLDER})
   target_link_libraries(wazuh-manager-monitord PRIVATE monitord_lib)
 
   if(APPLE)
     set_target_properties(
       wazuh-manager-monitord PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
-                                         INSTALL_RPATH "@executable_path/../lib")
+                                        INSTALL_RPATH "@executable_path/../lib")
   else()
     string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
   endif()

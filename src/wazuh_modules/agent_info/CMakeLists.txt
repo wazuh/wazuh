@@ -23,7 +23,7 @@ endif(APPLE)
 add_subdirectory(agent_info_impl)
 
 include_directories(${SRC_FOLDER}/shared/include)
-include_directories(${SRC_FOLDER}/shared/error_messages)
+include_directories(${SRC_FOLDER}/shared/include/error_messages)
 include_directories(${SRC_FOLDER}/shared/os_regex/)
 include_directories(${SRC_FOLDER}/external/bzip2/)
 include_directories(${SRC_FOLDER}/external/curl/include/curl/)

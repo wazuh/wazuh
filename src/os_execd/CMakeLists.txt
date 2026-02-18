@@ -14,7 +14,7 @@ include_directories(
   ${SRC_FOLDER}/shared/os_xml/
   ${SRC_FOLDER}/shared/os_crypto/sha1/
   ${SRC_FOLDER}/shared/os_crypto/signature/
-  ${SRC_FOLDER}/shared/error_messages/
+  ${SRC_FOLDER}/shared/include/error_messages/
   ${SRC_FOLDER}/external/cJSON/
   ${SRC_FOLDER}/external/curl/include/curl/
   ${SRC_FOLDER}/external/libpcre2/include/
@@ -99,9 +99,9 @@ elseif(NOT UNIT_TEST)
 
   if(APPLE)
     set_target_properties(
-      ${WAZUH_EXECD_DAEMON_NAME} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
-                                             INSTALL_RPATH
-                                             "@executable_path/../lib")
+      ${WAZUH_EXECD_DAEMON_NAME}
+      PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE INSTALL_RPATH
+                                               "@executable_path/../lib")
   else()
     string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
   endif()

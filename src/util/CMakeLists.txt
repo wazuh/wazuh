@@ -19,7 +19,7 @@ include_directories(
   ${SRC_FOLDER}/shared/os_xml/
   ${SRC_FOLDER}/shared/os_crypto/sha1/
   ${SRC_FOLDER}/shared/os_crypto/signature/
-  ${SRC_FOLDER}/shared/error_messages/
+  ${SRC_FOLDER}/shared/include/error_messages/
   ${SRC_FOLDER}/external/cJSON/
   ${SRC_FOLDER}/external/curl/include/curl/
   ${SRC_FOLDER}/external/libpcre2/include/
