@@ -461,13 +461,6 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
     agent_info->sync.sync_response_timeout = 30;
     agent_info->sync.sync_retries = 3;
     agent_info->sync.sync_max_eps = 50;
-#ifdef CLIENT
-    agent_info->is_agent = true;
-#else
-    agent_info->is_agent = false;
-    mdebug2("Agent-info module is not supported on manager. Ignoring configuration.");
-    return 0;
-#endif
 
     module->context = &WM_AGENT_INFO_CONTEXT;
     module->tag = strdup(module->context->name);
