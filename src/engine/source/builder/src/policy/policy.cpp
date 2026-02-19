@@ -57,7 +57,29 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
     // Exposing this step here is only needed for gathering the graphivz string
     auto policyGraph = factory::buildGraph(builtAssets);
     policyGraph.graphName = m_name;
+
     // TODO: Assign graphiv string
+    auto preEnrichmentExp = [&]() -> base::Expression
+    {
+        std::vector<base::Expression> preEnrichmentOps;
+
+        // Mapping space name (disable trace)
+        {
+            auto [exp, traceable] = builders::enrichment::getSpaceEnrichment(policyData, false);
+            preEnrichmentOps.push_back(exp);
+            m_assets.insert(base::Name(traceable));
+        }
+
+        // Unclassified events filter (based on policy configuration)
+        {
+            auto [exp, traceable] = builders::enrichment::getUnclassifiedFilter(policyData, trace);
+            preEnrichmentOps.push_back(exp);
+            m_assets.insert(base::Name(traceable));
+        }
+
+        // Use And instead of Chain to ensure failure propagates correctly
+        return base::And::create("preEnrichment", std::move(preEnrichmentOps));
+    }();
 
     // Enrichment stage
     auto enrichmentExp = [&]() -> base::Expression
@@ -79,18 +101,11 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
             m_assets.insert(base::Name(traceable));
         }
 
-        // Mapping space name (disable trace)
-        {
-            auto [exp, traceable] = builders::enrichment::getSpaceEnrichment(policyData, false);
-            enrichmentExp->getOperands().push_back(exp);
-            m_assets.insert(base::Name(traceable));
-        }
-
         return enrichmentExp;
     }();
 
     // Build the expression
-    m_expression = factory::buildExpression(policyGraph, enrichmentExp);
+    m_expression = factory::buildExpression(policyGraph, preEnrichmentExp, enrichmentExp);
 }
 
 } // namespace builder::policy

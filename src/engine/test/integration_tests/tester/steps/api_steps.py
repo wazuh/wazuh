@@ -92,6 +92,7 @@ def build_policy_yaml(default_parent: str, root_decoder: str, integration_uuids)
 type: policy
 title: Development 0.0.1
 hash: "tester-test-hash"
+index_unclassified_events: true
 default_parent: {default_parent}
 root_decoder: {root_decoder}
 integrations:
@@ -277,7 +278,8 @@ def step_impl(context, message: str, session_name: str, debug_level: str, agent_
     LOCATION = f"[{agent_id}] (agent-ex) any->SomeModule"
     QUEUE = 1
     request.event = f"{QUEUE}:{LOCATION}:{message}"
-    request.asset_trace.extend([asset_trace])
+    if not asset_trace == "ALL":
+        request.asset_trace.extend([asset_trace])
     error, context.result, context.raw_output = send_recv(request, api_tester.RunPost_Response())
     assert error is None, f"{error}"
 

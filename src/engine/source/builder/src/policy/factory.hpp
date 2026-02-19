@@ -23,23 +23,19 @@ namespace builder::policy::factory
  */
 enum class AssetPipelineStage
 {
-    PRE_FILTERS_TREE = 0, ///< Pre-filters tree, before IOCs (AND|OR between siblings).
-    DECODERS_TREE = 1, ///< Decoders tree, the first stage in the pipeline (OR between siblings).
+    PRE_FILTERS_TREE = 0,  ///< Pre-filters tree, before IOCs (AND|OR between siblings).
+    DECODERS_TREE = 1,     ///< Decoders tree, the first stage in the pipeline (OR between siblings).
     POST_FILTERS_TREE = 2, ///< Post-filters tree, after IOCs (AND|OR between siblings).
-    OUTPUTS_TREE = 3,  ///< Outputs tree, after filters (Brodcast between siblings and childs).
+    OUTPUTS_TREE = 3,      ///< Outputs tree, after filters (Brodcast between siblings and childs).
     // End of valid values
-    END_VALUES = 4     ///< Sentinel value for the end of the enum. (MAX VALUE)
+    END_VALUES = 4 ///< Sentinel value for the end of the enum. (MAX VALUE)
 };
 
 /**
  * @brief String representations of AssetPipelineStage values.
  */
 constexpr const std::string_view AssetPipelineStageStrs[] = {
-    "PreFiltersTree",
-    "DecodersTree",
-    "PostFiltersTree",
-    "OutputsTree"
-};
+    "PreFiltersTree", "DecodersTree", "PostFiltersTree", "OutputsTree"};
 
 /**
  * @brief Convert AssetPipelineStage to string.
@@ -212,7 +208,7 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
 }
 
 /**
- * @brief Generates the expression of the policy from the policy graph and the IOCs
+ * @brief Generates the expression of the policy from the policy graph and the enrichment stages
  *
  * The event is processed through a sequence of optional and mandatory stages
  * that together form the processing pipeline.
@@ -228,31 +224,42 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
  *    - Regardless of whether decoding succeeds or fails, the event
  *      always continues to the next stage.
  *
- * 3. IOCs (optional, TODO):
- *    - Indicators of Compromise (IOCs) are evaluated if this stage is enabled.
+ * 3. Pre-Enrichment:
+ *    - This stage performs initial enrichment operations before IOCs:
+ *      a) Origin Space Mapping: Maps the event to its origin space based on policy configuration.
+ *      b) Unclassified Events Filter: Evaluates events with "unclassified" category:
+ *         - If policy.index_unclassified_events is true, the event continues normally.
+ *         - If policy.index_unclassified_events is false, the event is dropped and pipeline stops.
+ *    - If this stage fails, the event is discarded and subsequent stages are not executed.
+ *
+ * 4. Enrichment (optional):
+ *    - Enrichment plugins (e.g., geo, IOCs) are applied to the event.
  *    - The result of this stage does not affect pipeline continuity.
  *      The event always proceeds to the next stage.
  *
- * 4. Post-Filter Tree (optional):
+ * 5. Post-Filter Tree (optional):
  *    - If present, the event is evaluated against the post-filter tree.
  *    - If no post-filter is configured, the event proceeds directly
  *      to the output stage.
  *    - If this stage is the last configured one, the final event result
  *      is determined by the post-filter evaluation.
  *
- * 5. Output Tree (optional):
+ * 6. Output Tree (optional):
  *    - If present, the event is forwarded to the configured outputs.
  *    - The output stage always succeeds and never blocks or discards events.
  *    - If no outputs are configured, the pipeline ends after the last filter.
  *
- * @param graph Policy graph.
- * @param enrichmentExpression Expression for IOC enrichment.
+ * @param graph Policy graph containing decoder, filter, and output trees.
+ * @param preEnrichmentExpression Expression for pre-enrichment stage (space mapping + unclassified filter).
+ * @param enrichmentExpression Expression for enrichment stage (geo, IOCs, etc.).
  *
- * @return base::Expression
+ * @return base::Expression Complete policy expression with all pipeline stages.
  *
- * @throw std::runtime_error If any error occurs.
+ * @throw std::runtime_error If any error occurs during expression building.
  */
-base::Expression buildExpression(const PolicyGraph& graph,  const base::Expression& enrichmentExpression);
+base::Expression buildExpression(const PolicyGraph& graph,
+                                 const base::Expression& preEnrichmentExpression,
+                                 const base::Expression& enrichmentExpression);
 
 } // namespace builder::policy::factory
 

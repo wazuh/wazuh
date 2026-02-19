@@ -39,13 +39,26 @@ inline base::Expression makeTraceableSuccessExpression(const base::Expression& e
 std::pair<base::Expression, std::string> getSpaceEnrichment(const cm::store::dataType::Policy& policy, bool trace);
 
 /**
+ * @brief Get the filter expression to handle unclassified events according to policy configuration.
+ *
+ * This filter checks if wazuh.integration.category is "unclassified" and drops the event
+ * if the policy's index_unclassified_events flag is false.
+ *
+ * @param policy Policy data.
+ * @param trace Enable tracing in the filter expression.
+ * @return std::pair<base::Expression, std::string> The built filter expression and its traceable name.
+ */
+std::pair<base::Expression, std::string> getUnclassifiedFilter(const cm::store::dataType::Policy& policy, bool trace);
+
+/**
  * @brief Get the Geo Enrichment Builder
  *
  * @param geoManager Geo manager instance, used to create 1 locator per enrichment.
  * @param configDoc Configuration document to load mapping configurations.
  * @return EnrichmentBuilder
  */
-EnrichmentBuilder getGeoEnrichmentBuilder(const std::shared_ptr<geo::IManager>& geoManager, const json::Json& configDoc);
+EnrichmentBuilder getGeoEnrichmentBuilder(const std::shared_ptr<geo::IManager>& geoManager,
+                                          const json::Json& configDoc);
 
 } // namespace builder::builders::enrichment
 
