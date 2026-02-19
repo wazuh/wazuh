@@ -58,11 +58,11 @@ static const char* rpm_platforms[] = {
 int wm_agent_upgrade_validate_id(int agent_id) {
     int return_code = WM_UPGRADE_SUCCESS;
 
-    if (agent_id == MANAGER_ID) {
-        return_code = WM_UPGRADE_INVALID_ACTION_FOR_MANAGER;
+    if (agent_id <= 0) {
+        return_code = WM_UPGRADE_UPGRADE_ERROR;
     }
 
-    return return_code;
+     return return_code;
 }
 
 int wm_agent_upgrade_validate_status(const char* connection_status) {

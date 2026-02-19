@@ -465,17 +465,13 @@ void * wm_sca_main(wm_sca_t * data) {
     }
 
     data->commands_timeout = getDefine_Int("sca", "commands_timeout", 1, 300);
-#ifdef CLIENT
     data->remote_commands = getDefine_Int("sca", "remote_commands", 0, 1);
-#else
-    data->remote_commands = 1;  // Only agents require this setting. For manager it's always enabled.
-#endif
+
     if (sca_init_ptr) {
         sca_init_ptr();
     }
 
-#ifdef CLIENT
-    // On agents, document limits are owned by agentd (it receives them from the manager during handshake).
+    // Document limits are owned by agentd.
     // SCA must not start until agentd can provide them, otherwise we may start with wrong defaults.
     if (sca_set_sync_limit_ptr)
     {
@@ -501,7 +497,6 @@ void * wm_sca_main(wm_sca_t * data) {
 
         sca_set_sync_limit_ptr(sync_limit);
     }
-#endif
 
     minfo("Starting SCA module...");
 

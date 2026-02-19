@@ -137,7 +137,7 @@ target_link_libraries(
           ${OPENSSL_LIB}
           ${OPENSSL_CRYPTO_LIB})
 
-if(UNIT_TEST)
+if(UNIT_TEST AND ("${TARGET}" STREQUAL "agent" OR "${TARGET}" STREQUAL "winagent"))
   enable_testing()
   add_coverage_libraries(AGENT_INFO_IMPL)
   add_subdirectory(tests)

@@ -90,9 +90,9 @@ int setup_wdb_global_helpers_add_agent(void **state) {
     init_data->socket = -1;
 
     strcpy(init_data->query_str,"global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}");
+    \"sync_status_value\",\"data\":[{\"id\":1,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}");
     os_strdup("{\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}", init_data->data_in_str);
+    \"sync_status_value\",\"data\":[{\"id\":1,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}", init_data->data_in_str);
 
     // spliting string
     init_data->groups_array = w_string_split(init_data->groups_csv, ",", 0);
@@ -2158,90 +2158,6 @@ void test_wdb_find_agent_success(void **state)
     __real_cJSON_Delete(root);
 }
 
-/* Tests wdb_get_all_agents */
-
-void test_wdb_get_all_agents_wdbc_query_error(void **state) {
-    const char *query_str = "global get-all-agents last_id 0";
-    const char *response = "err";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, OS_INVALID);
-
-    int *array = wdb_get_all_agents(false, NULL);
-
-    assert_null(array);
-}
-
-void test_wdb_get_all_agents_wdbc_parse_error(void **state) {
-    const char *query_str = "global get-all-agents last_id 0";
-    const char *response = "err";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    // Parsing Wazuh DB result
-    expect_any(__wrap_wdbc_parse_result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
-
-    int *array = wdb_get_all_agents(false, NULL);
-
-    assert_null(array);
-}
-
-void test_wdb_get_all_agents_success(void **state) {
-    const char *query_str = "global get-all-agents last_id 0";
-
-// Setting the payload
-    set_payload = 1;
-    strcpy(test_payload, "ok [{\"id\":1},{\"id\":2},{\"id\":3}]");
-    cJSON* test_json = __real_cJSON_Parse(test_payload+3);
-    cJSON* id1 = cJSON_CreateNumber(1);
-    cJSON* id2 = cJSON_CreateNumber(2);
-    cJSON* id3 = cJSON_CreateNumber(3);
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, test_payload);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    // Parsing Wazuh DB result
-    expect_any(__wrap_wdbc_parse_result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-    will_return(__wrap_cJSON_Parse, test_json);
-    will_return(__wrap_cJSON_GetObjectItem, id1);
-    will_return(__wrap_cJSON_GetObjectItem, id2);
-    will_return(__wrap_cJSON_GetObjectItem, id3);
-    expect_function_call(__wrap_cJSON_Delete);
-
-    int *array = wdb_get_all_agents(false, NULL);
-
-    assert_non_null(array);
-    assert_int_equal(1, array[0]);
-    assert_int_equal(2, array[1]);
-    assert_int_equal(3, array[2]);
-    assert_int_equal(-1, array[3]);
-
-    os_free(array);
-    __real_cJSON_Delete(test_json);
-    __real_cJSON_Delete(id1);
-    __real_cJSON_Delete(id2);
-    __real_cJSON_Delete(id3);
-
-    // Cleaning payload
-    set_payload = 0;
-    memset(test_payload, '\0', OS_MAXSTR);
-}
-
 /* Tests wdb_get_all_agents_rbtree */
 
 void test_wdb_get_all_agents_rbtree_wdbc_query_error(void **state) {
@@ -2257,7 +2173,7 @@ void test_wdb_get_all_agents_rbtree_wdbc_query_error(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get agent's IDs.");
 
-    rb_tree *tree = wdb_get_all_agents_rbtree(false, NULL);
+    rb_tree *tree = wdb_get_all_agents_rbtree(NULL);
 
     assert_null(tree);
 }
@@ -2279,7 +2195,7 @@ void test_wdb_get_all_agents_rbtree_wdbc_parse_error(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get agent's IDs.");
 
-    rb_tree *tree = wdb_get_all_agents_rbtree(false, NULL);
+    rb_tree *tree = wdb_get_all_agents_rbtree(NULL);
 
     assert_null(tree);
 }
@@ -2311,7 +2227,7 @@ void test_wdb_get_all_agents_rbtree_success(void **state) {
     will_return(__wrap_cJSON_GetObjectItem, id3);
     expect_function_call(__wrap_cJSON_Delete);
 
-    rb_tree *tree = wdb_get_all_agents_rbtree(false, NULL);
+    rb_tree *tree = wdb_get_all_agents_rbtree(NULL);
 
     assert_non_null(tree);
 
@@ -3620,7 +3536,7 @@ void test_wdb_set_agent_groups_socket_error(void **state) {
     // Debug messages
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}");
+    \"sync_status_value\",\"data\":[{\"id\":1,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}");
 
     res = wdb_set_agent_groups(data->id, data->groups_array, data->mode, data->sync_status, &(data->socket));
 
@@ -4167,10 +4083,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_json_input, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_json_output, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_find_agent_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        /* Tests wdb_get_all_agents */
-        cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_wdbc_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_wdbc_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_all_agents_rbtree */
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_rbtree_wdbc_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_rbtree_wdbc_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),

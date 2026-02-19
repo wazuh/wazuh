@@ -18,7 +18,7 @@
  * @param agent_id id of agent to validate
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS
- * @retval WM_UPGRADE_INVALID_ACTION_FOR_MANAGER
+ * @retval WM_UPGRADE_UPGRADE_ERROR
  * */
 int wm_agent_upgrade_validate_id(int agent_id);
 

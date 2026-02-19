@@ -83,10 +83,10 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 target_link_libraries(syscollector PRIVATE wazuhext sysinfo agent_sync_protocol
                                            dbsync schema_validator)
 
-if(UNIT_TEST)
+if(UNIT_TEST AND ("${TARGET}" STREQUAL "agent" OR "${TARGET}" STREQUAL "winagent"))
   enable_testing()
   add_coverage_libraries(syscollector)
   add_subdirectory(tests)
-endif(UNIT_TEST)
+endif()
 
 add_subdirectory(testtool)

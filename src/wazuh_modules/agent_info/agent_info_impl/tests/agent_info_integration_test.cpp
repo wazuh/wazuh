@@ -124,9 +124,6 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
                       m_mockFileSystem
                   );
 
-    // Set to agent mode for this test
-    m_agentInfo->setIsAgent(true);
-
     m_agentInfo->start(1, 86400, []()
     {
         return false;
@@ -150,68 +147,4 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
     }
 
     EXPECT_TRUE(foundMetadataEvent);
-}
-
-TEST_F(AgentInfoRealDBSyncTest, StartInManagerModeUsesDefaultValues)
-{
-    // For manager mode, no client.keys or merged.mg reading needed
-    // Only need sysinfo with hostname
-    nlohmann::json osData =
-    {
-        {"os_name", "TestOS"},
-        {"architecture", "test64"},
-        {"hostname", "test-manager-hostname"},
-        {"os_type", "linux"},
-        {"os_platform", "ubuntu"},
-        {"os_version", "22.04"}
-    };
-    EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
-
-    // Create agent info with real DBSync (using in-memory database)
-    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:",
-                                                  m_reportDiffFunc,
-                                                  m_logFunc,
-                                                  m_queryModuleFunc,
-                                                  nullptr, // Use real DBSync
-                                                  m_mockSysInfo,
-                                                  m_mockFileIO,
-                                                  m_mockFileSystem);
-
-    // Set to manager mode (false)
-    m_agentInfo->setIsAgent(false);
-
-    m_agentInfo->start(1, 86400, []()
-    {
-        return false;
-    });
-
-    // Verify events were reported
-    EXPECT_GE(m_reportedEvents.size(), static_cast<size_t>(1));
-
-    // Find and verify the agent_metadata event
-    bool foundMetadataEvent = false;
-    bool foundGroupsEvent = false;
-
-    for (const auto& event : m_reportedEvents)
-    {
-        if (event["type"] == "agent_metadata")
-        {
-            foundMetadataEvent = true;
-            EXPECT_EQ(event["module"], "agent_info");
-            EXPECT_EQ(event["data"]["agent"]["id"], "000");
-            EXPECT_EQ(event["data"]["agent"]["name"], "test-manager-hostname");
-            EXPECT_EQ(event["data"]["event"]["type"], "created");
-        }
-        else if (event["type"] == "agent_groups")
-        {
-            foundGroupsEvent = true;
-            // In manager mode, groups should be deleted (empty)
-            EXPECT_EQ(event["data"]["event"]["type"], "deleted");
-        }
-    }
-
-    EXPECT_TRUE(foundMetadataEvent);
-    // Groups event may or may not be present depending on initial state,
-    // but if present it should be a delete event for empty groups
-    (void)foundGroupsEvent; // May or may not be set depending on DB state
 }

@@ -449,41 +449,10 @@ int wdb_update_agent_status_code(int id, agent_status_code_t status_code, const 
     return result;
 }
 
-int* wdb_get_all_agents(bool include_manager, int *sock) {
+rb_tree* wdb_get_all_agents_rbtree(int *sock) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
-    int last_id = include_manager ? -1 : 0;
-    int *array = NULL;
-    int len = 0;
-    wdbc_result status = WDBC_DUE;
-    int aux_sock = -1;
-
-    while (status == WDBC_DUE) {
-        // Query WazuhDB
-        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_ALL_AGENTS], last_id);
-        if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
-            status = wdb_parse_chunk_to_int(wdboutput, &array, "id", &last_id, &len);
-        }
-        else {
-            status = WDBC_ERROR;
-        }
-    }
-
-    if (status == WDBC_ERROR) {
-        os_free(array);
-    }
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    return array;
-}
-
-rb_tree* wdb_get_all_agents_rbtree(bool include_manager, int *sock) {
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    int last_id = include_manager ? -1 : 0;
+    int last_id = 0;
     rb_tree *tree = NULL;
     wdbc_result status = WDBC_DUE;
     int aux_sock = -1;

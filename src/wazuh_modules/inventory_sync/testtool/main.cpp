@@ -599,7 +599,7 @@ public:
         std::string moduleStr = startJson.value("module", std::string("syscollector"));
         auto module = builder.CreateString(moduleStr);
 
-        std::string agentId = startJson.value("agentid", std::string("000"));
+        std::string agentId = startJson.value("agentid", std::string("001"));
         auto agentIdStr = builder.CreateString(agentId);
 
         std::string agentNameStr = startJson.value("agentname", "test-agent-" + agentId);
@@ -852,7 +852,7 @@ void sendEvent(bool verbose,
     {
         testData = AgentTestData::loadFromFile(input);
 
-        const auto agentId = testData.start.value("agentid", std::string("000"));
+        const auto agentId = testData.start.value("agentid", std::string("001"));
         const auto modeStr = testData.start.value("mode", std::string("delta"));
         const auto optStr = testData.start.value("option", std::string("VDSync"));
     }

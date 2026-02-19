@@ -37,7 +37,6 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     }
 
     // Allocate memory
-
     if ((cur_wmodule = *wmodules)) {
         cur_wmodule_exists = *wmodules;
         int found = 0;
@@ -69,7 +68,6 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     }
 
     // Get children
-
     if (children = OS_GetElementsbyNode(xml, node), !children) {
         mdebug1("Empty configuration for module '%s'", node->values[0]);
     }
@@ -83,18 +81,16 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     else if (!strcmp(node->values[0], "open-scap")) {
         mwarn("Deprecated module 'open-scap' is no longer available.");
     }
-#ifdef CLIENT
     else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)) {
+#ifdef CLIENT
         if (wm_syscollector_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
-    }
 #else
-    else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)) {
         mwarn("The '%s' module only works for the agent", node->values[0]);
-    }
 #endif
+    }
 #ifdef CLIENT
     else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name)) {
         if (wm_command_read(children, cur_wmodule, agent_cfg) < 0) {
@@ -226,7 +222,6 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
         mwarn("The '%s' module only works for the agent", node->element);
 #endif
     }
-
     OS_ClearNode(children);
     return 0;
 }

@@ -99,7 +99,7 @@ bool RouterTransport::sendMessage(const std::vector<uint8_t>& message, size_t ma
 void RouterTransport::subscribeToResponses()
 {
     const std::string responseTopic = getResponseTopic();
-    const std::string subscriberId = "agent-000";
+    const std::string subscriberId = m_moduleName + "-local";
 
     // Let exceptions propagate to configRouter() - no LOG_ERROR_EXIT here
     if (m_moduleName == "fim")

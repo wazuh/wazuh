@@ -115,35 +115,6 @@ static bool is_shutdown_process_started()
     return ret_val;
 }
 
-// Dummy agentd query function for servers/managers (no document limits)
-// Returns JSON with all limits set to 0 (unlimited) in the same format as agentd
-static bool wm_sys_query_agentd_server(const char* command, char* output_buffer, size_t buffer_size)
-{
-    (void)command; // Unused parameter
-
-    if (!output_buffer || buffer_size == 0)
-    {
-        return false;
-    }
-
-    // Return JSON with all document limits set to 0 (unlimited)
-    // Format matches agentd response: all indices with limit=0 means no restrictions
-    const char* response = "{\"hotfixes\":0,\"packages\":0,\"processes\":0,\"ports\":0,"
-                          "\"network_iface\":0,\"network_protocol\":0,\"network_address\":0,"
-                          "\"hardware\":0,\"os_info\":0,\"users\":0,\"groups\":0,"
-                          "\"services\":0,\"browser_extensions\":0}";
-    size_t len = strlen(response);
-
-    if (len < buffer_size)
-    {
-        strncpy(output_buffer, response, buffer_size - 1);
-        output_buffer[buffer_size - 1] = '\0';
-        return true;
-    }
-
-    return false;
-}
-
 bool wm_sys_query_agentd(const char* command, char* output_buffer, size_t buffer_size)
 {
     if (!command || !output_buffer || buffer_size == 0)
@@ -573,19 +544,11 @@ void* wm_sys_main(wm_sys_t* sys)
                               sys->flags.notify_first_scan);
 
         // Set agentd query function for communication (AFTER init, BEFORE start)
-        // On agents, syscollector will fetch document limits from agentd
-        // On servers/managers, syscollector runs without document limits (unlimited)
+        // Syscollector will fetch document limits from agentd
         if (syscollector_set_agentd_query_func_setter)
         {
-#ifdef CLIENT
-            // Agent: Use real agentd query function
             syscollector_set_agentd_query_func_setter(wm_sys_query_agentd);
             mtdebug1(WM_SYS_LOGTAG, "Agentd query function configured for document limits.");
-#else
-            // Server/Manager: Use dummy function that returns no limits (unlimited)
-            syscollector_set_agentd_query_func_setter(wm_sys_query_agentd_server);
-            mtinfo(WM_SYS_LOGTAG, "Running on server/manager: syscollector will operate without document limits.");
-#endif
         }
         else
         {
