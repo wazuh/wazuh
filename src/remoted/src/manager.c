@@ -782,16 +782,8 @@ cJSON *assign_group_to_agent(const char *agent_id, const char *md5) {
 
     mdebug2("Agent '%s' with file '%s' MD5 '%s'", agent_id, SHAREDCFG_FILENAME, md5);
 
-    w_mutex_lock(&files_mutex);
-
-    if (!guess_agent_group || (!find_group_from_sum(md5, group) && !find_multi_group_from_sum(md5, group))) {
-        // If the group could not be guessed, set to "default"
-        // or if the user requested not to guess the group, through the internal
-        // option 'guess_agent_group', set to "default"
-        strncpy(group, "default", OS_SIZE_65536);
-    }
-
-    w_mutex_unlock(&files_mutex);
+    // No group exists yet for this agent, so assign default directly.
+    strncpy(group, DEFAULT_GROUP, OS_SIZE_65536);
 
     wdb_set_agent_groups_csv(atoi(agent_id),
                             group,
