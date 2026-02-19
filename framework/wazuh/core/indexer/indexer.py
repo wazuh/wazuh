@@ -245,7 +245,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
             )
     except Exception as e:
         raise WazuhException(
-            code=1003, message=f"Failed to parse OSSEC configuration: {e}"
+            code=1003, message=f"Failed to parse Wazuh configuration: {e}"
         )
 
     indexer_section = wazuh_config.get("indexer", {})
