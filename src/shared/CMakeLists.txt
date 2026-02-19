@@ -148,6 +148,13 @@ if(UNIT_TEST)
        "${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_db/*.c")
   file(GLOB WRAPPERS_WAZUH_WAZUH_MODULES_SRC
        "${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_modules/*.c")
+  if(IS_AGENT)
+    list(
+      REMOVE_ITEM
+      WRAPPERS_WAZUH_WAZUH_MODULES_SRC
+      "${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_modules/wm_task_manager_wrappers.c"
+    )
+  endif()
   file(GLOB WRAPPERS_WAZUH_MONITORD_SRC
        "${SRC_FOLDER}/unit_tests/wrappers/wazuh/monitord/*.c")
   file(GLOB WRAPPERS_WAZUH_OS_AUTH_SRC

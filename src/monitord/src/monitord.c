@@ -34,17 +34,11 @@ void Monitord()
     sleep(10);
 
     /* Set internal log path to rotate them */
-#ifdef WIN32
-    /* wazuh log file */
-    snprintf(path, PATH_MAX, "%s", LOGFILE);
-    /* ossec.json */
-    snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
-#else
+
     /* /var/wazuh-manager/logs/wazuh-manager.log */
     snprintf(path, PATH_MAX, "%s", LOGFILE);
     /* /var/wazuh-manager/logs/wazuh-manager.json */
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
-#endif
 
     /* Connect to the message queue or exit */
     monitor_queue_connect();
@@ -68,8 +62,6 @@ void Monitord()
     while (1) {
         monitor_step_time();
 
-        /* In a local installation, there is no need to check agents */
-#ifndef LOCAL
         if (mond.a_queue < 0) {
             /* Connecting to the message queue */
             monitor_queue_connect();
@@ -83,7 +75,6 @@ void Monitord()
         if(check_deletion_trigger()){
             monitor_agents_deletion();
         }
-#endif
 
         if(check_logs_time_trigger()){
             monitor_logs(!CHECK_LOGS_SIZE, path, path_json);

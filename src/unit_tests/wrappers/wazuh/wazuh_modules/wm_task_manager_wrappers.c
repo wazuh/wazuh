@@ -14,8 +14,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#ifndef CLIENT
-
 cJSON* __wrap_wm_task_manager_parse_message(const char *msg) {
     check_expected(msg);
 
@@ -49,5 +47,3 @@ void __wrap_wm_task_manager_parse_data_result(__attribute__ ((__unused__)) cJSON
     check_expected(last_update_time);
     check_expected(request_command);
 }
-
-#endif

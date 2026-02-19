@@ -13,8 +13,6 @@
 #include "shared.h"
 #include "wmodules.h"
 
-#ifndef CLIENT
-
 cJSON* __wrap_wm_task_manager_parse_message(const char* msg);
 
 cJSON* __wrap_wm_task_manager_process_task(const wm_task_manager_task* task, int* error_code);
@@ -30,7 +28,5 @@ void __wrap_wm_task_manager_parse_data_result(cJSON* response,
                                               int create_time,
                                               int last_update_time,
                                               char* request_command);
-
-#endif
 
 #endif

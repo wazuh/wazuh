@@ -37,13 +37,11 @@ int Read_Syscheck_Config(const char *cfgfile)
         return (OS_INVALID);
     }
 
-#ifdef CLIENT
     mdebug1(FIM_CLIENT_CONFIGURATION, cfgfile);
 
     /* Read shared config */
     modules |= CAGENT_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
-#endif
 
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;

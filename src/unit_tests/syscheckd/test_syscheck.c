@@ -115,13 +115,11 @@ void test_fim_initialize(void **state)
                                0);
 #endif
 
-#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     // fetch_document_limits_from_agentd is called before asp_create in agent builds
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
     will_return(__wrap_w_query_agentd, "{}");  // Empty JSON
     will_return(__wrap_w_query_agentd, true);
-#endif
 
     expect_string(__wrap_asp_create, module, "fim");
     expect_value(__wrap_asp_create, sync_end_delay, syscheck.sync_end_delay);

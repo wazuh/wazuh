@@ -245,11 +245,7 @@ void ExecdRun(char *exec_msg, int *childcount)
 
         os_strdup("active-response/bin/restart.sh", cmd_api[0]);
 
-    #ifdef CLIENT
         os_strdup("agent", cmd_api[1]);
-    #else
-        os_strdup("manager", cmd_api[1]);
-    #endif
 
         ExecCmd(cmd_api);
         return;

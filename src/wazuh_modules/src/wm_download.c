@@ -12,8 +12,6 @@
 #include "wmodules.h"
 #include "os_net.h"
 
-#ifndef WIN32
-
 #undef minfo
 #undef mwarn
 #undef merror
@@ -267,10 +265,6 @@ void wm_download_destroy(wm_download_t * data) {
 // Read configuration and return a module (if enabled) or NULL (if disabled)
 
 wmodule * wm_download_read() {
-#ifdef CLIENT
-    // This module won't be available on agents
-    return NULL;
-#else
     wm_download_t * data;
     wmodule * module;
 
@@ -282,7 +276,6 @@ wmodule * wm_download_read() {
     module->tag = strdup(module->context->name);
 
     return module;
-#endif
 }
 
 cJSON *wm_download_dump() {
@@ -292,4 +285,3 @@ cJSON *wm_download_dump() {
     cJSON_AddItemToObject(root,"wazuh_download",wm_wd);
     return root;
 }
-#endif

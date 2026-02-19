@@ -16,8 +16,6 @@
 #define STATIC static
 #endif
 
-#ifndef WIN32
-
 #include "wmodules.h"
 #include "wm_task_manager_parsing.h"
 #include "defs.h"
@@ -468,5 +466,3 @@ STATIC cJSON* wm_task_manager_send_message_to_wdb(const char *command, cJSON *pa
 
     return response;
 }
-
-#endif

@@ -16,8 +16,6 @@
 #define STATIC static
 #endif
 
-#ifndef WIN32
-
 #include "wmodules.h"
 #include "wm_task_manager_parsing.h"
 #include "wm_task_manager_tasks.h"
@@ -453,5 +451,3 @@ STATIC const char* wm_task_manager_decode_status(char *status) {
     }
     return NULL;
 }
-
-#endif

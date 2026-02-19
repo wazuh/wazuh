@@ -8,9 +8,6 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-
-#ifndef CLIENT
-
 #ifndef WM_TAS_MANAGER_PARSING_H
 #define WM_TAS_MANAGER_PARSING_H
 
@@ -148,5 +145,4 @@ void wm_task_manager_parse_data_result(cJSON *response, const char *node, const 
  * */
 cJSON* wm_task_manager_parse_response(int error_code, cJSON *data);
 
-#endif
 #endif

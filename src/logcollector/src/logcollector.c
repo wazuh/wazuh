@@ -1929,11 +1929,7 @@ void * w_output_thread(void * args){
                                   message->queue_mq, message->log_target);
             if (result != 0) {
                 if (result != 1) {
-#ifdef CLIENT
                     mdebug1("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
-#else
-                    mdebug1("Unable to send message to '%s' (wazuh-manager-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
-#endif
                 }
                 // Retry to connect infinitely.
                 logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);

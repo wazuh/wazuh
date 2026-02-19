@@ -21,13 +21,6 @@
 #define STATIC static
 #endif
 
-#ifdef WIN32
-    #define getuid() 0
-    #define chown(x, y, z) 0
-    #define Privsep_GetUser(x) -1
-    #define Privsep_GetGroup(x) -1
-#endif
-
 #define BUSY_SLEEP 1
 #define MAX_ATTEMPTS 1000
 

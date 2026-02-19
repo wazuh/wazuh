@@ -46,8 +46,6 @@ int authd_read_config(const char *path) {
     return 0;
 }
 
-#ifndef CLIENT
-
 cJSON *getAuthdConfig(void) {
 
     cJSON *root = cJSON_CreateObject();
@@ -97,5 +95,3 @@ cJSON *getAuthdConfig(void) {
 
     return root;
 }
-
-#endif

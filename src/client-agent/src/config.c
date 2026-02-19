@@ -72,7 +72,6 @@ int ClientConf(const char *cfgfile)
         return (OS_INVALID);
     }
 
-#ifdef CLIENT
     if(agt->flags.remote_conf = getDefine_Int("agent", "remote_conf", 0, 1), agt->flags.remote_conf) {
         remote_conf = agt->flags.remote_conf;
         ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &agt->labels, agt);
@@ -82,7 +81,6 @@ int ClientConf(const char *cfgfile)
     if (ReadConfig(ATAMPERING, cfgfile, atc, NULL) < 0) {
         return OS_INVALID;
     }
-#endif
 #endif
 
     if (min_eps = getDefine_Int("agent", "min_eps", 1, 1000), agt->events_persec < min_eps) {
@@ -245,9 +243,7 @@ cJSON *getAgentInternalOptions(void) {
     cJSON_AddNumberToObject(agent,"recv_timeout",timeout);
     cJSON_AddNumberToObject(agent,"state_interval",interval);
     cJSON_AddNumberToObject(agent,"min_eps",min_eps);
-#ifdef CLIENT
     cJSON_AddNumberToObject(agent,"remote_conf",remote_conf);
-#endif
 
     cJSON_AddItemToObject(internals,"agent",agent);
 
