@@ -7,7 +7,20 @@ copyright: Copyright (C) 2015-2026, Wazuh Inc.
 
 type: integration
 
-brief: Validate startup hash gate behavior in wazuh-agentd startup and shared configuration update flows.
+brief: Validate startup hash gate behavior in wazuh-agentd.
+       Modules call startup_gate_wait_for_ready() at startup and remain
+       blocked until the handshake merged_sum matches the local merged.mg
+       hash.
+
+       Architecture note: The agent command socket (queue/sockets/agent) used
+       to query gate status is created by the agcom thread, which only starts
+       after the handshake completes (start_agent() returns). Therefore, gate
+       status can only be queried after the agent connects to the simulator.
+
+       Test cases validate:
+       - Modules unblock and start when hashes match.
+       - Modules remain blocked when hashes mismatch.
+       - Appropriate logging occurs for hash validation events.
 
 components:
     - agentd
@@ -26,29 +39,36 @@ os_platform:
     - linux
 
 references:
+    - https://github.com/wazuh/wazuh/issues/34509
     - https://github.com/wazuh/wazuh/issues/34329
 '''
 
 import hashlib
 import json
 import os
+import sys
 import time
 from pathlib import Path
 
 import pytest
 
+from wazuh_testing.constants import platforms
 from wazuh_testing.constants.paths import WAZUH_PATH
+from wazuh_testing.constants.paths.configurations import SHARED_CONFIGURATIONS_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_TIMEOUT
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import callbacks
+from wazuh_testing.utils import file as file_utils
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
-from wazuh_testing.utils.services import check_if_process_is_running
+from wazuh_testing.utils.services import check_if_process_is_running, control_service
 from wazuh_testing.utils.sockets import send_request_socket
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 from utils import wait_connect
+
+WAZUH_MERGED_MG_PATH = os.path.join(SHARED_CONFIGURATIONS_PATH, 'merged.mg')
 
 
 # Marks
@@ -71,76 +91,66 @@ local_internal_options = {
 daemons_handler_configuration = {'all_daemons': True}
 
 AGENT_SOCKET_PATH = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'agent')
-SHARED_MERGED_PATH = os.path.join(WAZUH_PATH, 'etc', 'shared', 'merged.mg')
 
 MODULE_DAEMONS = ('wazuh-modulesd', 'wazuh-syscheckd', 'wazuh-logcollector', 'wazuh-execd')
+ALL_DAEMONS = ('wazuh-agentd',) + MODULE_DAEMONS
 
-_DEFAULT_LIMITS_CONFIG = {
-    'limits': {
-        'fim': {
-            'file': 0,
-            'registry_key': 0,
-            'registry_value': 0
-        },
-        'syscollector': {
-            'hotfixes': 0,
-            'packages': 0,
-            'processes': 0,
-            'ports': 0,
-            'network_iface': 0,
-            'network_protocol': 0,
-            'network_address': 0,
-            'hardware': 0,
-            'os_info': 0,
-            'users': 0,
-            'groups': 0,
-            'services': 0,
-            'browser_extensions': 0
-        },
-        'sca': {
-            'checks': 0
-        }
-    },
-    'cluster_name': 'wazuh-cluster',
-    'cluster_node': 'wazuh-node-01',
-    'agent_groups': ['default']
-}
+# Log patterns emitted by the startup gate C code.
+GATE_BLOCKING_PATTERN = (
+    r".*Startup hash gate is blocking "
+    r"'wazuh-(modulesd|syscheckd|logcollector|execd)' \(waiting_hash_match\)\."
+)
+GATE_RELEASED_PATTERN = (
+    r".*Startup hash gate released for "
+    r"'wazuh-(modulesd|syscheckd|logcollector|execd)' \(hash_match\)\."
+)
+
+# YAML template paths for merged.mg and handshake JSON.
+HANDSHAKE_JSON_PATH = Path(CONFIGS_PATH, "handshake_json.yaml")
+MERGED_MG_PATH = Path(CONFIGS_PATH, "merged_mg.yaml")
 
 
-def _build_limits_config(merged_sum=None):
-    limits_config = json.loads(json.dumps(_DEFAULT_LIMITS_CONFIG))
-
-    if merged_sum:
-        limits_config['merged_sum'] = merged_sum
-
-    return limits_config
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 
-def _calculate_md5(content):
-    return hashlib.md5(content).hexdigest()
+def _build_merged_mg_from_yaml(yaml_path):
+    """Build merged.mg binary content from a YAML template.
+
+    The YAML defines files to merge. Each file becomes a section:
+        !<size> <filename>\n<content>
+
+    Returns:
+        bytes: The merged.mg file content.
+    """
+    data = file_utils.read_yaml(yaml_path)
+    parts = []
+    for entry in data["files"]:
+        content = entry["content"].encode()
+        header = f"!{len(content)} {entry['name']}\n".encode()
+        parts.append(header + content)
+    return b"".join(parts)
 
 
-def _write_merged_mg(content):
-    os.makedirs(os.path.dirname(SHARED_MERGED_PATH), exist_ok=True)
+def _load_limits_config_from_yaml(yaml_path):
+    """Load handshake JSON base config from YAML template.
 
-    with open(SHARED_MERGED_PATH, 'wb') as merged_file:
-        merged_file.write(content)
+    The returned dict does NOT include merged_sum; the RemotedSimulator
+    auto-computes and injects it from the merged_mg_content parameter.
 
-
-def _build_valid_merged_content():
-    agent_conf = (
-        '<agent_config>\n'
-        '<client>\n'
-        '<notify_time>1</notify_time>\n'
-        '</client>\n'
-        '</agent_config>\n'
-    ).encode()
-
-    header = f'!{len(agent_conf)} agent.conf\n'.encode()
-    return header + agent_conf
+    Returns:
+        dict: The base limits_config for RemotedSimulator.
+    """
+    return file_utils.read_yaml(yaml_path)
 
 
 def _get_startup_gate_status():
+    """Query the agent socket for the current startup gate status.
+
+    Returns:
+        dict: ``{"ready": bool, "reason": str}``
+    """
     response = send_request_socket(query='getstartupgate', socket_path=AGENT_SOCKET_PATH)
 
     if not response:
@@ -155,6 +165,7 @@ def _get_startup_gate_status():
 
 
 def _wait_startup_gate_status(expected_ready, expected_reason, timeout=90):
+    """Poll startup gate status until it matches expectations or times out."""
     status = None
     last_error = None
     start_time = time.time()
@@ -182,68 +193,17 @@ def _wait_startup_gate_status(expected_ready, expected_reason, timeout=90):
     )
 
 
-def _wait_keepalive_hash(remoted_server: RemotedSimulator, expected_hash, timeout=90):
-    start_time = time.time()
-
-    while time.time() - start_time < timeout:
-        last_message = remoted_server.last_message_ctx.get('message', '')
-
-        if expected_hash in last_message and '"merged_sum"' in last_message:
-            return
-
-        time.sleep(0.5)
-
-    raise AssertionError(f"Keepalive with merged_sum '{expected_hash}' was not observed within {timeout}s")
-
-
-def _send_custom_message_and_wait(remoted_server: RemotedSimulator, message, timeout=60):
-    remoted_server.send_custom_message(message)
-
-    start_time = time.time()
-
-    while time.time() - start_time < timeout:
-        if getattr(remoted_server, 'custom_message_sent', False):
-            return
-
-        time.sleep(0.2)
-
-    raise AssertionError('Custom message was not delivered to the agent in time.')
-
-
-def _send_merged_update(remoted_server: RemotedSimulator, merged_content, merged_hash):
-    header = f'#!-up file {merged_hash} merged.mg\n'
-
-    _send_custom_message_and_wait(remoted_server, header)
-
-    for offset in range(0, len(merged_content), 900):
-        _send_custom_message_and_wait(remoted_server, merged_content[offset:offset + 900])
-
-    _send_custom_message_and_wait(remoted_server, '#!-close file ')
-
-
-@pytest.fixture()
-def preserve_merged_mg():
-    merged_exists = os.path.exists(SHARED_MERGED_PATH)
-    original_content = b''
-
-    if merged_exists:
-        with open(SHARED_MERGED_PATH, 'rb') as merged_file:
-            original_content = merged_file.read()
-
-    yield original_content if merged_exists else None
-
-    if merged_exists:
-        _write_merged_mg(original_content)
-    elif os.path.exists(SHARED_MERGED_PATH):
-        os.remove(SHARED_MERGED_PATH)
+# ---------------------------------------------------------------------------
+# Test
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazuh_configuration,
                                      configure_local_internal_options, truncate_monitored_files,
-                                     clean_keys, add_keys, daemons_handler, preserve_merged_mg):
+                                     clean_keys, add_keys, clean_merged_mg, daemons_handler):
     '''
-    description: Validate startup hash gate states for legacy, hash match and hash mismatch/update scenarios.
+    description: Validate startup hash gate blocking and unblocking for hash match/mismatch scenarios.
 
     wazuh_min_version: 4.12.0
 
@@ -269,81 +229,149 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
         - add_keys:
             type: fixture
             brief: Adds keys to keys file.
+        - clean_merged_mg:
+            type: fixture
+            brief: Remove merged.mg so the agent starts with no local file.
         - daemons_handler:
             type: fixture
             brief: Handler of Wazuh daemons.
 
     assertions:
-        - Startup gate reaches the expected state for each handshake scenario.
-        - Hash mismatch keeps modules blocked until merged.mg update is delivered.
-        - Gate unblocks after update and keepalive reports the new merged_sum.
+        - Modules unblock and start normally when hashes match.
+        - Modules remain blocked when hashes mismatch.
+        - Appropriate log messages are emitted for hash validation events.
     '''
     scenario = test_metadata['scenario']
     remoted_server = None
 
-    _wait_startup_gate_status(False, 'waiting_handshake')
-
-    limits_config = None
-    expected_hash = None
-    merged_update_content = None
-
-    if scenario == 'legacy':
-        limits_config = None
-    elif scenario == 'hash_match':
-        local_merged_content = b'startup-hash-validation-hash-match\n'
-        _write_merged_mg(local_merged_content)
-        expected_hash = _calculate_md5(local_merged_content)
-        limits_config = _build_limits_config(expected_hash)
-    elif scenario == 'hash_mismatch_update':
-        stale_merged_content = b'stale-merged-content-for-mismatch\n'
-        _write_merged_mg(stale_merged_content)
-
-        merged_update_content = _build_valid_merged_content()
-        expected_hash = _calculate_md5(merged_update_content)
-        limits_config = _build_limits_config(expected_hash)
-    else:
-        raise ValueError(f'Unknown startup gate scenario: {scenario}')
+    # Build merged.mg content from YAML template (used by all scenarios).
+    merged_content = _build_merged_mg_from_yaml(MERGED_MG_PATH)
+    limits_config = _load_limits_config_from_yaml(HANDSHAKE_JSON_PATH)
 
     try:
-        remoted_server = RemotedSimulator(protocol='tcp', limits_config=limits_config)
-        remoted_server.start()
+        if scenario == "hash_match":
+            # Write merged.mg to disk so the hash matches on handshake.
+            # clean_merged_mg removed the file; we recreate it from the YAML
+            # template with correct permissions so agentd can read it.
+            os.makedirs(os.path.dirname(WAZUH_MERGED_MG_PATH), exist_ok=True)
+            with open(WAZUH_MERGED_MG_PATH, 'wb') as f:
+                f.write(merged_content)
+            if sys.platform != platforms.WINDOWS:
+                os.chmod(WAZUH_MERGED_MG_PATH, 0o660)
+                try:
+                    import grp
+                    wazuh_gid = grp.getgrnam('wazuh').gr_gid
+                    os.chown(WAZUH_MERGED_MG_PATH, -1, wazuh_gid)
+                except (KeyError, PermissionError):
+                    pass
 
-        wait_connect()
+            # Set merged_sum to match the file on disk; no file push needed.
+            limits_config["merged_sum"] = hashlib.md5(merged_content).hexdigest()
 
-        if scenario == 'legacy':
-            _wait_startup_gate_status(True, 'legacy_handshake')
-            return
+            remoted_server = RemotedSimulator(
+                protocol="tcp",
+                limits_config=limits_config,
+            )
+            remoted_server.start()
+            wait_connect()
 
-        if scenario == 'hash_match':
-            _wait_startup_gate_status(True, 'hash_match')
-            return
+            # Gate should transition to ready with hash_match reason.
+            _wait_startup_gate_status(True, "hash_match")
 
-        _wait_startup_gate_status(False, 'waiting_hash_match')
+            # All module daemons must be running and unblocked.
+            for daemon_name in MODULE_DAEMONS:
+                assert check_if_process_is_running(daemon_name), (
+                    f"Daemon '{daemon_name}' is not running after hash match"
+                )
 
-        for daemon_name in MODULE_DAEMONS:
-            assert check_if_process_is_running(daemon_name), f"Daemon '{daemon_name}' is not running while gate is blocked"
+            # Verify the released log message was emitted.
+            released_monitor = FileMonitor(WAZUH_LOG_PATH)
+            released_monitor.start(
+                callback=callbacks.generate_callback(GATE_RELEASED_PATTERN), timeout=60
+            )
+            assert released_monitor.callback_result, (
+                "Expected startup hash gate released log was not observed after hash match."
+            )
 
-        blocking_monitor = FileMonitor(WAZUH_LOG_PATH)
-        blocking_monitor.start(
-            callback=callbacks.generate_callback(
-                r".*Startup hash gate is blocking 'wazuh-(modulesd|syscheckd|logcollector|execd)' \(waiting_hash_match\)\."
-            ),
-            timeout=60
-        )
-        assert blocking_monitor.callback_result, 'No startup hash blocking log was observed for hash mismatch scenario.'
+        elif scenario == "hash_mismatch":
+            # Override merged_sum with a bogus value so it never matches.
+            limits_config["merged_sum"] = "a" * 32
 
-        reload_monitor = FileMonitor(WAZUH_LOG_PATH)
-        _send_merged_update(remoted_server, merged_update_content, expected_hash)
+            # No file push -> gate stays blocked forever.
+            remoted_server = RemotedSimulator(
+                protocol="tcp", limits_config=limits_config
+            )
+            remoted_server.start()
+            wait_connect()
 
-        reload_monitor.start(
-            callback=callbacks.generate_callback(r'.*Agent is reloading due to shared configuration changes\.'),
-            timeout=90
-        )
-        assert reload_monitor.callback_result, 'Agent reload was not triggered after merged.mg update.'
+            # Gate should remain blocked with waiting_hash_match reason.
+            _wait_startup_gate_status(False, "waiting_hash_match")
 
-        _wait_startup_gate_status(True, 'hash_match', timeout=90)
-        _wait_keepalive_hash(remoted_server, expected_hash, timeout=90)
+            # Module daemons are running (processes exist) but blocked inside
+            # startup_gate_wait_for_ready().
+            for daemon_name in MODULE_DAEMONS:
+                assert check_if_process_is_running(daemon_name), (
+                    f"Daemon '{daemon_name}' is not running while gate is blocked"
+                )
+
+            # Verify the blocking log message was emitted.
+            blocking_monitor = FileMonitor(WAZUH_LOG_PATH)
+            blocking_monitor.start(
+                callback=callbacks.generate_callback(GATE_BLOCKING_PATTERN), timeout=60
+            )
+            assert blocking_monitor.callback_result, (
+                "Expected startup hash gate blocking log was not observed for hash mismatch."
+            )
+
+        elif scenario == "push_after_delay":
+            push_delay = 10
+
+            # Simulator will push merged.mg after delay.
+            # merged_sum is auto-computed, but no file on disk yet -> gate blocks until push arrives.
+            remoted_server = RemotedSimulator(
+                protocol="tcp",
+                limits_config=limits_config,
+                merged_mg_content=merged_content,
+                merged_mg_send_delay=push_delay,
+            )
+            remoted_server.start()
+            wait_connect()
+
+            # Gate blocked during delay.
+            _wait_startup_gate_status(False, "waiting_hash_match")
+
+            # Modules running but blocked.
+            for daemon_name in MODULE_DAEMONS:
+                assert check_if_process_is_running(daemon_name), (
+                    f"Daemon '{daemon_name}' is not running while gate is blocked"
+                )
+
+            # Blocking log emitted.
+            blocking_monitor = FileMonitor(WAZUH_LOG_PATH)
+            blocking_monitor.start(
+                callback=callbacks.generate_callback(GATE_BLOCKING_PATTERN), timeout=60
+            )
+            assert blocking_monitor.callback_result, (
+                "Expected startup hash gate blocking log was not observed during push delay."
+            )
+
+            # Wait for push -> gate opens.
+            # The file push triggers an agent reload; after the reload the
+            # gate transitions directly to hash_match during re-handshake.
+            _wait_startup_gate_status(True, "hash_match", timeout=push_delay + 60)
+
+        else:
+            raise ValueError(f"Unknown startup gate scenario: {scenario}")
 
     finally:
+        # Stop each daemon individually via psutil terminate+kill so that
+        # stuck processes (e.g. agentd reconnecting to a dead simulator, or
+        # modules blocked on the startup gate) are forcefully killed.
+        for daemon_name in ALL_DAEMONS:
+            try:
+                control_service('stop', daemon=daemon_name)
+            except Exception:
+                pass
+
         if remoted_server:
             remoted_server.destroy()

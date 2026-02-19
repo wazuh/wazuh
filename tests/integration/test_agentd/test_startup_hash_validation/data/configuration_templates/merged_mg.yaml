@@ -1,0 +1,5 @@
+files:
+  - name: agent.conf
+    content: |
+      <agent_config>
+      </agent_config>
