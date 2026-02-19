@@ -15,5 +15,5 @@ runs:
           -v "${{ github.workspace }}:/src" \
           -w /src \
           -u $(id -u):$(id -g) \
-          ghcr.io/wazuh/coverity-scan:latest \
+          ghcr.io/wazuh/coverity-scan:5.0 \
           ${{ inputs.command }}
