@@ -255,11 +255,9 @@ class WazuhException(Exception):
                },
 
         # Manager:
-        1901: {'message': '\'execq\' socket has not been created'
+        1901: {'message': 'Control socket has not been created'
                },
-        1902: {'message': 'Connection to \'execq\' socket failed'
-               },
-        1904: {'message': 'Bad data from \'wcom\''
+        1902: {'message': 'Connection to control socket failed'
                },
         1905: {'message': 'File could not be updated, it already exists',
                'remediation': 'Please, provide a different file or set overwrite=True to overwrite actual file'

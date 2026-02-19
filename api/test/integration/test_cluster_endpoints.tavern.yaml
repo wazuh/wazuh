@@ -875,11 +875,7 @@ stages:
       json:
         error: 0
         data:
-          affected_items:
-            - internal:
-                execd:
-                  max_restart_lock: !anyint
-                  request_timeout: !anyint
+          affected_items: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0

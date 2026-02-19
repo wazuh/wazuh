@@ -152,7 +152,9 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_subdirectory(os_net)
-  add_subdirectory(active-response)
+  if(NOT ${TARGET} STREQUAL "server")
+    add_subdirectory(active-response)
+  endif()
 endif()
 
 # Config files

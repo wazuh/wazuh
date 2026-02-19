@@ -1,5 +1,6 @@
 # Modules
 
+- [Control](control/) - Manager control operations (restart, reload) via wm_control module
 - [Syscollector](syscollector/) - System inventory collection and monitoring
 - [FIM](fim/) - File Integrity Monitoring with persistent state synchronization
 - [SCA](sca/) - Security Configuration Assessment for compliance evaluation

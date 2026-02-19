@@ -49,9 +49,9 @@ Additionally, configuration checks can be customized, tailoring them to properly
 
 **Incident response**
 
-Wazuh provides out-of-the-box active responses to perform various countermeasures to address active threats, such as blocking access to a system from the threat source when certain criteria are met.
+Wazuh agents provide out-of-the-box active responses to perform various countermeasures to address active threats, such as blocking access to a system from the threat source when certain criteria are met.
 
-In addition, Wazuh can be used to remotely run commands or system queries, identifying indicators of compromise (IOCs) and helping perform other live forensics or incident response tasks.
+In addition, Wazuh can be used to remotely run commands or system queries on agents, identifying indicators of compromise (IOCs) and helping perform other live forensics or incident response tasks.
 
 **Regulatory compliance**
 

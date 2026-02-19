@@ -49,7 +49,8 @@ IMBALANCE_TOLERANCE = 'imbalance_tolerance'
 REMOVE_DISCONNECTED_NODE_AFTER = 'remove_disconnected_node_after'
 
 logger = logging.getLogger('wazuh')
-execq_lockfile = os.path.join(common.WAZUH_PATH, "var", "run", ".api_execq_lock")
+# Lockfile for preventing concurrent API restart operations
+api_restart_lockfile = os.path.join(common.WAZUH_PATH, "var", "run", ".api_restart_lock")
 
 HELPER_DEFAULTS = {
     HAPROXY_PORT: 5555,
@@ -301,7 +302,7 @@ def get_cluster_status() -> typing.Dict:
 def manager_restart() -> WazuhResult:
     """Restart Wazuh manager.
 
-    Send JSON message with the 'restart-wazuh' command to common.EXECQ_SOCKET socket.
+    Send 'restart' command to common.CONTROL_SOCKET socket.
 
     Raises
     ------
@@ -317,19 +318,17 @@ def manager_restart() -> WazuhResult:
     WazuhResult
         Confirmation message.
     """
-    lock_file = open(execq_lockfile, 'a+')
+    lock_file = open(api_restart_lockfile, 'a+')
     fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
-        # execq socket path
-        socket_path = common.EXECQ_SOCKET
-        # json msg for restarting Wazuh manager
-        msg = json.dumps(create_wazuh_socket_message(origin={'module': common.origin_module.get()},
-                                                     command=common.RESTART_WAZUH_COMMAND,
-                                                     parameters={'extra_args': [], 'alert': {}}))
+        # control socket path
+        socket_path = common.CONTROL_SOCKET
+        # command for restarting Wazuh manager
+        msg = 'restart'
         # initialize socket
         if os.path.exists(socket_path):
             try:
-                conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+                conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 conn.connect(socket_path)
             except socket.error:
                 raise WazuhInternalError(1902)
@@ -338,7 +337,11 @@ def manager_restart() -> WazuhResult:
 
         try:
             conn.send(msg.encode())
+            response = conn.recv(1024).decode().strip()
             conn.close()
+
+            if not response.startswith('ok'):
+                raise WazuhInternalError(1014, extra_message=response)
         except socket.error as e:
             raise WazuhInternalError(1014, extra_message=str(e))
     finally:

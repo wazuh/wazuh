@@ -204,8 +204,8 @@ void *send_ip(){
             continue;
         }
 
-        os_calloc(IPSIZE + 1, sizeof(char), buffer);
-        switch (length = OS_RecvUnix(peer, IPSIZE, buffer), length) {
+        os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
+        switch (length = OS_RecvUnix(peer, OS_MAXSTR, buffer), length) {
         case -1:
             mterror(WM_CONTROL_LOGTAG, "At send_ip(): OS_RecvUnix(): %s", strerror(errno));
             break;
@@ -221,7 +221,7 @@ void *send_ip(){
             break;
 
         default:
-            response = getPrimaryIP();
+            wm_control_dispatch(buffer, &response);
             if(response){
                 OS_SendUnix(peer, response, 0);
                 free(response);
@@ -236,6 +236,144 @@ void *send_ip(){
 
     close(sock);
     return NULL;
+}
+
+size_t wm_control_dispatch(char *command, char **output) {
+    // Parse command and arguments
+    char *args = strchr(command, ' ');
+    if (args) {
+        *args = '\0';
+        args++;
+    }
+
+    mtdebug2(WM_CONTROL_LOGTAG, "Dispatching command: '%s'", command);
+
+    if (strcmp(command, "restart") == 0) {
+        return wm_control_execute_action("restart", output);
+
+    } else if (strcmp(command, "reload") == 0) {
+        return wm_control_execute_action("reload", output);
+
+    } else {
+        // Default: return IP for backward compatibility (getip, host_ip, or any other message)
+        *output = getPrimaryIP();
+        if (!*output) {
+            os_strdup("Err", *output);
+        }
+        return strlen(*output);
+    }
+}
+
+/**
+ * @brief Check if systemd is available as the init system
+ * @return true if systemd is available, false otherwise
+ */
+STATIC bool wm_control_check_systemd() {
+    // Check if systemd system directory exists
+    if (access("/run/systemd/system", F_OK) != 0) {
+        return false;
+    }
+
+    // Check if systemd is PID 1
+    FILE *fp = fopen("/proc/1/comm", "r");
+    if (fp) {
+        char init_name[256];
+        if (fgets(init_name, sizeof(init_name), fp)) {
+            init_name[strcspn(init_name, "\n")] = 0;
+            if (strcmp(init_name, "systemd") == 0) {
+                fclose(fp);
+                return true;
+            }
+        }
+        fclose(fp);
+    }
+
+    return false;
+}
+
+/**
+ * @brief Wait for wazuh-manager service to be in active state
+ *
+ * This is needed before attempting a reload to ensure the service is ready.
+ * Waits up to 60 seconds for the service to become active.
+ *
+ * @return true if service is active, false otherwise
+ */
+STATIC bool wm_control_wait_for_service_active() {
+    const int timeout = 60;
+    int elapsed = 0;
+
+    while (elapsed < timeout) {
+        FILE *fp = popen("systemctl is-active wazuh-manager 2>/dev/null", "r");
+        if (fp) {
+            char state[256];
+            if (fgets(state, sizeof(state), fp)) {
+                state[strcspn(state, "\n")] = 0;
+
+                if (strcmp(state, "inactive") == 0 || strcmp(state, "failed") == 0) {
+                    pclose(fp);
+                    mterror(WM_CONTROL_LOGTAG, "Service wazuh-manager is in state '%s', cannot reload", state);
+                    return false;
+                }
+
+                if (strcmp(state, "active") == 0) {
+                    pclose(fp);
+                    return true;
+                }
+            }
+            pclose(fp);
+        }
+
+        sleep(1);
+        elapsed++;
+    }
+
+    mterror(WM_CONTROL_LOGTAG, "Service wazuh-manager is not active after waiting %d seconds", timeout);
+    return false;
+}
+
+size_t wm_control_execute_action(const char *action, char **output) {
+    bool use_systemd = wm_control_check_systemd();
+    char *exec_cmd[4] = {NULL};
+
+    if (use_systemd) {
+        exec_cmd[0] = "/usr/bin/systemctl";
+        exec_cmd[1] = (char *)action;
+        exec_cmd[2] = "wazuh-manager";
+        mtinfo(WM_CONTROL_LOGTAG, "Executing '%s' on manager using systemctl", action);
+    } else {
+        exec_cmd[0] = "bin/wazuh-control";
+        exec_cmd[1] = (char *)action;
+        mtinfo(WM_CONTROL_LOGTAG, "Executing '%s' on manager using wazuh-control", action);
+    }
+
+    switch (fork()) {
+        case -1:
+            // Fork failed
+            mterror(WM_CONTROL_LOGTAG, "Cannot fork for %s", action);
+            os_strdup("err Cannot fork", *output);
+            return strlen(*output);
+        case 0:
+            // Child process - this code path never returns to the caller
+
+            // For reload with systemd, wait for service to be active first
+            if (use_systemd && strcmp(action, "reload") == 0) {
+                if (!wm_control_wait_for_service_active()) {
+                    mterror(WM_CONTROL_LOGTAG, "Service not active for reload");
+                    _exit(1);
+                }
+            }
+
+            // Execute command - either replaces process or exits on error
+            if (execv(exec_cmd[0], exec_cmd) < 0) {
+                mterror(WM_CONTROL_LOGTAG, "Error executing %s command: %s (%d)", action, strerror(errno), errno);
+            }
+            _exit(1);  // Always exit if execv fails or returns
+        default:
+            // Parent process - return success immediately
+            os_strdup("ok ", *output);
+            return strlen(*output);
+    }
 }
 
 #endif

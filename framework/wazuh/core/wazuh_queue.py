@@ -115,9 +115,6 @@ class WazuhQueue(BaseQueue):
           Agents with version >= 4.2.0:
             - Existing and custom commands:
               - (msg_to_agent) [] NNS 001 {JSON message}
-          Manager: /var/wazuh-manager/queue/alerts/execq
-            - Existing or custom command:
-              - {JSON message}
 
         Parameters
         ----------

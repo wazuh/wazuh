@@ -3622,11 +3622,6 @@ components:
         </tr>
         <tr>
         <td>com</td>
-        <td>internal</td>
-        <td><code>&lt;execd&gt;</code></td>
-        </tr>
-        <tr>
-        <td>com</td>
         <td>cluster</td>
         <td><code>&lt;cluster&gt;</code></td>
         </tr>

@@ -64,6 +64,10 @@ CONF_SECTIONS = MappingProxyType({
         'list_options': []
     },
 
+    'logging': {
+        'type': 'last',
+        'list_options': []
+    },
     'cluster': {
         'type': 'last',
         'list_options': ['nodes']

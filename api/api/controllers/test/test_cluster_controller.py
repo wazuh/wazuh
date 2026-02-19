@@ -602,11 +602,10 @@ async def test_get_node_config(mock_check_pair, mock_exc, mock_dapi, mock_remove
                                        component='component_value',
                                        **kwargs_param)
         f_kwargs = {'node_id': '001',
-                    'component': 'component_value',
-                    'config': kwargs_param.get('configuration', None)
+                    'section': kwargs_param.get('configuration', None)
                     }
 
-        mock_dapi.assert_called_once_with(f=manager.get_config,
+        mock_dapi.assert_called_once_with(f=manager.read_ossec_conf,
                                           f_kwargs=mock_remove.return_value,
                                           request_type='distributed_master',
                                           is_async=False,
@@ -616,9 +615,8 @@ async def test_get_node_config(mock_check_pair, mock_exc, mock_dapi, mock_remove
                                           nodes=mock_exc.return_value
                                           )
         mock_exc.assert_has_calls([call(mock_snodes.return_value),
-                                   call(mock_check_pair.return_value),
                                    call(mock_dfunc.return_value)])
-        assert mock_exc.call_count == 3
+        assert mock_exc.call_count == 2
         mock_remove.assert_called_once_with(f_kwargs)
         assert isinstance(result, ConnexionResponse)
 
