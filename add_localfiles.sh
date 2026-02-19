@@ -31,6 +31,7 @@ if [ "X${INSTYPE}" = "Xagent" ]; then
   echo "<ossec_config>" >> $NEWCONFIG
 else
   echo "<wazuh_config>" >> $NEWCONFIG
+fi
 
 WriteLogs "add"
 
@@ -38,6 +39,7 @@ if [ "X${INSTYPE}" = "Xagent" ]; then
   echo "</ossec_config>" >> $NEWCONFIG
 else
   echo "</wazuh_config>" >> $NEWCONFIG
+fi
 
 cat "$NEWCONFIG"
 
