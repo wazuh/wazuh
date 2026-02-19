@@ -144,10 +144,14 @@ static int read_main_elements(const OS_XML *xml, int modules,
         }
         else if (strcmp(node[i]->element, osagent_info) == 0)
         {
+#ifdef CLIENT
             if ((modules & CWMODULE) && (Read_AGENT_INFO(xml, node[i], d1) < 0))
             {
                 goto fail;
             }
+#else
+            mdebug2("Agent-info module is not supported on manager. Ignoring configuration.");
+#endif
         }
         else if (strcmp(node[i]->element, osvulndetection) == 0)
         {

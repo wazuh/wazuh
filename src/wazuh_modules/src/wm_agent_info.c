@@ -466,14 +466,6 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
     module->tag = strdup(module->context->name);
     module->data = agent_info;
 
-#ifdef CLIENT
-    agent_info->is_agent = true;
-#else
-    agent_info->is_agent = false;
-    mdebug2("Agent-info module is not supported on manager. Ignoring configuration.");
-    return 0;
-
-#endif
     if (!nodes)
     {
         return 0;
