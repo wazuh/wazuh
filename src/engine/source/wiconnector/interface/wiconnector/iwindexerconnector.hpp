@@ -1,8 +1,10 @@
 #ifndef _IWINDEXER_CONNECTOR_HPP
 #define _IWINDEXER_CONNECTOR_HPP
 
+#include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <base/json.hpp>
@@ -56,18 +58,20 @@ public:
     virtual PolicyResources getPolicy(std::string_view space) = 0;
 
     /**
-     * @brief Retrieves the policy hash for the specified space.
+     * @brief Retrieves the policy hash and enabled status for the specified space.
      *
      * Queries the .cti-policies index to retrieve the SHA-256 hash stored in
-     * the space.hash.sha256 field for the given space name.
+     * the space.hash.sha256 field and the enabled status from document.enabled
+     * for the given space name.
      *
-     * @param space The name of the space to retrieve the hash for
-     * @return The SHA-256 hash as a string
+     * @param space The name of the space to retrieve the information for
+     * @return A pair containing the SHA-256 hash as a string and a boolean indicating if the policy is enabled
      * @throws std::invalid_argument if the space name is empty
-     * @throws IndexerConnectorException if the query returns zero or more than one result
+     * @throws IndexerConnectorException if the query returns zero or more than one result, or if required fields are
+     * missing
      * @throws std::exception for other unexpected errors
      */
-    virtual std::string getPolicyHash(std::string_view space) = 0;
+    virtual std::pair<std::string, bool> getPolicyHashAndEnabled(std::string_view space) = 0;
 
     /**
      * @brief Checks if a policy exists for the specified space.
