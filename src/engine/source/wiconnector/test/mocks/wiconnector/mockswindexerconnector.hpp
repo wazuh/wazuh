@@ -11,7 +11,7 @@ class MockWIndexerConnector : public ::wiconnector::IWIndexerConnector
 public:
     MOCK_METHOD(void, index, (std::string_view index, std::string_view data), (override));
     MOCK_METHOD(PolicyResources, getPolicy, (std::string_view space), (override));
-    MOCK_METHOD(std::string, getPolicyHash, (std::string_view space), (override));
+    MOCK_METHOD((std::pair<std::string, bool>), getPolicyHashAndEnabled, (std::string_view space), (override));
     MOCK_METHOD(bool, existsPolicy, (std::string_view space), (override));
 };
 } // namespace wiconnector::mocks

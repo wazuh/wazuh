@@ -382,7 +382,7 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
     return policyMap;
 }
 
-std::string WIndexerConnector::getPolicyHash(std::string_view space)
+std::pair<std::string, bool> WIndexerConnector::getPolicyHashAndEnabled(std::string_view space)
 {
     std::shared_lock lock(m_mutex);
     if (!m_indexerConnectorAsync)
@@ -394,7 +394,8 @@ std::string WIndexerConnector::getPolicyHash(std::string_view space)
     nlohmann::json query = getQueryFilter(space);
 
     // Prepare source filter to only retrieve space.hash.sha256
-    nlohmann::json source = {{"includes", {"space.hash.sha256"}}, {"excludes", nlohmann::json::array()}};
+    nlohmann::json source = {{"includes", {"space.hash.sha256", "document.enabled"}},
+                             {"excludes", nlohmann::json::array()}};
 
     // Execute search query
     nlohmann::json hits = m_indexerConnectorAsync->search(POLICY_INDEX, HASH_QUERY_SIZE, query, source);
@@ -427,13 +428,21 @@ std::string WIndexerConnector::getPolicyHash(std::string_view space)
     }
 
     const auto& source_data = firstHit["_source"];
+    // Validate the presence of space.hash.sha256 in the source data
     if (!source_data.contains("space") || !source_data["space"].contains("hash")
-        || !source_data["space"]["hash"].contains("sha256"))
+        || !source_data["space"]["hash"].contains("sha256") || !source_data["space"]["hash"]["sha256"].is_string())
     {
         throw IndexerConnectorException("space.hash.sha256 field not found for space: " + std::string(space));
     }
 
-    return source_data["space"]["hash"]["sha256"].get<std::string>();
+    // Validate that the document.enabled exist
+    if (!source_data.contains("document") || !source_data["document"].contains("enabled")
+        || !source_data["document"]["enabled"].is_boolean())
+    {
+        throw IndexerConnectorException("document.enabled field not found or invalid for space: " + std::string(space));
+    }
+
+    return {source_data["space"]["hash"]["sha256"].get<std::string>(), source_data["document"]["enabled"].get<bool>()};
 }
 
 bool WIndexerConnector::existsPolicy(std::string_view space)
