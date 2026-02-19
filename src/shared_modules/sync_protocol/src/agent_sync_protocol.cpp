@@ -50,15 +50,7 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optiona
 
         // else: m_persistentQueue remains nullptr for in-memory-only operation
 
-#if CLIENT
         m_transport = SyncTransportFactory::createDefaultTransport(moduleName, mqFuncs, m_logger);
-#else
-        auto responseCallback = [this](const std::vector<char>& data)
-        {
-            parseResponseBuffer(reinterpret_cast<const uint8_t*>(data.data()), data.size());
-        };
-        m_transport = SyncTransportFactory::createDefaultTransport(moduleName, mqFuncs, m_logger, std::move(responseCallback));
-#endif
 
         if (!m_transport)
         {
@@ -501,8 +493,6 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                 groups_vec.push_back(builder.CreateString(metadata.groups[i]));
             }
         }
-
-#if CLIENT
         else
         {
             m_logger(LOG_WARNING, "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.");
@@ -515,7 +505,6 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
             return false;
         }
 
-#endif
         m_logger(LOG_DEBUG, "Metadata available. Proceed with synchronization.");
 
         // Create flatbuffer strings from metadata

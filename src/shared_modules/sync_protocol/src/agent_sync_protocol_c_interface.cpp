@@ -14,15 +14,8 @@ extern "C" {
     {
         try
         {
-#if CLIENT
-
             if (!mq_funcs || !module || !logger) return nullptr;
 
-#else
-
-            if (!module || !logger) return nullptr;
-
-#endif
             LoggerFunc logger_wrapper =
                 [logger](modules_log_level_t level, const std::string & msg)
             {
