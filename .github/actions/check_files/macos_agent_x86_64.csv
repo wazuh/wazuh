@@ -1,5 +1,5 @@
 full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_error
-/Library/Ossec/ruleset/sca/cis_apple_macOS_13.x.yml,root,wazuh,750,file,-rwxr-x---,,
+/Library/Ossec/ruleset/sca/cis_apple_macOS_14.x.yml,root,wazuh,750,file,-rwxr-x---,,
 /Library/Ossec/bin/wazuh-control,root,wheel,750,file,-rwxr-x---,,
 /Library/Ossec/bin/wazuh-logcollector,root,wheel,750,file,-rwxr-x---,,
 /Library/Ossec/bin/wazuh-execd,root,wheel,750,file,-rwxr-x---,,
