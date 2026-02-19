@@ -328,7 +328,7 @@ void test_realtime_start_success(void **state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 0);
 
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_AGENT)
     will_return(__wrap_inotify_init, 0);
 #else
     expect_value(wrap_CreateEvent, lpEventAttributes, NULL);
@@ -369,7 +369,7 @@ void test_realtime_start_failure_hash(void **state) {
     assert_int_equal(ret, -1);
 }
 
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_AGENT)
 
 void test_realtime_start_failure_inotify(void **state) {
     OSHash *hash = *state;
@@ -1973,7 +1973,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_realtime_start_success, setup_realtime_start, teardown_realtime_start),
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_hash, setup_realtime_start, teardown_realtime_start),
 
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_AGENT)
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_inotify, setup_realtime_start, teardown_realtime_start),
 
         /* realtime_adddir */

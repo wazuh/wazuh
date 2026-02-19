@@ -36,10 +36,7 @@ set(TEST_DEPS
     -Wl,--start-group
     ${WAZUHLIB}
     ${WAZUHEXT}
-    -lagent_metadata
     -lrouter
-    -lagent_sync_protocol
-    -ldbsync
     -lschema_validator
     -Wl,--end-group
     -lpthread

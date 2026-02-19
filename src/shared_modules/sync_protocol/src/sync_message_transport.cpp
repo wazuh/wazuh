@@ -8,12 +8,7 @@
  */
 
 #include "sync_message_transport.hpp"
-
-#if CLIENT
 #include "mqueue_transport.hpp"
-#else
-#include "router_transport.hpp"
-#endif
 
 namespace SyncTransportFactory
 {
@@ -23,10 +18,6 @@ namespace SyncTransportFactory
         LoggerFunc logger,
         [[maybe_unused]] std::function<void(const std::vector<char>&)> responseCallback)
     {
-#if CLIENT
         return std::make_unique<MQueueTransport>(moduleName, mqFuncs, std::move(logger));
-#else
-        return std::make_unique<RouterTransport>(moduleName, std::move(logger), std::move(responseCallback));
-#endif
     }
 } // namespace SyncTransportFactory

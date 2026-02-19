@@ -208,12 +208,10 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
                 mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
             }
 
-            #ifdef CLIENT
             if (agt->flags.remote_conf) {
                 ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &new_labels, agt);
                 minfo("Buffer agent.conf updated, enable: %i size: %i ", agt->buffer, agt->buflength);
             }
-            #endif
 
             // Swap labels and free old ones
             wlabel_t *old_labels = agt->labels;

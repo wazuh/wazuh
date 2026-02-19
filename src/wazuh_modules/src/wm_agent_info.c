@@ -649,8 +649,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_init_sync_protocol_ptr(AGENT_INFO_WM_NAME, &mq_funcs);
     }
 
-    // Query agentd for handshake data (cluster_name, cluster_node, agent_groups) via agcom - only on agents
-
+    // Query agentd for handshake data (cluster_name, cluster_node, agent_groups) via agcom
     char cluster_name[256] = {0};
     char cluster_node[256] = {0};
     char agent_groups[OS_SIZE_65536] = {0};

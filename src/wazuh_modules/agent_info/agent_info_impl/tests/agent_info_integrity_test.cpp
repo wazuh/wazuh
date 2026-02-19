@@ -269,7 +269,6 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckTriggeredWhenIntervalElapsed)
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
 
-
     m_logOutput.clear();
 
     // Use very short integrity interval (1 second) to trigger check immediately
@@ -350,7 +349,6 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckRunsAfterDeltaSyncCompletes)
     nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
-
 
     m_logOutput.clear();
 
@@ -435,7 +433,6 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckForBothMetadataAndGroups)
     nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
-
 
     m_logOutput.clear();
 

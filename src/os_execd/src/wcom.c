@@ -197,11 +197,7 @@ size_t wcom_restart(char ** output) {
 
         if (waccess("active-response/bin/restart.sh", F_OK) == 0) {
             exec_cmd[0] = "active-response/bin/restart.sh";
-#ifdef CLIENT
             exec_cmd[1] = "agent";
-#else
-            exec_cmd[1] = "manager";
-#endif
         } else {
             exec_cmd[0] = "bin/wazuh-control";
             exec_cmd[1] = "restart";
@@ -254,11 +250,7 @@ size_t wcom_reload(char ** output) {
 
         if (waccess("active-response/bin/restart.sh", F_OK) == 0) {
             exec_cmd[0] = "active-response/bin/restart.sh";
-#ifdef CLIENT
             exec_cmd[1] = "agent";
-#else
-            exec_cmd[1] = "manager";
-#endif
             exec_cmd[2] = "reload";
         } else {
             exec_cmd[0] = "bin/wazuh-control";

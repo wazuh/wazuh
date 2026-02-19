@@ -17,8 +17,6 @@
 #include "router.h"
 #include "sym_load.h"
 
-#ifndef CLIENT
-
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
 
@@ -33,11 +31,9 @@ static pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 
 int inotify_fd;
 
-#ifndef LOCAL
 int wd_agents = -2;
 int wd_groups = -2;
 int wd_shared_groups = -2;
-#endif // !LOCAL
 
 /* Get current inotify queued events limit */
 static int get_max_queued_events();
@@ -70,8 +66,6 @@ static void wm_database_destroy(wm_database *data);
 // Read config
 cJSON *wm_database_dump(const wm_database *data);
 
-#ifndef LOCAL
-
 static void wm_check_agents();
 
 /**
@@ -82,8 +76,6 @@ static void wm_check_agents();
  *        the action taken in the database with the agent.
  */
 static void wm_sync_agents();
-
-#endif // LOCAL
 
 static int wm_sync_shared_group(const char *fname);
 static int wm_sync_file(const char *dirname, const char *path);
@@ -113,20 +105,17 @@ void* wm_database_main(wm_database *data) {
     // agents synchronization with the database using the keys. In advance,
     // the agent addition and removal from the database will be held by authd
     // in the master.
-#ifndef LOCAL
+
     // Wait for inventory_sync to subscribe to router before sending deletion messages
     sleep(5);
     wm_sync_agents();
-#endif
 
     // Groups synchronization with the database
     wdb_update_groups(SHAREDCFG_DIR, &wdb_wmdb_sock);
 
     // Legacy agent-group files need to be synchronized with the database
     // and then removed in case an upgrade has just been performed.
-#ifndef LOCAL
     wm_sync_legacy_groups_files();
-#endif
 
 #ifdef INOTIFY_ENABLED
     if (data->real_time) {
@@ -138,15 +127,13 @@ void* wm_database_main(wm_database *data) {
         while (1) {
             path = wm_inotify_pop();
 
-#ifndef LOCAL
             if (!strcmp(path, KEYS_FILE)) {
                 // The syncronization with client.keys only happens in worker nodes
                 if (is_worker) {
                     wm_sync_agents();
                 }
-            } else
-#endif // !LOCAL
-            {
+            }
+            else {
                 if (file = strrchr(path, '/'), file) {
                     *(file++) = '\0';
                     wm_sync_file(path, file);
@@ -176,12 +163,11 @@ void* wm_database_main(wm_database *data) {
             cstart = clock();
             gettime(&spec0);
 
-#ifndef LOCAL
             if (data->sync_agents) {
                 wm_check_agents();
                 wdb_update_groups(SHAREDCFG_DIR, &wdb_wmdb_sock);
             }
-#endif
+
             gettime(&spec1);
             time_sub(&spec1, &spec0);
             mtdebug1(WM_DATABASE_LOGTAG, "Cycle completed: %.3lf ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - cstart) / CLOCKS_PER_SEC * 1000);
@@ -198,10 +184,6 @@ void* wm_database_main(wm_database *data) {
 
     return NULL;
 }
-
-
-
-#ifndef LOCAL
 
 void wm_check_agents() {
     static time_t timestamp = 0;
@@ -496,8 +478,6 @@ int wm_sync_group_file(const char* group_file, const char* group_file_path) {
     return result;
 }
 
-#endif // LOCAL
-
 int wm_sync_shared_group(const char *fname) {
     char path[PATH_MAX];
     DIR *dp = NULL;
@@ -567,10 +547,6 @@ void wm_database_destroy(wm_database *data) {
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
 wmodule* wm_database_read() {
-#ifdef CLIENT
-    // This module won't be available on agents
-    return NULL;
-#else
     wm_database data;
     wmodule *module = NULL;
 
@@ -588,7 +564,6 @@ wmodule* wm_database_read() {
     }
 
     return module;
-#endif
 }
 
 #ifdef INOTIFY_ENABLED
@@ -668,9 +643,6 @@ void wm_inotify_setup(wm_database * data) {
     w_create_thread(wm_inotify_start, NULL);
 
     // First synchronization and add watch for client.keys, Syscheck and Rootcheck directories
-
-#ifndef LOCAL
-
     char keysfile_path[PATH_MAX] = KEYS_FILE;
     char * keysfile_dir = dirname(keysfile_path);
 
@@ -687,8 +659,6 @@ void wm_inotify_setup(wm_database * data) {
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_shared_groups='%d'", wd_shared_groups);
     }
-
-#endif
 }
 
 // Real time inotify reader thread
@@ -731,7 +701,7 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                     mterror(WM_DATABASE_LOGTAG, "Inotify event too large (%u)", event->len);
                     break;
                 }
-#ifndef LOCAL
+
                 if (event->wd == wd_agents) {
                     if (!strcmp(event->name, keysfile)) {
                         dirname = keysfile_dir;
@@ -740,9 +710,7 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                     }
                 } else if (event->wd == wd_shared_groups) {
                     dirname = SHAREDCFG_DIR;
-                } else
-#endif
-                if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
+                } else if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
                     mterror(WM_DATABASE_LOGTAG, "Inotify event queue overflowed.");
                     continue;
                 } else {
@@ -829,5 +797,3 @@ char * wm_inotify_pop() {
 }
 
 #endif // INOTIFY_ENABLED
-
-#endif // !WIN32

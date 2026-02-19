@@ -8,9 +8,6 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-
-#ifndef CLIENT
-
 #ifndef WM_TASK_MANAGER_H
 #define WM_TASK_MANAGER_H
 
@@ -116,5 +113,4 @@ cJSON* wm_task_manager_process_task(const wm_task_manager_task *task, int *error
  * */
 void* wm_task_manager_clean_tasks(void *arg) __attribute__((nonnull));
 
-#endif
 #endif

@@ -25,11 +25,9 @@ int Read_Rootcheck_Config(const char *cfgfile)
         return (OS_INVALID);
     }
 
-#ifdef CLIENT
     /* Read shared config */
     modules |= CAGENT_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &rootcheck, NULL);
-#endif
 
     switch (rootcheck.disabled) {
     case RK_CONF_UNPARSED:

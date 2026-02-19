@@ -573,7 +573,7 @@ void test_initialize_file_diff_data(void **state) {
     assert_string_equal(diff->diff_file, "queue/diff/tmp/diff-file");
 }
 
-#endif // END TEST_AGENT and TEST_SERVER
+#endif // END TEST_AGENT
 
 void test_initialize_file_diff_data_abspath_fail(void **state) {
     diff_data *diff = *state;

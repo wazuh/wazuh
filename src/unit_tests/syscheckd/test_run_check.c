@@ -115,9 +115,8 @@ static int setup_group(void ** state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
 
 #endif // TEST_WINAGENT
-#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
+
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
-#endif
 
     will_return_always(__wrap_os_random, 12345);
 

@@ -32,7 +32,7 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/src/task_manager
   ${SRC_FOLDER}/wazuh_db/include
   ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/error_messages
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/error_messages
   ${CMAKE_CURRENT_SOURCE_DIR}/os_crypto/md5
   ${CMAKE_CURRENT_SOURCE_DIR}/os_crypto/sha1
   ${CMAKE_CURRENT_SOURCE_DIR}/os_crypto/sha256
@@ -148,6 +148,13 @@ if(UNIT_TEST)
        "${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_db/*.c")
   file(GLOB WRAPPERS_WAZUH_WAZUH_MODULES_SRC
        "${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_modules/*.c")
+  if(IS_AGENT)
+    list(
+      REMOVE_ITEM
+      WRAPPERS_WAZUH_WAZUH_MODULES_SRC
+      "${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_modules/wm_task_manager_wrappers.c"
+    )
+  endif()
   file(GLOB WRAPPERS_WAZUH_MONITORD_SRC
        "${SRC_FOLDER}/unit_tests/wrappers/wazuh/monitord/*.c")
   file(GLOB WRAPPERS_WAZUH_OS_AUTH_SRC

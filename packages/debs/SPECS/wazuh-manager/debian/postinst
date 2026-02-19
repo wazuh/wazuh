@@ -169,10 +169,6 @@ case "$1" in
     # More files
     touch ${DIR}/etc/client.keys
 
-    touch ${DIR}/logs/active-responses.log
-    chown ${USER}:${GROUP} ${DIR}/logs/active-responses.log
-    chmod 0660 ${DIR}/logs/active-responses.log
-
     touch ${DIR}/logs/wazuh-manager.log
     chown ${USER}:${GROUP} ${DIR}/logs/wazuh-manager.log
     chmod 0660 ${DIR}/logs/wazuh-manager.log

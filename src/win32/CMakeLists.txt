@@ -20,7 +20,7 @@ add_definitions(-DWIN32=1 -DCLIENT -D_POSIX_C_SOURCE -DPSAPI_VERSION=1)
 include_directories(
   ${SRC_FOLDER}/
   ${SRC_FOLDER}/shared/include/
-  ${SRC_FOLDER}/shared/error_messages/
+  ${SRC_FOLDER}/shared/include/error_messages/
   ${SRC_FOLDER}/shared/os_crypto/md5/
   ${SRC_FOLDER}/shared/os_crypto/sha1/
   ${SRC_FOLDER}/shared/os_crypto/sha256/
