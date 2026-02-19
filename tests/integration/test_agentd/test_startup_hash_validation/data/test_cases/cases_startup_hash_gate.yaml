@@ -1,17 +1,17 @@
-- name: startup hash gate legacy handshake
-  description: startup hash gate unblocks with legacy manager handshake without merged_sum
-  configuration_parameters:
-  metadata:
-    scenario: legacy
-
 - name: startup hash gate hash match
-  description: startup hash gate unblocks when local merged.mg hash matches handshake merged_sum
+  description: modules unblock when local merged.mg hash matches handshake merged_sum
   configuration_parameters:
   metadata:
     scenario: hash_match
 
-- name: startup hash gate hash mismatch update
-  description: startup hash gate blocks on mismatch and unblocks after merged.mg update
+- name: startup hash gate hash mismatch
+  description: modules remain blocked when local merged.mg hash does not match handshake merged_sum
   configuration_parameters:
   metadata:
-    scenario: hash_mismatch_update
+    scenario: hash_mismatch
+
+- name: startup hash gate push after delay
+  description: modules block until simulator pushes merged.mg after configurable delay
+  configuration_parameters:
+  metadata:
+    scenario: push_after_delay
