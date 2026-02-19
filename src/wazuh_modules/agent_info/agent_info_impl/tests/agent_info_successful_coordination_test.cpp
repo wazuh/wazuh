@@ -152,7 +152,6 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, CoordinationWithNoModulesAvailable)
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
 
-
     m_logOutput.clear();
     // Run for only one iteration to avoid timeout
     m_agentInfo->start(1, 86400, []()
@@ -257,7 +256,6 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, CompleteSuccessfulCoordinationFlow)
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
 
-
     m_logOutput.clear();
     commandLog.clear();
 
@@ -361,7 +359,6 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, SuccessfulFlushOperation)
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
 
-
     // Run for only one iteration to avoid timeout
     m_agentInfo->start(1, 86400, []()
     {
@@ -452,7 +449,6 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, SuccessfulResumeOperation)
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
 
-
     // Run for only one iteration to avoid timeout
     m_agentInfo->start(1, 86400, []()
     {
@@ -533,7 +529,6 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, CoordinationCompletionMessage)
     nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
-
 
     m_logOutput.clear();
     // Run for only one iteration to avoid timeout

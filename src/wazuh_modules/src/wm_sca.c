@@ -471,8 +471,6 @@ void * wm_sca_main(wm_sca_t * data) {
         sca_init_ptr();
     }
 
-    // Document limits are owned by agentd.
-    // SCA must not start until agentd can provide them, otherwise we may start with wrong defaults.
     if (sca_set_sync_limit_ptr)
     {
         uint64_t sync_limit = 0;

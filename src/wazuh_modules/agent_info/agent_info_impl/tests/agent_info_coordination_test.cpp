@@ -325,7 +325,6 @@ TEST_F(AgentInfoCoordinationTest, QueryModuleWithNonNullResponse)
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
 
-
     // Run for only one iteration to avoid timeout
     m_agentInfo->start(1, 86400, []()
     {
@@ -588,7 +587,6 @@ TEST_F(AgentInfoCoordinationTest, SuccessfulPauseOperation)
     nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
     EXPECT_CALL(*m_mockSysInfo, os())
     .WillRepeatedly(::testing::Return(osData));
-
 
     m_logOutput.clear();
 
