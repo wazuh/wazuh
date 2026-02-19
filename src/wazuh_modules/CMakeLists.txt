@@ -201,5 +201,13 @@ elseif(NOT UNIT_TEST)
     PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER})
   target_link_libraries(${WAZUH_MODULESD_DAEMON_NAME}
                         PRIVATE wazuh_modulesd_lib)
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
+
+  if(APPLE)
+    set_target_properties(
+      ${WAZUH_MODULESD_DAEMON_NAME} PROPERTIES
+      BUILD_WITH_INSTALL_RPATH TRUE
+      INSTALL_RPATH "@executable_path/../lib")
+  else()
+    string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
+  endif()
 endif()
