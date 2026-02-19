@@ -659,50 +659,50 @@ def test_plain_dict_to_nested_dict():
 
 @pytest.mark.parametrize('new_conf, original_conf, allow_config, should_raise', [
     # Test case where localfile with command log_format is added (should raise when not allowed)
-    ("<ossec_config><localfile><log_format>command</log_format><command>rm -rf /</command></localfile></ossec_config>",
-     "<ossec_config><localfile><log_format>syslog</log_format><location>/var/log/test.log</location></localfile></ossec_config>",
+    ("<wazuh_config><localfile><log_format>command</log_format><command>rm -rf /</command></localfile></wazuh_config>",
+     "<wazuh_config><localfile><log_format>syslog</log_format><location>/var/log/test.log</location></localfile></wazuh_config>",
      {'localfile': {'allow': False, 'exceptions': []},
       'wodle_command': {'allow': True, 'exceptions': []}},
      True),
 
     # Test case where same command exists in both (should not raise)
-    ("<ossec_config><localfile><log_format>command</log_format><command>echo test</command></localfile></ossec_config>",
-     "<ossec_config><localfile><log_format>command</log_format><command>echo test</command></localfile></ossec_config>",
+    ("<wazuh_config><localfile><log_format>command</log_format><command>echo test</command></localfile></wazuh_config>",
+     "<wazuh_config><localfile><log_format>command</log_format><command>echo test</command></localfile></wazuh_config>",
      {'localfile': {'allow': False, 'exceptions': ['echo test']},
       'wodle_command': {'allow': True, 'exceptions': []}},
      False),
 
     # Test case where wodle command is added (should raise when not allowed)
-    ('<ossec_config><wodle name="command"><command>ls -la</command></wodle></ossec_config>',
-     '<ossec_config><wodle name="command"><tag>value</tag></wodle></ossec_config>',
+    ('<wazuh_config><wodle name="command"><command>ls -la</command></wodle></wazuh_config>',
+     '<wazuh_config><wodle name="command"><tag>value</tag></wodle></wazuh_config>',
      {'localfile': {'allow': True, 'exceptions': []},
       'wodle_command': {'allow': False, 'exceptions': []}},
      True),
 
     # Test case where wodle command is in exceptions (should not raise)
-    ('<ossec_config><wodle name="command"><command>test</command></wodle></ossec_config>',
-     '<ossec_config><wodle name="command"><command>test</command></wodle></ossec_config>',
+    ('<wazuh_config><wodle name="command"><command>test</command></wodle></wazuh_config>',
+     '<wazuh_config><wodle name="command"><command>test</command></wodle></wazuh_config>',
      {'localfile': {'allow': True, 'exceptions': []},
       'wodle_command': {'allow': False, 'exceptions': ['test']}},
      False),
 
     # Test case with no remote commands (should not raise)
-    ("<ossec_config><other><value>test</value></other></ossec_config>",
-     "<ossec_config><other><value>test</value></other></ossec_config>",
+    ("<wazuh_config><other><value>test</value></other></wazuh_config>",
+     "<wazuh_config><other><value>test</value></other></wazuh_config>",
      {'localfile': {'allow': False, 'exceptions': []},
       'wodle_command': {'allow': False, 'exceptions': []}},
      False),
 
     # Test case where localfile with full_command log_format is added (should raise when not allowed)
-    ("<ossec_config><localfile><log_format>full_command</log_format><command>cat /etc/passwd</command></localfile></ossec_config>",
-     "<ossec_config><localfile><log_format>syslog</log_format><location>/var/log/test.log</location></localfile></ossec_config>",
+    ("<wazuh_config><localfile><log_format>full_command</log_format><command>cat /etc/passwd</command></localfile></wazuh_config>",
+     "<wazuh_config><localfile><log_format>syslog</log_format><location>/var/log/test.log</location></localfile></wazuh_config>",
      {'localfile': {'allow': False, 'exceptions': []},
       'wodle_command': {'allow': True, 'exceptions': []}},
      True),
 
     # Test case where localfile without command log_format (should not raise)
-    ("<ossec_config><localfile><log_format>syslog</log_format><location>/var/log/test.log</location></localfile></ossec_config>",
-     "<ossec_config><localfile><log_format>apache</log_format><location>/var/log/apache.log</location></localfile></ossec_config>",
+    ("<wazuh_config><localfile><log_format>syslog</log_format><location>/var/log/test.log</location></localfile></wazuh_config>",
+     "<wazuh_config><localfile><log_format>apache</log_format><location>/var/log/apache.log</location></localfile></wazuh_config>",
      {'localfile': {'allow': False, 'exceptions': []},
       'wodle_command': {'allow': False, 'exceptions': []}},
      False),
@@ -2084,44 +2084,44 @@ def test_get_localtime(mock_gettz, wazuh_localtime, system_localtime):
     [
         # Same limits + adding a new eps option. Should be considered changed.
         (
-            "<ossec_config><global><limits><eps><maximum>300</maximum><timeframe>5</timeframe></eps></limits></global>"
-            "</ossec_config>",
-            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            "<wazuh_config><global><limits><eps><maximum>300</maximum><timeframe>5</timeframe></eps></limits></global>"
+            "</wazuh_config>",
+            "<wazuh_config><global><limits><eps><maximum>300</maximum></eps></limits></global></wazuh_config>",
             False,
         ),
         # Different limits + adding a new eps option + unrelated configuration. Should be considered changed.
         (
-            "<ossec_config><global><logall>no</logall></global>"
+            "<wazuh_config><global><logall>no</logall></global>"
             "<global><limits><eps><test>yes</test></eps></limits></global>"
-            "</ossec_config>",
-            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            "</wazuh_config>",
+            "<wazuh_config><global><limits><eps><maximum>300</maximum></eps></limits></global></wazuh_config>",
             False,
         ),
         #  Same limits, only adding misc unrelated configurations. Should be considered unchanged.
         (
-            "<ossec_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
-            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            "<wazuh_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global></wazuh_config>",
+            "<wazuh_config><global><limits><eps><maximum>300</maximum></eps></limits></global></wazuh_config>",
             True,
         ),
         # Same limits (last config applies) but new section added. Should be considered changed.
         (
-            "<ossec_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>"
-            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
-            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            "<wazuh_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global></wazuh_config>"
+            "<wazuh_config><global><limits><eps><maximum>300</maximum></eps></limits></global></wazuh_config>",
+            "<wazuh_config><global><limits><eps><maximum>300</maximum></eps></limits></global></wazuh_config>",
             False,
         ),
         # Same limits but different order. Should be considered changed due to XML precedence.
         (
-            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>"
-            "<ossec_config><global><limits><eps><maximum>100</maximum></eps></limits></global></ossec_config>",
-            "<ossec_config><global><limits><eps><maximum>100</maximum></eps></limits></global></ossec_config>"
-            "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+            "<wazuh_config><global><limits><eps><maximum>300</maximum></eps></limits></global></wazuh_config>"
+            "<wazuh_config><global><limits><eps><maximum>100</maximum></eps></limits></global></wazuh_config>",
+            "<wazuh_config><global><limits><eps><maximum>100</maximum></eps></limits></global></wazuh_config>"
+            "<wazuh_config><global><limits><eps><maximum>300</maximum></eps></limits></global></wazuh_config>",
             False,
         ),
         # Same limits options and values but internally shuffled. Should be considered unchanged.
         (
-            "<ossec_config><global><limits><eps><maximum>300</maximum><timeframe>5</timeframe></eps></limits></global></ossec_config>",
-            "<ossec_config><global><limits><eps><timeframe>5</timeframe><maximum>300</maximum></eps></limits></global></ossec_config>",
+            "<wazuh_config><global><limits><eps><maximum>300</maximum><timeframe>5</timeframe></eps></limits></global></wazuh_config>",
+            "<wazuh_config><global><limits><eps><timeframe>5</timeframe><maximum>300</maximum></eps></limits></global></wazuh_config>",
             True,
         ),
     ],
@@ -2160,23 +2160,23 @@ def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_
 
 
 @pytest.mark.parametrize("new_conf, original_conf, agents_conf, should_raise", [
-    ("<ossec_config><auth></auth></ossec_config>",
-     "<ossec_config><auth><allow_higher_versions>yes</allow_higher_versions></auth></ossec_config>",
+    ("<wazuh_config><auth></auth></wazuh_config>",
+     "<wazuh_config><auth><allow_higher_versions>yes</allow_higher_versions></auth></wazuh_config>",
      {'allow_higher_versions': {'allow': False}},
      True),
 
-    ("<ossec_config><remote></remote></ossec_config>",
-     "<ossec_config><remote><allow_higher_versions>yes</allow_higher_versions></remote></ossec_config>",
+    ("<wazuh_config><remote></remote></wazuh_config>",
+     "<wazuh_config><remote><allow_higher_versions>yes</allow_higher_versions></remote></wazuh_config>",
      {'allow_higher_versions': {'allow': False}},
      True),
 
-    ("<ossec_config><auth><allow_higher_versions>yes</allow_higher_versions></auth></ossec_config>",
-     "<ossec_config><auth><allow_higher_versions>yes</allow_higher_versions></auth></ossec_config>",
+    ("<wazuh_config><auth><allow_higher_versions>yes</allow_higher_versions></auth></wazuh_config>",
+     "<wazuh_config><auth><allow_higher_versions>yes</allow_higher_versions></auth></wazuh_config>",
      {'allow_higher_versions': {'allow': True}},
      False),
 
-    ("<ossec_config><remote><allow_higher_versions>yes</allow_higher_versions></remote></ossec_config>",
-     "<ossec_config><remote><allow_higher_versions>no</allow_higher_versions></remote></ossec_config>",
+    ("<wazuh_config><remote><allow_higher_versions>yes</allow_higher_versions></remote></wazuh_config>",
+     "<wazuh_config><remote><allow_higher_versions>no</allow_higher_versions></remote></wazuh_config>",
      {'allow_higher_versions': {'allow': True}},
      False),
 ])
@@ -2198,42 +2198,42 @@ def test_check_agents_allow_higher_versions(new_conf, original_conf, agents_conf
 
 @pytest.mark.parametrize("new_conf, original_conf, indexer_changed", [
     (
-        "<ossec_config><indexer></indexer></ossec_config>",
-        "<ossec_config><indexer></indexer></ossec_config>",
+        "<wazuh_config><indexer></indexer></wazuh_config>",
+        "<wazuh_config><indexer></indexer></wazuh_config>",
         False,
     ),
     (
-        "<ossec_config><indexer><hosts><host>https://0.0.0.0:9200/</host></hosts></indexer></ossec_config>",
-        "<ossec_config><indexer><hosts><host>https://127.0.0.1:9200/</host></hosts></indexer></ossec_config>",
+        "<wazuh_config><indexer><hosts><host>https://0.0.0.0:9200/</host></hosts></indexer></wazuh_config>",
+        "<wazuh_config><indexer><hosts><host>https://127.0.0.1:9200/</host></hosts></indexer></wazuh_config>",
         True,
     ),
     (
-        "<ossec_config><indexer><ssl><key>/var/wazuh-manager/etc/certs/manager-key.pem</key></ssl>" \
-        "</indexer></ossec_config>",
-        "<ossec_config><indexer></indexer></ossec_config>",
+        "<wazuh_config><indexer><ssl><key>/var/wazuh-manager/etc/certs/server-key.pem</key></ssl>" \
+        "</indexer></wazuh_config>",
+        "<wazuh_config><indexer></indexer></wazuh_config>",
         True,
     ),
     (
-        "<ossec_config><indexer><ssl><key>/var/wazuh-manager/etc/certs/manager-key.pem</key></ssl>" \
-        "</indexer></ossec_config>",
-        "<ossec_config><indexer><ssl><key>manager-key.pem</key></ssl></indexer></ossec_config>",
+        "<wazuh_config><indexer><ssl><key>/var/wazuh-manager/etc/certs/server-key.pem</key></ssl>" \
+        "</indexer></wazuh_config>",
+        "<wazuh_config><indexer><ssl><key>server-key.pem</key></ssl></indexer></wazuh_config>",
         True,
     ),
     (
-        "<ossec_config><auth><disabled>no</disabled></auth></ossec_config>",
-        "<ossec_config><auth><disabled>yes</disabled></auth></ossec_config>",
+        "<wazuh_config><auth><disabled>no</disabled></auth></wazuh_config>",
+        "<wazuh_config><auth><disabled>yes</disabled></auth></wazuh_config>",
         False,
     ),
     (
-        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>"
-        "<ossec_config><integration><name>custom-test-ampersand</name><hook_url>https://localhost?querystring1=1&querystring2=2</hook_url><alert_format>json</alert_format></integration></ossec_config>",
-        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
+        "<wazuh_config><indexer><enabled>no</enabled></indexer></wazuh_config>"
+        "<wazuh_config><integration><name>custom-test-ampersand</name><hook_url>https://localhost?querystring1=1&querystring2=2</hook_url><alert_format>json</alert_format></integration></wazuh_config>",
+        "<wazuh_config><indexer><enabled>no</enabled></indexer></wazuh_config>",
         False,
     ),
     (
-        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
-        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>"
-        "<ossec_config><integration><name>custom-test-ampersand</name><hook_url>https://localhost?querystring1=1&querystring2=2</hook_url><alert_format>json</alert_format></integration></ossec_config>",
+        "<wazuh_config><indexer><enabled>no</enabled></indexer></wazuh_config>",
+        "<wazuh_config><indexer><enabled>no</enabled></indexer></wazuh_config>"
+        "<wazuh_config><integration><name>custom-test-ampersand</name><hook_url>https://localhost?querystring1=1&querystring2=2</hook_url><alert_format>json</alert_format></integration></wazuh_config>",
         False,
     )
 ])

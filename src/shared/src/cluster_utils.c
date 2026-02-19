@@ -15,8 +15,8 @@
 
 int w_is_worker(void) {
     OS_XML xml;
-    const char * xmlf[] = {"ossec_config", "cluster", NULL};
-    const char * xmlf2[] = {"ossec_config", "cluster", "node_type", NULL};
+    const char * xmlf[] = {OSSECCONFIG, "cluster", NULL};
+    const char * xmlf2[] = {OSSECCONFIG, "cluster", "node_type", NULL};
     const char *cfgfile = OSSECCONF;
     int is_worker = OS_INVALID;
 
@@ -49,8 +49,8 @@ int w_is_worker(void) {
 
 int w_is_single_node(int* is_worker) {
     OS_XML xml;
-    const char * xmlf[] = {"ossec_config", "cluster", NULL};
-    const char * xmlf2[] = {"ossec_config", "cluster", "node_type", NULL};
+    const char * xmlf[] = {OSSECCONFIG, "cluster", NULL};
+    const char * xmlf2[] = {OSSECCONFIG, "cluster", "node_type", NULL};
     const char *cfgfile = OSSECCONF;
     int _is_worker = OS_INVALID;
     int is_single_node = OS_INVALID;
@@ -89,7 +89,7 @@ int w_is_single_node(int* is_worker) {
 
 char *get_master_node(void) {
     OS_XML xml;
-    const char * xmlf[] = {"ossec_config", "cluster", "nodes", "node", NULL};
+    const char * xmlf[] = {OSSECCONFIG, "cluster", "nodes", "node", NULL};
     const char *cfgfile = OSSECCONF;
     char *master_node = NULL;
 
@@ -110,7 +110,7 @@ char *get_master_node(void) {
 
 char *get_node_name(void) {
     OS_XML xml;
-    const char * xmlf[] = {"ossec_config", "cluster", "node_name", NULL};
+    const char * xmlf[] = {OSSECCONFIG, "cluster", "node_name", NULL};
     const char *cfgfile = OSSECCONF;
     char *node_name = NULL;
 
@@ -131,7 +131,7 @@ char *get_node_name(void) {
 
 char *get_cluster_name(void) {
     OS_XML xml;
-    const char * xmlf[] = {"ossec_config", "cluster", "name", NULL};
+    const char * xmlf[] = {OSSECCONFIG, "cluster", "name", NULL};
     const char *cfgfile = OSSECCONF;
     char *cluster_name = NULL;
 

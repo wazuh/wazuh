@@ -238,17 +238,17 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
     """
     MAX_RETRIES = 3
     try:
-        ossec_config = get_ossec_conf(section="indexer")
-        if not ossec_config:
+        wazuh_config = get_ossec_conf(section="indexer")
+        if not wazuh_config:
             raise WazuhException(
-                code=1002, message="Missing indexer configuration in OSSEC config"
+                code=1002, message="Missing indexer configuration in Wazuh config"
             )
     except Exception as e:
         raise WazuhException(
             code=1003, message=f"Failed to parse OSSEC configuration: {e}"
         )
 
-    indexer_section = ossec_config.get("indexer", {})
+    indexer_section = wazuh_config.get("indexer", {})
     if not indexer_section:
         raise WazuhException(
             code=1004, message="Empty indexer section in configuration"

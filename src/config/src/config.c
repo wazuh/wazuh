@@ -277,7 +277,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 
     /** XML definitions **/
     /* Global */
-    const char *xml_start_ossec = "ossec_config";
+    const char *xml_start_ossec = OSSECCONFIG;
     const char *xml_start_agent = "agent_config";
 
     /* Attributes of the <agent_config> tag */

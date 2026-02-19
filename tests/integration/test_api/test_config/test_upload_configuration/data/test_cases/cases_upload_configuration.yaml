@@ -3,12 +3,12 @@
   configuration_parameters:
   metadata:
     body: >
-      <ossec_config>
+      <wazuh_config>
         <remote>
           <connection>secure</connection>
           <port>1514</port>
         </remote>
-      </ossec_config>
+      </wazuh_config>
     expected_code: 200
 
 - name: UPLOAD_TWO_BLOCKS_CONFIG
@@ -16,17 +16,17 @@
   configuration_parameters:
   metadata:
     body: >
-      <ossec_config>
+      <wazuh_config>
         <remote>
           <connection>secure</connection>
           <port>1514</port>
         </remote>
-      </ossec_config>
+      </wazuh_config>
 
-      <ossec_config>
+      <wazuh_config>
         <remote>
           <connection>syslog</connection>
           <port>514</port>
         </remote>
-      </ossec_config>
+      </wazuh_config>
     expected_code: 200

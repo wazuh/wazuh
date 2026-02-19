@@ -279,7 +279,7 @@ void w_logging_init(){
 
 void os_logging_config(){
   OS_XML xml;
-  const char * xmlf[] = {"ossec_config", "logging", "log_format", NULL};
+  const char * xmlf[] = {OSSECCONFIG, "logging", "log_format", NULL};
   char * logformat;
   char ** parts = NULL;
   int i;
