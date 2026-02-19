@@ -1,5 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <functional>
+#include <string>
+#include <stdexcept>
+
 #include <api/adapter/baseHandler_test.hpp>
 #include <api/tester/handlers.hpp>
 #include <base/json.hpp>
@@ -22,6 +26,20 @@ namespace
     ::router::test::EntryPost post(std::move(name), cm::store::NamespaceId {std::move(nsId)}, 0);
     return ::router::test::Entry {post};
 }
+
+httplib::Response makeOkResponse()
+{
+    eEngine::GenericStatus_Response protoRes;
+    protoRes.set_status(eEngine::ReturnStatus::OK);
+    return userResponse<eEngine::GenericStatus_Response>(protoRes);
+}
+
+struct LogtestDeleteCase
+{
+    std::string name;
+    std::function<void(MockTesterAPI&, cm::store::MockICMstore&)> mocker;
+    std::function<httplib::Response()> expectedResponse;
+};
 } // namespace
 
 TEST_P(TesterHandlerTest, Handler)
@@ -292,7 +310,11 @@ INSTANTIATE_TEST_SUITE_P(
 
 // TODO: add separate tests for routeGet tableGet and runPost (need more than one mock)
 
-TEST(LogtestDeleteTest, SessionMissingReturnsOk)
+class LogtestDeleteTest : public ::testing::TestWithParam<LogtestDeleteCase>
+{
+};
+
+TEST_P(LogtestDeleteTest, Handler)
 {
     auto tester = std::make_shared<MockTesterAPI>();
     auto store = std::make_shared<cm::store::MockICMstore>();
@@ -300,121 +322,89 @@ TEST(LogtestDeleteTest, SessionMissingReturnsOk)
     eEngine::tester::LogtestDelete_Request protoReq;
     auto req = createRequest<eEngine::tester::LogtestDelete_Request>(protoReq);
 
-    EXPECT_CALL(*tester, getTestEntry("testing")).WillOnce(::testing::Return(base::Error {"not found"}));
-    EXPECT_CALL(*store, existsNamespace(::testing::_)).Times(0);
-    EXPECT_CALL(*store, deleteNamespace(::testing::_)).Times(0);
-    EXPECT_CALL(*tester, deleteTestEntry(::testing::_)).Times(0);
+    const auto& testCase = GetParam();
+    testCase.mocker(*tester, *store);
 
     auto handler = logtestDelete(tester, store);
     httplib::Response res;
     handler(req, res);
 
-    eEngine::GenericStatus_Response protoRes;
-    protoRes.set_status(eEngine::ReturnStatus::OK);
-    auto expected = userResponse<eEngine::GenericStatus_Response>(protoRes);
-
+    auto expected = testCase.expectedResponse();
     EXPECT_EQ(res.status, expected.status);
     EXPECT_EQ(res.body, expected.body);
 }
 
-TEST(LogtestDeleteTest, NamespaceExistsDeletesNamespaceAndSession)
-{
-    auto tester = std::make_shared<MockTesterAPI>();
-    auto store = std::make_shared<cm::store::MockICMstore>();
-
-    eEngine::tester::LogtestDelete_Request protoReq;
-    auto req = createRequest<eEngine::tester::LogtestDelete_Request>(protoReq);
-
-    const auto entry = makeEntry("testing", "policy_validate_x");
-    EXPECT_CALL(*tester, getTestEntry("testing")).WillOnce(::testing::Return(entry));
-    EXPECT_CALL(*store, existsNamespace(::testing::_)).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*store, deleteNamespace(::testing::_)).WillOnce(::testing::Return());
-    EXPECT_CALL(*tester, deleteTestEntry("testing")).WillOnce(::testing::Return(base::noError()));
-
-    auto handler = logtestDelete(tester, store);
-    httplib::Response res;
-    handler(req, res);
-
-    eEngine::GenericStatus_Response protoRes;
-    protoRes.set_status(eEngine::ReturnStatus::OK);
-    auto expected = userResponse<eEngine::GenericStatus_Response>(protoRes);
-
-    EXPECT_EQ(res.status, expected.status);
-    EXPECT_EQ(res.body, expected.body);
-}
-
-TEST(LogtestDeleteTest, NamespaceMissingDeletesSessionOnly)
-{
-    auto tester = std::make_shared<MockTesterAPI>();
-    auto store = std::make_shared<cm::store::MockICMstore>();
-
-    eEngine::tester::LogtestDelete_Request protoReq;
-    auto req = createRequest<eEngine::tester::LogtestDelete_Request>(protoReq);
-
-    const auto entry = makeEntry("testing", "policy_validate_x");
-    EXPECT_CALL(*tester, getTestEntry("testing")).WillOnce(::testing::Return(entry));
-    EXPECT_CALL(*store, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
-    EXPECT_CALL(*store, deleteNamespace(::testing::_)).Times(0);
-    EXPECT_CALL(*tester, deleteTestEntry("testing")).WillOnce(::testing::Return(base::noError()));
-
-    auto handler = logtestDelete(tester, store);
-    httplib::Response res;
-    handler(req, res);
-
-    eEngine::GenericStatus_Response protoRes;
-    protoRes.set_status(eEngine::ReturnStatus::OK);
-    auto expected = userResponse<eEngine::GenericStatus_Response>(protoRes);
-
-    EXPECT_EQ(res.status, expected.status);
-    EXPECT_EQ(res.body, expected.body);
-}
-
-TEST(LogtestDeleteTest, NamespaceDeleteFailsReturnsError)
-{
-    auto tester = std::make_shared<MockTesterAPI>();
-    auto store = std::make_shared<cm::store::MockICMstore>();
-
-    eEngine::tester::LogtestDelete_Request protoReq;
-    auto req = createRequest<eEngine::tester::LogtestDelete_Request>(protoReq);
-
-    const auto entry = makeEntry("testing", "policy_validate_x");
-    EXPECT_CALL(*tester, getTestEntry("testing")).WillOnce(::testing::Return(entry));
-    EXPECT_CALL(*store, existsNamespace(::testing::_)).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*store, deleteNamespace(::testing::_)).WillOnce(::testing::Throw(std::runtime_error {"boom"}));
-    EXPECT_CALL(*tester, deleteTestEntry(::testing::_)).Times(0);
-
-    auto handler = logtestDelete(tester, store);
-    httplib::Response res;
-    handler(req, res);
-
-    auto expected = userErrorResponse<eEngine::GenericStatus_Response>(
-        "Cleanup: failed deleting namespace 'policy_validate_x': boom");
-
-    EXPECT_EQ(res.status, expected.status);
-    EXPECT_EQ(res.body, expected.body);
-}
-
-TEST(LogtestDeleteTest, SessionDeleteFailsReturnsError)
-{
-    auto tester = std::make_shared<MockTesterAPI>();
-    auto store = std::make_shared<cm::store::MockICMstore>();
-
-    eEngine::tester::LogtestDelete_Request protoReq;
-    auto req = createRequest<eEngine::tester::LogtestDelete_Request>(protoReq);
-
-    const auto entry = makeEntry("testing", "policy_validate_x");
-    EXPECT_CALL(*tester, getTestEntry("testing")).WillOnce(::testing::Return(entry));
-    EXPECT_CALL(*store, existsNamespace(::testing::_)).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*store, deleteNamespace(::testing::_)).WillOnce(::testing::Return());
-    EXPECT_CALL(*tester, deleteTestEntry("testing")).WillOnce(::testing::Return(base::Error {"session locked"}));
-
-    auto handler = logtestDelete(tester, store);
-    httplib::Response res;
-    handler(req, res);
-
-    auto expected = userErrorResponse<eEngine::GenericStatus_Response>(
-        "Cleanup: failed deleting session 'testing': session locked");
-
-    EXPECT_EQ(res.status, expected.status);
-    EXPECT_EQ(res.body, expected.body);
-}
+INSTANTIATE_TEST_SUITE_P(
+    Api,
+    LogtestDeleteTest,
+    ::testing::Values(
+        LogtestDeleteCase {
+            "SessionMissingReturnsOk",
+            [](auto& tester, auto& store)
+            {
+                EXPECT_CALL(tester, getTestEntry("testing")).WillOnce(::testing::Return(base::Error {"not found"}));
+                EXPECT_CALL(store, existsNamespace(::testing::_)).Times(0);
+                EXPECT_CALL(store, deleteNamespace(::testing::_)).Times(0);
+                EXPECT_CALL(tester, deleteTestEntry(::testing::_)).Times(0);
+            },
+            []() { return makeOkResponse(); },
+        },
+        LogtestDeleteCase {
+            "NamespaceExistsDeletesNamespaceAndSession",
+            [](auto& tester, auto& store)
+            {
+                const auto entry = makeEntry("testing", "policy_validate_x");
+                EXPECT_CALL(tester, getTestEntry("testing")).WillOnce(::testing::Return(entry));
+                EXPECT_CALL(store, existsNamespace(::testing::_)).WillOnce(::testing::Return(true));
+                EXPECT_CALL(store, deleteNamespace(::testing::_)).WillOnce(::testing::Return());
+                EXPECT_CALL(tester, deleteTestEntry("testing")).WillOnce(::testing::Return(base::noError()));
+            },
+            []() { return makeOkResponse(); },
+        },
+        LogtestDeleteCase {
+            "NamespaceMissingDeletesSessionOnly",
+            [](auto& tester, auto& store)
+            {
+                const auto entry = makeEntry("testing", "policy_validate_x");
+                EXPECT_CALL(tester, getTestEntry("testing")).WillOnce(::testing::Return(entry));
+                EXPECT_CALL(store, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
+                EXPECT_CALL(store, deleteNamespace(::testing::_)).Times(0);
+                EXPECT_CALL(tester, deleteTestEntry("testing")).WillOnce(::testing::Return(base::noError()));
+            },
+            []() { return makeOkResponse(); },
+        },
+        LogtestDeleteCase {
+            "NamespaceDeleteFailsReturnsError",
+            [](auto& tester, auto& store)
+            {
+                const auto entry = makeEntry("testing", "policy_validate_x");
+                EXPECT_CALL(tester, getTestEntry("testing")).WillOnce(::testing::Return(entry));
+                EXPECT_CALL(store, existsNamespace(::testing::_)).WillOnce(::testing::Return(true));
+                EXPECT_CALL(store, deleteNamespace(::testing::_))
+                    .WillOnce(::testing::Throw(std::runtime_error {"boom"}));
+                EXPECT_CALL(tester, deleteTestEntry(::testing::_)).Times(0);
+            },
+            []()
+            {
+                return userErrorResponse<eEngine::GenericStatus_Response>(
+                    "Cleanup: failed deleting namespace 'policy_validate_x': boom");
+            },
+        },
+        LogtestDeleteCase {
+            "SessionDeleteFailsReturnsError",
+            [](auto& tester, auto& store)
+            {
+                const auto entry = makeEntry("testing", "policy_validate_x");
+                EXPECT_CALL(tester, getTestEntry("testing")).WillOnce(::testing::Return(entry));
+                EXPECT_CALL(store, existsNamespace(::testing::_)).WillOnce(::testing::Return(true));
+                EXPECT_CALL(store, deleteNamespace(::testing::_)).WillOnce(::testing::Return());
+                EXPECT_CALL(tester, deleteTestEntry("testing"))
+                    .WillOnce(::testing::Return(base::Error {"session locked"}));
+            },
+            []()
+            {
+                return userErrorResponse<eEngine::GenericStatus_Response>(
+                    "Cleanup: failed deleting session 'testing': session locked");
+            },
+        }),
+    [](const testing::TestParamInfo<LogtestDeleteCase>& info) { return info.param.name; });
