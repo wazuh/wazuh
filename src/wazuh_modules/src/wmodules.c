@@ -41,7 +41,7 @@ static const void *default_modules[] = {
 #else
     wm_agent_info_read,
 #endif
-    
+
     NULL
 };
 

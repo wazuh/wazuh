@@ -44,7 +44,7 @@ file(GLOB CONFIG_CORE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
 
 # Remove agent-only config modules from server builds
 if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
-  list(REMOVE_ITEM CONFIG_CORE_SRC 
+  list(REMOVE_ITEM CONFIG_CORE_SRC
     "${CMAKE_CURRENT_SOURCE_DIR}/src/wmodules-sca.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/wmodules-syscollector.c")
 endif()

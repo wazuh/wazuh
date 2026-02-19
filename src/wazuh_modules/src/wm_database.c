@@ -107,7 +107,7 @@ void* wm_database_main(wm_database *data) {
 
     // Check if it is a worker node
     is_worker = w_is_worker();
-    
+
 
     // During the startup, both workers and master nodes should perform the
     // agents synchronization with the database using the keys. In advance,
