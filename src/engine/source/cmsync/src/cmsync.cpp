@@ -211,15 +211,14 @@ void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::Na
     }
 }
 
-std::string CMSync::getPolicyHashFromRemote(std::string_view space)
+std::pair<std::string, bool> CMSync::getPolicyHashAndEnabledFromRemote(std::string_view space)
 {
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "Indexer Connector");
 
-    return base::utils::executeWithRetry([&indexerPtr, space]() { return indexerPtr->getPolicyHash(space); },
-                                         fmt::format("getPolicyHashFromRemote('{}')", space),
-                                         "CMSync",
-                                         m_attemps,
-                                         m_waitSeconds);
+    return base::utils::executeWithRetry([&indexerPtr, space]() { return indexerPtr->getPolicyHashAndEnabled(space); },
+                            fmt::format("getPolicyHashAndEnabledFromRemote('{}')", space),
+                            m_attemps,
+                            m_waitSeconds);
 }
 
 cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view originSpace)
@@ -427,8 +426,8 @@ void CMSync::synchronize()
                 continue;
             }
 
-            // Get remote policy hash
-            const auto remoteHash = getPolicyHashFromRemote(nsState.getOriginSpace());
+            // Get remote policy hash and enabled status
+            const auto [remoteHash, remoteEnabled] = getPolicyHashAndEnabledFromRemote(nsState.getOriginSpace());
 
             // Check if has a valid route of cm_sync in the router
             bool validRoute = [&]() -> bool
