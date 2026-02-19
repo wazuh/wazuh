@@ -326,6 +326,18 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 #endif
 
+#ifndef OSSECCONFIG
+#ifndef WIN32
+#ifdef CLIENT
+#define OSSECCONFIG       "ossec_config"
+#else
+#define OSSECCONFIG       "wazuh_config"
+#endif
+#else
+#define OSSECCONFIG       "ossec_config"
+#endif
+#endif
+
 #define SHAREDCFG_FILE      SHAREDCFG_DIR "/merged.mg"
 #define SHAREDCFG_FILENAME  "merged.mg"
 

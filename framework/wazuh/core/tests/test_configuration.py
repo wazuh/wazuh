@@ -509,7 +509,7 @@ def test_write_ossec_conf_exceptions():
         [{configuration.GLOBAL_KEY: {configuration.UPDATE_CHECK_OSSEC_FIELD: 'no'}}, False],
         [{configuration.GLOBAL_KEY: {}}, True],
         [{}, True],
-        [{'ossec_config': {}}, True]
+        [{'wazuh_config': {}}, True]
     )
 )
 @patch('wazuh.core.configuration.get_ossec_conf')
@@ -547,7 +547,7 @@ def test_update_check_is_enabled_exceptions(error_id, value):
         [{configuration.GLOBAL_KEY: {configuration.CTI_URL_FIELD: 'https://test-cti.com'}}, 'https://test-cti.com'],
         [{configuration.GLOBAL_KEY: {}}, configuration.DEFAULT_CTI_URL],
         [{}, configuration.DEFAULT_CTI_URL],
-        [{'ossec_config': {}}, configuration.DEFAULT_CTI_URL]
+        [{'wazuh_config': {}}, configuration.DEFAULT_CTI_URL]
     )
 )
 @patch('wazuh.core.configuration.get_ossec_conf')

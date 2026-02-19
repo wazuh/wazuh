@@ -928,8 +928,8 @@ def check_remote_commands(new_conf: Element, original_conf: Element):
 
     ALLOW_KEY = 'allow'
     EXCEPTIONS_KEY = 'exceptions'
-    LOCALFILE_HIERACHY = ['ossec_config', 'localfile']
-    WODLE_HIERACHY = ['ossec_config', 'wodle']
+    LOCALFILE_HIERACHY = ['wazuh_config', 'localfile']
+    WODLE_HIERACHY = ['wazuh_config', 'wodle']
     LOCALFILE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['localfile']
     WODLE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['wodle_command']
 
@@ -955,7 +955,7 @@ def xml_to_dict(root, section_path: list):
     Parameters
     ----------
     root : Element
-        Root element containing one or more ossec_config nodes.
+        Root element containing one or more wazuh_config nodes.
     section_path : list
         List of strings representing the path to the desired section.
 
@@ -1042,7 +1042,7 @@ def check_wazuh_limits_unchanged(new_conf, original_conf):
     WazuhError(1127)
         Raised if one of the protected limits is modified in the configuration to upload.
     """
-    CONFIG_LIMITS_HIERACHY = ['ossec_config', 'global', 'limits']
+    CONFIG_LIMITS_HIERACHY = ['wazuh_config', 'global', 'limits']
     limits_configuration = configuration.api_conf['upload_configuration']['limits']
     for disabled_limit in [conf for conf, allowed in limits_configuration.items() if not allowed['allow']]:
         new_limits = xml_to_dict(new_conf, CONFIG_LIMITS_HIERACHY + [disabled_limit])
@@ -1068,8 +1068,8 @@ def check_agents_allow_higher_versions(new_conf: Element, original_conf: Element
         Raised if the agents allow_higher_versions setting is modified in the configuration to upload.
     """
 
-    AUTH_HIERACHY = ['ossec_config', 'auth', 'allow_higher_versions']
-    REMOTE_HIERACHY = ['ossec_config', 'remote', 'allow_higher_versions']
+    AUTH_HIERACHY = ['wazuh_config', 'auth', 'allow_higher_versions']
+    REMOTE_HIERACHY = ['wazuh_config', 'remote', 'allow_higher_versions']
     upload_configuration = configuration.api_conf['upload_configuration']
 
     if not upload_configuration['agents']['allow_higher_versions']['allow']:
@@ -1100,7 +1100,7 @@ def check_indexer(new_conf, original_conf):
         Raised if the indexer section is modified in the configuration to upload.
     """
 
-    CONFIG_INDEXER_HIERACHY = ['ossec_config', 'indexer']
+    CONFIG_INDEXER_HIERACHY = ['wazuh_config', 'indexer']
     upload_configuration = configuration.api_conf['upload_configuration']
 
     if not upload_configuration['indexer']['allow']:

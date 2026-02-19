@@ -2,12 +2,12 @@
 
 
 
-## Manager 'ossec.conf' file
+## Manager 'wazuh-manager.conf' file
 
 
     header-comments.template
 
-    <ossec_config>
+    <wazuh_config>
         global.template
 
         logging.template
@@ -35,7 +35,7 @@
         localfile-extra.template
 
         rules.template
-    </ossec_config>
+    </wazuh_config>
 
 ## Agent 'ossec.conf' file
 
