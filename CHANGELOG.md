@@ -3,7 +3,21 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.4]
 
-## [v4.14.3]
+### RESTful API
+
+#### Fixed
+
+- Fixed timestamps in the `/agents/upgrade_result` endpoint to return accurate UTC time. ([#34176](https://github.com/wazuh/wazuh/pull/34176))
+- Improved cluster file synchronization path handling by adding safe path joins. ([#34464](https://github.com/wazuh/wazuh/pull/34464))
+
+### Other
+
+#### Changed
+
+- Updated the `azure-core` dependency to 1.38.0 and the `Werkzeug` dependency to 3.1.5. ([#34154](https://github.com/wazuh/wazuh/pull/34154))
+- Updated the `protobuf` dependency to 5.29.6 and the `python-multipart` dependency to 0.0.22. ([#34403](https://github.com/wazuh/wazuh/pull/34403))
+
+## [v4.14.3] - 2025-02-11
 
 ### Manager
 
@@ -64,7 +78,7 @@ All notable changes to this project will be documented in this file.
 - Updated the `werkzeug` dependency to 3.1.4. ([#33569](https://github.com/wazuh/wazuh/pull/33569))
 - Updated the `urllib3` dependency to 2.6.3. ([#33927](https://github.com/wazuh/wazuh/pull/33927))
 
-## [v4.14.2]
+## [v4.14.2] - 2025-01-15
 
 ### Manager
 
