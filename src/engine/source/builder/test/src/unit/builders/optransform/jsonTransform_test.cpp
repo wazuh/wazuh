@@ -640,6 +640,30 @@ INSTANTIATE_TEST_SUITE_P(
                    opBuilderHelperSanitizeFields,
                    "target.a",
                    {},
-                   SUCCESS(makeEvent(R"({"target":{"a":{"x_y":1},"b":{"Z W":2}}})")))),
+                   SUCCESS(makeEvent(R"({"target":{"a":{"x_y":1},"b":{"Z W":2}}})"))),
+        /*** Discard Events ***/
+        // Test with index_discarded_events = true (should clean all fields and set discard flag)
+        TransformT(R"({"field1":"value1","field2":"value2"})",
+                   opBuilderHelperDiscardEvents,
+                   "wazuh.space.event_discarded",
+                   {},
+                   SUCCESS(
+                       [](const BuildersMocks& mocks)
+                       {
+                           EXPECT_CALL(*mocks.ctx, getIndexDiscardedEvents()).WillOnce(testing::Return(true));
+                           return makeEvent(R"({"wazuh":{"space":{"event_discarded":true}}})");
+                       })),
+        // Test with index_discarded_events = false (should keep all fields and set discard flag)
+        TransformT(R"({"field1":"value1","field2":"value2"})",
+                   opBuilderHelperDiscardEvents,
+                   "wazuh.space.event_discarded",
+                   {},
+                   SUCCESS(
+                       [](const BuildersMocks& mocks)
+                       {
+                           EXPECT_CALL(*mocks.ctx, getIndexDiscardedEvents()).WillOnce(testing::Return(false));
+                           return makeEvent(
+                               R"({"field1":"value1","field2":"value2","wazuh":{"space":{"event_discarded":true}}})");
+                       }))),
     testNameFormatter<TransformOperationTest>("JsonTransform"));
 } // namespace transformoperatestest

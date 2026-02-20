@@ -33,6 +33,7 @@ public:
     MOCK_METHOD(bool, allowMissingDependencies, (), (const));
     MOCK_METHOD(void, setAllowMissingDependencies, (bool allow), ());
     MOCK_METHOD((std::pair<bool, bool>), isKvdbAvailable, (const std::string& kvdbName), (const));
+    MOCK_METHOD(bool, getIndexDiscardedEvents, (), (const));
 };
 
 } // namespace builder::builders::mocks
