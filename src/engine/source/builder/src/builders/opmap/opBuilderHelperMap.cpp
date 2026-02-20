@@ -2213,12 +2213,10 @@ TransformOp opBuilderHelperDiscardEvents(const Reference& targetField,
             }
         }
 
-        json::Json discardValue;
-        discardValue.setBool(true);
         // Populate the field despite configuration value.
         try
         {
-            event->set(targetField, discardValue);
+            event->setBool(true, targetField);
         }
         catch (const std::exception& e)
         {

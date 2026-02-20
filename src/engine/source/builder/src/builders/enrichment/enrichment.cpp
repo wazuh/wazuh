@@ -89,29 +89,33 @@ std::pair<base::Expression, std::string> getDiscardedEventsFilter(const cm::stor
         DISCARDED_EVENTS_FILTER_TRACEABLE_NAME,
         [shouldIndex, discardFieldPath, trace](base::Event event) -> base::result::Result<base::Event>
         {
-            // Policy disables indexing of discarded events
-            if (!shouldIndex)
+            // Policy enables indexing of discarded events
+            if (shouldIndex)
             {
                 if (trace)
                 {
                     return base::result::makeSuccess<decltype(event)>(
-                        event, "Event won't be discarded (index_discarded_events=false)");
+                        event, "Event will be indexed (index_discarded_events=true)");
                 }
                 return base::result::makeSuccess<decltype(event)>(event);
             }
 
             // Check if the discard field exists and is true
             auto discardValue = event->getBool(discardFieldPath);
-            if (discardValue && discardValue.value() && trace)
+            if (discardValue && discardValue.value())
             {
-                return base::result::makeFailure<decltype(event)>(
-                    event, "Event dropped (wazuh.space.event_discarded=true and index_discarded_events=true)");
+                if (trace)
+                {
+                    return base::result::makeFailure<decltype(event)>(
+                        event, "Event won't be indexed (wazuh.space.event_discarded=true and index_discarded_events=false)");
+                }
+                return base::result::makeFailure<decltype(event)>(event);
             }
 
             if (trace)
             {
                 return base::result::makeSuccess<decltype(event)>(
-                    event, "Event won't be discarded (wazuh.space.event_discarded=false)");
+                    event, "Event will be indexed (wazuh.space.event_discarded=false)");
             }
             return base::result::makeSuccess<decltype(event)>(event);
         });
