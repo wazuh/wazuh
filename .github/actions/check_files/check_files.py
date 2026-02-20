@@ -10,6 +10,8 @@ import fnmatch
 
 wazuh_gid = -1
 wazuh_uid = -1
+wazuh_group_name = 'wazuh'
+wazuh_user_name = 'wazuh'
 
 HEADERS = ['full_filename', 'owner_name', 'group_name', 'mode',
            'type', 'prot_permissions', 'size_bytes', 'size_error']
@@ -75,26 +77,24 @@ class helper:
 def translate_uid(id):
     # If wazuh_uid was not set, use the default behavior
     import pwd
-    if wazuh_uid == -1:
-        return pwd.getpwuid(id)[0]
-    elif id == wazuh_uid:
-        return "wazuh"
+    if id == wazuh_uid:
+        return wazuh_user_name
     elif id == 0:
         return "root"
+    else:
+        return pwd.getpwuid(id)[0]
 
 
 def translate_gid(id):
     # If wazuh_gid was not set, use the default behavior
     import grp
-    if wazuh_gid == -1:
+    if id == wazuh_gid:
+        return wazuh_group_name
+    else:
         return grp.getgrgid(id)[0]
-    elif id == wazuh_gid:
-        return "wazuh"
-    elif id == 0:
-        return "root"
 
 
-def get_data(item, size_check=False):
+def get_data(item, size_check=False, item_type='file'):
     """
     Main function to retrieve file metadata based on the operating system.
     """
@@ -102,7 +102,7 @@ def get_data(item, size_check=False):
     stat_info = os.stat(item)
 
     # Populate common attributes
-    populate_common_attributes(result, stat_info, size_check)
+    populate_common_attributes(result, stat_info, size_check, item_type)
 
     # Platform-specific attributes
     if platform.system() != 'Windows':
@@ -116,12 +116,12 @@ def get_data(item, size_check=False):
     return result
 
 
-def populate_common_attributes(result, stat_info, size_check):
+def populate_common_attributes(result, stat_info, size_check, item_type):
     """
     Populate common attributes for any operating system.
     """
     result['mode'] = oct(stat.S_IMODE(stat_info.st_mode))[2:]
-    result['type'] = "file"
+    result['type'] = item_type
     result['prot_permissions'] = stat.filemode(stat_info.st_mode)
 
     if size_check:
@@ -203,11 +203,11 @@ def handle_special_cases(result, item):
         result['prot_permissions'] = 'lrwxrwxrwx'
 
 
-def get_current_items(scan_path='/var/ossec', size_check=False, ignore_names=[]):
+def get_current_items(scan_path='/var/ossec', size_check=False, ignore_names=[], include_directories=True):
     """ Get all the files in the specified directory and its subdirectories.
 
     Args:
-        scan_path (str, optional): Directory to be scanned. Defaults to '/var/ossec'.
+        scan_path (str, optional): Directory to be scanned. Defaults to '/var/wazuh-manager'.
         ignore_names (list, optional): List of files to be ignored. Defaults to [].
 
     Returns:
@@ -221,6 +221,14 @@ def get_current_items(scan_path='/var/ossec', size_check=False, ignore_names=[])
         if any(os.path.normpath(ignored) in os.path.normpath(dirpath) for ignored in ignore_names):
             print(f"Ignoring directory: '{dirpath}'")
             continue
+
+        if include_directories:
+            try:
+                dir_item = {'full_filename': dirpath}
+                dir_item.update(get_data(dirpath, size_check, 'directory'))
+                c_items.append(dir_item)
+            except Exception as e:
+                print(f"Error processing directory {dirpath}: {str(e)}")
 
         for filename in filenames:
             file_path = os.path.join(dirpath, filename)
@@ -236,7 +244,7 @@ def get_current_items(scan_path='/var/ossec', size_check=False, ignore_names=[])
 
             try:
                 item = {'full_filename': file_path}
-                item.update(get_data(file_path, size_check))
+                item.update(get_data(file_path, size_check, 'file'))
                 c_items.append(item)
             except Exception as e:
                 print(f"Error processing file {file_path}: {str(e)}")
@@ -390,14 +398,18 @@ if __name__ == "__main__":
                             help="Path where to save report.md, default stdout")
     arg_parser.add_argument("-f", "--file_csv_path", type=str,
                             default="", help="Path of the csv file to be used for checking")
-    arg_parser.add_argument("-d", "--directory", type=str, default="/var/ossec",
-                            help="Directory to scan and check, '/var/ossec' by default")
+    arg_parser.add_argument("-d", "--directory", type=str, default="/var/wazuh-manager",
+                            help="Directory to scan and check, '/var/wazuh-manager' by default")
     arg_parser.add_argument("-b", "--base_file", type=str, default="",
                             help="Creates a base csv in path, not to be used with --report")
     arg_parser.add_argument("-wg", "--wazuh_gid", type=int,
                             help="The group id for wazuh", default=-1)
     arg_parser.add_argument("-wu", "--wazuh_uid", type=int,
                             help="The user id for wazuh", default=-1)
+    arg_parser.add_argument("--wazuh_group_name", type=str,
+                            help="Wazuh group name label used in reports", default='wazuh')
+    arg_parser.add_argument("--wazuh_user_name", type=str,
+                            help="Wazuh user name label used in reports", default='wazuh')
     arg_parser.add_argument("-s", "--size_check", action="store_true",
                             help="Enable size validation", default=False)
     arg_parser.add_argument("-i", "--ignore", type=str,
@@ -406,6 +418,8 @@ if __name__ == "__main__":
     args = arg_parser.parse_args()
     wazuh_gid = args.wazuh_gid
     wazuh_uid = args.wazuh_uid
+    wazuh_group_name = args.wazuh_group_name
+    wazuh_user_name = args.wazuh_user_name
     installed_dir = args.directory
     size_check = args.size_check
     base_file_path = args.base_file
@@ -426,9 +440,12 @@ if __name__ == "__main__":
         not_listed = {}
         not_fully_match = {}
 
-        current_items = get_current_items(
-            installed_dir, size_check, ignore_names)
         expected_items = csv_to_dict(csv_file_path, 'full_filename')
+        include_directories = any(
+            item.get('type') == 'directory' for item in expected_items.values()
+        )
+        current_items = get_current_items(
+            installed_dir, size_check, ignore_names, include_directories)
         # Dictionary to track matches
         matches = {key: False for key in expected_items.keys()}
 

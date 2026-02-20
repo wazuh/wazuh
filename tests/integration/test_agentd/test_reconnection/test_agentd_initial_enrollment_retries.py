@@ -141,6 +141,8 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_REQUESTING_KEY,{'IP':''}), timeout = 300, accumulations = 4)
     assert (wazuh_log_monitor.callback_result != None), f'Enrollment retries was not sent'
 
+    authd_server = None
+    remoted_server = None
     try:
         # Start Authd simulador
         authd_server = AuthdSimulator()
@@ -160,7 +162,9 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
         check_module_stop()
     finally:
         # Reset simulator
-        authd_server.destroy()
+        if authd_server:
+            authd_server.destroy()
 
         # Reset simulator
-        remoted_server.destroy()
+        if remoted_server:
+            remoted_server.destroy()

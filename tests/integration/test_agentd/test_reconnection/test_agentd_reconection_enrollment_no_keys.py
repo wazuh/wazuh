@@ -129,6 +129,8 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
         - keys
     '''
 
+    authd_server = None
+    remoted_server = None
     try:
         # Prepare test
         authd_server = AuthdSimulator()
@@ -165,7 +167,9 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
         wait_connect()
     finally:
         # Reset simulator
-        authd_server.destroy()
+        if authd_server:
+            authd_server.destroy()
 
         # Reset simulator
-        remoted_server.destroy()
+        if remoted_server:
+            remoted_server.destroy()
