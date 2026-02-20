@@ -31,6 +31,7 @@ from wazuh.core.cluster.utils import (
     REMOVE_DISCONNECTED_NODE_AFTER,
     get_cluster_items,
     read_config,
+    safe_join,
 )
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.utils import blake2b, get_date_from_timestamp, get_utc_now, mkdir_with_mode, to_relative_path
@@ -454,7 +455,7 @@ def decompress_files(compress_path, ko_files_name="files_metadata.json"):
                 for file in files:
                     filepath, content = file.split(PATH_SEP.encode(), 1)
                     content = zlib.decompress(content)
-                    full_path = os.path.join(decompress_dir, filepath.decode())
+                    full_path = safe_join(decompress_dir, filepath.decode())
                     if not os.path.exists(os.path.dirname(full_path)):
                         try:
                             os.makedirs(os.path.dirname(full_path))

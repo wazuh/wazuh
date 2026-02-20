@@ -1234,7 +1234,7 @@ async def test_master_handler_integrity_sync(set_date_end_mock, info_mock):
 
 
 @freeze_time("1970-01-01")
-@patch("os.path.join", return_value="/some/path")
+@patch("wazuh.core.cluster.master.safe_join", return_value="/some/path")
 @patch('wazuh.core.cluster.master.utils.safe_move')
 @patch("os.path.basename", return_value="client.keys")
 @patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")

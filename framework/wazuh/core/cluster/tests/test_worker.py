@@ -1128,7 +1128,7 @@ async def test_worker_handler_process_files_from_master_ko(send_request_mock,
 @patch("os.path.exists", return_value=False)
 @patch("wazuh.core.cluster.worker.safe_move")
 @patch("wazuh.core.cluster.worker.utils.mkdir_with_mode")
-@patch("os.path.join", return_value="queue/testing/")
+@patch("wazuh.core.cluster.worker.safe_join", return_value="queue/testing/")
 @patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
 @patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
 async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_uid_mock, path_join_mock,

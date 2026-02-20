@@ -99,6 +99,20 @@ list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread
                                 -Wl,--wrap,getDefine_Int -Wl,--wrap,_minfo -Wl,--wrap,_mwarn")
 endif()
 
+list(APPEND client-agent_names "test_agcom")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND client-agent_flags "-Wl,--wrap,getClientConfig -Wl,--wrap,getBufferConfig \
+                                -Wl,--wrap,getLabelsConfig -Wl,--wrap,getAgentInternalOptions \
+                                -Wl,--wrap,getAntiTamperingConfig -Wl,--wrap,w_agentd_state_get \
+                                -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
+                                -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize")
+else()
+list(APPEND client-agent_flags "-Wl,--wrap,getClientConfig -Wl,--wrap,getBufferConfig \
+                                -Wl,--wrap,getLabelsConfig -Wl,--wrap,getAgentInternalOptions \
+                                -Wl,--wrap,getAntiTamperingConfig -Wl,--wrap,w_agentd_state_get")
+endif()
+
 if(${TARGET} STREQUAL "agent")
 list(APPEND client-agent_names "test_agentd")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request ${DEBUG_OP_WRAPPERS}")

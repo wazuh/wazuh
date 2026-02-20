@@ -378,6 +378,14 @@ list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND shared_tests_names "test_module_limits")
 list(APPEND shared_tests_flags " ")
 
+list(APPEND shared_tests_names "test_read-alert")
+if("${TARGET}" STREQUAL "winagent")
+    list(APPEND shared_tests_flags
+        "${DEBUG_OP_WRAPPERS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+else()
+    list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
+endif()
+
 # Compiling tests
 list(LENGTH shared_tests_names count)
 math(EXPR count "${count} - 1")
@@ -386,6 +394,13 @@ foreach(counter RANGE ${count})
     list(GET shared_tests_flags ${counter} test_flags)
 
     add_executable(${test_name} ${test_name}.c)
+
+    if("${test_name}" STREQUAL "test_read-alert")
+        target_sources(${test_name} PRIVATE
+            ${SRC_FOLDER}/shared/src/read-alert.c
+            ${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/debug_op_wrappers.c
+        )
+    endif()
 
     if(${TARGET} STREQUAL "server")
         target_link_libraries(
