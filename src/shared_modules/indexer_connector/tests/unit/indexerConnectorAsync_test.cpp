@@ -1424,6 +1424,268 @@ TEST_F(IndexerConnectorAsyncTest, VerifyAsyncDataWithErrorProcessing)
     EXPECT_GT(receivedData.size(), 0);
 }
 
+// Test error processing with "create" operation type (data streams)
+TEST_F(IndexerConnectorAsyncTest, ErrorProcessingWithCreateOperation)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> processingCompletedPromise;
+    std::future<void> processingCompletedFuture = processingCompletedPromise.get_future();
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke(
+            [&processingCompletedPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                // Simulate response with "create" operation error (1 error + 4 success items)
+                std::string errorResponse = R"({
+                    "took": 1,
+                    "errors": true,
+                    "items": [
+                        {
+                            "create": {
+                                "_index": ".ds-wazuh-events-v5-security-000001",
+                                "_id": "test_id",
+                                "status": 400,
+                                "error": {
+                                    "type": "mapper_parsing_exception",
+                                    "reason": "failed to parse"
+                                }
+                            }
+                        },
+                        {"index": {"_index": "test-index", "_id": "filler1", "status": 201}},
+                        {"index": {"_index": "test-index", "_id": "filler2", "status": 201}},
+                        {"index": {"_index": "test-index", "_id": "filler3", "status": 201}},
+                        {"index": {"_index": "test-index", "_id": "filler4", "status": 201}}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(errorResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(errorResponse));
+                }
+                processingCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Send only 1 document to match the 1 item in response
+    connector.bulkIndex("doc0", "test-data-stream", R"({"field":"value0"})");
+
+    // Add fillers to trigger bulk processing (total 5 to reach bulk size)
+    for (int i = 1; i < 5; ++i)
+    {
+        connector.bulkIndex("filler" + std::to_string(i), "test-index", R"({"filler":"data"})");
+    }
+
+    auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for create operation error processing";
+}
+
+// Test error processing with caused_by information
+TEST_F(IndexerConnectorAsyncTest, ErrorProcessingWithCausedBy)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> processingCompletedPromise;
+    std::future<void> processingCompletedFuture = processingCompletedPromise.get_future();
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke(
+            [&processingCompletedPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                // Simulate response with caused_by in error (1 error + 4 success items)
+                std::string errorResponse = R"({
+                    "took": 1,
+                    "errors": true,
+                    "items": [
+                        {
+                            "create": {
+                                "_index": "test_index",
+                                "_id": "test_doc",
+                                "status": 400,
+                                "error": {
+                                    "type": "mapper_parsing_exception",
+                                    "reason": "failed to parse",
+                                    "caused_by": {
+                                        "type": "illegal_argument_exception",
+                                        "reason": "documents must contain a single-valued timestamp field '@timestamp' of date type"
+                                    }
+                                }
+                            }
+                        },
+                        {"index": {"_index": "test-index", "_id": "filler1", "status": 201}},
+                        {"index": {"_index": "test-index", "_id": "filler2", "status": 201}},
+                        {"index": {"_index": "test-index", "_id": "filler3", "status": 201}},
+                        {"index": {"_index": "test-index", "_id": "filler4", "status": 201}}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(errorResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(errorResponse));
+                }
+                processingCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Send only 1 document to match the 1 item in response
+    connector.bulkIndex("test_doc", "test_index", R"({"field":"value0"})");
+
+    // Add fillers to trigger bulk processing (total 5 to reach bulk size)
+    for (int i = 1; i < 5; ++i)
+    {
+        connector.bulkIndex("filler" + std::to_string(i), "test-index", R"({"filler":"data"})");
+    }
+
+    auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for caused_by error processing";
+}
+
+// Test error processing with caused_by having only type (no reason)
+TEST_F(IndexerConnectorAsyncTest, ErrorProcessingWithCausedByTypeOnly)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> processingCompletedPromise;
+    std::future<void> processingCompletedFuture = processingCompletedPromise.get_future();
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke(
+            [&processingCompletedPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                // Simulate response with caused_by having only type field (1 error + 4 success items)
+                std::string errorResponse = R"({
+                    "took": 1,
+                    "errors": true,
+                    "items": [
+                        {
+                            "index": {
+                                "_index": "test_index",
+                                "_id": "test_doc",
+                                "status": 400,
+                                "error": {
+                                    "type": "mapper_parsing_exception",
+                                    "reason": "failed to parse",
+                                    "caused_by": {
+                                        "type": "illegal_argument_exception"
+                                    }
+                                }
+                            }
+                        },
+                        {"index": {"_index": "test_index", "_id": "filler0", "status": 201}},
+                        {"index": {"_index": "test_index", "_id": "filler1", "status": 201}},
+                        {"index": {"_index": "test_index", "_id": "filler2", "status": 201}},
+                        {"index": {"_index": "test_index", "_id": "filler3", "status": 201}}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(errorResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(errorResponse));
+                }
+                processingCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Send 1 document to match the 1 item in response
+    connector.bulkIndex("test_doc", "test_index", R"({"field":"value1"})");
+
+    // Add fillers to trigger bulk processing
+    for (int i = 0; i < 4; ++i)
+    {
+        connector.bulkIndex("filler" + std::to_string(i), "test_index", R"({"filler":"data"})");
+    }
+
+    auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for caused_by type-only error processing";
+}
+
+// Test error processing with caused_by having only reason (no type)
+TEST_F(IndexerConnectorAsyncTest, ErrorProcessingWithCausedByReasonOnly)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> processingCompletedPromise;
+    std::future<void> processingCompletedFuture = processingCompletedPromise.get_future();
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke(
+            [&processingCompletedPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                // Simulate response with caused_by having only reason field (1 error + 4 success items)
+                std::string errorResponse = R"({
+                    "took": 1,
+                    "errors": true,
+                    "items": [
+                        {
+                            "index": {
+                                "_index": "test_index",
+                                "_id": "test_doc",
+                                "status": 400,
+                                "error": {
+                                    "type": "mapper_parsing_exception",
+                                    "reason": "failed to parse",
+                                    "caused_by": {
+                                        "reason": "missing required field"
+                                    }
+                                }
+                            }
+                        },
+                        {"index": {"_index": "test_index", "_id": "filler0", "status": 201}},
+                        {"index": {"_index": "test_index", "_id": "filler1", "status": 201}},
+                        {"index": {"_index": "test_index", "_id": "filler2", "status": 201}},
+                        {"index": {"_index": "test_index", "_id": "filler3", "status": 201}}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(errorResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(errorResponse));
+                }
+                processingCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Send 1 document to match the 1 item in response
+    connector.bulkIndex("test_doc", "test_index", R"({"field":"value1"})");
+
+    // Add fillers to trigger bulk processing
+    for (int i = 0; i < 4; ++i)
+    {
+        connector.bulkIndex("filler" + std::to_string(i), "test_index", R"({"filler":"data"})");
+    }
+
+    auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for caused_by reason-only error processing";
+}
+
 // Test version handling in bulk index operations
 TEST_F(IndexerConnectorAsyncTest, BulkIndexWithVersionHandling)
 {

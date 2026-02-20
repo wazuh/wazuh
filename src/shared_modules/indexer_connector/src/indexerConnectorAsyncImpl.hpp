@@ -249,15 +249,27 @@ public:
                 size_t itemIndex = 0;
                 for (const auto& item : itemsArray)
                 {
-                    simdjson::dom::element indexElement;
-                    if (item["index"].get(indexElement) != simdjson::SUCCESS)
+                    // Try to find the operation element (could be "index", "create")
+                    simdjson::dom::element operationElement;
+                    bool foundOperation = false;
+
+                    if (item["index"].get(operationElement) == simdjson::SUCCESS)
+                    {
+                        foundOperation = true;
+                    }
+                    else if (item["create"].get(operationElement) == simdjson::SUCCESS)
+                    {
+                        foundOperation = true;
+                    }
+
+                    if (!foundOperation)
                     {
                         ++itemIndex;
                         continue;
                     }
 
                     simdjson::dom::element errorElement;
-                    if (indexElement["error"].get(errorElement) != simdjson::SUCCESS)
+                    if (operationElement["error"].get(errorElement) != simdjson::SUCCESS)
                     {
                         ++itemIndex;
                         continue;
@@ -266,6 +278,8 @@ public:
                     // Extract error details with zero-copy string views
                     std::string_view errorReason = "Unknown reason";
                     std::string_view errorType = "Unknown type";
+                    std::string_view causedByReason {""};
+                    std::string_view causedByType {""};
 
                     if (simdjson::dom::element reasonElement;
                         errorElement["reason"].get(reasonElement) == simdjson::SUCCESS)
@@ -278,6 +292,23 @@ public:
                         errorType = typeElement.get_string().value_unsafe();
                     }
 
+                    // Extract caused_by information if available
+                    simdjson::dom::element causedByElement;
+                    if (errorElement["caused_by"].get(causedByElement) == simdjson::SUCCESS)
+                    {
+                        if (simdjson::dom::element causedByReasonElement;
+                            causedByElement["reason"].get(causedByReasonElement) == simdjson::SUCCESS)
+                        {
+                            causedByReason = causedByReasonElement.get_string().value_unsafe();
+                        }
+
+                        if (simdjson::dom::element causedByTypeElement;
+                            causedByElement["type"].get(causedByTypeElement) == simdjson::SUCCESS)
+                        {
+                            causedByType = causedByTypeElement.get_string().value_unsafe();
+                        }
+                    }
+
                     // Optimized payload extraction with boundary checks
                     const size_t startPos = data.m_boundaries[itemIndex];
                     const size_t endPos =
@@ -285,14 +316,34 @@ public:
 
                     const std::string_view payload = payloadView.substr(startPos, endPos - startPos);
 
-                    logWarn(IC_NAME,
-                            "Error indexing document (type %.*s - reason: '%.*s') - Associated event: %.*s",
-                            static_cast<int>(errorType.size()),
-                            errorType.data(),
-                            static_cast<int>(errorReason.size()),
-                            errorReason.data(),
-                            static_cast<int>(payload.size()),
-                            payload.data());
+                    // Build error message with caused_by info if available
+                    if (!causedByReason.empty() && !causedByType.empty())
+                    {
+                        logWarn(IC_NAME,
+                                "Error indexing document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
+                                "Associated event: %.*s",
+                                static_cast<int>(errorType.size()),
+                                errorType.data(),
+                                static_cast<int>(errorReason.size()),
+                                errorReason.data(),
+                                static_cast<int>(causedByType.size()),
+                                causedByType.data(),
+                                static_cast<int>(causedByReason.size()),
+                                causedByReason.data(),
+                                static_cast<int>(payload.size()),
+                                payload.data());
+                    }
+                    else
+                    {
+                        logWarn(IC_NAME,
+                                "Error indexing document (type %.*s - reason: '%.*s') - Associated event: %.*s",
+                                static_cast<int>(errorType.size()),
+                                errorType.data(),
+                                static_cast<int>(errorReason.size()),
+                                errorReason.data(),
+                                static_cast<int>(payload.size()),
+                                payload.data());
+                    }
 
                     ++itemIndex;
                 }
