@@ -928,22 +928,22 @@ def check_remote_commands(new_conf: Element, original_conf: Element):
 
     ALLOW_KEY = 'allow'
     EXCEPTIONS_KEY = 'exceptions'
-    LOCALFILE_HIERACHY = ['wazuh_config', 'localfile']
-    WODLE_HIERACHY = ['wazuh_config', 'wodle']
+    LOCALFILE_HIERARCHY = ['wazuh_config', 'localfile']
+    WODLE_HIERARCHY = ['wazuh_config', 'wodle']
     LOCALFILE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['localfile']
     WODLE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['wodle_command']
 
     if not LOCALFILE_SETTINGS[ALLOW_KEY]:
-        new_localfile = xml_to_dict(new_conf, LOCALFILE_HIERACHY)
-        original_localfile = xml_to_dict(original_conf, LOCALFILE_HIERACHY)
+        new_localfile = xml_to_dict(new_conf, LOCALFILE_HIERARCHY)
+        original_localfile = xml_to_dict(original_conf, LOCALFILE_HIERARCHY)
 
         if normalize(_filter_remote_commands(new_localfile, LOCALFILE_SETTINGS[EXCEPTIONS_KEY])) \
             != normalize(_filter_remote_commands(original_localfile, LOCALFILE_SETTINGS[EXCEPTIONS_KEY])):
             raise WazuhError(1124, extra_message="localfile")
 
     if not WODLE_SETTINGS[ALLOW_KEY]:
-        new_wodle = xml_to_dict(new_conf, WODLE_HIERACHY)
-        original_wodle = xml_to_dict(original_conf, WODLE_HIERACHY)
+        new_wodle = xml_to_dict(new_conf, WODLE_HIERARCHY)
+        original_wodle = xml_to_dict(original_conf, WODLE_HIERARCHY)
 
         if normalize(_filter_wodle_commands(new_wodle, WODLE_SETTINGS[EXCEPTIONS_KEY])) \
             != normalize(_filter_wodle_commands(original_wodle, WODLE_SETTINGS[EXCEPTIONS_KEY])):

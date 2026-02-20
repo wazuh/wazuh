@@ -9,7 +9,7 @@
 #include <shared.h>
 
 // Configuration constants
-static const char* const XML_TAG_OSSEC_CONFIG = "wazuh_config";
+static const char* const XML_TAG_WAZUH_CONFIG = "wazuh_config";
 static const char* const XML_TAG_INDEXER = "indexer";
 static const char* const INDEXER_ROOT_PATH = "indexer";
 static const char* const XML_TAG_HOST = "host";
@@ -490,7 +490,7 @@ char* get_indexer_cnf(const char* cnf_file, char* err_buf, size_t err_buf_size)
         }
 
         // Skip non-ossec_config elements
-        if (strcmp(current_root->element, XML_TAG_OSSEC_CONFIG) != 0)
+        if (strcmp(current_root->element, XML_TAG_WAZUH_CONFIG) != 0)
         {
             continue;
         }
