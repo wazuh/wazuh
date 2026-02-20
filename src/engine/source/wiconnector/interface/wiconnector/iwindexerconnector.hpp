@@ -81,6 +81,37 @@ public:
      * @throws IndexerConnectorException if there is an error during the query
      */
     virtual bool existsPolicy(std::string_view space) = 0;
+
+    /**
+     * @brief Checks if an index exists in the indexer.
+     *
+     * @param indexName The name of the index to check
+     * @return true if the index exists, false otherwise
+     * @throws IndexerConnectorException if there is an error during the query
+     */
+    virtual bool existsIndex(std::string_view indexName) = 0;
+
+    /**
+     * @brief Queries documents from an index with pagination support.
+     *
+     * @param indexName The name of the index to query
+     * @param query The query body as JSON string
+     * @param maxResults Maximum number of results to return
+     * @return Vector of JSON documents from the query results
+     * @throws IndexerConnectorException if there is an error during the query
+     */
+    virtual std::vector<json::Json> query(std::string_view indexName, 
+                                          std::string_view query, 
+                                          std::size_t maxResults) = 0;
+
+    /**
+     * @brief Gets the total document count for an index.
+     *
+     * @param indexName The name of the index
+     * @return The total number of documents in the index
+     * @throws IndexerConnectorException if there is an error during the query
+     */
+    virtual std::size_t getIndexDocumentCount(std::string_view indexName) = 0;
 };
 
 } // namespace wiconnector
