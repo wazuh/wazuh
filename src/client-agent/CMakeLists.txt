@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12.4)
 
-project(wazuh-agentd C)
+project(wazuh-agentd CXX)
 
 if(NOT DEFINED WAZUH_MAIN_PROJECT)
   get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
@@ -44,8 +44,10 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/include/
   ${CMAKE_CURRENT_SOURCE_DIR}/src/)
 
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_STANDARD_REQUIRED ON)
+# C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_definitions(-DARGV0="wazuh-agentd")
 add_definitions(-DGROUPGLOBAL="wazuh")
@@ -61,16 +63,15 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 
 # Collect source files
-file(GLOB AGENTD_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
+file(GLOB AGENTD_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  list(REMOVE_ITEM AGENTD_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/agentd.c")
+  list(REMOVE_ITEM AGENTD_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/agentd.cpp")
 endif()
 
-# Build static library (without main.c) for unit tests and Windows agent
-list(REMOVE_ITEM AGENTD_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
+# Build static library (without main) for unit tests and Windows agent
+list(REMOVE_ITEM AGENTD_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
 add_library(agentd_lib STATIC ${AGENTD_SRC})
-set_target_properties(agentd_lib PROPERTIES LINKER_LANGUAGE C)
 
 # Enable WAZUH_UNIT_TESTING to export static functions for unit tests
 if(UNIT_TEST)
@@ -79,7 +80,7 @@ if(UNIT_TEST)
 endif()
 
 target_link_libraries(agentd_lib PUBLIC wazuhext pthread agent_metadata config
-                                        wazuh_modulesd_lib wazuh)
+                                        wazuh_modulesd_lib wazuh stdc++)
 
 if(UNIX)
   target_link_libraries(agentd_lib PUBLIC dl)
@@ -91,6 +92,7 @@ endif(UNIX)
 # Build Windows libraries (needed by Makefile for final win32 executables)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_library(wazuh-agentd STATIC ${AGENTD_SRC})
+  set_target_properties(wazuh-agentd PROPERTIES LINKER_LANGUAGE CXX)
   target_compile_definitions(wazuh-agentd PUBLIC -D_WIN32_WINNT=0x600)
   if(UNIT_TEST)
     target_compile_definitions(wazuh-agentd PRIVATE WAZUH_UNIT_TESTING)
@@ -99,10 +101,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
                                              config wazuh_modulesd_lib wazuh)
   # Only build Unix executable when not running unit tests
 elseif(NOT UNIT_TEST)
-  add_executable(wazuh-agentd "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
+  add_executable(wazuh-agentd "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
   set_target_properties(
-    wazuh-agentd PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
-                                              ${SRC_FOLDER})
+    wazuh-agentd PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY
+                                                 ${SRC_FOLDER})
   target_link_libraries(wazuh-agentd PRIVATE agentd_lib)
 
   if(APPLE)
