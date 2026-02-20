@@ -15,6 +15,13 @@ on:
         required: false
         default: 0
         type: number
+      docker_image_tag:
+        description: |
+          Tag name of the Docker image to be uploaded.
+          Use only '-', '_', '.' and alphanumeric characters.
+          Default is '5.0'.
+        required: false
+        default: '5.0'
 
 env:
   REGISTRY: ghcr.io
@@ -78,11 +85,13 @@ jobs:
       - name: Print variables
         run: |
           echo Description: ${{ needs.prepare.outputs.description }}
+          echo Docker Image Tag: ${{ github.event.inputs.docker_image_tag }}
 
       - name: Build Coverity artifact
         uses: ./.github/actions/coverity/build
         with:
           command: make -C src TARGET=manager COVERITY=YES -j${{ needs.prepare.outputs.jobs }}
+          docker_image_tag: ${{ github.event.inputs.docker_image_tag }}
 
       - name: List files
         run: ls -l cov-int/emit/*/emit-db*
