@@ -11,8 +11,8 @@
             "certificate_authorities": [
                 "/var/wazuh-manager/etc/certs/root-ca.pem"
             ],
-            "certificate": "/var/wazuh-manager/etc/certs/server.pem",
-            "key": "/var/wazuh-manager/etc/certs/server-key.pem"
+            "certificate": "/var/wazuh-manager/etc/certs/manager.pem",
+            "key": "/var/wazuh-manager/etc/certs/manager-key.pem"
         }
     },
     "clusterName": "cluster01"

@@ -7634,9 +7634,9 @@ paths:
                             ca:
                               - /var/wazuh-manager/etc/certs/root-ca.pem
                           certificate:
-                            - /var/wazuh-manager/etc/certs/server.pem
+                            - /var/wazuh-manager/etc/certs/manager.pem
                           key:
-                            - /var/wazuh-manager/etc/certs/server-key.pem
+                            - /var/wazuh-manager/etc/certs/manager-key.pem
                       syscheck:
                         disabled: no
                         frequency: 43200

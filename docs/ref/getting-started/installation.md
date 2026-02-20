@@ -36,8 +36,8 @@ sudo mkdir -p /var/wazuh-manager/etc/certs
 
 # Extract and deploy certificates
 sudo tar -xf wazuh-certificates.tar -C /var/wazuh-manager/etc/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
-sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME.pem /var/wazuh-manager/etc/certs/server.pem
-sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/server-key.pem
+sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME.pem /var/wazuh-manager/etc/certs/manager.pem
+sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/manager-key.pem
 
 # Set proper permissions
 sudo chmod 500 /var/wazuh-manager/etc/certs
@@ -68,8 +68,8 @@ Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` 
     <certificate_authorities>
       <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/server.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/server-key.pem</key>
+    <certificate>/var/wazuh-manager/etc/certs/manager.pem</certificate>
+    <key>/var/wazuh-manager/etc/certs/manager-key.pem</key>
   </ssl>
 </indexer>
 ```

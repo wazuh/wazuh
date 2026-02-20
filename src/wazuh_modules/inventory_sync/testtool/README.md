@@ -90,8 +90,8 @@ The test tool requires valid SSL certificates for secure communication with the 
 ```text
 /path/to/certs/
 ├── root-ca.pem          # Root CA certificate
-├── server.pem           # Client certificate
-└── server-key.pem       # Client private key
+├── manager.pem           # Client certificate
+└── manager-key.pem       # Client private key
 ```
 
 ---
@@ -108,8 +108,8 @@ The test tool requires valid SSL certificates for secure communication with the 
       "certificate_authorities": [
         "/var/wazuh-manager/etc/certs/root-ca.pem"
       ],
-      "certificate": "/var/wazuh-manager/etc/certs/server.pem",
-      "key": "/var/wazuh-manager/etc/certs/server-key.pem"
+      "certificate": "/var/wazuh-manager/etc/certs/manager.pem",
+      "key": "/var/wazuh-manager/etc/certs/manager-key.pem"
     }
   }
 }

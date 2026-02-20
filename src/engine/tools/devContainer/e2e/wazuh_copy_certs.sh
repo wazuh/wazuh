@@ -37,7 +37,7 @@ echo "Copying certificates to ${DEST_DIR}..."
 # Copy certificates
 # Array of certificate files to copy
 CERT_ORG_FILES=("wazuh-1-key.pem" "wazuh-1.pem" "root-ca.pem")
-CERT_DST_FILES=("server-key.pem" "server.pem" "root-ca.pem")
+CERT_DST_FILES=("manager-key.pem" "manager.pem" "root-ca.pem")
 
 for i in "${!CERT_ORG_FILES[@]}"; do
     cp "${ORIG_DIR}/${CERT_ORG_FILES[$i]}" "${DEST_DIR}/${CERT_DST_FILES[$i]}"

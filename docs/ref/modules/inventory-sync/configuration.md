@@ -22,8 +22,8 @@ Incoming FlatBuffer messages from agents are processed and grouped into **bulk o
       <certificate_authorities>
         <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
       </certificate_authorities>
-      <certificate>/var/wazuh-manager/etc/certs/server.pem</certificate>
-      <key>/var/wazuh-manager/etc/certs/server-key.pem</key>
+      <certificate>/var/wazuh-manager/etc/certs/manager.pem</certificate>
+      <key>/var/wazuh-manager/etc/certs/manager-key.pem</key>
     </ssl>
   </indexer>
 ```
