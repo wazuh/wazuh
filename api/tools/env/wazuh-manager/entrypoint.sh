@@ -6,8 +6,8 @@ WAZUH_CERTS_DIR="/var/wazuh-manager/etc/certs"
 ROLE="$3"
 NODE_CERT="${WAZUH_CERTS_DIR}/${NODE_NAME}.pem"
 NODE_CERT_KEY="${WAZUH_CERTS_DIR}/${NODE_NAME}-key.pem"
-SERVER_CERT="${WAZUH_CERT_DIR}/server.pem"
-SERVER_CERT_KEY="${WAZUH_CERT_DIR}/server-key.pem"
+SERVER_CERT="${WAZUH_CERTS_DIR}/manager.pem"
+SERVER_CERT_KEY="${WAZUH_CERTS_DIR}/manager-key.pem"
 
 echo "Waiting for certificates..."
 while [ ! -f "${WAZUH_CERTS_DIR}/root-ca.pem" ]; do
