@@ -44,13 +44,13 @@ USER_AUTO_START="n" \
 After installation, start the manager:
 
 ```bash
-/var/wazuh-manager/bin/wazuh-control start
+/var/wazuh-manager/bin/wazuh-manager-control start
 ```
 
 To verify the server is running:
 
 ```bash
-/var/wazuh-manager/bin/wazuh-control status
+/var/wazuh-manager/bin/wazuh-manager-control status
 ```
 
 ## Agent for UNIX
@@ -165,7 +165,7 @@ The main server configuration file is located at:
 After modifying the configuration, restart the server:
 
 ```bash
-/var/wazuh-manager/bin/wazuh-control restart
+/var/wazuh-manager/bin/wazuh-manager-control restart
 ```
 
 ### Agent Configuration
@@ -192,7 +192,7 @@ Restart-Service -Name wazuh
 ### Server on UNIX
 
 ```bash
-/var/wazuh-manager/bin/wazuh-control stop
+/var/wazuh-manager/bin/wazuh-manager-control stop
 ```
 
 ### Agent on UNIX

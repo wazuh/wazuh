@@ -9,6 +9,13 @@ import pytest
 import sys
 from typing import List
 
+# Default integration framework path is /var/ossec. When running manager tests
+# after the tool rename, force the manager installation path early so imported
+# constants are resolved correctly.
+if "WAZUH_PATH" not in os.environ:
+    if os.path.exists("/var/wazuh-manager/bin/wazuh-manager-control"):
+        os.environ["WAZUH_PATH"] = "/var/wazuh-manager"
+
 from py.xml import html
 from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
@@ -33,6 +40,12 @@ import wazuh_testing.utils.configuration as wazuh_configuration
 from wazuh_testing.utils.services import control_service
 
 WAZUH_MERGED_MG_PATH = os.path.join(SHARED_CONFIGURATIONS_PATH, 'merged.mg')
+
+# Keep compatibility with qa-integration-framework versions that still point to
+# wazuh-control while manager uses wazuh-manager-control.
+manager_control_path = os.path.join(os.environ.get("WAZUH_PATH", "/var/wazuh-manager"), "bin", "wazuh-manager-control")
+if os.path.exists(manager_control_path):
+    services.WAZUH_CONTROL_PATH = manager_control_path
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -83,6 +96,16 @@ def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item
                       platforms.WINDOWS,
                       platforms.MACOS])
 
+    try:
+        host_type = 'agent' if 'agent' in services.get_service() else 'server'
+    except (FileNotFoundError, subprocess.CalledProcessError, ValueError):
+        if os.path.exists("/var/wazuh-manager/bin/wazuh-manager-control"):
+            host_type = "server"
+        elif os.path.exists("/var/ossec/bin/wazuh-agentd"):
+            host_type = "agent"
+        else:
+            host_type = "server"
+
     for item in items:
         supported_platforms = _platforms.intersection(
             mark.name for mark in item.iter_markers())
@@ -92,7 +115,6 @@ def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item
         if supported_platforms and plat not in supported_platforms:
             selected = False
 
-        host_type = 'agent' if 'agent' in services.get_service() else 'server'
         supported_types = _host_types.intersection(
             mark.name for mark in item.iter_markers())
         if supported_types and host_type not in supported_types:

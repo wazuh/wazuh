@@ -1479,7 +1479,7 @@ clean-internals:
 	# Wazuh binaries
 	rm -rf build
 	rm -rf unit_tests/build*
-	rm -f wazuh-keystore
+	rm -f wazuh-manager-keystore
 	rm -f wazuh-agentd
 	rm -f wazuh-execd
 	rm -f wazuh-logcollector

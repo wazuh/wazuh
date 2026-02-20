@@ -38,12 +38,12 @@ add_library(keystore STATIC ${KEYSTORE_SRC})
 target_link_libraries(keystore PRIVATE rocksdb wazuhext)
 
 if(NOT UNIT_TEST)
-  add_executable(wazuh-keystore src/main.cpp)
+  add_executable(wazuh-manager-keystore src/main.cpp)
 
-  target_link_libraries(wazuh-keystore keystore)
+  target_link_libraries(wazuh-manager-keystore keystore)
 
-  set_target_properties(wazuh-keystore PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
-                                                  BUILD_RPATH "$ORIGIN/../lib")
+  set_target_properties(wazuh-manager-keystore PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
+                                                          BUILD_RPATH "$ORIGIN/../lib")
 endif(NOT UNIT_TEST)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ORIGINAL_RUNTIME_OUTPUT_DIRECTORY})
