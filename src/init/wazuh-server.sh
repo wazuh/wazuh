@@ -33,7 +33,7 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-DAEMONS="wazuh-manager-clusterd wazuh-manager-modulesd wazuh-manager-monitord wazuh-manager-remoted wazuh-manager-analysisd wazuh-manager-db wazuh-manager-authd wazuh-manager-apid"
+DAEMONS="wazuh-manager-clusterd wazuh-manager-analysisd wazuh-manager-apid"
 DEPRECATED_DAEMONS="ossec-authd"
 
 # Reverse order of daemons

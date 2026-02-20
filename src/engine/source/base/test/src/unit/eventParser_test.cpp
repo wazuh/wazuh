@@ -49,14 +49,12 @@ TEST_P(EventParserRawLocationParamTest, ParseLegacyEvent)
         ASSERT_TRUE(eventQueueId.has_value()) << "Expected queue ID to be present";
         ASSERT_TRUE(eventLocation.has_value()) << "Expected location to be present";
         ASSERT_TRUE(eventMessage.has_value()) << "Expected message to be present";
-        ASSERT_TRUE(eventAgentId.has_value()) << "Expected agent ID to be present";
-        ASSERT_TRUE(eventAgentName.has_value()) << "Expected agent name to be present";
+        ASSERT_FALSE(eventAgentId.has_value()) << "Expected agent ID is not present";
+        ASSERT_FALSE(eventAgentName.has_value()) << "Expected agent name is not present";
 
         ASSERT_EQ(eventQueueId.value(), std::get<0>(expected.value())) << "Queue ID does not match expected value";
         ASSERT_EQ(eventLocation.value(), std::get<1>(expected.value())) << "Location does not match expected value";
         ASSERT_EQ(eventMessage.value(), std::get<2>(expected.value())) << "Message does not match expected value";
-        ASSERT_EQ(eventAgentId.value(), "000") << "Agent ID does not match expected value";
-        ASSERT_EQ(eventAgentName.value(), hostNameStr) << "Agent name does not match expected value";
     }
     catch (const std::runtime_error& e)
     {
@@ -147,11 +145,8 @@ TEST_P(EventParserLegacyLocationParamTest, ParseLegacyEvent_WithAgentInfo)
     auto agentID = event->getString(ep::EVENT_AGENT_ID);
     auto agentName = event->getString(ep::EVENT_AGENT_NAME);
 
-    ASSERT_TRUE(agentID.has_value());
-    ASSERT_TRUE(agentName.has_value());
-
-    EXPECT_EQ(agentID.value(), param.expectedAgentID) << "Agent ID does not match expected value";
-    EXPECT_EQ(agentName.value(), param.expectedAgentName) << "Agent name does not match expected value";
+    ASSERT_FALSE(agentID.has_value());
+    ASSERT_FALSE(agentName.has_value());
 }
 
 INSTANTIATE_TEST_SUITE_P(ParseLegacyEventWithAgent,
@@ -161,7 +156,7 @@ INSTANTIATE_TEST_SUITE_P(ParseLegacyEventWithAgent,
                              LegacyLocationParam {
                                  "1:[A] (Alice) any->home:Hello",
                                  49,      // '1' as unsigned char
-                                 "home",  // module
+                                 "[A] (Alice) any->home",  // module
                                  "Hello", // message
                                  "A",     // agentID
                                  "Alice", // agentName
@@ -170,7 +165,7 @@ INSTANTIATE_TEST_SUITE_P(ParseLegacyEventWithAgent,
                              // Multi-char ID and name containing spaces
                              LegacyLocationParam {"7:[xyz123] (Bob Marley) 1.1.1.1->dashboard:LogIn",
                                                   55,
-                                                  "dashboard",
+                                                  "[xyz123] (Bob Marley) 1.1.1.1->dashboard",
                                                   "LogIn",
                                                   "xyz123",
                                                   "Bob Marley",
@@ -178,15 +173,15 @@ INSTANTIATE_TEST_SUITE_P(ParseLegacyEventWithAgent,
                              // Module and message may contain colons
                              LegacyLocationParam {"9:[ID42] (Agent|:007) |:|:1->server|:port:Payload:data",
                                                   57,
-                                                  "server:port",  // module includes a colon
-                                                  "Payload:data", // message includes a colon
+                                                  "[ID42] (Agent:007) ::1->server:port",
+                                                  "Payload:data",
                                                   "ID42",
                                                   "Agent:007",
                                                   "::1"},
                              // Edge case: name with arrow-like substring but only first “->” is parsed
                              LegacyLocationParam {"5:[007] (E>X) a->sys->err:Okay",
                                                   53,
-                                                  "sys->err", // module contains “->” after the first
+                                                  "[007] (E>X) a->sys->err", // module contains “->” after the first
                                                   "Okay",
                                                   "007",
                                                   "E>X",

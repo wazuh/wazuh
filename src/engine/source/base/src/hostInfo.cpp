@@ -187,9 +187,6 @@ json::Json toJson()
     // Build JSON
     json::Json j;
 
-    j.setString(hostName, EVENT_AGENT_NAME);
-    j.setString(DEFAULT_MANAGER_ID, EVENT_AGENT_ID);
-
     if (!os_name.empty())
         j.setString(os_name, EVENT_HOST_OS_NAME);
     if (!os_version.empty())
