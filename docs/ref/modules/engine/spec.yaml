@@ -358,6 +358,32 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
+    delete:
+      tags:
+        - Logtest
+      summary: Cleanup logtest session and temporary namespace
+      description: |
+        Stops and removes the current logtest testing session (if any) and deletes
+        the associated temporary namespace from storage, including all assets.
+
+        This operation is safe and idempotent. If there is no active session or
+        namespace to delete, it returns **OK**.
+
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                ok:
+                  summary: Cleanup completed or nothing to delete
+                  value:
+                    status: "OK"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
   ################################
   # Router
   ################################

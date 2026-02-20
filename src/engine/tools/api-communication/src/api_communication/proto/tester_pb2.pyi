@@ -14,6 +14,10 @@ ENABLED: State
 NONE: TraceLevel
 STATE_UNKNOWN: State
 
+class LogtestDelete_Request(_message.Message):
+    __slots__ = []
+    def __init__(self) -> None: ...
+
 class PublicRunPost_Request(_message.Message):
     __slots__ = ["agent_metadata", "event", "location", "queue", "trace_level"]
     AGENT_METADATA_FIELD_NUMBER: _ClassVar[int]

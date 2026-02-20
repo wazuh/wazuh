@@ -1,3 +1,5 @@
+#include "cmstore/icmstore.hpp"
+#include <memory>
 #include <sstream>
 
 #include <eMessages/tester.pb.h>
@@ -515,6 +517,93 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
 
         ResponseType eResponse {};
         eResponse.mutable_result()->CopyFrom(fromOutput(base::getResponse(response)));
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+        res = adapter::userResponse(eResponse);
+    };
+}
+
+adapter::RouteHandler logtestDelete(const std::shared_ptr<::router::ITesterAPI>& tester,
+                                    const std::shared_ptr<cm::store::ICMStore>& store)
+{
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
+            wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
+    {
+        using RequestType = eTester::LogtestDelete_Request;
+        using ResponseType = eEngine::GenericStatus_Response;
+
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::router::ITesterAPI>(req, wTester);
+        if (adapter::isError(result))
+        {
+            res = adapter::getErrorResp(result);
+            return;
+        }
+
+        auto [tester, protoReq] = adapter::getRes(result);
+        (void)protoReq;
+
+        auto storeLocked = wStore.lock();
+        if (!storeLocked)
+        {
+            res = adapter::userErrorResponse<ResponseType>("CMStore is not available");
+            return;
+        }
+
+        const std::string sessionName = api::shared::constants::SESSION_NAME;
+
+        auto cleanupSession = [&](const std::string& name) -> base::OptError
+        {
+            auto err = tester->deleteTestEntry(name);
+            if (base::isError(err))
+            {
+                return base::Error {fmt::format("Cleanup: failed deleting session '{}': {}",
+                                                name,
+                                                base::getError(err).message)};
+            }
+            return std::nullopt;
+        };
+
+        auto cleanupNamespace = [&](const cm::store::NamespaceId& nsId) -> base::OptError
+        {
+            try
+            {
+                storeLocked->deleteNamespace(nsId);
+                return std::nullopt;
+            }
+            catch (const std::exception& e)
+            {
+                return base::Error {fmt::format("Cleanup: failed deleting namespace '{}': {}",
+                                                nsId.toStr(),
+                                                e.what())};
+            }
+        };
+
+        auto entry = tester->getTestEntry(sessionName);
+        if (base::isError(entry))
+        {
+            ResponseType eResponse;
+            eResponse.set_status(eEngine::ReturnStatus::OK);
+            res = adapter::userResponse(eResponse);
+            return;
+        }
+
+        const auto nsId = base::getResponse(entry).namespaceId();
+
+        if (storeLocked->existsNamespace(nsId))
+        {
+            if (auto nerr = cleanupNamespace(nsId))
+            {
+                res = adapter::userErrorResponse<ResponseType>(nerr->message);
+                return;
+            }
+        }
+
+        if (auto serr = cleanupSession(sessionName))
+        {
+            res = adapter::userErrorResponse<ResponseType>(serr->message);
+            return;
+        }
+
+        ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
         res = adapter::userResponse(eResponse);
     };

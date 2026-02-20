@@ -175,4 +175,12 @@ message PublicRunPost_Request
     string trace_level = 5;
 }
 
+/***************************************************
+ * Delete logtest session + namespace
+ *
+ * endpoint: DELETE /logtest
+ **************************************************/
+message LogtestDelete_Request {}
+// message LogtestDelete_Response -> Return a GenericStatus_Response
+
 // MessageTestPost_Response -> returns a RunPost_Response

@@ -235,12 +235,23 @@ struct PublicRunPost_RequestDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 PublicRunPost_RequestDefaultTypeInternal _PublicRunPost_Request_default_instance_;
+PROTOBUF_CONSTEXPR LogtestDelete_Request::LogtestDelete_Request(
+    ::_pbi::ConstantInitialized) {}
+struct LogtestDelete_RequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR LogtestDelete_RequestDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~LogtestDelete_RequestDefaultTypeInternal() {}
+  union {
+    LogtestDelete_Request _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 LogtestDelete_RequestDefaultTypeInternal _LogtestDelete_Request_default_instance_;
 }  // namespace tester
 }  // namespace engine
 }  // namespace api
 }  // namespace wazuh
 }  // namespace com
-static ::_pb::Metadata file_level_metadata_tester_2eproto[14];
+static ::_pb::Metadata file_level_metadata_tester_2eproto[15];
 static const ::_pb::EnumDescriptor* file_level_enum_descriptors_tester_2eproto[2];
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_tester_2eproto = nullptr;
 
@@ -386,6 +397,12 @@ const uint32_t TableStruct_tester_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::PublicRunPost_Request, _impl_.agent_metadata_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::PublicRunPost_Request, _impl_.event_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::PublicRunPost_Request, _impl_.trace_level_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::LogtestDelete_Request, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, 10, -1, sizeof(::com::wazuh::api::engine::tester::SessionPost)},
@@ -402,6 +419,7 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 108, -1, -1, sizeof(::com::wazuh::api::engine::tester::RunPost_Request)},
   { 118, 127, -1, sizeof(::com::wazuh::api::engine::tester::RunPost_Response)},
   { 130, -1, -1, sizeof(::com::wazuh::api::engine::tester::PublicRunPost_Request)},
+  { 141, -1, -1, sizeof(::com::wazuh::api::engine::tester::LogtestDelete_Request)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -419,6 +437,7 @@ static const ::_pb::Message* const file_default_instances[] = {
   &::com::wazuh::api::engine::tester::_RunPost_Request_default_instance_._instance,
   &::com::wazuh::api::engine::tester::_RunPost_Response_default_instance_._instance,
   &::com::wazuh::api::engine::tester::_PublicRunPost_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::tester::_LogtestDelete_Request_default_instance_._instance,
 };
 
 const char descriptor_table_protodef_tester_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
@@ -461,10 +480,10 @@ const char descriptor_table_protodef_tester_2eproto[] PROTOBUF_SECTION_VARIABLE(
   "\215\001\n\025PublicRunPost_Request\022\r\n\005queue\030\001 \001(\r"
   "\022\020\n\010location\030\002 \001(\t\022/\n\016agent_metadata\030\003 \001"
   "(\0132\027.google.protobuf.Struct\022\r\n\005event\030\004 \001"
-  "(\t\022\023\n\013trace_level\030\005 \001(\t*5\n\005State\022\021\n\rSTAT"
-  "E_UNKNOWN\020\000\022\014\n\010DISABLED\020\001\022\013\n\007ENABLED\020\002*/"
-  "\n\nTraceLevel\022\010\n\004NONE\020\000\022\016\n\nASSET_ONLY\020\001\022\007"
-  "\n\003ALL\020\002b\006proto3"
+  "(\t\022\023\n\013trace_level\030\005 \001(\t\"\027\n\025LogtestDelete"
+  "_Request*5\n\005State\022\021\n\rSTATE_UNKNOWN\020\000\022\014\n\010"
+  "DISABLED\020\001\022\013\n\007ENABLED\020\002*/\n\nTraceLevel\022\010\n"
+  "\004NONE\020\000\022\016\n\nASSET_ONLY\020\001\022\007\n\003ALL\020\002b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_tester_2eproto_deps[2] = {
   &::descriptor_table_engine_2eproto,
@@ -472,9 +491,9 @@ static const ::_pbi::DescriptorTable* const descriptor_table_tester_2eproto_deps
 };
 static ::_pbi::once_flag descriptor_table_tester_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_tester_2eproto = {
-    false, false, 1695, descriptor_table_protodef_tester_2eproto,
+    false, false, 1720, descriptor_table_protodef_tester_2eproto,
     "tester.proto",
-    &descriptor_table_tester_2eproto_once, descriptor_table_tester_2eproto_deps, 2, 14,
+    &descriptor_table_tester_2eproto_once, descriptor_table_tester_2eproto_deps, 2, 15,
     schemas, file_default_instances, TableStruct_tester_2eproto::offsets,
     file_level_metadata_tester_2eproto, file_level_enum_descriptors_tester_2eproto,
     file_level_service_descriptors_tester_2eproto,
@@ -4216,6 +4235,46 @@ void PublicRunPost_Request::InternalSwap(PublicRunPost_Request* other) {
       file_level_metadata_tester_2eproto[13]);
 }
 
+// ===================================================================
+
+class LogtestDelete_Request::_Internal {
+ public:
+};
+
+LogtestDelete_Request::LogtestDelete_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.tester.LogtestDelete_Request)
+}
+LogtestDelete_Request::LogtestDelete_Request(const LogtestDelete_Request& from)
+  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
+  LogtestDelete_Request* const _this = this; (void)_this;
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.tester.LogtestDelete_Request)
+}
+
+
+
+
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData LogtestDelete_Request::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*LogtestDelete_Request::GetClassData() const { return &_class_data_; }
+
+
+
+
+
+
+
+::PROTOBUF_NAMESPACE_ID::Metadata LogtestDelete_Request::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_tester_2eproto_getter, &descriptor_table_tester_2eproto_once,
+      file_level_metadata_tester_2eproto[14]);
+}
+
 // @@protoc_insertion_point(namespace_scope)
 }  // namespace tester
 }  // namespace engine
@@ -4278,6 +4337,10 @@ Arena::CreateMaybeMessage< ::com::wazuh::api::engine::tester::RunPost_Response >
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::tester::PublicRunPost_Request*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::tester::PublicRunPost_Request >(Arena* arena) {
   return Arena::CreateMessageInternal< ::com::wazuh::api::engine::tester::PublicRunPost_Request >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::tester::LogtestDelete_Request*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::tester::LogtestDelete_Request >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::tester::LogtestDelete_Request >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE
 

@@ -23,6 +23,10 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
 adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>& tester,
                                     const base::eventParsers::PublicProtocolHandler& protocolHandler);
 
+adapter::RouteHandler logtestDelete(const std::shared_ptr<::router::ITesterAPI>& tester,
+                                    const std::shared_ptr<cm::store::ICMStore>& store);
+
+
 inline void registerHandlers(const std::shared_ptr<::router::ITesterAPI>& tester,
                              const std::shared_ptr<cm::store::ICMStore>& store,
                              const std::shared_ptr<httpsrv::Server>& server)
@@ -38,6 +42,9 @@ inline void registerHandlers(const std::shared_ptr<::router::ITesterAPI>& tester
     server->addRoute(httpsrv::Method::POST, "/tester/run/post", runPost(tester, base::eventParsers::parseLegacyEvent));
 
     server->addRoute(httpsrv::Method::POST, "/logtest", publicRunPost(tester, base::eventParsers::parsePublicEvent));
+
+    server->addRoute(httpsrv::Method::DELETE, "/logtest", logtestDelete(tester, store));
+
 }
 
 } // namespace api::tester::handlers

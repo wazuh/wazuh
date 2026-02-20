@@ -79,3 +79,14 @@ Feature: Tester API Management
       And I create a "test" session that points to policy "testing"
       When I send a request to send the event "hi! i am an event test!" from "test" session with "ALL" debug, agent.id "BB22" and "ALL" asset trace
       Then I should receive the next output: "{"assetTraces":[{"asset":"decoder/other-test-message/0","success":true,"traces":["[check: $agent.id == BB22] -> Success","event.category: array_append(\"test\") -> Success","event.kind: map(\"metric\") -> Success","event.type: array_append(\"info\") -> Success"]},{"asset":"filter/UnclassifiedEvents","success":true,"traces":["dropUnclassifiedEvent() -> Event is classified, allowing event"]}],"output":{"agent":{"id":"BB22","name":"agent-ex"},"event":{"category":["test"],"kind":"metric","original":"hi! i am an event test!","type":["info"]},"wazuh":{"integration":{"category":"other","decoders":["decoder/other-test-message/0"],"name":"other-wazuh-core-test"},"protocol":{"location":"SomeModule","queue":49},"space":{"name":"UNDEFINED"}}}}"
+  Scenario: Cleanup logtest removes testing session and temp namespace
+    Given I have no tester sessions
+    When I validate a full policy with load_in_tester enabled
+    And I request logtest cleanup
+    Then the "testing" session should not exist
+    And no "policy_validate_" namespaces should exist
+
+  Scenario: Cleanup logtest is idempotent when nothing exists
+    Given I have no tester sessions
+    When I request logtest cleanup
+    Then the "testing" session should not exist

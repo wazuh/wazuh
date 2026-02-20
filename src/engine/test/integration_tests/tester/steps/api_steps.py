@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 
 from behave import given, when, then
 from google.protobuf.json_format import MessageToJson, ParseDict
+from google.protobuf.struct_pb2 import Struct
 
 from api_communication.client import APIClient
 from api_communication.proto import tester_pb2 as api_tester
@@ -31,6 +32,9 @@ DECODER_OTHER_UUID = "594ea807-a037-408d-95b8-9a124ea333df"
 
 INTEG_WAZUH_CORE_UUID = "9b1a1ef2-1a70-4a8b-a89b-38b34174c2d1"
 INTEG_OTHER_WAZUH_CORE_UUID = "a15bbd77-8cb0-488f-94cd-4783d689a72f"
+
+LOGTEST_DECODER_UUID = "a1f330f4-8012-48ab-9949-c5d76edaf9b1"
+LOGTEST_INTEG_UUID = "a1f330f4-8012-48ab-9949-c5d76edaf9b2"
 
 
 # ===================================================================
@@ -74,6 +78,7 @@ def send_recv(request, expected_response_type) -> Tuple[Optional[str], object, d
 # ===================================================================
 #  CMCRUD helpers (policy only)
 # ===================================================================
+
 
 def build_policy_yaml(default_parent: str, root_decoder: str, integration_uuids):
     """
@@ -125,7 +130,6 @@ def add_integration_to_policy(integration_name: str, policy_name: str):
     """
     assert policy_name == POLICY_NS, "This step is intended for policy 'testing'"
 
-    # We always leave the policy with both integrations
     integ_list = [INTEG_WAZUH_CORE_UUID, INTEG_OTHER_WAZUH_CORE_UUID]
     policy_yaml = build_policy_yaml(
         default_parent=DECODER_TEST_UUID,
@@ -216,6 +220,11 @@ def step_impl(context, policy_name: str, integration_name: str):
     cm_policy_upsert(POLICY_NS, policy_yaml)
 
 
+@given("I have no tester sessions")
+def step_impl(context):
+    session_tear_down()
+
+
 @given('I create a "{session_name}" session that points to policy "{policy_name}"')
 def step_impl(context, session_name: str, policy_name: str):
     # Session cleanup
@@ -262,6 +271,57 @@ def step_impl(context, policy_name: str, integration_name: str):
 @when('I send a request to delete the policy "{policy_name}"')
 def step_impl(context, policy_name: str):
     delete_policy(policy_name)
+
+
+@when("I validate a full policy with load_in_tester enabled")
+def step_impl(context):
+    full_policy = {
+        "policy": {
+            "title": "test",
+            "root_decoder": LOGTEST_DECODER_UUID,
+            "integrations": [LOGTEST_INTEG_UUID],
+            "filters": [],
+            "outputs": [],
+        },
+        "resources": {
+            "kvdbs": [],
+            "decoders": [
+                {
+                    "id": LOGTEST_DECODER_UUID,
+                    "name": "decoder/root/0",
+                    "enabled": True,
+                    "normalize": [{"map": [{"@timestamp": "get_date()"}]}],
+                }
+            ],
+            "integrations": [
+                {
+                    "id": LOGTEST_INTEG_UUID,
+                    "title": "integrations_test",
+                    "enabled": True,
+                    "category": "security",
+                    "decoders": [LOGTEST_DECODER_UUID],
+                    "kvdbs": [],
+                }
+            ],
+            "filters": [],
+            "outputs": [],
+        },
+    }
+
+    req = api_crud.policyValidate_Request()
+    req.load_in_tester = True
+    req.full_policy.CopyFrom(ParseDict(full_policy, Struct()))
+    err, resp, _ = send_recv(req, api_engine.GenericStatus_Response())
+    assert err is None, f"{err}"
+    assert resp.status == api_engine.OK, f"{resp}"
+
+
+@when("I request logtest cleanup")
+def step_impl(context):
+    req = api_tester.LogtestDelete_Request()
+    err, resp, _ = send_recv(req, api_engine.GenericStatus_Response())
+    assert err is None, f"{err}"
+    assert resp.status == api_engine.OK, f"{resp}"
 
 
 @when('I send a request to send the event "{message}" from "{session_name}" session with "{debug_level}" debug, agent.id "{agent_id}" and "{asset_trace}" asset trace')
@@ -312,6 +372,24 @@ def step_impl(context, size: str):
 @then('I should receive a session with name "{session_name}"')
 def step_impl(context, session_name: str):
     assert context.result.session.name == session_name, f"{context.result}"
+
+
+@then('the "{session_name}" session should not exist')
+def step_impl(context, session_name: str):
+    req = api_tester.SessionGet_Request()
+    req.name = session_name
+    err, resp, _ = send_recv(req, api_tester.SessionGet_Response())
+    assert err is not None, "Expected session to be missing"
+    assert "not exist" in err, f"Unexpected error: {err}"
+
+
+@then('no "policy_validate_" namespaces should exist')
+def step_impl(context):
+    req = api_crud.namespaceGet_Request()
+    err, resp, _ = send_recv(req, api_crud.namespaceGet_Response())
+    assert err is None, f"{err}"
+    for space in resp.spaces:
+        assert not space.startswith("policy_validate_"), f"Found temp namespace: {space}"
 
 
 @then('I should receive a session with sync "{policy_sync}"')

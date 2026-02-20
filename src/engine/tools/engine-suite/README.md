@@ -123,3 +123,4 @@ Once installed the following scripts are available in the path:
 - [engine-integration](src/engine_integration/README.md)
 - [engine-clear](src/engine_clear/README.md)
 - [engine-test](src/engine_test/README.md)
+- [engine-public](src/engine_public/README.md)
