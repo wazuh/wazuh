@@ -4,6 +4,13 @@ inputs:
   command:
     description: "Build command (e.g., make)"
     required: true
+  docker_image_tag:
+    description: |
+      Tag name of the Docker image to be used for the build.
+      Use only '-', '_', '.' and alphanumeric characters.
+      Default is '5.0'.
+    required: false
+    default: '5.0'
 
 runs:
   using: "composite"
@@ -15,5 +22,5 @@ runs:
           -v "${{ github.workspace }}:/src" \
           -w /src \
           -u $(id -u):$(id -g) \
-          ghcr.io/wazuh/coverity-scan:latest \
+          ghcr.io/wazuh/coverity-scan:${{ inputs.docker_image_tag }} \
           ${{ inputs.command }}
