@@ -53,8 +53,8 @@ Configure the Wazuh server to connect to the Wazuh indexer using the secure keys
 
 ```bash
 # Set indexer credentials (default: admin/admin)
-sudo /var/wazuh-manager/bin/wazuh-keystore -f indexer -k username -v admin
-sudo /var/wazuh-manager/bin/wazuh-keystore -f indexer -k password -v admin
+sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v admin
+sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v admin
 ```
 
 Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` to specify the indexer IP address:

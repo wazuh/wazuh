@@ -56,7 +56,7 @@ if [ "$4" != "standalone" ] && [ "$3" != "master" ]; then
 fi
 
 echo "" > /var/wazuh-manager/logs/api.log
-/var/wazuh-manager/bin/wazuh-control start
+/var/wazuh-manager/bin/wazuh-manager-control start
 
 # Master-only configuration
 if [ "$3" == "master" ]; then
