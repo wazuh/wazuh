@@ -1,0 +1,54 @@
+# -----------------------
+# Server configuration
+# -----------------------
+server.host: 0.0.0.0
+server.port: 5601
+
+server.ssl.enabled: true
+server.ssl.certificate: /tmp/certs/wazuh.dashboard.pem
+server.ssl.key: /tmp/certs/wazuh.dashboard-key.pem
+
+# -----------------------
+# OpenSearch (Indexer)
+# -----------------------
+opensearch.hosts:
+  - https://wazuh.indexer:9200
+
+opensearch.username: admin
+opensearch.password: admin
+
+opensearch.ssl.verificationMode: certificate
+opensearch.ssl.certificateAuthorities:
+  - /tmp/certs/root-ca.pem
+
+opensearch.requestHeadersAllowlist:
+  - securitytenant
+  - Authorization
+
+# Security plugin settings
+opensearch_security.multitenancy.enabled: false
+opensearch_security.readonly_mode.roles:
+  - kibana_read_only
+
+# -----------------------
+# UI
+# -----------------------
+uiSettings.overrides.defaultRoute: /app/wz-home
+
+# -----------------------
+# Session settings
+# -----------------------
+opensearch_security.cookie.ttl: 900000
+opensearch_security.session.ttl: 900000
+opensearch_security.session.keepalive: true
+
+# -----------------------
+# Wazuh API configuration
+# -----------------------
+wazuh_core.hosts:
+  default:
+    url: https://wazuh.master
+    port: 55000
+    username: wazuh
+    password: wazuh
+    run_as: true

@@ -13,3 +13,6 @@ nodes:
     - name: wazuh2.worker
       ip: wazuh2.worker
       node_type: worker
+  dashboard:
+    - name: wazuh.dashboard
+      ip: wazuh.dashboard
