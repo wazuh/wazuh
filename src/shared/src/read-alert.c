@@ -56,6 +56,8 @@
 #define LOG_LIMIT      100
 /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
 
+#define INTEGRITY_CHECKSUM_BEGIN "Integrity checksum changed for: '"
+#define INTEGRITY_CHECKSUM_BEGIN_SZ (sizeof(INTEGRITY_CHECKSUM_BEGIN) - 1)
 
 void FreeAlertData(alert_data *al_data) {
     char **p;
@@ -289,11 +291,22 @@ alert_data *GetAlertData(int flag, FILE *fp) {
             /* It is a log message */
             else if (log_size < LOG_LIMIT) {
                 os_clearnl(str, p);
+
                 if (issyscheck == 1) {
-                    if (strncmp(str, "Integrity checksum changed for: '", 33) == 0) {
-                        al_data->filename = strdup(str + 33);
+                    /* Use prefix length constant to avoid magic numbers and potential buffer underflow */
+                    if (strncmp(str, INTEGRITY_CHECKSUM_BEGIN, INTEGRITY_CHECKSUM_BEGIN_SZ) == 0) {
+                        al_data->filename = strdup(str + INTEGRITY_CHECKSUM_BEGIN_SZ);
                         if (al_data->filename) {
-                            al_data->filename[strlen(al_data->filename) - 1] = '\0';
+                            size_t len = strlen(al_data->filename);
+                            if (len > 0) {
+                                if (al_data->filename[len - 1] == '\r') {
+                                    al_data->filename[len - 1] = '\0';
+                                    len--;
+                                }
+                                if (len > 0 && al_data->filename[len - 1] == '\'') {
+                                    al_data->filename[len - 1] = '\0';
+                                }
+                            }
                         }
                     }
                     issyscheck = 0;

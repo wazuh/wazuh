@@ -33,7 +33,7 @@ cd ../../
 PWD=`pwd`
 
 # Logging the call
-echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/logs/active-responses.log
+echo "$(date '+%Y/%m/%d %H:%M:%S') $0 $1 $2 $3 $4 $5" >> ${PWD}/logs/active-responses.log
 
 if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ] && [ "$(cat /proc/1/comm 2>/dev/null)" = "systemd" ]; then
     # If reload is requested, wait for service to be fully active first
