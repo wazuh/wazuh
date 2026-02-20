@@ -84,10 +84,10 @@ class DisconnectedAgentSyncTasks:
         # does not contain the indexer section. The config is only used for
         # informational purposes here.
         try:
-            ossec_config = get_ossec_conf(section="indexer", from_import=True)
+            wazuh_config = get_ossec_conf(section="indexer", from_import=True)
         except Exception:
-            ossec_config = {}
-        self.logger.debug(f"Ossec config for indexer section: {ossec_config}")
+            wazuh_config = {}
+        self.logger.debug(f"Wazuh config for indexer section: {wazuh_config}")
 
         master_interval = cluster_items.get("intervals", {}).get("master", {})
         self.sync_interval = master_interval.get(

@@ -443,7 +443,7 @@ WriteManager()
     echo "$HEADERS" > $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    echo "<ossec_config>" >> $NEWCONFIG
+    echo "<wazuh_config>" >> $NEWCONFIG
 
     GLOBAL_CONTENT=$(cat ${GLOBAL_TEMPLATE})
 
@@ -520,7 +520,7 @@ WriteManager()
     cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    echo "</ossec_config>" >> $NEWCONFIG
+    echo "</wazuh_config>" >> $NEWCONFIG
 
 }
 
@@ -535,7 +535,7 @@ WriteLocal()
     echo "$HEADERS" > $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    echo "<ossec_config>" >> $NEWCONFIG
+    echo "<wazuh_config>" >> $NEWCONFIG
     cat ${GLOBAL_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
@@ -587,7 +587,7 @@ WriteLocal()
     cat ${AR_DEFINITIONS_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    echo "</ossec_config>" >> $NEWCONFIG
+    echo "</wazuh_config>" >> $NEWCONFIG
 }
 
 InstallCommon()

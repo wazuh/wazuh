@@ -38,13 +38,13 @@ updateIndexerTemplate()
 
     if ! isConfigPresent "$OSSEC_CONF_PATH" "<indexer>"; then
         # Open config.
-        printf "\n<ossec_config>\n\n" >> $OSSEC_CONF_PATH
+        printf "\n<wazuh_config>\n\n" >> $OSSEC_CONF_PATH
 
         # Append 'Indexer' template.
         cat ${INDEXER_TEMPLATE_PATH} >> $OSSEC_CONF_PATH
         printf "\n" >> $OSSEC_CONF_PATH
 
         # Close config.
-        printf "</ossec_config>\n" >> $OSSEC_CONF_PATH
+        printf "</wazuh_config>\n" >> $OSSEC_CONF_PATH
     fi
 }

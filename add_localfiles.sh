@@ -26,9 +26,20 @@ if [ "$#" = "1" ]; then
 fi
 
 echo "" >> $NEWCONFIG
-echo "<ossec_config>" >> $NEWCONFIG
+
+if [ "X${INSTYPE}" = "Xagent" ]; then
+  echo "<ossec_config>" >> $NEWCONFIG
+else
+  echo "<wazuh_config>" >> $NEWCONFIG
+fi
+
 WriteLogs "add"
-echo "</ossec_config>" >> $NEWCONFIG
+
+if [ "X${INSTYPE}" = "Xagent" ]; then
+  echo "</ossec_config>" >> $NEWCONFIG
+else
+  echo "</wazuh_config>" >> $NEWCONFIG
+fi
 
 cat "$NEWCONFIG"
 
