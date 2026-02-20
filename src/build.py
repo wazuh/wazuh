@@ -100,13 +100,13 @@ def processArgs():
     parser.add_argument("--scanbuild",
                         help="Run scan-build on the code. Example: \
                               python3 build.py --scanbuild <agent|\
-                              server|winagent>",
+                              manager|winagent>",
                         choices=utils.targetList(),
                         metavar="")
     parser.add_argument("--target",
                         help="Compile with a determinate target. Example: \
                               python3 build.py -r data_provider --target <agent|\
-                              server|winagent>",
+                              manager|winagent>",
                         choices=utils.targetList(),
                         metavar="")
     parser.add_argument("--deleteLogs",

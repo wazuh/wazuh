@@ -243,7 +243,7 @@ list(APPEND shared_tests_flags "${BINARIES_OP_BASE_FLAGS} -Wl,--wrap,getenv")
 endif()
 
 
-if(${TARGET} STREQUAL "server")
+if(${TARGET} STREQUAL "manager")
 list(APPEND shared_tests_names "test_bzip2_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=fopen,--wrap=fread,--wrap=fclose,--wrap=fwrite,--wrap=BZ2_bzWriteOpen \
                                 -Wl,--wrap=BZ2_bzWriteClose -Wl,--wrap=BZ2_bzReadClose,--wrap=BZ2_bzReadOpen \
@@ -324,7 +324,7 @@ list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
 endif()
 
-if(${TARGET} STREQUAL "server")
+if(${TARGET} STREQUAL "manager")
 list(APPEND shared_tests_names "test_json-queue")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,wfopen \
                                 -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
@@ -402,7 +402,7 @@ foreach(counter RANGE ${count})
         )
     endif()
 
-    if(${TARGET} STREQUAL "server")
+    if(${TARGET} STREQUAL "manager")
         target_link_libraries(
             ${test_name}
             ${WAZUHLIB}

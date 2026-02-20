@@ -5,7 +5,7 @@ yesmatch="д"
 nomatch="н"
 agent="агент"
 local="локальный"
-server="сервер"
+server="manager"
 help="помощь"
 
 # Global
@@ -22,7 +22,7 @@ user="Пользователь"
 host="Хост"
 hitanyorabort="Нажмите Ввод (ENTER) для продолжения или Ctrl-C для выхода."
 whattoinstall="Какой тип установки Вы выбираете (сервер,агент,локальный или помощь)?"
-serverchose="Выбран тип установки сервер"
+serverchose="Выбран тип установки manager"
 clientchose="Выбран тип установки агент (клиент)"
 localchose="Выбран локальный тип утановки"
 

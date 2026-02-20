@@ -5,7 +5,7 @@ yesmatch="y"
 nomatch="n"
 agent="agent"
 local="local"
-server="server"
+server="manager"
 help="help"
 
 # Global
@@ -22,7 +22,7 @@ user="Χρήστης"
 host="Υπολογιστής"
 hitanyorabort="Πατήστε ENTER για να συνεχίσετε ή Ctrl-C για ακύρωση."
 whattoinstall="Τι τύπου εγκατάσταση επιθυμείτε (manager, agent, local ή help);"
-serverchose="Επιλέχθηκε η εγκατάσταση διακομιστή (manager)"
+serverchose="Επιλέχθηκε η εγκατάσταση manager"
 clientchose="Επιλέχθηκε η εγκατάσταση πελάτη (agent)"
 localchose="Επιλέχθηκε η τοπική (local) εγκατάσταση"
 

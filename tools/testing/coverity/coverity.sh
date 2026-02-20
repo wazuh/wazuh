@@ -108,7 +108,7 @@ if $DO_BUILD; then
         -w /src \
         -u "$(id -u):$(id -g)" \
         "$IMAGE" \
-        make -C src TARGET=server COVERITY=YES -j"$JOBS"
+        make -C src TARGET=manager COVERITY=YES -j"$JOBS"
 
     echo "[*] Creating tarball..."
     tar czf "$TARBALL" -C "$ROOT_DIR" cov-int

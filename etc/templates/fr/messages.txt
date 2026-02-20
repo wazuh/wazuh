@@ -5,7 +5,7 @@ yesmatch="o"
 nomatch="n"
 agent="agent"
 local="local"
-server="serveur"
+server="manager"
 help="aide"
 
 # Global
@@ -22,7 +22,7 @@ user="Utilisateur"
 host="Hôte"
 hitanyorabort="Appuyez sur Entrée pour continuer ou Ctrl-C pour annuler."
 whattoinstall="Quel type d'installation voulez-vous (manager, agent, local ou aide) ?"
-serverchose="Installation du manager (serveur) choisie"
+serverchose="Installation du manager choisie"
 clientchose="Installation de l'agent (client) choisie"
 localchose="Installation en local choisie"
 

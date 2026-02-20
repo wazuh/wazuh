@@ -5,7 +5,7 @@ yesmatch="j"
 nomatch="n"
 agent="agent"
 local="lokal"
-server="server"
+server="manager"
 help="hilfe"
 
 
@@ -23,7 +23,7 @@ user="User"
 host="Host"
 hitanyorabort="Drücken Sie eine Taste zum fortfahren oder Ctrl-C zum abbrechen"
 whattoinstall="Welche Art der Installation möchten Sie starten (manager, agent, lokal oder hilfe)?"
-serverchose="Manager (server) installation ausgewählt"
+serverchose="Manager installation ausgewählt"
 clientchose="Agent (client) installation ausgewählt"
 localchose="Lokale installation ausgewählt"
 

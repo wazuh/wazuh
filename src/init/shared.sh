@@ -32,7 +32,7 @@ NAMESERVERS=`cat /etc/resolv.conf | grep "^nameserver" | cut -d " " -sf 2`
 NAMESERVERS2=`cat /etc/resolv.conf | grep "^nameserver" | cut -sf 2`
 HOST_CMD=`command -v host 2>/dev/null`
 NAME="Wazuh"
-INSTYPE="server"
+INSTYPE="manager"
 # Default installation directory
 INSTALLDIR="/var/wazuh-manager";
 PREINSTALLEDDIR=""

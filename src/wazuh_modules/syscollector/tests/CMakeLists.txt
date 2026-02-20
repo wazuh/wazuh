@@ -13,5 +13,5 @@ add_subdirectory(sysCollectorImp)
 add_subdirectory(sysNormalizer)
 
 # TODO MOVE THIS TESTS to shared_modulesd/utils if (NOT ${TARGET} STREQUAL "")
-# if(${TARGET} STREQUAL "server") add_subdirectory(sysCollectorFlatbuffers)
+# if(${TARGET} STREQUAL "manager") add_subdirectory(sysCollectorFlatbuffers)
 # endif() endif()

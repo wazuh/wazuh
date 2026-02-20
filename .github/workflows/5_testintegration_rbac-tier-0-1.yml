@@ -34,8 +34,8 @@ jobs:
       # Build wazuh server for linux.
       - name: Build wazuh server for linux
         run: |
-          make deps -C src TARGET=server -j2
-          make -C src TARGET=server -j2
+          make deps -C src TARGET=manager -j2
+          make -C src TARGET=manager -j2
 
           sudo mkdir -p /var/wazuh-manager/etc/certs
           sudo touch /var/wazuh-manager/etc/certs/root-ca.pem

@@ -40,8 +40,8 @@ jobs:
 
       - name: Build Wazuh server
         run: |
-          make deps -C src TARGET=server -j$(nproc)
-          make -C src TARGET=server ENGINE_TEST=y -j$(nproc)
+          make deps -C src TARGET=manager -j$(nproc)
+          make -C src TARGET=manager ENGINE_TEST=y -j$(nproc)
 
       - name: Unit Test
         # Run unit tests using CTest

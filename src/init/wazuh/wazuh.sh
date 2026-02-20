@@ -75,7 +75,7 @@ WazuhUpgrade()
 {
     file_permissions=""
     #Check installation type
-    if [ "X$1" = "Xserver" ]; then
+    if [ "X$1" = "Xmanager" ]; then
         file_permissions="wazuh-manager"
     else
         file_permissions="wazuh"
@@ -220,7 +220,7 @@ WazuhUpgrade()
     # Replace and delete ossec group along with ossec users
     OSSEC_GROUP=ossec
     if (grep "^ossec:" /etc/group > /dev/null 2>&1) || (dscl . -read /Groups/ossec > /dev/null 2>&1)  ; then
-        if [ "X$1" = "Xserver" ]; then
+        if [ "X$1" = "Xmanager" ]; then
             find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -print0 | xargs -0 chown root:$file_permissions
             find $PREINSTALLEDDIR -group $OSSEC_GROUP -print0 | xargs -0 chown $file_permissions:$file_permissions
         else
@@ -239,7 +239,7 @@ WazuhUpgrade()
     fi
 
     # Ensure that the 'Indexer' is configured
-    if [ "X$1" = "Xserver" ]; then
+    if [ "X$1" = "Xmanager" ]; then
         local WAZUH_CONF_PATH="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}"
         local INDEXER_TEMPLATE_PATH="./etc/templates/config/generic/wodle-indexer.manager.template"
 

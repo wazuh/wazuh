@@ -299,7 +299,7 @@ SetHeaders()
 GenerateService()
 {
     SERVICE_TEMPLATE=./src/init/templates/${1}
-    if [ "X${INSTYPE}" = "Xserver" ]; then
+    if [ "X${INSTYPE}" = "Xmanager" ]; then
         sed -e "s|WAZUH_HOME_TMP|${INSTALLDIR}|g" \
             -e "s|/bin/wazuh-control|/bin/wazuh-manager-control|g" \
             ${SERVICE_TEMPLATE}
@@ -586,7 +586,7 @@ InstallCommon()
   WAZUH_USER='wazuh'
   INSTALL="install"
 
-  if [ ${INSTYPE} = 'server' ]; then
+  if [ ${INSTYPE} = 'manager' ]; then
       WAZUH_GROUP='wazuh-manager'
       WAZUH_USER='wazuh-manager'
       OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
@@ -599,7 +599,7 @@ InstallCommon()
       OSSEC_CONF_SRC='../etc/ossec-local.conf'
   fi
 
-  if [ ${INSTYPE} = 'server' ]; then
+  if [ ${INSTYPE} = 'manager' ]; then
       WAZUH_CONF="wazuh-manager.conf"
       WAZUH_LOGFILE="wazuh-manager.log"
       WAZUH_LOGJSON="wazuh-manager.json"
@@ -866,7 +866,7 @@ InstallCommon()
   else
     ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-modulesd ${INSTALLDIR}/bin/
   fi
-  if [ "X${INSTYPE}" = "Xserver" ]; then
+  if [ "X${INSTYPE}" = "Xmanager" ]; then
     ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-manager-control
   else
     ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
@@ -965,6 +965,8 @@ InstallCommon()
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} kaspersky ${INSTALLDIR}/active-response/bin/
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-slack ${INSTALLDIR}/active-response/bin/
   fi
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response/bin
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/run
@@ -1372,7 +1374,7 @@ InstallWazuh()
 {
     if [ "X$INSTYPE" = "Xagent" ]; then
         InstallAgent
-    elif [ "X$INSTYPE" = "Xserver" ]; then
+    elif [ "X$INSTYPE" = "Xmanager" ]; then
         InstallServer
     elif [ "X$INSTYPE" = "Xlocal" ]; then
         InstallLocal

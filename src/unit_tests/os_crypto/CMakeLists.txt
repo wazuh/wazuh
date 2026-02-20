@@ -7,7 +7,7 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-if(${TARGET} STREQUAL "server")
+if(${TARGET} STREQUAL "manager")
     add_subdirectory(aes)
     add_subdirectory(hmac)
     add_subdirectory(shared)
