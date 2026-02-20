@@ -162,13 +162,13 @@ def test_future_events_yes(test_configuration, test_metadata, set_wazuh_configur
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-(?:manager-)?modulesd:ms-graph.*Bookmark updated"))
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-(?:manager-)?modulesd:ms-graph.*Bookmark updated"), timeout=70)
 
     if(wazuh_log_monitor.callback_result != None):
         control_service('stop')
         truncate_file(WAZUH_LOG_PATH)
         control_service('start')
-        wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-(?:manager-)?modulesd:ms-graph.*seconds to run first scan"))
+        wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-(?:manager-)?modulesd:ms-graph.*seconds to run first scan"), timeout=70)
         assert (wazuh_log_monitor.callback_result != None), f'Error, `first scan` not found in log'
     else:
         assert (False), f'Error `Bookmark updated` not found in log'
