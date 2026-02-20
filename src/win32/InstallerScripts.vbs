@@ -355,25 +355,31 @@ Private Function GetVersion()
 End Function
 
 Public Function CheckSvcRunning()
-	Set wmi = GetObject("winmgmts://./root/cimv2")
+    On Error Resume Next
+    Set WshShell = CreateObject("WScript.Shell")
+    scPath = WshShell.ExpandEnvironmentStrings("%SystemRoot%") & "\System32\sc.exe"
 
-    SERVICE = "OssecSvc"
-    Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
-
-    If svc.Count <> 0 Then
-        state = wmi.Get("Win32_Service.Name='" & SERVICE & "'").State
-        Session.Property("OSSECRUNNING") = state
+    Set objExec = WshShell.Exec(scPath & " query OssecSvc")
+    If IsStateRunning(objExec.StdOut.ReadAll()) Then
+        Session.Property("OSSECRUNNING") = "Running"
     End If
 
-    SERVICE = "WazuhSvc"
-    Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
-
-    If svc.Count <> 0 Then
-        state = wmi.Get("Win32_Service.Name='" & SERVICE & "'").State
-        Session.Property("WAZUHRUNNING") = state
+    Set objExec = WshShell.Exec(scPath & " query WazuhSvc")
+    If IsStateRunning(objExec.StdOut.ReadAll()) Then
+        Session.Property("WAZUHRUNNING") = "Running"
     End If
 
-	CheckSvcRunning = 0
+    CheckSvcRunning = 0
+End Function
+
+Private Function IsStateRunning(scOutput)
+    IsStateRunning = False
+    For Each line In Split(scOutput, vbCrLf)
+        If InStr(line, "STATE") > 0 And InStr(line, ": 4 ") > 0 Then
+            IsStateRunning = True
+            Exit For
+        End If
+    Next
 End Function
 
 Public Function KillGUITask()
