@@ -44,7 +44,7 @@ case "$1" in
     if [ -z "$2" ] || [ -f ${WAZUH_TMP_DIR}/create_conf ] ; then
 
         ${SCRIPTS_DIR}/gen_ossec.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf
-        ${SCRIPTS_DIR}/add_localfiles.sh ${DIR} >> ${DIR}/etc/wazuh-manager.conf
+        # ${SCRIPTS_DIR}/add_localfiles.sh ${DIR} >> ${DIR}/etc/wazuh-manager.conf
 
         passlist="${DIR}/agentless/.passlist"
 
