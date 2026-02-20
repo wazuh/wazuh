@@ -107,8 +107,6 @@ The Wazuh WUI provides a powerful user interface for data visualization and anal
 
 Here you can find all the automation tools maintained by the Wazuh team.
 
-* [Wazuh AWS CloudFormation](https://github.com/wazuh/wazuh-cloudformation)
-
 * [Docker containers](https://github.com/wazuh/wazuh-docker)
 
 * [Wazuh Ansible](https://github.com/wazuh/wazuh-ansible)
