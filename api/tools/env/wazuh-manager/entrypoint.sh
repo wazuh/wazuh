@@ -16,8 +16,8 @@ done
 echo "Certificates found."
 
 # Set indexer credentials (default: admin/admin)
-echo 'admin' | /var/wazuh-manager/bin/wazuh-keystore -f indexer -k username
-echo 'admin' | /var/wazuh-manager/bin/wazuh-keystore -f indexer -k password
+echo 'admin' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username
+echo 'admin' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
 
 # Configure wazuh configuration file and api.yaml based on the Master role
 if [ "$ROLE" == "master" ]; then
@@ -38,7 +38,7 @@ chmod 400 /var/wazuh-manager/etc/certs/*
 chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
 
 echo "Starting Wazuh..."
-/var/wazuh-manager/bin/wazuh-control start
+/var/wazuh-manager/bin/wazuh-manager-control start
 
 # Keep the container running
 while true; do

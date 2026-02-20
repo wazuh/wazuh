@@ -12,11 +12,13 @@ runInit()
 {
     echo ""
     echo ""
+    control_script="wazuh-control"
 
     if [ -n "$1" ]; then
         if [ "X$1" = "Xserver" ]; then
             service="$service-manager"
             file_permissions="wazuh-manager"
+            control_script="wazuh-manager-control"
         else
             service="$service-$1"
             file_permissions="wazuh"
@@ -131,11 +133,11 @@ runInit()
     fi
 
     if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" -o "X${UN}" = "XDragonFly" ]; then
-        # Checking for the presence of wazuh-control on rc.local
-        grep wazuh-control /etc/rc.local > /dev/null 2>&1
+        # Checking for the presence of the control script on rc.local
+        grep ${control_script} /etc/rc.local > /dev/null 2>&1
         if [ $? != 0 ]; then
             echo "echo \"${starting}\"" >> /etc/rc.local
-            echo "${INSTALLDIR}/bin/wazuh-control start" >> /etc/rc.local
+            echo "${INSTALLDIR}/bin/${control_script} start" >> /etc/rc.local
         fi
         echo " - ${systemis} ${NUNAME}."
         echo " - ${modifiedinit}"
@@ -145,10 +147,10 @@ runInit()
             echo " - ${systemis} Linux."
             echo " - ${modifiedinit}"
 
-            grep wazuh-control /etc/rc.d/rc.local > /dev/null 2>&1
+            grep ${control_script} /etc/rc.d/rc.local > /dev/null 2>&1
             if [ $? != 0 ]; then
                 echo "echo \"${starting}\"" >> /etc/rc.d/rc.local
-                echo "${INSTALLDIR}/bin/wazuh-control start" >> /etc/rc.d/rc.local
+                echo "${INSTALLDIR}/bin/${control_script} start" >> /etc/rc.d/rc.local
             fi
             return 0;
         elif [ -d "/etc/rc.d/init.d" ]; then

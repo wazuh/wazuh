@@ -79,7 +79,7 @@ jobs:
           sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
             -keyout $INSTALLATION_DIR/etc/certs/server-key.pem -out $INSTALLATION_DIR/etc/certs/server.pem \
             -days 1 -subj "/CN=test" 2>/dev/null
-          sudo $INSTALLATION_DIR/bin/wazuh-control restart
+          sudo $INSTALLATION_DIR/bin/wazuh-manager-control restart
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |

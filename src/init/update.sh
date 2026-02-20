@@ -36,7 +36,7 @@ getPreinstalledDirByType()
     # Checking for Systemd
     if hash ps 2>&1 > /dev/null && hash grep 2>&1 > /dev/null && [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
 
-        SED_EXTRACT_PREINSTALLEDDIR="s/^ExecStart=\/usr\/bin\/env \(.*\)\/bin\/wazuh-control start$/\1/p"
+        SED_EXTRACT_PREINSTALLEDDIR="s|^ExecStart=/usr/bin/env \\(.*\\)/bin/[^[:space:]]*control start$|\\1|p"
 
         if [ "X$pidir_service_name" = "Xwazuh-manager" ] || [ "X$pidir_service_name" = "Xwazuh-local" ]; then #manager, hibrid or local
             type="manager"
@@ -128,7 +128,7 @@ getPreinstalledDirByType()
     # Checking for Darwin
     if [ "X${NUNAME}" = "XDarwin" ]; then
         if [ -f /Library/StartupItems/WAZUH/WAZUH ]; then
-            PREINSTALLEDDIR=`sed -n 's/^ *//; s/^\s*\(.*\)\/bin\/wazuh-control start$/\1/p' /Library/StartupItems/WAZUH/WAZUH`
+            PREINSTALLEDDIR=`sed -n 's/^ *//; s|^\\s*\\(.*\\)/bin/[^[:space:]]*control start$|\\1|p' /Library/StartupItems/WAZUH/WAZUH`
             if [ -d "$PREINSTALLEDDIR" ]; then
                 return 0;
             else
@@ -140,10 +140,10 @@ getPreinstalledDirByType()
     fi
     # Checking for BSD
     if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" -o "X${UN}" = "XDragonFly" ]; then
-        # Checking for the presence of wazuh-control on rc.local
-        grep wazuh-control /etc/rc.local > /dev/null 2>&1
+        # Checking for the presence of the control script on rc.local
+        grep -E 'wazuh(-manager)?-control' /etc/rc.local > /dev/null 2>&1
         if [ $? = 0 ]; then
-            PREINSTALLEDDIR=`sed -n 's/^\(.*\)\/bin\/wazuh-control start$/\1/p' /etc/rc.local`
+            PREINSTALLEDDIR=`sed -n 's|^\\(.*\\)/bin/[^[:space:]]*control start$|\\1|p' /etc/rc.local`
             if [ -d "$PREINSTALLEDDIR" ]; then
                 return 0;
             else
@@ -155,9 +155,9 @@ getPreinstalledDirByType()
     elif [ "X${NUNAME}" = "XLinux" ]; then
         # Checking for Linux
         if [ -e "/etc/rc.d/rc.local" ]; then
-            grep wazuh-control /etc/rc.d/rc.local > /dev/null 2>&1
+            grep -E 'wazuh(-manager)?-control' /etc/rc.d/rc.local > /dev/null 2>&1
             if [ $? = 0 ]; then
-                PREINSTALLEDDIR=`sed -n 's/^\(.*\)\/bin\/wazuh-control start$/\1/p' /etc/rc.d/rc.local`
+                PREINSTALLEDDIR=`sed -n 's|^\\(.*\\)/bin/[^[:space:]]*control start$|\\1|p' /etc/rc.d/rc.local`
                 if [ -d "$PREINSTALLEDDIR" ]; then
                     return 0;
                 else
@@ -203,7 +203,9 @@ getPreinstalledDirByType()
 ##########
 isWazuhInstalled()
 {
-    if [ -f "${1}/bin/wazuh-control" ]; then
+    if [ -f "${1}/bin/wazuh-manager-control" ]; then
+        return 0;
+    elif [ -f "${1}/bin/wazuh-control" ]; then
         return 0;
     elif [ -f "${1}/bin/ossec-control" ]; then
         return 0;
@@ -250,7 +252,11 @@ getPreinstalledType()
         getPreinstalledDir
     fi
 
-    TYPE=`$PREINSTALLEDDIR/bin/wazuh-control info -t`
+    if [ -f "$PREINSTALLEDDIR/bin/wazuh-manager-control" ]; then
+        TYPE=`$PREINSTALLEDDIR/bin/wazuh-manager-control info -t`
+    else
+        TYPE=`$PREINSTALLEDDIR/bin/wazuh-control info -t`
+    fi
 
     echo $TYPE
     return 0;
@@ -262,7 +268,11 @@ getPreinstalledVersion()
         getPreinstalledDir
     fi
 
-    VERSION=`$PREINSTALLEDDIR/bin/wazuh-control info -v`
+    if [ -f "$PREINSTALLEDDIR/bin/wazuh-manager-control" ]; then
+        VERSION=`$PREINSTALLEDDIR/bin/wazuh-manager-control info -v`
+    else
+        VERSION=`$PREINSTALLEDDIR/bin/wazuh-control info -v`
+    fi
 
     echo $VERSION
 }
@@ -292,7 +302,11 @@ UpdateStartOSSEC()
         # the INSTALLDIR variable is always set. It could have either the default value,
         # or a value equals to the PREINSTALLEDDIR, or a value specified by the user.
         # The last two possibilities are set in the setInstallDir function.
-        $INSTALLDIR/bin/wazuh-control start
+        if [ -f "$INSTALLDIR/bin/wazuh-manager-control" ]; then
+            $INSTALLDIR/bin/wazuh-manager-control start
+        else
+            $INSTALLDIR/bin/wazuh-control start
+        fi
     fi
 }
 
@@ -324,6 +338,8 @@ UpdateStopOSSEC()
 
     if [ -f "$PREINSTALLEDDIR/bin/ossec-control" ]; then
         $PREINSTALLEDDIR/bin/ossec-control stop > /dev/null 2>&1
+    elif [ -f "$PREINSTALLEDDIR/bin/wazuh-manager-control" ]; then
+        $PREINSTALLEDDIR/bin/wazuh-manager-control stop > /dev/null 2>&1
     else
         $PREINSTALLEDDIR/bin/wazuh-control stop > /dev/null 2>&1
     fi

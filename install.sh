@@ -974,14 +974,18 @@ A clean installation is required for managers."
     Install
 
     # User messages
+    control_script="wazuh-control"
+    if [ "X$INSTYPE" = "Xserver" ]; then
+        control_script="wazuh-manager-control"
+    fi
     echo ""
     echo " - ${configurationdone}."
     echo ""
     echo " - ${tostart}:"
-    echo "      $INSTALLDIR/bin/wazuh-control start"
+    echo "      $INSTALLDIR/bin/${control_script} start"
     echo ""
     echo " - ${tostop}:"
-    echo "      $INSTALLDIR/bin/wazuh-control stop"
+    echo "      $INSTALLDIR/bin/${control_script} stop"
     echo ""
     echo " - ${configat} $INSTALLDIR/etc/${WAZUH_CONF}"
     echo ""
@@ -1042,7 +1046,7 @@ A clean installation is required for managers."
 
     if [ "X$notmodified" = "Xyes" ]; then
         catMsg "0x105-noboot"
-        echo "      $INSTALLDIR/bin/wazuh-control start"
+        echo "      $INSTALLDIR/bin/${control_script} start"
         echo ""
     fi
 }

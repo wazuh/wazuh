@@ -69,7 +69,7 @@ jobs:
           sudo touch $INSTALLATION_DIR/etc/certs/server.pem
           sudo touch $INSTALLATION_DIR/etc/certs/server-key.pem
 
-          sudo $INSTALLATION_DIR/bin/wazuh-control restart
+          sudo $INSTALLATION_DIR/bin/wazuh-manager-control restart
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
