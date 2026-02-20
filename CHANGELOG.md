@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.4]
 
+### Agent
+
+#### Fixed
+
+- Fixed MS Graph default rules not triggering properly. ([#34240](https://github.com/wazuh/wazuh/pull/34240))
+- Unified date formats in Active Response logs to ensure consistent timestamp formatting. ([#34473](https://github.com/wazuh/wazuh/pull/34473))
+- Updated Docker integration rules to improve detection coverage and compatibility. ([#34376](https://github.com/wazuh/wazuh/pull/34376))
+- Fixed heap-based NULL write buffer underflow in `GetAlertData`. ([#34501](https://github.com/wazuh/wazuh/pull/34501))
+- Retained MSI installer log after Windows agent upgrade to improve troubleshooting visibility. ([#34517](https://github.com/wazuh/wazuh/pull/34517))
+- Fixed incorrect Windows 11 edition detection after upgrading the agent to version 4.14.3. ([#34530](https://github.com/wazuh/wazuh/pull/34530))
+- Fixed macOS agent crash during syscollector reload caused by invalid `pthread_cond_destroy()` usage. ([#34274](https://github.com/wazuh/wazuh/pull/34274))
+
 ### RESTful API
 
 #### Fixed
