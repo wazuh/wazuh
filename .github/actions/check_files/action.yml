@@ -23,6 +23,14 @@ inputs:
   wazuh_gid:
     required: true
     description: "Wazuh group ID"
+  wazuh_user_name:
+    required: false
+    description: "Wazuh user name label"
+    default: "wazuh"
+  wazuh_group_name:
+    required: false
+    description: "Wazuh group name label"
+    default: "wazuh"
   size_check:
     required: false
     description: "Check the size of the files"
@@ -64,7 +72,7 @@ runs:
       ignore=""
       if [ -n "${{ inputs.ignore }}" ]; then ignore="--ignore ${{ inputs.ignore }}"; fi
 
-      sudo venv/bin/python3 check_files.py -b '${{ inputs.current_status }}' --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_uid ${{ inputs.wazuh_uid }} --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
+      sudo venv/bin/python3 check_files.py -b '${{ inputs.current_status }}' --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_user_name '${{ inputs.wazuh_user_name }}' --wazuh_group_name '${{ inputs.wazuh_group_name }}' --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
 
   - name: Upload current stats
     if: success()
@@ -84,7 +92,7 @@ runs:
       ignore=""
       if [ -n "${{ inputs.ignore }}" ]; then ignore="--ignore ${{ inputs.ignore }}"; fi
 
-      sudo venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}' --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_gid ${{ inputs.wazuh_gid }} --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
+      sudo venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}' --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_user_name '${{ inputs.wazuh_user_name }}' --wazuh_group_name '${{ inputs.wazuh_group_name }}' --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
 
   - name: Upload validation results
     if: always()

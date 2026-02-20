@@ -39,8 +39,8 @@ jobs:
 
           sudo mkdir -p /var/wazuh-manager/etc/certs
           sudo touch /var/wazuh-manager/etc/certs/root-ca.pem
-          sudo touch /var/wazuh-manager/etc/certs/server.pem
-          sudo touch /var/wazuh-manager/etc/certs/server-key.pem
+          sudo touch /var/wazuh-manager/etc/certs/manager.pem
+          sudo touch /var/wazuh-manager/etc/certs/manager-key.pem
       # Install wazuh server for linux.
       - name: Install wazuh server for linux
         run: |
