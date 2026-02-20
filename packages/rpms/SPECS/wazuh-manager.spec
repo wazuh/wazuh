@@ -348,9 +348,6 @@ if [ $1 = 1 ]; then
   touch %{_localstatedir}/logs/wazuh-manager.json
   chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/wazuh-manager.json
   chmod 0660 %{_localstatedir}/logs/wazuh-manager.json
-
-  # Add default local_files to wazuh-manager.conf
-  %{_localstatedir}/packages_files/manager_installation_scripts/add_localfiles.sh %{_localstatedir} >> %{_localstatedir}/etc/wazuh-manager.conf
 fi
 
 if [[ -d /run/systemd/system ]]; then
