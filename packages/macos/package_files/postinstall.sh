@@ -70,8 +70,6 @@ chmod 660 ${DIR}/etc/ossec.conf
 chown root:${GROUP} ${DIR}/etc/wpk_root.pem
 chmod 640 ${DIR}/etc/wpk_root.pem
 
-chmod 770 ${DIR}/.ssh
-
 # For the /var/run
 chmod -R 770 ${DIR}/var
 chown -R root:${GROUP} ${DIR}/var
