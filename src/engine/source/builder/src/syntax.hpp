@@ -48,6 +48,12 @@ const auto DECODERS_PATH = json::Json::formatJsonPath("wazuh.integration.decoder
 const auto INTEGRATION_PATH = json::Json::formatJsonPath("wazuh.integration.name");
 const auto CATEGORY_PATH = json::Json::formatJsonPath("wazuh.integration.category");
 
+// Fields preserved when discarding events (index_discarded_events = false)
+namespace discard
+{
+constexpr auto TARGET_FIELD = "wazuh.space.event_discarded"; ///< Target field for discard_events helper
+} // namespace discard
+
 constexpr auto CONDITION_NAME =
     "condition"; ///< Name of the condition expression in the asset to be displayed in traces.
 constexpr auto CONSEQUENCE_NAME =
