@@ -26,8 +26,8 @@ COPY base/manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 RUN /wazuh/install.sh
 RUN mkdir -p /var/wazuh-manager/etc/certs && \
     touch /var/wazuh-manager/etc/certs/root-ca.pem && \
-    touch /var/wazuh-manager/etc/certs/server.pem && \
-    touch /var/wazuh-manager/etc/certs/server-key.pem
+    touch /var/wazuh-manager/etc/certs/manager.pem && \
+    touch /var/wazuh-manager/etc/certs/manager-key.pem
 COPY base/manager/entrypoint.sh /scripts/entrypoint.sh
 
 # HEALTHCHECK

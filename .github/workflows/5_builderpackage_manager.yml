@@ -231,6 +231,8 @@ jobs:
           expected_files: manager_base.csv
           wazuh_uid: ${{ env.WAZUH_UID }}
           wazuh_gid: ${{ env.WAZUH_GID }}
+          wazuh_user_name: wazuh-manager
+          wazuh_group_name: wazuh-manager
           size_check: "false"
           ignore: "site-packages,/var/wazuh-manager/framework/python"
           installation_directory: "/var/wazuh-manager"
@@ -324,7 +326,7 @@ jobs:
 
           docker exec wazuh_previous bash -c "$UPDATE_CMD"
           docker exec wazuh_previous bash -c "$INSTALL_CMD"
-          docker exec wazuh_previous bash -c "/var/wazuh-manager/bin/wazuh-control info || echo 'Manager not started yet'"
+          docker exec wazuh_previous bash -c "/var/wazuh-manager/bin/wazuh-manager-control info || echo 'Manager not started yet'"
 
       - name: Upgrade to current Wazuh version
         if: env.HAS_PREVIOUS_RELEASE == 'true'
@@ -341,7 +343,7 @@ jobs:
           echo "Upgrading to current version with package: $FILE_NAME"
           docker cp /tmp/$FILE_NAME wazuh_previous:/packages/$FILE_NAME
           docker exec wazuh_previous bash -c "$INSTALL_CMD"
-          docker exec wazuh_previous bash -c "/var/wazuh-manager/bin/wazuh-control info || echo 'Manager not started yet after upgrade'"
+          docker exec wazuh_previous bash -c "/var/wazuh-manager/bin/wazuh-manager-control info || echo 'Manager not started yet after upgrade'"
 
       - name: Upload package to GitHub
         if: always()

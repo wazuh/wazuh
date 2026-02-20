@@ -18,7 +18,7 @@ case "$1" in
       elif command -v service > /dev/null 2>&1 && service wazuh-manager status 2>/dev/null | grep "running" > /dev/null 2>&1; then
           service wazuh-manager stop > /dev/null 2>&1
       fi
-      ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
+      ${DIR}/bin/wazuh-manager-control stop > /dev/null 2>&1
 
       # Purging files
       rm -rf ${DIR}/stats/*
@@ -59,8 +59,8 @@ case "$1" in
     ;;
 
     failed-upgrade)
-      if [ -f ${DIR}/bin/wazuh-control ]; then
-	       ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
+      if [ -f ${DIR}/bin/wazuh-manager-control ]; then
+	       ${DIR}/bin/wazuh-manager-control stop > /dev/null 2>&1
       fi
     ;;
 

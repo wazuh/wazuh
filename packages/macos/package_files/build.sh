@@ -53,7 +53,9 @@ function build() {
     echo "Running install script"
     ${SOURCES_PATH}/install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
-    find ${DESTINATION_PATH}/ruleset/sca/ -type f -exec rm -f {} \;
+    if [ -d "${DESTINATION_PATH}/ruleset/sca" ]; then
+        find "${DESTINATION_PATH}/ruleset/sca/" -type f -exec rm -f {} \;
+    fi
 
     # Add the auxiliar script used while installing the package
     mkdir -p ${INSTALLATION_SCRIPTS_DIR}/

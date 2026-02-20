@@ -1478,7 +1478,7 @@ clean-internals:
 	rm -f firewall-drop
 # Wazuh binaries
 	rm -rf build
-	rm -f wazuh-keystore
+	rm -f wazuh-manager-keystore
 	rm -f wazuh-agentd
 	rm -f wazuh-execd
 	rm -f wazuh-logcollector
