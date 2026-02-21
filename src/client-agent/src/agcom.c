@@ -138,6 +138,11 @@ error:
     return strlen(*output);
 }
 
+/**
+ * @brief Return cluster and group info received from the last handshake as JSON.
+ * @param output Pointer to store the allocated response string.
+ * @return Length of the response string.
+ */
 size_t agcom_gethandshake(char **output) {
     if (agent_cluster_name[0] == '\0') {
         mdebug1("Cluster name not received yet from manager.");
@@ -177,6 +182,11 @@ size_t agcom_gethandshake(char **output) {
     return strlen(*output);
 }
 
+/**
+ * @brief Return the startup gate status as a JSON response.
+ * @param output Pointer to store the allocated response string.
+ * @return Length of the response string.
+ */
 size_t agcom_getstartupgate(char **output) {
     bool ready = false;
     char reason[OS_SIZE_128] = {0};
@@ -209,6 +219,11 @@ size_t agcom_getstartupgate(char **output) {
     return strlen(*output);
 }
 
+/**
+ * @brief Return document limits for a given module as a JSON object.
+ * @param module Module name ("fim", "syscollector", or "sca").
+ * @return cJSON object with the limits, or NULL if module is unknown or limits not received.
+ */
 cJSON *getDocumentLimits(const char *module) {
     if (!module) {
         return NULL;

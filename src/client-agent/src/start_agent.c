@@ -230,6 +230,11 @@ STATIC bool parse_agent_groups(const cJSON *root, char *agent_groups, size_t age
     return true;
 }
 
+/**
+ * @brief Validate that a string is a well-formed 32-character hex MD5 hash.
+ * @param hash String to validate.
+ * @return true if valid MD5, false otherwise.
+ */
 STATIC bool is_valid_md5_hash(const char *hash) {
     size_t i;
 
