@@ -1298,6 +1298,9 @@ paths:
         independently from other assets.
 
         The request body must be a JSON object and the resource must include a valid UUIDv4 in the `resource.id` field.
+        The request body size can be limited through `analysisd.resource_validate_max_document_bytes`
+        (environment variable: `WAZUH_RESOURCE_VALIDATE_MAX_DOCUMENT_BYTES`).
+        If the body exceeds the configured maximum, the request is rejected with HTTP 400 before parsing and validation.
 
         - **Integrations**:
           - Validate schema.
