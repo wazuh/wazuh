@@ -17,6 +17,8 @@ TOOLS=(
 EXTRA_TESTS=(
   "engine-private cm -h"
   "engine-private ns -h"
+  "engine-private geo -h"
+  "engine-private rawevt -h"
   "engine-public cm -h"
 )
 

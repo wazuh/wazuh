@@ -8,6 +8,7 @@ import api_communication.proto.router_pb2 as router
 import api_communication.proto.tester_pb2 as tester
 import api_communication.proto.geo_pb2 as geo
 import api_communication.proto.archiver_pb2 as archiver
+import api_communication.proto.rawevtindexer_pb2 as rawevtindexer
 
 
 def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
@@ -102,6 +103,14 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
         endpoint = 'archiver/deactivate'
     if isinstance(message, archiver.ArchiverStatus_Request):
         endpoint = 'archiver/status'
+
+    # Raw event indexer
+    if isinstance(message, rawevtindexer.RawEvtIndexerEnable_Request):
+        endpoint = '_internal/raweventindexer/enable'
+    if isinstance(message, rawevtindexer.RawEvtIndexerDisable_Request):
+        endpoint = '_internal/raweventindexer/disable'
+    if isinstance(message, rawevtindexer.RawEvtIndexerStatus_Request):
+        endpoint = '_internal/raweventindexer/status'
 
     # Unknown
     if endpoint == '':

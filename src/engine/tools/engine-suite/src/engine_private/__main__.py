@@ -1,6 +1,7 @@
 import sys
 import argparse
 from importlib.metadata import metadata
+from importlib import import_module
 
 from shared.default_settings import Constants as DefaultSettings
 
@@ -118,6 +119,28 @@ def parse_args():
 
     configure_geo_get(geo_subparsers)
     configure_geo_list(geo_subparsers)
+
+    # ==========================================================
+    # Raw event indexer commands (global → do NOT require --space)
+    # ==========================================================
+    rawevt_parser = subparsers.add_parser(
+        'rawevt',
+        help='Raw event indexer operations'
+    )
+
+    rawevt_subparsers = rawevt_parser.add_subparsers(
+        title='rawevt commands',
+        required=True,
+        dest='rawevt_command'
+    )
+
+    configure_rawevt_enable = import_module('engine_private.cmds.rawevt.enable').configure
+    configure_rawevt_disable = import_module('engine_private.cmds.rawevt.disable').configure
+    configure_rawevt_status = import_module('engine_private.cmds.rawevt.status').configure
+
+    configure_rawevt_enable(rawevt_subparsers)
+    configure_rawevt_disable(rawevt_subparsers)
+    configure_rawevt_status(rawevt_subparsers)
 
     try:
         import argcomplete
