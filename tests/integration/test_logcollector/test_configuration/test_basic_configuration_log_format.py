@@ -153,7 +153,7 @@ def check_log_format_valid(test_configuration, test_metadata):
     wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     if test_metadata['log_format'] not in log_format_not_print_analyzing_info:
-        wazuh_log_monitor.start(timeout=5,
+        wazuh_log_monitor.start(timeout=15,
                                 callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_ANALYZING_FILE,
                                                    {'file': test_metadata['location']}))
         assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_ANALYZING_FILE
@@ -164,25 +164,25 @@ def check_log_format_valid(test_configuration, test_metadata):
         else:
             callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_MONITORING_COMMAND, {
                                 'command': test_metadata['command']})
-        wazuh_log_monitor.start(timeout=5, callback=callback)
+        wazuh_log_monitor.start(timeout=15, callback=callback)
         assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_COMMAND_MONITORING
     elif test_metadata['log_format'] == 'djb-multilog':
-        wazuh_log_monitor.start(timeout=5,
+        wazuh_log_monitor.start(timeout=15,
                                 callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_DJB_PROGRAM_NAME,
                                                    {'program_name': test_metadata['location']}))
         assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_DJB_MULTILOG_NOT_PRODUCED
     elif test_metadata['log_format'] == 'macos':
         if 'location' in test_metadata and test_metadata['location'] != 'macos':
-            wazuh_log_monitor.start(timeout=5,
+            wazuh_log_monitor.start(timeout=15,
                                     callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_MACOS_INVALID_LOCATION,
                                                     {'location': test_metadata['location']}))
             assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_INVALID_MACOS_VALUE
         if 'location' not in test_metadata:
-            wazuh_log_monitor.start(timeout=5,
+            wazuh_log_monitor.start(timeout=15,
                                     callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_MACOS_MISSING_LOCATION))
             assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_MISSING_LOCATION_VALUE
 
-        wazuh_log_monitor.start(timeout=5,
+        wazuh_log_monitor.start(timeout=15,
                                 callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_MACOS_MONITORING_LOGS,
                                                    {'command_path': MACOS_LOG_COMMAND_PATH}))
         assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_MACOS_LOG_NOT_PRODUCED
@@ -206,14 +206,14 @@ def check_log_format_invalid(test_metadata):
                                                 {'prefix' : PREFIX,
                                                 'option': 'log_format',
                                                 'value' : test_metadata['log_format']})
-    wazuh_log_monitor.start(timeout=5, callback=log_callback)
+    wazuh_log_monitor.start(timeout=15, callback=log_callback)
     assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_GENERIC_MESSAGE
 
     log_callback = callbacks.generate_callback(patterns.LOGCOLLECTOR_CONFIGURATION_ERROR,
                                                 {'prefix' : PREFIX,
                                                  'severity' : 'ERROR',
                                                 'conf_path' : "etc/ossec.conf"})
-    wazuh_log_monitor.start(timeout=5, callback=log_callback)
+    wazuh_log_monitor.start(timeout=15, callback=log_callback)
     assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_GENERIC_MESSAGE
 
     if sys.platform != WINDOWS:
@@ -222,7 +222,7 @@ def check_log_format_invalid(test_metadata):
                                                 {'prefix' : PREFIX,
                                                  'severity' : 'ERROR',
                                                 'conf_path' : "etc/ossec.conf"})
-        wazuh_log_monitor.start(timeout=5, callback=log_callback)
+        wazuh_log_monitor.start(timeout=15, callback=log_callback)
         assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_GENERIC_MESSAGE
 
 

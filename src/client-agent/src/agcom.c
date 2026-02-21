@@ -38,6 +38,8 @@ size_t agcom_dispatch(char * command, char ** output){
         return strlen(*output);
     } else if (strcmp(rcv_comm, "gethandshake") == 0) {
         return agcom_gethandshake(output);
+    } else if (strcmp(rcv_comm, "getstartupgate") == 0) {
+        return agcom_getstartupgate(output);
     } else if (strcmp(rcv_comm, "getdoclimits") == 0) {
         if (!rcv_args) {
             mdebug1("AGCOM getdoclimits needs arguments (module name).");
@@ -136,6 +138,11 @@ error:
     return strlen(*output);
 }
 
+/**
+ * @brief Return cluster and group info received from the last handshake as JSON.
+ * @param output Pointer to store the allocated response string.
+ * @return Length of the response string.
+ */
 size_t agcom_gethandshake(char **output) {
     if (agent_cluster_name[0] == '\0') {
         mdebug1("Cluster name not received yet from manager.");
@@ -175,6 +182,48 @@ size_t agcom_gethandshake(char **output) {
     return strlen(*output);
 }
 
+/**
+ * @brief Return the startup gate status as a JSON response.
+ * @param output Pointer to store the allocated response string.
+ * @return Length of the response string.
+ */
+size_t agcom_getstartupgate(char **output) {
+    bool ready = false;
+    char reason[OS_SIZE_128] = {0};
+    cJSON *root = NULL;
+    char *json_str = NULL;
+
+    startup_gate_get_status(&ready, reason, sizeof(reason));
+
+    root = cJSON_CreateObject();
+    if (!root) {
+        os_strdup("err Failed to create startup gate response", *output);
+        return strlen(*output);
+    }
+
+    cJSON_AddBoolToObject(root, "ready", ready);
+    cJSON_AddStringToObject(root, "reason", reason[0] ? reason : "unknown");
+
+    json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    if (!json_str) {
+        os_strdup("err Failed to serialize startup gate response", *output);
+        return strlen(*output);
+    }
+
+    os_strdup("ok", *output);
+    wm_strcat(output, json_str, ' ');
+    os_free(json_str);
+
+    return strlen(*output);
+}
+
+/**
+ * @brief Return document limits for a given module as a JSON object.
+ * @param module Module name ("fim", "syscollector", or "sca").
+ * @return cJSON object with the limits, or NULL if module is unknown or limits not received.
+ */
 cJSON *getDocumentLimits(const char *module) {
     if (!module) {
         return NULL;

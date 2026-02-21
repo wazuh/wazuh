@@ -18,6 +18,7 @@
 #include "sym_load.h"
 #include "os_net.h"
 #include "dll_load_notify.h"
+#include "startup_gate_op.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
@@ -33,6 +34,12 @@ sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 /** Prototypes **/
 int Start_win32_Syscheck();
 
+typedef struct win_module_start_ctx {
+    wm_routine routine;
+    void *data;
+    char name[OS_SIZE_128];
+} win_module_start_ctx_t;
+
 /* syscheck main thread */
 #ifdef WIN32
 DWORD WINAPI skthread(__attribute__((unused)) LPVOID arg)
@@ -40,6 +47,7 @@ DWORD WINAPI skthread(__attribute__((unused)) LPVOID arg)
 void *skthread()
 #endif
 {
+    startup_gate_wait_for_ready("wazuh-syscheckd");
     Start_win32_Syscheck();
 #ifdef WIN32
     return 0;
@@ -55,11 +63,42 @@ DWORD WINAPI logcollector_thread(__attribute__((unused)) LPVOID arg)
 void *logcollector_thread()
 #endif
 {
+    startup_gate_wait_for_ready("wazuh-logcollector");
     LogCollectorStart();
 #ifdef WIN32
     return 0;
 #else
     return (NULL);
+#endif
+}
+
+#ifdef WIN32
+DWORD WINAPI win_module_thread(__attribute__((unused)) void *arg)
+#else
+void *win_module_thread(void *arg)
+#endif
+{
+    win_module_start_ctx_t *ctx = (win_module_start_ctx_t *)arg;
+
+    if (!ctx || !ctx->routine) {
+        os_free(ctx);
+#ifdef WIN32
+        return 0;
+#else
+        return NULL;
+#endif
+    }
+
+    startup_gate_wait_for_ready(ctx->name[0] ? ctx->name : "wazuh-modulesd");
+
+#ifdef WIN32
+    DWORD result = ctx->routine(ctx->data);
+    os_free(ctx);
+    return result;
+#else
+    void *result = ctx->routine(ctx->data);
+    os_free(ctx);
+    return result;
 #endif
 }
 
@@ -146,6 +185,8 @@ int local_start()
         agt->max_time_reconnect_try = (agt->notify_time * 3);
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
+
+    startup_gate_initialize();
 
     /* Initialize sender */
     sender_init();
@@ -254,10 +295,19 @@ int local_start()
         wmodule * cur_module;
 
         for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+            win_module_start_ctx_t *start_ctx = NULL;
+            const char *module_name = NULL;
+
+            os_calloc(1, sizeof(win_module_start_ctx_t), start_ctx);
+            start_ctx->routine = cur_module->context->start;
+            start_ctx->data = cur_module->data;
+            module_name = (cur_module->context && cur_module->context->name) ? cur_module->context->name : "module";
+            snprintf(start_ctx->name, sizeof(start_ctx->name), "wazuh-modulesd/%s", module_name);
+
             w_create_thread(NULL,
                             0,
-                            cur_module->context->start,
-                            cur_module->data,
+                            win_module_thread,
+                            start_ctx,
                             0,
                             (LPDWORD)&threadID2);
         }

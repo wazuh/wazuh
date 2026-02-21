@@ -228,6 +228,7 @@ static int poll_interval_time = 0;
 
 /* This variable is used to prevent flooding when group files exceed the maximum size */
 static int reported_path_size_exceeded = 0;
+static bool handshake_groups_ready = false;
 
 /* Hash table for agent data */
 OSHash *agent_data_hash;
@@ -247,6 +248,41 @@ void free_file_time(void *data) {
 }
 
 /**
+ * @brief Resolve merged sum for an agent group or multigroup name.
+ * @param group_name Agent group string (single group or CSV multigroup)
+ * @param merged_sum Buffer to store resolved merged sum
+ * @return true when merged sum was resolved, false otherwise
+ */
+STATIC bool get_group_merged_sum(const char *group_name, os_md5 merged_sum) {
+    group_t *group_data = NULL;
+
+    if (!group_name || !group_name[0] || !merged_sum) {
+        return false;
+    }
+
+    if (!handshake_groups_ready || !groups || !multi_groups) {
+        return false;
+    }
+
+    w_mutex_lock(&files_mutex);
+
+    if (strchr(group_name, MULTIGROUP_SEPARATOR)) {
+        group_data = OSHash_Get_ex(multi_groups, group_name);
+    } else {
+        group_data = OSHash_Get_ex(groups, group_name);
+    }
+
+    if (group_data && group_data->merged_sum[0]) {
+        snprintf(merged_sum, sizeof(os_md5), "%s", group_data->merged_sum);
+        w_mutex_unlock(&files_mutex);
+        return true;
+    }
+
+    w_mutex_unlock(&files_mutex);
+    return false;
+}
+
+/**
  * @brief Build JSON payload for handshake ACK response
  * @param limits Pointer to module limits structure
  * @param agent_id Agent ID string for fetching groups (can be NULL)
@@ -255,6 +291,8 @@ void free_file_time(void *data) {
 STATIC char* build_handshake_json(const module_limits_t *limits, const char *agent_id) {
     char *json_str = NULL;
     char *agent_groups_csv = NULL;
+    const char *handshake_groups_csv = NULL;
+    os_md5 merged_sum = {0};
 
     if (!limits) {
         return NULL;
@@ -321,22 +359,26 @@ STATIC char* build_handshake_json(const module_limits_t *limits, const char *age
         cJSON_AddStringToObject(root, "cluster_node", DEFAULT_NODE_NAME);
     }
 
-    /* Add agent_groups - always include field, agent can fallback to merge.mg if empty */
+    /* Add agent_groups */
     cJSON *groups_array = cJSON_CreateArray();
     if (groups_array) {
         if (agent_id) {
             agent_groups_csv = wdb_get_agent_group(atoi(agent_id), NULL);
-            if (agent_groups_csv && agent_groups_csv[0] != '\0') {
-                char *groups_copy = strdup(agent_groups_csv);
-                if (groups_copy) {
-                    char *saveptr = NULL;
-                    char *group = strtok_r(groups_copy, ",", &saveptr);
-                    while (group) {
-                        cJSON_AddItemToArray(groups_array, cJSON_CreateString(group));
-                        group = strtok_r(NULL, ",", &saveptr);
-                    }
-                    os_free(groups_copy);
+            handshake_groups_csv = (agent_groups_csv && agent_groups_csv[0] != '\0') ? agent_groups_csv : DEFAULT_GROUP;
+
+            char *groups_copy = strdup(handshake_groups_csv);
+            if (groups_copy) {
+                char *saveptr = NULL;
+                char *group = strtok_r(groups_copy, ",", &saveptr);
+                while (group) {
+                    cJSON_AddItemToArray(groups_array, cJSON_CreateString(group));
+                    group = strtok_r(NULL, ",", &saveptr);
                 }
+                os_free(groups_copy);
+            }
+
+            if (get_group_merged_sum(handshake_groups_csv, merged_sum)) {
+                cJSON_AddStringToObject(root, "merged_sum", merged_sum);
             }
             os_free(agent_groups_csv);
         }
@@ -740,16 +782,8 @@ cJSON *assign_group_to_agent(const char *agent_id, const char *md5) {
 
     mdebug2("Agent '%s' with file '%s' MD5 '%s'", agent_id, SHAREDCFG_FILENAME, md5);
 
-    w_mutex_lock(&files_mutex);
-
-    if (!guess_agent_group || (!find_group_from_sum(md5, group) && !find_multi_group_from_sum(md5, group))) {
-        // If the group could not be guessed, set to "default"
-        // or if the user requested not to guess the group, through the internal
-        // option 'guess_agent_group', set to "default"
-        strncpy(group, "default", OS_SIZE_65536);
-    }
-
-    w_mutex_unlock(&files_mutex);
+    // No group exists yet for this agent, so assign default directly.
+    strncpy(group, DEFAULT_GROUP, OS_SIZE_65536);
 
     wdb_set_agent_groups_csv(atoi(agent_id),
                             group,
@@ -2014,6 +2048,7 @@ void manager_init()
     }
 
     OSHash_SetFreeDataPointer(pending_data, (void (*)(void *))free_pending_data);
+    handshake_groups_ready = true;
 }
 
 /**

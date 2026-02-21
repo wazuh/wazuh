@@ -152,7 +152,7 @@ def test_configuration_label(test_configuration, test_metadata, set_wazuh_config
     wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_ANALYZING_FILE, {
                               'file': test_metadata['location']
-                          }), timeout=10)
+                          }), timeout=20)
     assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_ANALYZING_FILE
 
     if sys.platform != WINDOWS:

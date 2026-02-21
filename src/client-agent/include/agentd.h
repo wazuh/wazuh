@@ -209,9 +209,25 @@ int verifyRemoteConf();
 // Clear merged.mg hash cache value.
 void clear_merged_hash_cache();
 
+// Initialize startup gate state for module workload blocking.
+void startup_gate_initialize(void);
+
+// Update startup gate state from handshake payload.
+void startup_gate_process_handshake(bool is_startup, const char *merged_sum);
+
+// Re-check startup gate state after merged.mg updates.
+void startup_gate_refresh_from_local_hash(void);
+
+// Read current startup gate state.
+void startup_gate_get_status(bool *ready, char *reason, size_t reason_size);
+
+// Query startup gate state.
+bool startup_gate_is_ready(void);
+
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
 size_t agcom_gethandshake(char ** output);
+size_t agcom_getstartupgate(char **output);
 cJSON *getDocumentLimits(const char *module);
 
 #ifndef WIN32

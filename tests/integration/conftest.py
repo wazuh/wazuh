@@ -18,7 +18,7 @@ from wazuh_testing.constants.paths import ROOT_PREFIX
 from wazuh_testing.constants.paths.api import RBAC_DATABASE_PATH
 from wazuh_testing.constants.paths.logs import ACTIVE_RESPONSE_LOG_PATH, WAZUH_LOG_PATH, ALERTS_JSON_PATH, \
                                                WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
+from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, SHARED_CONFIGURATIONS_PATH
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import socket_controller
 from wazuh_testing.tools.monitors import queue_monitor
@@ -31,6 +31,8 @@ from wazuh_testing.utils.file import remove_file, truncate_file
 from wazuh_testing.utils.manage_agents import remove_agents
 import wazuh_testing.utils.configuration as wazuh_configuration
 from wazuh_testing.utils.services import control_service
+
+WAZUH_MERGED_MG_PATH = os.path.join(SHARED_CONFIGURATIONS_PATH, 'merged.mg')
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -640,6 +642,41 @@ def mock_agent_packages(mock_agent_with_custom_system) -> list:
     yield package_names
 
     mocking.delete_mocked_packages(agent_id=mock_agent_with_custom_system)
+
+
+@pytest.fixture(autouse=True)
+def ensure_merged_mg() -> None:
+    """Write the default dummy merged.mg whose MD5 matches RemotedSimulator.DEFAULT_MERGED_SUM.
+
+    On Linux the file is created with group-writable permissions (0o660) and
+    owned by root:wazuh so that wazuh-agentd can overwrite it when receiving
+    a new merged.mg from the manager (or simulator).
+    """
+    os.makedirs(os.path.dirname(WAZUH_MERGED_MG_PATH), exist_ok=True)
+    with open(WAZUH_MERGED_MG_PATH, 'wb') as f:
+        f.write(RemotedSimulator.DEFAULT_MERGED_MG_CONTENT)
+    if sys.platform != platforms.WINDOWS:
+        import grp
+        os.chmod(WAZUH_MERGED_MG_PATH, 0o660)
+        try:
+            wazuh_gid = grp.getgrnam('wazuh').gr_gid
+            os.chown(WAZUH_MERGED_MG_PATH, -1, wazuh_gid)
+        except (KeyError, PermissionError):
+            pass
+
+
+@pytest.fixture()
+def clean_merged_mg():
+    """Remove merged.mg before the test so the agent starts with no local file.
+
+    After the test, any merged.mg left by the simulator push is also removed
+    to avoid leaking state between tests.
+    """
+    if os.path.exists(WAZUH_MERGED_MG_PATH):
+        os.remove(WAZUH_MERGED_MG_PATH)
+    yield
+    if os.path.exists(WAZUH_MERGED_MG_PATH):
+        os.remove(WAZUH_MERGED_MG_PATH)
 
 
 @pytest.fixture()

@@ -265,7 +265,7 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
                     cJSON* registry_obj = cJSON_CreateObject();
                     cJSON_AddItemToObject(stateful_event, "registry", registry_obj);
                     cJSON_AddStringToObject(registry_obj, "path", path);
-                    cJSON_AddStringToObject(registry_obj, "arch", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+                    cJSON_AddStringToObject(registry_obj, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
 
                     cJSON* state_obj = cJSON_CreateObject();
                     cJSON_AddItemToObject(stateful_event, "state", state_obj);
@@ -294,8 +294,8 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
                     cJSON* registry_obj = cJSON_CreateObject();
                     cJSON_AddItemToObject(stateful_event, "registry", registry_obj);
                     cJSON_AddStringToObject(registry_obj, "path", path);
-                    cJSON_AddStringToObject(registry_obj, "value_name", value);
-                    cJSON_AddStringToObject(registry_obj, "arch", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+                    cJSON_AddStringToObject(registry_obj, "value", value);
+                    cJSON_AddStringToObject(registry_obj, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
 
                     cJSON* state_obj = cJSON_CreateObject();
                     cJSON_AddItemToObject(stateful_event, "state", state_obj);

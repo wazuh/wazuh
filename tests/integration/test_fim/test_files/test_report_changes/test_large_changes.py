@@ -166,9 +166,22 @@ def test_large_changes(test_configuration, test_metadata, configure_local_intern
         - r'.*Sending FIM event: (.+)$' ('added' and 'modified' events)
         - The 'More changes' message appears in content_changes when the changes size is bigger than the set limit.
     '''
-    if test_metadata.get('fim_mode') == 'whodata' and sys.platform == WINDOWS:
-        time.sleep(5)
+    fim_mode = test_metadata.get('fim_mode')
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    
+    # Wait for appropriate readiness based on mode
+    # For scheduled mode, detect_end_scan fixture already handles waiting for scan end
+    # For real-time mode, we need to wait for real-time monitoring to be fully initialized
+    if fim_mode == 'realtime':
+        wazuh_log_monitor.start(
+            timeout=60,
+            callback=generate_callback(r'.*Real-time file integrity monitoring started.*')
+        )
+        assert wazuh_log_monitor.callback_result, "Real-time monitoring did not start"
+    
+    if sys.platform == WINDOWS:
+        time.sleep(5)
+    
     limit = 50000
     test_file_path = os.path.join(test_metadata.get('folder_to_monitor'), test_metadata.get('filename'))
 
@@ -177,7 +190,7 @@ def test_large_changes(test_configuration, test_metadata, configure_local_intern
     original_string = generate_string(test_metadata.get('original_size'), '0')
     write_file_write(test_file_path, content=original_string)
 
-    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=60)
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=120)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FIM_EVENT_NOT_DETECTED
 
     # Modify the file with new content
