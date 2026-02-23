@@ -382,7 +382,7 @@ public:
 
 // Specialization of the external Queue for testing
 using TestingTuple = std::tuple<base::Event, Options, std::function<void(base::RespOrError<Output>&&)>>;
-using QueueType = std::shared_ptr<TestingTuple>;
+using EventTest = std::shared_ptr<TestingTuple>;
 
 } // namespace test
 

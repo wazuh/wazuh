@@ -491,7 +491,7 @@ int main(int argc, char* argv[])
             const auto qEps = confManager.get<size_t>(conf::key::EVENT_QUEUE_EPS);
 
             const auto eventQueue = std::make_shared<fastqueue::CQueue<base::Event>>(qSize, qEps);
-            const auto testQueue = std::make_shared<fastqueue::StdQueue<router::test::QueueType>>(qSize);
+            const auto testQueue = std::make_shared<fastqueue::StdQueue<router::test::EventTest>>(qSize);
 
             router::Orchestrator::Options config {.m_numThreads = confManager.get<int>(conf::key::ORCHESTRATOR_THREADS),
                                                   .m_wStore = store,
