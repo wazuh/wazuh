@@ -1476,8 +1476,9 @@ clean-internals:
 	rm -f kaspersky
 	rm -f wazuh-slack
 	rm -f firewall-drop
-# Wazuh binaries
+	# Wazuh binaries
 	rm -rf build
+	rm -rf unit_tests/build*
 	rm -f wazuh-keystore
 	rm -f wazuh-agentd
 	rm -f wazuh-execd

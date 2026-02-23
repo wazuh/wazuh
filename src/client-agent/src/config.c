@@ -76,6 +76,8 @@ int ClientConf(const char *cfgfile)
         remote_conf = agt->flags.remote_conf;
         ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &agt->labels, agt);
         ReadConfig(CCLIENT | CAGENT_CONFIG, AGENTCONFIG, agt, NULL);
+    } else {
+        remote_conf = 0;
     }
 #ifndef WIN32
     if (ReadConfig(ATAMPERING, cfgfile, atc, NULL) < 0) {

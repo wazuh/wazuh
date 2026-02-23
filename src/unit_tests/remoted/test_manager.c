@@ -615,11 +615,7 @@ void test_lookfor_agent_group_set_default_group()
 
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     will_return(__wrap_w_is_single_node, 0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_value(__wrap_wdb_set_agent_groups_csv, id, agent_id);
     will_return(__wrap_wdb_set_agent_groups_csv, 0);
@@ -5737,11 +5733,12 @@ static void test_build_handshake_json_with_no_agent_groups(void **state) {
     root = cJSON_Parse(json_str);
     assert_non_null(root);
 
-    /* Verify agent_groups field is present but empty (agent can fallback to merge.mg) */
+    /* Verify agent_groups field falls back to default */
     groups_array = cJSON_GetObjectItem(root, "agent_groups");
     assert_non_null(groups_array);
     assert_true(cJSON_IsArray(groups_array));
-    assert_int_equal(cJSON_GetArraySize(groups_array), 0);
+    assert_int_equal(cJSON_GetArraySize(groups_array), 1);
+    assert_string_equal(cJSON_GetArrayItem(groups_array, 0)->valuestring, "default");
 
     cJSON_Delete(root);
     os_free(json_str);
@@ -5769,11 +5766,12 @@ static void test_build_handshake_json_with_empty_agent_groups(void **state) {
     root = cJSON_Parse(json_str);
     assert_non_null(root);
 
-    /* Verify agent_groups field is present but empty (agent can fallback to merge.mg) */
+    /* Verify agent_groups field falls back to default */
     groups_array = cJSON_GetObjectItem(root, "agent_groups");
     assert_non_null(groups_array);
     assert_true(cJSON_IsArray(groups_array));
-    assert_int_equal(cJSON_GetArraySize(groups_array), 0);
+    assert_int_equal(cJSON_GetArraySize(groups_array), 1);
+    assert_string_equal(cJSON_GetArrayItem(groups_array, 0)->valuestring, "default");
 
     cJSON_Delete(root);
     os_free(json_str);
