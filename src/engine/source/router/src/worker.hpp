@@ -17,8 +17,6 @@
 namespace router
 {
 
-constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 100000;
-constexpr auto WAIT_EPS_TIMEOUT_MSEC = 1;
 
 class RouterWorker : public IWorker<IRouter>
 {
@@ -27,18 +25,16 @@ private:
     std::atomic_bool m_isRunning;                             ///< Flag to know if the worker is running
     std::thread m_thread;                                     ///< The thread for the worker
     std::shared_ptr<fastqueue::IQueue<base::Event>> m_rQueue; ///< The router queue
-    EpsLimit m_epsLimit;
 
 public:
     /**
      * @brief Construct a new Worker object
      *
      */
-    RouterWorker(std::shared_ptr<EnvironmentBuilder> envBuilder, decltype(m_rQueue) rQueue, const EpsLimit& epsLimit)
+    RouterWorker(std::shared_ptr<EnvironmentBuilder> envBuilder, decltype(m_rQueue) rQueue)
         : m_router(std::make_shared<Router>(envBuilder))
         , m_isRunning(false)
         , m_rQueue(rQueue)
-        , m_epsLimit(epsLimit)
     {
         if (!m_rQueue)
         {
@@ -71,7 +67,7 @@ private:
     std::shared_ptr<ITester> m_tester;                            ///< The tester instance
     std::atomic_bool m_isRunning;                                 ///< Flag to know if the worker is running
     std::thread m_thread;                                         ///< The thread for the worker
-    std::shared_ptr<fastqueue::IQueue<test::QueueType>> m_tQueue; ///< The tester queue
+    std::shared_ptr<fastqueue::IQueue<test::EventTest>> m_tQueue; ///< The tester queue
 
 public:
     /**

@@ -25,7 +25,7 @@ void RouterWorker::start()
             while (m_isRunning)
             {
                 base::Event event {};
-                if (m_rQueue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC) && event != nullptr)
+                if (m_rQueue->waitPop(event, fastqueue::WAIT_DEQUEUE_TIMEOUT_USEC) && event != nullptr)
                 {
                     m_router->ingest(std::move(event));
                     // TODO: Log metrics
@@ -69,7 +69,7 @@ void TesterWorker::start()
             {
                 // Process test queue
                 test::EventTest testEvent {};
-                if (m_tQueue->waitPop(testEvent, WAIT_DEQUEUE_TIMEOUT_USEC) && testEvent != nullptr)
+                if (m_tQueue->waitPop(testEvent, fastqueue::WAIT_DEQUEUE_TIMEOUT_USEC) && testEvent != nullptr)
                 {
                     auto& [event, opt, callback] = *testEvent;
                     auto output = m_tester->ingestTest(std::move(event), opt);
