@@ -1,4 +1,4 @@
-name: 5.X - Package - Build Wazuh server embedded Python
+name: 5.X - Package - Build Wazuh manager embedded Python
 
 on:
   workflow_dispatch:
@@ -62,7 +62,7 @@ jobs:
           echo "matrix=$JSON_ARRAY" >> "$GITHUB_OUTPUT"
 
   build-embedded-python:
-    name: Build Wazuh server embedded Python
+    name: Build Wazuh manager embedded Python
     needs: pick-architecture
     strategy:
       matrix: ${{ fromJSON(needs.pick-architecture.outputs.matrix) }}
@@ -114,14 +114,14 @@ jobs:
               ${{ inputs.build_cpython == true && '--build-cpython' || '' }} \
               ${{ inputs.build_deps == true && '--build-deps' || '' }}
 
-      - name: Upload Wazuh server embedded Python sources to GitHub
+      - name: Upload Wazuh manager embedded Python sources to GitHub
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARCH }}-sources
           path: /tmp/cpython_${{ env.PACKAGE_ARCH }}.tar.gz
           if-no-files-found: error
 
-      - name: Upload Wazuh server out-of-the-box embedded Python to GitHub
+      - name: Upload Wazuh manager out-of-the-box embedded Python to GitHub
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARCH }}-compiled
