@@ -4,7 +4,7 @@ COPY preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 RUN THREADS=$(nproc) /wazuh/install.sh
 
 # Install pip libraries for development
-RUN /var/wazuh-manager/framework/python/bin/pip3 install \
+RUN /var/wazuh-manager/framework/python/bin/python3 -m pip install \
     pydevd-pycharm freezegun ipdb
 # ----------------------------------------------------
 
@@ -18,7 +18,7 @@ RUN ln -s /var/wazuh-manager/framework/python/bin/python3 /bin/wpy && \
     ln -s /var/wazuh-manager/framework/python/bin/pip3 /bin/wpip
 
 ADD xml/xml_parser.py /scripts/xml_parser.py
-ADD xml/master_wazuh-manager_conf /scripts/master_wazuh-manager_conf
+ADD xml/master_wazuh-manager_conf.xml /scripts/master_wazuh-manager_conf.xml
 ADD xml/worker_wazuh-manager_conf.xml /scripts/worker_wazuh-manager_conf.xml
 ADD entrypoint.sh /scripts/entrypoint.sh
 ADD healthcheck.sh /scripts/healthcheck.sh
