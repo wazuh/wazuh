@@ -7300,8 +7300,8 @@ paths:
                           request_timeout: 10
                         https:
                           enabled: true
-                          key: "/var/wazuh-manager/api/configuration/ssl/server.key"
-                          cert: "/var/wazuh-manager/api/configuration/ssl/server.crt"
+                          key: "/var/wazuh-manager/api/configuration/ssl/manager.key"
+                          cert: "/var/wazuh-manager/api/configuration/ssl/manager.crt"
                           use_ca: false
                           ca: "/var/wazuh-manager/api/configuration/ssl/ca.crt"
                           ssl_protocol: "auto"
@@ -7346,8 +7346,8 @@ paths:
                           request_timeout: 10
                         https:
                           enabled: true
-                          key: "/var/wazuh-manager/api/configuration/ssl/server.key"
-                          cert: "/var/wazuh-manager/api/configuration/ssl/server.crt"
+                          key: "/var/wazuh-manager/api/configuration/ssl/manager.key"
+                          cert: "/var/wazuh-manager/api/configuration/ssl/manager.crt"
                           use_ca: false
                           ca: "/var/wazuh-manager/api/configuration/ssl/ca.crt"
                           ssl_protocol: "auto"
@@ -7392,8 +7392,8 @@ paths:
                           request_timeout: 10
                         https:
                           enabled: true
-                          key: "/var/wazuh-manager/api/configuration/ssl/server.key"
-                          cert: "/var/wazuh-manager/api/configuration/ssl/server.crt"
+                          key: "/var/wazuh-manager/api/configuration/ssl/manager.key"
+                          cert: "/var/wazuh-manager/api/configuration/ssl/manager.crt"
                           use_ca: false
                           ca: "/var/wazuh-manager/api/configuration/ssl/ca.crt"
                           ssl_protocol: "auto"

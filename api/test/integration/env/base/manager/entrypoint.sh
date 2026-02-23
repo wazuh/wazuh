@@ -39,8 +39,8 @@ done
 
 # API SSL sync (only when cluster + shared ssl volume)
 SSL_DIR="/var/wazuh-manager/api/configuration/ssl"
-SSL_KEY="${SSL_DIR}/server.key"
-SSL_CRT="${SSL_DIR}/server.crt"
+SSL_KEY="${SSL_DIR}/manager.key"
+SSL_CRT="${SSL_DIR}/manager.crt"
 
 if [ "$4" != "standalone" ] && [ "$3" != "master" ]; then
   echo "[entrypoint] Worker waiting for shared API SSL files..."
