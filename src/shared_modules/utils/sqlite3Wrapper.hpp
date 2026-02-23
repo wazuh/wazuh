@@ -14,6 +14,7 @@
 
 #include "external/sqlite/sqlite3.h"
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <sys/stat.h>
 
