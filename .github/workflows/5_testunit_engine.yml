@@ -38,7 +38,7 @@ jobs:
           grep -nE 'option\(\s*ENGINE_ENABLE_ASAN\b.*\bON\b' "$file" || {
             echo "ERROR: ENGINE_ENABLE_ASAN not set to ON in ${file}"; exit 1; }
 
-      - name: Build Wazuh server
+      - name: Build Wazuh manager
         run: |
           make deps -C src TARGET=manager -j$(nproc)
           make -C src TARGET=manager ENGINE_TEST=y -j$(nproc)
