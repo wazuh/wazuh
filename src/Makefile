@@ -460,7 +460,7 @@ agent: external ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 
 ifneq (,$(filter ${USE_SELINUX},YES yes y Y 1))
-server local hybrid agent: selinux
+server manager local hybrid agent: selinux
 endif
 
 selinux: $(SELINUX_POLICY)
