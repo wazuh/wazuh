@@ -82,7 +82,7 @@ TEST_F(CQueueTest, CanPushAndPop)
     ASSERT_FALSE(cq.empty());
     ASSERT_EQ(cq.size(), 1);
     auto d = std::make_shared<Dummy>(0);
-    ASSERT_TRUE(cq.waitPop(d, WAIT_DEQUEUE_TIMEOUT_USEC));
+    ASSERT_TRUE(cq.waitPop(d, fastqueue::WAIT_DEQUEUE_TIMEOUT_USECWAIT_DEQUEUE_TIMEOUT_USEC));
     ASSERT_EQ(d->value, 1);
     ASSERT_TRUE(cq.empty());
     ASSERT_EQ(cq.size(), 0);
@@ -118,7 +118,7 @@ TEST_F(CQueueTest, LargeQueueSequentialPop)
     for (int i = 0; i < TEST_ELEMENTS; ++i)
     {
         auto d = std::make_shared<Dummy>(-1);
-        ASSERT_TRUE(cq.waitPop(d, WAIT_DEQUEUE_TIMEOUT_USEC));
+        ASSERT_TRUE(cq.waitPop(d, fastqueue::WAIT_DEQUEUE_TIMEOUT_USEC));
         ASSERT_EQ(d->value, i);
     }
 

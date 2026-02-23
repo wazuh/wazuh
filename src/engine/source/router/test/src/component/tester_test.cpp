@@ -22,7 +22,7 @@ protected:
     std::shared_ptr<bk::mocks::MockMakerController> m_mockControllerMaker;
     std::shared_ptr<bk::mocks::MockController> m_mockController;
     std::shared_ptr<queue::mocks::MockQueue<base::Event>> m_mockQueueRouter;
-    std::shared_ptr<queue::mocks::MockQueue<router::test::QueueType>> m_mockQueueTester;
+    std::shared_ptr<queue::mocks::MockQueue<router::test::EventTest>> m_mockQueueTester;
 
     std::shared_ptr<router::Orchestrator> m_orchestrator;
 
@@ -37,7 +37,7 @@ public:
         m_mockControllerMaker = std::make_shared<bk::mocks::MockMakerController>();
         m_mockController = std::make_shared<bk::mocks::MockController>();
         m_mockQueueRouter = std::make_shared<queue::mocks::MockQueue<base::Event>>();
-        m_mockQueueTester = std::make_shared<queue::mocks::MockQueue<router::test::QueueType>>();
+        m_mockQueueTester = std::make_shared<queue::mocks::MockQueue<router::test::EventTest>>();
 
         router::Orchestrator::Options config {.m_numThreads = NUM_THREADS,
                                               .m_wStore = m_mockStore,
@@ -307,14 +307,14 @@ TEST_F(OrchestratorTesterTest, IngestTest)
     fakeAssetsString.insert("decoder/fake/0");
     router::test::Options opt(router::test::Options::TraceLevel::ASSET_ONLY, fakeAssetsString, "test");
     auto event = std::make_shared<json::Json>(R"({"message":"test"})");
-    router::test::QueueType capturedTuple;
+    router::test::EventTest capturedTuple;
 
     EXPECT_CALL(*m_mockQueueTester, tryPush(testing::_))
         .WillOnce(testing::DoAll(testing::SaveArg<0>(&capturedTuple), testing::Return(true)));
 
     EXPECT_CALL(*m_mockQueueTester, tryPop(testing::_))
         .WillOnce(testing::Invoke(
-            [&](router::test::QueueType& out)
+            [&](router::test::EventTest& out)
             {
                 out = capturedTuple;
                 return true;
