@@ -481,3 +481,33 @@ def test_raise_if_exc(result):
             utils.raise_if_exc(result)
     else:
         utils.raise_if_exc(result)
+
+@pytest.mark.parametrize("base_dir", [
+    "/absolute/dir",
+    "/absolute/dir/",
+    "relative/dir",
+    "relative/dir/",
+    "dir",
+    "dir/",
+])
+@pytest.mark.parametrize("input_paths, should_raise", [
+    (("sub/file.txt",), False),
+    (("./file.txt",), False),
+    (("", "file.txt"), False),
+    (("../",), True),
+    (("../../etc/passwd",), True),
+    (("/etc/passwd",), False),
+    (("///etc/passwd",), False),
+    ((), False),
+    (("../" + "dir_secrets",), True),
+    (("sub", "..", ".."), True),
+    ((".hidden",), False),
+])
+def test_safe_join(base_dir, input_paths, should_raise):
+    if should_raise:
+        with pytest.raises(WazuhInternalError):
+            utils.safe_join(base_dir, *input_paths)
+    else:
+        result = utils.safe_join(base_dir, *input_paths)
+        norm_base = os.path.normpath(base_dir)
+        assert os.path.commonpath([norm_base, result]) == norm_base

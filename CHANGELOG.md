@@ -3,15 +3,37 @@ All notable changes to this project will be documented in this file.
 
 ## [v5.0.0]
 
-### Manager
-
-#### Fixed
-
-- Fixed incorrect permissions on router and socket UNIX sockets. ([#33922](https://github.com/wazuh/wazuh/pull/33922))
+## [v4.14.5]
 
 ## [v4.14.4]
 
-## [v4.14.3]
+### Agent
+
+#### Fixed
+
+- Fixed MS Graph default rules not triggering properly. ([#34240](https://github.com/wazuh/wazuh/pull/34240))
+- Unified date formats in Active Response logs to ensure consistent timestamp formatting. ([#34473](https://github.com/wazuh/wazuh/pull/34473))
+- Updated Docker integration rules to improve detection coverage and compatibility. ([#34376](https://github.com/wazuh/wazuh/pull/34376))
+- Fixed heap-based NULL write buffer underflow in `GetAlertData`. ([#34501](https://github.com/wazuh/wazuh/pull/34501))
+- Retained MSI installer log after Windows agent upgrade to improve troubleshooting visibility. ([#34517](https://github.com/wazuh/wazuh/pull/34517))
+- Fixed incorrect Windows 11 edition detection after upgrading the agent to version 4.14.3. ([#34530](https://github.com/wazuh/wazuh/pull/34530))
+- Fixed macOS agent crash during syscollector reload caused by invalid `pthread_cond_destroy()` usage. ([#34274](https://github.com/wazuh/wazuh/pull/34274))
+
+### RESTful API
+
+#### Fixed
+
+- Fixed timestamps in the `/agents/upgrade_result` endpoint to return accurate UTC time. ([#34176](https://github.com/wazuh/wazuh/pull/34176))
+- Improved cluster file synchronization path handling by adding safe path joins. ([#34464](https://github.com/wazuh/wazuh/pull/34464))
+
+### Other
+
+#### Changed
+
+- Updated the `azure-core` dependency to 1.38.0 and the `Werkzeug` dependency to 3.1.5. ([#34154](https://github.com/wazuh/wazuh/pull/34154))
+- Updated the `protobuf` dependency to 5.29.6 and the `python-multipart` dependency to 0.0.22. ([#34403](https://github.com/wazuh/wazuh/pull/34403))
+
+## [v4.14.3] - 2025-02-11
 
 ### Manager
 
@@ -25,6 +47,7 @@ All notable changes to this project will be documented in this file.
 - Replaced unsafe `sprintf` calls in the SCA decoder to prevent buffer overflows. ([#33756](https://github.com/wazuh/wazuh/pull/33756))
 - Fixed a memory leak in the CIS-CAT decoder when database operations fail. ([#33739](https://github.com/wazuh/wazuh/pull/33739))
 - Fixed ruleset hot reload on workers by awaiting `send_reload_ruleset_msg`. ([#34184](https://github.com/wazuh/wazuh/pull/34184))
+- Fixed incorrect permissions on router and socket UNIX sockets. ([#33922](https://github.com/wazuh/wazuh/pull/33922))
 
 ### Agent
 
@@ -72,7 +95,7 @@ All notable changes to this project will be documented in this file.
 - Updated the `werkzeug` dependency to 3.1.4. ([#33569](https://github.com/wazuh/wazuh/pull/33569))
 - Updated the `urllib3` dependency to 2.6.3. ([#33927](https://github.com/wazuh/wazuh/pull/33927))
 
-## [v4.14.2]
+## [v4.14.2] - 2025-01-15
 
 ### Manager
 
