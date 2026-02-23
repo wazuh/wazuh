@@ -5,7 +5,7 @@
 #include <memory>
 #include <thread>
 
-#include <queue/iqueue.hpp>
+#include <fastqueue/iqueue.hpp>
 
 #include <router/types.hpp>
 
@@ -23,10 +23,10 @@ constexpr auto WAIT_EPS_TIMEOUT_MSEC = 1;
 class RouterWorker : public IWorker<IRouter>
 {
 private:
-    std::shared_ptr<IRouter> m_router; ///< The router instance
-    std::atomic_bool m_isRunning;      ///< Flag to know if the worker is running
-    std::thread m_thread;              ///< The thread for the worker
-    std::shared_ptr<base::queue::iQueue<base::Event>> m_rQueue;     ///< The router queue
+    std::shared_ptr<IRouter> m_router;                        ///< The router instance
+    std::atomic_bool m_isRunning;                             ///< Flag to know if the worker is running
+    std::thread m_thread;                                     ///< The thread for the worker
+    std::shared_ptr<fastqueue::IQueue<base::Event>> m_rQueue; ///< The router queue
     EpsLimit m_epsLimit;
 
 public:
@@ -34,8 +34,7 @@ public:
      * @brief Construct a new Worker object
      *
      */
-    RouterWorker(std::shared_ptr<EnvironmentBuilder> envBuilder,
-           std::shared_ptr<base::queue::iQueue<base::Event>> rQueue, const EpsLimit& epsLimit)
+    RouterWorker(std::shared_ptr<EnvironmentBuilder> envBuilder, decltype(m_rQueue) rQueue, const EpsLimit& epsLimit)
         : m_router(std::make_shared<Router>(envBuilder))
         , m_isRunning(false)
         , m_rQueue(rQueue)
@@ -59,31 +58,27 @@ public:
      */
     void stop() override;
 
-     /**
+    /**
      * @brief Get the router associated with the worker.
      * @return A constant reference to the shared pointer of the tester.
      */
-    std::shared_ptr<IRouter> get() const override
-    {
-        return m_router;
-    }
+    std::shared_ptr<IRouter> get() const override { return m_router; }
 };
 
 class TesterWorker : public IWorker<ITester>
 {
 private:
-    std::shared_ptr<ITester> m_tester; ///< The tester instance
-    std::atomic_bool m_isRunning;      ///< Flag to know if the worker is running
-    std::thread m_thread;              ///< The thread for the worker
-    std::shared_ptr<base::queue::iQueue<test::QueueType>> m_tQueue; ///< The tester queue
+    std::shared_ptr<ITester> m_tester;                            ///< The tester instance
+    std::atomic_bool m_isRunning;                                 ///< Flag to know if the worker is running
+    std::thread m_thread;                                         ///< The thread for the worker
+    std::shared_ptr<fastqueue::IQueue<test::QueueType>> m_tQueue; ///< The tester queue
 
 public:
     /**
      * @brief Construct a new Worker object
      *
      */
-    TesterWorker(std::shared_ptr<EnvironmentBuilder> envBuilder,
-           std::shared_ptr<base::queue::iQueue<test::QueueType>> tQueue)
+    TesterWorker(std::shared_ptr<EnvironmentBuilder> envBuilder, decltype(m_tQueue) tQueue)
         : m_tester(std::make_shared<Tester>(envBuilder))
         , m_isRunning(false)
         , m_thread()
@@ -111,10 +106,7 @@ public:
      * @brief Get the tester associated with the worker.
      * @return A constant reference to the shared pointer of the tester.
      */
-    std::shared_ptr<ITester> get() const override
-    {
-        return m_tester;
-    }
+    std::shared_ptr<ITester> get() const override { return m_tester; }
 };
 
 } // namespace router

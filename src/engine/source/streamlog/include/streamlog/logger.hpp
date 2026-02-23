@@ -159,8 +159,7 @@ public:
         : m_scheduler(std::move(scheduler))
         , m_channels()
         , m_channelsMutex()
-        , m_store(store)
-         {};
+        , m_store(store) {};
 
     /**
      * @brief Registers a new log channel with the specified name and rotation configuration.
@@ -257,7 +256,7 @@ public:
 
     /**
      * @brief Clean up the logger, releasing all resources.
-     * 
+     *
      * @warning After calling this method, the LogManager instance should not be used again.
      */
     void cleanup();

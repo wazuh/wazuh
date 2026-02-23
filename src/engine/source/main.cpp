@@ -42,8 +42,8 @@
 #include <scheduler/scheduler.hpp>
 #include <streamlog/logger.hpp>
 #include <wiconnector/windexerconnector.hpp>
-// #include <metrics/manager.hpp>
-#include <queue/concurrentQueue.hpp>
+#include <fastqueue/cqueue.hpp>
+#include <fastqueue/stdqueue.hpp>
 #include <router/orchestrator.hpp>
 #include <schemf/schema.hpp>
 #include <store/drivers/fileDriver.hpp>
@@ -485,28 +485,13 @@ int main(int argc, char* argv[])
             LOG_INFO("Content Manager CRUD Service initialized.");
         }
 
-        // Router
+        // Orchestrator
         {
-            // External queues
-            using QEventType = base::queue::ConcurrentQueue<base::Event, QueueTraits>;
-            using QTestType = base::queue::ConcurrentQueue<router::test::QueueType>;
+            const auto qSize = confManager.get<size_t>(conf::key::EVENT_QUEUE_SIZE);
+            const auto qEps = confManager.get<size_t>(conf::key::EVENT_QUEUE_EPS);
 
-            std::shared_ptr<QEventType> eventQueue {};
-            std::shared_ptr<QTestType> testQueue {};
-            {
-                // TODO queueFloodFile, queueFloodAttempts, queueFloodSleep -> Move to Queue.flood options
-                eventQueue = std::make_shared<QEventType>(confManager.get<int>(conf::key::QUEUE_SIZE),
-                                                          confManager.get<std::string>(conf::key::QUEUE_FLOOD_FILE),
-                                                          confManager.get<int>(conf::key::QUEUE_FLOOD_ATTEMPS),
-                                                          confManager.get<int>(conf::key::QUEUE_FLOOD_SLEEP),
-                                                          confManager.get<bool>(conf::key::QUEUE_DROP_ON_FLOOD));
-                LOG_DEBUG("Event queue created.");
-            }
-
-            {
-                testQueue = std::make_shared<QTestType>(confManager.get<int>(conf::key::QUEUE_SIZE));
-                LOG_DEBUG("Test queue created.");
-            }
+            const auto eventQueue = std::make_shared<fastqueue::CQueue<base::Event>>(qSize, qEps);
+            const auto testQueue = std::make_shared<fastqueue::StdQueue<router::test::QueueType>>(qSize);
 
             router::Orchestrator::Options config {.m_numThreads = confManager.get<int>(conf::key::ORCHESTRATOR_THREADS),
                                                   .m_wStore = store,
@@ -520,7 +505,7 @@ int main(int argc, char* argv[])
             orchestrator->start();
 
             exitHandler.add([orchestrator]() { orchestrator->cleanup(); });
-            LOG_INFO("Router initialized.");
+            LOG_INFO("Orchestrator initialized and started.");
         }
 
         // CMsync
