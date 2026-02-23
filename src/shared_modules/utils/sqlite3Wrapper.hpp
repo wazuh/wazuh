@@ -13,8 +13,6 @@
 #define _SQLITE3_WRAPPER_HPP
 
 #include "external/sqlite/sqlite3.h"
-#include <iostream>
-#include <map>
 #include <memory>
 #include <string>
 #include <sys/stat.h>
@@ -45,7 +43,6 @@ namespace SQLite3Wrapper
     {
         static void connectionDeleter(sqlite3* p)
         {
-            std::cout << "SQLite connection deleter called." << std::endl;
             if (p == nullptr)
             {
                 return;

@@ -103,7 +103,7 @@ target_link_directories(
 target_link_libraries(
   agent_sync_protocol
   PRIVATE flatbuffers FilesystemWrapper agent_metadata
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../external/sqlite/libsqlite3.a)
+          wazuhext)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
