@@ -10,7 +10,7 @@
 
 #include "fakeStore.hpp"
 
-constexpr auto SERVER_API_TIMEOUT {100000};
+constexpr auto MANAGER_API_TIMEOUT {100000};
 constexpr auto NUM_THREADS {1};
 
 class OrchestratorRouterTest : public ::testing::Test
@@ -45,7 +45,7 @@ public:
                                               .m_controllerMaker = m_mockControllerMaker,
                                               .m_prodQueue = m_mockQueueRouter,
                                               .m_testQueue = m_mockQueueTester,
-                                              .m_testTimeout = SERVER_API_TIMEOUT};
+                                              .m_testTimeout = MANAGER_API_TIMEOUT};
 
         EXPECT_CALL(*m_mockStore, readDoc(testing::_))
             .WillRepeatedly(testing::Invoke(

@@ -354,7 +354,7 @@ int main(int argc, char* argv[])
         }
 
         // Check if event processing is enabled
-        const bool enableProcessing = confManager.get<bool>(conf::key::SERVER_ENABLE_EVENT_PROCESSING);
+        const bool enableProcessing = confManager.get<bool>(conf::key::MANAGER_ENABLE_EVENT_PROCESSING);
 
         // Indexer Connector
         if (enableProcessing)
@@ -514,7 +514,7 @@ int main(int argc, char* argv[])
                                                   .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>(),
                                                   .m_prodQueue = eventQueue,
                                                   .m_testQueue = testQueue,
-                                                  .m_testTimeout = confManager.get<int>(conf::key::SERVER_API_TIMEOUT)};
+                                                  .m_testTimeout = confManager.get<int>(conf::key::MANAGER_API_TIMEOUT)};
 
             orchestrator = std::make_shared<router::Orchestrator>(config);
             orchestrator->start();
@@ -583,11 +583,11 @@ int main(int argc, char* argv[])
         // Create and configure the api endpoints
         {
             // Validate payload limit to prevent unsigned integer wrapping from negative values
-            auto serverApiPayloadMaxBytes = confManager.get<int64_t>(conf::key::SERVER_API_PAYLOAD_MAX_BYTES);
+            auto serverApiPayloadMaxBytes = confManager.get<int64_t>(conf::key::MANAGER_API_PAYLOAD_MAX_BYTES);
             if (serverApiPayloadMaxBytes < 0)
             {
                 LOG_WARNING("Invalid configuration: {} is negative ({}). Setting to 0 (unlimited).",
-                            conf::key::SERVER_API_PAYLOAD_MAX_BYTES,
+                            conf::key::MANAGER_API_PAYLOAD_MAX_BYTES,
                             serverApiPayloadMaxBytes);
                 serverApiPayloadMaxBytes = 0;
             }
@@ -626,7 +626,7 @@ int main(int argc, char* argv[])
             LOG_DEBUG("Content Manager CRUD API registered.");
 
             // Finally start the API server
-            apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
+            apiServer->start(confManager.get<std::string>(conf::key::MANAGER_API_SOCKET));
         }
 
         // UDP Servers
@@ -642,8 +642,8 @@ int main(int argc, char* argv[])
                     event->setString("wazuh", "/wazuh/cluster/name");
                     orchestrator->postEvent(std::move(event));
                 },
-                confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
-            g_engineLocalServer->start(confManager.get<int>(conf::key::SERVER_EVENT_THREADS));
+                confManager.get<std::string>(conf::key::MANAGER_EVENT_SOCKET));
+            g_engineLocalServer->start(confManager.get<int>(conf::key::MANAGER_EVENT_THREADS));
 
             LOG_INFO("Local engine's server initialized and started.");
         }
@@ -665,7 +665,7 @@ int main(int argc, char* argv[])
                 api::event::handlers::pushEvent(orchestrator, api::event::protocol::getNDJsonParser(), archiver));
 
             // starting in a new thread
-            engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));
+            engineRemoteServer->start(confManager.get<std::string>(conf::key::MANAGER_ENRICHED_EVENTS_SOCKET));
 
             LOG_INFO("Remote engine's server initialized and started.");
         }

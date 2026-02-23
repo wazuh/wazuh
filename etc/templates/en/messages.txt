@@ -5,7 +5,7 @@ yesmatch="y"
 nomatch="n"
 agent="agent"
 local="local"
-server="server"
+server="manager"
 help="help"
 
 # Global
@@ -22,7 +22,7 @@ user="User"
 host="Host"
 hitanyorabort="Press ENTER to continue or Ctrl-C to abort."
 whattoinstall="What kind of installation do you want (manager, agent, local, hybrid or help)?"
-serverchose="Manager (server) installation chosen"
+serverchose="Manager installation chosen"
 clientchose="Agent (client) installation chosen"
 localchose="Local installation chosen"
 
@@ -99,7 +99,7 @@ configurationdone="Configuration finished properly"
 tostart="To start Wazuh"
 tostop="To stop Wazuh"
 configat="The configuration can be viewed or modified at"
-addserveragent="In order to connect agent and server, you need to add each agent to the server."
+addserveragent="In order to connect agent and manager, you need to add each agent to the manager."
 presskey="Press ENTER to continue"
 
 # Update

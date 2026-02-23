@@ -72,7 +72,7 @@ foreach(counter RANGE ${count})
       add_executable(${test_name} ${test_name}.c)
     endif()
 
-    if(${TARGET} STREQUAL "server")
+    if(${TARGET} STREQUAL "manager")
         target_link_libraries(
             ${test_name}
             -Wl,--start-group

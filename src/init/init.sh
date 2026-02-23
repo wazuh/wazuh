@@ -15,7 +15,7 @@ runInit()
     control_script="wazuh-control"
 
     if [ -n "$1" ]; then
-        if [ "X$1" = "Xserver" ]; then
+        if [ "X$1" = "Xmanager" ]; then
             service="$service-manager"
             file_permissions="wazuh-manager"
             control_script="wazuh-manager-control"
@@ -29,7 +29,7 @@ runInit()
 
     # Checking for Systemd
     if hash ps 2>&1 > /dev/null && hash grep 2>&1 > /dev/null && [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
-        if [ "X$1" = "Xserver" ] || [ "X$1" = "Xlocal" ]; then
+        if [ "X$1" = "Xmanager" ] || [ "X$1" = "Xlocal" ]; then
             type=manager
         else
             type=agent

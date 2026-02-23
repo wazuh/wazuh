@@ -69,7 +69,7 @@ jobs:
       - name: Build Coverity artifact
         uses: ./.github/actions/coverity/build
         with:
-          command: make -C src TARGET=server COVERITY=YES -j${{ needs.prepare.outputs.jobs }}
+          command: make -C src TARGET=manager COVERITY=YES -j${{ needs.prepare.outputs.jobs }}
 
       - name: List files
         run: ls -l cov-int/emit/*/emit-db*

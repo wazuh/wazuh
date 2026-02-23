@@ -37,15 +37,15 @@ constexpr std::string_view QUEUE_DROP_ON_FLOOD = "analysisd.queue_drop_on_flood"
 
 constexpr std::string_view ORCHESTRATOR_THREADS = "analysisd.orchestrator_threads";
 
-constexpr std::string_view SERVER_API_SOCKET = "analysisd.server_api_socket";
-constexpr std::string_view SERVER_API_TIMEOUT = "analysisd.server_api_timeout";
-constexpr std::string_view SERVER_API_PAYLOAD_MAX_BYTES = "analysisd.server_api_payload_max_bytes";
+constexpr std::string_view MANAGER_API_SOCKET = "analysisd.manager_api_socket";
+constexpr std::string_view MANAGER_API_TIMEOUT = "analysisd.manager_api_timeout";
+constexpr std::string_view MANAGER_API_PAYLOAD_MAX_BYTES = "analysisd.manager_api_payload_max_bytes";
 
-constexpr std::string_view SERVER_ENRICHED_EVENTS_SOCKET = "analysisd.server_enriched_events_socket";
+constexpr std::string_view MANAGER_ENRICHED_EVENTS_SOCKET = "analysisd.manager_enriched_events_socket";
 
-constexpr std::string_view SERVER_EVENT_SOCKET = "analysisd.server_event_socket";
-constexpr std::string_view SERVER_EVENT_THREADS = "analysisd.server_event_threads";
-constexpr std::string_view SERVER_ENABLE_EVENT_PROCESSING = "analysisd.server_enable_event_processing";
+constexpr std::string_view MANAGER_EVENT_SOCKET = "analysisd.manager_event_socket";
+constexpr std::string_view MANAGER_EVENT_THREADS = "analysisd.manager_event_threads";
+constexpr std::string_view MANAGER_ENABLE_EVENT_PROCESSING = "analysisd.manager_enable_event_processing";
 
 constexpr std::string_view TZDB_PATH = "analysisd.tzdb_path";
 constexpr std::string_view TZDB_AUTO_UPDATE = "analysisd.tzdb_auto_update";

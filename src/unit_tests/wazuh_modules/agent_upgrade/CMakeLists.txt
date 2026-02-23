@@ -27,7 +27,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 list(APPEND upgrade_names "test_wm_agent_upgrade")
 list(APPEND upgrade_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,wm_agent_upgrade_start_agent_module -Wl,--wrap,wm_agent_upgrade_start_manager_module -Wl,--wrap,getpid -Wl,--wrap,unlink -Wl,--wrap,w_query_agentd")
 
-if(${TARGET} STREQUAL "server")
+if(${TARGET} STREQUAL "manager")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_manager")
     list(APPEND upgrade_flags "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP \

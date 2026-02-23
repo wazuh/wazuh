@@ -95,7 +95,7 @@ enable_testing()
 # Add target specific file
 if(NOT TARGET)
   message(FATAL_ERROR "No TARGET specified. Aborting...")
-elseif(${TARGET} STREQUAL "server")
+elseif(${TARGET} STREQUAL "manager")
   include("./server.cmake")
   configure_file(
     "config_files/test_global.conf"
@@ -140,7 +140,7 @@ endif()
 
 if((CMAKE_SYSTEM_NAME STREQUAL "Linux") OR (CMAKE_SYSTEM_NAME STREQUAL "Windows"
                                            ))
-  if(NOT ${TARGET} STREQUAL "server")
+  if(NOT ${TARGET} STREQUAL "manager")
     add_subdirectory(syscheckd)
   endif()
   add_subdirectory(shared)
@@ -152,7 +152,7 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_subdirectory(os_net)
-  if(NOT ${TARGET} STREQUAL "server")
+  if(NOT ${TARGET} STREQUAL "manager")
     add_subdirectory(active-response)
   endif()
 endif()

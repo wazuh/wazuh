@@ -5,7 +5,7 @@ yesmatch="y"
 nomatch="n"
 agent="agent"
 local="local"
-server="server"
+server="manager"
 help="help"
 
 
@@ -24,7 +24,7 @@ user="ユーザ"
 host="ホスト"
 hitanyorabort="続けるには ENTER を押してください．また，Ctrl-C で中止します．"
 whattoinstall="どの種類のインストールを選択しますか (manager，agent，local または help)?"
-serverchose="Manager (server) インストールを選択しました"
+serverchose="Manager インストールを選択しました"
 clientchose="Agent (client) インストールを選択しました"
 localchose="Local インストールを選択しました"
 

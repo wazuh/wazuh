@@ -5,7 +5,7 @@ yesmatch="j"
 nomatch="n"
 agent="agent"
 local="local"
-server="server"
+server="manager"
 help="help"
 
 # Global
@@ -22,7 +22,7 @@ user="Gebruiker"
 host="Host"
 hitanyorabort="Druk op ENTER om door te gaan of Ctrl-C om af te breken."
 whattoinstall="Wat voor soort installatie wilt u doen (manager, agent, local of help)?"
-serverchose="Gekozen voor manager (server) installatie"
+serverchose="Gekozen voor manager installatie"
 clientchose="Gekozen voor agent(client) installatie"
 localchose="Gekozen voor lokale installatie"
 

@@ -106,8 +106,8 @@ jobs:
       # Build wazuh server for linux.
       - name: Build wazuh server for linux
         run: |
-          make deps -C src TARGET=server -j2
-          make -C src TARGET=server -j2
+          make deps -C src TARGET=manager -j2
+          make -C src TARGET=manager -j2
 
       # Install wazuh server for linux.
       - name: Install wazuh server for linux

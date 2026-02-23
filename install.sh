@@ -404,7 +404,7 @@ ConfigureServer()
 
     AddWhite
 
-    if [ "X$INSTYPE" = "Xserver" ]; then
+    if [ "X$INSTYPE" = "Xmanager" ]; then
       # Configuring remote syslog
       echo ""
       $ECHO "  3.6- ${syslog} ($yes/$no) [$yes]: "
@@ -433,7 +433,7 @@ ConfigureServer()
     UseSSLCert
 
     # Setting up the auth daemon & logs
-    if [ "X$INSTYPE" = "Xserver" ]; then
+    if [ "X$INSTYPE" = "Xmanager" ]; then
         EnableAuthd "3.7"
         ConfigureBoot "3.8"
         SetupLogs "3.9"
@@ -765,7 +765,7 @@ main()
                 ${server}|${serverm}|"manager"|"m")
                     echo ""
                     echo "  - ${serverchose}."
-                    INSTYPE="server"
+                    INSTYPE="manager"
                     break;
                 ;;
 
@@ -779,7 +779,7 @@ main()
                 ${hybrid}|${hybridm})
                     echo ""
                     echo "  - ${serverchose} (hybrid)."
-                    INSTYPE="server"
+                    INSTYPE="manager"
                     HYBID="go"
                     break;
                 ;;
@@ -958,7 +958,7 @@ A clean installation is required for managers."
 
     # Configuring the system (based on the installation type)
     if [ "X${update_only}" = "X" ]; then
-        if [ "X$INSTYPE" = "Xserver" ]; then
+        if [ "X$INSTYPE" = "Xmanager" ]; then
             ConfigureServer
         elif [ "X$INSTYPE" = "Xagent" ]; then
             ConfigureClient
@@ -975,7 +975,7 @@ A clean installation is required for managers."
 
     # User messages
     control_script="wazuh-control"
-    if [ "X$INSTYPE" = "Xserver" ]; then
+    if [ "X$INSTYPE" = "Xmanager" ]; then
         control_script="wazuh-manager-control"
     fi
     echo ""
@@ -1029,7 +1029,7 @@ A clean installation is required for managers."
     fi
 
 
-    if [ "X$INSTYPE" = "Xserver" ]; then
+    if [ "X$INSTYPE" = "Xmanager" ]; then
         echo ""
         echo " - ${addserveragent}"
         echo ""

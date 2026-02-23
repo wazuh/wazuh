@@ -5,7 +5,7 @@ yesmatch="e"
 nomatch="h"
 agent="aracı"
 local="yerel"
-server="sunucu"
+server="manager"
 help="yardım"
 
 # Global
@@ -22,7 +22,7 @@ user="Kullanıcı"
 host="Bilgisayar"
 hitanyorabort="Devam etmek için ENTER veya çıkmak için Ctrl-C ye basın"
 whattoinstall="Ne tür kurulum yapmak istiyorsunuz (sunucu,aracı,yerel veya yardım)?"
-serverchose="Sunucu kurulumu seçildi"
+serverchose="Manager kurulumu seçildi"
 clientchose="Aracı(istemci) kurulumu seçildi"
 localchose="Yerel kurulum seçildi"
 

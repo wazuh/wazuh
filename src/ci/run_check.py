@@ -189,7 +189,7 @@ def runCoverage(moduleName, target="agent"):
 
     Args:
         - moduleName: Library to be analyzed using gcov and lcov tools.
-        - target: Build type. <agent, winagent, server>
+        - target: Build type. <agent, winagent, manager>
 
     Returns:
         - None
@@ -326,7 +326,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     Args:
         - moduleName: Library to be built and analyzed.
         - clean: Delete logs.
-        - target: Build type. <agent, winagent, server>
+        - target: Build type. <agent, winagent, manager>
 
     Returns:
         - None
@@ -399,7 +399,7 @@ def runScanBuild(targetName):
 
     Args:
         - targetName: Target to be analyzed using scan-build analysis tool.
-                      <agent, server, winagent>
+                      <agent, manager, winagent>
 
     Returns:
         - None
