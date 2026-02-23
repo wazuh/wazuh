@@ -59,6 +59,23 @@ Json::Json(const char* json)
     }
 }
 
+Json::Json(std::string_view json)
+    : m_document {rapidjson::Document()}
+{
+    rapidjson::ParseResult result = m_document.Parse(json.data(), static_cast<rapidjson::SizeType>(json.size()));
+    if (!result)
+    {
+        throw std::runtime_error(
+            fmt::format("JSON document could not be parsed: {}", rapidjson::GetParseError_En(result.Code())));
+    }
+
+    auto error = checkDuplicateKeys();
+    if (error)
+    {
+        throw std::runtime_error(fmt::format("JSON document has duplicated keys: {}", error->message));
+    }
+}
+
 Json::Json(const Json& other)
     : m_document {}
 {

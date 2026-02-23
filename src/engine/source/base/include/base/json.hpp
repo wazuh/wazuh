@@ -169,6 +169,13 @@ public:
     explicit Json(const char* json);
 
     /**
+     * @brief Construct a new Json object from a json string view.
+     *
+     * @param json The json string view to parse.
+     */
+    explicit Json(std::string_view json);
+
+    /**
      * @brief Copy constructs a new Json object.
      * Value is copied.
      *
