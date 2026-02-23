@@ -9,6 +9,7 @@
 
 #include <base/logging.hpp>
 #include <streamlog/logger.hpp>
+#include <fastqueue/iqueue.hpp>
 
 #include <scheduler/mockScheduler.hpp>
 #include <store/mockStore.hpp>
@@ -70,8 +71,8 @@ protected:
         defaultConfig = {
             .basePath = tmpDir,
             .pattern = "wazuh-${name}-${YYYY}-${MM}-${DD}.json",
-            .maxSize = 0,    // No size limit for most tests
-            .bufferSize = 10 // Small buffer for testing
+            .maxSize = 0,                                // No size limit for most tests
+            .bufferSize = fastqueue::MIN_QUEUE_CAPACITY, // Use minimum buffer size for testing
         };
 
         // Create mock store and scheduler
@@ -89,9 +90,7 @@ protected:
             .Times(AnyNumber())
             .WillRepeatedly(Return(store::mocks::storeReadError<store::Doc>()));
 
-        EXPECT_CALL(*mockStore, upsertDoc(_, _))
-            .Times(AnyNumber())
-            .WillRepeatedly(Return(store::mocks::storeOk()));
+        EXPECT_CALL(*mockStore, upsertDoc(_, _)).Times(AnyNumber()).WillRepeatedly(Return(store::mocks::storeOk()));
     }
 
     void TearDown() override
@@ -268,8 +267,8 @@ TEST_F(LogManagerTest, UpdateConfigSuccess)
 
     // Create new config
     auto newConfig = defaultConfig;
-    newConfig.maxSize = 1024; // This will be normalized to 1MB minimum
-    newConfig.bufferSize = 20;
+    newConfig.maxSize = fastqueue::MIN_QUEUE_CAPACITY * 2; // Set to a different value
+    newConfig.bufferSize = fastqueue::MIN_QUEUE_CAPACITY; // Set to a different value
 
     // Update config (no active writers)
     EXPECT_NO_THROW(logManager->updateConfig(channelName, newConfig, "log"));
@@ -476,8 +475,8 @@ TEST_F(LogManagerTest, ConfigurationPersistence)
     auto logManager = createLogManager();
 
     auto customConfig = defaultConfig;
-    customConfig.maxSize = 2048; // This will be normalized to 1MB minimum
-    customConfig.bufferSize = 50;
+    customConfig.maxSize = fastqueue::MIN_QUEUE_CAPACITY * 2; // Set to a different value
+    customConfig.bufferSize = fastqueue::MIN_QUEUE_CAPACITY; // Set to a different value
     customConfig.pattern = "custom-${name}-${YYYY}.log"; // ${counter} will be added due to maxSize
 
     logManager->registerLog("persist-test", customConfig, "log");
