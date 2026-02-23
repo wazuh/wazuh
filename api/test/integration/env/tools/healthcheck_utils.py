@@ -18,7 +18,7 @@ BASE_URL = f"{PROTOCOL}://{HOST}:{PORT}"
 LOGIN_URL = f"{BASE_URL}/security/user/authenticate"
 
 HEALTHCHECK_TOKEN_FILE = '/tmp_volume/healthcheck/healthcheck.token'
-OSSEC_LOG_PATH = '/var/ossec/logs/wazuh-manager.log'
+WAZUH_LOG_PATH = '/var/wazuh-manager/logs/wazuh-manager.log'
 
 # Variable used to compare default daemons_check.txt with an output with cluster disabled
 CHECK_CLUSTERD_DAEMON = '1c1\n< wazuh-manager-clusterd not running...\n---\n> wazuh-manager-clusterd is running...\n'
@@ -66,14 +66,14 @@ def get_agent_health_base():
     # depending on the agent version.
 
     shared_conf_restart = os.system(
-        f"grep -q 'agentd: INFO: Agent is reloading due to shared configuration changes' {OSSEC_LOG_PATH}")
-    agent_connection = os.system(f"grep -q 'agentd: INFO: (4102): Connected to the server' {OSSEC_LOG_PATH}")
+        f"grep -q 'agentd: INFO: Agent is reloading due to shared configuration changes' {WAZUH_LOG_PATH}")
+    agent_connection = os.system(f"grep -q 'agentd: INFO: (4102): Connected to the server' {WAZUH_LOG_PATH}")
 
     if shared_conf_restart == 0 and agent_connection == 0:
         # No -q option as we need the output
         output = os.popen(
             f"grep -a 'agentd: INFO: Agent is reloading due to shared configuration changes"
-            f"\|agentd: INFO: (4102): Connected to the server' {OSSEC_LOG_PATH}").read().split("\n")[:-1]
+            f"\|agentd: INFO: (4102): Connected to the server' {WAZUH_LOG_PATH}").read().split("\n")[:-1]
 
         agent_restarted = False
         for log in output:
