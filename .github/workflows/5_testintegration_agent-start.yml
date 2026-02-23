@@ -2,3 +2,383 @@ name: 5.X - Agent Startup Smoke Test
 
 on:
   workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
+  pull_request:
+    paths:
+      - "src/**"
+      - "packages/**"
+      - ".github/workflows/5_testintegration_agent-start.yml"
+      - ".github/workflows/5_builderpackage_agent-linux.yml"
+      - ".github/workflows/5_builderpackage_agent-windows.yml"
+      - ".github/workflows/5_builderpackage_agent-macos.yml"
+
+jobs:
+  # ===================== LINUX DEB (amd64) =====================
+  test-linux-deb-amd64:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    name: Test Linux Agent DEB (amd64) startup
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Wait for DEB package to be built
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: 5_builderpackage_agent-linux.yml
+          workflow_conclusion: success
+          name_is_regexp: true
+          name: 'wazuh-agent.*amd64.*\.deb'
+          path: /tmp/packages
+          if_no_artifact_found: fail
+          check_artifacts: true
+          search_artifacts: true
+
+      - name: Get package name
+        id: package
+        run: |
+          PACKAGE=$(find /tmp/packages -type f -name "wazuh-agent*.deb" ! -name "*dbg*" | head -n1)
+          echo "package-path=$PACKAGE" >> $GITHUB_OUTPUT
+          echo "Found package: $PACKAGE"
+
+      - name: Install Wazuh agent
+        run: |
+          echo "Installing package from: ${{ steps.package.outputs.package-path }}"
+
+          # Set debconf to non-interactive
+          export DEBIAN_FRONTEND=noninteractive
+
+          # Install the package with WAZUH_MANAGER variable (official method from Wazuh documentation)
+          sudo WAZUH_MANAGER="1.2.3.4" dpkg -i "${{ steps.package.outputs.package-path }}" || sudo apt-get install -f -y
+
+          # Verify installation
+          dpkg -l | grep wazuh-agent
+
+      - name: Test daemons with -t flag
+        run: |
+          # Test each daemon binary with -t flag (test configuration)
+          DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-execd"
+
+          echo "Testing daemons with -t flag..."
+          for daemon in $DAEMONS; do
+            echo "Testing ${daemon}..."
+            if ! sudo /var/ossec/bin/${daemon} -t; then
+              echo "ERROR: ${daemon} -t failed with exit code $?"
+              exit 1
+            fi
+            echo "✓ ${daemon} -t passed"
+          done
+
+      - name: Start Wazuh agent
+        run: |
+          echo "Starting Wazuh agent..."
+          sudo /var/ossec/bin/wazuh-control start
+
+      - name: Wait for agent to initialize
+        run: sleep 10
+
+      - name: Verify agent is running
+        run: |
+          echo "Checking agent status..."
+          if ! sudo /var/ossec/bin/wazuh-control status; then
+            echo "ERROR: Agent status check failed"
+            exit 1
+          fi
+          echo "✓ Agent is running"
+
+      - name: Stop Wazuh agent
+        run: |
+          echo "Stopping Wazuh agent..."
+          sudo /var/ossec/bin/wazuh-control stop
+          echo "✓ Agent stopped successfully"
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb-amd64-logs-${{ github.run_id }}
+          path: /var/ossec/logs/
+          retention-days: 7
+
+  # ===================== LINUX RPM (x86_64) =====================
+  test-linux-rpm-x86_64:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    name: Test Linux Agent RPM (x86_64) startup
+    container:
+      image: rockylinux:9
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          dnf install -y findutils which
+
+      - name: Wait for RPM package to be built
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: 5_builderpackage_agent-linux.yml
+          workflow_conclusion: success
+          name_is_regexp: true
+          name: 'wazuh-agent.*x86_64.*\.rpm'
+          path: /tmp/packages
+          if_no_artifact_found: fail
+          check_artifacts: true
+          search_artifacts: true
+
+      - name: Get package name
+        id: package
+        run: |
+          PACKAGE=$(find /tmp/packages -type f -name "wazuh-agent*.rpm" ! -name "*dbg*" | head -n1)
+          echo "package-path=$PACKAGE" >> $GITHUB_OUTPUT
+          echo "Found package: $PACKAGE"
+
+      - name: Install Wazuh agent
+        run: |
+          echo "Installing package from: ${{ steps.package.outputs.package-path }}"
+
+          # Install the package with WAZUH_MANAGER variable (official method from Wazuh documentation)
+          WAZUH_MANAGER="1.2.3.4" rpm -ivh "${{ steps.package.outputs.package-path }}"
+
+          # Verify installation
+          rpm -qa | grep wazuh-agent
+
+      - name: Test daemons with -t flag
+        run: |
+          # Test each daemon binary with -t flag (test configuration)
+          DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-execd"
+
+          echo "Testing daemons with -t flag..."
+          for daemon in $DAEMONS; do
+            echo "Testing ${daemon}..."
+            if ! /var/ossec/bin/${daemon} -t; then
+              echo "ERROR: ${daemon} -t failed with exit code $?"
+              exit 1
+            fi
+            echo "✓ ${daemon} -t passed"
+          done
+
+      - name: Start Wazuh agent
+        run: |
+          echo "Starting Wazuh agent..."
+          /var/ossec/bin/wazuh-control start
+
+      - name: Wait for agent to initialize
+        run: sleep 10
+
+      - name: Verify agent is running
+        run: |
+          echo "Checking agent status..."
+          if ! /var/ossec/bin/wazuh-control status; then
+            echo "ERROR: Agent status check failed"
+            exit 1
+          fi
+          echo "✓ Agent is running"
+
+      - name: Stop Wazuh agent
+        run: |
+          echo "Stopping Wazuh agent..."
+          /var/ossec/bin/wazuh-control stop
+          echo "✓ Agent stopped successfully"
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-rpm-x86_64-logs-${{ github.run_id }}
+          path: /var/ossec/logs/
+          retention-days: 7
+
+  # ===================== WINDOWS =====================
+  test-windows:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    name: Test Windows Agent startup
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Wait for MSI package to be built
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: 5_builderpackage_agent-windows.yml
+          workflow_conclusion: success
+          name_is_regexp: true
+          name: 'wazuh-agent.*windows.*\.msi'
+          path: C:\packages
+          if_no_artifact_found: fail
+          check_artifacts: true
+          search_artifacts: true
+
+      - name: Get package name
+        id: package
+        shell: pwsh
+        run: |
+          $PACKAGE = Get-ChildItem -Path "C:\packages" -Filter "wazuh-agent*.msi" -Recurse | Select-Object -First 1 -ExpandProperty FullName
+          echo "package-path=$PACKAGE" >> $env:GITHUB_OUTPUT
+          Write-Host "Found package: $PACKAGE"
+
+      - name: Install Wazuh agent
+        shell: pwsh
+        run: |
+          Write-Host "Installing package from: ${{ steps.package.outputs.package-path }}"
+
+          # Install MSI with WAZUH_MANAGER variable (official method from Wazuh documentation)
+          $msiPath = "${{ steps.package.outputs.package-path }}"
+          $arguments = @(
+            "/i"
+            "`"$msiPath`""
+            "/q"
+            "WAZUH_MANAGER=`"1.2.3.4`""
+          )
+
+          Start-Process msiexec.exe -ArgumentList $arguments -Wait -NoNewWindow
+
+          # Verify installation
+          if (Test-Path "C:\Program Files (x86)\ossec-agent") {
+            Write-Host "✓ Agent installed successfully"
+          } else {
+            Write-Host "ERROR: Installation failed"
+            exit 1
+          }
+
+      - name: Start Wazuh agent service
+        shell: pwsh
+        run: |
+          Write-Host "Starting Wazuh agent service..."
+          Start-Service -Name wazuh
+
+      - name: Wait for agent to initialize
+        shell: pwsh
+        run: Start-Sleep -Seconds 10
+
+      - name: Verify agent is running
+        shell: pwsh
+        run: |
+          Write-Host "Checking agent status..."
+          $service = Get-Service -Name wazuh
+
+          if ($service.Status -ne 'Running') {
+            Write-Host "ERROR: Service is not running. Status: $($service.Status)"
+            exit 1
+          }
+
+          Write-Host "✓ Agent service is running"
+          Write-Host "Service Status: $($service.Status)"
+
+      - name: Stop Wazuh agent service
+        shell: pwsh
+        run: |
+          Write-Host "Stopping Wazuh agent service..."
+          Stop-Service -Name wazuh
+
+          # Verify it stopped
+          $service = Get-Service -Name wazuh
+          if ($service.Status -ne 'Stopped') {
+            Write-Host "WARNING: Service did not stop cleanly. Status: $($service.Status)"
+          } else {
+            Write-Host "✓ Agent service stopped successfully"
+          }
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-logs-${{ github.run_id }}
+          path: C:\Program Files (x86)\ossec-agent\*.log
+          retention-days: 7
+
+  # ===================== MACOS (arm64) =====================
+  test-macos-arm64:
+    runs-on: macos-14
+    timeout-minutes: 30
+    name: Test macOS Agent (arm64) startup
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Wait for PKG package to be built
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: 5_builderpackage_agent-macos.yml
+          workflow_conclusion: success
+          name_is_regexp: true
+          name: 'wazuh-agent.*arm64.*\.pkg'
+          path: /tmp/packages
+          if_no_artifact_found: fail
+          check_artifacts: true
+          search_artifacts: true
+
+      - name: Get package name
+        id: package
+        run: |
+          PACKAGE=$(find /tmp/packages -type f -name "wazuh-agent*.pkg" ! -name "*debug*" | head -n1)
+          echo "package-path=$PACKAGE" >> $GITHUB_OUTPUT
+          echo "Found package: $PACKAGE"
+
+      - name: Install Wazuh agent
+        run: |
+          echo "Installing package from: ${{ steps.package.outputs.package-path }}"
+
+          # Install PKG with WAZUH_MANAGER variable (official method from Wazuh documentation)
+          echo "WAZUH_MANAGER='1.2.3.4'" > /tmp/wazuh_envs
+          sudo installer -pkg "${{ steps.package.outputs.package-path }}" -target /
+
+          # Verify installation
+          if [ -d "/Library/Ossec" ]; then
+            echo "✓ Agent installed successfully"
+          else
+            echo "ERROR: Installation failed"
+            exit 1
+          fi
+
+      - name: Test daemons with -t flag
+        run: |
+          # Test each daemon binary with -t flag (test configuration)
+          DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-execd"
+
+          echo "Testing daemons with -t flag..."
+          for daemon in $DAEMONS; do
+            echo "Testing ${daemon}..."
+            if ! sudo /Library/Ossec/bin/${daemon} -t; then
+              echo "ERROR: ${daemon} -t failed with exit code $?"
+              exit 1
+            fi
+            echo "✓ ${daemon} -t passed"
+          done
+
+      - name: Start Wazuh agent
+        run: |
+          echo "Starting Wazuh agent..."
+          sudo /Library/Ossec/bin/wazuh-control start
+
+      - name: Wait for agent to initialize
+        run: sleep 10
+
+      - name: Verify agent is running
+        run: |
+          echo "Checking agent status..."
+          if ! sudo /Library/Ossec/bin/wazuh-control status; then
+            echo "ERROR: Agent status check failed"
+            exit 1
+          fi
+          echo "✓ Agent is running"
+
+      - name: Stop Wazuh agent
+        run: |
+          echo "Stopping Wazuh agent..."
+          sudo /Library/Ossec/bin/wazuh-control stop
+          echo "✓ Agent stopped successfully"
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64-logs-${{ github.run_id }}
+          path: /Library/Ossec/logs/
+          retention-days: 7
