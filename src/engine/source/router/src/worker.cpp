@@ -24,19 +24,11 @@ void RouterWorker::start()
 
             while (m_isRunning)
             {
-                // Process production queue
-                if (!m_epsLimit())
+                base::Event event {};
+                if (m_rQueue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC) && event != nullptr)
                 {
-                    base::Event event {};
-                    if (m_rQueue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC) && event != nullptr)
-                    {
-                        m_router->ingest(std::move(event));
-                    }
-                }
-                else
-                {
-                    // If EPS limit is reached, wait for a while before processing the next event
-                    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_EPS_TIMEOUT_MSEC));
+                    m_router->ingest(std::move(event));
+                    // TODO: Log metrics
                 }
             }
             LOG_DEBUG_L(functionName.c_str(), "Router Worker {} finished", tID);
@@ -76,8 +68,8 @@ void TesterWorker::start()
             while (m_isRunning)
             {
                 // Process test queue
-                test::QueueType testEvent {};
-                if (m_tQueue->tryPop(testEvent) && testEvent != nullptr)
+                test::EventTest testEvent {};
+                if (m_tQueue->waitPop(testEvent, WAIT_DEQUEUE_TIMEOUT_USEC) && testEvent != nullptr)
                 {
                     auto& [event, opt, callback] = *testEvent;
                     auto output = m_tester->ingestTest(std::move(event), opt);
@@ -89,11 +81,6 @@ void TesterWorker::start()
                     {
                         LOG_ERROR_L(functionName.c_str(), "Error when executing API callback: ", e.what());
                     }
-                }
-                else
-                {
-                    // Wait for a while before processing the next event
-                    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_EPS_TIMEOUT_MSEC));
                 }
             }
             LOG_DEBUG_L(functionName.c_str(), "Tester Worker {} finished", tID);

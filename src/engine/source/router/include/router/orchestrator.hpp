@@ -18,7 +18,7 @@ namespace router
 {
 
 using ProdQueueType = fastqueue::IQueue<base::Event>;
-using TestQueueType = fastqueue::IQueue<test::QueueType>;
+using TestQueueType = fastqueue::IQueue<test::EventTest>;
 
 // Forward declarations
 template<typename T>
@@ -38,7 +38,6 @@ protected:
 
     constexpr static const char* STORE_PATH_TESTER_TABLE = "router/tester/0"; ///< Default path for the tester state
     constexpr static const char* STORE_PATH_ROUTER_TABLE = "router/router/0"; ///< Default path for the router state
-    constexpr static const char* STORE_PATH_ROUTER_EPS = "router/eps/0";      ///< Default path for the EPS state
 
     // Workers synchronization
     std::list<std::shared_ptr<IWorker<IRouter>>> m_routerWorkers;
@@ -176,20 +175,6 @@ public:
      */
     void postEvent(base::Event&& event) override { m_eventQueue->push(std::move(event)); }
 
-    /**
-     * @copydoc router::IRouterAPI::changeEpsSettings
-     */
-    base::OptError changeEpsSettings(uint eps, uint refreshInterval) override;
-
-    /**
-     * @copydoc router::IRouterAPI::getEpsSettings
-     */
-    base::RespOrError<std::tuple<uint, uint, bool>> getEpsSettings() const override;
-
-    /**
-     * @copydoc router::IRouterAPI::activateEpsCounter
-     */
-    base::OptError activateEpsCounter(bool activate) override;
 
     /**************************************************************************
      * ITesterAPI

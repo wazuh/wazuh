@@ -46,15 +46,6 @@ public:
 
     // Production: Ingest
     virtual void postEvent(base::Event&& event) = 0;
-
-    // Orchestrator: Change EPS settings
-    virtual base::OptError changeEpsSettings(uint eps, uint refreshInterval) = 0;
-
-    // Orchestrator: Get EPS info
-    virtual base::RespOrError<std::tuple<uint, uint, bool>> getEpsSettings() const = 0;
-
-    // Orchestrator: Activate/Deactivate EPS counter
-    virtual base::OptError activateEpsCounter(bool activate) = 0;
 };
 
 class ITesterAPI
