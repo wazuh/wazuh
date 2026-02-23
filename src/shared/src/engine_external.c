@@ -475,7 +475,7 @@ char* get_indexer_cnf(const char* cnf_file, char* err_buf, size_t err_buf_size)
         return NULL;
     }
 
-    // Search for ossec_config element
+    // Search for wazuh_config element
     for (int i = 0; root_nodes[i] != NULL; i++)
     {
         xml_node* current_root = root_nodes[i];
@@ -489,7 +489,7 @@ char* get_indexer_cnf(const char* cnf_file, char* err_buf, size_t err_buf_size)
             return NULL;
         }
 
-        // Skip non-ossec_config elements
+        // Skip non-wazuh_config elements
         if (strcmp(current_root->element, XML_TAG_WAZUH_CONFIG) != 0)
         {
             continue;
@@ -501,7 +501,7 @@ char* get_indexer_cnf(const char* cnf_file, char* err_buf, size_t err_buf_size)
             continue;
         }
 
-        // Search for indexer element within ossec_config
+        // Search for indexer element within wazuh_config
         for (int j = 0; ossec_children[j] != NULL; j++)
         {
             xml_node* current_child = ossec_children[j];
@@ -580,7 +580,7 @@ char* get_indexer_cnf(const char* cnf_file, char* err_buf, size_t err_buf_size)
         return NULL;
     }
 
-    snprintf(err_buf, err_buf_size, "Could not find <ossec_config> element in configuration file %s", cnf_file);
+    snprintf(err_buf, err_buf_size, "Could not find <wazuh_config> element in configuration file %s", cnf_file);
     XML_NODE nodes_to_clear[] = {root_nodes};
     cleanup_xml_resources(&xml, nodes_to_clear, 1);
     return NULL;
