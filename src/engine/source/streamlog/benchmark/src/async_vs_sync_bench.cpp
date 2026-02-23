@@ -1,6 +1,4 @@
 #include <benchmark/benchmark.h>
-#include <queue/concurrentQueue.hpp>
-#include <streamlog/logger.hpp>
 
 #include <atomic>
 #include <chrono>
@@ -12,6 +10,10 @@
 #include <string>
 #include <thread>
 #include <vector>
+
+#include <base/logging.hpp>
+#include <fastqueue/stdqueue.hpp>
+#include <streamlog/logger.hpp>
 
 namespace fs = std::filesystem;
 
@@ -187,7 +189,7 @@ static void BM_AsyncDedicatedWriterWithFlush(benchmark::State& state)
         fs::remove(filename);
 
         // Create ConcurrentQueue without flooding file
-        base::queue::ConcurrentQueue<std::string> eventQueue(1000000, "benchmark");
+        fastqueue::StdQueue<std::string> eventQueue(1000000);
         std::vector<std::thread> producers;
         const std::string event = generateEvent();
 
@@ -296,7 +298,7 @@ static void BM_AsyncDedicatedWriterWithoutFlush(benchmark::State& state)
         fs::remove(filename);
 
         // Create ConcurrentQueue without flooding file
-        base::queue::ConcurrentQueue<std::string> eventQueue(1000000, "benchmark");
+        fastqueue::StdQueue<std::string> eventQueue(1000000);
         std::vector<std::thread> producers;
         const std::string event = generateEvent();
 

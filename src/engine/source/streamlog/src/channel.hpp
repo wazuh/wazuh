@@ -14,7 +14,7 @@
 #include <streamlog/logger.hpp>
 
 #include <base/logging.hpp>
-#include <queue/concurrentQueue.hpp>
+#include <fastqueue/stdqueue.hpp>
 #include <scheduler/ischeduler.hpp>
 #include <store/istore.hpp>
 
@@ -22,6 +22,7 @@ namespace streamlog
 {
 
 constexpr const char* STORE_STREAMLOG_BASE_NAME = "streamlog/"; ///< Document base name for storing last state
+using FastQueueType = fastqueue::StdQueue<std::string>;         ///< Type alias for the fast queue used in channels
 
 enum class ChannelState : int
 {
@@ -39,14 +40,14 @@ class ChannelHandler;
 class ChannelWriter : public WriterEvent
 {
 private:
-    std::shared_ptr<base::queue::ConcurrentQueue<std::string>> m_queue;
-    std::shared_ptr<std::atomic<ChannelState>> m_channelState;
-    std::weak_ptr<ChannelHandler> m_channelHandler; // Weak reference to avoid circular dependency
+    std::shared_ptr<FastQueueType> m_queue;                    ///< Thread-safe queue for log messages.
+    std::shared_ptr<std::atomic<ChannelState>> m_channelState; ///< State to check if it's running or closed.
+    std::weak_ptr<ChannelHandler> m_channelHandler;            // Weak reference to avoid circular dependency
 
 public:
-    ChannelWriter(std::shared_ptr<base::queue::ConcurrentQueue<std::string>> queue,
-                  std::shared_ptr<std::atomic<ChannelState>> channelState,
-                  std::weak_ptr<ChannelHandler> channelHandler)
+    ChannelWriter(decltype(m_queue) queue,
+                  decltype(m_channelState) channelState,
+                  decltype(m_channelHandler) channelHandler)
         : m_queue(std::move(queue))
         , m_channelState(std::move(channelState))
         , m_channelHandler(std::move(channelHandler))
@@ -72,9 +73,7 @@ public:
     {
         if (m_channelState->load(std::memory_order_relaxed) == ChannelState::Running)
         {
-            // TODO Handle error and print message for changing the buffer size, maybe trypush with &&
-            m_queue->push(std::move(message));
-            return true; // Indicate that the message was accepted for processing
+            return m_queue->push(std::move(message));
         }
         return false; // Indicate that the message was not accepted (channel not running)
     }
@@ -114,7 +113,7 @@ private:
     struct AsyncChannelData
     {
         // Stream flow handling
-        std::shared_ptr<base::queue::ConcurrentQueue<std::string>> queue; ///< Thread-safe queue for log messages.
+        std::shared_ptr<FastQueueType> queue; ///< Thread-safe queue for log messages.
         std::ofstream outputFile; ///< Output file stream for writing log messages.
         std::thread workerThread; ///< Thread that processes log messages asynchronously.
         std::shared_ptr<std::atomic<ChannelState>> channelState {

@@ -31,11 +31,10 @@ constexpr std::string_view INDEXER_SSL_KEY = "analysisd.indexer_ssl_key";
 
 constexpr std::string_view RAW_EVENT_INDEXER_ENABLED = "analysisd.raw_event_indexer_enabled";
 
-constexpr std::string_view QUEUE_SIZE = "analysisd.queue_size";
-constexpr std::string_view QUEUE_FLOOD_FILE = "analysisd.queue_flood_file";
-constexpr std::string_view QUEUE_FLOOD_ATTEMPS = "analysisd.queue_flood_attempts";
-constexpr std::string_view QUEUE_FLOOD_SLEEP = "analysisd.queue_flood_sleep";
-constexpr std::string_view QUEUE_DROP_ON_FLOOD = "analysisd.queue_drop_on_flood";
+constexpr std::string_view RAW_EVENT_INDEXER_ENABLED = "analysisd.raw_event_indexer_enabled";
+
+constexpr std::string_view EVENT_QUEUE_SIZE = "analysisd.event_queue_size";
+constexpr std::string_view EVENT_QUEUE_EPS = "analysisd.event_queue_eps";
 
 constexpr std::string_view ORCHESTRATOR_THREADS = "analysisd.orchestrator_threads";
 

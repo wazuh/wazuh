@@ -8,7 +8,7 @@
 
 #include <bk/icontroller.hpp>
 #include <builder/ibuilder.hpp>
-#include <queue/iqueue.hpp>
+#include <fastqueue/iqueue.hpp>
 #include <store/istore.hpp>
 
 #include <router/iapi.hpp>
@@ -17,8 +17,8 @@
 namespace router
 {
 
-using ProdQueueType = base::queue::iQueue<base::Event>;
-using TestQueueType = base::queue::iQueue<test::QueueType>;
+using ProdQueueType = fastqueue::IQueue<base::Event>;
+using TestQueueType = fastqueue::IQueue<test::QueueType>;
 
 // Forward declarations
 template<typename T>

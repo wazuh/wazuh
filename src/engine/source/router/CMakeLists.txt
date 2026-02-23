@@ -33,7 +33,7 @@ target_link_libraries(router_router
     router::irouter
     builder::ibuilder
     bk::ibk
-    queue::iqueue
+    fastqueue::ifastqueue
 
     PRIVATE
     base
