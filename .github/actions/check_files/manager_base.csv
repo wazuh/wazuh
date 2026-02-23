@@ -147,8 +147,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/wazuh-manager/queue/tasks,wazuh-manager,wazuh-manager,770,directory,drwxrwx---,,
 /var/wazuh-manager/queue/tzdb,wazuh-manager,wazuh-manager,750,directory,drwxr-x---,,
 /var/wazuh-manager/queue/vd,wazuh-manager,wazuh-manager,770,directory,drwxrwx---,,
-/var/wazuh-manager/ruleset,root,wazuh-manager,750,directory,drwxr-x---,,
-/var/wazuh-manager/ruleset/sca,root,wazuh-manager,750,directory,drwxr-x---,,
 /var/wazuh-manager/tmp,root,wazuh-manager,1770,directory,drwxrwx--T,,
 /var/wazuh-manager/tmp/vd_1.0.0_vd_4.13.0.tar.xz,wazuh-manager,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/var,root,wazuh-manager,750,directory,drwxr-x---,,

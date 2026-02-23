@@ -161,10 +161,6 @@ case "$1" in
     chown root:${GROUP} ${DIR}/etc/internal_options.conf \
         ${DIR}/etc/local_internal_options.conf > /dev/null 2>&1 || true
     chmod 640 ${DIR}/etc/internal_options.conf ${DIR}/etc/local_internal_options.conf > /dev/null 2>&1 || true
-    mkdir -p "${DIR}/ruleset/sca" > /dev/null 2>&1 || true
-    chown root:${GROUP} "${DIR}/ruleset/sca" > /dev/null 2>&1 || true
-    chmod 750 "${DIR}/ruleset/sca" > /dev/null 2>&1 || true
-
     # Restore group files
     if [ -d ${WAZUH_TMP_DIR}/group ]; then
         cp -rfp ${WAZUH_TMP_DIR}/group/* ${DIR}/etc/shared

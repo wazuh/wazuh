@@ -888,9 +888,9 @@ InstallCommon()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/logcollector
   fi
 
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset/sca
   if [ "X${INSTYPE}" = "Xagent" ]; then
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset/sca
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/wodles
   fi
@@ -1136,12 +1136,6 @@ InstallLocal()
     if [ -d "${INSTALLDIR}/framework/wazuh/core" ]; then
         chown root:${WAZUH_GROUP} "${INSTALLDIR}/framework/wazuh/core"
         chmod 0750 "${INSTALLDIR}/framework/wazuh/core"
-    fi
-
-    # The manager may contain this directory in packaged installs; normalize if present.
-    if [ -d "${INSTALLDIR}/ruleset/sca" ]; then
-        chown root:${WAZUH_GROUP} "${INSTALLDIR}/ruleset/sca"
-        chmod 0750 "${INSTALLDIR}/ruleset/sca"
     fi
 
     generateSchemaFiles
