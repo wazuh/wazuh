@@ -527,6 +527,10 @@ rm -fr %{buildroot}
 /usr/lib/systemd/system/wazuh-manager.service
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}
 %attr(440, root, wazuh-manager) %{_localstatedir}/VERSION.json
+%dir %attr(750, root, wazuh-manager) %{_localstatedir}/active-response
+%dir %attr(750, root, wazuh-manager) %{_localstatedir}/active-response/bin
+%attr(750, root, wazuh-manager) %{_localstatedir}/active-response/bin/kaspersky.py
+%attr(750, root, wazuh-manager) %{_localstatedir}/active-response/bin/restart.sh
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/api
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/api/configuration
 %attr(660, root, wazuh-manager) %config(noreplace) %{_localstatedir}/api/configuration/api.yaml
@@ -656,8 +660,6 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/keystore
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/tzdb
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/etc/ruleset
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/ruleset
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/ruleset/sca
 %dir %attr(1770, root, wazuh-manager) %{_localstatedir}/tmp
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/var
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/db
