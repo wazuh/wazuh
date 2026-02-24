@@ -31,7 +31,7 @@ extern size_t agcom_dispatch(char * command, char ** output);
 
 #define SYS_SYNC_PROTOCOL_DB_PATH "queue/syscollector/db/syscollector_sync.db"
 #define SYS_SYNC_PROTOCOL_VD_DB_PATH "queue/syscollector/db/syscollector_vd_sync.db"
-#define SYS_SYNC_RETRIES 3
+#define SYS_SYNC_RETRIES 15
 
 // Global flag to stop sync module
 static volatile int sync_module_running = 0;
@@ -102,7 +102,7 @@ syscollector_set_agentd_query_func_ptr syscollector_set_agentd_query_func_setter
 unsigned int enable_synchronization = 1;     // Database synchronization enabled (default value)
 uint32_t sync_interval = 300;                // Database synchronization interval (default value)
 uint32_t sync_end_delay = 1;                 // Database synchronization end delay in seconds (default value)
-uint32_t sync_response_timeout = 30;         // Database synchronization response timeout (default value)
+uint32_t sync_response_timeout = 300;         // Database synchronization response timeout (default value)
 long sync_max_eps = 50;                     // Database synchronization number of events per second (default value)
 uint32_t integrity_interval = 86400;         // Integrity check interval in seconds (default value)
 
