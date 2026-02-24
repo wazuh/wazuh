@@ -31,9 +31,9 @@ class EngineHandler:
         for key, value in override_env.items():
             self.config_env[key] = value
 
-        self.api_socket_path = self.config_env.get("WAZUH_SERVER_API_SOCKET")
+        self.api_socket_path = self.config_env.get("WAZUH_MANAGER_API_SOCKET")
         if self.api_socket_path is None:
-            raise KeyError("Environment variable 'WAZUH_SERVER_API_SOCKET' not found for the engine configuration")
+            raise KeyError("Environment variable 'WAZUH_MANAGER_API_SOCKET' not found for the engine configuration")
 
         self.api_client = APIClient(self.api_socket_path)
 

@@ -15,9 +15,9 @@ export WAZUH_STORE_PATH="${DATA_PATH}/store"
 export WAZUH_OUTPUTS_PATH="${DATA_PATH}/outputs"
 export WAZUH_KVDB_IOC_PATH="${DATA_PATH}/kvdb-ioc"
 export WAZUH_CM_RULESET_PATH="${DATA_PATH}/content"
-export WAZUH_SERVER_API_SOCKET="${SOCKET_PATH}/engine-api.sock"
+export WAZUH_MANAGER_API_SOCKET="${SOCKET_PATH}/engine-api.sock"
 export WAZUH_STREAMLOG_BASE_PATH="${LOG_PATH}"
-export WAZUH_SERVER_ENABLE_EVENT_PROCESSING="false"
+export WAZUH_MANAGER_ENABLE_EVENT_PROCESSING="false"
 
 # If not exist create directories
 mkdir -p "$SOCKET_PATH" "$LOG_PATH"
