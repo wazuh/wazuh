@@ -26,7 +26,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/etc/wpk_root.pem,root,wazuh,640,file,-rw-r-----,1367,0.1
 /var/ossec/etc/localtime,root,wazuh,640,file,-rw-r-----,118,0.1
 /var/ossec/etc/client.keys,root,wazuh,640,file,-rw-r-----,0,0.1
-/var/ossec/etc/ossec.conf,root,wazuh,660,file,-rw-rw----,4566,0.1
+/var/ossec/etc/ossec.conf,root,wazuh,640,file,-rw-r-----,4566,0.1
 /var/ossec/etc/local_internal_options.conf,root,wazuh,640,file,-rw-r-----,320,0.1
 /var/ossec/active-response/bin/firewalld-drop,root,wazuh,750,file,-rwxr-x---,114512,0.1
 /var/ossec/active-response/bin/host-deny,root,wazuh,750,file,-rwxr-x---,114504,0.1
