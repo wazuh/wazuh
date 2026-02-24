@@ -112,6 +112,10 @@ src/libwazuhext.*
 # Visual Studio Code files
 .vscode
 
+# Local Python virtual environments
+.venv/
+venv/
+
 # temporary vim files
 *.swp
 *.swo

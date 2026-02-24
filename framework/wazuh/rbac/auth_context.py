@@ -67,8 +67,20 @@ class RBAChecker:
                 processed_roles_list = list()
                 for role in roles_list:
                     rules = list()
-                    for rule in rm.get_role_id(role_id=role['id'])['rules']:
-                        rules.append(rum.get_rule(rule))
+
+                    # If rules are already provided in the role, prefer them to avoid extra DB lookups.
+                    # This also allows tests to supply in-memory rules without requiring ORM access.
+                    provided_rules = role.get('rules', None) if isinstance(role, dict) else None
+                    if provided_rules:
+                        # If provided rules are already expanded (dicts), keep them as-is.
+                        if isinstance(provided_rules, list) and provided_rules and isinstance(provided_rules[0], dict):
+                            rules = provided_rules
+                        else:
+                            for rule in provided_rules:
+                                rules.append(rum.get_rule(rule))
+                    else:
+                        for rule in rm.get_role_id(role_id=role['id'])['rules']:
+                            rules.append(rum.get_rule(rule))
                     if len(rules) > 0:
                         processed_roles_list.append(role)
                         processed_roles_list[-1]['rules'] = rules
