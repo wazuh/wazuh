@@ -134,6 +134,8 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
     # Wait until Agent asks keys for the first time
     wait_enrollment_try()
 
+    authd_server = None
+    remoted_server = None
     try:
 
         # Start AuthdSimulator
@@ -159,7 +161,9 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
         wait_connect()
     finally:
         # Reset simulator
-        authd_server.destroy()
+        if authd_server:
+            authd_server.destroy()
 
         # Reset simulator
-        remoted_server.destroy()
+        if remoted_server:
+            remoted_server.destroy()

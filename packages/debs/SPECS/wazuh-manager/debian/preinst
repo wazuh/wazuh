@@ -39,8 +39,8 @@ EOF
 
         if [ "$1" = "upgrade" ]; then
             # Get version information
-            if [ -f "${DIR}/bin/wazuh-control" ]; then
-                OLD_VERSION=`${DIR}/bin/wazuh-control info -v 2>/dev/null`
+            if [ -f "${DIR}/bin/wazuh-manager-control" ]; then
+                OLD_VERSION=`${DIR}/bin/wazuh-manager-control info -v 2>/dev/null`
                 MAJOR_VER=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f1)
             elif [ -f ${DIR}/VERSION.json ]; then
                 OLD_VERSION=`grep -oP '(?<="version": ")[^"]*' ${DIR}/VERSION.json 2>/dev/null`
@@ -93,12 +93,20 @@ EOF
             elif command -v service > /dev/null 2>&1 && service wazuh-manager status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
                 service wazuh-manager stop > /dev/null 2>&1
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
+            elif ${DIR}/bin/wazuh-manager-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
+                touch ${WAZUH_TMP_DIR}/wazuh.restart
             elif ${DIR}/bin/wazuh-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
             elif ${DIR}/bin/ossec-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
             fi
-            ${DIR}/bin/ossec-control stop > /dev/null 2>&1 || ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
+            if [ -x "${DIR}/bin/wazuh-manager-control" ]; then
+                ${DIR}/bin/wazuh-manager-control stop > /dev/null 2>&1
+            elif [ -x "${DIR}/bin/wazuh-control" ]; then
+                ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
+            elif [ -x "${DIR}/bin/ossec-control" ]; then
+                ${DIR}/bin/ossec-control stop > /dev/null 2>&1
+            fi
             if pgrep -f ossec-authd > /dev/null 2>&1; then
                 kill -15 $(pgrep -f ossec-authd)
             fi

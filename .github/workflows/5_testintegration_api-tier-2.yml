@@ -66,10 +66,10 @@ jobs:
 
           sudo mkdir -p $INSTALLATION_DIR/etc/certs
           sudo touch $INSTALLATION_DIR/etc/certs/root-ca.pem
-          sudo touch $INSTALLATION_DIR/etc/certs/server.pem
-          sudo touch $INSTALLATION_DIR/etc/certs/server-key.pem
+          sudo touch $INSTALLATION_DIR/etc/certs/manager.pem
+          sudo touch $INSTALLATION_DIR/etc/certs/manager-key.pem
 
-          sudo $INSTALLATION_DIR/bin/wazuh-control restart
+          sudo $INSTALLATION_DIR/bin/wazuh-manager-control restart
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |

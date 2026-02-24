@@ -148,10 +148,6 @@ InstallSecurityConfigurationAssessmentFiles()
     cd ..
 
     CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "sca.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-
-    if [ "X$1" = "Xmanager" ]; then
-        CONFIGURATION_ASSESSMENT_MANAGER_FILES_PATH=$(GetTemplate "sca.$1.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
     cd ./src
     if [ "$CONFIGURATION_ASSESSMENT_FILES_PATH" = "ERROR_NOT_FOUND" ]; then
         echo "SCA policies are not available for this OS version ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER}."
@@ -166,18 +162,6 @@ InstallSecurityConfigurationAssessmentFiles()
                 ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../ruleset/sca/$FILE ${INSTALLDIR}/ruleset/sca
             else
                 echo "ERROR: SCA policy not found: ../ruleset/sca/$FILE"
-            fi
-        done
-    fi
-
-    if [ "X$1" = "Xmanager" ]; then
-        echo "Installing additional SCA policies..."
-        CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_MANAGER_FILES_PATH)
-        for FILE in $CONFIGURATION_ASSESSMENT_FILES; do
-            FILENAME=$(basename $FILE)
-            if [ -f "../ruleset/sca/$FILE" ] && [ ! -f "${INSTALLDIR}/ruleset/sca/$FILENAME" ]; then
-                ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../ruleset/sca/$FILE ${INSTALLDIR}/ruleset/sca/
-                mv ${INSTALLDIR}/ruleset/sca/$FILENAME ${INSTALLDIR}/ruleset/sca/$FILENAME.disabled
             fi
         done
     fi
@@ -315,7 +299,13 @@ SetHeaders()
 GenerateService()
 {
     SERVICE_TEMPLATE=./src/init/templates/${1}
-    sed "s|WAZUH_HOME_TMP|${INSTALLDIR}|g" ${SERVICE_TEMPLATE}
+    if [ "X${INSTYPE}" = "Xserver" ]; then
+        sed -e "s|WAZUH_HOME_TMP|${INSTALLDIR}|g" \
+            -e "s|/bin/wazuh-control|/bin/wazuh-manager-control|g" \
+            ${SERVICE_TEMPLATE}
+    else
+        sed "s|WAZUH_HOME_TMP|${INSTALLDIR}|g" ${SERVICE_TEMPLATE}
+    fi
 }
 
 ##########
@@ -624,7 +614,7 @@ InstallCommon()
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/
 
   # Install VERSION.json and append commit id if any
-  ${INSTALL} -m 440 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../VERSION.json ${INSTALLDIR}/VERSION.json
+  ${INSTALL} -m 440 -o root -g ${WAZUH_GROUP} ../VERSION.json ${INSTALLDIR}/VERSION.json
 
   ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/wazuh
@@ -874,12 +864,15 @@ InstallCommon()
     ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${INSTALLDIR}/bin/
   else
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-manager-modulesd ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-modulesd ${INSTALLDIR}/bin/
+  fi
+  if [ "X${INSTYPE}" = "Xserver" ]; then
+    ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-manager-control
+  else
+    ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
   fi
 
-  ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
-
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue
+  ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue
   ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/alerts
   ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sockets
   if [ "X${INSTYPE}" = "Xagent" ]; then
@@ -895,21 +888,22 @@ InstallCommon()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/logcollector
   fi
 
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset
   if [ "X${INSTYPE}" = "Xagent" ]; then
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset/sca
-  fi
-
-  if [ "X${INSTYPE}" = "Xagent" ]; then
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/wodles
   fi
 
-  ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc
+  if [ "X${INSTYPE}" = "Xagent" ]; then
+      ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc
+  else
+      ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc
+  fi
 
     if [ -f /etc/localtime ]
     then
-         ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/localtime ${INSTALLDIR}/etc
+         ${INSTALL} -m 0640 -o root -g 0 /etc/localtime ${INSTALLDIR}/etc
     fi
 
   ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/tmp
@@ -931,7 +925,7 @@ InstallCommon()
         if [ "X${INSTYPE}" = "Xagent" ]; then
             ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
         else
-            ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
+            ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
         fi
     fi
 
@@ -945,15 +939,18 @@ InstallCommon()
     fi
 
 
-  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared
-
   if [ "X${INSTYPE}" = "Xagent" ]; then
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response/bin
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared
+  else
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared
+  fi
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response/bin
 
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/src/*.sh ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/src/*.py ${INSTALLDIR}/active-response/bin/
+  if [ "X${INSTYPE}" = "Xagent" ]; then
     ./init/fw-check.sh execute
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/src/*.sh ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/src/*.py ${INSTALLDIR}/active-response/bin/
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} firewall-drop ${INSTALLDIR}/active-response/bin/
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} default-firewall-drop ${INSTALLDIR}/active-response/bin/
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} pf ${INSTALLDIR}/active-response/bin/
@@ -968,8 +965,6 @@ InstallCommon()
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} kaspersky ${INSTALLDIR}/active-response/bin/
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-slack ${INSTALLDIR}/active-response/bin/
   fi
-
-  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/.ssh
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/run
@@ -1040,8 +1035,8 @@ installEngineStore()
 
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${STORE_PATH}
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${KVDB_PATH}
-    find ${STORE_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
-    find ${KVDB_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+    find ${STORE_PATH} -type d -exec chmod 770 {} \; -o -type f -exec chmod 660 {} \;
+    find ${KVDB_PATH} -type d -exec chmod 770 {} \; -o -type f -exec chmod 660 {} \;
 
     echo "Engine store installed successfully."
 
@@ -1050,7 +1045,7 @@ installEngineStore()
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${OUTPUTS_PATH}
     cp "${ENGINE_SRC_PATH}/ruleset/outputs/"*.yml "${OUTPUTS_PATH}/"
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${OUTPUTS_PATH}
-    find ${OUTPUTS_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+    find ${OUTPUTS_PATH} -type d -exec chmod 770 {} \; -o -type f -exec chmod 660 {} \;
 
     # Create /var/wazuh-manager/etc/ruleset
     install -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/ruleset
@@ -1085,8 +1080,8 @@ installGeoIP()
     echo "Installing GeoIP databases..."
 
     # Copy .mmdb files
-    ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} "${GEOIP_SRC_PATH}/GeoLite2-ASN.mmdb" "${MMDB_PATH}/"
-    ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} "${GEOIP_SRC_PATH}/GeoLite2-City.mmdb" "${MMDB_PATH}/"
+    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} "${GEOIP_SRC_PATH}/GeoLite2-ASN.mmdb" "${MMDB_PATH}/"
+    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} "${GEOIP_SRC_PATH}/GeoLite2-City.mmdb" "${MMDB_PATH}/"
 
     # Parse manifest.json without jq or python - using grep and sed
     ASN_MD5=$(grep -A 2 '"asn"' "${MANIFEST_FILE}" | grep '"md5"' | sed 's/.*"md5"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
@@ -1111,7 +1106,7 @@ EOF
 
     # Set proper ownership and permissions
     chown ${WAZUH_USER}:${WAZUH_GROUP} "${STORE_GEO_PATH}/0"
-    chmod 640 "${STORE_GEO_PATH}/0"
+    chmod 660 "${STORE_GEO_PATH}/0"
 
     echo "GeoIP databases installed successfully."
 }
@@ -1129,15 +1124,21 @@ InstallLocal()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/firewall
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/api
 
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-manager-monitord ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-monitord ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} verify-agent-conf ${INSTALLDIR}/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-manager-db ${INSTALLDIR}/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/engine/wazuh-engine ${INSTALLDIR}/bin/wazuh-manager-analysisd
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-db ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin/wazuh-manager-analysisd
 
     ### Install Python
     ${MAKEBIN} wpython INSTALLDIR=${INSTALLDIR} TARGET=${INSTYPE}
 
     ${MAKEBIN} --quiet -C ../framework install INSTALLDIR=${INSTALLDIR} WAZUH_GROUP=${WAZUH_GROUP}
+    # Framework installation may leave this parent directory with default root:root 755.
+    # Keep it aligned with the manager baseline used by check_files.
+    if [ -d "${INSTALLDIR}/framework/wazuh/core" ]; then
+        chown root:${WAZUH_GROUP} "${INSTALLDIR}/framework/wazuh/core"
+        chmod 0750 "${INSTALLDIR}/framework/wazuh/core"
+    fi
 
     generateSchemaFiles
 
@@ -1147,8 +1148,6 @@ InstallLocal()
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tzdb
 
-    # TODO Deletes old ruleset and stats, rootcheck and SCA?
-
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/db
 
     if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
@@ -1156,8 +1155,8 @@ InstallLocal()
     fi
 
     # Install Vulnerability Detector files
-    ${INSTALL} -d -m 0660 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vd
-    ${INSTALL} -d -m 0660 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/indexer
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vd
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/indexer
 
 
     # Install Task Manager files
@@ -1266,14 +1265,14 @@ InstallServer()
 
     TransferShared
 
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-manager-remoted ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-manager-authd ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-remoted ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-authd ${INSTALLDIR}/bin
 
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/router
 
     if [ ! -f ${INSTALLDIR}/queue/agents-timestamp ]; then
-        ${INSTALL} -m 0600 -o root -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/queue/agents-timestamp
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/queue/agents-timestamp
     fi
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/agents
@@ -1291,7 +1290,7 @@ InstallServer()
 
     # Keystore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-keystore ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-keystore ${INSTALLDIR}/bin/wazuh-manager-keystore
 }
 
 InstallAgent()

@@ -23,7 +23,6 @@ case "$1" in
     WAZUH_TMP_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_config_files"
     OSMYSHELL="/sbin/nologin"
     SCRIPTS_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_installation_scripts"
-    SCA_BASE_DIR="${SCRIPTS_DIR}/sca"
 
     if [ -d /run/systemd/system ]; then
         rm -f /etc/init.d/wazuh-manager
@@ -61,6 +60,7 @@ case "$1" in
         fi
     else
         ${SCRIPTS_DIR}/gen_ossec.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf.new
+        chown root:${GROUP} ${DIR}/etc/wazuh-manager.conf.new
         chmod 660 ${DIR}/etc/wazuh-manager.conf.new
     fi
 
@@ -76,7 +76,7 @@ case "$1" in
     fi
 
     if [ -f ${DIR}/queue/db/global.db ]; then
-        chmod 640 ${DIR}/queue/db/global.db*
+        chmod 660 ${DIR}/queue/db/global.db*
         chown ${USER}:${GROUP} ${DIR}/queue/db/global.db*
     fi
 
@@ -112,13 +112,13 @@ case "$1" in
     if [ -f /etc/localtime ]; then
         cp -pL /etc/localtime ${DIR}/etc/;
         chmod 640 ${DIR}/etc/localtime
-        chown root:${GROUP} ${DIR}/etc/localtime
+        chown root:root ${DIR}/etc/localtime
     fi
 
     if [ -f /etc/TIMEZONE ]; then
         cp -p /etc/TIMEZONE ${DIR}/etc/;
         chmod 640 ${DIR}/etc/TIMEZONE
-        chown root:${GROUP} ${DIR}/etc/localtime
+        chown root:root ${DIR}/etc/TIMEZONE
     fi
 
     # Restore client.keys configuration
@@ -135,14 +135,32 @@ case "$1" in
         mv ${WAZUH_TMP_DIR}/wazuh-manager.conf ${DIR}/etc/wazuh-manager.conf
     fi
 
-    for BIN in wazuh-manager-analysisd wazuh-manager-authd wazuh-manager-db \
-        wazuh-manager-modulesd wazuh-manager-monitord \
-        wazuh-manager-remoted; do
+    for BIN in agent_groups agent_upgrade cluster_control rbac_control \
+        wazuh-manager-analysisd wazuh-manager-apid wazuh-manager-authd \
+        wazuh-manager-clusterd wazuh-manager-control wazuh-manager-db \
+        wazuh-manager-keystore wazuh-manager-modulesd \
+        wazuh-manager-monitord wazuh-manager-remoted; do
         if [ -f "${DIR}/bin/${BIN}" ]; then
-            chown root:${GROUP} "${DIR}/bin/${BIN}"
+            case "${BIN}" in
+                agent_groups|agent_upgrade|cluster_control|rbac_control|wazuh-manager-apid|wazuh-manager-clusterd)
+                    chown root:${GROUP} "${DIR}/bin/${BIN}"
+                    ;;
+                *)
+                    chown root:root "${DIR}/bin/${BIN}"
+                    ;;
+            esac
         fi
     done
 
+    if [ -f "${DIR}/bin/verify-agent-conf" ]; then
+        chown root:${GROUP} "${DIR}/bin/verify-agent-conf"
+    fi
+
+    chown root:${GROUP} ${DIR}/etc/wazuh-manager.conf > /dev/null 2>&1 || true
+    chmod 660 ${DIR}/etc/wazuh-manager.conf > /dev/null 2>&1 || true
+    chown root:${GROUP} ${DIR}/etc/internal_options.conf \
+        ${DIR}/etc/local_internal_options.conf > /dev/null 2>&1 || true
+    chmod 640 ${DIR}/etc/internal_options.conf ${DIR}/etc/local_internal_options.conf > /dev/null 2>&1 || true
     # Restore group files
     if [ -d ${WAZUH_TMP_DIR}/group ]; then
         cp -rfp ${WAZUH_TMP_DIR}/group/* ${DIR}/etc/shared
@@ -192,10 +210,6 @@ case "$1" in
         fi
     fi
 
-    # SCA is agent-only; ensure manager doesn't install policies
-    rm -rf ${DIR}/ruleset/sca
-    rm -rf ${SCA_BASE_DIR}
-
     # Ensure that the 'Indexer' is configured
     CONFIG_INDEXER_TEMPLATE="${SCRIPTS_DIR}/etc/templates/config/generic/wodle-indexer.manager.template"
     . ${SCRIPTS_DIR}/src/init/update-indexer.sh
@@ -241,7 +255,7 @@ case "$1" in
             elif command -v service > /dev/null 2>&1 ; then
                 service wazuh-manager restart > /dev/null 2>&1
             else
-                ${DIR}/bin/wazuh-control restart > /dev/null 2>&1
+                ${DIR}/bin/wazuh-manager-control restart > /dev/null 2>&1
             fi
         fi
     fi

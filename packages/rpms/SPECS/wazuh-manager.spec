@@ -91,7 +91,7 @@ echo 'DOWNLOAD_CONTENT="y"' >> ./etc/preloaded-vars.conf
 
 # Create directories
 mkdir -p ${RPM_BUILD_ROOT}%{_initrddir}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/.ssh
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}
 
 # Copy the installed files into RPM_BUILD_ROOT directory
 cp -pr %{_localstatedir}/* ${RPM_BUILD_ROOT}%{_localstatedir}/
@@ -100,9 +100,6 @@ install -m 0755 src/init/templates/ossec-hids-rh.init ${RPM_BUILD_ROOT}%{_initrd
 mkdir -p ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
 sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-manager.service
 install -m 0644 src/init/templates/wazuh-manager.service ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
-
-# Clean the preinstalled configuration assesment files
-rm -f ${RPM_BUILD_ROOT}%{_localstatedir}/ruleset/sca/*
 
 # Add configuration scripts
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/
@@ -116,74 +113,6 @@ mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/rhel
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/suse
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/sles
-
-# Install configuration assesment files and files templates
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/{applications,generic}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/{1,2,2023}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/{10,9,8,7,6}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/{15,16,17,18,19,20,21,22,23,24,25}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/debian/{7,8,9,10,11,12,13}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/{9,10}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ubuntu/{12,14,16,18,20,22,24}/04
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/{10,9,8,7,6}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/{12,15,16}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse/12
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/windows
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/{29,30,31,32,33,34,41}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/{8,9,10}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/{8,9,10}
-
-cp -r ruleset/sca/{applications,generic,mongodb,nginx,oracledb,centos,darwin,debian,ol,rhel,sles,windows,amazon,ubuntu,rocky,almalinux} ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp
-
-cp etc/templates/config/generic/{sca.files,sca.manager.files} ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic
-
-cp etc/templates/config/amzn/1/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/1
-cp etc/templates/config/amzn/2/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2
-cp etc/templates/config/amzn/2023/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2023
-
-cp etc/templates/config/centos/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos
-cp etc/templates/config/centos/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/10
-cp etc/templates/config/centos/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/9
-cp etc/templates/config/centos/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/8
-cp etc/templates/config/centos/7/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/7
-cp etc/templates/config/centos/6/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/6
-
-cp etc/templates/config/ol/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/9
-cp etc/templates/config/ol/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/10
-
-cp etc/templates/config/rhel/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel
-cp etc/templates/config/rhel/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/10
-cp etc/templates/config/rhel/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/9
-cp etc/templates/config/rhel/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/8
-cp etc/templates/config/rhel/7/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/7
-cp etc/templates/config/rhel/6/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/6
-
-cp etc/templates/config/sles/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles
-cp etc/templates/config/sles/12/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/12
-cp etc/templates/config/sles/15/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/15
-cp etc/templates/config/sles/16/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/16
-
-cp etc/templates/config/suse/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse
-cp etc/templates/config/suse/12/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse/12
-
-cp etc/templates/config/fedora/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora
-cp etc/templates/config/fedora/29/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/29
-cp etc/templates/config/fedora/30/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/30
-cp etc/templates/config/fedora/31/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/31
-cp etc/templates/config/fedora/32/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/32
-cp etc/templates/config/fedora/33/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/33
-cp etc/templates/config/fedora/34/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/34
-cp etc/templates/config/fedora/41/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/41
-
-cp etc/templates/config/almalinux/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux
-cp etc/templates/config/almalinux/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/8
-cp etc/templates/config/almalinux/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/9
-cp etc/templates/config/almalinux/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/10
-
-cp etc/templates/config/rocky/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky
-cp etc/templates/config/rocky/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/8
-cp etc/templates/config/rocky/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/9
-cp etc/templates/config/rocky/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/10
 
 # Add SUSE initscript
 sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/ossec-hids-suse.init
@@ -208,14 +137,11 @@ exit 0
 # ============================================================
 if [ $1 = 2 ]; then
   # Check if this is an upgrade from 4.X
-  # Note: 4.X was installed in /var/ossec, so we check there (not %{_localstatedir})
   if [ -f %{_sysconfdir}/ossec-init.conf ]; then
     . %{_sysconfdir}/ossec-init.conf
     OLD_VERSION="${VERSION}"
-  elif [ -x /var/ossec/bin/wazuh-control ]; then
-    OLD_VERSION=$(/var/ossec/bin/wazuh-control info -v 2>/dev/null || echo "")
-  elif [ -x %{_localstatedir}/bin/wazuh-control ]; then
-    OLD_VERSION=$(%{_localstatedir}/bin/wazuh-control info -v 2>/dev/null || echo "")
+  elif [ -x %{_localstatedir}/bin/wazuh-manager-control ]; then
+    OLD_VERSION=$(%{_localstatedir}/bin/wazuh-manager-control info -v 2>/dev/null || echo "")
   fi
 
   if [ -n "${OLD_VERSION}" ]; then
@@ -248,8 +174,8 @@ fi
 # Validate upgrade constraints for Manager (only during upgrade)
 if [ $1 = 2 ]; then
   # Get version information
-  if [ -f "%{_localstatedir}/bin/wazuh-control" ]; then
-    OLD_VERSION=`%{_localstatedir}/bin/wazuh-control info -v 2>/dev/null`
+  if [ -f "%{_localstatedir}/bin/wazuh-manager-control" ]; then
+    OLD_VERSION=`%{_localstatedir}/bin/wazuh-manager-control info -v 2>/dev/null`
     MAJOR=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f1)
   elif [ -f %{_localstatedir}/VERSION.json ]; then
     OLD_VERSION=`grep -oP '(?<="version": ")[^"]*' %{_localstatedir}/VERSION.json 2>/dev/null`
@@ -299,19 +225,25 @@ fi
 if [ $1 = 2 ]; then
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
     systemctl stop wazuh-manager.service > /dev/null 2>&1
-    %{_localstatedir}/bin/ossec-control stop > /dev/null 2>&1
     touch %{_localstatedir}/tmp/wazuh.restart
   # Check for SysV
   elif command -v service > /dev/null 2>&1 && service wazuh-manager status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     service wazuh-manager stop > /dev/null 2>&1
-    %{_localstatedir}/bin/ossec-control stop > /dev/null 2>&1
+    touch %{_localstatedir}/tmp/wazuh.restart
+  elif %{_localstatedir}/bin/wazuh-manager-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     touch %{_localstatedir}/tmp/wazuh.restart
   elif %{_localstatedir}/bin/wazuh-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     touch %{_localstatedir}/tmp/wazuh.restart
   elif %{_localstatedir}/bin/ossec-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     touch %{_localstatedir}/tmp/wazuh.restart
   fi
-  %{_localstatedir}/bin/ossec-control stop > /dev/null 2>&1 || %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
+  if [ -x %{_localstatedir}/bin/wazuh-manager-control ]; then
+    %{_localstatedir}/bin/wazuh-manager-control stop > /dev/null 2>&1
+  elif [ -x %{_localstatedir}/bin/wazuh-control ]; then
+    %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
+  elif [ -x %{_localstatedir}/bin/ossec-control ]; then
+    %{_localstatedir}/bin/ossec-control stop > /dev/null 2>&1
+  fi
 fi
 if pgrep -f ossec-authd > /dev/null 2>&1; then
     kill -15 $(pgrep -f ossec-authd)
@@ -329,7 +261,7 @@ if [ -f %{_localstatedir}/var/db/global.db ]; then
 fi
 
 if [ -f %{_localstatedir}/queue/db/global.db ]; then
-  chmod 640 %{_localstatedir}/queue/db/global.db*
+  chmod 660 %{_localstatedir}/queue/db/global.db*
   chown wazuh-manager:wazuh-manager %{_localstatedir}/queue/db/global.db*
 fi
 
@@ -347,8 +279,8 @@ if [ $1 = 2 ]; then
     rm -rf %{_localstatedir}/~api
   fi
 
-  # Ask wazuh-control the version
-  VERSION=$(%{_localstatedir}/bin/wazuh-control info -v)
+  # Ask wazuh-manager-control the version
+  VERSION=$(%{_localstatedir}/bin/wazuh-manager-control info -v)
 
   # Get the major and minor version
   MAJOR=$(echo $VERSION | cut -dv -f2 | cut -d. -f1)
@@ -407,6 +339,7 @@ if [ $1 = 1 ]; then
   # Generating wazuh-manager.conf file
   %{_localstatedir}/packages_files/manager_installation_scripts/gen_ossec.sh conf manager ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/wazuh-manager.conf
   chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.conf
+  chmod 0660 %{_localstatedir}/etc/wazuh-manager.conf
 
   touch %{_localstatedir}/logs/wazuh-manager.log
   chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/wazuh-manager.log
@@ -437,77 +370,6 @@ rm -f %{_localstatedir}/etc/shared/merged.mg  >/dev/null 2>&1
 # Set merged.mg permissions to new ones
 find %{_localstatedir}/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
 
-#AlmaLinux
-if [ -r "/etc/almalinux-release" ]; then
-  DIST_NAME=almalinux
-  DIST_VER=`sed -rn 's/.* ([0-9]{1,2})\.*[0-9]{0,2}.*/\1/p' /etc/almalinux-release`
-#Rocky
-elif [ -r "/etc/rocky-release" ]; then
-  DIST_NAME=rocky
-  DIST_VER=`sed -rn 's/.* ([0-9]{1,2})\.*[0-9]{0,2}.*/\1/p' /etc/rocky-release`
-# CentOS
-elif [ -r "/etc/centos-release" ]; then
-  if grep -q "AlmaLinux" /etc/centos-release; then
-    DIST_NAME=almalinux
-  elif grep -q "Rocky" /etc/centos-release; then
-    DIST_NAME=almalinux
-  else
-    DIST_NAME="centos"
-  fi
-  DIST_VER=`sed -rn 's/.* ([0-9]{1,2})\.*[0-9]{0,2}.*/\1/p' /etc/centos-release`
-# Fedora
-elif [ -r "/etc/fedora-release" ]; then
-    DIST_NAME="fedora"
-    DIST_VER=`sed -rn 's/.* ([0-9]{1,2})\.*[0-9]{0,2}.*/\1/p' /etc/fedora-release`
-# Oracle Linux
-elif [ -r "/etc/oracle-release" ]; then
-    DIST_NAME="ol"
-    DIST_VER=`sed -rn 's/.* ([0-9]{1,2})\.*[0-9]{0,2}.*/\1/p' /etc/oracle-release`
-# RedHat
-elif [ -r "/etc/redhat-release" ]; then
-  if grep -q "AlmaLinux" /etc/redhat-release; then
-    DIST_NAME=almalinux
-  elif grep -q "Rocky" /etc/redhat-release; then
-    DIST_NAME=almalinux
-  elif grep -q "CentOS" /etc/redhat-release; then
-      DIST_NAME="centos"
-  else
-      DIST_NAME="rhel"
-  fi
-  DIST_VER=`sed -rn 's/.* ([0-9]{1,2})\.*[0-9]{0,2}.*/\1/p' /etc/redhat-release`
-# SUSE
-elif [ -r "/etc/SuSE-release" ]; then
-  if grep -q "openSUSE" /etc/SuSE-release; then
-      DIST_NAME="generic"
-      DIST_VER=""
-  else
-      DIST_NAME="sles"
-      DIST_VER=`sed -rn 's/.*VERSION = ([0-9]{1,2}).*/\1/p' /etc/SuSE-release`
-  fi
-elif [ -r "/etc/os-release" ]; then
-  . /etc/os-release
-  DIST_NAME=$ID
-  DIST_VER=$(echo $VERSION_ID | sed -rn 's/[^0-9]*([0-9]+).*/\1/p')
-  if [ "X$DIST_VER" = "X" ]; then
-      DIST_VER="0"
-  fi
-  if [ "$DIST_NAME" = "amzn" ] && [ "$DIST_VER" != "2" ] && [ "$DIST_VER" != "2023" ]; then
-      DIST_VER="1"
-  fi
-  DIST_SUBVER=$(echo $VERSION_ID | sed -rn 's/[^0-9]*[0-9]+\.([0-9]+).*/\1/p')
-  if [ "X$DIST_SUBVER" = "X" ]; then
-      DIST_SUBVER="0"
-  fi
-else
-  DIST_NAME="generic"
-  DIST_VER=""
-fi
-
-# SCA is agent-only; ensure manager doesn't install policies
-SCA_BASE_DIR="%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp"
-rm -rf %{_localstatedir}/ruleset/sca
-rm -rf ${SCA_BASE_DIR}
-
 # Add the SELinux policy
 if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&1; then
   if [ $(getenforce) != "Disabled" ]; then
@@ -517,6 +379,7 @@ if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&
 fi
 
 # Restore wazuh-manager.conf permissions after upgrading
+chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.conf
 chmod 0660 %{_localstatedir}/etc/wazuh-manager.conf
 
 # Delete the installation files used to configure the manager
@@ -558,7 +421,7 @@ if [ $1 = 0 ]; then
   elif command -v service > /dev/null 2>&1 && service wazuh-manager status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     service wazuh-manager stop > /dev/null 2>&1
   fi
-  %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
+  %{_localstatedir}/bin/wazuh-manager-control stop > /dev/null 2>&1
 
   # Remove the SELinux policy
   if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&1; then
@@ -569,8 +432,6 @@ if [ $1 = 0 ]; then
     fi
   fi
 
-  # Remove SCA files
-  rm -f %{_localstatedir}/ruleset/sca/*
 fi
 
 %postun
@@ -610,7 +471,6 @@ if [ $1 = 0 ];then
   rm -rf %{_localstatedir}/var/
   rm -rf %{_localstatedir}/bin/
   rm -rf %{_localstatedir}/logs/
-  rm -rf %{_localstatedir}/ruleset/
   rm -rf %{_localstatedir}/tmp
   rm -rf %{_localstatedir}/engine
 
@@ -638,7 +498,7 @@ if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
   elif command -v service > /dev/null 2>&1 ; then
     service wazuh-manager restart > /dev/null 2>&1
   else
-    %{_localstatedir}/bin/wazuh-control restart > /dev/null 2>&1
+    %{_localstatedir}/bin/wazuh-manager-control restart > /dev/null 2>&1
   fi
 fi
 
@@ -655,7 +515,7 @@ rm -rf %{_localstatedir}/backup/groups
 
 %triggerin -- glibc
 [ -r %{_sysconfdir}/localtime ] && cp -fpL %{_sysconfdir}/localtime %{_localstatedir}/etc
- chown root:wazuh-manager %{_localstatedir}/etc/localtime
+ chown root:root %{_localstatedir}/etc/localtime
  chmod 0640 %{_localstatedir}/etc/localtime
 
 %clean
@@ -666,7 +526,11 @@ rm -fr %{buildroot}
 %config(missingok) %{_initrddir}/wazuh-manager
 /usr/lib/systemd/system/wazuh-manager.service
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}
-%attr(440, wazuh-manager, wazuh-manager) %{_localstatedir}/VERSION.json
+%attr(440, root, wazuh-manager) %{_localstatedir}/VERSION.json
+%dir %attr(750, root, wazuh-manager) %{_localstatedir}/active-response
+%dir %attr(750, root, wazuh-manager) %{_localstatedir}/active-response/bin
+%attr(750, root, wazuh-manager) %{_localstatedir}/active-response/bin/kaspersky.py
+%attr(750, root, wazuh-manager) %{_localstatedir}/active-response/bin/restart.sh
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/api
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/api/configuration
 %attr(660, root, wazuh-manager) %config(noreplace) %{_localstatedir}/api/configuration/api.yaml
@@ -682,49 +546,50 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/agent_groups
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/agent_upgrade
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/cluster_control
-%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-analysisd
-%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-authd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-control
-%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-monitord
-%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-remoted
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-analysisd
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-authd
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-control
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-monitord
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-remoted
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/verify-agent-conf
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-apid
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-clusterd
-%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-db
-%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-modulesd
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-db
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-modulesd
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/rbac_control
-%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-keystore
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-keystore
+%dir %attr(750, root, wazuh-manager) %{_localstatedir}/etc
 %attr(660, root, wazuh-manager) %ghost %{_localstatedir}/etc/wazuh-manager.conf
-%attr(640, root, wazuh-manager) %ghost %{_localstatedir}/etc/sslmanager.cert
-%attr(640, root, wazuh-manager) %ghost %{_localstatedir}/etc/sslmanager.key
-%attr(640, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/client.keys
+%attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.cert
+%attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.key
+%attr(660, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/client.keys
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/internal_options*
 %attr(640, root, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/local_internal_options.conf
-%attr(640, root, wazuh-manager) %{_localstatedir}/etc/localtime
-%dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc/shared
+%attr(640, root, root) %{_localstatedir}/etc/localtime
+%dir %attr(750, root, wazuh-manager) %{_localstatedir}/etc/shared
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/agent-template.conf
 %attr(660, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/shared/default/*
-%dir %attr(770, root, wazuh-manager) %{_localstatedir}/engine
+%dir %attr(755, root, root) %{_localstatedir}/engine
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/kvdb
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema/allowed-fields
-%attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema/allowed-fields/0
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema/allowed-fields/0
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema/engine-schema
-%attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema/engine-schema/0
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema/engine-schema/0
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema/wazuh-logpar-overrides
-%attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema/wazuh-logpar-overrides/0
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/geo
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/geo/mmdb
-%attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/geo/mmdb/0
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema/wazuh-logpar-overrides/0
+%dir %attr(755, root, root) %{_localstatedir}/engine/store/geo
+%dir %attr(770, root, wazuh-manager) %{_localstatedir}/engine/store/geo/mmdb
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/geo/mmdb/0
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/engine/mmdb
-%attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/mmdb/*.mmdb
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/mmdb/*.mmdb
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/enrichment
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/enrichment/geo
-%attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/enrichment/geo/0
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/enrichment/geo/0
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/outputs
-%attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/outputs/*.yml
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/outputs/*.yml
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework/python
 %{_localstatedir}/framework/python/*
@@ -732,6 +597,7 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh-manager) %{_localstatedir}/framework/scripts/*.py
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework/wazuh
 %attr(640, root, wazuh-manager) %{_localstatedir}/framework/wazuh/*.py
+%dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework/wazuh/core
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework/wazuh/core/cluster
 %attr(640, root, wazuh-manager) %{_localstatedir}/framework/wazuh/core/cluster/*.py
 %attr(640, root, wazuh-manager) %{_localstatedir}/framework/wazuh/core/cluster/*.json
@@ -780,117 +646,21 @@ rm -fr %{buildroot}
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/rhel
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/rhel/*
 %attr(640, wazuh-manager, wazuh-manager) %missingok %{_localstatedir}/tmp/%{_vdfilename}
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/queue
-%attr(600, root, wazuh-manager) %{_localstatedir}/queue/agents-timestamp
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/agents-timestamp
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/alerts
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/cluster
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/db
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/rids
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/tasks
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/sockets
-%dir %attr(660, root, wazuh-manager) %{_localstatedir}/queue/vd
-%dir %attr(660, root, wazuh-manager) %{_localstatedir}/queue/indexer
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/vd
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/indexer
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/router
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/keystore
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/tzdb
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/ruleset
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/etc/ruleset
-%dir %attr(770, root, wazuh-manager) %{_localstatedir}/.ssh
 %dir %attr(1770, root, wazuh-manager) %{_localstatedir}/tmp
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/applications
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/applications/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/mongodb
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/mongodb/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/nginx
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/nginx/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/oracledb
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/oracledb/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/1
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/1/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2023
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2023/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/sca.files
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/6
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/6/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/7
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/7/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/8
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/8/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/9
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/9/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/10
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/10/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/15
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/15/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/16
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/16/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/17
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/17/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/18
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/18/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/19
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/19/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/20
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/20/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/21
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/21/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/22
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/22/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/23
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/23/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/24
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/24/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/25
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/darwin/25/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/debian
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/debian/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/9
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/9/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/10
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/10/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/sca.files
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/6
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/6/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/7
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/7/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/8
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/8/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/9
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/9/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/10
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/10/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/sca.files
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/12
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/12/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/15
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/15/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/16
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/16/*
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse/sca.files
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse/12
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse/12/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ubuntu
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ubuntu/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amazon
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amazon/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/windows
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/windows/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky
-%attr(640, root, wazuh-manager) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/*
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/var
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/db
 %attr(660, root, wazuh-manager) %{_localstatedir}/var/db/mitre.db
