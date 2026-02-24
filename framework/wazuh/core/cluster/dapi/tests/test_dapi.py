@@ -29,7 +29,7 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue, SendSyncRequestQueue
+        from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue, SendSyncRequestQueue, _dapi_object_hook
         from wazuh.core.manager import get_manager_status
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
         from wazuh import agent, cluster, ciscat, manager, WazuhError, WazuhInternalError
@@ -112,6 +112,64 @@ def test_DistributedAPI(kwargs):
     dapi = DistributedAPI(f=agent.get_agents_summary_status, logger=logger, **kwargs)
     assert isinstance(dapi, DistributedAPI)
     assert dapi.api_request_timeout == max(kwargs.get('api_timeout', 0), DEFAULT_REQUEST_TIMEOUT)
+
+
+def test_dapi_object_hook_allowed_callable():
+    """Ensure DAPI callable decoder resolves only explicitly allowed callables."""
+    decoded_callable = _dapi_object_hook({
+        "__callable__": {
+            "__name__": "get_agents_summary_status",
+            "__qualname__": "get_agents_summary_status",
+            "__module__": "wazuh.agent"
+        }
+    })
+
+    assert callable(decoded_callable)
+    assert decoded_callable.__module__ == 'wazuh.agent'
+    assert decoded_callable.__name__ == 'get_agents_summary_status'
+
+
+def test_dapi_object_hook_rejects_not_allowed_callable():
+    """Ensure DAPI callable decoder rejects callables outside the strict allowlist."""
+    with pytest.raises(WazuhInternalError) as exc_info:
+        _dapi_object_hook({
+            "__callable__": {
+                "__name__": "join",
+                "__qualname__": "join",
+                "__module__": "os.path"
+            }
+        })
+
+    assert exc_info.value.code == 1000
+
+
+@patch('wazuh.core.cluster.dapi.dapi.aconf.read_yaml_config', return_value={'rbac_mode': 'white'})
+@patch('wazuh.core.cluster.dapi.dapi.optimize_resources', return_value={'agent:read': {'agent:id:*': 'allow'}})
+@patch('wazuh.core.cluster.dapi.dapi.UserRolesManager')
+@patch('wazuh.core.cluster.dapi.dapi.AuthenticationManager')
+def test_distributedapi_cluster_request_recalculates_rbac_permissions(mock_auth_manager, mock_user_roles_manager,
+                                                                      mock_optimize_resources,
+                                                                      mock_read_yaml_config):
+    """Ensure cluster DAPI requests recompute RBAC server-side and ignore payload-provided permissions."""
+    mock_auth_instance = MagicMock()
+    mock_auth_instance.__enter__.return_value.get_user.return_value = {'id': 77, 'username': 'admin'}
+    mock_auth_manager.return_value = mock_auth_instance
+
+    role1 = MagicMock()
+    role1.id = 10
+    role2 = MagicMock()
+    role2.id = 11
+    mock_roles_instance = MagicMock()
+    mock_roles_instance.__enter__.return_value.get_all_roles_from_user.return_value = [role1, role2]
+    mock_user_roles_manager.return_value = mock_roles_instance
+
+    payload_rbac = {'rbac_mode': 'black', 'security:create_user': {'*:*:*': 'allow'}}
+    dapi = DistributedAPI(f=agent.get_agents_summary_status, logger=logger, is_cluster_request=True,
+                          current_user='admin', rbac_permissions=payload_rbac)
+
+    assert dapi.rbac_permissions == {'agent:read': {'agent:id:*': 'allow'}, 'rbac_mode': 'white'}
+    assert dapi.rbac_permissions != payload_rbac
+    mock_optimize_resources.assert_called_once_with((10, 11))
 
 
 def test_DistributedAPI_debug_log():
