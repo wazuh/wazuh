@@ -301,7 +301,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/wiconnector)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmstore)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmcrud)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmsync)
-
+add_subdirectory(${ENGINE_SOURCE_DIR}/rawevtindexer)
 
 target_link_libraries(wazuh-engine
     base
@@ -332,6 +332,7 @@ target_link_libraries(wazuh-engine
     cmstore::cmstore
     cmcrud::cmcrud
     cmsync::cmsync
+    rawevtindexer::rawevtindexer
 )
 
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries

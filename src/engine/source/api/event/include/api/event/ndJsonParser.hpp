@@ -1,126 +1,99 @@
 #ifndef _API_EVENT_NDJSONPARSER_HPP
 #define _API_EVENT_NDJSONPARSER_HPP
 
+#include <array>
 #include <functional>
-#include <list>
-#include <queue>
 #include <stdexcept>
-#include <string>
 #include <string_view>
 
 #include <fmt/format.h>
 
-#include <base/baseTypes.hpp>
-#include <base/eventParser.hpp>
+#include <base/json.hpp>
 
 namespace api::event::protocol
 {
-using ProtocolHandler = std::function<std::queue<base::Event>(std::string&&)>;
-constexpr auto HEADER_ERROR_MSG = "NDJson parser error, {}";
+using EventHook = std::function<void(const json::Json& header, std::string_view rawEvent)>;
+using EventHooks = std::array<EventHook, 2>;
 
-inline ProtocolHandler getNDJsonParser()
+constexpr auto PARSER_ERROR_MSG = "NDJson parser error, {}";
+
+inline void parseNDJson(std::string_view batch, const EventHooks& hooks)
 {
-    return [](std::string&& batch) -> std::queue<base::Event>
+    try
     {
-        try
+        constexpr std::string_view NEWLINE_TOKEN = "\n";
+        constexpr std::size_t NEWLINE_SIZE = NEWLINE_TOKEN.size();
+        constexpr std::string_view EVENT_MARKER = "\nE ";
+
+        // ---- Extract header: first line must be "H {json}" ----
+        auto firstNewline = batch.find(NEWLINE_TOKEN);
+        if (firstNewline == std::string_view::npos)
         {
-            // ---- In-place line tokenization (zero-copy) ----
-            // Reserve approximate number of lines to reduce reallocations.
-            std::vector<std::string_view> lines;
+            throw std::runtime_error {"Missing newline after header"};
+        }
+
+        std::string_view headerLine = batch.substr(0, firstNewline);
+        if (headerLine.size() < 2 || headerLine[0] != 'H' || headerLine[1] != ' ')
+        {
+            throw std::runtime_error {"Invalid header format, expected 'H {json}'"};
+        }
+
+        std::string_view headerJson = headerLine.substr(2);
+        json::Json header(headerJson);
+
+        // ---- Parse events using "\nE " as delimiter ----
+        std::size_t pos = firstNewline + NEWLINE_SIZE;
+
+        while (pos < batch.size())
+        {
+            // Skip empty lines
+            while (pos < batch.size() && batch[pos] == '\n')
             {
-                const std::size_t approx_lines =
-                    1u + static_cast<std::size_t>(std::count(batch.begin(), batch.end(), '\n'));
-                lines.reserve(approx_lines);
+                pos += NEWLINE_SIZE;
+            }
 
-                // Replace '\n' with '\0' to create C-style segments inside the same buffer.
-                std::replace(batch.begin(), batch.end(), '\n', '\0');
+            if (pos >= batch.size())
+            {
+                break;
+            }
 
-                // Walk the buffer and produce views for each line segment.
-                const char* p = batch.data();
-                const char* e = p + batch.size();
-                while (p < e)
+            // Expect "E " at event start
+            if (pos + 1 >= batch.size() || batch[pos] != 'E' || batch[pos + 1] != ' ')
+            {
+                throw std::runtime_error {"Expected 'E ' at event start"};
+            }
+
+            std::size_t eventStart = pos + 2; // Skip "E "
+
+            // Find next "\nE " or end of batch
+            std::size_t nextEventPos = batch.find(EVENT_MARKER, eventStart);
+            std::size_t eventEnd = (nextEventPos != std::string_view::npos) ? nextEventPos : batch.size();
+
+            // Trim trailing newlines from event (multilines are preserved inside)
+            while (eventEnd > eventStart && batch[eventEnd - 1] == '\n')
+            {
+                eventEnd -= NEWLINE_SIZE;
+            }
+
+            std::string_view rawEvent = batch.substr(eventStart, eventEnd - eventStart);
+
+            // Call all hooks with this event
+            for (const auto& hook : hooks)
+            {
+                if (hook)
                 {
-                    const char* q = std::find(p, e, '\0');
-                    if (q > p)
-                    {
-                        lines.emplace_back(p, static_cast<std::size_t>(q - p));
-                    }
-                    p = q + 1;
+                    hook(header, rawEvent);
                 }
             }
 
-            // Helper: require exact "<tag> ..."
-            auto is_tag_space = [](std::string_view s, char tag) noexcept -> bool
-            {
-                return s.size() >= 2 && s[0] == tag && s[1] == ' ';
-            };
-
-            // ---- Single header at the start: "H {json}" (assumed valid) ----
-            // We assume there's always JSON after "H "; no length checks here.
-            json::Json header(lines.front().substr(2).data());
-
-            // ---- Event collection (supports multi-line payloads) ----
-            std::queue<base::Event> out;
-            std::string currentRaw; // re-used buffer for each event
-            bool inEvent = false;
-
-            auto flush_event = [&]()
-            {
-                if (!inEvent)
-                    return;
-
-                // No CR stripping: preserve payload as-is, avoid extra memory moves.
-                // Delegate validation to the legacy event parser.
-                base::Event ev = base::eventParsers::parseLegacyEvent(std::string_view {currentRaw}, header);
-
-                out.push(std::move(ev));
-                inEvent = false;
-                currentRaw.clear();
-            };
-
-            // Parse from the second line onwards: "E ..." starts an event;
-            // any other line is a continuation if an event is open, else ignored.
-            for (std::size_t li = 1; li < lines.size(); ++li)
-            {
-                std::string_view ln = lines[li];
-                if (ln.empty())
-                    continue;
-
-                if (is_tag_space(ln, 'E'))
-                {
-                    if (inEvent)
-                        flush_event();
-
-                    currentRaw.assign((ln.size() > 2) ? ln.substr(2) : std::string_view{});
-                    inEvent = true;
-                    continue;
-                }
-
-                // Multi-line continuation: only valid if an event is open.
-                if (inEvent)
-                {
-                    if (!currentRaw.empty())
-                        currentRaw.push_back('\n');
-                    currentRaw.append(ln.data(), ln.size());
-                    continue;
-                }
-
-                // STRICT mode: any non-empty, non-"E " line outside an event is a protocol error.
-                throw std::runtime_error{"unexpected line outside of an event"};
-            }
-
-            // Finalize last open event, if any.
-            if (inEvent)
-                flush_event();
-
-            return out;
+            // Move to next event position
+            pos = (nextEventPos != std::string_view::npos) ? (nextEventPos + NEWLINE_SIZE) : batch.size();
         }
-        catch (const std::exception& ex)
-        {
-            // Normalize error message format for the caller.
-            throw std::runtime_error {fmt::format(HEADER_ERROR_MSG, ex.what())};
-        }
-    };
+    }
+    catch (const std::exception& ex)
+    {
+        throw std::runtime_error {fmt::format(PARSER_ERROR_MSG, ex.what())};
+    }
 }
 
 } // namespace api::event::protocol

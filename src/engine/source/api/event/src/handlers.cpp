@@ -1,18 +1,53 @@
-#include <api/event/handlers.hpp>
-#include <base/logging.hpp>
+#include <array>
 
-// TODO Delete this
+#include <api/event/handlers.hpp>
+#include <api/event/ndJsonParser.hpp>
+#include <base/eventParser.hpp>
+#include <base/json.hpp>
+#include <base/logging.hpp>
+#include <base/utils/timeUtils.hpp>
 
 namespace api::event::handlers
 {
 adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orchestrator,
-                                ProtolHandler protocolHandler,
-                                const std::shared_ptr<::archiver::IArchiver>& archiver)
+                                const std::shared_ptr<::archiver::IArchiver>& archiver,
+                                const std::shared_ptr<::raweventindexer::IRawEventIndexer>& rawIndexer)
 {
-    return [lambdaName = logging::getLambdaName(__FUNCTION__, "apiHandler"),
-            weakOrchestrator = std::weak_ptr(orchestrator),
+    auto lambdaName = logging::getLambdaName(__FUNCTION__, "apiHandler");
+    auto weakOrchestrator = std::weak_ptr(orchestrator);
+
+    protocol::EventHook rawIndexingHook = [rawIndexer](const json::Json& header, std::string_view rawEvent)
+    {
+        // Build raw JSON as a merge:
+        // {
+        //   "@timestamp": "<current time in ISO8601>"
+        //   <header fields at root>,
+        //   "event": { "original": "<raw event>" }
+        // }
+        json::Json rawDoc(header);
+        rawDoc.setString(base::utils::time::getCurrentISO8601(), "/@timestamp");
+        rawDoc.setString(rawEvent, "/event/original");
+        rawIndexer->index(rawDoc.str());
+    };
+
+    protocol::EventHook orchestratorHook = [weakOrchestrator](const json::Json& header, std::string_view rawEvent)
+    {
+        auto orchestratorRef = weakOrchestrator.lock();
+        if (!orchestratorRef)
+        {
+            throw std::runtime_error {"orchestrator is not available"};
+        }
+
+        base::Event ev = base::eventParsers::parseLegacyEvent(rawEvent, header);
+        orchestratorRef->postEvent(std::move(ev));
+    };
+
+    return [lambdaName = std::move(lambdaName),
+            weakOrchestrator = std::move(weakOrchestrator),
             archiver,
-            protocolHandler](const auto& req, auto& res)
+            rawIndexer,
+            rawIndexingHook = std::move(rawIndexingHook),
+            orchestratorHook = std::move(orchestratorHook)](const auto& req, auto& res)
     {
         LOG_TRACE_L(lambdaName.c_str(), fmt::format("Recieved request {}", req.body));
 
@@ -33,10 +68,12 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
         }
         archiver->archive(batchToArchive);
 
-        std::queue<base::Event> events;
+        // ---- Parse batch and invoke hooks (single pass) ----
         try
         {
-            events = protocolHandler(std::string(req.body)); // TODO: DELETE THIS COPY
+            const bool rawEnabled = rawIndexer && rawIndexer->isEnabled();
+            protocol::EventHooks hooks = {rawEnabled ? rawIndexingHook : protocol::EventHook {}, orchestratorHook};
+            protocol::parseNDJson(req.body, hooks);
         }
         catch (const std::exception& e)
         {
@@ -44,14 +81,6 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
             res.status = httplib::StatusCode::BadRequest_400;
             res.set_content(fmt::format("{{\"error\": \"{}\", \"code\": 400}}", e.what()), "application/json");
             return;
-        }
-
-        while (!events.empty())
-        {
-            // TODO: Import isDebug function for neccesity of event printing, avoid unnecesary json serialization
-            // LOG_TRACE_L(lambdaName.c_str(), "Posting event to orchestrator: {}", singleEvent->str());
-            orchestrator->postEvent(std::move(events.front()));
-            events.pop();
         }
 
         res.status = httplib::StatusCode::OK_200;

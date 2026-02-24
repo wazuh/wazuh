@@ -17,6 +17,8 @@ tags:
     description: "Operations for geo databases"
   - name: Archiver
     description: "Operations for managing the archives. By default a file 'archives.json' is created at '/var/lib/wazuh-server/archives.json' where all events received by the Engine are stored."
+  - name: Raw Event Indexer
+    description: "Operations for enabling, disabling, and checking status of raw event indexing."
   - name: Content
     description: "Operations for management content."
   - name: Logtest
@@ -1282,6 +1284,102 @@ paths:
                 $ref: "#/components/schemas/Response"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
+
+  #################################
+  # Raw Event Indexer
+  #################################
+  /_internal/raweventindexer/enable:
+    post:
+      tags:
+        - Raw Event Indexer
+      summary: Enable the raw event indexer
+      description: |
+        This endpoint enables raw event indexing in the engine.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /_internal/raweventindexer/disable:
+    post:
+      tags:
+        - Raw Event Indexer
+      summary: Disable the raw event indexer
+      description: |
+        This endpoint disables raw event indexing in the engine.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /_internal/raweventindexer/status:
+    post:
+      tags:
+        - Raw Event Indexer
+      summary: Get the status of the raw event indexer
+      description: |
+        This endpoint retrieves whether raw event indexing is enabled.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved raw event indexer status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawEventIndexerStatus_Response"
+              examples:
+                enabled:
+                  summary: Raw event indexer enabled
+                  value:
+                    status: "OK"
+                    error: null
+                    enabled: true
+                disabled:
+                  summary: Raw event indexer disabled
+                  value:
+                    status: "OK"
+                    error: null
+                    enabled: false
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
   ################################
   # Content Validate
   ################################
@@ -1871,6 +1969,18 @@ components:
             active:
               type: boolean
               description: "Indicates whether the archiver is active"
+
+    #################################
+    # Raw Event Indexer
+    #################################
+    RawEventIndexerStatus_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            enabled:
+              type: boolean
+              description: "Indicates whether the raw event indexer is enabled"
 
   #################################################################################
   # Responses

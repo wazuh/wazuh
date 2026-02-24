@@ -12,6 +12,7 @@
 #include <api/cmcrud/handlers.hpp>
 #include <api/event/ndJsonParser.hpp>
 #include <api/handlers.hpp>
+#include <api/rawevtindexer/handlers.hpp>
 #include <archiver/archiver.hpp>
 #include <base/eventParser.hpp>
 #include <base/hostInfo.hpp>
@@ -38,6 +39,7 @@
 #include <kvdbstore/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
+#include <rawevtindexer/raweventindexer.hpp>
 #include <scheduler/scheduler.hpp>
 #include <streamlog/logger.hpp>
 #include <udgramsrv/udsrv.hpp>
@@ -232,6 +234,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
+    std::shared_ptr<raweventindexer::RawEventIndexer> rawEventIndexer;
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
     std::shared_ptr<cm::store::CMStore> cmStore;
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
@@ -580,6 +583,17 @@ int main(int argc, char* argv[])
                             { archiver->deactivate(); });
         }
 
+        // Raw Event Indexer
+        if (enableProcessing)
+        {
+            bool rawIndexerEnabled = confManager.get<bool>(conf::key::RAW_EVENT_INDEXER_ENABLED);
+            rawEventIndexer = std::make_shared<raweventindexer::RawEventIndexer>(
+                indexerConnector, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME, rawIndexerEnabled);
+            LOG_INFO("Raw Event Indexer initialized (index: {}, enabled: {}).",
+                     raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME,
+                     rawIndexerEnabled);
+        }
+
         // Create and configure the api endpoints
         {
             // Validate payload limit to prevent unsigned integer wrapping from negative values
@@ -621,6 +635,13 @@ int main(int argc, char* argv[])
             api::archiver::handlers::registerHandlers(archiver, apiServer);
             LOG_DEBUG("Archiver API registered.");
 
+            // Raw Event Indexer
+            if (rawEventIndexer)
+            {
+                api::rawevtindexer::handlers::registerHandlers(rawEventIndexer, apiServer);
+                LOG_DEBUG("Raw Event Indexer API registered.");
+            }
+
             // Crud Manager
             api::cmcrud::handlers::registerHandlers(cmCrudService, orchestrator, apiServer);
             LOG_DEBUG("Content Manager CRUD API registered.");
@@ -659,10 +680,9 @@ int main(int argc, char* argv[])
 
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 
-            engineRemoteServer->addRoute(
-                httpsrv::Method::POST,
-                "/events/enriched", // TODO: Double check route
-                api::event::handlers::pushEvent(orchestrator, api::event::protocol::getNDJsonParser(), archiver));
+            engineRemoteServer->addRoute(httpsrv::Method::POST,
+                                         "/events/enriched", // TODO: Double check route
+                                         api::event::handlers::pushEvent(orchestrator, archiver, rawEventIndexer));
 
             // starting in a new thread
             engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));

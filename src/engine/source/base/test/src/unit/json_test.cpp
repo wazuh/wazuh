@@ -3,6 +3,7 @@
 #include <iostream>
 #include <limits>
 #include <string>
+#include <string_view>
 
 #include <base/json.hpp>
 #include <base/logging.hpp>
@@ -91,6 +92,20 @@ TEST_F(JsonBase, InitializeJsonString)
     ASSERT_NO_THROW(Json doc {"{\"key\":\"value\"}"};);
     ASSERT_NO_THROW(Json doc {"{}"};);
     ASSERT_THROW(Json doc {"{\"key\":\"value\"}}"};, std::runtime_error);
+}
+
+TEST_F(JsonBase, InitializeJsonStringView)
+{
+    const std::string rawJson = R"({"key":"value"})";
+    const std::string_view rawJsonView {rawJson};
+    ASSERT_NO_THROW(Json doc {rawJsonView};);
+
+    const std::string rawJsonWithGarbage = std::string {R"({"key":"value"})"} + " trailing";
+    const std::string_view boundedView {rawJsonWithGarbage.data(), std::string_view {R"({"key":"value"})"}.size()};
+    ASSERT_NO_THROW(Json doc {boundedView};);
+
+    const std::string_view invalidJsonView {R"({"key":"value"}})"};
+    ASSERT_THROW(Json doc {invalidJsonView};, std::runtime_error);
 }
 
 // TODO: Add more use cases, and add cases once operators and arrays are implemented.
