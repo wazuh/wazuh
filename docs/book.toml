@@ -3,3 +3,9 @@ authors = ["Dwordcito"]
 language = "en"
 src = "."
 title = "Wazuh technical documentation"
+# Add mermaid support
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output.html]
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
