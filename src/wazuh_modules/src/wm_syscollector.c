@@ -311,7 +311,7 @@ static void wm_sys_log_config(wm_sys_t* sys)
 
 static int wm_sys_startmq(const char* key, short type, short attempts)
 {
-    return StartMQ(key, type, attempts);
+    return StartMQPredicated(key, type, attempts, &is_shutdown_process_started);
 }
 
 static int wm_sys_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc)
@@ -456,7 +456,7 @@ void* wm_sys_main(wm_sys_t* sys)
 
 #ifndef WIN32
     // Connect to socket
-    queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+    queue_fd = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, &is_shutdown_process_started);
 
     if (queue_fd < 0)
     {
