@@ -2171,6 +2171,62 @@ TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
     };
 }
 
+// wazuh.space.event_discarded: +discard_events
+TransformOp opBuilderHelperDiscardEvents(const Reference& targetField,
+                                         const std::vector<OpArg>& opArgs,
+                                         const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    builder::builders::utils::assertSize(opArgs, 0);
+
+    if (targetField.dotPath() != syntax::asset::discard::TARGET_FIELD)
+    {
+        throw std::runtime_error(fmt::format("discard_events helper can only be used with target field '{}', got '{}'",
+                                             syntax::asset::discard::TARGET_FIELD,
+                                             targetField.dotPath()));
+    }
+
+    const auto name = buildCtx->context().opName;
+
+    // Get policy configuration
+    const bool indexDiscardedEvents = buildCtx->getIndexDiscardedEvents();
+
+    const std::string successTrace =
+        fmt::format("{} -> Success (index_discarded_events={})", name, indexDiscardedEvents);
+
+    return [runState = buildCtx->runState(),
+            targetField = targetField.jsonPath(),
+            indexDiscardedEvents,
+            successTrace,
+            name](base::Event event) -> TransformResult
+    {
+        // Only modify event if index_discarded_events is true
+        if (indexDiscardedEvents)
+        {
+            try
+            {
+                // Erase all event fields
+                event->erase();
+            }
+            catch (const std::exception& e)
+            {
+                RETURN_FAILURE(runState, event, fmt::format("{} -> Failed to clear fields: {}", name, e.what()));
+            }
+        }
+
+        // Populate the field despite configuration value.
+        try
+        {
+            event->setBool(true, targetField);
+        }
+        catch (const std::exception& e)
+        {
+            RETURN_FAILURE(runState, event, fmt::format("{} -> Failed to set discard field: {}", name, e.what()));
+        }
+
+        RETURN_SUCCESS(runState, event, successTrace);
+    };
+}
+
 // field: +split/$field/[,| | ...]
 TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
                                              const std::vector<OpArg>& opArgs,

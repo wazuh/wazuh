@@ -345,7 +345,7 @@ base::Expression buildExpression(const PolicyGraph& graph,
 
     // Phase 1: Pre filters implies Decoders tree
     // This phase only fails on runtime if there are filter stage and this phase fails.
-    // If not, decodes are executed successfully and passed to the next phase.
+    // If not, decoders are executed successfully and passed to the next phase.
     auto phase1 = [&]() -> std::shared_ptr<base::Operation>
     {
         auto decodersExpr = [&]() -> base::Expression
@@ -428,10 +428,12 @@ base::Expression buildExpression(const PolicyGraph& graph,
     // Phase 1 only fails if pre-filters fail, phase 3 only fails if post-filters fail.
     if (phase3.has_value())
     {
-        return base::And::create(graph.graphName,
-                                 {phase1, preEnrichmentExpression, enrichmentExpression, phase3.value()});
+        return base::And::create(
+            graph.graphName,
+            {phase1, preEnrichmentExpression, enrichmentExpression, phase3.value()});
     }
-    return base::And::create(graph.graphName, {phase1, preEnrichmentExpression, enrichmentExpression});
+    return base::And::create(graph.graphName,
+                             {phase1, preEnrichmentExpression, enrichmentExpression});
 }
 
 } // namespace builder::policy::factory

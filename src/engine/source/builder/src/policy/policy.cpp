@@ -34,6 +34,7 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
     buildCtx->setRegistry(registry);
     buildCtx->setValidator(schema);
     buildCtx->context().policyName = m_name;
+    buildCtx->context().indexDiscardedEvents = policyData.shouldIndexDiscardedEvents();
     buildCtx->runState().trace = trace;
     buildCtx->runState().sandbox = sandbox;
     buildCtx->setAllowedFields(allowedFields);
@@ -73,6 +74,13 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
         // Unclassified events filter (based on policy configuration)
         {
             auto [exp, traceable] = builders::enrichment::getUnclassifiedFilter(policyData, trace);
+            preEnrichmentOps.push_back(exp);
+            m_assets.insert(base::Name(traceable));
+        }
+
+        // Discarded events filter (based on policy configuration)
+        {
+            auto [exp, traceable] = builders::enrichment::getDiscardedEventsFilter(policyData, trace);
             preEnrichmentOps.push_back(exp);
             m_assets.insert(base::Name(traceable));
         }

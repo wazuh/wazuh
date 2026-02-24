@@ -98,6 +98,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [array_append_unique_any](#array_append_unique_any)
 - [delete](#delete)
 - [delete_fields_with_value](#delete_fields_with_value)
+- [discard_events](#discard_events)
 - [erase_custom_fields](#erase_custom_fields)
 - [get_key_in](#get_key_in)
 - [kvdb_decode_bitmask](#kvdb_decode_bitmask)
@@ -120,6 +121,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [parse_file](#parse_file)
 - [parse_float](#parse_float)
 - [parse_fqdn](#parse_fqdn)
+- [parse_half_float](#parse_half_float)
 - [parse_integer](#parse_integer)
 - [parse_ip](#parse_ip)
 - [parse_json](#parse_json)
@@ -13717,6 +13719,43 @@ normalize:
 
 
 ---
+# discard_events
+
+## Signature
+
+```
+
+field: discard_events()
+```
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| [boolean] | - |
+
+
+## Description
+
+Immediately stops event processing in the pipeline by setting the discard flag. This helper is used to prevent events from being enriched and/or indexed based on specific conditions.
+
+Behavior depends on policy configuration (index_discarded_events):
+- If false: All event fields will be preserved, only the discard flag is set to true.
+After that the event won't be enriched and it won't reach the indexer.
+- If true: All event fields will be erased (only the discard flag remains).
+This ensures that the event reaching the indexer will be almost empty.
+
+Usage Rules:
+- Must be used with the exact target field 'wazuh.space.event_discarded'
+- Cannot accept any parameters
+- Should be called in the normalization/map stage when a discard condition is met
+
+
+## Keywords
+
+- `delete` 
+
+---
 # erase_custom_fields
 
 ## Signature
@@ -17033,6 +17072,38 @@ normalize:
 
 *The operation was performed with errors*
 
+### Example 5
+
+Success byte parse
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_byte($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "3.14",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "3.14",
+  "target_field": 3
+}
+```
+
+*The operation was successful*
+
 
 
 ---
@@ -18027,6 +18098,181 @@ normalize:
 
 
 ---
+# parse_half_float
+
+## Signature
+
+```
+
+field: parse_half_float(input_field)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| input_field | string | reference | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Evaluates if the content of the input field is a string that can be successfully converted into a half precision
+floating-point number. It converts and stores the floating-point number in `field`, as floating-point numbers 
+inherently support decimals.
+
+
+## Keywords
+
+- `parser` 
+
+## Examples
+
+### Example 1
+
+Success half float parse
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_half_float($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "23.45234",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "23.45234",
+  "target_field": 23.45233917236328
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Failure half float parse
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_half_float($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "hello",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "hello",
+  "target_field": "any_value"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 3
+
+Failure half float parse
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_half_float($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "hello",
+  "target_field": [
+    "any_value"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "hello",
+  "target_field": [
+    "any_value"
+  ]
+}
+```
+
+*The operation was performed with errors*
+
+### Example 4
+
+Failure half float parse
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_half_float($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "hello",
+  "target_field": {
+    "key": "value"
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "hello",
+  "target_field": {
+    "key": "value"
+  }
+}
+```
+
+*The operation was performed with errors*
+
+
+
+---
 # parse_integer
 
 ## Signature
@@ -18058,7 +18304,7 @@ number. It converts and stores the integer number in `field` with truncation.
 
 ## Keywords
 
-- `parser`
+- `parser` 
 
 ## Examples
 
@@ -18128,7 +18374,7 @@ normalize:
 
 ### Example 3
 
-Succesfull integer parse with truncation
+Success integer parse
 
 #### Asset
 
@@ -18840,6 +19086,38 @@ normalize:
 
 ### Example 3
 
+Success long parse with truncation
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_long($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "42.23",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "42.23",
+  "target_field": 42
+}
+```
+
+*The operation was successful*
+
+### Example 4
+
 Failure long parse (non-numeric characters)
 
 #### Asset
@@ -19040,7 +19318,7 @@ number. It converts and stores the short integer number in `field` with truncati
 
 ## Keywords
 
-- `parser`
+- `parser` 
 
 ## Examples
 
@@ -19110,7 +19388,7 @@ normalize:
 
 ### Example 3
 
-Success short parse (with truncation)
+Success short parse with truncation
 
 #### Asset
 
@@ -19138,7 +19416,7 @@ normalize:
 }
 ```
 
-*The operation was performed with errors*
+*The operation was successful*
 
 ### Example 4
 
@@ -19244,7 +19522,7 @@ normalize:
 
 ### Example 2
 
-Succesfull unsigned long parse with truncation
+Success unsigned long parse with truncation
 
 #### Asset
 

@@ -60,6 +60,17 @@ std::pair<base::Expression, std::string> getUnclassifiedFilter(const cm::store::
 EnrichmentBuilder getGeoEnrichmentBuilder(const std::shared_ptr<geo::IManager>& geoManager,
                                           const json::Json& configDoc);
 
+/**
+ * @brief Get the filter expression to handle discarded events according to policy configuration.
+ *
+ * This filter checks if an event should be discarded based on the policy's configuration.
+ *
+ * @param policy Policy data.
+ * @param trace Enable tracing in the filter expression.
+ * @return std::pair<base::Expression, std::string> The built filter expression and its traceable name.
+ */
+std::pair<base::Expression, std::string> getDiscardedEventsFilter(const cm::store::dataType::Policy& policy, bool trace);
+
 } // namespace builder::builders::enrichment
 
 #endif // _BUILDER_ENRICHMENT_ENRICHMENT_HPP

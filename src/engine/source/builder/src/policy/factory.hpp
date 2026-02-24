@@ -230,6 +230,10 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
  *      b) Unclassified Events Filter: Evaluates events with "unclassified" category:
  *         - If policy.index_unclassified_events is true, the event continues normally.
  *         - If policy.index_unclassified_events is false, the event is dropped and pipeline stops.
+ *      c) Discarded Events Filter: Evaluates events based on discard criteria defined in the policy:
+ *         - If policy.index_discarded_events is true, the event continues normally despite being discarded.
+ *         - If policy.index_discarded_events is false and wazuh.space.event_discarded is true, the event is
+ *         dropped and pipeline stops.
  *    - If this stage fails, the event is discarded and subsequent stages are not executed.
  *
  * 4. Enrichment (optional):
