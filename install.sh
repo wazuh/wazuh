@@ -796,6 +796,11 @@ main()
         INSTYPE=${USER_INSTALL_TYPE}
     fi
 
+    # Backward compatibility: some packaging/workflow paths still pass "server".
+    if [ "X$INSTYPE" = "Xserver" ]; then
+        INSTYPE="manager"
+    fi
+
     # Is this an update? (only for the selected installation type)
     if [ "X${USER_CLEANINSTALL}" = "X" ]; then
         if [ "X$INSTYPE" = "Xagent" ]; then
