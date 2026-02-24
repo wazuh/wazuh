@@ -16,20 +16,20 @@ namespace base::hostInfo
 {
 
 /// JSON pointer for OS name (e.g., "Ubuntu").
-constexpr char EVENT_HOST_OS_NAME[] {"/host/os/name"};
+constexpr char EVENT_HOST_OS_NAME[] {"/agent/host/os/name"};
 /// JSON pointer for OS version (e.g., "20.04.6 LTS").
-constexpr char EVENT_HOST_OS_VERSION[] {"/host/os/version"};
+constexpr char EVENT_HOST_OS_VERSION[] {"/agent/host/os/version"};
 /// JSON pointer for OS codename / full name (e.g., "Focal Fossa").
-constexpr char EVENT_HOST_OS_FULL[] {"/host/os/full"};
+constexpr char EVENT_HOST_OS_FULL[] {"/agent/host/os/full"};
 /// JSON pointer for OS platform ID (e.g., "ubuntu").
-constexpr char EVENT_HOST_OS_PLATFORM[] {"/host/os/platform"};
+constexpr char EVENT_HOST_OS_PLATFORM[] {"/agent/host/os/platform"};
 /// JSON pointer for kernel descriptor (e.g., "Linux |worker |5.4.0-...|x86_64").
-constexpr char EVENT_HOST_OS_KERNEL[] {"/host/os/kernel"};
+constexpr char EVENT_HOST_OS_KERNEL[] {"/agent/host/os/kernel"};
 
 /// JSON pointer for machine architecture (e.g., "x86_64").
-constexpr char EVENT_HOST_ARCHITECTURE[] {"/host/architecture"};
+constexpr char EVENT_HOST_ARCHITECTURE[] {"/agent/host/architecture"};
 /// JSON pointer for host IPv4 addresses array.
-constexpr char EVENT_HOST_IP[] {"/host/ip"};
+constexpr char EVENT_HOST_IP[] {"/agent/host/ip"};
 
 /**
  * @brief Collects host information and returns it as a JSON document.
@@ -38,23 +38,28 @@ constexpr char EVENT_HOST_IP[] {"/host/ip"};
  *
  * @code{.json}
  * {
- *   "host": {
- *     "os": {
- *       "name":     "Ubuntu",
- *       "version":  "22.04.4 LTS",
- *       "full":     "Jammy Jellyfish",
- *       "platform": "ubuntu",
- *       "kernel":   "Linux |worker |5.15.0-113-generic|x86_64"
- *     },
- *     "architecture": "x86_64",
- *     "ip": ["192.168.1.10", "10.0.0.5"]
- *   }
+ *     "agent": {
+ *         "host": {
+ *             "os": {
+ *                 "name": "Ubuntu",
+ *                 "version": "22.04.4 LTS",
+ *                 "full": "Jammy Jellyfish",
+ *                 "platform": "ubuntu",
+ *                 "kernel": "Linux |worker |5.15.0-113-generic|x86_64"
+ *             },
+ *             "architecture": "x86_64",
+ *             "ip": [
+ *                 "192.168.1.10",
+ *                 "10.0.0.5"
+ *             ]
+ *         }
+ *     }
  * }
  * @endcode
  *
  * Notes:
- * - `host.ip` is an array of IPv4 strings (may be empty if no addresses are found).
- * - `host.os.kernel` is a formatted descriptor including OS, hostname, kernel release and arch.
+ * - `agent.host.ip` is an array of IPv4 strings (may be empty if no addresses are found).
+ * - `agent.host.os.kernel` is a formatted descriptor including OS, hostname, kernel release and arch.
  * - Missing data is simply omitted (no nulls), depending on system call availability.
  *
  * @return json::Json with the fields above set when available.

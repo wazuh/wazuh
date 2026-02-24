@@ -10,8 +10,6 @@
 #include <api/shared/constants.hpp>
 #include <api/tester/handlers.hpp>
 
-#include <base/hostInfo.hpp>
-
 namespace api::tester::handlers
 {
 namespace eTester = ::com::wazuh::api::engine::tester;
@@ -65,7 +63,7 @@ eTester::Result fromOutput(const ::router::test::Output& output)
     if (std::holds_alternative<base::Error>(structOrErr))
     {
         throw std::runtime_error(fmt::format("Error converting event JSON to protobuf Struct: {}",
-                                            std::get<base::Error>(structOrErr).message));
+                                             std::get<base::Error>(structOrErr).message));
     }
     *result.mutable_output() = std::get<google::protobuf::Struct>(structOrErr);
 
@@ -351,10 +349,39 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
 
         // Create The event to test
         base::Event event;
-        const auto hostInfo = base::hostInfo::toJson();
+        json::Json agentMetadata;
+
+        // Use provided agent_metadata if available, otherwise use empty struct
+        if (protoReq.has_agent_metadata())
+        {
+            auto jsonOrErr = eMessage::eMessageToJson(protoReq.agent_metadata(), /*printPrimitiveFields=*/true);
+            if (std::holds_alternative<base::Error>(jsonOrErr))
+            {
+                res = adapter::userErrorResponse<ResponseType>(fmt::format(
+                    "Error converting agent_metadata to JSON: {}", std::get<base::Error>(jsonOrErr).message));
+                return;
+            }
+
+            const auto& agentMetadataStr = std::get<std::string>(jsonOrErr);
+            try
+            {
+                agentMetadata = json::Json(agentMetadataStr.c_str());
+            }
+            catch (const std::exception& e)
+            {
+                res = adapter::userErrorResponse<ResponseType>(
+                    fmt::format("Error parsing agent_metadata JSON: {}", e.what()));
+                return;
+            }
+        }
+        else
+        {
+            agentMetadata = json::Json("{}");
+        }
+
         try
         {
-            event = protocolHandler(protoReq.event(), hostInfo);
+            event = protocolHandler(protoReq.event(), agentMetadata);
         }
         catch (const std::exception& e)
         {
@@ -433,8 +460,7 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
 
         if (!protoReq.has_agent_metadata())
         {
-            res = adapter::userErrorResponse<ResponseType>(
-                "agent_metadata is required and must be a JSON object");
+            res = adapter::userErrorResponse<ResponseType>("agent_metadata is required and must be a JSON object");
             return;
         }
 
@@ -461,7 +487,8 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         }
 
         const std::string eventStr = protoReq.event();
-        if (eventStr.empty() || std::all_of(eventStr.begin(), eventStr.end(), [](unsigned char c){ return std::isspace(c); }))
+        if (eventStr.empty()
+            || std::all_of(eventStr.begin(), eventStr.end(), [](unsigned char c) { return std::isspace(c); }))
         {
             res = adapter::userErrorResponse<ResponseType>("event is required and cannot be empty");
             return;
@@ -555,9 +582,8 @@ adapter::RouteHandler logtestDelete(const std::shared_ptr<::router::ITesterAPI>&
             auto err = tester->deleteTestEntry(name);
             if (base::isError(err))
             {
-                return base::Error {fmt::format("Cleanup: failed deleting session '{}': {}",
-                                                name,
-                                                base::getError(err).message)};
+                return base::Error {
+                    fmt::format("Cleanup: failed deleting session '{}': {}", name, base::getError(err).message)};
             }
             return std::nullopt;
         };
@@ -571,9 +597,7 @@ adapter::RouteHandler logtestDelete(const std::shared_ptr<::router::ITesterAPI>&
             }
             catch (const std::exception& e)
             {
-                return base::Error {fmt::format("Cleanup: failed deleting namespace '{}': {}",
-                                                nsId.toStr(),
-                                                e.what())};
+                return base::Error {fmt::format("Cleanup: failed deleting namespace '{}': {}", nsId.toStr(), e.what())};
             }
         };
 

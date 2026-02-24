@@ -105,18 +105,20 @@ void HandleSyslog()
             continue;
         }
 
+        /*
+        // TODO: commented out while separating manager and agent, someone should bind DEFAULTQUEUE
         if (SendMSG(logr.m_queue, buffer_pt, srcip, SYSLOG_MQ) < 0) {
             merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
             // Try to reconnect infinitely
-            // TODO: commented out while separating manager and agent, someone should bind DEFAULTQUEUE
-            // logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
-            // minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+            logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+            minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
 
             if (SendMSG(logr.m_queue, buffer_pt, srcip, SYSLOG_MQ) < 0) {
                 // Something went wrong sending a message after an immediate reconnection...
                 merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
             }
         }
+        */
     }
 }

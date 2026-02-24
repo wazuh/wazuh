@@ -324,8 +324,8 @@ def step_impl(context):
     assert resp.status == api_engine.OK, f"{resp}"
 
 
-@when('I send a request to send the event "{message}" from "{session_name}" session with "{debug_level}" debug, agent.id "{agent_id}" and "{asset_trace}" asset trace')
-def step_impl(context, message: str, session_name: str, debug_level: str, agent_id: str, asset_trace: str):
+@when('I send a request to send the event "{message}" from "{session_name}" session with "{debug_level}" debug, agent.id "{agent_id}", agent.name "{agent_name}", agent.type "{agent_type}" and "{asset_trace}" asset trace')
+def step_send_event_with_extended_metadata(context, message: str, session_name: str, debug_level: str, agent_id: str, agent_name: str, agent_type: str, asset_trace: str):
     debug_level_to_int = {
         "NONE": 0,
         "ASSET_ONLY": 1,
@@ -335,11 +335,78 @@ def step_impl(context, message: str, session_name: str, debug_level: str, agent_
     request = api_tester.RunPost_Request()
     request.name = session_name
     request.trace_level = debug_level_to_int[debug_level]
-    LOCATION = f"[{agent_id}] (agent-ex) any->SomeModule"
+
+    # Build agent_metadata struct with nested wazuh.agent object
+    agent_struct = Struct()
+    agent_struct["id"] = agent_id
+    agent_struct["name"] = agent_name
+    agent_struct["type"] = agent_type
+
+    wazuh_struct = Struct()
+    wazuh_struct["agent"] = agent_struct
+
+    agent_metadata = Struct()
+    agent_metadata["wazuh"] = wazuh_struct
+    request.agent_metadata.CopyFrom(agent_metadata)
+
+    LOCATION = f"[{agent_id}] ({agent_name}) any->SomeModule"
     QUEUE = 1
     request.event = f"{QUEUE}:{LOCATION}:{message}"
     if not asset_trace == "ALL":
         request.asset_trace.extend([asset_trace])
+    error, context.result, context.raw_output = send_recv(request, api_tester.RunPost_Response())
+    assert error is None, f"{error}"
+
+
+@when('I send a request to send the event "{message}" from "{session_name}" session with "{debug_level}" debug, agent.id "{agent_id}", agent.name "{agent_name}" and "{asset_trace}" asset trace')
+def step_send_event_with_basic_metadata(context, message: str, session_name: str, debug_level: str, agent_id: str, agent_name: str, asset_trace: str):
+    debug_level_to_int = {
+        "NONE": 0,
+        "ASSET_ONLY": 1,
+        "ALL": 2
+    }
+
+    request = api_tester.RunPost_Request()
+    request.name = session_name
+    request.trace_level = debug_level_to_int[debug_level]
+
+    # Build agent_metadata struct with nested wazuh.agent object
+    agent_struct = Struct()
+    agent_struct["id"] = agent_id
+    agent_struct["name"] = agent_name
+
+    wazuh_struct = Struct()
+    wazuh_struct["agent"] = agent_struct
+
+    agent_metadata = Struct()
+    agent_metadata["wazuh"] = wazuh_struct
+    request.agent_metadata.CopyFrom(agent_metadata)
+
+    LOCATION = f"[{agent_id}] ({agent_name}) any->SomeModule"
+    QUEUE = 1
+    request.event = f"{QUEUE}:{LOCATION}:{message}"
+    if not asset_trace == "ALL":
+        request.asset_trace.extend([asset_trace])
+    error, context.result, context.raw_output = send_recv(request, api_tester.RunPost_Response())
+    assert error is None, f"{error}"
+
+
+@when('I send a request to send the event "{message}" from "{session_name}" session with "{debug_level}" debug and no agent metadata')
+def step_impl(context, message: str, session_name: str, debug_level: str):
+    debug_level_to_int = {
+        "NONE": 0,
+        "ASSET_ONLY": 1,
+        "ALL": 2
+    }
+
+    request = api_tester.RunPost_Request()
+    request.name = session_name
+    request.trace_level = debug_level_to_int[debug_level]
+
+    # Do not set agent_metadata - it should default to empty struct
+    LOCATION = "[] () any->SomeModule"
+    QUEUE = 1
+    request.event = f"{QUEUE}:{LOCATION}:{message}"
     error, context.result, context.raw_output = send_recv(request, api_tester.RunPost_Response())
     assert error is None, f"{error}"
 

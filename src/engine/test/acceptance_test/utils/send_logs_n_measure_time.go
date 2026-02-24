@@ -24,7 +24,6 @@ func main() {
 	var logMessage string
 	var loops int
 	var s_num int
-	var d_num int
 	var t_i time.Time
 	var t_g time.Time
 	var t_o time.Time
@@ -95,11 +94,6 @@ func main() {
 		return
 	}
 
-	r, err := os.Open(archivesFilePath)
-	if err != nil {
-		log.Fatalf("os.Open(%s): %s", archivesFilePath, err)
-	}
-
 	t_lc := time.Now()
 	acc = 0
 	timeout := time.After(30 * time.Second) // 30 second timeout
@@ -111,10 +105,21 @@ func main() {
 		case <-timeout:
 			log.Fatalf("Timeout waiting for events in archives file. Expected: %d, Got: %d", s_num, acc)
 		case <-ticker.C:
-			d_num, err = lineCounter(r)
-			acc += d_num
+			// Open and count lines from the beginning each time
+			r, err := os.Open(archivesFilePath)
+			if err != nil {
+				log.Fatalf("os.Open(%s): %s", archivesFilePath, err)
+			}
+			// Count lines and divide by 2 since each event produces 2 lines (H and E)
+			lineCount, err := lineCounter(r)
+			r.Close()
 			if err != nil {
 				log.Fatalf("lineCounter: %s", err)
+			}
+			// Each event produces 2 lines in archives (H line and E line)
+			acc = lineCount / 2
+			if acc > 0 {
+				fmt.Printf("Found %d events in archives (%d lines)...\n", acc, lineCount)
 			}
 		}
 	}
@@ -152,9 +157,11 @@ func sendEvent(client *http.Client, message string, agentid int, contentType str
 
 	// Header line (JSON)
 	header := map[string]interface{}{
-		"agent": map[string]interface{}{
-			"id":   strconv.Itoa(agentid),
-			"name": fmt.Sprintf("hostname%d", agentid),
+		"wazuh": map[string]interface{}{
+			"agent": map[string]interface{}{
+				"id":   strconv.Itoa(agentid),
+				"name": fmt.Sprintf("hostname%d", agentid),
+			},
 		},
 	}
 	headerBytes, err := json.Marshal(header)

@@ -129,11 +129,18 @@ message TableGet_Response
 message RunPost_Request
 {
     string name = 1; // Name of the session.
+
     // Event to test
     string event = 2; // Event to test
+
+    // Metadata about the agent sending the event.
+    // If not provided, an empty struct is assumed.
+    google.protobuf.Struct agent_metadata = 3;
+
     // Configuration of test
-    TraceLevel trace_level = 5;      // Level of traces
-    repeated string asset_trace = 6; // Asset of which you only want to have details
+    TraceLevel trace_level = 4; // Level of traces
+
+    repeated string asset_trace = 5; // Asset of which you only want to have details
 }
 
 message RunPost_Response

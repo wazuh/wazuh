@@ -59,26 +59,38 @@ Feature: Tester API Management
   Scenario: Send events to specific session without debug session via API
     Given I have a policy "testing" that has an integration called "other-wazuh-core-test" loaded
     And I create a "test" session that points to policy "testing"
-    When I send a request to send the event "hi! i am an event test!" from "test" session with "NONE" debug, agent.id "001ASD" and "decoder/other-test-message/0" asset trace
-    Then I should receive the next output: "{"output":{"wazuh":{"protocol":{"location":"SomeModule","queue":49},"space":{"name":"UNDEFINED"}},"event":{"original":"hi! i am an event test!"},"agent":{"name":"agent-ex","id":"001ASD"}}}"
+    When I send a request to send the event "hi! i am an event test!" from "test" session with "NONE" debug, agent.id "001ASD", agent.name "agent-ex" and "decoder/other-test-message/0" asset trace
+    Then I should receive the next output: "{"output":{"wazuh":{"agent":{"name":"agent-ex","id":"001ASD"},"protocol":{"location":"[001ASD] (agent-ex) any->SomeModule","queue":49},"space":{"name":"UNDEFINED"}},"event":{"original":"hi! i am an event test!"}}}"
 
   Scenario: Send events to specific session with low debug via API
       Given I have a policy "testing" that has an integration called "other-wazuh-core-test" loaded
       And I create a "test" session that points to policy "testing"
-      When I send a request to send the event "hi! i am an event test!" from "test" session with "ASSET_ONLY" debug, agent.id "BB22" and "decoder/other-test-message/0" asset trace
-      Then I should receive the next output: "{"assetTraces":[{"asset":"decoder/other-test-message/0","success":true}],"output":{"agent":{"id":"BB22","name":"agent-ex"},"event":{"category":["test"],"kind":"metric","original":"hi! i am an event test!","type":["info"]},"wazuh":{"integration":{"category":"other","decoders":["decoder/other-test-message/0"],"name":"other-wazuh-core-test"},"protocol":{"location":"SomeModule","queue":49},"space":{"name":"UNDEFINED"}}}}"
+      When I send a request to send the event "hi! i am an event test!" from "test" session with "ASSET_ONLY" debug, agent.id "BB22", agent.name "agent-ex" and "decoder/other-test-message/0" asset trace
+      Then I should receive the next output: "{"assetTraces":[{"asset":"decoder/other-test-message/0","success":true}],"output":{"wazuh":{"agent":{"id":"BB22","name":"agent-ex"},"integration":{"category":"other","decoders":["decoder/other-test-message/0"],"name":"other-wazuh-core-test"},"protocol":{"location":"[BB22] (agent-ex) any->SomeModule","queue":49},"space":{"name":"UNDEFINED"}},"event":{"category":["test"],"kind":"metric","original":"hi! i am an event test!","type":["info"]}}}"
 
   Scenario: Send events to specific session with high debug via API
       Given I have a policy "testing" that has an integration called "other-wazuh-core-test" loaded
       And I create a "test" session that points to policy "testing"
-      When I send a request to send the event "hi! i am an event test!" from "test" session with "ALL" debug, agent.id "BB22" and "decoder/other-test-message/0" asset trace
-      Then I should receive the next output: "{"assetTraces":[{"asset":"decoder/other-test-message/0","success":true,"traces":["[check: $agent.id == BB22] -> Success","event.category: array_append(\"test\") -> Success","event.kind: map(\"metric\") -> Success","event.type: array_append(\"info\") -> Success"]}],"output":{"agent":{"id":"BB22","name":"agent-ex"},"event":{"category":["test"],"kind":"metric","original":"hi! i am an event test!","type":["info"]},"wazuh":{"integration":{"category":"other","decoders":["decoder/other-test-message/0"],"name":"other-wazuh-core-test"},"protocol":{"location":"SomeModule","queue":49},"space":{"name":"UNDEFINED"}}}}"
+      When I send a request to send the event "hi! i am an event test!" from "test" session with "ALL" debug, agent.id "BB22", agent.name "agent-ex" and "decoder/other-test-message/0" asset trace
+      Then I should receive the next output: "{"assetTraces":[{"asset":"decoder/other-test-message/0","success":true,"traces":["[check: $wazuh.agent.id == BB22] -> Success","event.category: array_append(\"test\") -> Success","event.kind: map(\"metric\") -> Success","event.type: array_append(\"info\") -> Success"]}],"output":{"wazuh":{"agent":{"id":"BB22","name":"agent-ex"},"integration":{"category":"other","decoders":["decoder/other-test-message/0"],"name":"other-wazuh-core-test"},"protocol":{"location":"[BB22] (agent-ex) any->SomeModule","queue":49},"space":{"name":"UNDEFINED"}},"event":{"category":["test"],"kind":"metric","original":"hi! i am an event test!","type":["info"]}}}"
 
   Scenario: Send events to specific session with high debug with unclassified event via API
       Given I have a policy "testing" that has an integration called "other-wazuh-core-test" loaded
       And I create a "test" session that points to policy "testing"
-      When I send a request to send the event "hi! i am an event test!" from "test" session with "ALL" debug, agent.id "BB22" and "ALL" asset trace
-      Then I should receive the next output: "{"assetTraces":[{"asset":"decoder/other-test-message/0","success":true,"traces":["[check: $agent.id == BB22] -> Success","event.category: array_append(\"test\") -> Success","event.kind: map(\"metric\") -> Success","event.type: array_append(\"info\") -> Success"]},{"asset":"filter/UnclassifiedEvents","success":true,"traces":["dropUnclassifiedEvent() -> Event is classified, allowing event"]},{"asset":"filter/DiscardedEvents","success":true,"traces":["Event will be indexed (wazuh.space.event_discarded=false)"]}],"output":{"agent":{"id":"BB22","name":"agent-ex"},"event":{"category":["test"],"kind":"metric","original":"hi! i am an event test!","type":["info"]},"wazuh":{"integration":{"category":"other","decoders":["decoder/other-test-message/0"],"name":"other-wazuh-core-test"},"protocol":{"location":"SomeModule","queue":49},"space":{"name":"UNDEFINED"}}}}"
+      When I send a request to send the event "hi! i am an event test!" from "test" session with "ALL" debug, agent.id "BB22", agent.name "agent-ex" and "ALL" asset trace
+      Then I should receive the next output: "{"assetTraces":[{"asset":"decoder/other-test-message/0","success":true,"traces":["[check: $wazuh.agent.id == BB22] -> Success","event.category: array_append(\"test\") -> Success","event.kind: map(\"metric\") -> Success","event.type: array_append(\"info\") -> Success"]},{"asset":"filter/UnclassifiedEvents","success":true,"traces":["dropUnclassifiedEvent() -> Event is classified, allowing event"]},{"asset":"filter/DiscardedEvents","success":true,"traces":["Event will be indexed (wazuh.space.event_discarded=false)"]}],"output":{"wazuh":{"agent":{"id":"BB22","name":"agent-ex"},"integration":{"category":"other","decoders":["decoder/other-test-message/0"],"name":"other-wazuh-core-test"},"protocol":{"location":"[BB22] (agent-ex) any->SomeModule","queue":49},"space":{"name":"UNDEFINED"}},"event":{"category":["test"],"kind":"metric","original":"hi! i am an event test!","type":["info"]}}}"
+
+  Scenario: Send events without agent metadata - empty struct assumed
+      Given I have a policy "testing" that has an integration called "other-wazuh-core-test" loaded
+      And I create a "test" session that points to policy "testing"
+      When I send a request to send the event "hi! i am an event test!" from "test" session with "NONE" debug and no agent metadata
+      Then I should receive the next output: "{"output":{"wazuh":{"protocol":{"location":"[] () any->SomeModule","queue":49},"space":{"name":"UNDEFINED"}},"event":{"original":"hi! i am an event test!"}}}"
+
+  Scenario: Send events with custom agent metadata fields
+      Given I have a policy "testing" that has an integration called "other-wazuh-core-test" loaded
+      And I create a "test" session that points to policy "testing"
+      When I send a request to send the event "hi! i am an event test!" from "test" session with "ASSET_ONLY" debug, agent.id "CUSTOM123", agent.name "custom-agent", agent.type "endpoint" and "decoder/other-test-message/0" asset trace
+      Then I should receive the next output: "{"assetTraces":[{"asset":"decoder/other-test-message/0"}],"output":{"wazuh":{"agent":{"id":"CUSTOM123","name":"custom-agent","type":"endpoint"},"protocol":{"location":"[CUSTOM123] (custom-agent) any->SomeModule","queue":49},"space":{"name":"UNDEFINED"}},"event":{"original":"hi! i am an event test!"}}}"
 
   Scenario: Cleanup logtest removes testing session and temp namespace
     Given I have no tester sessions

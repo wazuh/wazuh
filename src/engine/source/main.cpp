@@ -15,7 +15,6 @@
 #include <api/rawevtindexer/handlers.hpp>
 #include <archiver/archiver.hpp>
 #include <base/eventParser.hpp>
-#include <base/hostInfo.hpp>
 #include <base/libwazuhshared.hpp>
 #include <base/logging.hpp>
 #include <base/process.hpp>

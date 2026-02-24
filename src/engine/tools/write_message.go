@@ -82,9 +82,11 @@ func sendEvent(client *http.Client, message string, agentid int, isRaw bool, con
 
 		// Header line (JSON)
 		header := map[string]interface{}{
-			"agent": map[string]interface{}{
-				"id":   strconv.Itoa(agentid),
-				"name": fmt.Sprintf("hostname%d", agentid),
+			"wazuh": map[string]interface{}{
+				"agent": map[string]interface{}{
+					"id":   strconv.Itoa(agentid),
+					"name": fmt.Sprintf("hostname%d", agentid),
+				},
 			},
 		}
 		headerBytes, err := json.Marshal(header)
