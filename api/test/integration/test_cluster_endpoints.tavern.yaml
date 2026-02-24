@@ -1992,7 +1992,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
       method: PUT
-      data: "{valid_ossec_conf:s}"
+      data: "{valid_wazuh_conf:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
@@ -2037,7 +2037,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
       method: PUT
-      data: "{invalid_ossec_conf:s}"
+      data: "{invalid_wazuh_conf:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
@@ -2061,7 +2061,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
       method: PUT
-      data: "{invalid_ossec_xml:s}"
+      data: "{invalid_wazuh_xml:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
@@ -2085,7 +2085,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
       method: PUT
-      data: "{invalid_ossec_conf:s}"
+      data: "{invalid_wazuh_conf:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
@@ -2176,7 +2176,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
       method: PUT
-      data: "{valid_ossec_conf_with_update_check_enabled:s}"
+      data: "{valid_wazuh_conf_with_update_check_enabled:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
@@ -2259,7 +2259,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
       method: PUT
-      data: "{ossec_conf_with_invalid_cti_url:s}"
+      data: "{wazuh_conf_with_invalid_cti_url:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream

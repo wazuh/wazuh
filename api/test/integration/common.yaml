@@ -124,7 +124,7 @@ variables:
     </localfile>
     </agent_config>
 
-  valid_ossec_conf:
+  valid_wazuh_conf:
     <wazuh_config>
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>
@@ -152,7 +152,7 @@ variables:
       </vulnerability-detection>
     </wazuh_config>
 
-  valid_ossec_conf_with_update_check_enabled:
+  valid_wazuh_conf_with_update_check_enabled:
     <wazuh_config>
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>
@@ -181,7 +181,7 @@ variables:
       </vulnerability-detection>
     </wazuh_config>
 
-  invalid_ossec_conf:
+  invalid_wazuh_conf:
     <wazuh_config>
       <global>
       </global>
@@ -194,7 +194,7 @@ variables:
       <remote>
     </wazuh_config>
 
-  invalid_ossec_xml:
+  invalid_wazuh_xml:
     <wazuh_config>
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>
@@ -217,7 +217,7 @@ variables:
       </syscheck>
     </wazuh_config>
 
-  ossec_conf_with_invalid_cti_url:
+  wazuh_conf_with_invalid_cti_url:
     <wazuh_config>
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>

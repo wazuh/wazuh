@@ -727,7 +727,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
       method: PUT
-      data: "{valid_ossec_conf:s}"
+      data: "{valid_wazuh_conf:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
