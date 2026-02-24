@@ -14,12 +14,14 @@ from collections import defaultdict
 from concurrent.futures import process, ProcessPoolExecutor
 from copy import copy, deepcopy
 from functools import reduce, partial
+from importlib import import_module
 from operator import or_
 from typing import Callable, Dict, Tuple, List
 
 from sqlalchemy.exc import OperationalError
 
 import api.configuration as aconf
+from api.constants import SECURITY_CONFIG_PATH
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 import wazuh.core.manager
@@ -32,10 +34,190 @@ from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.pyDaemonModule import spawn_process_pool_worker, API_AUTHENTICATION_PROCESS
 from wazuh.core.wazuh_socket import wazuh_sendsync
+from wazuh.rbac.orm import AuthenticationManager, UserRolesManager
+from wazuh.rbac.preprocessor import optimize_resources
 
 
 authentication_funcs = {'check_token', 'check_user_master', 'get_permissions', 'get_security_conf'}
 events_funcs = {'send_event_to_analysisd'}
+
+# DAPI callables must be part of this strict allowlist.
+# These are the only public framework/API entry points expected to be distributed through DAPI.
+ALLOWED_DAPI_CALLABLES = {
+    ('api.authentication', 'check_token'),
+    ('api.authentication', 'check_user_master'),
+    ('api.authentication', 'get_security_conf'),
+    ('wazuh.active_response', 'run_command'),
+    ('wazuh.agent', 'add_agent'),
+    ('wazuh.agent', 'assign_agents_to_group'),
+    ('wazuh.agent', 'check_uninstall_permission'),
+    ('wazuh.agent', 'create_group'),
+    ('wazuh.agent', 'delete_agents'),
+    ('wazuh.agent', 'delete_groups'),
+    ('wazuh.agent', 'get_agent_conf'),
+    ('wazuh.agent', 'get_agent_config'),
+    ('wazuh.agent', 'get_agent_groups'),
+    ('wazuh.agent', 'get_agents'),
+    ('wazuh.agent', 'get_agents_in_group'),
+    ('wazuh.agent', 'get_agents_keys'),
+    ('wazuh.agent', 'get_agents_summary'),
+    ('wazuh.agent', 'get_agents_summary_os'),
+    ('wazuh.agent', 'get_agents_summary_status'),
+    ('wazuh.agent', 'get_agents_sync_group'),
+    ('wazuh.agent', 'get_distinct_agents'),
+    ('wazuh.agent', 'get_file_conf'),
+    ('wazuh.agent', 'get_full_overview'),
+    ('wazuh.agent', 'get_group_files'),
+    ('wazuh.agent', 'get_outdated_agents'),
+    ('wazuh.agent', 'get_upgrade_result'),
+    ('wazuh.agent', 'reconnect_agents'),
+    ('wazuh.agent', 'remove_agent_from_group'),
+    ('wazuh.agent', 'remove_agent_from_groups'),
+    ('wazuh.agent', 'remove_agents_from_group'),
+    ('wazuh.agent', 'restart_agents'),
+    ('wazuh.agent', 'restart_agents_by_group'),
+    ('wazuh.agent', 'restart_agents_by_node'),
+    ('wazuh.agent', 'upgrade_agents'),
+    ('wazuh.agent', 'upload_group_file'),
+    ('wazuh.analysis', 'reload_ruleset'),
+    ('wazuh.cdb_list', 'delete_list_file'),
+    ('wazuh.cdb_list', 'get_list_file'),
+    ('wazuh.cdb_list', 'get_lists'),
+    ('wazuh.cdb_list', 'get_path_lists'),
+    ('wazuh.cdb_list', 'upload_list_file'),
+    ('wazuh.ciscat', 'get_ciscat_results'),
+    ('wazuh.cluster', 'get_health_nodes'),
+    ('wazuh.cluster', 'get_node_ruleset_integrity'),
+    ('wazuh.cluster', 'get_node_wrapper'),
+    ('wazuh.cluster', 'get_nodes_info'),
+    ('wazuh.cluster', 'get_ruleset_sync_status'),
+    ('wazuh.cluster', 'get_status_json'),
+    ('wazuh.cluster', 'read_config_wrapper'),
+    ('wazuh.core.manager', 'query_update_check_service'),
+    ('wazuh.core.manager', 'status'),
+    ('wazuh.core.security', 'revoke_tokens'),
+    ('wazuh.decoder', 'delete_decoder_file'),
+    ('wazuh.decoder', 'get_decoder_file'),
+    ('wazuh.decoder', 'get_decoders'),
+    ('wazuh.decoder', 'get_decoders_files'),
+    ('wazuh.decoder', 'upload_decoder_file'),
+    ('wazuh.event', 'send_event_to_analysisd'),
+    ('wazuh.logtest', 'end_logtest_session'),
+    ('wazuh.logtest', 'run_logtest'),
+    ('wazuh.manager', 'get_api_config'),
+    ('wazuh.manager', 'get_basic_info'),
+    ('wazuh.manager', 'get_config'),
+    ('wazuh.manager', 'get_status'),
+    ('wazuh.manager', 'get_update_information'),
+    ('wazuh.manager', 'ossec_log'),
+    ('wazuh.manager', 'ossec_log_summary'),
+    ('wazuh.manager', 'read_ossec_conf'),
+    ('wazuh.manager', 'restart'),
+    ('wazuh.manager', 'update_ossec_conf'),
+    ('wazuh.manager', 'validation'),
+    ('wazuh.mitre', 'mitre_groups'),
+    ('wazuh.mitre', 'mitre_metadata'),
+    ('wazuh.mitre', 'mitre_mitigations'),
+    ('wazuh.mitre', 'mitre_references'),
+    ('wazuh.mitre', 'mitre_software'),
+    ('wazuh.mitre', 'mitre_tactics'),
+    ('wazuh.mitre', 'mitre_techniques'),
+    ('wazuh.rbac.preprocessor', 'get_permissions'),
+    ('wazuh.rootcheck', 'clear'),
+    ('wazuh.rootcheck', 'get_last_scan'),
+    ('wazuh.rootcheck', 'get_rootcheck_agent'),
+    ('wazuh.rootcheck', 'run'),
+    ('wazuh.rule', 'delete_rule_file'),
+    ('wazuh.rule', 'get_groups'),
+    ('wazuh.rule', 'get_requirement'),
+    ('wazuh.rule', 'get_rule_file'),
+    ('wazuh.rule', 'get_rules'),
+    ('wazuh.rule', 'get_rules_files'),
+    ('wazuh.rule', 'upload_rule_file'),
+    ('wazuh.sca', 'get_sca_checks'),
+    ('wazuh.sca', 'get_sca_list'),
+    ('wazuh.security', 'add_policy'),
+    ('wazuh.security', 'add_role'),
+    ('wazuh.security', 'add_rule'),
+    ('wazuh.security', 'create_user'),
+    ('wazuh.security', 'edit_run_as'),
+    ('wazuh.security', 'get_policies'),
+    ('wazuh.security', 'get_rbac_actions'),
+    ('wazuh.security', 'get_rbac_resources'),
+    ('wazuh.security', 'get_roles'),
+    ('wazuh.security', 'get_rules'),
+    ('wazuh.security', 'get_security_config'),
+    ('wazuh.security', 'get_user_me'),
+    ('wazuh.security', 'get_users'),
+    ('wazuh.security', 'remove_policies'),
+    ('wazuh.security', 'remove_role_policy'),
+    ('wazuh.security', 'remove_role_rule'),
+    ('wazuh.security', 'remove_roles'),
+    ('wazuh.security', 'remove_rules'),
+    ('wazuh.security', 'remove_user_role'),
+    ('wazuh.security', 'remove_users'),
+    ('wazuh.security', 'revoke_current_user_tokens'),
+    ('wazuh.security', 'set_role_policy'),
+    ('wazuh.security', 'set_role_rule'),
+    ('wazuh.security', 'set_user_role'),
+    ('wazuh.security', 'update_policy'),
+    ('wazuh.security', 'update_role'),
+    ('wazuh.security', 'update_rule'),
+    ('wazuh.security', 'update_security_config'),
+    ('wazuh.security', 'update_user'),
+    ('wazuh.security', 'wrapper_revoke_tokens'),
+    ('wazuh.stats', 'deprecated_get_daemons_stats'),
+    ('wazuh.stats', 'get_agents_component_stats_json'),
+    ('wazuh.stats', 'get_daemons_stats'),
+    ('wazuh.stats', 'get_daemons_stats_agents'),
+    ('wazuh.stats', 'hourly'),
+    ('wazuh.stats', 'totals'),
+    ('wazuh.stats', 'weekly'),
+    ('wazuh.syscheck', 'clear'),
+    ('wazuh.syscheck', 'files'),
+    ('wazuh.syscheck', 'last_scan'),
+    ('wazuh.syscheck', 'run'),
+    ('wazuh.syscollector', 'get_item_agent'),
+    ('wazuh.task', 'get_task_status'),
+}
+
+
+def _resolve_allowed_dapi_callable(encoded_callable: Dict) -> Callable:
+    """Decode a DAPI callable only if it belongs to the strict allowlist."""
+    if '__wazuh__' in encoded_callable:
+        raise exception.WazuhInternalError(1000,
+                                           extra_message='Decoding bound callables from DAPI payload is not allowed',
+                                           cmd_error=True)
+
+    module_path = encoded_callable.get('__module__')
+    func_name = encoded_callable.get('__name__')
+
+    if not module_path or not func_name:
+        raise exception.WazuhInternalError(1000,
+                                           extra_message='Invalid callable format in DAPI payload',
+                                           cmd_error=True)
+
+    if (module_path, func_name) not in ALLOWED_DAPI_CALLABLES:
+        raise exception.WazuhInternalError(1000,
+                                           extra_message=(
+                                               f"Callable '{module_path}.{func_name}' is not allowed in DAPI payload"
+                                           ),
+                                           cmd_error=True)
+
+    module = import_module(module_path)
+    resolved = getattr(module, func_name)
+    if not callable(resolved):
+        raise exception.WazuhInternalError(1000,
+                                           extra_message=f"Decoded object '{module_path}.{func_name}' is not callable",
+                                           cmd_error=True)
+    return resolved
+
+
+def _dapi_object_hook(dct: Dict):
+    """Decode JSON objects for DAPI requests using a strict callable decoder."""
+    if '__callable__' in dct:
+        return _resolve_allowed_dapi_callable(dct['__callable__'])
+    return c_common.as_wazuh_object(dct)
 
 node_info = wazuh.core.cluster.cluster.get_node()
 pools = common.mp_pools.get()
@@ -56,7 +238,7 @@ class DistributedAPI:
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
                  broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
                  rbac_permissions: Dict = None, nodes: list = None, api_timeout: int = None,
-                 remove_denied_nodes: bool = False):
+                 remove_denied_nodes: bool = False, is_cluster_request: bool = False):
         """Class constructor.
 
         Parameters
@@ -95,6 +277,8 @@ class DistributedAPI:
             Timeout set in source API for the request
         remove_denied_nodes : bool
             Whether to remove denied (RBAC) nodes from response's failed items or not.
+        is_cluster_request : bool
+            Whether the request was received from a cluster transport channel.
         """
         self.logger = logger
         self.f = f
@@ -108,8 +292,9 @@ class DistributedAPI:
         self.from_cluster = from_cluster
         self.is_async = is_async
         self.broadcasting = broadcasting
-        self.rbac_permissions = rbac_permissions if rbac_permissions is not None else {'rbac_mode': 'black'}
+        self.is_cluster_request = is_cluster_request
         self.current_user = current_user
+        self.rbac_permissions = self._get_effective_rbac_permissions(rbac_permissions)
         self.origin_module = 'API'
         self.nodes = nodes if nodes is not None else list()
         if not basic_services:
@@ -122,6 +307,38 @@ class DistributedAPI:
         self.api_request_timeout = max(api_timeout, aconf.api_conf['intervals']['request_timeout']) \
             if api_timeout else aconf.api_conf['intervals']['request_timeout']
         self.remove_denied_nodes = remove_denied_nodes
+
+    def _get_effective_rbac_permissions(self, request_rbac_permissions: Dict = None) -> Dict:
+        """Get RBAC permissions to be used during function execution.
+
+        Cluster requests never trust `rbac_permissions` from payload and are recalculated server-side.
+        """
+        if not self.is_cluster_request:
+            return request_rbac_permissions if request_rbac_permissions is not None else {'rbac_mode': 'black'}
+
+        if not self.current_user:
+            if self.f.__name__ in authentication_funcs | events_funcs:
+                return request_rbac_permissions if request_rbac_permissions is not None else {'rbac_mode': 'black'}
+
+            raise exception.WazuhPermissionError(4000,
+                                                extra_message='Missing authenticated user for cluster DAPI request',
+                                                ids={'unknown'})
+
+        with AuthenticationManager() as auth_manager:
+            user_info = auth_manager.get_user(username=self.current_user)
+            if not user_info:
+                raise exception.WazuhPermissionError(4000,
+                                                    extra_message='User not found for cluster DAPI request',
+                                                    ids={self.current_user})
+
+        with UserRolesManager() as user_roles_manager:
+            user_roles = tuple(role.id for role in user_roles_manager.get_all_roles_from_user(user_id=user_info['id']))
+
+        effective_permissions = optimize_resources(user_roles)
+        security_conf = aconf.read_yaml_config(config_file=SECURITY_CONFIG_PATH,
+                                               default_conf=aconf.default_security_configuration)
+        effective_permissions['rbac_mode'] = security_conf['rbac_mode']
+        return effective_permissions
 
     def debug_log(self, message):
         """Use debug or debug2 depending on the log type.
@@ -702,12 +919,13 @@ class APIRequestQueue(WazuhRequestQueue):
                 continue
 
             try:
-                request = json.loads(request, object_hook=c_common.as_wazuh_object)
+                request = json.loads(request, object_hook=_dapi_object_hook)
                 self.logger.info("Receiving request: {} from {}".format(
                     request['f'].__name__, names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
                 result = await DistributedAPI(**request,
                                               logger=self.logger,
-                                              node=node).distribute_function()
+                                              node=node,
+                                              is_cluster_request=True).distribute_function()
                 task_id = await node.send_string(json.dumps(result, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
                 self.logger.error(f"Error in distributed API: {e}", exc_info=True)
