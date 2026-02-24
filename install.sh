@@ -314,8 +314,8 @@ ConfigureClient()
     echo "3- ${configuring} $NAME."
     echo ""
 
-    if [ "X${USER_AGENT_SERVER_IP}" = "X" -a "X${USER_AGENT_SERVER_NAME}" = "X" ]; then
-        # Looping and asking for server ip or hostname
+    if [ "X${USER_AGENT_MANAGER_IP}" = "X" -a "X${USER_AGENT_MANAGER_NAME}" = "X" ]; then
+        # Looping and asking for manager ip or hostname
         while [ 1 ]; do
             $ECHO "  3.1- ${serveraddr}: "
                 read ADDRANSWER
@@ -335,8 +335,8 @@ ConfigureClient()
             fi
         done
     else
-        SERVER_IP=${USER_AGENT_SERVER_IP}
-        HNAME=${USER_AGENT_SERVER_NAME}
+        SERVER_IP=${USER_AGENT_MANAGER_IP}
+        HNAME=${USER_AGENT_MANAGER_NAME}
     fi
 
     # Syscheck?
