@@ -9,7 +9,7 @@
 #include <shared.h>
 
 // Configuration constants
-static const char* const XML_TAG_WAZUH_CONFIG = "wazuh_config";
+static const char* const XML_TAG_WAZUH_CONFIG = OSSECCONFIG;
 static const char* const XML_TAG_INDEXER = "indexer";
 static const char* const INDEXER_ROOT_PATH = "indexer";
 static const char* const XML_TAG_HOST = "host";
