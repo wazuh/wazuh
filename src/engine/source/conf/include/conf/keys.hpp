@@ -31,8 +31,6 @@ constexpr std::string_view INDEXER_SSL_KEY = "analysisd.indexer_ssl_key";
 
 constexpr std::string_view RAW_EVENT_INDEXER_ENABLED = "analysisd.raw_event_indexer_enabled";
 
-constexpr std::string_view RAW_EVENT_INDEXER_ENABLED = "analysisd.raw_event_indexer_enabled";
-
 constexpr std::string_view EVENT_QUEUE_SIZE = "analysisd.event_queue_size";
 constexpr std::string_view EVENT_QUEUE_EPS = "analysisd.event_queue_eps";
 
