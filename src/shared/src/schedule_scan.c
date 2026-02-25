@@ -12,6 +12,10 @@ static const char *XML_TIME = "time";
 #define static
 #endif
 
+#ifdef WIN32
+#define localtime_r(x, y) localtime_s(y, x)
+#endif
+
 static int _sched_scan_validate_parameters(sched_scan_config *scan_config);
 static time_t _get_next_time(const sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start);
 

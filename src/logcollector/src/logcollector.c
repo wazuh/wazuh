@@ -23,6 +23,10 @@
 #define STATIC static
 #endif
 
+#ifdef WIN32
+#define localtime_r(x, y) localtime_s(y, x)
+#endif
+
 #define MAX_ASCII_LINES 10
 #define MAX_UTF8_CHARS 1400
 #define OFFSET_SIZE     21  ///< Maximum 64-bit integer is 20-char long, plus 1 because of the '\0'

@@ -16,6 +16,10 @@
 #define STATIC static
 #endif
 
+#ifdef WIN32
+#define localtime_r(x, y) localtime_s(y, x)
+#endif
+
 #define W_LC_STATE_TIME_FORMAT "%Y-%m-%d %H:%M:%S" ///< Time format for the JSON and the file output
 #define W_LC_STATE_TIME_LENGHT (19 + 1)            ///< Maximum time size
 

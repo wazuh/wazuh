@@ -78,8 +78,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   if(UNIT_TEST)
     target_compile_definitions(wazuh-addagent PRIVATE WAZUH_UNIT_TESTING)
   endif()
-  target_link_libraries(wazuh-addagent PRIVATE ${SRC_FOLDER}/libwazuhext.lib
-                                               pthread wazuh)
+  target_link_libraries(wazuh-addagent PRIVATE ${WAZUH_WINDOWS_LIBS} wazuh)
 
   if(NOT UNIT_TEST)
     # Build manage_agents.exe Windows executable
@@ -96,14 +95,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
       manage_agents_win
       PRIVATE wazuh-addagent
               wazuh
-              ${SRC_FOLDER}/libwazuhext.lib
+              ${WAZUH_WINDOWS_LIBS}
               wsock32
               wevtapi
-              shlwapi
               comctl32
               advapi32
               kernel32
-              psapi
               gdi32
               iphlpapi
               ws2_32

@@ -49,6 +49,10 @@ void audit_set_db_consistency(void);
 #define STATIC
 #else
 #define STATIC static
+
+#ifdef WIN32
+#define localtime_r(x, y) localtime_s(y, x)
+#endif
 #endif
 
 // Global flag to stop sync module

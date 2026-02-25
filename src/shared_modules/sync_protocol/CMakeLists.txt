@@ -29,11 +29,6 @@ set(FLATBUFFERS_ROOT_DIR
     "${CMAKE_CURRENT_SOURCE_DIR}/../../external/flatbuffers")
 set(FLATC_EXECUTABLE ${FLATBUFFERS_ROOT_DIR}/build/flatc)
 
-# Verify flatc exists
-if(NOT EXISTS ${FLATC_EXECUTABLE})
-  message(FATAL_ERROR "flatc not found at ${FLATC_EXECUTABLE}.")
-endif()
-
 message(STATUS "Using flatc from: ${FLATC_EXECUTABLE}")
 
 # -----------------------------------------------------------------------------
@@ -52,6 +47,14 @@ add_custom_command(
   VERBATIM)
 
 add_custom_target(generate_flatbuffers ALL DEPENDS ${GENERATED_HEADER})
+
+# Add dependency on flatbuffers_external if it exists
+if(TARGET flatbuffers_external)
+  add_dependencies(generate_flatbuffers flatbuffers_external)
+elseif(TARGET flatc)
+  # If flatc target exists from subdirectory, depend on it
+  add_dependencies(generate_flatbuffers flatc)
+endif()
 
 # -----------------------------------------------------------------------------
 # Build FlatBuffers library (only needed headers/lib, not flatc)
@@ -100,10 +103,8 @@ target_link_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/../file_helper/build/lib
   ${CMAKE_CURRENT_SOURCE_DIR}/../agent_metadata/build/lib)
 
-target_link_libraries(
-  agent_sync_protocol
-  PRIVATE flatbuffers FilesystemWrapper agent_metadata
-          wazuhext)
+target_link_libraries(agent_sync_protocol PRIVATE flatbuffers FilesystemWrapper
+                                                  agent_metadata wazuhext)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(

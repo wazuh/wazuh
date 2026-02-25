@@ -20,6 +20,8 @@ include_directories(
   ${SRC_FOLDER}/external/nlohmann/
   ${SRC_FOLDER}/external/openssl/include/
   ${SRC_FOLDER}/external/zlib/
+  ${SRC_FOLDER}/external/rocksdb/include
+  ${SRC_FOLDER}/external/simdjson/include
   ${SRC_FOLDER}/client-agent/include
   ${SRC_FOLDER}/config/include
   ${SRC_FOLDER}/shared/include/error_messages

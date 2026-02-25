@@ -19,6 +19,10 @@
 #define STATIC static
 #endif
 
+#ifdef WIN32
+#define localtime_r(x, y) localtime_s(y, x)
+#endif
+
 int maximum_files;
 int current_files;
 int total_files;

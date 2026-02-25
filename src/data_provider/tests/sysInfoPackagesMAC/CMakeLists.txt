@@ -39,8 +39,7 @@ target_link_libraries(
   pthread)
 
 if(APPLE)
-  target_link_libraries(sysInfoMacPackage_unit_test
-                        ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a)
+  target_link_libraries(sysInfoMacPackage_unit_test plist)
 endif(APPLE)
 
 add_test(NAME sysInfoMacPackage_unit_test COMMAND sysInfoMacPackage_unit_test)

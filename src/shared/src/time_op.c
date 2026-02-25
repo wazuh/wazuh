@@ -15,6 +15,10 @@
 
 #include "shared.h"
 
+#ifdef WIN32
+#define localtime_r(x, y) localtime_s(y, x)
+#endif
+
 #ifndef WIN32
 
 #ifdef __MACH__

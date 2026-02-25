@@ -110,67 +110,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND UNIT_TEST)
   set(CMAKE_CROSSCOMPILING_EMULATOR wine)
 endif()
 
-# ##############################################################################
-# External dependencies
-# ##############################################################################
-function(check_and_download_dep libname url)
-  if(NOT EXISTS ${SRC_FOLDER}/external/${libname})
-    message("==============================================")
-
-    # Download library from S3 bucket
-    message("Downloading ${libname}...")
-    file(
-      DOWNLOAD ${url}/${libname}.tar.gz ${SRC_FOLDER}/external/${libname}.tar.gz
-      TIMEOUT 60 # seconds
-      STATUS DOWNLOAD_STATUS)
-    list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
-    list(GET DOWNLOAD_STATUS 1 STATUS_MESSAGE)
-    if(NOT STATUS_CODE EQUAL 0)
-      message(
-        FATAL_ERROR
-          "Error downloading ${libname}: ${STATUS_MESSAGE} (${STATUS_CODE}).")
-    endif(NOT STATUS_CODE EQUAL 0)
-
-    # Extract library
-    message("Extracting ${libname}.tar.gz")
-    execute_process(
-      COMMAND ${CMAKE_COMMAND} -E tar xfz
-              "${SRC_FOLDER}/external/${libname}.tar.gz"
-      WORKING_DIRECTORY ${SRC_FOLDER}/external
-      RESULT_VARIABLE STATUS_VALUE)
-    if(NOT STATUS_VALUE EQUAL 0)
-      message(FATAL_ERROR "Error extracting ${libname}: ${STATUS_VALUE}.")
-    endif(NOT STATUS_VALUE EQUAL 0)
-
-    # Cleanup tar file
-    message("Cleaning ${libname}.tar.gz")
-    file(REMOVE ${SRC_FOLDER}/external/${libname}.tar.gz)
-  endif()
-endfunction(check_and_download_dep)
-
-set(EXTERNAL_RES nlohmann googletest benchmark cpp-httplib)
-
-if(NOT EXTERNAL_DEPS_VERSION)
-  set(EXTERNAL_DEPS_VERSION "21")
-endif(NOT EXTERNAL_DEPS_VERSION)
-
-if(NOT RESOURCES_URL)
-  set(RESOURCES_URL
-      "https://packages.wazuh.com/deps/${EXTERNAL_DEPS_VERSION}/libraries/sources"
-  )
-endif(NOT RESOURCES_URL)
-
-if(NOT PRECOMPILED_RESOURCES_URL)
-  set(PRECOMPILED_RESOURCES_URL
-      "https://packages.wazuh.com/deps/${EXTERNAL_DEPS_VERSION}/libraries/linux/amd64"
-  )
-endif(NOT PRECOMPILED_RESOURCES_URL)
-
-# Download external libraries
-foreach(loop_var ${EXTERNAL_RES})
-  check_and_download_dep(${loop_var} ${RESOURCES_URL})
-endforeach(loop_var)
-
 # Read the VERSION JSON file
 file(READ "${SRC_FOLDER}/../VERSION.json" VERSION_JSON)
 
@@ -204,13 +143,6 @@ message("==============================================")
 set(BENCHMARK_ENABLE_TESTING "OFF")
 
 link_directories(${SRC_FOLDER})
-link_directories(${SRC_FOLDER}/external/rocksdb/build/)
-link_directories(${SRC_FOLDER}/external/openssl/)
-link_directories(${SRC_FOLDER}/external/lzma/build/)
-link_directories(${SRC_FOLDER}/external/zlib/)
-link_directories(${SRC_FOLDER}/external/zlib/contrib/minizip/)
-link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
-link_directories(${SRC_FOLDER}/external/simdjson/build/)
 
 # Wazuh headers
 include_directories(${SRC_FOLDER}/shared/include)
@@ -230,18 +162,6 @@ include_directories(${SRC_FOLDER}/shared_modules/schema_validator/include)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 
-# External dependencies includes
-include_directories(${SRC_FOLDER}/external/cJSON)
-include_directories(${SRC_FOLDER}/external/cpp-httplib)
-include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
-include_directories(${SRC_FOLDER}/external/lzma/src/liblzma/api)
-include_directories(${SRC_FOLDER}/external/nlohmann)
-include_directories(${SRC_FOLDER}/external/openssl/include)
-include_directories(${SRC_FOLDER}/external/rocksdb/include)
-include_directories(${SRC_FOLDER}/external/simdjson/include/)
-include_directories(${SRC_FOLDER}/external/zlib/)
-include_directories(${SRC_FOLDER}/external/zlib/contrib/)
-
 # Windows version resource objects
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   enable_language(RC)
@@ -256,6 +176,41 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
   set(RESOURCE_OBJ_DLL $<TARGET_OBJECTS:version_rc_dll>)
   set(RESOURCE_OBJ_APP $<TARGET_OBJECTS:version_rc_app>)
+
+  find_program(MINGW_AR i686-w64-mingw32-ar REQUIRED)
+  find_library(
+    WIN_PTHREAD_STATIC_LIB
+    NAMES winpthread
+    PATHS /usr/i686-w64-mingw32/lib /usr/i686-w64-mingw32/sys-root/mingw/lib
+    REQUIRED)
+  find_file(
+    WIN_PTHREAD_DLL
+    NAMES libwinpthread-1.dll
+    PATHS /usr/i686-w64-mingw32/lib /usr/i686-w64-mingw32/sys-root/mingw/bin
+    REQUIRED)
+
+  set(PATCHED_PTHREAD_LIB ${SRC_FOLDER}/win32/libwinpthreadpatched.a)
+  set(WIN_PTHREAD_DLL_COPY ${SRC_FOLDER}/win32/libwinpthread-1.dll)
+  add_custom_command(
+    OUTPUT ${PATCHED_PTHREAD_LIB}
+    COMMAND ${CMAKE_COMMAND} -E copy ${WIN_PTHREAD_STATIC_LIB}
+            ${PATCHED_PTHREAD_LIB}
+    COMMAND ${MINGW_AR} d ${PATCHED_PTHREAD_LIB} version.o
+    DEPENDS ${WIN_PTHREAD_STATIC_LIB}
+    COMMENT "Creating patched pthread library")
+  add_custom_command(
+    OUTPUT ${WIN_PTHREAD_DLL_COPY}
+    COMMAND ${CMAKE_COMMAND} -E copy ${WIN_PTHREAD_DLL} ${WIN_PTHREAD_DLL_COPY}
+    DEPENDS ${WIN_PTHREAD_DLL}
+    COMMENT "Copying pthread DLL")
+  add_custom_target(winpthreadpatched ALL DEPENDS ${PATCHED_PTHREAD_LIB}
+                                                  ${WIN_PTHREAD_DLL_COPY})
+
+  # Common Windows libraries that all Windows executables need
+  set(WAZUH_WINDOWS_LIBS
+      ${SRC_FOLDER}/libwazuhext.lib ${PATCHED_PTHREAD_LIB} wintrust psapi
+      crypt32 shlwapi
+      CACHE INTERNAL "Common Windows libraries for all executables")
 endif()
 
 # Helper variables
@@ -263,6 +218,9 @@ set(IS_AGENT FALSE)
 if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
   set(IS_AGENT TRUE)
 endif()
+
+# External dependencies
+add_subdirectory(external)
 
 # Common modules (all targets)
 add_subdirectory(config)
@@ -305,4 +263,9 @@ if(NOT IS_AGENT)
   add_subdirectory(shared_modules/router)
   add_subdirectory(util)
   add_subdirectory(wazuh_db)
+endif()
+
+# Create flatbuffers alias if the real target wasn't created by subdirectories
+if(NOT TARGET flatbuffers)
+  add_library(flatbuffers ALIAS ext_flatbuffers)
 endif()

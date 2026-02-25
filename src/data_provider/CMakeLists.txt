@@ -206,7 +206,7 @@ elseif(APPLE)
   target_link_libraries(
     sysinfo
     PRIVATE cjson
-            ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a
+            plist
             ${iokit_lib}
             ${corefoundation_lib}
             groups

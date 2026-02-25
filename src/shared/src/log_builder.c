@@ -27,6 +27,10 @@
 #define STATIC static
 #endif
 
+#ifdef WIN32
+#define localtime_r(x, y) localtime_s(y, x)
+#endif
+
 /**
  * @brief Update the hostname value
  *

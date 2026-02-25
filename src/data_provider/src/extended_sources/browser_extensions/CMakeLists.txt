@@ -16,16 +16,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   list(APPEND SRC_FILES src/safari_darwin.cpp)
 
   add_library(browser_extensions STATIC ${SRC_FILES})
-  target_link_libraries(
-    browser_extensions PRIVATE
-    ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a
-    ${SRC_FOLDER}/external/openssl/libcrypto.a)
+  target_link_libraries(browser_extensions PRIVATE plist openssl_crypto)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/linux)
 
   add_library(browser_extensions STATIC ${SRC_FILES})
-  target_link_libraries(browser_extensions PRIVATE
-                        ${SRC_FOLDER}/external/openssl/libcrypto.a dl)
+  target_link_libraries(browser_extensions PRIVATE openssl_crypto dl)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/windows/)
 
@@ -33,7 +29,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
   add_library(browser_extensions STATIC ${SRC_FILES})
   target_link_libraries(
-    browser_extensions PRIVATE ${SRC_FOLDER}/external/openssl/libcrypto.a
+    browser_extensions PRIVATE openssl_crypto
     ws2_32 crypt32 version)
 endif()
 

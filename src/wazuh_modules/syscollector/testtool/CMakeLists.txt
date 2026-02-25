@@ -10,8 +10,6 @@ include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${CMAKE_SOURCE_DIR}/src/)
 
 link_directories(${CMAKE_BINARY_DIR}/lib)
-link_directories(${SRC_FOLDER}/external/openssl/)
-link_directories(${SRC_FOLDER}/external/procps/)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
