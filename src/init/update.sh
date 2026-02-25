@@ -402,6 +402,6 @@ UpdateOldVersions()
         ./gen_ossec.sh conf "agent" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
         # Replace IP
         ./src/init/replace_manager_ip.sh $OSSEC_CONF_FILE_ORIG $OSSEC_CONF_FILE
-        ./add_localfiles.sh $PREINSTALLEDDIR $INSTYPE >> $OSSEC_CONF_FILE
+        ./add_localfiles.sh $PREINSTALLEDDIR >> $OSSEC_CONF_FILE
     fi
 }

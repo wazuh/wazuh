@@ -21,26 +21,17 @@ if [ -r "$NEWCONFIG" ]; then
     rm "$NEWCONFIG"
 fi
 
-if [ "$#" = "2" ]; then
+if [ "$#" = "1" ]; then
   INSTALLDIR="$1"
-  INSTYPE="$2"
 fi
 
 echo "" >> $NEWCONFIG
 
-if [ "X${INSTYPE}" = "Xagent" ]; then
-  echo "<ossec_config>" >> $NEWCONFIG
-else
-  echo "<wazuh_config>" >> $NEWCONFIG
-fi
+echo "<ossec_config>" >> $NEWCONFIG
 
 WriteLogs "add"
 
-if [ "X${INSTYPE}" = "Xagent" ]; then
-  echo "</ossec_config>" >> $NEWCONFIG
-else
-  echo "</wazuh_config>" >> $NEWCONFIG
-fi
+echo "</ossec_config>" >> $NEWCONFIG
 
 cat "$NEWCONFIG"
 
