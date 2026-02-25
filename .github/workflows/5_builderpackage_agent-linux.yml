@@ -7,7 +7,7 @@ on:
     paths:
       - "src/**"
       - "packages/**"
-      - ".github/workflows/5_builderpackage_agent-linux-amd64.yml"
+      - ".github/workflows/5_builderpackage_agent-linux.yml"
   workflow_dispatch:
     inputs:
       architecture:

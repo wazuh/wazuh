@@ -7,26 +7,44 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
-  pull_request:
-    paths:
-      - "src/**"
-      - "packages/**"
-      - ".github/workflows/5_testintegration_agent-start.yml"
-      - ".github/workflows/5_builderpackage_agent-linux.yml"
-      - ".github/workflows/5_builderpackage_agent-windows.yml"
-      - ".github/workflows/5_builderpackage_agent-macos.yml"
+
+  workflow_run:
+    workflows:
+      - "5.X - Build Wazuh agent Linux (DEB/RPM)"
+      - "5.X - Build Wazuh agent Windows (MSI)"
+      - "5.X - Build Wazuh agent macOS (PKG)"
+    types:
+      - completed
 
 jobs:
-  # ===================== LINUX DEB (amd64) =====================
   test-linux-deb-amd64:
-    runs-on: ubuntu-22.04
+    if: |
+      (github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.name == '5.X - Build Wazuh agent Linux (DEB/RPM)') ||
+      github.event_name != 'workflow_run'
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     name: Test Linux Agent DEB (amd64) startup
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Wait for DEB package to be built
+      - name: Determine branch/commit for artifact download
+        id: artifact_source
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Using base_branch from input: ${{ inputs.base_branch }}"
+            echo "branch=${{ inputs.base_branch }}" >> $GITHUB_OUTPUT
+            echo "use_branch=true" >> $GITHUB_OUTPUT
+          else
+            # workflow_run trigger
+            echo "Using commit from workflow_run: ${{ github.event.workflow_run.head_sha }}"
+            echo "commit=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+            echo "use_branch=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download DEB package artifact
         uses: dawidd6/action-download-artifact@v3
         with:
           workflow: 5_builderpackage_agent-linux.yml
@@ -37,89 +55,78 @@ jobs:
           if_no_artifact_found: fail
           check_artifacts: true
           search_artifacts: true
+          branch: ${{ steps.artifact_source.outputs.use_branch == 'true' && steps.artifact_source.outputs.branch || '' }}
+          commit: ${{ steps.artifact_source.outputs.use_branch == 'false' && steps.artifact_source.outputs.commit || '' }}
 
-      - name: Get package name
+      - name: Get package name and version
         id: package
         run: |
-          PACKAGE=$(find /tmp/packages -type f -name "wazuh-agent*.deb" ! -name "*dbg*" | head -n1)
-          echo "package-path=$PACKAGE" >> $GITHUB_OUTPUT
-          echo "Found package: $PACKAGE"
-
-      - name: Install Wazuh agent
-        run: |
-          echo "Installing package from: ${{ steps.package.outputs.package-path }}"
-
-          # Set debconf to non-interactive
-          export DEBIAN_FRONTEND=noninteractive
-
-          # Install the package with WAZUH_MANAGER variable (official method from Wazuh documentation)
-          sudo WAZUH_MANAGER="1.2.3.4" dpkg -i "${{ steps.package.outputs.package-path }}" || sudo apt-get install -f -y
-
-          # Verify installation
-          dpkg -l | grep wazuh-agent
-
-      - name: Test daemons with -t flag
-        run: |
-          # Test each daemon binary with -t flag (test configuration)
-          DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-execd"
-
-          echo "Testing daemons with -t flag..."
-          for daemon in $DAEMONS; do
-            echo "Testing ${daemon}..."
-            if ! sudo /var/ossec/bin/${daemon} -t; then
-              echo "ERROR: ${daemon} -t failed with exit code $?"
-              exit 1
-            fi
-            echo "✓ ${daemon} -t passed"
-          done
-
-      - name: Start Wazuh agent
-        run: |
-          echo "Starting Wazuh agent..."
-          sudo /var/ossec/bin/wazuh-control start
-
-      - name: Wait for agent to initialize
-        run: sleep 10
-
-      - name: Verify agent is running
-        run: |
-          echo "Checking agent status..."
-          if ! sudo /var/ossec/bin/wazuh-control status; then
-            echo "ERROR: Agent status check failed"
+          PACKAGE_NAME=$(find /tmp/packages -type f -name "wazuh-agent*amd64*.deb" ! -name "*dbg*" -exec basename {} \; | head -n1)
+          if [ -z "$PACKAGE_NAME" ]; then
+            echo "ERROR: No package found"
             exit 1
           fi
-          echo "✓ Agent is running"
+          echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "Found package: $PACKAGE_NAME"
 
-      - name: Stop Wazuh agent
+          VERSION=$(echo $PACKAGE_NAME | grep -oP '\d+\.\d+\.\d+' | head -n 1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Set container name
         run: |
-          echo "Stopping Wazuh agent..."
-          sudo /var/ossec/bin/wazuh-control stop
-          echo "✓ Agent stopped successfully"
+          echo "CONTAINER_NAME=pkg_deb_agent_builder_amd64" >> $GITHUB_ENV
+          echo "TAG=${{ steps.package.outputs.version }}" >> $GITHUB_ENV
+
+      - name: Download docker image
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+
+      - name: Run smoke test in Docker
+        run: |
+          TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/5_testintegration_agent-start/
+          docker run --rm \
+            -v $TESTS_PATH:/tests \
+            -v /tmp/packages:/packages \
+            --entrypoint '/tests/smoke_startup_test.sh' \
+            ${{ env.CONTAINER_NAME }}:${{ env.TAG }}
 
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: linux-deb-amd64-logs-${{ github.run_id }}
-          path: /var/ossec/logs/
+          path: /tmp/packages/*.log
           retention-days: 7
 
-  # ===================== LINUX RPM (x86_64) =====================
   test-linux-rpm-x86_64:
-    runs-on: ubuntu-22.04
+    if: |
+      (github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.name == '5.X - Build Wazuh agent Linux (DEB/RPM)') ||
+      github.event_name != 'workflow_run'
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     name: Test Linux Agent RPM (x86_64) startup
-    container:
-      image: rockylinux:9
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Determine branch/commit for artifact download
+        id: artifact_source
         run: |
-          dnf install -y findutils which
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Using base_branch from input: ${{ inputs.base_branch }}"
+            echo "branch=${{ inputs.base_branch }}" >> $GITHUB_OUTPUT
+            echo "use_branch=true" >> $GITHUB_OUTPUT
+          else
+            # workflow_run trigger
+            echo "Using commit from workflow_run: ${{ github.event.workflow_run.head_sha }}"
+            echo "commit=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+            echo "use_branch=false" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Wait for RPM package to be built
+      - name: Download RPM package artifact
         uses: dawidd6/action-download-artifact@v3
         with:
           workflow: 5_builderpackage_agent-linux.yml
@@ -130,72 +137,56 @@ jobs:
           if_no_artifact_found: fail
           check_artifacts: true
           search_artifacts: true
+          branch: ${{ steps.artifact_source.outputs.use_branch == 'true' && steps.artifact_source.outputs.branch || '' }}
+          commit: ${{ steps.artifact_source.outputs.use_branch == 'false' && steps.artifact_source.outputs.commit || '' }}
 
-      - name: Get package name
+      - name: Get package name and version
         id: package
         run: |
-          PACKAGE=$(find /tmp/packages -type f -name "wazuh-agent*.rpm" ! -name "*dbg*" | head -n1)
-          echo "package-path=$PACKAGE" >> $GITHUB_OUTPUT
-          echo "Found package: $PACKAGE"
-
-      - name: Install Wazuh agent
-        run: |
-          echo "Installing package from: ${{ steps.package.outputs.package-path }}"
-
-          # Install the package with WAZUH_MANAGER variable (official method from Wazuh documentation)
-          WAZUH_MANAGER="1.2.3.4" rpm -ivh "${{ steps.package.outputs.package-path }}"
-
-          # Verify installation
-          rpm -qa | grep wazuh-agent
-
-      - name: Test daemons with -t flag
-        run: |
-          # Test each daemon binary with -t flag (test configuration)
-          DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-execd"
-
-          echo "Testing daemons with -t flag..."
-          for daemon in $DAEMONS; do
-            echo "Testing ${daemon}..."
-            if ! /var/ossec/bin/${daemon} -t; then
-              echo "ERROR: ${daemon} -t failed with exit code $?"
-              exit 1
-            fi
-            echo "✓ ${daemon} -t passed"
-          done
-
-      - name: Start Wazuh agent
-        run: |
-          echo "Starting Wazuh agent..."
-          /var/ossec/bin/wazuh-control start
-
-      - name: Wait for agent to initialize
-        run: sleep 10
-
-      - name: Verify agent is running
-        run: |
-          echo "Checking agent status..."
-          if ! /var/ossec/bin/wazuh-control status; then
-            echo "ERROR: Agent status check failed"
+          PACKAGE_NAME=$(find /tmp/packages -type f -name "wazuh-agent*x86_64*.rpm" ! -name "*dbg*" ! -name "*debug*" ! -name "*debuginfo*" -exec basename {} \; | head -n1)
+          if [ -z "$PACKAGE_NAME" ]; then
+            echo "ERROR: No package found"
             exit 1
           fi
-          echo "✓ Agent is running"
+          echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "Found package: $PACKAGE_NAME"
 
-      - name: Stop Wazuh agent
+          VERSION=$(echo $PACKAGE_NAME | grep -oP '\d+\.\d+\.\d+' | head -n 1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Set container name
         run: |
-          echo "Stopping Wazuh agent..."
-          /var/ossec/bin/wazuh-control stop
-          echo "✓ Agent stopped successfully"
+          echo "CONTAINER_NAME=pkg_rpm_agent_builder_amd64" >> $GITHUB_ENV
+          echo "TAG=${{ steps.package.outputs.version }}" >> $GITHUB_ENV
+
+      - name: Download docker image
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+
+      - name: Run smoke test in Docker
+        run: |
+          TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/5_testintegration_agent-start/
+          docker run --rm \
+            -v $TESTS_PATH:/tests \
+            -v /tmp/packages:/packages \
+            --entrypoint '/tests/smoke_startup_test.sh' \
+            ${{ env.CONTAINER_NAME }}:${{ env.TAG }}
 
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: linux-rpm-x86_64-logs-${{ github.run_id }}
-          path: /var/ossec/logs/
+          path: /tmp/packages/*.log
           retention-days: 7
 
-  # ===================== WINDOWS =====================
   test-windows:
+    if: |
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.name == '5.X - Build Wazuh agent Windows (MSI)') ||
+      github.event_name != 'workflow_run'
     runs-on: windows-2022
     timeout-minutes: 30
     name: Test Windows Agent startup
@@ -203,7 +194,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Wait for MSI package to be built
+      - name: Determine branch/commit for artifact download
+        id: artifact_source
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Using base_branch from input: ${{ inputs.base_branch }}"
+            echo "branch=${{ inputs.base_branch }}" >> $GITHUB_OUTPUT
+            echo "use_branch=true" >> $GITHUB_OUTPUT
+          else
+            # workflow_run trigger
+            echo "Using commit from workflow_run: ${{ github.event.workflow_run.head_sha }}"
+            echo "commit=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+            echo "use_branch=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download MSI package artifact
         uses: dawidd6/action-download-artifact@v3
         with:
           workflow: 5_builderpackage_agent-windows.yml
@@ -214,12 +220,19 @@ jobs:
           if_no_artifact_found: fail
           check_artifacts: true
           search_artifacts: true
+          branch: ${{ steps.artifact_source.outputs.use_branch == 'true' && steps.artifact_source.outputs.branch || '' }}
+          commit: ${{ steps.artifact_source.outputs.use_branch == 'false' && steps.artifact_source.outputs.commit || '' }}
 
       - name: Get package name
         id: package
         shell: pwsh
         run: |
-          $PACKAGE = Get-ChildItem -Path "C:\packages" -Filter "wazuh-agent*.msi" -Recurse | Select-Object -First 1 -ExpandProperty FullName
+          $PACKAGE = Get-ChildItem -Path "C:\packages" -Filter "wazuh-agent*windows*.msi" -Recurse | Where-Object { $_.Name -notmatch 'debug' } | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $PACKAGE) {
+            Write-Host "ERROR: No MSI package found"
+            Get-ChildItem -Path "C:\packages" -Recurse | Format-Table Name, FullName
+            exit 1
+          }
           echo "package-path=$PACKAGE" >> $env:GITHUB_OUTPUT
           Write-Host "Found package: $PACKAGE"
 
@@ -293,8 +306,12 @@ jobs:
           path: C:\Program Files (x86)\ossec-agent\*.log
           retention-days: 7
 
-  # ===================== MACOS (arm64) =====================
   test-macos-arm64:
+    if: |
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.name == '5.X - Build Wazuh agent macOS (PKG)') ||
+      github.event_name != 'workflow_run'
     runs-on: macos-14
     timeout-minutes: 30
     name: Test macOS Agent (arm64) startup
@@ -302,7 +319,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Wait for PKG package to be built
+      - name: Determine branch/commit for artifact download
+        id: artifact_source
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Using base_branch from input: ${{ inputs.base_branch }}"
+            echo "branch=${{ inputs.base_branch }}" >> $GITHUB_OUTPUT
+            echo "use_branch=true" >> $GITHUB_OUTPUT
+          else
+            # workflow_run trigger
+            echo "Using commit from workflow_run: ${{ github.event.workflow_run.head_sha }}"
+            echo "commit=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+            echo "use_branch=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download PKG package artifact
         uses: dawidd6/action-download-artifact@v3
         with:
           workflow: 5_builderpackage_agent-macos.yml
@@ -313,6 +344,8 @@ jobs:
           if_no_artifact_found: fail
           check_artifacts: true
           search_artifacts: true
+          branch: ${{ steps.artifact_source.outputs.use_branch == 'true' && steps.artifact_source.outputs.branch || '' }}
+          commit: ${{ steps.artifact_source.outputs.use_branch == 'false' && steps.artifact_source.outputs.commit || '' }}
 
       - name: Get package name
         id: package
