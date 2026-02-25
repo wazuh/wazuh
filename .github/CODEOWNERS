@@ -3,16 +3,20 @@
 # ##########################################
 
 # Engine Module
-/src/engine/              @wazuh/devel-xdrsiem-server-div3
-/docs/ref/modules/engine/ @wazuh/devel-xdrsiem-server-div3
+/src/engine/              @wazuh/devel-xdrsiem-server-div3 @wazuh/devel-xdrsiem-server-leaders
+/docs/ref/modules/engine/ @wazuh/devel-xdrsiem-server-div3 @wazuh/devel-xdrsiem-server-leaders
 
 # Indexer connector
-/src/shared_modules/indexer_connector/ @wazuh/devel-xdrsiem-server-div1 @wazuh/devel-xdrsiem-server-div3
+/src/shared_modules/indexer_connector/ @wazuh/devel-xdrsiem-server-div1 @wazuh/devel-xdrsiem-server-div3 @wazuh/devel-xdrsiem-server-leaders
 
 # Framework and API
 
-/framework/ @wazuh/devel-xdrsiem-server-div2
-/api/ @wazuh/devel-xdrsiem-server-div2
+/framework/ @wazuh/devel-xdrsiem-server-div2 @wazuh/devel-xdrsiem-server-leaders
+/api/ @wazuh/devel-xdrsiem-server-div2 @wazuh/devel-xdrsiem-server-leaders
+
+# VD/IS
+/src/wazuh_modules/inventory_sync/          @wazuh/devel-xdrsiem-server-div1 @wazuh/devel-xdrsiem-server-leaders
+/src/wazuh_modules/vulnerability_scanner/   @wazuh/devel-xdrsiem-server-div1 @wazuh/devel-xdrsiem-server-leaders
 
 # ##########################################
 #           Wazuh Agent Modules
@@ -21,7 +25,7 @@
 # Agent Modules
 
 # ##########################################
-#            Sahred Modules
+#            Shared Modules
 # ##########################################
 
 # Shared Modules
