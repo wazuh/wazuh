@@ -2367,7 +2367,7 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Changed the internal handling of agent keys in Remoted and Remoted to speed up key reloading. ([#8083](https://github.com/wazuh/wazuh/pull/8083))
-- The option `<server>` of the Syslog output now supports hostname resolution. ([#7885](https://github.com/wazuh/wazuh/pull/7885))
+- The option `<manager>` of the Syslog output now supports hostname resolution. ([#7885](https://github.com/wazuh/wazuh/pull/7885))
 - The product's UNIX user and group have been renamed to "wazuh". ([#7763](https://github.com/wazuh/wazuh/pull/7763))
 - The MITRE database has been redesigned to provide full and searchable data. ([#7865](https://github.com/wazuh/wazuh/pull/7865))
 - The static fields related to FIM have been ported to dynamic fields in Analysisd. ([7358](https://github.com/wazuh/wazuh/pull/7358))

@@ -321,14 +321,14 @@ WriteAgent()
 
     echo "<ossec_config>" >> $NEWCONFIG
     echo "  <client>" >> $NEWCONFIG
-    echo "    <server>" >> $NEWCONFIG
+    echo "    <manager>" >> $NEWCONFIG
     if [ "X${HNAME}" = "X" ]; then
       echo "      <address>$SERVER_IP</address>" >> $NEWCONFIG
     else
       echo "      <address>$HNAME</address>" >> $NEWCONFIG
     fi
     echo "      <port>1514</port>" >> $NEWCONFIG
-    echo "    </server>" >> $NEWCONFIG
+    echo "    </manager>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}
          echo "    <config-profile>$PROFILE</config-profile>" >> $NEWCONFIG

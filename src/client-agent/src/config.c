@@ -125,7 +125,7 @@ cJSON *getClientConfig(void) {
 
             cJSON_AddItemToArray(servers,server);
         }
-        cJSON_AddItemToObject(client,"server",servers);
+        cJSON_AddItemToObject(client,"manager",servers);
     }
 
     if (agt->enrollment_cfg) {

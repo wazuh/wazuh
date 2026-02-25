@@ -4922,7 +4922,7 @@ paths:
                     auto_restart: "yes"
                     remote_conf: "yes"
                     crypto_method: "aes"
-                    server:
+                    manager:
                       - address: "nginx-lb/172.25.0.4"
                         port: 1514
                         max_retries: 5
