@@ -9,13 +9,13 @@ import jwt
 from content_size_limit_asgi.errors import ContentSizeExceeded
 
 from api import configuration
-from api.middlewares import ip_block, ip_stats, LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
+from api.middlewares import ip_block, ip_stats, ip_lock, LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
 from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
 from api.controllers.util import json_response, ERROR_CONTENT_TYPE
 from wazuh.core.utils import get_utc_now
 
 
-def prevent_bruteforce_attack(request: ConnexionRequest, attempts: int = 5):
+async def prevent_bruteforce_attack(request: ConnexionRequest, attempts: int = 5):
     """Check that the IPs that are requesting an API token do not do so repeatedly.
 
     Parameters
@@ -28,15 +28,18 @@ def prevent_bruteforce_attack(request: ConnexionRequest, attempts: int = 5):
 
     if request.scope['path'] in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and \
             request.method in {'GET', 'POST'}:
-        if request.client.host not in ip_stats:
-            ip_stats[request.client.host] = dict()
-            ip_stats[request.client.host]['attempts'] = 1
-            ip_stats[request.client.host]['timestamp'] = get_utc_now().timestamp()
-        else:
-            ip_stats[request.client.host]['attempts'] += 1
+        host = request.client.host
 
-        if ip_stats[request.client.host]['attempts'] >= attempts:
-            ip_block.add(request.client.host)
+        async with ip_lock:
+            if host not in ip_stats:
+                ip_stats[host] = dict()
+                ip_stats[host]['attempts'] = 1
+                ip_stats[host]['timestamp'] = get_utc_now().timestamp()
+            else:
+                ip_stats[host]['attempts'] += 1
+
+            if ip_stats[host]['attempts'] >= attempts:
+                ip_block.add(host)
 
 
 def _cleanup_detail_field(detail: str) -> str:
@@ -101,7 +104,7 @@ async def unauthorized_error_handler(request: ConnexionRequest,
         request.method in {'GET', 'POST'}:
         problem["detail"] = "Invalid credentials"
 
-        prevent_bruteforce_attack(
+        await prevent_bruteforce_attack(
             request=request,
             attempts=configuration.api_conf['access']['max_login_attempts']
         )
