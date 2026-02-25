@@ -1,0 +1,22 @@
+# ##########################################
+#    CODEOWNERS - Wazuh Server Modules
+# ##########################################
+
+# Engine Module
+/src/engine/              @wazuh/devel-xdrsiem-server-div3
+/docs/ref/modules/engine/ @wazuh/devel-xdrsiem-server-div3
+
+# Indexer connector
+/src/shared_modules/indexer_connector/ @wazuh/devel-xdrsiem-server-div1 @wazuh/devel-xdrsiem-server-div3
+
+# ##########################################
+#           Wazuh Agent Modules
+# ##########################################
+
+# Agent Modules
+
+# ##########################################
+#            Sahred Modules
+# ##########################################
+
+# Shared Modules
