@@ -725,7 +725,7 @@ LIBFFI_FLAGS = "CFLAGS=-fPIC"
 
 ${LIBFFI_LIB}:
 	cd ${EXTERNAL_LIBFFI} && test -e server -o -e $(TARGET) || (./configure $(LIBFFI_FLAGS) && ${MAKE})
-ifneq (${TARGET},server)
+ifeq (${TARGET},manager)
 	cd ${EXTERNAL_LIBFFI} && test -e server && mv server $(TARGET) || true
 endif
 
