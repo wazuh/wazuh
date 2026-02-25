@@ -7,6 +7,8 @@
 - [Setup Environment](dev/setup.md)
 - [Build from Sources](dev/build-sources.md)
 - [Run from Sources](dev/run-sources.md)
+- [Package generation](dev/package-generation.md)
+- [Test execution](dev/test-execution.md)
 
 # Reference Manual
 
@@ -33,6 +35,9 @@
     - [API Reference](ref/modules/fim/api-reference.md)
     - [Configuration](ref/modules/fim/configuration.md)
     - [Database Schema](ref/modules/fim/database-schema.md)
+    - [Windows Registry monitoring](ref/modules/fim/windows-registry-monitoring.md)
+  - [Logcollector](ref/modules/logcollector/README.md)
+    - [Configuration](ref/modules/logcollector/configuration.md)
   - [Rootcheck](ref/modules/rootcheck/README.md)
     - [Architecture](ref/modules/rootcheck/architecture.md)
     - [Configuration](ref/modules/rootcheck/configuration.md)
@@ -43,6 +48,7 @@
     - [Configuration](ref/modules/sca/configuration.md)
     - [Database Schema](ref/modules/sca/database-schema.md)
     - [Output Samples](ref/modules/sca/output-samples.md)
+    - [Custom policies](ref/modules/sca/custom-policies.md)
   - [Syscollector](ref/modules/syscollector/README.md)
     - [Architecture](ref/modules/syscollector/architecture.md)
     - [API Reference](ref/modules/syscollector/api-reference.md)
@@ -79,6 +85,9 @@
     - [Protocol Lifecycle](ref/modules/utils/sync-protocol/lifecycle.md)
     - [Sequence Diagrams](ref/modules/utils/sync-protocol/sequence-diagrams.md)
   - [FlatBuffers](ref/modules/utils/flatbuffers/README.md)
+  - [RBAC](ref/modules/rbac/README.md)
+  - [Cluster](ref/modules/cluster/README.md)
+    - [Load balancers](ref/modules/cluster/lb.md)
 - [Upgrade](ref/upgrade.md)
 - [Uninstall](ref/uninstall.md)
 - [Back Up and Restore](ref/backup-restore.md)
