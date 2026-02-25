@@ -9,6 +9,11 @@
 # Indexer connector
 /src/shared_modules/indexer_connector/ @wazuh/devel-xdrsiem-server-div1 @wazuh/devel-xdrsiem-server-div3
 
+# Framework and API
+
+/framework/ @wazuh/devel-xdrsiem-server-div2
+/api/ @wazuh/devel-xdrsiem-server-div2
+
 # ##########################################
 #           Wazuh Agent Modules
 # ##########################################
