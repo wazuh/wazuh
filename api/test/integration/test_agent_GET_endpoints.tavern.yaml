@@ -42,7 +42,7 @@ stages:
             - id: '011'
             - id: '012'
           failed_items: []
-          total_affected_items: 13
+          total_affected_items: 12
           total_failed_items: 0
 
   - name: Get all agents inverse order
@@ -108,7 +108,7 @@ stages:
             - id: '012'
             - id: '011'
           failed_items: []
-          total_affected_items: 13
+          total_affected_items: 12
           total_failed_items: 0
 
   - name: Get all agents sorted by version in ascending order
@@ -147,7 +147,7 @@ stages:
             - id: '004'
               version: 'v{wazuh_version:s}'
           failed_items: [ ]
-          total_affected_items: 13
+          total_affected_items: 12
           total_failed_items: 0
 
   - name: Get all agents sorted by status
@@ -202,7 +202,7 @@ stages:
             - status: active
               id: '001'
           failed_items: []
-          total_affected_items: 13
+          total_affected_items: 12
           total_failed_items: 0
 
   - name: Try to show agents using offset -1
@@ -364,7 +364,7 @@ stages:
               os:
                 platform: !anystr
           failed_items: []
-          total_affected_items: 13
+          total_affected_items: 12
           total_failed_items: 0
 
   - name: Filter select multiple fields
@@ -386,14 +386,14 @@ stages:
         error: 0
         data:
           affected_items:
-            - id: '001'
-              dateAdd: !anystr
-              mergedSum: !anystr
             - id: '002'
               dateAdd: !anystr
               mergedSum: !anystr
+            - id: '003'
+              dateAdd: !anystr
+              mergedSum: !anystr
           failed_items: []
-          total_affected_items: 13
+          total_affected_items: 12
           total_failed_items: 0
 
   - name: Try to show agents using a not allowed selector
@@ -504,7 +504,7 @@ stages:
               os:
                 platform: "{expected_os_platform:s}"
           failed_items: []
-          total_affected_items: 11
+          total_affected_items: 10
           total_failed_items: 0
 
   - name: Try to show agents using a non existing OS Platform
@@ -548,7 +548,7 @@ stages:
               os:
                 version: "{expected_os_version:s}"
           failed_items: []
-          total_affected_items: 5
+          total_affected_items: 3
           total_failed_items: 0
 
   - name: Try to show agents using a non existing OS Version
@@ -592,7 +592,7 @@ stages:
               os:
                 name: "{expected_os_name:s}"
           failed_items: []
-          total_affected_items: 11
+          total_affected_items: 10
           total_failed_items: 0
 
   - name: Try to show agents using a non existing OS Name
@@ -919,7 +919,7 @@ stages:
             - id: '007'
             - id: '008'
           failed_items: []
-          total_affected_items: 9
+          total_affected_items: 8
           total_failed_items: 0
 
   - name: Filter agents by group_config_status (not synced)
@@ -1135,7 +1135,7 @@ stages:
             - id: '003'
             - id: '004'
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: 3
           total_failed_items: 0
 
   - name: Filter agents by nested queries (first)
@@ -4296,7 +4296,7 @@ stages:
         error: 0
         data:
           affected_items:
-            - count: 4
+            - count: 3
               status: 'active'
           failed_items: []
           total_affected_items: !anyint
@@ -4383,9 +4383,6 @@ stages:
 
 ---
 test_name: GET /agents/summary/status
-
-marks:
-  - xfail # This will be failing until we complete https://github.com/wazuh/wazuh/issues/34175, we need to remove before final merge.
 
 stages:
 
