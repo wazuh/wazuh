@@ -1,12 +1,12 @@
 #ifndef _MOCK_QUEUE_HPP
 #define _MOCK_QUEUE_HPP
 
+#include <fastqueue/iqueue.hpp>
 #include <gmock/gmock.h>
-#include <queue/iqueue.hpp>
 
-using namespace base::queue;
+using namespace fastqueue;
 
-namespace queue::mocks
+namespace fastqueue::mocks
 {
 template<typename T>
 class MockQueue : public iQueue<T>
