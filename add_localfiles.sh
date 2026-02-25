@@ -26,8 +26,11 @@ if [ "$#" = "1" ]; then
 fi
 
 echo "" >> $NEWCONFIG
+
 echo "<ossec_config>" >> $NEWCONFIG
+
 WriteLogs "add"
+
 echo "</ossec_config>" >> $NEWCONFIG
 
 cat "$NEWCONFIG"

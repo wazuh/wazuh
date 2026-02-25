@@ -124,8 +124,8 @@ variables:
     </localfile>
     </agent_config>
 
-  valid_ossec_conf:
-    <ossec_config>
+  valid_wazuh_conf:
+    <wazuh_config>
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>
         <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
@@ -150,10 +150,10 @@ variables:
         <enabled>no</enabled>
         <feed-update-interval>60m</feed-update-interval>
       </vulnerability-detection>
-    </ossec_config>
+    </wazuh_config>
 
-  valid_ossec_conf_with_update_check_enabled:
-    <ossec_config>
+  valid_wazuh_conf_with_update_check_enabled:
+    <wazuh_config>
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>
         <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
@@ -179,10 +179,10 @@ variables:
         <enabled>no</enabled>
         <feed-update-interval>60m</feed-update-interval>
       </vulnerability-detection>
-    </ossec_config>
+    </wazuh_config>
 
-  invalid_ossec_conf:
-    <ossec_config>
+  invalid_wazuh_conf:
+    <wazuh_config>
       <global>
       </global>
 
@@ -192,10 +192,10 @@ variables:
       </vulnerability-detection>
 
       <remote>
-    </ossec_config>
+    </wazuh_config>
 
-  invalid_ossec_xml:
-    <ossec_config>
+  invalid_wazuh_xml:
+    <wazuh_config>
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>
         <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
@@ -215,10 +215,10 @@ variables:
       <syscheck>
         <disabled>yes</disabled>
       </syscheck>
-    </ossec_config>
+    </wazuh_config>
 
-  ossec_conf_with_invalid_cti_url:
-    <ossec_config>
+  wazuh_conf_with_invalid_cti_url:
+    <wazuh_config>
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>
         <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
@@ -244,4 +244,4 @@ variables:
         <enabled>no</enabled>
         <feed-update-interval>60m</feed-update-interval>
       </vulnerability-detection>
-    </ossec_config>
+    </wazuh_config>

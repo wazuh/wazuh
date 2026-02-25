@@ -928,22 +928,22 @@ def check_remote_commands(new_conf: Element, original_conf: Element):
 
     ALLOW_KEY = 'allow'
     EXCEPTIONS_KEY = 'exceptions'
-    LOCALFILE_HIERACHY = ['ossec_config', 'localfile']
-    WODLE_HIERACHY = ['ossec_config', 'wodle']
+    LOCALFILE_HIERARCHY = ['wazuh_config', 'localfile']
+    WODLE_HIERARCHY = ['wazuh_config', 'wodle']
     LOCALFILE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['localfile']
     WODLE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['wodle_command']
 
     if not LOCALFILE_SETTINGS[ALLOW_KEY]:
-        new_localfile = xml_to_dict(new_conf, LOCALFILE_HIERACHY)
-        original_localfile = xml_to_dict(original_conf, LOCALFILE_HIERACHY)
+        new_localfile = xml_to_dict(new_conf, LOCALFILE_HIERARCHY)
+        original_localfile = xml_to_dict(original_conf, LOCALFILE_HIERARCHY)
 
         if normalize(_filter_remote_commands(new_localfile, LOCALFILE_SETTINGS[EXCEPTIONS_KEY])) \
             != normalize(_filter_remote_commands(original_localfile, LOCALFILE_SETTINGS[EXCEPTIONS_KEY])):
             raise WazuhError(1124, extra_message="localfile")
 
     if not WODLE_SETTINGS[ALLOW_KEY]:
-        new_wodle = xml_to_dict(new_conf, WODLE_HIERACHY)
-        original_wodle = xml_to_dict(original_conf, WODLE_HIERACHY)
+        new_wodle = xml_to_dict(new_conf, WODLE_HIERARCHY)
+        original_wodle = xml_to_dict(original_conf, WODLE_HIERARCHY)
 
         if normalize(_filter_wodle_commands(new_wodle, WODLE_SETTINGS[EXCEPTIONS_KEY])) \
             != normalize(_filter_wodle_commands(original_wodle, WODLE_SETTINGS[EXCEPTIONS_KEY])):
@@ -955,7 +955,7 @@ def xml_to_dict(root, section_path: list):
     Parameters
     ----------
     root : Element
-        Root element containing one or more ossec_config nodes.
+        Root element containing one or more wazuh_config nodes.
     section_path : list
         List of strings representing the path to the desired section.
 
@@ -1042,11 +1042,11 @@ def check_wazuh_limits_unchanged(new_conf, original_conf):
     WazuhError(1127)
         Raised if one of the protected limits is modified in the configuration to upload.
     """
-    CONFIG_LIMITS_HIERACHY = ['ossec_config', 'global', 'limits']
+    CONFIG_LIMITS_HIERARCHY = ['wazuh_config', 'global', 'limits']
     limits_configuration = configuration.api_conf['upload_configuration']['limits']
     for disabled_limit in [conf for conf, allowed in limits_configuration.items() if not allowed['allow']]:
-        new_limits = xml_to_dict(new_conf, CONFIG_LIMITS_HIERACHY + [disabled_limit])
-        original_limits = xml_to_dict(original_conf, CONFIG_LIMITS_HIERACHY + [disabled_limit])
+        new_limits = xml_to_dict(new_conf, CONFIG_LIMITS_HIERARCHY + [disabled_limit])
+        original_limits = xml_to_dict(original_conf, CONFIG_LIMITS_HIERARCHY + [disabled_limit])
 
         if normalize(new_limits) != normalize(original_limits):
             raise WazuhError(1127, extra_message=f"global > limits > {disabled_limit}")
@@ -1068,18 +1068,18 @@ def check_agents_allow_higher_versions(new_conf: Element, original_conf: Element
         Raised if the agents allow_higher_versions setting is modified in the configuration to upload.
     """
 
-    AUTH_HIERACHY = ['ossec_config', 'auth', 'allow_higher_versions']
-    REMOTE_HIERACHY = ['ossec_config', 'remote', 'allow_higher_versions']
+    AUTH_HIERARCHY = ['wazuh_config', 'auth', 'allow_higher_versions']
+    REMOTE_HIERARCHY = ['wazuh_config', 'remote', 'allow_higher_versions']
     upload_configuration = configuration.api_conf['upload_configuration']
 
     if not upload_configuration['agents']['allow_higher_versions']['allow']:
-        new_auth = xml_to_dict(new_conf, AUTH_HIERACHY)
-        original_auth = xml_to_dict(original_conf, AUTH_HIERACHY)
+        new_auth = xml_to_dict(new_conf, AUTH_HIERARCHY)
+        original_auth = xml_to_dict(original_conf, AUTH_HIERARCHY)
         if normalize(new_auth) != normalize(original_auth):
             raise WazuhError(1129, extra_message='auth > allow_higher_versions')
 
-        new_remote = xml_to_dict(new_conf, REMOTE_HIERACHY)
-        original_remote = xml_to_dict(original_conf, REMOTE_HIERACHY)
+        new_remote = xml_to_dict(new_conf, REMOTE_HIERARCHY)
+        original_remote = xml_to_dict(original_conf, REMOTE_HIERARCHY)
         if normalize(new_remote) != normalize(original_remote):
             raise WazuhError(1129, extra_message='remote > allow_higher_versions')
 
@@ -1100,12 +1100,12 @@ def check_indexer(new_conf, original_conf):
         Raised if the indexer section is modified in the configuration to upload.
     """
 
-    CONFIG_INDEXER_HIERACHY = ['ossec_config', 'indexer']
+    CONFIG_INDEXER_HIERARCHY = ['wazuh_config', 'indexer']
     upload_configuration = configuration.api_conf['upload_configuration']
 
     if not upload_configuration['indexer']['allow']:
-        new_indexer = xml_to_dict(new_conf, CONFIG_INDEXER_HIERACHY)
-        original_indexer = xml_to_dict(original_conf, CONFIG_INDEXER_HIERACHY)
+        new_indexer = xml_to_dict(new_conf, CONFIG_INDEXER_HIERARCHY)
+        original_indexer = xml_to_dict(original_conf, CONFIG_INDEXER_HIERARCHY)
         if normalize(new_indexer) != normalize(original_indexer):
             raise WazuhError(1127, extra_message='indexer')
 

@@ -19,6 +19,7 @@
 #include "wmodules.h"
 #include "wm_agent_upgrade_parsing.h"
 #include "wm_agent_upgrade_tasks.h"
+#include "shared.h"
 
 /**
  * Parses agents array and returns an array of agent ids
@@ -423,7 +424,7 @@ cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJ
     char* node_name = NULL;
     OS_XML xml;
 
-    const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
+    const char *(xml_node[]) = {OSSECCONFIG, "cluster", "node_name", NULL};
 
     if (OS_ReadXML(OSSECCONF, &xml) >= 0) {
         node_name = OS_GetOneContentforElement(&xml, xml_node);

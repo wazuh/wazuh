@@ -9,7 +9,7 @@ File: `/var/wazuh-manager/etc/wazuh-manager.conf`
 ### Key Options
 
 ```xml
-<ossec_config>
+<wazuh_config>
   <remote>
     <connection>secure</connection>
     <port>1514</port>
@@ -17,7 +17,7 @@ File: `/var/wazuh-manager/etc/wazuh-manager.conf`
     <queue_size>131072</queue_size>
     <allow_higher_versions>yes</allow_higher_versions>
   </remote>
-</ossec_config>
+</wazuh_config>
 ```
 
 | Option | Default | Description |

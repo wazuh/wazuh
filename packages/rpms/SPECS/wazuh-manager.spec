@@ -104,7 +104,6 @@ install -m 0644 src/init/templates/wazuh-manager.service ${RPM_BUILD_ROOT}/usr/l
 # Add configuration scripts
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/
 cp gen_ossec.sh ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/
-cp add_localfiles.sh ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/
 
 # Templates for initscript
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/src/init
@@ -348,9 +347,6 @@ if [ $1 = 1 ]; then
   touch %{_localstatedir}/logs/wazuh-manager.json
   chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/wazuh-manager.json
   chmod 0660 %{_localstatedir}/logs/wazuh-manager.json
-
-  # Add default local_files to wazuh-manager.conf
-  %{_localstatedir}/packages_files/manager_installation_scripts/add_localfiles.sh %{_localstatedir} >> %{_localstatedir}/etc/wazuh-manager.conf
 fi
 
 if [[ -d /run/systemd/system ]]; then
@@ -631,7 +627,6 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/wazuh
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts
-%attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/add_localfiles.sh
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/gen_ossec.sh
 %attr(440, wazuh-manager, wazuh-manager) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/VERSION.json
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/src/
