@@ -10,6 +10,11 @@ const std::string ENRICHMENT_SPACE_TRACEABLE_NAME = "enrichment/OriginSpace";
 const std::string UNCLASSIFIED_FILTER_TRACEABLE_NAME = "filter/UnclassifiedEvents";
 const std::string DISCARDED_EVENTS_FILTER_TRACEABLE_NAME = "filter/DiscardedEvents";
 
+constexpr auto POSITIVE_INDEXED_BY_DISCARDED_TRUE = "Discard_event() -> Success: Event will be indexed (index_discarded_events=true)";
+constexpr auto NEGATIVE_INDEXED_BY_DISCARDED_TRUE_FIELD_FALSE =
+    "Discard_event() -> Failure: Event won't be indexed (wazuh.space.event_discarded=true and index_discarded_events=false)";
+constexpr auto POSITIVE_INDEXED_BY_DISCARDED_FALSE = "Discard_event() -> Success: Event will be indexed (wazuh.space.event_discarded=false)";
+
 } // namespace
 namespace builder::builders::enrichment
 {
@@ -95,7 +100,7 @@ std::pair<base::Expression, std::string> getDiscardedEventsFilter(const cm::stor
                 if (trace)
                 {
                     return base::result::makeSuccess<decltype(event)>(
-                        event, "Event will be indexed (index_discarded_events=true)");
+                        event, POSITIVE_INDEXED_BY_DISCARDED_TRUE);
                 }
                 return base::result::makeSuccess<decltype(event)>(event);
             }
@@ -107,7 +112,7 @@ std::pair<base::Expression, std::string> getDiscardedEventsFilter(const cm::stor
                 if (trace)
                 {
                     return base::result::makeFailure<decltype(event)>(
-                        event, "Event won't be indexed (wazuh.space.event_discarded=true and index_discarded_events=false)");
+                        event, NEGATIVE_INDEXED_BY_DISCARDED_TRUE_FIELD_FALSE);
                 }
                 return base::result::makeFailure<decltype(event)>(event);
             }
@@ -115,7 +120,7 @@ std::pair<base::Expression, std::string> getDiscardedEventsFilter(const cm::stor
             if (trace)
             {
                 return base::result::makeSuccess<decltype(event)>(
-                    event, "Event will be indexed (wazuh.space.event_discarded=false)");
+                    event, POSITIVE_INDEXED_BY_DISCARDED_FALSE);
             }
             return base::result::makeSuccess<decltype(event)>(event);
         });
