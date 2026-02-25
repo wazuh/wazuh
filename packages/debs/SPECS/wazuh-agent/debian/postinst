@@ -40,9 +40,10 @@ case "$1" in
 
         ${SCRIPTS_DIR}/gen_ossec.sh conf agent ${OS} ${VER} ${DIR} > ${DIR}/etc/ossec.conf
         ${SCRIPTS_DIR}/add_localfiles.sh ${DIR} >> ${DIR}/etc/ossec.conf
+        chmod 640 ${DIR}/etc/ossec.conf
     else
         ${SCRIPTS_DIR}/gen_ossec.sh conf agent ${OS} ${VER} ${DIR} > ${DIR}/etc/ossec.conf.new
-        chmod 660 ${DIR}/etc/ossec.conf.new
+        chmod 640 ${DIR}/etc/ossec.conf.new
     fi
 
     # For the etc dir
@@ -64,6 +65,7 @@ case "$1" in
     # Restore ossec.conf configuration
     if [ -f ${WAZUH_TMP_DIR}/ossec.conf ]; then
         mv ${WAZUH_TMP_DIR}/ossec.conf ${DIR}/etc/ossec.conf
+        chmod 640 ${DIR}/etc/ossec.conf
     fi
     # Restore internal options configuration
     if [ -f ${WAZUH_TMP_DIR}/local_internal_options.conf ]; then
