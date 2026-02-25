@@ -21,8 +21,9 @@ if [ -r "$NEWCONFIG" ]; then
     rm "$NEWCONFIG"
 fi
 
-if [ "$#" = "1" ]; then
+if [ "$#" = "2" ]; then
   INSTALLDIR="$1"
+  INSTYPE="$2"
 fi
 
 echo "" >> $NEWCONFIG
