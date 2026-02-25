@@ -52,13 +52,13 @@ wazuh# cd packages
 **Example Usage:**
 
 1. Build a manager package for amd64 architecture:
-./wazuh_package_builder.sh -t manager -a amd64 -s /tmp --system rpm
+`./wazuh_package_builder.sh -t manager -a amd64 -s /tmp --system rpm`
 
 2. Build a debug agent package for i386 architecture with checksum generation:
-./wazuh_package_builder.sh -t agent -a i386 -s /tmp -d -c --system rpm
+`./wazuh_package_builder.sh -t agent -a i386 -s /tmp -d -c --system rpm`
 
 3. Build a package using local Wazuh source code:
-./wazuh_package_builder.sh -t manager -a amd64 --sources /path/to/wazuh/source --system rpm
+`./wazuh_package_builder.sh -t manager -a amd64 --sources /path/to/wazuh/source --system rpm`
 
 
 **Notes:**
