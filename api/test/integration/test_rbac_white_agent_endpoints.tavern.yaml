@@ -23,7 +23,7 @@ stages:
             - id: '010'
             - id: '012'
           failed_items: []
-          total_affected_items: 7
+          total_affected_items: 6
           total_failed_items: 0
 
   - name: Get a list of agents (Denied)
@@ -593,7 +593,7 @@ stages:
        error: 0
        data:
          affected_items:
-           - count: 6
+           - count: 5
              os:
                platform: !anystr
          failed_items: []
@@ -628,9 +628,6 @@ stages:
 
 ---
 test_name: GET /agents/summary/status
-
-marks:
-  - xfail # This will be failing until we complete https://github.com/wazuh/wazuh/issues/34175, we need to remove before final merge.
 
 stages:
 
