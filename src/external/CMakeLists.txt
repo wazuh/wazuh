@@ -405,8 +405,8 @@ endif()
 # ------------------------------------------------------------------------------
 
 if(NOT IS_AGENT)
-  # Note: libffi uses ${TARGET} in path which is resolved at configure time
-  if(EXISTS ${EXTERNAL_DIR}/libffi/${TARGET}/.libs/libffi.a)
+  # libffi builds in-source using autotools
+  if(EXISTS ${EXTERNAL_DIR}/libffi/.libs/libffi.a)
     message(STATUS "Using precompiled libffi library")
     add_custom_target(libffi_external)
   else()
@@ -418,13 +418,13 @@ if(NOT IS_AGENT)
       BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
       BUILD_IN_SOURCE TRUE
       INSTALL_COMMAND ""
-      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/libffi/${TARGET}/.libs/libffi.a)
+      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/libffi/.libs/libffi.a)
   endif()
 
   add_library(ext_libffi STATIC IMPORTED GLOBAL)
   set_target_properties(
     ext_libffi PROPERTIES IMPORTED_LOCATION
-                          ${EXTERNAL_DIR}/libffi/${TARGET}/.libs/libffi.a)
+                          ${EXTERNAL_DIR}/libffi/.libs/libffi.a)
   add_dependencies(ext_libffi libffi_external)
 endif()
 
@@ -1076,7 +1076,7 @@ endif()
 # GoogleTest (test builds only)
 # ------------------------------------------------------------------------------
 
-if(UNIT_TEST)
+if(UNIT_TEST OR WAZUH_ENGINE_TEST)
   if(IS_WINDOWS)
     find_program(FULL_RANLIB ${CMAKE_RANLIB} REQUIRED)
     set(GTEST_CMAKE_ARGS
@@ -1153,7 +1153,7 @@ endif()
 # Google Benchmark (test builds only)
 # ------------------------------------------------------------------------------
 
-if(UNIT_TEST)
+if(UNIT_TEST OR WAZUH_ENGINE_TEST)
   if(EXISTS ${EXTERNAL_DIR}/benchmark/build/src/libbenchmark.a)
     message(STATUS "Using precompiled benchmark library")
     add_custom_target(benchmark_external)

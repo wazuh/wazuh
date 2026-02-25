@@ -43,5 +43,7 @@ foreach(schema IN LISTS schemas)
 
   add_custom_target(${schema}_schema_input_target DEPENDS ${OUTPUT_HEADER})
   add_dependencies(compile_schemas_input ${schema}_schema_input_target)
-  add_dependencies(${schema}_schema_input_target flatbuffers_external)
+  if(TARGET flatbuffers_external)
+    add_dependencies(${schema}_schema_input_target flatbuffers_external)
+  endif()
 endforeach()

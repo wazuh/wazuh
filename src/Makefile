@@ -379,6 +379,13 @@ build_wazuh_cmake:
 #### External ######
 ####################
 
+# Build all external dependencies
+.PHONY: build-external
+build-external:
+	@echo "Building external dependencies for TARGET=${TARGET}..."
+	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${CMAKE_ENGINE_OPTS}
+	cd build/external && $(MAKE) all
+
 # CPython build
 ifneq (${TARGET},winagent)
 ifneq (${TARGET},agent)
