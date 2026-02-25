@@ -42,10 +42,6 @@ endif
 
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
-CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
-CHECK_ALPINE := $(shell sh -c 'grep "Alpine Linux" /etc/os-release 2>&1 > /dev/null && echo YES || echo not')
-
-ARCH_FLAGS =
 
 ROUTE_PATH := $(shell pwd)
 EXTERNAL_JSON=external/cJSON/
@@ -78,19 +74,15 @@ EXTERNAL_LZMA=external/lzma/
 EXTERNAL_LUA=external/lua/
 EXTERNAL_LIBPCRE2=external/libpcre2/
 EXTERNAL_SIMDJSON=external/simdjson/
-ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
 EXTERNAL_PACMAN=external/pacman/
 EXTERNAL_LIBARCHIVE=external/libarchive/
-endif
 EXTERNAL_JEMALLOC=external/jemalloc/
-ifeq (${uname_S},Linux)
 EXTERNAL_RPM=external/rpm/
 EXTERNAL_POPT=external/popt/
 EXTERNAL_LIBBPF=external/libbpf-bootstrap/
 EXTERNAL_DBUS=external/dbus/
-endif
 # XXX Becareful NO EXTRA Spaces here
 ifeq ($(TARGET),manager)
 WAZUH_USER?=wazuh-manager
@@ -172,19 +164,7 @@ else
 ifeq (${uname_S},Darwin)
 	PRECOMPILED_OS:=darwin
 else
-ifeq (${uname_S},FreeBSD)
-		PRECOMPILED_OS:=freebsd
-else
-ifeq (${uname_S},NetBSD)
-		PRECOMPILED_OS:=netbsd
-else
-ifeq (${uname_S},OpenBSD)
-		PRECOMPILED_OS:=openbsd
-else
 	    # Unknow platform
-endif # OpenBSD
-endif # NetBSD
-endif # FreeBSD
 endif # Darwin
 endif # Linux
 else
@@ -377,14 +357,12 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-WINDOWS_CMAKE_MODULES:=win32/wazuh_cmake_modules
-
 ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
 winagent: ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}
-	${MAKE} ${WINDOWS_CMAKE_MODULES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1"
+	${MAKE} ${BUILD_CMAKE_PROJECTS}
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
 	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
@@ -392,8 +370,10 @@ winagent: ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIB
 	cd win32/ && ./unix2dos.pl ../../LICENSE > LICENSE.txt
 	cd win32/ && ./unix2dos.pl ../../VERSION.json > VERSION.json
 
-win32/wazuh_cmake_modules:
-	${MAKE} build_wazuh_cmake
+#### Wazuh cmake ###
+
+build_wazuh_cmake:
+	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${CMAKE_ENGINE_OPTS} && ${MAKE}
 
 ####################
 #### External ######
@@ -680,15 +660,8 @@ $(WCS_FLAT_DIR)/%-ecs-flat.yml: | $(WCS_FLAT_DIR)
 	fi
 
 ####################
-#### Wazuh #########
+#### Python ########
 ####################
-
-#### Wazuh cmake ###
-
-build_wazuh_cmake:
-	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${CMAKE_ENGINE_OPTS} && ${MAKE}
-
-### wazuh-python ###
 
 WPYTHON_DIR := ${INSTALLDIR}/framework/python
 OPTIMIZE_CPYTHON?=no
@@ -720,7 +693,7 @@ ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
 	cd ${EXTERNAL_CPYTHON} && \
 	./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared \
 		--with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" \
-		LDFLAGS="${ARCH_FLAGS} -L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" \
+		LDFLAGS="-L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" \
 		CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
 endif
 

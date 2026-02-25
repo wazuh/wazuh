@@ -182,12 +182,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     WIN_PTHREAD_STATIC_LIB
     NAMES winpthread
     PATHS /usr/i686-w64-mingw32/lib /usr/i686-w64-mingw32/sys-root/mingw/lib
-    REQUIRED)
+          REQUIRED)
   find_file(
     WIN_PTHREAD_DLL
     NAMES libwinpthread-1.dll
     PATHS /usr/i686-w64-mingw32/lib /usr/i686-w64-mingw32/sys-root/mingw/bin
-    REQUIRED)
+          REQUIRED)
 
   set(PATCHED_PTHREAD_LIB ${SRC_FOLDER}/win32/libwinpthreadpatched.a)
   set(WIN_PTHREAD_DLL_COPY ${SRC_FOLDER}/win32/libwinpthread-1.dll)
