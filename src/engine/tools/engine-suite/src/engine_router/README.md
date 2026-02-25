@@ -34,7 +34,7 @@ engine-router --version
 
 ```console
 
-usage: engine-router [-h] [--version] [--api-socket API_SOCKET] {get,delete,add,reload,update,list,ingest,eps-get,eps-enable,eps-disable,eps-update} ...
+usage: engine-router [-h] [--version] [--api-socket API_SOCKET] {get,delete,add,reload,update,list,ingest} ...
 
 options:
   -h, --help            show this help message and exit
@@ -43,7 +43,7 @@ options:
                         Path to the Wazuh API socket
 
 subcommands:
-  {get,delete,add,reload,update,list,ingest,eps-get,eps-enable,eps-disable,eps-update}
+  {get,delete,add,reload,update,list,ingest}
     get                 Get a route details
     delete              Delete a route
     add                 Add a route
@@ -51,8 +51,4 @@ subcommands:
     update              Update a route. it only supports the update of the priority
     list                Get routes table
     ingest              Ingest an event
-    eps-get             Get EPS status on the engine
-    eps-enable          Enable EPS on the engine
-    eps-disable         Disable EPS on the engine
-    eps-update          Change EPS settings.
 ```

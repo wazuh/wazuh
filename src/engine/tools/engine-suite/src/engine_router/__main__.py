@@ -12,11 +12,6 @@ from engine_router.cmds.update import configure as configure_update
 from engine_router.cmds.list import configure as configure_list
 from engine_router.cmds.ingest import configure as configure_ingest
 
-from engine_router.cmds.eps_get import configure as configure_eps_get
-from engine_router.cmds.eps_activate import configure as configure_eps_activate
-from engine_router.cmds.eps_deactivate import configure as configure_eps_deactivate
-from engine_router.cmds.eps_update import configure as configure_eps_update
-
 
 def parse_args():
     meta = metadata('engine-suite')
@@ -44,12 +39,6 @@ def parse_args():
 
     # Queue
     configure_ingest(subparsers)
-
-    # EPS
-    configure_eps_get(subparsers)
-    configure_eps_activate(subparsers)
-    configure_eps_deactivate(subparsers)
-    configure_eps_update(subparsers)
 
     try:
         import argcomplete
