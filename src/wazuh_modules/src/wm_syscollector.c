@@ -797,15 +797,19 @@ void* wm_sync_module(__attribute__((unused)) void* args)
 
     while (sync_module_running) {
         if (syscollector_sync_module_ptr) {
-            syscollector_lock_scan_mutex_ptr();
-
+            // Do not hold scan mutex while waiting for sync ACKs.
             bool sync_result = syscollector_sync_module_ptr(MODE_DELTA);
 
-            if (sync_result) {
-                syscollector_run_recovery_process_ptr();
+            // Recovery touches shared state; keep this section serialized.
+            if (sync_result && sync_module_running && syscollector_run_recovery_process_ptr) {
+                if (syscollector_lock_scan_mutex_ptr && syscollector_unlock_scan_mutex_ptr) {
+                    syscollector_lock_scan_mutex_ptr();
+                    syscollector_run_recovery_process_ptr();
+                    syscollector_unlock_scan_mutex_ptr();
+                } else {
+                    syscollector_run_recovery_process_ptr();
+                }
             }
-
-            syscollector_unlock_scan_mutex_ptr();
         } else {
             mtdebug1(WM_SYS_LOGTAG, "Sync function not available");
         }
