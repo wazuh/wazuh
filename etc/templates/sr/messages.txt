@@ -43,8 +43,8 @@ usingsmtp="Koristi SMTP server: "
 whatsmtp="Koji je tvoj SMTP server IP/host?"
 
 # Part 3.1/agent
-serverip="Koja je IP adresa Wazuh servera?"
-serveraddr="Koja je IP adresa/host Wazuh servera?"
+serverip="Koja je IP adresa Wazuh managera?"
+serveraddr="Koja je IP adresa/host Wazuh managera?"
 addingip="Dodaje serverov IP"
 addingname="Dodaje serverov hostname"
 

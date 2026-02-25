@@ -43,8 +43,8 @@ usingsmtp="Utilizzo il server SMTP: "
 whatsmtp="Qual'è l'ip/host del tuo server SMTP?"
 
 # Part 3.1/agent
-serverip="Qual'è l'indirizzo IP del server Wazuh?"
-serveraddr="Qual'è l'indirizzo IP/host del server Wazuh?"
+serverip="Qual'è l'indirizzo IP del manager Wazuh?"
+serveraddr="Qual è l'indirizzo IP/host del manager Wazuh?"
 addingip="Aggiungo l'IP del Server"
 addingname="Aggiunta di host nome del Server"
 

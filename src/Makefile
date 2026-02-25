@@ -353,9 +353,9 @@ endif
 .PHONY: failtarget
 failtarget:
 	@echo "TARGET is required: "
-	@echo "   make TARGET=server   to build the server"
-	@echo "   make TARGET=local      - local version of server"
-	@echo "   make TARGET=hybrid     - hybrid version of server"
+	@echo "   make TARGET=manager   to build the manager"
+	@echo "   make TARGET=local      - local version of manager"
+	@echo "   make TARGET=hybrid     - hybrid version of manager"
 	@echo "   make TARGET=agent    to build the unix agent"
 	@echo "   make TARGET=winagent to build the windows agent"
 
@@ -1322,7 +1322,7 @@ wpython: install_dependencies install_framework install_api install_mitre
 
 build_python:
 ifeq (,${INSTALLDIR})
-	$(error INSTALLDIR undefined. Run "${MAKE} TARGET=server INSTALLDIR=/path" to build python from sources)
+	$(error INSTALLDIR undefined. Run "${MAKE} TARGET=manager INSTALLDIR=/path" to build python from sources)
 endif
 
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))

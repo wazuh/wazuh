@@ -46,8 +46,8 @@ usingsmtp="この SMTP サーバを使用します: "
 whatsmtp="使用する SMTP サーバの ip/host は何ですか?"
 
 # Part 3.1/agent
-serverip="Wazuh サーバの IP アドレスは何ですか?"
-serveraddr="Wazuh サーバの IP/hostname アドレスは何ですか?"
+serverip="Wazuh マネージャーの IP アドレスは何ですか？"
+serveraddr="Wazuh マネージャーの IP アドレス/ホスト名は何か？"
 addingip="サーバの IP を加えています"
 addingname="サーバの hostname を加えています"
 

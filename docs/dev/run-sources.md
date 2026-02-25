@@ -27,7 +27,7 @@ Alternatively, configure environment variables as described in `etc/preloaded-va
 ```bash
 USER_LANGUAGE="en" \
 USER_NO_STOP="y" \
-USER_INSTALL_TYPE="server" \
+USER_INSTALL_TYPE="manager" \
 USER_DIR="/var/wazuh-manager" \
 USER_ENABLE_SYSCHECK="y" \
 USER_ENABLE_ROOTCHECK="y" \
