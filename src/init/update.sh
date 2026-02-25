@@ -397,7 +397,6 @@ UpdateOldVersions()
     if [ ! "$INSTYPE" = "agent" ]; then
         # New manager config by default
         ./gen_ossec.sh conf "manager" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
-        ./add_localfiles.sh $PREINSTALLEDDIR $INSTYPE >> $OSSEC_CONF_FILE
     else
         # New agent config by default
         ./gen_ossec.sh conf "agent" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
