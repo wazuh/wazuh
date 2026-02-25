@@ -1,0 +1,4 @@
+name: 5.X - Agent Startup Smoke Test
+
+on:
+  workflow_dispatch:
