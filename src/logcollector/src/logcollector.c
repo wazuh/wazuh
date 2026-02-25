@@ -134,7 +134,7 @@ static rwlock_t files_update_rwlock;
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
 
-STATIC int _startup_completed = 0;
+STATIC volatile int _startup_completed = 0;
 
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 
@@ -2797,13 +2797,18 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
     if (data = (os_file_status_t *)OSHash_Get_ex(files_status, lf->file), data == NULL) {
         if (_startup_completed) {
             mdebug1("New file '%s' discovered at runtime with no bookmark. Reading from beginning.", lf->file);
-            w_set_to_pos(lf, 0, SEEK_SET);
+            if (w_set_to_pos(lf, 0, SEEK_SET) < 0) {
+                return -1;
+            }
             if (w_update_hash_node(lf->file, 0) == -1) {
                 merror(HUPDATE_ERROR, lf->file, files_status_name);
             }
         } else {
-            w_set_to_pos(lf, 0, SEEK_END);
-            if (w_update_hash_node(lf->file, w_ftell(lf->fp)) == -1) {
+            int64_t end_pos = w_set_to_pos(lf, 0, SEEK_END);
+            if (end_pos < 0) {
+                return -1;
+            }
+            if (w_update_hash_node(lf->file, end_pos) == -1) {
                 merror(HUPDATE_ERROR, lf->file, files_status_name);
             }
         }

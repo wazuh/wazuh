@@ -31,7 +31,7 @@
 
 
 extern OSHash *files_status;
-extern int _startup_completed;
+extern volatile int _startup_completed;
 
 bool w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t position);
 ssize_t w_set_to_pos(logreader *lf, long pos, int mode);
@@ -87,6 +87,7 @@ static int setup_local_hashmap(void **state) {
 }
 
 static int teardown_local_hashmap(void **state) {
+    _startup_completed = 0;
     if (teardown_hashmap(state) != 0) {
         return 1;
     }
@@ -2117,7 +2118,6 @@ void test_w_set_to_last_line_read_OSHash_Get_ex_fail(void ** state) {
     will_return(__wrap_OSHash_Get_ex, NULL);
 
     //w_set_pos
-    long pos = 0;
     int mode = OS_BINARY;
 
     expect_any(__wrap_w_fseek, x);
@@ -2126,10 +2126,6 @@ void test_w_set_to_last_line_read_OSHash_Get_ex_fail(void ** state) {
 
     expect_value(__wrap_w_ftell, x, 1);
     will_return(__wrap_w_ftell, 1);
-
-    expect_value(__wrap_w_ftell, x, 1);
-    will_return(__wrap_w_ftell, 1);
-
 
     //w_update_hash_node
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, log_reader.file);
@@ -2193,8 +2189,6 @@ void test_w_set_to_last_line_read_no_bookmark_runtime(void ** state) {
     int ret = w_set_to_last_line_read(&log_reader);
 
     assert_int_equal(ret, 0);
-
-    _startup_completed = 0;
 }
 
 /* Runtime case: _startup_completed == 1, no bookmark, w_update_hash_node fails */
@@ -2250,8 +2244,6 @@ void test_w_set_to_last_line_read_no_bookmark_runtime_hash_error(void ** state) 
     int ret = w_set_to_last_line_read(&log_reader);
 
     assert_int_equal(ret, 0);
-
-    _startup_completed = 0;
 }
 
 /* Startup case: _startup_completed == 0, no bookmark, w_update_hash_node fails */
@@ -2282,10 +2274,7 @@ void test_w_set_to_last_line_read_no_bookmark_startup_hash_error(void ** state) 
     expect_value(__wrap_w_fseek, pos, 0);
     will_return(__wrap_w_fseek, 0);
 
-    // w_ftell called twice: once by w_set_to_pos return, once for w_update_hash_node arg
-    expect_value(__wrap_w_ftell, x, 1);
-    will_return(__wrap_w_ftell, 100);
-
+    // w_ftell called once inside w_set_to_pos; return value used as end_pos
     expect_value(__wrap_w_ftell, x, 1);
     will_return(__wrap_w_ftell, 100);
 
