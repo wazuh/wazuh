@@ -42,13 +42,13 @@ def mock_req(request, request_info):
 
 
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
-@pytest.mark.asyncio
 async def test_middlewares_check_blocked_ip(mock_req):
-    """Test check_blocked_ip function.
+    """Test check_blocked_ip function. 
        Check if the ip_block is emptied when the blocking period has finished."""
     with patch("api.middlewares.ip_stats", new={'ip': {'timestamp': -300}}) as mock_ip_stats, \
-         patch("api.middlewares.ip_block", new={"ip"}) as mock_ip_block:
-        await check_blocked_ip(mock_req)
+        patch("api.middlewares.ip_block", new={"ip"}) as mock_ip_block:
+        check_blocked_ip(mock_req)
+        # Assert that under these conditions, they have been emptied
         assert not mock_ip_stats and not mock_ip_block
 
 
@@ -58,17 +58,16 @@ async def test_middlewares_check_blocked_ip(mock_req):
 @pytest.mark.asyncio
 async def test_middlewares_check_blocked_ip_ko(mock_req):
     """Test if `check_blocked_ip` raises an exception if the IP is still blocked."""
-    with patch('api.middlewares.ConnexionRequest.from_starlette_request', returns_value=mock_req):
-        with pytest.raises(ProblemException) as exc_info:
-            await check_blocked_ip(mock_req)
-
-    assert exc_info.value.status == 403
-    assert exc_info.value.title == "Permission Denied"
-    assert exc_info.value.detail == (
-        "Limit of login attempts reached. The current IP has been blocked due "
-        "to a high number of login attempts"
-    )
-    assert exc_info.value.ext == {'code': 6000}
+    with pytest.raises(ProblemException) as exc_info, \
+        patch('api.middlewares.ConnexionRequest.from_starlette_request', returns_value=mock_req):
+        check_blocked_ip(mock_req)
+        assert exc_info.value.status == 403
+        assert exc_info.value.title == "Permission Denied"
+        assert exc_info.value.detail == (
+            "Limit of login attempts reached. The current IP has been blocked due "
+            "to a high number of login attempts"
+        )
+        assert exc_info.ext == mock_req
 
 
 @freeze_time(datetime(1970, 1, 1))

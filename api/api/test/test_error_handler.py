@@ -47,7 +47,6 @@ def test_cleanup_detail_field():
     assert _cleanup_detail_field(detail) == "Testing. Details field."
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize('stats', [
     {},
     {'ip': {'attempts': 4}},
@@ -57,18 +56,15 @@ def test_cleanup_detail_field():
     {'path': LOGIN_ENDPOINT, 'method': 'POST', 'pretty': 'false'},
     {'path': RUN_AS_LOGIN_ENDPOINT, 'method': 'POST'},
 ], indirect=True)
-async def test_middlewares_prevent_bruteforce_attack(stats, request_info, mock_request):
+def test_middlewares_prevent_bruteforce_attack(stats, request_info, mock_request):
     """Test `prevent_bruteforce_attack` blocks IPs when reaching max number of attempts."""
     mock_request.configure_mock(scope={'path': request_info['path']})
     mock_request.method = request_info['method']
     mock_request.query_param['pretty'] = request_info.get('pretty', 'false')
-
     with patch("api.error_handler.ip_stats", new=copy(stats)) as ip_stats, \
-         patch("api.error_handler.ip_block", new=set()) as ip_block:
+        patch("api.error_handler.ip_block", new=set()) as ip_block:
         previous_attempts = ip_stats['ip']['attempts'] if 'ip' in ip_stats else 0
-
-        await prevent_bruteforce_attack(mock_request, attempts=5)
-
+        prevent_bruteforce_attack(mock_request, attempts=5)
         if stats:
             # There were previous attempts. This one reached the limit
             assert ip_stats['ip']['attempts'] == previous_attempts + 1

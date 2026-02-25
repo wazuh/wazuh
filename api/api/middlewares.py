@@ -9,7 +9,6 @@ import time
 import logging
 import base64
 import jwt
-import asyncio
 
 from starlette.requests import Request
 from starlette.responses import Response
@@ -53,7 +52,6 @@ start_stop_logger = logging.getLogger('start-stop-api')
 
 ip_stats = dict()
 ip_block = set()
-ip_lock = asyncio.Lock()
 general_request_counter = 0
 general_current_time = None
 events_request_counter = 0
@@ -115,7 +113,7 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
         logger.warning(f'IP blocked due to exceeded number of logins attempts: {host}')
 
 
-async def check_blocked_ip(request: Request):
+def check_blocked_ip(request: Request):
     """Blocks/unblocks the IPs that are requesting an API token.
 
     Parameters
@@ -129,23 +127,18 @@ async def check_blocked_ip(request: Request):
     global ip_block, ip_stats
     access_conf = configuration.api_conf['access']
     block_time = access_conf['block_time']
-    host = request.client.host
-
-    async with ip_lock:
-        try:
-            if get_utc_now().timestamp() - block_time >= ip_stats[host]['timestamp']:
-                del ip_stats[host]
-                ip_block.remove(host)
-        except (KeyError, ValueError):
-            pass
-
-        if host in ip_block:
-            raise BlockedIPException(
-                status=403,
-                title="Permission Denied",
-                detail="Limit of login attempts reached. The current IP has been blocked due "
-                       "to a high number of login attempts"
-            )
+    try:
+        if get_utc_now().timestamp() - block_time >= ip_stats[request.client.host]['timestamp']:
+            del ip_stats[request.client.host]
+            ip_block.remove(request.client.host)
+    except (KeyError, ValueError):
+        pass
+    if request.client.host in ip_block:
+        raise BlockedIPException(
+            status=403,
+            title="Permission Denied",
+            detail="Limit of login attempts reached. The current IP has been blocked due "
+                    "to a high number of login attempts")
 
 
 def check_rate_limit(
@@ -220,7 +213,7 @@ class CheckBlockedIP(BaseHTTPMiddleware):
         """"Update and check if the client IP is locked."""
         if request.url.path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} \
            and request.method in {'GET', 'POST'}:
-            await check_blocked_ip(request)
+            check_blocked_ip(request)
         return await call_next(request)
 
 
