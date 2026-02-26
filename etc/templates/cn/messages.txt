@@ -5,7 +5,7 @@ yesmatch="y"
 nomatch="n"
 agent="agent"
 local="local"
-server="server"
+server="manager"
 help="help"
 
 # Global
@@ -22,7 +22,7 @@ user="用户"
 host="主机"
 hitanyorabort="按 ENTER 继续或 Ctrl-C 退出."
 whattoinstall="您希望哪一种安装 (manager, agent, local or help)?"
-serverchose="选择了 Manager (server) 类型的安装"
+serverchose="选择了 Manager 类型的安装"
 clientchose="选择了 Agent (client) 类型的安装"
 localchose="选择了 Local 类型的安装"
 
@@ -43,8 +43,8 @@ usingsmtp="使用 SMTP 服务器: "
 whatsmtp="请输入您的 SMTP 服务器IP或主机名 ?"
 
 # Part 3.1/agent
-serverip="请输入 Wazuh 服务器的IP地址"
-serveraddr="请输入 Wazuh 服务器的IP地址或主机名"
+serverip="请输入 Wazuh 管理器的IP地址"
+serveraddr="请输入 Wazuh 管理器的IP地址或主机名"
 addingip="添加服务器IP "
 addingname="添加服务器主机名 "
 

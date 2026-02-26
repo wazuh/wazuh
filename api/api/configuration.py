@@ -45,8 +45,8 @@ default_api_configuration = {
     },
     "https": {
         "enabled": True,
-        "key": "server.key",
-        "cert": "server.crt",
+        "key": "manager.key",
+        "cert": "manager.crt",
         "use_ca": False,
         "ca": "ca.crt",
         "ssl_protocol": "auto",
@@ -192,7 +192,7 @@ def fill_dict(default: Dict, config: Dict, json_schema: Dict) -> Dict:
 
 def generate_private_key(private_key_path: str, public_exponent: int = 65537,
                          key_size: int = 2048) -> rsa.RSAPrivateKey:
-    """Generate a private key in 'CONFIG_PATH/ssl/server.key'.
+    """Generate a private key in 'CONFIG_PATH/ssl/manager.key'.
 
     Parameters
     ----------
@@ -226,7 +226,7 @@ def generate_private_key(private_key_path: str, public_exponent: int = 65537,
 
 def generate_self_signed_certificate(private_key: rsa.RSAPrivateKey, certificate_path: str):
     """Generate a self-signed certificate using a generated private key. The certificate will be created in
-    'CONFIG_PATH/ssl/server.crt'.
+    'CONFIG_PATH/ssl/manager.crt'.
 
     Parameters
     ----------

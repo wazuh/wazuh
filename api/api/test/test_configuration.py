@@ -18,8 +18,8 @@ custom_api_configuration = {
     "authentication_pool_size": 2,
     "https": {
         "enabled": True,
-        "key": "server.key",
-        "cert": "server.crt",
+        "key": "manager.key",
+        "cert": "manager.crt",
         "use_ca": False,
         "ca": "rootCA.pem",
         "ssl_protocol": "auto",

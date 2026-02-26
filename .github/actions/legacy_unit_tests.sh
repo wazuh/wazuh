@@ -26,7 +26,7 @@ build_wazuh_unit_tests() {
     cd "$GITHUB_WORKSPACE/src/unit_tests/build"
     if [[ $target == "agent" ]]; then
         cmake -DTARGET=${target} -DGCOV_PATH="${gcov_path}" ..
-    elif [[ $target == "server" ]]; then
+    elif [[ $target == "manager" ]]; then
         cmake -DTARGET=${target} -DGCOV_PATH="${gcov_path}" ..
     elif [[ $target == "winagent" ]]; then
         cmake -DTARGET=${target} -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake ..
@@ -41,7 +41,7 @@ run_wazuh_unit_tests() {
     if [[ $target == "agent" ]]; then
         ctest --output-on-failure  > "test_results.txt" || true
         make coverage > "coverage_results.txt" || true
-    elif [[ $target == "server" ]]; then
+    elif [[ $target == "manager" ]]; then
         ctest --output-on-failure  > "test_results.txt" || true
         make coverage > "coverage_results.txt" || true
     elif [[ $target == "winagent" ]]; then
@@ -81,8 +81,8 @@ main() {
         exit 1
     fi
 
-    if [[ $target != "agent" && $target != "winagent" && $target != "server" ]]; then
-        echo "Error: Invalid target '$target'. Expected 'agent', 'winagent' or 'server'."
+    if [[ $target != "agent" && $target != "winagent" && $target != "manager" ]]; then
+        echo "Error: Invalid target '$target'. Expected 'agent', 'winagent' or 'manager'."
         exit 1
     fi
 

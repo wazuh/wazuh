@@ -47,7 +47,7 @@ env:
 
 jobs:
   build:
-    name: Build Server (${{ matrix.arch }})
+    name: Build Manager (${{ matrix.arch }})
     runs-on: ${{ (matrix.arch == 'arm64') && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     outputs:
       version: ${{ steps.set_version.outputs.version }}

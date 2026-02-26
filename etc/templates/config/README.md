@@ -43,9 +43,9 @@
 
     <ossec_config>
         <client>
-          <server>
+          <manager>
             <address>192.168.10.100</address>
-          </server>
+          </manager>
           <config-profile>distribution, distributionVersion</config-profile>
         </client>
         <client_buffer>

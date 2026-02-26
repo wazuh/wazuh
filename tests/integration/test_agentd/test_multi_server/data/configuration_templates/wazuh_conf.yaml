@@ -7,7 +7,7 @@
                 value: 60
             - auto_restart:
                 value: 'yes'
-            - server:
+            - manager:
                 elements:
                 - address:
                     value: 127.0.0.1
@@ -17,7 +17,7 @@
                     value: 3
                 - retry_interval:
                     value: 3
-            - server:
+            - manager:
                 elements:
                 - address:
                     value: 127.0.0.1
@@ -27,7 +27,7 @@
                     value: 3
                 - retry_interval:
                     value: 3
-            - server:
+            - manager:
                 elements:
                 - address:
                     value: 127.0.0.1

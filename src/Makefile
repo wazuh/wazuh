@@ -14,6 +14,11 @@ uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
 uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
 uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 
+# Accept both "server" and "manager" as equivalent targets
+ifeq (${TARGET},server)
+override TARGET := manager
+endif
+
 ifeq (${TARGET}, winagent)
 WAZUH_LIB_OUTPUT_PATH := win32/
 STRIP_TOOL := i686-w64-mingw32-strip
@@ -93,7 +98,7 @@ EXTERNAL_LIBBPF=external/libbpf-bootstrap/
 EXTERNAL_DBUS=external/dbus/
 endif
 # XXX Becareful NO EXTRA Spaces here
-ifeq ($(TARGET),server)
+ifeq ($(TARGET),manager)
 WAZUH_USER?=wazuh-manager
 WAZUH_GROUP?=wazuh-manager
 else
@@ -348,9 +353,9 @@ endif
 .PHONY: failtarget
 failtarget:
 	@echo "TARGET is required: "
-	@echo "   make TARGET=server   to build the server"
-	@echo "   make TARGET=local      - local version of server"
-	@echo "   make TARGET=hybrid     - hybrid version of server"
+	@echo "   make TARGET=manager   to build the manager"
+	@echo "   make TARGET=local      - local version of manager"
+	@echo "   make TARGET=hybrid     - hybrid version of manager"
 	@echo "   make TARGET=agent    to build the unix agent"
 	@echo "   make TARGET=winagent to build the windows agent"
 
@@ -427,12 +432,12 @@ ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME}: ${libgcc_s_path}
 	cp $< $@
 	${STRIP_TOOL} -x $@
 
-.PHONY: server local hybrid agent selinux
+.PHONY: server manager local hybrid agent selinux
 
 ifeq (${MAKECMDGOALS},server)
-$(error Do not use 'server' directly, use 'TARGET=server')
+$(error Do not use 'server' directly, use 'TARGET=manager')
 endif
-server: external ${CPPLIBDEPS}
+server manager: external ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 
 ifeq (${MAKECMDGOALS},local)
@@ -455,7 +460,7 @@ agent: external ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 
 ifneq (,$(filter ${USE_SELINUX},YES yes y Y 1))
-server local hybrid agent: selinux
+server manager local hybrid agent: selinux
 endif
 
 selinux: $(SELINUX_POLICY)
@@ -547,7 +552,7 @@ else ifeq (${uname_S},Darwin)
 endif
 
 # Adding libraries only for server
-ifeq (${TARGET},server)
+ifeq (${TARGET},manager)
 	EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(SIMDJSON_LIB)
 	EXTERNAL_LIBS += $(LZMA_LIB) $(MINIZIP_LIB)
 endif
@@ -580,13 +585,13 @@ else
 endif
 endif
 
-ifeq (${TARGET},server)
+ifeq (${TARGET},manager)
 external: $(ROCKSDB_LIB) $(SIMDJSON_LIB) $(SPDLOG_LIB) $(YAMLCPP_LIB) $(PUGIXML_LIB) $(MAXMINDDB_LIB) $(DATE_LIB) $(FMT_LIB) $(FAST_FLOAT_LIB) $(PROTOBUF_LIB) $(ABSEILCPP_LIB) $(RE2_LIB)
 endif
 
 ifeq (${uname_S},Linux)
 ifneq (${TARGET},winagent)
-ifneq (${TARGET},server)
+ifneq (${TARGET},manager)
 external: ${LIBBPF_LIB}
 endif
 endif
@@ -719,8 +724,8 @@ ${LIBPLIST_LIB}:
 LIBFFI_FLAGS = "CFLAGS=-fPIC"
 
 ${LIBFFI_LIB}:
-	cd ${EXTERNAL_LIBFFI} && test -e server || (./configure $(LIBFFI_FLAGS) && ${MAKE})
-ifneq (${TARGET},server)
+	cd ${EXTERNAL_LIBFFI} && test -e server -o -e $(TARGET) || (./configure $(LIBFFI_FLAGS) && ${MAKE})
+ifeq (${TARGET},manager)
 	cd ${EXTERNAL_LIBFFI} && test -e server && mv server $(TARGET) || true
 endif
 
@@ -948,7 +953,7 @@ ${RPM_BUILD_DIR}/Makefile: ${OPENSSL_LIB} ${ZLIB_LIB} ${POPT_LIB} ${SQLITE_LIB} 
 #### jemalloc ##########
 
 $(JEMALLOC_LIB):
-ifeq (${TARGET},server)
+ifeq (${TARGET},manager)
 ifneq ($(wildcard external/jemalloc/configure),)
 	cd ${EXTERNAL_JEMALLOC} && LDFLAGS=-s ./configure --disable-static --disable-cxx && ${MAKE}
 else
@@ -1317,7 +1322,7 @@ wpython: install_dependencies install_framework install_api install_mitre
 
 build_python:
 ifeq (,${INSTALLDIR})
-	$(error INSTALLDIR undefined. Run "${MAKE} TARGET=server INSTALLDIR=/path" to build python from sources)
+	$(error INSTALLDIR undefined. Run "${MAKE} TARGET=manager INSTALLDIR=/path" to build python from sources)
 endif
 
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))

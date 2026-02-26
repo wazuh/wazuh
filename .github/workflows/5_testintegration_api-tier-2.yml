@@ -25,19 +25,19 @@ jobs:
           architecture: x64
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
-      # Build wazuh server for linux.
-      - name: Build wazuh server for linux
+      # Build wazuh manager for linux.
+      - name: Build wazuh manager for linux
         run: |
-          make deps -C src TARGET=server -j2
-          make -C src TARGET=server -j2
-      # Install wazuh server for linux.
-      - name: Install wazuh server for linux
+          make deps -C src TARGET=manager -j2
+          make -C src TARGET=manager -j2
+      # Install wazuh manager for linux.
+      - name: Install wazuh manager for linux
         run: |
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_INSTALL_TYPE="server"' >> ./etc/preloaded-vars.conf
+          echo 'USER_INSTALL_TYPE="manager"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo "USER_DIR=$INSTALLATION_DIR" >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf

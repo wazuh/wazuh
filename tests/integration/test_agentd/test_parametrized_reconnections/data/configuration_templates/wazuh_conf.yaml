@@ -11,7 +11,7 @@
                 elements:
                 - enabled:
                     value: 'ENROLL'
-            - server:
+            - manager:
                 elements:
                 - address:
                     value: '127.0.0.1'

@@ -24,7 +24,7 @@ function configure() {
     echo USER_DELETE_DIR="y" >> ${CONFIG}
     echo USER_CLEANINSTALL="y" >> ${CONFIG}
     echo USER_BINARYINSTALL="y" >> ${CONFIG}
-    echo USER_AGENT_SERVER_IP="MANAGER_IP" >> ${CONFIG}
+    echo USER_AGENT_MANAGER_IP="MANAGER_IP" >> ${CONFIG}
     echo USER_ENABLE_SYSCHECK="y" >> ${CONFIG}
     echo USER_ENABLE_ROOTCHECK="y" >> ${CONFIG}
     echo USER_ENABLE_ACTIVE_RESPONSE="y" >> ${CONFIG}

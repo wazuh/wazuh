@@ -63,7 +63,7 @@ void Free_Client(agent * config);
 bool Validate_Address(agent_server *servers);
 
 /**
- * @brief Checks if at least one <server> block is not a link-local ipv6 address or it has a network interface configured.
+ * @brief Checks if at least one <manager> block is not a link-local ipv6 address or it has a network interface configured.
  * @param servers Server(s) configuration block in agent ossec.conf
  * @return Returns true if successful and false if not success.
  */

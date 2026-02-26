@@ -1,7 +1,7 @@
     - sections:
       - section: client
         elements:
-            - server:
+            - manager:
                 elements:
                 - address:
                     value: '127.0.0.1'

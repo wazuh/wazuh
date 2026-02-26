@@ -67,17 +67,17 @@ delete_auto_enrollment_tag() {
 # Change address block of the wazuh configuration file
 add_adress_block() {
 
-    # Remove the server configuration
-    ${sed} "/<server>/,/\/server>/d" "${CONF_FILE}"
+    # Remove both manager and legacy server configuration blocks
+    ${sed} "/<manager>/,/\/manager>/d; /<server>/,/\/server>/d" "${CONF_FILE}"
 
     # Write the client configuration block
     for i in "${!ADDRESSES[@]}";
     do
         {
-            echo "    <server>"
+            echo "    <manager>"
             echo "      <address>${ADDRESSES[i]}</address>"
             echo "      <port>1514</port>"
-            echo "    </server>"
+            echo "    </manager>"
         } >> "${TMP_SERVER}"
     done
 

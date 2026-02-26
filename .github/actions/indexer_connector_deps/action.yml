@@ -28,8 +28,8 @@ runs:
       - name: Build external deps
         run: |
           cd src
-          make deps TARGET=server -j2
-          make libwazuhext.so TARGET=server -j2
+          make deps TARGET=manager -j2
+          make libwazuhext.so TARGET=manager -j2
         shell: bash
 
       - name: Build http-request

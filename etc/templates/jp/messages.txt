@@ -5,7 +5,7 @@ yesmatch="y"
 nomatch="n"
 agent="agent"
 local="local"
-server="server"
+server="manager"
 help="help"
 
 
@@ -24,7 +24,7 @@ user="ユーザ"
 host="ホスト"
 hitanyorabort="続けるには ENTER を押してください．また，Ctrl-C で中止します．"
 whattoinstall="どの種類のインストールを選択しますか (manager，agent，local または help)?"
-serverchose="Manager (server) インストールを選択しました"
+serverchose="Manager インストールを選択しました"
 clientchose="Agent (client) インストールを選択しました"
 localchose="Local インストールを選択しました"
 
@@ -46,8 +46,8 @@ usingsmtp="この SMTP サーバを使用します: "
 whatsmtp="使用する SMTP サーバの ip/host は何ですか?"
 
 # Part 3.1/agent
-serverip="Wazuh サーバの IP アドレスは何ですか?"
-serveraddr="Wazuh サーバの IP/hostname アドレスは何ですか?"
+serverip="Wazuh マネージャーの IP アドレスは何ですか？"
+serveraddr="Wazuh マネージャーの IP アドレス/ホスト名は何か？"
 addingip="サーバの IP を加えています"
 addingname="サーバの hostname を加えています"
 

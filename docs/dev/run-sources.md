@@ -27,7 +27,7 @@ Alternatively, configure environment variables as described in `etc/preloaded-va
 ```bash
 USER_LANGUAGE="en" \
 USER_NO_STOP="y" \
-USER_INSTALL_TYPE="server" \
+USER_INSTALL_TYPE="manager" \
 USER_DIR="/var/wazuh-manager" \
 USER_ENABLE_SYSCHECK="y" \
 USER_ENABLE_ROOTCHECK="y" \
@@ -72,7 +72,7 @@ USER_LANGUAGE="en" \
 USER_NO_STOP="y" \
 USER_INSTALL_TYPE="agent" \
 USER_DIR="/var/ossec" \
-USER_AGENT_SERVER_IP="10.0.0.2" \
+USER_AGENT_MANAGER_IP="10.0.0.2" \
 USER_ENABLE_SYSCHECK="y" \
 USER_ENABLE_ROOTCHECK="y" \
 USER_ENABLE_ACTIVE_RESPONSE="y" \
@@ -81,7 +81,7 @@ USER_UPDATE="y" \
 ./install.sh
 ```
 
-**Important**: Set `USER_AGENT_SERVER_IP` to the correct server address.
+**Important**: Set `USER_AGENT_MANAGER_IP` to the correct server address.
 
 ### Starting the Agent
 

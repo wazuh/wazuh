@@ -5,7 +5,7 @@ yesmatch="e"
 nomatch="h"
 agent="aracı"
 local="yerel"
-server="sunucu"
+server="manager"
 help="yardım"
 
 # Global
@@ -22,7 +22,7 @@ user="Kullanıcı"
 host="Bilgisayar"
 hitanyorabort="Devam etmek için ENTER veya çıkmak için Ctrl-C ye basın"
 whattoinstall="Ne tür kurulum yapmak istiyorsunuz (sunucu,aracı,yerel veya yardım)?"
-serverchose="Sunucu kurulumu seçildi"
+serverchose="Manager kurulumu seçildi"
 clientchose="Aracı(istemci) kurulumu seçildi"
 localchose="Yerel kurulum seçildi"
 
@@ -43,8 +43,8 @@ usingsmtp="SMTP sunucu kullanılıyor: "
 whatsmtp="SMTP sunucunuzun IP adresi veya ismi nedir?"
 
 # Part 3.1/agent
-serverip="Wazuh sunucusunun IP adresi nedir?"
-serveraddr="Wazuh sunucusunun IP adresi veya ismi nedir?"
+serverip="Wazuh yöneticisinin IP adresi nedir?"
+serveraddr="Wazuh yöneticisinin IP adresi veya adı nedir?"
 addingip="Sunucu IP adresi ekleniyor"
 addingname="Sunucu ismi ekleniyor"
 

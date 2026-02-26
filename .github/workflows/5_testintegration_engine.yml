@@ -25,10 +25,10 @@ jobs:
       - name: Install CMake
         uses: ./.github/actions/reinstall_cmake
 
-      - name: Build Wazuh server
+      - name: Build Wazuh manager
         run: |
-          make deps -C src TARGET=server -j$(nproc)
-          make -C src TARGET=server -j$(nproc)
+          make deps -C src TARGET=manager -j$(nproc)
+          make -C src TARGET=manager -j$(nproc)
 
       - name: Upload engine binary
         uses: actions/upload-artifact@v4

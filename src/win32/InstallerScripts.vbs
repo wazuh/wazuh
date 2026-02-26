@@ -75,7 +75,7 @@ public function config()
         If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
             If WAZUH_MANAGER <> "" Then
                 Set re = new regexp
-                re.Pattern = "\s+<server>(.|\n)+?</server>"
+                re.Pattern = "\s+<(server|manager)>(.|\n)+?</\1>"
                 If InStr(WAZUH_MANAGER,",") Then
                     ip_list=Split(WAZUH_MANAGER,",")
                 Else
@@ -86,13 +86,13 @@ public function config()
                 formatted_list = vbCrLf
                 for i=0 to UBound(ip_list)
                     If ip_list(i) <> "" Then
-                        formatted_list = formatted_list & "    <server>" & vbCrLf
+                        formatted_list = formatted_list & "    <manager>" & vbCrLf
                         formatted_list = formatted_list & "      <address>" & ip_list(i) & "</address>" & vbCrLf
                         formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
                         if i = UBound(ip_list) then
-                            formatted_list = formatted_list & "    </server>"
+                            formatted_list = formatted_list & "    </manager>"
                         Else
-                            formatted_list = formatted_list & "    </server>" & vbCrLf
+                            formatted_list = formatted_list & "    </manager>" & vbCrLf
                         End If
                     End If
                 next
@@ -221,7 +221,7 @@ public function config()
         Set file = objFSO.OpenTextFile(home_dir & "profile-" & OS_VERSION & ".template", ForReading)
         newline = file.ReadAll
         file.Close
-        re.Pattern = "(</server>)"
+        re.Pattern = "(</manager>)"
         re.Global = False
         strNewText = re.Replace(strNewText, "$1" & vbCrLf & "    " & newline)
     End If

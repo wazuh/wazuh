@@ -19,13 +19,13 @@ JOBS="${JOBS:-2}"
 
 build_dir="/build_wazuh"
 
-make -C /workspace/wazuh/src deps TARGET=server
+make -C /workspace/wazuh/src deps TARGET=manager
 
 if [ "${BUILD_TYPE}" = "debug" ]; then
-    make -j${JOBS} -C /workspace/wazuh/src TARGET=server DEBUG="yes"
+    make -j${JOBS} -C /workspace/wazuh/src TARGET=manager DEBUG="yes"
     echo "Debug build completed with ${JOBS} jobs."
 else
-    make -j${JOBS} -C /workspace/wazuh/src TARGET=server
+    make -j${JOBS} -C /workspace/wazuh/src TARGET=manager
     echo "Release build completed with ${JOBS} jobs."
 fi
 

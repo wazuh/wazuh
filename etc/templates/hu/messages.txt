@@ -5,7 +5,7 @@ yesmatch="i"
 nomatch="n"
 agent="agent"
 local="lokális"
-server="szerver"
+server="manager"
 help="segítség"
 
 # Global
@@ -22,7 +22,7 @@ user="Felhasználó"
 host="Hoszt"
 hitanyorabort="Nyomjon ENTER-t a folytatáshoz vagy Ctrl-C-t a megszakításhoz."
 whattoinstall="Milyen típusú telepítést szeretne? (manager, agent, lokális vagy segítség)?"
-serverchose="Manager (szerver) telepítés kiválasztva"
+serverchose="Manager telepítés kiválasztva"
 clientchose="Agent(kliens) telepítés kiválasztva"
 localchose="Lokális telepítés kiválasztva"
 
@@ -43,8 +43,8 @@ usingsmtp="SMTP szerver használata: "
 whatsmtp="Mi az ön SMTP szerverének ip címe/hoszt neve?"
 
 # Part 3.1/agent
-serverip="Mi az IP címe az Wazuh szervernek?"
-serveraddr="Mi az IP címe/hoszt neve az Wazuh szervernek?"
+serverip="Mi a Wazuh menedzser IP-címe?"
+serveraddr="Mi a Wazuh menedzser IP-címe/gazdagépneve?"
 addingip="Szerver IP hozzáadása"
 addingname="Szerver hoszt neve hozzáadása"
 

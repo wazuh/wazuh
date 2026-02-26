@@ -1466,7 +1466,7 @@ stages:
             config-profile: !anystr
             notify_time: !anyint
             remote_conf: !anystr
-            server: !anything
+            manager: !anything
             time-reconnect: !anyint
 
   - name: Get buffer configuration from agent component

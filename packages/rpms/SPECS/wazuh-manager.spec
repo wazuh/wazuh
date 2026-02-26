@@ -53,12 +53,12 @@ This package provides debug information for package %{name}.
 
 %build
 pushd src
-# Rebuild for server
+# Rebuild for manager
 make clean
 
 # Build Wazuh sources
-make deps TARGET=server
-make -j%{_threads} TARGET=server USE_SELINUX=yes DEBUG=%{_debugenabled}
+make deps TARGET=manager
+make -j%{_threads} TARGET=manager USE_SELINUX=yes DEBUG=%{_debugenabled}
 
 popd
 
@@ -68,7 +68,7 @@ rm -fr %{buildroot}
 
 echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
 echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
-echo 'USER_INSTALL_TYPE="server"' >> ./etc/preloaded-vars.conf
+echo 'USER_INSTALL_TYPE="manager"' >> ./etc/preloaded-vars.conf
 echo 'USER_DIR="%{_localstatedir}"' >> ./etc/preloaded-vars.conf
 echo 'USER_DELETE_DIR="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_ACTIVE_RESPONSE="y"' >> ./etc/preloaded-vars.conf
@@ -230,10 +230,6 @@ if [ $1 = 2 ]; then
     service wazuh-manager stop > /dev/null 2>&1
     touch %{_localstatedir}/tmp/wazuh.restart
   elif %{_localstatedir}/bin/wazuh-manager-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-    touch %{_localstatedir}/tmp/wazuh.restart
-  elif %{_localstatedir}/bin/wazuh-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-    touch %{_localstatedir}/tmp/wazuh.restart
-  elif %{_localstatedir}/bin/ossec-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     touch %{_localstatedir}/tmp/wazuh.restart
   fi
   if [ -x %{_localstatedir}/bin/wazuh-manager-control ]; then

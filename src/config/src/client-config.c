@@ -25,6 +25,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     int port = DEFAULT_SECURE;
 
     /* XML definitions */
+    const char *xml_client_manager = "manager";
     const char *xml_client_server = "server";
     const char *xml_local_ip = "local_ip";
     const char *xml_ar_disabled = "disable-active-response";
@@ -58,9 +59,9 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         else if (strcmp(node[i]->element, xml_local_ip) == 0) {
             mwarn("The <%s> tag has no functionality, so it will have no effect.", xml_local_ip);
         }
-        /* Get server IP */
+        /* Get manager IP */
         else if (strcmp(node[i]->element, xml_client_ip) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_client_ip);
+            mwarn("The <%s> tag is deprecated, please use <manager><address> instead.", xml_client_ip);
 
             if (OS_IsValidIP(node[i]->content, NULL) != 1) {
                 merror(INVALID_IP, node[i]->content);
@@ -69,7 +70,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
 
             rip = node[i]->content;
         } else if (strcmp(node[i]->element, xml_client_hostname) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_client_hostname);
+            mwarn("The <%s> tag is deprecated, please use <manager><address> instead.", xml_client_hostname);
             if (strchr(node[i]->content, '/') ==  NULL) {
                 snprintf(f_ip, 127, "%s/", node[i]->content);
                 rip = f_ip;
@@ -79,7 +80,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             }
 
         } else if (strcmp(node[i]->element, xml_client_port) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <server><port> instead.", xml_client_port);
+            mwarn("The <%s> tag is deprecated, please use <manager><port> instead.", xml_client_port);
 
             if (!OS_StrIsNum(node[i]->content)) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
@@ -91,8 +92,12 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 return (OS_INVALID);
             }
         }
-        /* Get parameters for each configurated server*/
-        else if (strcmp(node[i]->element, xml_client_server) == 0) {
+        /* Get parameters for each configured manager/server block */
+        else if (strcmp(node[i]->element, xml_client_manager) == 0 ||
+                 strcmp(node[i]->element, xml_client_server) == 0) {
+            if (strcmp(node[i]->element, xml_client_server) == 0) {
+                mwarn("The <%s> tag is deprecated, please use <manager> instead.", xml_client_server);
+            }
             if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 merror(XML_INVELEM, node[i]->element);
                 return (OS_INVALID);
@@ -589,7 +594,7 @@ bool Validate_Address(agent_server *servers)
     return false;
 }
 
-/* Checks if at least one <server> block is not a link-local ipv6 address or it has a network interface configured. */
+/* Checks if at least one <manager> block is not a link-local ipv6 address or it has a network interface configured. */
 bool Validate_IPv6_Link_Local_Interface(agent_server *servers) {
     unsigned int i;
     bool ret = false;

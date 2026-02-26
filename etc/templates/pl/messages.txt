@@ -5,7 +5,7 @@ yesmatch="y"
 nomatch="n"
 agent="agent"
 local="lokalnie"
-server="serwer"
+server="manager"
 help="pomoc"
 
 # Ogólne
@@ -22,7 +22,7 @@ user="Użytkownik"
 host="Host"
 hitanyorabort="Wciśnij ENTER aby kontynuować lub Ctrl-C aby przerwać."
 whattoinstall="Wybierz rodzaj instalacji (manager, agent, lokalnie or pomoc)?"
-serverchose="Wybrana instalacja: manager (serwer)"
+serverchose="Wybrana instalacja: manager"
 clientchose="Wybrana instalacja: agent (klient)"
 localchose="Wybrana instalacja: lokalnie"
 
@@ -43,8 +43,8 @@ usingsmtp="Używam SMTP serwer: "
 whatsmtp="Podaj SMTP serwer (ip/host)?"
 
 # Część 3.1/agent
-serverip="Podaj adres IP serwera Wazuh."
-serveraddr="Podaj adres IP (hostname) serwera Wazuh."
+serverip="Wprowadź adres IP menedżera Wazuh."
+serveraddr="Wprowadź adres IP (nazwę hosta) menedżera Wazuh."
 addingip="Dodaje IP serwera"
 addingname="Dodaje hostname serwera"
 

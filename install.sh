@@ -314,8 +314,8 @@ ConfigureClient()
     echo "3- ${configuring} $NAME."
     echo ""
 
-    if [ "X${USER_AGENT_SERVER_IP}" = "X" -a "X${USER_AGENT_SERVER_NAME}" = "X" ]; then
-        # Looping and asking for server ip or hostname
+    if [ "X${USER_AGENT_MANAGER_IP}" = "X" -a "X${USER_AGENT_MANAGER_NAME}" = "X" ]; then
+        # Looping and asking for manager ip or hostname
         while [ 1 ]; do
             $ECHO "  3.1- ${serveraddr}: "
                 read ADDRANSWER
@@ -335,8 +335,8 @@ ConfigureClient()
             fi
         done
     else
-        SERVER_IP=${USER_AGENT_SERVER_IP}
-        HNAME=${USER_AGENT_SERVER_NAME}
+        SERVER_IP=${USER_AGENT_MANAGER_IP}
+        HNAME=${USER_AGENT_MANAGER_NAME}
     fi
 
     # Syscheck?
@@ -404,7 +404,7 @@ ConfigureServer()
 
     AddWhite
 
-    if [ "X$INSTYPE" = "Xserver" ]; then
+    if [ "X$INSTYPE" = "Xmanager" ]; then
       # Configuring remote syslog
       echo ""
       $ECHO "  3.6- ${syslog} ($yes/$no) [$yes]: "
@@ -433,7 +433,7 @@ ConfigureServer()
     UseSSLCert
 
     # Setting up the auth daemon & logs
-    if [ "X$INSTYPE" = "Xserver" ]; then
+    if [ "X$INSTYPE" = "Xmanager" ]; then
         EnableAuthd "3.7"
         ConfigureBoot "3.8"
         SetupLogs "3.9"
@@ -765,7 +765,7 @@ main()
                 ${server}|${serverm}|"manager"|"m")
                     echo ""
                     echo "  - ${serverchose}."
-                    INSTYPE="server"
+                    INSTYPE="manager"
                     break;
                 ;;
 
@@ -779,7 +779,7 @@ main()
                 ${hybrid}|${hybridm})
                     echo ""
                     echo "  - ${serverchose} (hybrid)."
-                    INSTYPE="server"
+                    INSTYPE="manager"
                     HYBID="go"
                     break;
                 ;;
@@ -958,7 +958,7 @@ A clean installation is required for managers."
 
     # Configuring the system (based on the installation type)
     if [ "X${update_only}" = "X" ]; then
-        if [ "X$INSTYPE" = "Xserver" ]; then
+        if [ "X$INSTYPE" = "Xmanager" ]; then
             ConfigureServer
         elif [ "X$INSTYPE" = "Xagent" ]; then
             ConfigureClient
@@ -975,7 +975,7 @@ A clean installation is required for managers."
 
     # User messages
     control_script="wazuh-control"
-    if [ "X$INSTYPE" = "Xserver" ]; then
+    if [ "X$INSTYPE" = "Xmanager" ]; then
         control_script="wazuh-manager-control"
     fi
     echo ""
@@ -1029,7 +1029,7 @@ A clean installation is required for managers."
     fi
 
 
-    if [ "X$INSTYPE" = "Xserver" ]; then
+    if [ "X$INSTYPE" = "Xmanager" ]; then
         echo ""
         echo " - ${addserveragent}"
         echo ""

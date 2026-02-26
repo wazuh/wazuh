@@ -55,7 +55,7 @@ override_dh_install:
 	USER_ENABLE_ROOTCHECK="y" \
 	USER_ENABLE_SYSCOLLECTOR="y" \
 	USER_UPDATE="n" \
-	USER_AGENT_SERVER_IP="MANAGER_IP" \
+	USER_AGENT_MANAGER_IP="MANAGER_IP" \
 	USER_CA_STORE="/path/to/my_cert.pem" \
 	USER_AUTO_START="n" \
 	./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }

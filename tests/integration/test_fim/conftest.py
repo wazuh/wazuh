@@ -100,7 +100,7 @@ def set_agent_config(request: pytest.FixtureRequest):
 
     configurations = getattr(request.module, 'test_configuration')
     agent_conf = {"section": "client", "elements": [
-        {"server": {"elements": [
+        {"manager": {"elements": [
             {"address": {"value": "127.0.0.1"}},
             {"port": {"value": 1514}},
             {"protocol": {"value": "tcp"}}]}}]}

@@ -5,8 +5,8 @@ port: 55000
 
 https:
  enabled: yes
- key: "server.key"
- cert: "server.crt"
+ key: "manager.key"
+ cert: "manager.crt"
  use_ca: False
  ca: "ca.crt"
 
