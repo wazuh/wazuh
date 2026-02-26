@@ -15,7 +15,6 @@
 #include <api/rawevtindexer/handlers.hpp>
 #include <archiver/archiver.hpp>
 #include <base/eventParser.hpp>
-#include <base/hostInfo.hpp>
 #include <base/libwazuhshared.hpp>
 #include <base/logging.hpp>
 #include <base/process.hpp>
@@ -42,7 +41,6 @@
 #include <rawevtindexer/raweventindexer.hpp>
 #include <scheduler/scheduler.hpp>
 #include <streamlog/logger.hpp>
-#include <udgramsrv/udsrv.hpp>
 #include <wiconnector/windexerconnector.hpp>
 // #include <metrics/manager.hpp>
 #include <queue/concurrentQueue.hpp>
@@ -63,7 +61,6 @@ struct QueueTraits : public moodycamel::ConcurrentQueueDefaultTraits
 };
 } // namespace
 
-std::shared_ptr<udsrv::Server> g_engineLocalServer {};
 volatile sig_atomic_t g_shutdown_requested = 0;
 
 void sigintHandler(const int signum)
@@ -654,35 +651,10 @@ int main(int argc, char* argv[])
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
         }
 
-        // UDP Servers
-        if (enableProcessing)
-        {
-            const auto hostInfo = base::hostInfo::toJson();
-            g_engineLocalServer = std::make_shared<udsrv::Server>(
-                [orchestrator, archiver, hostInfo](std::string_view msg)
-                {
-                    archiver->archive(std::string(msg));
-                    auto event = base::eventParsers::parseLegacyEvent(msg, hostInfo);
-                    // TODO: momentary change
-                    event->setString("wazuh", "/wazuh/cluster/name");
-                    orchestrator->postEvent(std::move(event));
-                },
-                confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
-            g_engineLocalServer->start(confManager.get<int>(conf::key::SERVER_EVENT_THREADS));
-
-            LOG_INFO("Local engine's server initialized and started.");
-        }
-        else
-        {
-            LOG_INFO("Local engine's UDP event server DISABLED - events will not be received via UDP.");
-        }
-
         // HTTP enriched events server
         if (enableProcessing)
         {
             engineRemoteServer = std::make_shared<httpsrv::Server>("ENRICHED_EVENTS_SRV", 0, false);
-
-            exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 
             engineRemoteServer->addRoute(httpsrv::Method::POST,
                                          "/events/enriched", // TODO: Double check route
@@ -707,24 +679,22 @@ int main(int argc, char* argv[])
             LOG_INFO("Engine started and ready to process events.");
         }
 
-        // Do not exit until the server is running or shutdown is requested
-        if (g_engineLocalServer)
+        if (enableProcessing)
         {
             // Synchronize on startup
             cmSyncService->synchronize();
 
-            while (g_engineLocalServer->isRunning())
+            while (engineRemoteServer->isRunning())
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 if (g_shutdown_requested)
                 {
-                    LOG_INFO("Shutdown requested (signal: {}), stopping the engine local server.",
-                             g_shutdown_requested);
-                    g_engineLocalServer->stop();
+                    LOG_INFO("Shutdown requested (signal: {}), stopping the engine.", g_shutdown_requested);
+                    engineRemoteServer->stop();
                 }
             }
-            g_engineLocalServer.reset();
-            LOG_INFO("Engine local server stopped.");
+            engineRemoteServer.reset();
+            LOG_INFO("Engine remote server stopped.");
         }
         else
         {

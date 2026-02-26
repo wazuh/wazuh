@@ -5,7 +5,7 @@
 #    "wazuh": {
 #        "test": {
 #            "format": "text",
-#            "id": "000",
+#            "id": "123",
 #            "ingested": "2021-10-26T16:50:34.348945Z",
 #            "kind": "event"
 #        }

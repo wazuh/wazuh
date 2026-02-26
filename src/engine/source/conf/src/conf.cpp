@@ -84,11 +84,6 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<int>(key::SERVER_API_TIMEOUT, "WAZUH_SERVER_API_TIMEOUT", 5000);
     addUnit<int64_t>(key::SERVER_API_PAYLOAD_MAX_BYTES, "WAZUH_SERVER_API_PAYLOAD_MAX_BYTES", 0);
 
-    // Event server (dgram)
-    addUnit<std::string>(
-        key::SERVER_EVENT_SOCKET, "WAZUH_SERVER_EVENT_SOCKET", (wazuhRoot / "queue/sockets/queue").c_str());
-    addUnit<int>(key::SERVER_EVENT_THREADS, "WAZUH_SERVER_EVENT_THREADS", 1);
-
     // Event server - enriched (http)
     addUnit<std::string>(key::SERVER_ENRICHED_EVENTS_SOCKET,
                          "WAZUH_SERVER_ENRICHED_EVENTS_SOCKET",

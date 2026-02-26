@@ -238,12 +238,12 @@ def init_cm_resources(api_client: APIClient):
     dec_test_yaml = build_tester_decoder_yaml(
         DECODER_TEST_NAME,
         DECODER_TEST_UUID,
-        check_expr="$agent.id == AA11",
+        check_expr="$wazuh.agent.id == AA11",
     )
     dec_other_yaml = build_tester_decoder_yaml(
         DECODER_OTHER_NAME,
         DECODER_OTHER_UUID,
-        check_expr="$agent.id == BB22",
+        check_expr="$wazuh.agent.id == BB22",
     )
 
     for yml in (dec_test_yaml, dec_other_yaml):

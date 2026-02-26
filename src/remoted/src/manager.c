@@ -485,20 +485,22 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
             snprintf(srcmsg, OS_SIZE_256, "[%s] (%s) %s", key->id, key->name, key->ip->ip);
             snprintf(msg, OS_SIZE_1024, AG_STOP_MSG, key->name, key->ip->ip);
 
+            // TODO: Log the control message in wazuh-manager.log
             /* Send stopped message */
-            if (SendMSG(logr.m_queue, msg, srcmsg, SECURE_MQ) < 0) {
+            /*if (SendMSG(logr.m_queue, msg, srcmsg, SECURE_MQ) < 0) {
                 merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
-                // Try to reconnect infinitely
+                Try to reconnect infinitely
+                TODO: commented out while separating manager and agent, someone should bind DEFAULTQUEUE
                 logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
                 minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
 
                 if (SendMSG(logr.m_queue, msg, srcmsg, SECURE_MQ) < 0) {
-                    // Something went wrong sending a message after an immediate reconnection...
+                    Something went wrong sending a message after an immediate reconnection...
                     merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                 }
-            }
+            }*/
         }
     } else {
         /* Clean msg and shared files (remove random string) */

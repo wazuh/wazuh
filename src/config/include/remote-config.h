@@ -44,7 +44,6 @@ typedef struct _remoted {
 
     bool allow_higher_versions;
 
-    int m_queue;
     int tcp_sock;       ///< This socket is used to receive requests over TCP
     int udp_sock;       ///< This socket is used to receive requests over UDP
     int position;       ///< This allows the childs to access its corresponding remoted parameters (unique per child)

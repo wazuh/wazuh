@@ -326,8 +326,8 @@ static inline std::string E(std::string p)
 }
 
 // Example JSON headers
-static const std::string HDR1 = R"({"agent":{"name":"worker","id":"000"}})";
-static const std::string HDR2 = R"({"agent":{"name":"alt","id":"000"}})";
+static const std::string HDR1 = R"({"agent":{"name":"agent-X","id":"123"}})";
+static const std::string HDR2 = R"({"agent":{"name":"alt","id":"321"}})";
 
 // OSSEC events: "queue:location:message"
 static const std::string EV1 = "1:/etc/passwd:File modified md5=abc";

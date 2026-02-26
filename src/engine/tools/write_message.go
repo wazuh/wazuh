@@ -2,30 +2,41 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
 
 func main() {
-	var sockPath string = "/var/wazuh-manager/queue/sockets/queue" // Path to unix socket
-	var conn net.Conn
+
+	var sockPath string = "/var/wazuh-manager/queue/sockets/queue-http.sock" // Path to HTTP unix socket
+
 	var logFile string
 	var logMessage string
 	var isRawMessage bool
 	var loops uint
+	var agentid uint
+	var contentType string
 
 	flag.StringVar(&logFile, "f", "test_logs_base.txt", "Path to dataset of logs")
 	flag.StringVar(&logMessage, "m", "", "Only log")
-	flag.BoolVar(&isRawMessage, "r", false, "Use raw message")
-	flag.UintVar(&loops, "l", 1, "Number of times we send all the logs of the file")
+	flag.BoolVar(&isRawMessage, "r", false, "Use raw message (send as-is without wrapping)")
+	flag.UintVar(&loops, "l", 1, "Number of agents where to send all the logs of the file")
+	flag.UintVar(&agentid, "a", 1, "Agent ID to use with single log message, defaults to 1")
+	flag.StringVar(&contentType, "c", "application/x-ndjson", "Content-Type header (default: application/x-ndjson)")
+	flag.StringVar(&sockPath, "s", sockPath, "Path to HTTP unix socket")
 	flag.Parse()
 
-	conn = connectSockunix(sockPath)
-	defer conn.Close()
+	// Create HTTP client with Unix socket transport
+	client := createHTTPClient(sockPath)
 
 	if logMessage == "" {
 		lines, err := readLines(logFile)
@@ -35,47 +46,92 @@ func main() {
 		for i := uint(0); i < loops; i++ {
 			j := 1000 * int(i+1)
 			for _, line := range lines {
-				sockQuery(conn, line, j, isRawMessage)
+				sendEvent(client, line, j, isRawMessage, contentType)
 				j++
 			}
 		}
 	} else {
-		sockQuery(conn, logMessage, 000, isRawMessage)
+		sendEvent(client, logMessage, int(agentid), isRawMessage, contentType)
 	}
 
 }
 
-// Exit on fail
-func sockQuery(conn net.Conn, message string, agentid int, is_raw bool) {
-	var payload []byte
+// createHTTPClient creates an HTTP client configured to use Unix socket
+func createHTTPClient(socket string) *http.Client {
+	return &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				return net.Dial("unix", socket)
+			},
+		},
+	}
+}
 
-	if is_raw {
-		payload = []byte(message)
+// sendEvent sends an event via HTTP POST to the engine
+func sendEvent(client *http.Client, message string, agentid int, isRaw bool, contentType string) {
+	var payload string
+
+	if isRaw {
+		// Send message as-is (should be in H/E format already)
+		payload = message
 	} else {
-		agentStr := strconv.Itoa(agentid)
-		payload = []byte("2:[" + agentStr + "] (hostname" + agentStr + ") any->/var/cosas:" + message)
+		// Build H/E protocol format:
+		// Line 1: H <JSON header with agent info>
+		// Line 2: E <queue:location:message in OSSEC format>
+
+		// Header line (JSON)
+		header := map[string]interface{}{
+			"wazuh": map[string]interface{}{
+				"agent": map[string]interface{}{
+					"id":   strconv.Itoa(agentid),
+					"name": fmt.Sprintf("hostname%d", agentid),
+				},
+			},
+		}
+		headerBytes, err := json.Marshal(header)
+		if err != nil {
+			fmt.Printf("Error marshaling header JSON: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Event line (OSSEC format: queue:location:message)
+		// Format: queue_id:location:actual_message
+		eventLine := fmt.Sprintf("1:/var/log/messages:%s", message)
+
+		// Combine in H/E format
+		payload = fmt.Sprintf("H %s\nE %s\n", string(headerBytes), eventLine)
 	}
 
-	if _, err := conn.Write(payload); err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
+	// Ensure payload ends with newline
+	if len(payload) > 0 && payload[len(payload)-1] != '\n' {
+		payload += "\n"
 	}
-	return
-}
 
-// Exit on fail
-func connectSockunix(socket string) net.Conn {
-
-	conn, err := net.Dial("unixgram", socket)
+	// Create HTTP request
+	req, err := http.NewRequest("POST", "http://localhost/events/enriched", bytes.NewBufferString(payload))
 	if err != nil {
-		fmt.Printf("Failed to dial: %v\n", err)
+		fmt.Printf("Error creating request: %v\n", err)
 		os.Exit(1)
 	}
 
-	return conn
+	req.Header.Set("Content-Type", contentType)
+
+	// Send request
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("Error sending request: %v\n", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("Unexpected status code: %d\n", resp.StatusCode)
+		os.Exit(1)
+	}
 }
 
-// Exit on fail
+// readLines reads all lines from a file
 func readLines(path string) ([]string, error) {
 	file, err := os.Open(path)
 	if err != nil {

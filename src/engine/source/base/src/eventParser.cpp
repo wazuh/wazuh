@@ -93,7 +93,7 @@ bool parseLegacyLocation(std::string& location, std::shared_ptr<json::Json>& eve
 
 } // namespace
 
-Event parseLegacyEvent(std::string_view rawEvent, const json::Json& hostInfo)
+Event parseLegacyEvent(std::string_view rawEvent, const json::Json& agentMetadata)
 {
     auto parseEvent = std::make_shared<json::Json>();
 
@@ -147,19 +147,7 @@ Event parseLegacyEvent(std::string_view rawEvent, const json::Json& hostInfo)
         }
     }
 
-    // If the location is in the legacy agent format "[ID] (Name) IP->Module", parse it.
-    // TODO: The events should be recibed always with the 4.x agent format.
-    if (!parseLegacyLocation(rawLocation, parseEvent))
-    {
-        try
-        {
-            parseEvent->merge(true, hostInfo);
-        }
-        catch (const std::exception& ex)
-        {
-            throw std::runtime_error(fmt::format("merge failed: {}", ex.what()));
-        }
-    }
+    parseEvent->merge(true, agentMetadata);
     parseEvent->setString(rawLocation, EVENT_LOCATION_ID);
 
     // Set the original event message.

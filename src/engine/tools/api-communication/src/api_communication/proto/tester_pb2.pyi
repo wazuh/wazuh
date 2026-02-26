@@ -50,16 +50,18 @@ class Result(_message.Message):
     def __init__(self, output: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., asset_traces: _Optional[_Iterable[_Union[Result.AssetTrace, _Mapping]]] = ...) -> None: ...
 
 class RunPost_Request(_message.Message):
-    __slots__ = ["asset_trace", "event", "name", "trace_level"]
+    __slots__ = ["agent_metadata", "asset_trace", "event", "name", "trace_level"]
+    AGENT_METADATA_FIELD_NUMBER: _ClassVar[int]
     ASSET_TRACE_FIELD_NUMBER: _ClassVar[int]
     EVENT_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     TRACE_LEVEL_FIELD_NUMBER: _ClassVar[int]
+    agent_metadata: _struct_pb2.Struct
     asset_trace: _containers.RepeatedScalarFieldContainer[str]
     event: str
     name: str
     trace_level: TraceLevel
-    def __init__(self, name: _Optional[str] = ..., event: _Optional[str] = ..., trace_level: _Optional[_Union[TraceLevel, str]] = ..., asset_trace: _Optional[_Iterable[str]] = ...) -> None: ...
+    def __init__(self, name: _Optional[str] = ..., event: _Optional[str] = ..., agent_metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., trace_level: _Optional[_Union[TraceLevel, str]] = ..., asset_trace: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class RunPost_Response(_message.Message):
     __slots__ = ["error", "result", "status"]

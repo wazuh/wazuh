@@ -52,9 +52,10 @@ void HandleSyslog()
     memset(&_nc, 0, sizeof(_nc));
 
     /* Connect to the message queue infinitely */
-    if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
-    }
+    // TODO: commented out while separating manager and agent, someone should bind DEFAULTQUEUE
+    // if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+    //     merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+    // }
 
     /* Infinite loop */
     while (1) {
@@ -104,12 +105,15 @@ void HandleSyslog()
             continue;
         }
 
+        // TODO: delete later, this is just to suppress the unused variable warning while separating manager and agent
+        (void)buffer_pt;
+        /*
+        // TODO: commented out while separating manager and agent, someone should bind DEFAULTQUEUE
         if (SendMSG(logr.m_queue, buffer_pt, srcip, SYSLOG_MQ) < 0) {
             merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
             // Try to reconnect infinitely
             logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
-
             minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
 
             if (SendMSG(logr.m_queue, buffer_pt, srcip, SYSLOG_MQ) < 0) {
@@ -117,5 +121,6 @@ void HandleSyslog()
                 merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
             }
         }
+        */
     }
 }

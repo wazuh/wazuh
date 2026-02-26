@@ -2207,12 +2207,13 @@ class RunPost_Request final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kAssetTraceFieldNumber = 6,
+    kAssetTraceFieldNumber = 5,
     kNameFieldNumber = 1,
     kEventFieldNumber = 2,
-    kTraceLevelFieldNumber = 5,
+    kAgentMetadataFieldNumber = 3,
+    kTraceLevelFieldNumber = 4,
   };
-  // repeated string asset_trace = 6;
+  // repeated string asset_trace = 5;
   int asset_trace_size() const;
   private:
   int _internal_asset_trace_size() const;
@@ -2264,7 +2265,25 @@ class RunPost_Request final :
   std::string* _internal_mutable_event();
   public:
 
-  // .com.wazuh.api.engine.tester.TraceLevel trace_level = 5;
+  // .google.protobuf.Struct agent_metadata = 3;
+  bool has_agent_metadata() const;
+  private:
+  bool _internal_has_agent_metadata() const;
+  public:
+  void clear_agent_metadata();
+  const ::PROTOBUF_NAMESPACE_ID::Struct& agent_metadata() const;
+  PROTOBUF_NODISCARD ::PROTOBUF_NAMESPACE_ID::Struct* release_agent_metadata();
+  ::PROTOBUF_NAMESPACE_ID::Struct* mutable_agent_metadata();
+  void set_allocated_agent_metadata(::PROTOBUF_NAMESPACE_ID::Struct* agent_metadata);
+  private:
+  const ::PROTOBUF_NAMESPACE_ID::Struct& _internal_agent_metadata() const;
+  ::PROTOBUF_NAMESPACE_ID::Struct* _internal_mutable_agent_metadata();
+  public:
+  void unsafe_arena_set_allocated_agent_metadata(
+      ::PROTOBUF_NAMESPACE_ID::Struct* agent_metadata);
+  ::PROTOBUF_NAMESPACE_ID::Struct* unsafe_arena_release_agent_metadata();
+
+  // .com.wazuh.api.engine.tester.TraceLevel trace_level = 4;
   void clear_trace_level();
   ::com::wazuh::api::engine::tester::TraceLevel trace_level() const;
   void set_trace_level(::com::wazuh::api::engine::tester::TraceLevel value);
@@ -2284,6 +2303,7 @@ class RunPost_Request final :
     ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> asset_trace_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr event_;
+    ::PROTOBUF_NAMESPACE_ID::Struct* agent_metadata_;
     int trace_level_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
@@ -4200,7 +4220,92 @@ inline void RunPost_Request::set_allocated_event(std::string* event) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.RunPost_Request.event)
 }
 
-// .com.wazuh.api.engine.tester.TraceLevel trace_level = 5;
+// .google.protobuf.Struct agent_metadata = 3;
+inline bool RunPost_Request::_internal_has_agent_metadata() const {
+  return this != internal_default_instance() && _impl_.agent_metadata_ != nullptr;
+}
+inline bool RunPost_Request::has_agent_metadata() const {
+  return _internal_has_agent_metadata();
+}
+inline const ::PROTOBUF_NAMESPACE_ID::Struct& RunPost_Request::_internal_agent_metadata() const {
+  const ::PROTOBUF_NAMESPACE_ID::Struct* p = _impl_.agent_metadata_;
+  return p != nullptr ? *p : reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Struct&>(
+      ::PROTOBUF_NAMESPACE_ID::_Struct_default_instance_);
+}
+inline const ::PROTOBUF_NAMESPACE_ID::Struct& RunPost_Request::agent_metadata() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.RunPost_Request.agent_metadata)
+  return _internal_agent_metadata();
+}
+inline void RunPost_Request::unsafe_arena_set_allocated_agent_metadata(
+    ::PROTOBUF_NAMESPACE_ID::Struct* agent_metadata) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.agent_metadata_);
+  }
+  _impl_.agent_metadata_ = agent_metadata;
+  if (agent_metadata) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.tester.RunPost_Request.agent_metadata)
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* RunPost_Request::release_agent_metadata() {
+  
+  ::PROTOBUF_NAMESPACE_ID::Struct* temp = _impl_.agent_metadata_;
+  _impl_.agent_metadata_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* RunPost_Request::unsafe_arena_release_agent_metadata() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.RunPost_Request.agent_metadata)
+  
+  ::PROTOBUF_NAMESPACE_ID::Struct* temp = _impl_.agent_metadata_;
+  _impl_.agent_metadata_ = nullptr;
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* RunPost_Request::_internal_mutable_agent_metadata() {
+  
+  if (_impl_.agent_metadata_ == nullptr) {
+    auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Struct>(GetArenaForAllocation());
+    _impl_.agent_metadata_ = p;
+  }
+  return _impl_.agent_metadata_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* RunPost_Request::mutable_agent_metadata() {
+  ::PROTOBUF_NAMESPACE_ID::Struct* _msg = _internal_mutable_agent_metadata();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.RunPost_Request.agent_metadata)
+  return _msg;
+}
+inline void RunPost_Request::set_allocated_agent_metadata(::PROTOBUF_NAMESPACE_ID::Struct* agent_metadata) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.agent_metadata_);
+  }
+  if (agent_metadata) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(
+                reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(agent_metadata));
+    if (message_arena != submessage_arena) {
+      agent_metadata = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, agent_metadata, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.agent_metadata_ = agent_metadata;
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.RunPost_Request.agent_metadata)
+}
+
+// .com.wazuh.api.engine.tester.TraceLevel trace_level = 4;
 inline void RunPost_Request::clear_trace_level() {
   _impl_.trace_level_ = 0;
 }
@@ -4220,7 +4325,7 @@ inline void RunPost_Request::set_trace_level(::com::wazuh::api::engine::tester::
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.RunPost_Request.trace_level)
 }
 
-// repeated string asset_trace = 6;
+// repeated string asset_trace = 5;
 inline int RunPost_Request::_internal_asset_trace_size() const {
   return _impl_.asset_trace_.size();
 }

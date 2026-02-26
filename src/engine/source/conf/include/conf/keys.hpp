@@ -45,8 +45,6 @@ constexpr std::string_view SERVER_API_PAYLOAD_MAX_BYTES = "analysisd.server_api_
 
 constexpr std::string_view SERVER_ENRICHED_EVENTS_SOCKET = "analysisd.server_enriched_events_socket";
 
-constexpr std::string_view SERVER_EVENT_SOCKET = "analysisd.server_event_socket";
-constexpr std::string_view SERVER_EVENT_THREADS = "analysisd.server_event_threads";
 constexpr std::string_view SERVER_ENABLE_EVENT_PROCESSING = "analysisd.server_enable_event_processing";
 
 constexpr std::string_view TZDB_PATH = "analysisd.tzdb_path";

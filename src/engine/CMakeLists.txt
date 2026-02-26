@@ -295,7 +295,6 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/geo)
 add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/fastqueue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
-add_subdirectory(${ENGINE_SOURCE_DIR}/udgramsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wiconnector)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmstore)
@@ -325,7 +324,6 @@ target_link_libraries(wazuh-engine
     streamlogger::streamlogger
     wIndexerConnector::wIndexerConnector
     httpsrv
-    udgramsrv::udgramsrv
     api::event
     queue
     archiver::archive
