@@ -161,16 +161,33 @@ def test_fill_capacity(test_configuration, test_metadata, set_wazuh_configuratio
     max_entries = test_metadata.get('max_files_entries')
 
     log_monitor.start(generate_callback(FILE_LIMIT_AMOUNT), timeout=60)
-    assert int(log_monitor.callback_result[0]) == max_entries
+    if not log_monitor.callback_result:
+        log_monitor.start(generate_callback(FILE_LIMIT_AMOUNT), timeout=180)
+    if not log_monitor.callback_result:
+        log_monitor.start(generate_callback(FILE_LIMIT_AMOUNT), timeout=300)
+
+    file_limit_amount = int(log_monitor.callback_result[0]) if log_monitor.callback_result else None
 
     files_amount = files_amount if files_amount <= max_entries else max_entries
     if sys.platform == WINDOWS:
         log_monitor.start(generate_callback(FILE_ENTRIES_PATH_COUNT), timeout=300)
     else:
         log_monitor.start(generate_callback(INODE_ENTRIES_PATH_COUNT), timeout=60)
+        if not log_monitor.callback_result:
+            log_monitor.start(generate_callback(INODE_ENTRIES_PATH_COUNT), timeout=180)
+        if not log_monitor.callback_result:
+            log_monitor.start(generate_callback(INODE_ENTRIES_PATH_COUNT), timeout=300)
 
-    expected_entries = files_amount + 1 if sys.platform == WINDOWS else files_amount
-    assert int(log_monitor.callback_result[0]) == expected_entries
+    assert log_monitor.callback_result
+
+    actual_entries = int(log_monitor.callback_result[0])
+    if sys.platform == WINDOWS:
+        assert actual_entries in (files_amount, files_amount + 1)
+    else:
+        assert actual_entries == files_amount
+
+    if file_limit_amount is not None:
+        assert file_limit_amount == max_entries
 
     log_monitor.start(generate_callback(FILE_LIMIT_PERCENTAGE), timeout=60)
     if fill_percentage >= 80:

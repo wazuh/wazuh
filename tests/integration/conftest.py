@@ -90,7 +90,11 @@ def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item
         if supported_platforms and plat not in supported_platforms:
             selected = False
 
-        host_type = 'agent' if 'agent' in services.get_service() else 'server'
+        forced_host_type = os.environ.get('WAZUH_TEST_HOST_TYPE', '').strip().lower()
+        if forced_host_type in ('agent', 'server'):
+            host_type = forced_host_type
+        else:
+            host_type = 'agent' if 'agent' in services.get_service() else 'server'
         supported_types = _host_types.intersection(
             mark.name for mark in item.iter_markers())
         if supported_types and host_type not in supported_types:

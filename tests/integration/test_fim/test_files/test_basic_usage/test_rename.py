@@ -60,6 +60,7 @@ pytest_args:
 tags:
     - fim
 '''
+import re
 import sys
 import pytest
 
@@ -156,8 +157,28 @@ def test_rename(test_configuration, test_metadata, set_wazuh_configuration, conf
     fim_mode = test_metadata.get('fim_mode')
 
     file.rename(path_to_edit, Path(folder_to_monitor, 'test'))
-    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=120)
+    if not wazuh_log_monitor.callback_result:
+        wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=120)
     assert wazuh_log_monitor.callback_result
-    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED), timeout=120)
+    if not wazuh_log_monitor.callback_result:
+        wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED), timeout=120)
     assert wazuh_log_monitor.callback_result
-    assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
+    event_line = wazuh_log_monitor.callback_result
+    if isinstance(event_line, bytes):
+        event_line = event_line.decode(errors='ignore')
+    elif isinstance(event_line, (list, tuple)):
+        normalized_lines = []
+        for item in event_line:
+            if isinstance(item, bytes):
+                normalized_lines.append(item.decode(errors='ignore'))
+            else:
+                normalized_lines.append(str(item))
+        event_line = "\n".join(normalized_lines)
+    else:
+        event_line = str(event_line)
+
+    mode_match = re.search(r'"mode":"([^"]+)"', event_line)
+    assert mode_match
+    assert mode_match.group(1) == fim_mode
