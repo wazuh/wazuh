@@ -10,10 +10,12 @@
 # Foundation.
 
 # Looking up for the execution directory
-cd `dirname $0`
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+# Change to the parent directory of src/init so relative paths work
+cd "${SCRIPT_DIR}/../.."
 
-. ./src/init/shared.sh
-. ./src/init/inst-functions.sh
+. ${SCRIPT_DIR}/shared.sh
+. ${SCRIPT_DIR}/inst-functions.sh
 
 NEWCONFIG="./localfiles.temp"
 

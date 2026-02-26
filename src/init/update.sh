@@ -396,12 +396,12 @@ UpdateOldVersions()
 
     if [ ! "$INSTYPE" = "agent" ]; then
         # New manager config by default
-        ./gen_ossec.sh conf "manager" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
+        ./src/init/gen_ossec.sh conf "manager" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
     else
         # New agent config by default
-        ./gen_ossec.sh conf "agent" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
+        ./src/init/gen_ossec.sh conf "agent" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
         # Replace IP
         ./src/init/replace_manager_ip.sh $OSSEC_CONF_FILE_ORIG $OSSEC_CONF_FILE
-        ./add_localfiles.sh $PREINSTALLEDDIR >> $OSSEC_CONF_FILE
+        ./src/init/add_localfiles.sh $PREINSTALLEDDIR >> $OSSEC_CONF_FILE
     fi
 }

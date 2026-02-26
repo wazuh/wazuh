@@ -89,12 +89,12 @@ fi
 if [ -z "${upgrade}" ]; then
     echo "Generating Wazuh configuration for a fresh installation."
 
-    if [ -f "${INSTALLATION_SCRIPTS_DIR}/gen_ossec.sh" ]; then
-        ${INSTALLATION_SCRIPTS_DIR}/gen_ossec.sh conf agent ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} ${DIR} > ${DIR}/etc/ossec.conf
+    if [ -f "${INSTALLATION_SCRIPTS_DIR}/src/init/gen_ossec.sh" ]; then
+        ${INSTALLATION_SCRIPTS_DIR}/src/init/gen_ossec.sh conf agent ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} ${DIR} > ${DIR}/etc/ossec.conf
         chown root:wazuh ${DIR}/etc/ossec.conf
         chmod 0640 ${DIR}/etc/ossec.conf
     else
-        echo "Error: ${INSTALLATION_SCRIPTS_DIR}/gen_ossec.sh script not found."
+        echo "Error: ${INSTALLATION_SCRIPTS_DIR}/src/init/gen_ossec.sh script not found."
     fi
 fi
 
