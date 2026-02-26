@@ -63,7 +63,7 @@ if [ -f /etc/systemd/system/wazuh-agent.service ]; then
 fi
 
 # Just in case, stop Wazuh control script
-$WAZUH_HOME/bin/wazuh-control stop
+$WAZUH_HOME/bin/wazuh-manager-control stop
 
 # Remove Wazuh directories and files
 rm -rf $WAZUH_HOME

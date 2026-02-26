@@ -79,7 +79,7 @@
             "args": [
                 "--directory=${env:WAZUH_REPO}/src",
                 "-j27",
-                "TARGET=server",
+                "TARGET=manager",
                 "DEBUG=yes"
             ],
             "group": "build",
@@ -94,7 +94,7 @@
             "args": [
                 "--directory=${env:WAZUH_REPO}/src",
                 "-j27",
-                "TARGET=server",
+                "TARGET=manager",
                 "DEBUG=yes",
                 "TEST=yes"
             ],
@@ -110,7 +110,7 @@
             "args": [
                 "--directory=${env:WAZUH_REPO}/src",
                 "-j",
-                "TARGET=server",
+                "TARGET=manager",
                 "ENGINE_TEST=y",
                 "DEBUG=yes"
             ],
@@ -126,7 +126,7 @@
             "args": [
                 "--directory=${env:WAZUH_REPO}/src",
                 "-j27",
-                "TARGET=server",
+                "TARGET=manager",
                 "ENGINE_TEST=y"
             ],
             "group": "build",
@@ -147,7 +147,7 @@
             "args": [
                 "--directory=${env:WAZUH_REPO}/src",
                 "-j27",
-                "TARGET=server",
+                "TARGET=manager",
                 "DEBUG=yes"
             ],
             "group": "build",
@@ -168,7 +168,7 @@
             "args": [
                 "--directory=${env:WAZUH_REPO}/src",
                 "-j27",
-                "TARGET=server",
+                "TARGET=manager",
                 "DEBUG=yes"
             ],
             "group": "build",
@@ -183,7 +183,7 @@
             "args": [
                 "--directory=${env:WAZUH_REPO}/src",
                 "deps",
-                "TARGET=server",
+                "TARGET=manager",
                 "-j1"
             ],
             "group": "build",
@@ -239,7 +239,7 @@
             "type": "shell",
             "command": "/usr/local/bin/cmake",
             "args": [
-                "-DTARGET=server",
+                "-DTARGET=manager",
                 "-S",
                 "${env:WAZUH_REPO}/src/unit_tests",
                 "-B",
