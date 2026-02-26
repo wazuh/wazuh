@@ -22,7 +22,7 @@ jobs:
       (github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.name == '5.X - Build Wazuh agent Linux (DEB/RPM)') ||
-      github.event_name != 'workflow_run'
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     name: Test Linux Agent DEB (amd64) startup
@@ -99,7 +99,7 @@ jobs:
       (github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.name == '5.X - Build Wazuh agent Linux (DEB/RPM)') ||
-      github.event_name != 'workflow_run'
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     name: Test Linux Agent RPM (x86_64) startup
@@ -176,7 +176,7 @@ jobs:
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.name == '5.X - Build Wazuh agent Windows (MSI)') ||
-      github.event_name != 'workflow_run'
+      github.event_name == 'workflow_dispatch'
     runs-on: windows-2022
     timeout-minutes: 30
     name: Test Windows Agent startup
@@ -229,32 +229,28 @@ jobs:
       - name: Install Wazuh agent
         shell: pwsh
         run: |
-          Write-Host "Installing package from: ${{ steps.package.outputs.package-path }}"
-
-          # Install MSI with WAZUH_MANAGER variable (official method from Wazuh documentation)
           $msiPath = "${{ steps.package.outputs.package-path }}"
           $arguments = @(
             "/i"
             "`"$msiPath`""
             "/q"
             "WAZUH_MANAGER=`"1.2.3.4`""
+            "/l installer.log"
           )
 
           Start-Process msiexec.exe -ArgumentList $arguments -Wait -NoNewWindow
-
-          # Verify installation
-          if (Test-Path "C:\Program Files (x86)\ossec-agent") {
-            Write-Host "✓ Agent installed successfully"
+          $installerfile = Get-Content installer.log
+          if ($installerfile -match "Wazuh Agent -- Installation completed successfully") {
+            Write-Output "Installation successfully."
           } else {
-            Write-Host "ERROR: Installation failed"
+            Write-Output "The installation could not be completed."
             exit 1
           }
 
       - name: Start Wazuh agent service
         shell: pwsh
         run: |
-          Write-Host "Starting Wazuh agent service..."
-          Start-Service -Name wazuh
+          Start-Service wazuhsvc
 
       - name: Wait for agent to initialize
         shell: pwsh
@@ -263,29 +259,23 @@ jobs:
       - name: Verify agent is running
         shell: pwsh
         run: |
-          Write-Host "Checking agent status..."
-          $service = Get-Service -Name wazuh
-
+          $service = Get-Service wazuhsvc
           if ($service.Status -ne 'Running') {
             Write-Host "ERROR: Service is not running. Status: $($service.Status)"
             exit 1
           }
-
-          Write-Host "✓ Agent service is running"
-          Write-Host "Service Status: $($service.Status)"
+          Write-Host "Agent service is running"
 
       - name: Stop Wazuh agent service
         shell: pwsh
         run: |
-          Write-Host "Stopping Wazuh agent service..."
-          Stop-Service -Name wazuh
-
-          # Verify it stopped
-          $service = Get-Service -Name wazuh
+          Stop-Service -Name wazuhsvc
+          $service = Get-Service -Name wazuhsvc
           if ($service.Status -ne 'Stopped') {
             Write-Host "WARNING: Service did not stop cleanly. Status: $($service.Status)"
+            exit 1
           } else {
-            Write-Host "✓ Agent service stopped successfully"
+            Write-Host "Agent service stopped successfully"
           }
 
       - name: Upload logs on failure
@@ -301,7 +291,7 @@ jobs:
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.name == '5.X - Build Wazuh agent macOS (PKG)') ||
-      github.event_name != 'workflow_run'
+      github.event_name == 'workflow_dispatch'
     runs-on: macos-14
     timeout-minutes: 30
     name: Test macOS Agent (arm64) startup
@@ -346,25 +336,18 @@ jobs:
 
       - name: Install Wazuh agent
         run: |
-          echo "Installing package from: ${{ steps.package.outputs.package-path }}"
-
-          # Install PKG with WAZUH_MANAGER variable (official method from Wazuh documentation)
           echo "WAZUH_MANAGER='1.2.3.4'" > /tmp/wazuh_envs
-          sudo installer -pkg "${{ steps.package.outputs.package-path }}" -target /
-
-          # Verify installation
-          if [ -d "/Library/Ossec" ]; then
-            echo "✓ Agent installed successfully"
+          sudo installer -pkg "${{ steps.package.outputs.package-path }}" -target / | sudo tee installer.log
+          if grep -q "The install was successful" "installer.log"; then
+            echo "Installation successfully."
           else
-            echo "ERROR: Installation failed"
+            echo "The installation could not be completed."
             exit 1
           fi
 
       - name: Test daemons with -t flag
         run: |
-          # Test each daemon binary with -t flag (test configuration)
           DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-execd"
-
           echo "Testing daemons with -t flag..."
           for daemon in $DAEMONS; do
             echo "Testing ${daemon}..."
@@ -372,12 +355,11 @@ jobs:
               echo "ERROR: ${daemon} -t failed with exit code $?"
               exit 1
             fi
-            echo "✓ ${daemon} -t passed"
+            echo "${daemon} -t passed"
           done
 
       - name: Start Wazuh agent
         run: |
-          echo "Starting Wazuh agent..."
           sudo /Library/Ossec/bin/wazuh-control start
 
       - name: Wait for agent to initialize
@@ -385,18 +367,16 @@ jobs:
 
       - name: Verify agent is running
         run: |
-          echo "Checking agent status..."
           if ! sudo /Library/Ossec/bin/wazuh-control status; then
             echo "ERROR: Agent status check failed"
             exit 1
           fi
-          echo "✓ Agent is running"
+          echo "Agent is running"
 
       - name: Stop Wazuh agent
         run: |
-          echo "Stopping Wazuh agent..."
           sudo /Library/Ossec/bin/wazuh-control stop
-          echo "✓ Agent stopped successfully"
+          echo "Agent stopped successfully"
 
       - name: Upload logs on failure
         if: failure()
