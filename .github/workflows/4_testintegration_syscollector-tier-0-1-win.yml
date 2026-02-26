@@ -50,11 +50,22 @@ jobs:
   # Execute the tests on windows.
   run-test:
     needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        windows-version: [windows-2019, windows-2022, windows-2025]
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-    runs-on: windows-2025
+    runs-on: ${{ matrix.windows-version }}
     steps:
+      - name: Display Windows version info
+        run: |
+          Write-Host "=== Windows Version Information ==="
+          Write-Host "Runner: ${{ matrix.windows-version }}"
+          systeminfo | Select-String "OS Name","OS Version"
+          Write-Host "==================================="
+
       - name: Checkout Repo
         uses: actions/checkout@v3
       - name: Set up Python
@@ -102,4 +113,98 @@ jobs:
       - name: Run syscollector integration tests
         run: |
           cd C:\wazuh\tests\integration
-          python -m pytest --tier 0 --tier 1 test_syscollector\
+          python -m pytest --tier 0 --tier 1 test_syscollector\ -v -s 2>&1 | Tee-Object -FilePath C:\pytest_output.log
+        continue-on-error: true
+
+      # Collect all logs for debugging
+      - name: Collect logs
+        if: always()
+        run: |
+          $logsDir = "C:\test_logs"
+          New-Item -ItemType Directory -Force -Path $logsDir
+
+          # Copy Wazuh agent logs
+          $wazuhLogPath = "C:\Program Files (x86)\ossec-agent\ossec.log"
+          if (Test-Path $wazuhLogPath) {
+            Copy-Item $wazuhLogPath "$logsDir\ossec.log"
+          }
+
+          # Copy local_internal_options.conf
+          $localInternalPath = "C:\Program Files (x86)\ossec-agent\local_internal_options.conf"
+          if (Test-Path $localInternalPath) {
+            Copy-Item $localInternalPath "$logsDir\local_internal_options.conf"
+          }
+
+          # Copy ossec.conf
+          $ossecConfPath = "C:\Program Files (x86)\ossec-agent\ossec.conf"
+          if (Test-Path $ossecConfPath) {
+            Copy-Item $ossecConfPath "$logsDir\ossec.conf"
+          }
+
+          # Copy pytest output
+          if (Test-Path "C:\pytest_output.log") {
+            Copy-Item "C:\pytest_output.log" "$logsDir\pytest_output.log"
+          }
+
+          # Copy cycle logs (from test_multiple_resets.py)
+          $cycleLogsPath = "C:\test_logs\cycles"
+          if (Test-Path $cycleLogsPath) {
+            Write-Host "Found cycle logs directory"
+            Get-ChildItem $cycleLogsPath -Filter "*.log" | ForEach-Object {
+              Write-Host "Copying cycle log: $($_.Name)"
+            }
+          } else {
+            Write-Host "No cycle logs directory found"
+          }
+
+          # Create summary file with all logs combined
+          $summaryFile = "$logsDir\all_logs_combined.txt"
+          "=" * 80 | Out-File $summaryFile
+          "PYTEST OUTPUT" | Out-File $summaryFile -Append
+          "=" * 80 | Out-File $summaryFile -Append
+          if (Test-Path "$logsDir\pytest_output.log") {
+            Get-Content "$logsDir\pytest_output.log" | Out-File $summaryFile -Append
+          }
+
+          "`n" + "=" * 80 | Out-File $summaryFile -Append
+          "OSSEC.LOG (Wazuh Agent Log - Final State)" | Out-File $summaryFile -Append
+          "=" * 80 | Out-File $summaryFile -Append
+          if (Test-Path "$logsDir\ossec.log") {
+            Get-Content "$logsDir\ossec.log" | Out-File $summaryFile -Append
+          }
+
+          "`n" + "=" * 80 | Out-File $summaryFile -Append
+          "OSSEC.CONF" | Out-File $summaryFile -Append
+          "=" * 80 | Out-File $summaryFile -Append
+          if (Test-Path "$logsDir\ossec.conf") {
+            Get-Content "$logsDir\ossec.conf" | Out-File $summaryFile -Append
+          }
+
+          "`n" + "=" * 80 | Out-File $summaryFile -Append
+          "LOCAL_INTERNAL_OPTIONS.CONF" | Out-File $summaryFile -Append
+          "=" * 80 | Out-File $summaryFile -Append
+          if (Test-Path "$logsDir\local_internal_options.conf") {
+            Get-Content "$logsDir\local_internal_options.conf" | Out-File $summaryFile -Append
+          }
+
+          # Append all cycle logs to summary
+          if (Test-Path $cycleLogsPath) {
+            Get-ChildItem $cycleLogsPath -Filter "*.log" | ForEach-Object {
+              "`n" + "=" * 80 | Out-File $summaryFile -Append
+              "CYCLE LOG: $($_.Name)" | Out-File $summaryFile -Append
+              "=" * 80 | Out-File $summaryFile -Append
+              Get-Content $_.FullName | Out-File $summaryFile -Append
+            }
+          }
+
+          Write-Host "Logs collected in $logsDir"
+          Get-ChildItem $logsDir -Recurse
+
+      # Upload logs as artifact
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: syscollector-test-logs-${{ matrix.windows-version }}
+          path: C:\test_logs\
+          retention-days: 30
