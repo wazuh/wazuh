@@ -16,7 +16,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ env.REGISTRY }}/wazuh/coverity-scan:${{ github.event.inputs.docker_image_tag }}
+  IMAGE_NAME: wazuh/coverity-scan
 
 jobs:
   build-and-push-image:
