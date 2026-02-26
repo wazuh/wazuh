@@ -99,8 +99,8 @@ def get_wazuh_active_logging_format() -> LoggingFormat:
     LoggingFormat
         Wazuh active log format. Can either be `plain` or `json`. If it has both types, `plain` will be returned.
     """
-    active_logging = get_active_configuration(component="com", configuration="logging")['logging']
-    return LoggingFormat.plain if active_logging['plain'] == "yes" else LoggingFormat.json
+    logging_config = get_ossec_conf(section='logging')['logging']
+    return LoggingFormat.plain if 'plain' in logging_config.get('log_format') else LoggingFormat.json
 
 def get_ossec_logs(limit: int = 2000) -> list:
     """Return last <limit> lines of wazuh-manager.log file.
