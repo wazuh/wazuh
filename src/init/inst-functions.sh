@@ -912,7 +912,11 @@ InstallCommon()
          ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/TIMEZONE ${INSTALLDIR}/etc/
     fi
 
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
+    if [ "X${INSTYPE}" = "Xserver" ]; then
+        ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../etc/internal_options-manager.conf ${INSTALLDIR}/etc/internal_options.conf
+    else
+        ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
+    fi
     if [ "X${INSTYPE}" = "Xagent" ]; then
         ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} wazuh_modules/syscollector/norm_config.json ${INSTALLDIR}/queue/syscollector
     fi
