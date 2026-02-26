@@ -400,6 +400,10 @@ char* w_strcat_list(char ** list, char sep);
  * @param dst_buf Output buffer where to store the converted string
  * @param dst_size Output buffer size
  * @return OS_SUCCESS on success, OS_INVALID on failure
+ * @pre src_buf must not be NULL
+ * @pre dst_buf must not be NULL
+ * @pre dst_size must be greater than 0
+ * @note The output buffer must have at least (src_size * 2 + 1) bytes to store the full conversion
  */
 int print_hex_string(const char *src_buf, unsigned int src_size, char *dst_buf, unsigned int dst_size);
 
