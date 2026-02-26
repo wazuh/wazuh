@@ -7,6 +7,7 @@
 #include <stringHelper.h>
 #include <timeHelper.h>
 
+#include <map>
 #include <sstream>
 
 #include "logging_helper.hpp"
@@ -729,6 +730,201 @@ nlohmann::json SCAEventHandler::StringToJsonArray(const std::string& input) cons
     return result;
 }
 
+nlohmann::json SCAEventHandler::TransformComplianceToIndexerFormat(const std::string& complianceStr)
+{
+    // Mapping: YAML compliance key → { new indexer schema key, version (empty if N/A) }.
+    // YAML keys absent from this map (e.g. cis, cis_csc_v7/v8, gpg_13) are not present
+    // in the new indexer schema and are silently dropped.
+    struct Mapping
+    {
+        std::string targetKey;
+        std::string version;
+    };
+
+    static const std::map<std::string, Mapping> KEY_MAP =
+    {
+        {"cmmc_v2.0",         {"cmmc",          "2.0"  }},
+        {"cmmc_v2.1",         {"cmmc",          "2.1"  }},
+        {"fedramp",           {"fedramp",        ""     }},
+        {"gdpr",              {"gdpr",           ""     }},
+        {"gdpr_IV",           {"gdpr",           ""     }},
+        {"hipaa",             {"hipaa",          ""     }},
+        {"iso_27001-2013",    {"iso_27001",      "2013" }},
+        {"iso_27001-2022",    {"iso_27001",      "2022" }},
+        {"mitre_mitigations", {"mitre_attack",   ""     }},
+        {"mitre_tactics",     {"mitre_attack",   ""     }},
+        {"mitre_techniques",  {"mitre_attack",   ""     }},
+        {"nis2",              {"nis2",           ""     }},
+        {"nist_800_171",      {"nist_800_171",   ""     }},
+        {"nist_800-171",      {"nist_800_171",   ""     }},
+        {"nist_sp_800-171",   {"nist_800_171",   ""     }},
+        {"nist_800_53",       {"nist_800_53",    ""     }},
+        {"nist_800-53",       {"nist_800_53",    ""     }},
+        {"nist_sp_800-53",    {"nist_800_53",    ""     }},
+        {"pci_dss",           {"pci_dss",        ""     }},
+        {"pci_dss_v3.2.1",    {"pci_dss",        "3.2.1"}},
+        {"pci_dss_3.2.1",     {"pci_dss",        "3.2.1"}},
+        {"pci_dss_v4.0",      {"pci_dss",        "4.0"  }},
+        {"pci_dss_4.0",       {"pci_dss",        "4.0"  }},
+        {"soc_2",             {"tsc",            ""     }},
+        {"tsc",               {"tsc",            ""     }},
+    };
+
+    // Canonical metadata for each target framework (standardized per standards body,
+    // not organization-specific). These values are fixed for every deployment.
+    struct FrameworkMeta
+    {
+        std::string name;
+        std::string publisher;
+        std::string category;
+    };
+
+    static const std::map<std::string, FrameworkMeta> FRAMEWORK_META =
+    {
+        {"cmmc",         {"Cybersecurity Maturity Model Certification",               "U.S. Department of Defense",                    "cybersecurity"           }},
+        {"fedramp",      {"Federal Risk and Authorization Management Program",         "U.S. General Services Administration",           "federal-cloud-security"  }},
+        {"gdpr",         {"General Data Protection Regulation",                       "European Union",                                "data-protection"         }},
+        {"hipaa",        {"Health Insurance Portability and Accountability Act",       "U.S. Department of Health and Human Services",   "healthcare"              }},
+        {"iso_27001",    {"ISO/IEC 27001 Information Security Management",             "ISO/IEC",                                       "information-security"    }},
+        {"mitre_attack", {"MITRE ATT&CK",                                             "MITRE Corporation",                             "threat-intelligence"     }},
+        {"nis2",         {"Network and Information Security Directive 2",              "European Union",                                "cybersecurity"           }},
+        {"nist_800_171", {"NIST SP 800-171 Protecting Controlled Unclassified Info",   "NIST",                                          "federal-information-systems"}},
+        {"nist_800_53",  {"NIST SP 800-53 Security and Privacy Controls",              "NIST",                                          "federal-information-systems"}},
+        {"pci_dss",      {"Payment Card Industry Data Security Standard",              "PCI Security Standards Council",                "payment-security"        }},
+        {"tsc",          {"Trust Services Criteria",                                   "AICPA",                                         "service-organization"    }},
+    };
+
+    nlohmann::json parsed;
+
+    try
+    {
+        parsed = nlohmann::json::parse(complianceStr);
+    }
+    catch (const std::exception&)
+    {
+        return nullptr;
+    }
+
+    if (parsed.empty())
+    {
+        return nullptr;
+    }
+
+    // New format: compliance is already a structured object matching the indexer schema
+    // (e.g. {"cmmc":{"requirements":[...],"version":"2.0"}, ...}).
+    // Pass it through directly without transformation.
+    if (parsed.is_object())
+    {
+        return parsed;
+    }
+
+    if (!parsed.is_array())
+    {
+        return nullptr;
+    }
+
+    // Old format: compliance is an array of single-key objects
+    // (e.g. [{"cmmc_v2.0":["AC.L1-3.1.1"]},{"hipaa":["164.308"]}]).
+    // Apply key mapping and aggregate requirements.
+
+    // Accumulate requirements and versions per target framework.
+    struct FrameworkData
+    {
+        std::vector<std::string> requirements;
+        std::vector<std::string> versions; // unique; few items so linear search is fine
+    };
+
+    std::map<std::string, FrameworkData> accum;
+
+    for (const auto& item : parsed)
+    {
+        if (!item.is_object())
+        {
+            continue;
+        }
+
+        for (auto it = item.begin(); it != item.end(); ++it)
+        {
+            auto mappingIt = KEY_MAP.find(it.key());
+
+            if (mappingIt == KEY_MAP.end())
+            {
+                continue;
+            }
+
+            const auto& mapping = mappingIt->second;
+            auto& data = accum[mapping.targetKey];
+
+            if (!mapping.version.empty())
+            {
+                bool alreadyPresent = false;
+
+                for (const auto& v : data.versions)
+                {
+                    if (v == mapping.version)
+                    {
+                        alreadyPresent = true;
+                        break;
+                    }
+                }
+
+                if (!alreadyPresent)
+                {
+                    data.versions.push_back(mapping.version);
+                }
+            }
+
+            const auto& values = it.value();
+
+            if (values.is_array())
+            {
+                for (const auto& val : values)
+                {
+                    if (val.is_string())
+                    {
+                        data.requirements.push_back(val.get<std::string>());
+                    }
+                }
+            }
+        }
+    }
+
+    if (accum.empty())
+    {
+        return nullptr;
+    }
+
+    nlohmann::json result = nlohmann::json::object();
+
+    for (const auto& [framework, data] : accum)
+    {
+        nlohmann::json frameworkObj = nlohmann::json::object();
+        frameworkObj["requirements"] = data.requirements;
+
+        if (data.versions.size() == 1)
+        {
+            frameworkObj["version"] = data.versions.front();
+        }
+        else if (data.versions.size() > 1)
+        {
+            frameworkObj["version"] = data.versions;
+        }
+
+        auto metaIt = FRAMEWORK_META.find(framework);
+
+        if (metaIt != FRAMEWORK_META.end())
+        {
+            frameworkObj["name"]      = metaIt->second.name;
+            frameworkObj["publisher"] = metaIt->second.publisher;
+            frameworkObj["category"]  = metaIt->second.category;
+        }
+
+        result[framework] = frameworkObj;
+    }
+
+    return result;
+}
+
 void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
 {
     if (check.contains("refs") && check["refs"].is_string())
@@ -739,7 +935,8 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
 
     if (check.contains("compliance") && check["compliance"].is_string())
     {
-        check["compliance"] = StringToJsonArray(check["compliance"].get<std::string>());
+        auto structured = TransformComplianceToIndexerFormat(check["compliance"].get<std::string>());
+        check["compliance"] = structured.is_null() ? nlohmann::json(nullptr) : structured;
     }
 
     if (check.contains("rules") && check["rules"].is_string())

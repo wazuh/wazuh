@@ -127,6 +127,22 @@ class SCAEventHandler
         /// @return A JSON array of elements.
         nlohmann::json StringToJsonArray(const std::string& input) const;
 
+        /// @brief Transforms the compliance data stored in the DB into the structured
+        ///        object format expected by the new indexer schema.
+        ///
+        /// The DB stores compliance as a JSON-serialized array of single-key objects
+        /// (e.g. [{"cis":["1.1"]},{"hipaa":["164.308"]}]). The new indexer schema
+        /// expects a nested object keyed by framework name, each with a "requirements"
+        /// array and an optional "version" field.
+        ///
+        /// YAML keys without a mapping in the new schema (e.g. cis, cis_csc_v7/v8)
+        /// are silently dropped. Fields "category", "name" and "publisher" are not
+        /// populated because the YAML files do not carry that information.
+        ///
+        /// @param complianceStr JSON string as stored in the sca_check.compliance column.
+        /// @return Structured JSON object for the indexer, or null if no mappable data.
+        static nlohmann::json TransformComplianceToIndexerFormat(const std::string& complianceStr);
+
         /// @brief Normalizes the structure of a check JSON object.
         ///
         /// Converts fields like "refs", "rules", and "compliance" into arrays,

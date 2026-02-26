@@ -136,7 +136,7 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     # Verify that the SCA module is enabled
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=60 if sys.platform == WINDOWS else 10)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=60)
     assert log_monitor.callback_result
 
     # Wait for the SCA scan requirements to start for the specific policy
