@@ -66,17 +66,12 @@ jobs:
             echo "ERROR: No package found"
             exit 1
           fi
-          echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
           echo "Found package: $PACKAGE_NAME"
-
           VERSION=$(echo $PACKAGE_NAME | grep -oP '\d+\.\d+\.\d+' | head -n 1)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: Set container name
-        run: |
           echo "CONTAINER_NAME=pkg_deb_agent_builder_amd64" >> $GITHUB_ENV
-          echo "TAG=${{ steps.package.outputs.version }}" >> $GITHUB_ENV
+          echo "TAG=$VERSION" >> $GITHUB_ENV
 
       - name: Download docker image
         run: |
@@ -148,17 +143,12 @@ jobs:
             echo "ERROR: No package found"
             exit 1
           fi
-          echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
           echo "Found package: $PACKAGE_NAME"
-
           VERSION=$(echo $PACKAGE_NAME | grep -oP '\d+\.\d+\.\d+' | head -n 1)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: Set container name
-        run: |
-          echo "CONTAINER_NAME=pkg_rpm_agent_builder_amd64" >> $GITHUB_ENV
-          echo "TAG=${{ steps.package.outputs.version }}" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_rpm_agent_builder_x86_64" >> $GITHUB_ENV
+          echo "TAG=$VERSION" >> $GITHUB_ENV
 
       - name: Download docker image
         run: |

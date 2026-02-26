@@ -140,10 +140,10 @@ main() {
 
     set_utils
 
-    # Find the package
-    package_name="/packages/$(ls /packages | grep "wazuh.*$package_extension$" | grep -Ev "dbg|debug|debuginfo" | head -n1)"
+    # Find the package recursively (artifacts may be in subdirectories)
+    package_name=$(find /packages -type f -name "wazuh-agent*.$package_extension" ! -name "*dbg*" ! -name "*debug*" ! -name "*debuginfo*" | head -n1)
 
-    if [ -z "$package_name" ] || [ "$package_name" == "/packages/" ]; then
+    if [ -z "$package_name" ]; then
         log_error "No suitable package found in /packages/"
     fi
 
