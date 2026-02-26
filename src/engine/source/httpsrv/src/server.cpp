@@ -53,6 +53,11 @@ Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetaile
         {
             if (res.status == httplib::StatusCode::PayloadTooLarge_413)
             {
+                if (!res.body.empty())
+                {
+                    return httplib::Server::HandlerResponse::Unhandled;
+                }
+
                 const auto maxBytes = m_payloadMaxBytes;
                 if (maxBytes == 0)
                 {

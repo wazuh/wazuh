@@ -13,8 +13,9 @@
 #include <api/cmcrud/handlers.hpp>
 #include <api/shared/constants.hpp>
 
-namespace {
-    constexpr std::string_view ORGIN_SPACE_TESTING = "test";
+namespace
+{
+constexpr std::string_view ORGIN_SPACE_TESTING = "test";
 }
 namespace api::cmcrud::handlers
 {
@@ -419,7 +420,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
         try
         {
             // Import into temp namespace
-            service->importNamespace(tmpNsId, fullPolicyStr, ORGIN_SPACE_TESTING,/*force=*/true);
+            service->importNamespace(tmpNsId, fullPolicyStr, ORGIN_SPACE_TESTING, /*force=*/true);
             tmpNamespaceCreated = true;
 
             // Create a tester entry to validate tester-loading path.
@@ -746,23 +747,44 @@ adapter::RouteHandler resourceDelete(std::shared_ptr<cm::crud::ICrudService> cru
  * Resource handler – validate (public, no namespace)
  *********************************************/
 
-adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> crud)
+adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> crud,
+                                       int64_t maxResourcePayloadBytes,
+                                       int64_t maxKvdbPayloadBytes)
 {
-    return [wCrud = std::weak_ptr<cm::crud::ICrudService>(crud)](const auto& req, auto& res)
+    return [wCrud = std::weak_ptr<cm::crud::ICrudService>(crud), maxResourcePayloadBytes, maxKvdbPayloadBytes](
+               const auto& req, auto& res)
     {
         using RequestType = eContent::resourceValidate_Request;
         using ResponseType = eEngine::GenericStatus_Response;
 
         constexpr auto MESSAGE_RESOURCE_REQUIRED = "Field /resource cannot be empty";
 
-        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::cm::crud::ICrudService>(req, wCrud);
+        auto service = wCrud.lock();
+        if (!service)
+        {
+            res = adapter::internalErrorResponse<ResponseType>("Error: Handler is not initialized");
+            return;
+        }
+
+        const auto bodySize = static_cast<int64_t>(req.body.size());
+        const bool hasGlobalAbsoluteCap = (maxResourcePayloadBytes > 0 && maxKvdbPayloadBytes > 0);
+        if (hasGlobalAbsoluteCap && bodySize > std::max(maxResourcePayloadBytes, maxKvdbPayloadBytes))
+        {
+            const auto maxAcceptedBytes = std::max(maxResourcePayloadBytes, maxKvdbPayloadBytes);
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Request body exceeds maximum allowed document size of {} bytes", maxAcceptedBytes));
+            res.status = httplib::StatusCode::PayloadTooLarge_413;
+            return;
+        }
+
+        auto result = adapter::parseRequest<RequestType, ResponseType>(req);
         if (adapter::isError(result))
         {
             res = adapter::getErrorResp(result);
             return;
         }
 
-        auto [service, protoReq] = adapter::getRes(result);
+        auto protoReq = adapter::getRes(result);
 
         if (protoReq.type().empty())
         {
@@ -770,7 +792,6 @@ adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> c
             return;
         }
 
-        // In proto3, Struct presence is best checked via fields_size()
         if (protoReq.resource().fields_size() == 0)
         {
             res = adapter::userErrorResponse<ResponseType>(MESSAGE_RESOURCE_REQUIRED);
@@ -784,7 +805,17 @@ adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> c
             return;
         }
 
-        // Convert Struct -> json::Json without JSON stringify/parse
+        const auto typeLimit = (rType == cm::store::ResourceType::KVDB) ? maxKvdbPayloadBytes : maxResourcePayloadBytes;
+        if (typeLimit > 0 && bodySize > typeLimit)
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Request body exceeds maximum allowed size of {} bytes for type '{}'",
+                            typeLimit,
+                            cm::store::resourceTypeToString(rType)));
+            res.status = httplib::StatusCode::PayloadTooLarge_413;
+            return;
+        }
+
         auto payloadOrErr = eMessage::eStructToJson(protoReq.resource());
         if (std::holds_alternative<base::Error>(payloadOrErr))
         {

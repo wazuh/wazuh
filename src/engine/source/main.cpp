@@ -643,7 +643,11 @@ int main(int argc, char* argv[])
             }
 
             // Crud Manager
-            api::cmcrud::handlers::registerHandlers(cmCrudService, orchestrator, apiServer);
+            const auto apiResourcePayloadMaxBytes = confManager.get<int64_t>(conf::key::API_RESOURCE_PAYLOAD_MAX_BYTES);
+            const auto apiResourceKvdbPayloadMaxBytes =
+                confManager.get<int64_t>(conf::key::API_RESOURCE_KVDB_PAYLOAD_MAX_BYTES);
+            api::cmcrud::handlers::registerHandlers(
+                cmCrudService, orchestrator, apiServer, apiResourcePayloadMaxBytes, apiResourceKvdbPayloadMaxBytes);
             LOG_DEBUG("Content Manager CRUD API registered.");
 
             // Finally start the API server

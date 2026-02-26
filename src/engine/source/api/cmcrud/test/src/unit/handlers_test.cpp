@@ -26,6 +26,9 @@ constexpr const char* kParseErrorMsg = "Failed to parse protobuff json request: 
 constexpr const char* kTypeRequiredMsg = "Field /type is required";
 constexpr const char* kResourceRequiredMsg = "Field /resource cannot be empty";
 constexpr const char* kTypeUnsupportedMsg = "Unsupported value for /type";
+constexpr const char* kBodyOverAbsoluteLimitMsg = "Request body exceeds maximum allowed document size of 100000 bytes";
+constexpr const char* kBodyOverTypeLimitMsg =
+    "Request body exceeds maximum allowed size of 20000 bytes for type 'decoder'";
 
 TEST_P(CmCrudHandlerTest, Handler)
 {
@@ -417,7 +420,7 @@ INSTANTIATE_TEST_SUITE_P(
 
                 return createRequest<eContent::resourceValidate_Request>(protoReq);
             },
-            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud); },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud, 20'000, 100'000); },
             []()
             {
                 eEngine::GenericStatus_Response protoRes;
@@ -438,7 +441,7 @@ INSTANTIATE_TEST_SUITE_P(
 
                 return createRequest<eContent::resourceValidate_Request>(protoReq);
             },
-            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud); },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud, 20'000, 100'000); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>(kTypeRequiredMsg); },
             [](auto&) {}),
 
@@ -451,7 +454,7 @@ INSTANTIATE_TEST_SUITE_P(
                 // No resource fields set => fields_size() == 0
                 return createRequest<eContent::resourceValidate_Request>(protoReq);
             },
-            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud); },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud, 20'000, 100'000); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>(kResourceRequiredMsg); },
             [](auto&) {}),
 
@@ -468,7 +471,7 @@ INSTANTIATE_TEST_SUITE_P(
 
                 return createRequest<eContent::resourceValidate_Request>(protoReq);
             },
-            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud); },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud, 20'000, 100'000); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>(kTypeUnsupportedMsg); },
             [](auto&) {}),
 
@@ -484,7 +487,7 @@ INSTANTIATE_TEST_SUITE_P(
 
                 return createRequest<eContent::resourceValidate_Request>(protoReq);
             },
-            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud); },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud, 20'000, 100'000); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>(kTypeUnsupportedMsg); },
             [](auto&) {}),
 
@@ -501,7 +504,7 @@ INSTANTIATE_TEST_SUITE_P(
 
                 return createRequest<eContent::resourceValidate_Request>(protoReq);
             },
-            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud); },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud, 20'000, 100'000); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>("validation failed"); },
             [](auto& mock)
             {
@@ -518,6 +521,125 @@ INSTANTIATE_TEST_SUITE_P(
                 req.set_header("Content-Type", "text/plain");
                 return req;
             },
-            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud); },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud, 20'000, 100'000); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>(kParseErrorMsg); },
-            [](auto&) {})));
+            [](auto&) {}),
+
+        /***********************************************************************
+         * resourceValidate – size limits
+         **********************************************************************/
+
+        /*** Body over absolute limit: rejected before proto parse ***/
+        CmCrudHandlerT(
+            []()
+            {
+                httplib::Request req;
+                req.body = std::string(100001, 'X');
+                req.set_header("Content-Type", "plain/text");
+                return req;
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud, 20'000, 100'000); },
+            []()
+            {
+                auto resp = userErrorResponse<eEngine::GenericStatus_Response>(kBodyOverAbsoluteLimitMsg);
+                resp.status = httplib::StatusCode::PayloadTooLarge_413;
+                return resp;
+            },
+            [](auto& mock) { EXPECT_CALL(mock, validateResource(::testing::_, ::testing::_)).Times(0); }),
+
+        /*** Non-KVDB body over general limit: rejected after type is known ***/
+        CmCrudHandlerT(
+            []()
+            {
+                eContent::resourceValidate_Request protoReq;
+                protoReq.set_type("decoder");
+
+                auto& fields = *protoReq.mutable_resource()->mutable_fields();
+                fields["id"].set_string_value("11111111-1111-4111-8111-111111111111");
+                fields["padding"].set_string_value(std::string(51000, 'A'));
+
+                return createRequest<eContent::resourceValidate_Request>(protoReq);
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud, 20'000, 100'000); },
+            []()
+            {
+                auto resp = userErrorResponse<eEngine::GenericStatus_Response>(kBodyOverTypeLimitMsg);
+                resp.status = httplib::StatusCode::PayloadTooLarge_413;
+                return resp;
+            },
+            [](auto& mock) { EXPECT_CALL(mock, validateResource(::testing::_, ::testing::_)).Times(0); }),
+
+        /*** KVDB body over general limit but under KVDB limit: allowed ***/
+        CmCrudHandlerT(
+            []()
+            {
+                eContent::resourceValidate_Request protoReq;
+                protoReq.set_type("kvdb");
+
+                auto& fields = *protoReq.mutable_resource()->mutable_fields();
+                fields["id"].set_string_value("82e215c4-988a-4f64-8d15-b98b2fc03a4f");
+                fields["title"].set_string_value("test_kvdb");
+                auto& contentFields = *fields["content"].mutable_struct_value()->mutable_fields();
+                contentFields["blob"].set_string_value(std::string(51000, 'A'));
+                fields["enabled"].set_bool_value(true);
+
+                return createRequest<eContent::resourceValidate_Request>(protoReq);
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud, 20'000, 100'000); },
+            []()
+            {
+                eEngine::GenericStatus_Response protoRes;
+                protoRes.set_status(eEngine::ReturnStatus::OK);
+                return userResponse<eEngine::GenericStatus_Response>(protoRes);
+            },
+            [](auto& mock) { EXPECT_CALL(mock, validateResource(cm::store::ResourceType::KVDB, ::testing::_)); }),
+
+        /*** KVDB limit unlimited (0): over general limit is still allowed for KVDB ***/
+        CmCrudHandlerT(
+            []()
+            {
+                eContent::resourceValidate_Request protoReq;
+                protoReq.set_type("kvdb");
+
+                auto& fields = *protoReq.mutable_resource()->mutable_fields();
+                fields["id"].set_string_value("82e215c4-988a-4f64-8d15-b98b2fc03a4f");
+                fields["title"].set_string_value("test_kvdb_unlimited");
+                auto& contentFields = *fields["content"].mutable_struct_value()->mutable_fields();
+                contentFields["blob"].set_string_value(std::string(51000, 'A'));
+                fields["enabled"].set_bool_value(true);
+
+                return createRequest<eContent::resourceValidate_Request>(protoReq);
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud, 20'000, 0); },
+            []()
+            {
+                eEngine::GenericStatus_Response protoRes;
+                protoRes.set_status(eEngine::ReturnStatus::OK);
+                return userResponse<eEngine::GenericStatus_Response>(protoRes);
+            },
+            [](auto& mock) { EXPECT_CALL(mock, validateResource(cm::store::ResourceType::KVDB, ::testing::_)); }),
+
+        /*** KVDB with small body: passes ***/
+        CmCrudHandlerT(
+            []()
+            {
+                eContent::resourceValidate_Request protoReq;
+                protoReq.set_type("kvdb");
+
+                auto& fields = *protoReq.mutable_resource()->mutable_fields();
+                fields["id"].set_string_value("82e215c4-988a-4f64-8d15-b98b2fc03a4f");
+                fields["title"].set_string_value("test_kvdb");
+                auto& contentFields = *fields["content"].mutable_struct_value()->mutable_fields();
+                contentFields["key"].set_string_value("value");
+                fields["enabled"].set_bool_value(true);
+
+                return createRequest<eContent::resourceValidate_Request>(protoReq);
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud, 20'000, 100'000); },
+            []()
+            {
+                eEngine::GenericStatus_Response protoRes;
+                protoRes.set_status(eEngine::ReturnStatus::OK);
+                return userResponse<eEngine::GenericStatus_Response>(protoRes);
+            },
+            [](auto& mock) { EXPECT_CALL(mock, validateResource(cm::store::ResourceType::KVDB, ::testing::_)); })));

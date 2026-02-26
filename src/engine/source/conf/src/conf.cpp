@@ -122,6 +122,11 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<std::string>(key::PID_FILE_PATH, "WAZUH_ENGINE_PID_FILE_PATH", (wazuhRoot / "var/run/").c_str());
     addUnit<std::string>(key::GROUP, "WAZUH_ENGINE_GROUP", "wazuh-manager");
     addUnit<bool>(key::SKIP_GROUP_CHANGE, "WAZUH_SKIP_GROUP_CHANGE", false);
+
+    // API modules
+    addUnit<int64_t>(key::API_RESOURCE_PAYLOAD_MAX_BYTES, "WAZUH_SERVER_API_MAX_RESOURCE_PAYLOAD_SIZE", 50'000);
+    addUnit<int64_t>(
+        key::API_RESOURCE_KVDB_PAYLOAD_MAX_BYTES, "WAZUH_SERVER_API_MAX_RESOURCE_KVDB_PAYLOAD_SIZE", 100'000);
 };
 
 void Conf::validate(const OptionMap& config) const

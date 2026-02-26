@@ -1396,6 +1396,12 @@ paths:
         independently from other assets.
 
         The request body must be a JSON object and the resource must include a valid UUIDv4 in the `resource.id` field.
+        The request body size can be limited through:
+        - `analysisd.api_resource_payload_max_bytes`
+        - `analysisd.api_resource_kvdb_payload_max_bytes`
+
+        A value of `0` means unlimited for that limit. If the body exceeds a configured limit, the request is rejected
+        with HTTP 413.
 
         - **Integrations**:
           - Validate schema.

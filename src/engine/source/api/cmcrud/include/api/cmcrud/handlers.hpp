@@ -30,12 +30,16 @@ adapter::RouteHandler resourceUpsert(std::shared_ptr<cm::crud::ICrudService> cru
 adapter::RouteHandler resourceDelete(std::shared_ptr<cm::crud::ICrudService> crud);
 
 /*************** Public Resources ***************/
-adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> crud);
+adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> crud,
+                                       int64_t maxResourcePayloadBytes,
+                                       int64_t maxKvdbPayloadBytes);
 
 /*************** Registration helper ***************/
 inline void registerHandlers(std::shared_ptr<cm::crud::ICrudService> crud,
                              const std::shared_ptr<::router::ITesterAPI>& tester,
-                             const std::shared_ptr<httpsrv::Server>& server)
+                             const std::shared_ptr<httpsrv::Server>& server,
+                             int64_t maxResourcePayloadBytes,
+                             int64_t maxKvdbPayloadBytes)
 {
     // Namespace
     server->addRoute(httpsrv::Method::POST, "/_internal/content/namespace/list", namespaceList(crud));
@@ -55,7 +59,9 @@ inline void registerHandlers(std::shared_ptr<cm::crud::ICrudService> crud,
     server->addRoute(httpsrv::Method::POST, "/_internal/content/delete", resourceDelete(crud));
 
     // Resources (public)
-    server->addRoute(httpsrv::Method::POST, "/content/validate/resource", resourceValidate(crud));
+    server->addRoute(httpsrv::Method::POST,
+                     "/content/validate/resource",
+                     resourceValidate(crud, maxResourcePayloadBytes, maxKvdbPayloadBytes));
 }
 
 } // namespace api::cmcrud::handlers
