@@ -2,3 +2,10 @@ name: 5.X - Agent Startup Smoke Test
 
 on:
   workflow_dispatch:
+
+jobs:
+  dummy_job:
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "This is a dummy job and will never run"
