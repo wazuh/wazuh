@@ -49,9 +49,11 @@ function(add_active_response_executable name source)
 
   # Platform-specific linker flags
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    # Linux: Add rpath for ../../lib, plus pthread, rt, dl
-    target_link_options(${name} PRIVATE "LINKER:-rpath,$ORIGIN/../../lib"
-                        -pthread)
+    # Linux: Set runtime library path and link system libraries
+    set_target_properties(${name} PROPERTIES
+      INSTALL_RPATH "$ORIGIN/../../lib"
+      BUILD_WITH_INSTALL_RPATH TRUE)
+    target_link_options(${name} PRIVATE -pthread)
 
     # Add system libraries
     target_link_libraries(${name} PRIVATE pthread rt dl m)
