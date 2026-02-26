@@ -50,4 +50,4 @@ jobs:
         with:
           context: tools/testing/coverity
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.docker_image_tag }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.docker_image_tag || '5.0' }}
