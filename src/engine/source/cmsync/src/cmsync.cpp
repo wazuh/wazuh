@@ -13,7 +13,6 @@ namespace
 {
 
 const base::Name STORE_NAME_CMSYNC {"cmsync/status/0"};          ///< Name of the internal store document
-const base::Name ALLOW_ALL_FILTER_NAME {"filter/allow-all/0"};   ///< Name of the Allow All Filter
 const cm::store::NamespaceId DUMMY_NAMESPACE_ID {"dummy_ns_id"}; ///< Dummy namespace ID
 
 /**
@@ -72,21 +71,6 @@ std::shared_ptr<T> lockWeakPtr(const std::weak_ptr<T>& weakPtr, const std::strin
         throw std::runtime_error(resourceName + " resource is not available");
     }
     return sharedPtr;
-}
-
-/**
- * @brief Create a Allow All Filter
- *
- * @return json::Json Filter definition
- */
-json::Json createAllowAllFilter()
-{
-    json::Json filter {};
-    filter.setString(ALLOW_ALL_FILTER_NAME.toStr(), "/name");
-    filter.setString(base::utils::generators::generateUUIDv4(), "/id");
-    filter.setString("pre-filter", "/type");
-    filter.setBool(true, "/enabled");
-    return filter;
 }
 
 /**
@@ -312,13 +296,12 @@ cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view origi
     downloadNamespace(originSpace, newNs);
 
     // Enrich the namespace with local-only assets
+    /*
     try
     {
         // [KVDB/DECODER/INTEGRATIONS]: Add here any extra assets to the temporary namespace
-
         // [OUTPUTS]: Add local outputs for the current namespace
         // TODO
-
         // [FILTERS]: Necesary filter for the route to work
         cmcrudPtr->upsertResource(newNs, cm::store::ResourceType::FILTER, createAllowAllFilter().str());
     }
@@ -339,6 +322,7 @@ cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view origi
         throw std::runtime_error(
             fmt::format("Failed to add extra assets to namespace '{}': {}", newNs.toStr(), e.what()));
     }
+    */
 
     return newNs;
 }
@@ -379,7 +363,7 @@ void CMSync::syncNamespaceInRoute(const SyncedNamespace& nsState, const cm::stor
 
     // Create a new route for the namespace
     router::prod::EntryPost newEntry {
-        nsState.getRouteName(), newNamespaceId, ALLOW_ALL_FILTER_NAME, getAvailablePriority()};
+        nsState.getRouteName(), newNamespaceId, getAvailablePriority()};
 
     if (auto err = routerPtr->postEntry(newEntry); base::isError(err))
     {

@@ -7,7 +7,7 @@ using namespace router;
 TEST(EntryConverter, prodEntryConverter)
 {
     // Chcek if can be converted to json and back to prod::EntryPost
-    ::prod::EntryPost entryPost("name", "policy/test/0", "filter/test/0", 1);
+    ::prod::EntryPost entryPost("name", "policy/test/0", 1);
     entryPost.description("description");
 
     ::prod::Entry entry(entryPost);
@@ -18,7 +18,6 @@ TEST(EntryConverter, prodEntryConverter)
     ::prod::EntryPost entryPost2(entryConverter2);
 
     EXPECT_EQ(entryPost.description(), entryPost2.description());
-    EXPECT_EQ(entryPost.filter(), entryPost2.filter());
     EXPECT_EQ(entryPost.name(), entryPost2.name());
     EXPECT_EQ(entryPost.policy(), entryPost2.policy());
     EXPECT_EQ(entryPost.priority(), entryPost2.priority());
@@ -79,11 +78,10 @@ TEST_P(EntryConverterTest, ConvertToAndFromJson)
 
     EXPECT_EQ(prodEntry.name(), prodEntryConverted.name());
     EXPECT_EQ(prodEntry.policy(), prodEntryConverted.policy());
-    EXPECT_EQ(prodEntry.filter(), prodEntryConverted.filter());
     EXPECT_EQ(prodEntry.priority(), prodEntryConverted.priority());
 }
 
 INSTANTIATE_TEST_SUITE_P(Default,
                          EntryConverterTest,
                          Combine(Values(test::EntryPost("testName", "testPolicy/0", 100)),
-                                 Values(prod::EntryPost("prodName", "prodPolicy/0", "prodFilter/0", 1))));
+                                 Values(prod::EntryPost("prodName", "prodPolicy/0", 1))));

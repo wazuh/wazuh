@@ -130,7 +130,11 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePost(router); },
             []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid filter name: Name cannot be empty"); },
+            {
+                eEngine::GenericStatus_Response protoRes;
+                protoRes.set_status(eEngine::ReturnStatus::OK);
+                return userResponse<eEngine::GenericStatus_Response>(protoRes);
+             },
             [](auto&) {}),
         // Invalid priority (default 0)
         HandlerT(

@@ -18,7 +18,6 @@ EntryConverter::EntryConverter(const prod::Entry& entry)
     : m_name {entry.name()}
     , m_namespace {entry.namespaceId()}
     , m_description {entry.description()}
-    , m_filter {entry.filter()}
     , m_priority {entry.priority()}
 {
 }
@@ -37,7 +36,6 @@ EntryConverter::EntryConverter(const json::Json& jEntry)
     m_description = jEntry.getString(DESCRIPTION_PATH);
     m_lifetime = jEntry.getInt64(LIFETIME_PATH);
     m_lastUse = jEntry.getInt64(LAST_USE_PATH);
-    m_filter = jEntry.getString(FILTER_PATH);
     m_priority = jEntry.getInt64(PRIORITY_PATH);
 }
 
@@ -84,11 +82,6 @@ EntryConverter::operator json::Json() const
         jEntry.setInt64(m_lastUse.value(), LAST_USE_PATH);
     }
 
-    if (m_filter)
-    {
-        jEntry.setString(m_filter.value(), FILTER_PATH);
-    }
-
     if (m_priority)
     {
         jEntry.setInt64(static_cast<int64_t>(m_priority.value()), PRIORITY_PATH);
@@ -116,17 +109,13 @@ EntryConverter::operator test::EntryPost() const
 
 EntryConverter::operator prod::EntryPost() const
 {
-    if (!m_filter)
-    {
-        throw std::runtime_error {"Cannot load the entry: filter is missing"};
-    }
     if (!m_priority)
     {
         throw std::runtime_error {"Cannot load the entry: priority is missing"};
     }
 
     const auto& namespaceId = cm::store::NamespaceId(m_namespace);
-    auto entryPost = prod::EntryPost(m_name, namespaceId, m_filter.value(), m_priority.value());
+    auto entryPost = prod::EntryPost(m_name, namespaceId, m_priority.value());
     if (m_description)
     {
         entryPost.description(m_description.value());

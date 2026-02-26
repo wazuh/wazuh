@@ -15,7 +15,6 @@ class Environment
 {
 
 private:
-    base::Expression m_filter;                     ///< Filter of the route
     std::shared_ptr<bk::IController> m_controller; ///< Controller of the policy
     std::string m_hash;                            ///< Hash of the current policy (controller)
 
@@ -35,12 +34,10 @@ public:
     /**
      * @brief Create a new environment
      *
-     * @param filter of the route
      * @param controller of the policy
      */
-    Environment(base::Expression&& filter, std::shared_ptr<bk::IController>&& controller, std::string&& hash)
-        : m_filter {filter}
-        , m_controller {controller}
+    Environment(std::shared_ptr<bk::IController>&& controller, std::string&& hash)
+        : m_controller {controller}
         , m_hash {hash}
     {
         if (!m_controller)
@@ -50,15 +47,6 @@ public:
     }
 
     ~Environment() { stop(); }
-
-    /**
-     * @brief Check if an event should be accepted by the environment (if the filter is true)
-     *
-     * @param event Event to check
-     * @return true
-     * @return false
-     */
-    bool isAccepted(const base::Event& event) const;
 
     /**
      * @brief Ingest an event into the environment and return the result
@@ -74,13 +62,6 @@ public:
      * @param event Event to ingest
      */
     void ingest(base::Event&& event) const { m_controller->ingest(std::move(event)); }
-
-    /**
-     * @brief Set a new filter of the environment
-     *
-     * @param filter
-     */
-    void setFilter(base::Expression&& filter) { m_filter = std::move(filter); }
 
     /**
      * @brief Set the Controller object
