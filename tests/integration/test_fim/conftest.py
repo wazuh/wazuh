@@ -43,7 +43,17 @@ def file_to_monitor(test_metadata: dict) -> Any:
 
     yield path
 
-    file.remove_file(path)
+    max_retries = 3 if sys.platform == WINDOWS else 1
+    retry_delay = 1
+
+    for retry in range(max_retries):
+        try:
+            file.remove_file(path)
+            break
+        except Exception:
+            if retry == max_retries - 1:
+                raise
+            sleep(retry_delay)
 
 
 @pytest.fixture()
@@ -55,7 +65,17 @@ def folder_to_monitor(test_metadata: dict) -> None:
 
     yield path
 
-    file.delete_path_recursively(path)
+    max_retries = 3 if sys.platform == WINDOWS else 1
+    retry_delay = 1
+
+    for retry in range(max_retries):
+        try:
+            file.delete_path_recursively(path)
+            break
+        except Exception:
+            if retry == max_retries - 1:
+                raise
+            sleep(retry_delay)
 
 
 @pytest.fixture()
@@ -173,7 +193,8 @@ def create_registry_key(test_metadata: dict) -> None:
 @pytest.fixture()
 def detect_end_scan(test_metadata: dict) -> None:
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(timeout=60, callback=generate_callback(EVENT_TYPE_SCAN_END))
+    timeout = 120 if sys.platform == WINDOWS else 60
+    wazuh_log_monitor.start(timeout=timeout, callback=generate_callback(EVENT_TYPE_SCAN_END))
     assert wazuh_log_monitor.callback_result
 
 

@@ -1,7 +1,11 @@
 # Copyright (C) 2015-2024, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+import os
 import pytest
+import sys
+
+from time import sleep
 
 from pathlib import Path
 
@@ -14,7 +18,7 @@ from wazuh_testing.utils.callbacks import generate_callback
 
 @pytest.fixture()
 def path_to_edit(test_metadata: dict) -> str:
-    to_edit = test_metadata.get('path_to_edit')
+    to_edit = os.path.abspath(test_metadata.get('path_to_edit'))
     is_directory = test_metadata.get('is_directory')
 
     if is_directory:
@@ -27,4 +31,17 @@ def path_to_edit(test_metadata: dict) -> str:
 
     yield to_edit
 
-    file.delete_path_recursively(to_edit)
+    max_retries = 3 if sys.platform == 'win32' else 1
+    retry_delay = 1
+
+    for retry in range(max_retries):
+        try:
+            if is_directory:
+                file.delete_path_recursively(to_edit)
+            else:
+                file.remove_file(to_edit)
+            break
+        except Exception:
+            if retry == max_retries - 1:
+                raise
+            sleep(retry_delay)

@@ -95,6 +95,7 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
+@pytest.mark.skipif(sys.platform == WINDOWS, reason="Unstable behavior when deleting monitored folder")
 def test_delete_dir(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                     truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, start_monitoring):
     '''
@@ -153,9 +154,6 @@ def test_delete_dir(test_configuration, test_metadata, set_wazuh_configuration, 
         - scheduled
         - realtime
     '''
-    if sys.platform == WINDOWS:
-        pytest.skip(reason="Unstable behavior when deleting monitored folder")
-
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     fim_mode = test_metadata.get('fim_mode')
     folder_to_delete = test_metadata.get('folder_to_monitor')

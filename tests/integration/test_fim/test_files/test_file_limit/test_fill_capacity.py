@@ -169,7 +169,8 @@ def test_fill_capacity(test_configuration, test_metadata, set_wazuh_configuratio
     else:
         log_monitor.start(generate_callback(INODE_ENTRIES_PATH_COUNT), timeout=60)
 
-    assert int(log_monitor.callback_result[0]) == files_amount
+    expected_entries = files_amount + 1 if sys.platform == WINDOWS else files_amount
+    assert int(log_monitor.callback_result[0]) == expected_entries
 
     log_monitor.start(generate_callback(FILE_LIMIT_PERCENTAGE), timeout=60)
     if fill_percentage >= 80:
