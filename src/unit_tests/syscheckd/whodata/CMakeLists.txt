@@ -57,7 +57,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
     add_executable(test_syscheck_audit test_syscheck_audit.c)
     target_compile_options(test_syscheck_audit PRIVATE "-Wall")
 
-    set(SYSCHECK_AUDIT_FLAGS "-Wl,--wrap,pthread_cond_wait -Wl,--wrap,pthread_mutex_lock \
+    set(SYSCHECK_AUDIT_FLAGS "-Wl,--wrap,pthread_cond_wait -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,lstat -Wl,--wrap,stat \
                               -Wl,--wrap,openproc -Wl,--wrap,readproc -Wl,--wrap,freeproc -Wl,--wrap,popen \
                               -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,audit_add_rule -Wl,--wrap,audit_restart  \
                               -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,closeproc  -Wl,--wrap,recv -Wl,--wrap,IsDir \
@@ -66,7 +66,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc \
                               -Wl,--wrap,getpid -Wl,--wrap,sleep -Wl,--wrap,unlink -Wl,--wrap,audit_delete_rule \
                               -Wl,--wrap,select -Wl,--wrap,audit_parse -Wl,--wrap,symlink -Wl,--wrap,SendMSG \
-                              -Wl,--wrap,audit_get_rule_list -Wl,--wrap,fim_audit_reload_rules \
+                              -Wl,--wrap,audit_get_rule_list -Wl,--wrap,fim_audit_reload_rules -Wl,--wrap,OS_MoveFile \
                               -Wl,--wrap,search_audit_rule -Wl,--wrap,abspath -Wl,--wrap,atomic_int_get \
                               -Wl,--wrap,atomic_int_set -Wl,--wrap,atomic_int_dec -Wl,--wrap,atomic_int_inc \
                               -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,pthread_rwlock_unlock \
@@ -110,6 +110,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
 
     target_link_libraries(test_audit_parse "${AUDIT_PARSE_FLAGS}")
     add_test(NAME test_audit_parse COMMAND test_audit_parse)
+
 else()
     link_directories(${SRC_FOLDER}/syscheckd/build/bin)
     add_executable(test_win_whodata test_win_whodata.c)
@@ -132,9 +133,10 @@ else()
                            -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg \
                            -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                            -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown ${HASH_OP_WRAPPERS} \
-                           ${DEBUG_OP_WRAPPERS}")
+                           -Wl,--wrap=utf8_GetNamedSecurityInfo -Wl,--wrap=utf8_SetNamedSecurityInfo ${DEBUG_OP_WRAPPERS}")
     target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS} fimdb)
 
     target_link_libraries(test_win_whodata "${WIN_WHODATA_FLAGS}")
     add_test(NAME test_win_whodata COMMAND test_win_whodata)
+
 endif()

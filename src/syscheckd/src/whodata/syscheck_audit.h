@@ -19,6 +19,7 @@
 
 #define AUDIT_HEALTHCHECK_KEY "wazuh_hc"
 #define AUDIT_KEY "wazuh_fim"
+#define VERCODE(M, m, p) (((M) << 16) | ((m) << 8) | (p))
 
 typedef struct {
     char *path;
@@ -54,6 +55,8 @@ int fim_audit_rules_init();
  * @return The amount of rules loaded.
  */
 int fim_rules_initial_load();
+
+int get_audit_version_code(unsigned *out_code);
 
 // Public parse functions
 void clean_regex();

@@ -58,6 +58,32 @@ typedef struct _audit_data_s {
  */
 static void *audit_main(audit_data_t *audit_data);
 
+int get_audit_version_code(unsigned *out_code) {
+    if (!out_code) {
+        return -1;
+    }
+
+    FILE *p = popen("auditctl -v 2>/dev/null", "r");
+    if (!p) {
+        return -1;
+    }
+
+    int M = 0, m = 0, pch = 0;
+    int n = fscanf(p, "auditctl version %d.%d.%d", &M, &m, &pch);
+    pclose(p);
+
+    if (n < 1) {
+        return -1;
+    }
+
+    if ((unsigned)M > 255 || (unsigned)m > 255 || (unsigned)pch > 255) {
+        return -1;
+    }
+
+    *out_code = VERCODE(M, m, pch);
+    return 0;
+}
+
 int check_auditd_enabled(void) {
     PROCTAB *proc = openproc(PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM );
     proc_t *proc_info;
@@ -85,7 +111,6 @@ int check_auditd_enabled(void) {
 int configure_audisp(const char *audisp_path, const char *audisp_config) {
     FILE *fp;
     char tmp_file_path[PATH_MAX] = {'\0'};
-    struct stat st;
 
     minfo(FIM_AUDIT_SOCKET, AUDIT_CONF_FILE);
 
@@ -96,9 +121,9 @@ int configure_audisp(const char *audisp_path, const char *audisp_config) {
         }
     }
 
-    if (unlink(abs_path_socket) < 0) {
+    if (unlink(AUDIT_SOCKET) < 0) {
         if (errno != ENOENT) {
-            merror(UNLINK_ERROR, abs_path_socket, errno, strerror(errno));
+            merror(UNLINK_ERROR, AUDIT_SOCKET, errno, strerror(errno));
             return -1;
         }
     }
@@ -124,7 +149,7 @@ int configure_audisp(const char *audisp_path, const char *audisp_config) {
     }
 
     if (syscheck.restart_audit) {
-        minfo(FIM_AUDIT_RESTARTING, AUDIT_CONF_FILE);
+        minfo(FIM_AUDIT_RESTARTING, audisp_path);
         return audit_restart();
     } else {
         mwarn(FIM_WARN_AUDIT_CONFIGURATION_MODIFIED);
@@ -139,12 +164,20 @@ int set_auditd_config(void) {
     int configuration_length;
     char abs_path_socket[PATH_MAX] = {'\0'};
     int retval = 1;
+    unsigned audit_version_code = 0;
     os_sha1 file_sha1, configuration_sha1;
 
     // Check audisp version
     if (IsDir(PLUGINS_DIR_AUDIT_3) == 0) {
         // Audit 3.X
         snprintf(audisp_path, sizeof(audisp_path) - 1, "%s/%s", PLUGINS_DIR_AUDIT_3, AUDIT_CONF_LINK);
+
+        if (get_audit_version_code(&audit_version_code) != 0) {
+            mdebug2("Could not get audit version code. Using default configuration.");
+        } else {
+            mdebug2("Audit version detected: %u.%u.%u", (audit_version_code >> 16) & 0xFF,
+                    (audit_version_code >> 8) & 0xFF, audit_version_code & 0xFF);
+        }
     } else if (IsDir(PLUGINS_DIR_AUDIT_2) == 0) {
         // Audit 2.X
         snprintf(audisp_path, sizeof(audisp_path) - 1, "%s/%s", PLUGINS_DIR_AUDIT_2, AUDIT_CONF_LINK);
