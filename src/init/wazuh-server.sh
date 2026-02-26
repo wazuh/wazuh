@@ -49,6 +49,7 @@ LOCK_PID="${LOCK}/pid"
 MAX_ITERATION="60"
 
 MAX_KILL_TRIES=30
+RETVAL=0
 
 checkpid()
 {
@@ -516,6 +517,7 @@ wait_pid() {
 stop_service()
 {
     checkpid;
+    stop_failed=false
 
     # First pass: send kill signal to all running daemons
     for i in ${DAEMONS}; do
@@ -559,27 +561,40 @@ stop_service()
                 if [ $USE_JSON = true ]; then
                     echo -n '{"daemon":"'${i}'","status":"stopped"}'
                 fi
+                rm -f ${DIR}/var/run/${daemon_name}-*.pid
             else
                 if [ $USE_JSON = true ]; then
-                    echo -n '{"daemon":"'${i}'","status":"killed"}'
+                    echo -n '{"daemon":"'${i}'","status":"timeout"}'
                 else
-                    echo "Process ${i} couldn't be terminated. It will be killed.";
+                    echo "Process ${i} couldn't be terminated. Keeping it running for inspection.";
                 fi
-                kill -9 $pid
+                stop_failed=true
+                RETVAL=1
+                continue
             fi
         else
             if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"stopped"}'
             fi
+            rm -f ${DIR}/var/run/${daemon_name}-*.pid
         fi
-        rm -f ${DIR}/var/run/${daemon_name}-*.pid
     done
 
     if [ $USE_JSON = true ]; then
         echo -n ']}'
     else
-        echo "Wazuh $VERSION Stopped"
+        if [ $stop_failed = true ]; then
+            echo "Wazuh $VERSION stop timed out. One or more processes are still running."
+        else
+            echo "Wazuh $VERSION Stopped"
+        fi
     fi
+
+    if [ $stop_failed = true ]; then
+        return 1
+    fi
+
+    return 0
 }
 
 info()
@@ -615,6 +630,11 @@ restart_service()
         stop_service > /dev/null 2>&1
     else
         stop_service
+    fi
+    if [ $? != 0 ]; then
+        rm -f ${DIR}/var/run/.restart
+        unlock
+        return 1
     fi
     start_service
     rm -f ${DIR}/var/run/.restart

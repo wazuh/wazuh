@@ -35,6 +35,7 @@ LOCK_PID="${LOCK}/pid"
 MAX_ITERATION="60"
 
 MAX_KILL_TRIES=30
+RETVAL=0
 
 checkpid()
 {
@@ -290,6 +291,7 @@ wait_pid() {
 stop_service()
 {
     checkpid;
+    stop_failed=false
 
     # First pass: send kill signal to all running daemons
     for i in ${DAEMONS}; do
@@ -311,15 +313,23 @@ stop_service()
 
             if ! wait_pid $pid
             then
-                echo "Process ${i} couldn't be terminated. It will be killed.";
-                kill -9 $pid
+                echo "Process ${i} couldn't be terminated. Keeping it running for inspection.";
+                stop_failed=true
+                RETVAL=1
+                continue
             fi
         fi
 
         rm -f ${DIR}/var/run/${i}-*.pid
     done
 
+    if [ $stop_failed = true ]; then
+        echo "Wazuh $VERSION stop timed out. One or more processes are still running."
+        return 1
+    fi
+
     echo "Wazuh $VERSION Stopped"
+    return 0
 }
 
 info()
@@ -343,6 +353,10 @@ restart_service()
     testconfig
     lock
     stop_service
+    if [ $? != 0 ]; then
+        unlock
+        return 1
+    fi
     sleep 1
     start_service
     unlock
