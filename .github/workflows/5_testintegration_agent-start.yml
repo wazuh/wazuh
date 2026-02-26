@@ -307,6 +307,10 @@ jobs:
         id: package
         run: |
           PACKAGE=$(find /tmp/packages -type f -name "wazuh-agent*.pkg" ! -name "*debug*" | head -n1)
+          if [ -z "$PACKAGE" ]; then
+            echo "ERROR: No PKG package found in /tmp/packages matching pattern 'wazuh-agent*.pkg' (excluding '*debug*')."
+            exit 1
+          fi
           echo "package-path=$PACKAGE" >> $GITHUB_OUTPUT
           echo "Found package: $PACKAGE"
 
