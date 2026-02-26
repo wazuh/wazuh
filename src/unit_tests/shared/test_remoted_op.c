@@ -588,6 +588,36 @@ void test_parse_json_keepalive_linux_complete(void **state)
     wdb_free_agent_info_data(agent_data);
 }
 
+void test_parse_json_keepalive_linux_codename_with_wazuh_suffix(void **state)
+{
+    char* json = "{\"version\":\"1.0\",\"agent\":{\"id\":\"002\",\"name\":\"agent2\",\"version\":\"v5.0.0\",\
+\"config_sum\":\"ab73af41699f13fdd81903b5f23d8d00\",\"merged_sum\":\"fd756ba04d9c32c8848d4608bec41251\",\
+\"ip\":\"192.168.1.101\",\
+\"uname\":\"Linux |523e34619338 |6.12.68-1-MANJARO |#1 SMP PREEMPT_DYNAMIC Sat Feb 22 10:37:40 UTC 2025 |x86_64 [Ubuntu|ubuntu: 24.04.4 LTS (Noble Numbat)] - Wazuh v5.0.0\"},\
+\"host\":{\"hostname\":\"523e34619338\",\"architecture\":\"x86_64\",\
+\"os\":{\"name\":\"Ubuntu\",\"version\":\"24.04.4 LTS\",\"platform\":\"ubuntu\",\"type\":\"linux\"}}}";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    int result = parse_json_keepalive(json, agent_data, NULL, NULL, NULL, NULL);
+
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("Ubuntu", agent_data->osd->os_name);
+    assert_string_equal("24.04.4 LTS", agent_data->osd->os_version);
+    assert_string_equal("ubuntu", agent_data->osd->os_platform);
+    assert_string_equal("linux", agent_data->osd->os_type);
+    assert_string_equal("x86_64", agent_data->osd->os_arch);
+    assert_string_equal("523e34619338", agent_data->osd->hostname);
+    assert_string_equal("Noble Numbat", agent_data->osd->os_codename);
+    assert_string_equal("24", agent_data->osd->os_major);
+    assert_string_equal("04", agent_data->osd->os_minor);
+    // Verify " - Wazuh v5.0.0" suffix is stripped from os_uname
+    assert_null(strstr(agent_data->osd->os_uname, " - Wazuh"));
+
+    wdb_free_agent_info_data(agent_data);
+}
+
 void test_parse_json_keepalive_windows(void **state)
 {
     char* json = "{\"version\":\"1.0\",\"agent\":{\"version\":\"v5.0.0\",\"config_sum\":\"abc123\",\
@@ -1040,6 +1070,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_invalid_json, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_missing_agent, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_linux_complete, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_linux_codename_with_wazuh_suffix, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_windows, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_minimal, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_with_groups, setup_remoted_op, teardown_remoted_op),

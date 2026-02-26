@@ -320,7 +320,14 @@ int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char
     if (agent_uname && cJSON_IsString(agent_uname)) {
         char *uname_copy = NULL;
         os_strdup(agent_uname->valuestring, uname_copy);
-        os_strdup(agent_uname->valuestring, agent_data->osd->os_uname);
+
+        // Strip " - Wazuh vX.X.X" suffix before parsing (same cleanup as parse_agent_update_msg)
+        char *dash_separator = strstr(uname_copy, " - ");
+        if (dash_separator) {
+            *dash_separator = '\0';
+        }
+
+        os_strdup(uname_copy, agent_data->osd->os_uname);
         parse_uname_string(uname_copy, agent_data->osd);
         os_free(uname_copy);
     }
