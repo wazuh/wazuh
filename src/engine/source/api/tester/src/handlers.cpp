@@ -354,7 +354,7 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
         // Use provided agent_metadata if available, otherwise use empty struct
         if (protoReq.has_agent_metadata())
         {
-            auto jsonOrErr = eMessage::eMessageToJson(protoReq.agent_metadata(), /*printPrimitiveFields=*/true);
+            auto jsonOrErr = eMessage::eStructToJson(protoReq.agent_metadata());
             if (std::holds_alternative<base::Error>(jsonOrErr))
             {
                 res = adapter::userErrorResponse<ResponseType>(fmt::format(
@@ -362,17 +362,7 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
                 return;
             }
 
-            const auto& agentMetadataStr = std::get<std::string>(jsonOrErr);
-            try
-            {
-                agentMetadata = json::Json(agentMetadataStr.c_str());
-            }
-            catch (const std::exception& e)
-            {
-                res = adapter::userErrorResponse<ResponseType>(
-                    fmt::format("Error parsing agent_metadata JSON: {}", e.what()));
-                return;
-            }
+            agentMetadata = std::move(std::get<json::Json>(jsonOrErr));
         }
         else
         {

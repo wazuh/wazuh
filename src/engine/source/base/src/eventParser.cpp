@@ -93,7 +93,7 @@ bool parseLegacyLocation(std::string& location, std::shared_ptr<json::Json>& eve
 
 } // namespace
 
-Event parseLegacyEvent(std::string_view rawEvent, const json::Json& hostInfo)
+Event parseLegacyEvent(std::string_view rawEvent, const json::Json& agentMetadata)
 {
     auto parseEvent = std::make_shared<json::Json>();
 
@@ -147,7 +147,7 @@ Event parseLegacyEvent(std::string_view rawEvent, const json::Json& hostInfo)
         }
     }
 
-    parseEvent->merge(true, hostInfo);
+    parseEvent->merge(true, agentMetadata);
     parseEvent->setString(rawLocation, EVENT_LOCATION_ID);
 
     // Set the original event message.

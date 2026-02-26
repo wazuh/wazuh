@@ -105,6 +105,8 @@ void HandleSyslog()
             continue;
         }
 
+        // TODO: delete later, this is just to suppress the unused variable warning while separating manager and agent
+        (void)buffer_pt;
         /*
         // TODO: commented out while separating manager and agent, someone should bind DEFAULTQUEUE
         if (SendMSG(logr.m_queue, buffer_pt, srcip, SYSLOG_MQ) < 0) {

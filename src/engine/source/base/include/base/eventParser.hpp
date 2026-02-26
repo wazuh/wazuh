@@ -20,11 +20,12 @@ constexpr char EVENT_AGENT_NAME[] {"/agent/name"};
  * @brief Parse an Wazuh legacy message (4.x) and extract the queue, location and message
  *
  * @param event Wazuh message
+ * @param agentMetadata Agent metadata information
  * @return Event Event object
  * @throw std::runtime_error if the message is not a valid Wazuh legacy message
  * @note The message must be in the format: "queue:location:message"
  */
-Event parseLegacyEvent(std::string_view event, const json::Json& hostInfo);
+Event parseLegacyEvent(std::string_view event, const json::Json& agentMetadata);
 
 /**
  * @brief Parse a Wazuh public message and extract the queue, location and message

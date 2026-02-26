@@ -997,7 +997,11 @@ paths:
         - Tester
       summary: Run a test in a session
       description: |
-        This endpoint allows running a test in a specific tester session.
+        This endpoint allows running a test in a specific tester session. It Injects a single event
+        into the engine using a previously created and loaded testing session.
+        Additional metadata about the agent can be provided in the `agent_metadata` field, which
+        is merged into the event before ingestion, it must be a **JSON object** (not a JSON-encoded string).
+        It can be an empty JSON object (`{}`).
       requestBody:
         required: true
         content:
