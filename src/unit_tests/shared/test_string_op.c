@@ -1085,6 +1085,22 @@ void test_print_hex_string_null_dst_err(void ** state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
+void test_print_hex_string_zero_src_size(void ** state) {
+    char *str = "test";
+    char hex[OS_SIZE_2048 + 1] = {0};
+    int ret = print_hex_string(str, 0, hex, sizeof(hex));
+    assert_int_equal(ret, OS_SUCCESS);
+    assert_string_equal(hex, "");
+}
+
+void test_print_hex_string_zero_dst_size(void ** state) {
+    char *str = "test";
+    char hex[1] = {0};
+    int ret = print_hex_string(str, 4, hex, 0);
+    assert_int_equal(ret, OS_INVALID);
+    assert_string_equal(hex, "");
+}
+
 void test_os_substr_failure(void **state) {
     char *srcs[] = {"TEST STRING", NULL, "SHORT"};
     int expected_results[] = {-3, -2, -1};
@@ -1315,6 +1331,8 @@ int main(void) {
         cmocka_unit_test(test_print_hex_string_miss_last_dest_ok),
         cmocka_unit_test(test_print_hex_string_null_src_err),
         cmocka_unit_test(test_print_hex_string_null_dst_err),
+        cmocka_unit_test(test_print_hex_string_zero_src_size),
+        cmocka_unit_test(test_print_hex_string_zero_dst_size),
         // Tests os_strcnt
         cmocka_unit_test(test_os_strcnt),
         // Test os_trimcrlf
