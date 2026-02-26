@@ -144,7 +144,7 @@ runs:
           genhtml_output=$(cat genhtml_output.txt)
           linesCoverage=$(echo "$genhtml_output" | awk '/lines.*:/ {gsub(/[^0-9.]/, "", $2); print $2}')
           echo "Lines coverage is: '$linesCoverage' %"
-          if ! (( $(echo "$linesCoverage > ${{ inputs.threshold }}" | bc -l) )); then
+          if ! (( $(echo "$linesCoverage >= ${{ inputs.threshold }}" | bc -l) )); then
             echo "----------------------------------------"
             echo "FAILED: Lines coverage is lower than ${{ inputs.threshold }}%"
             echo "----------------------------------------"
@@ -159,7 +159,7 @@ runs:
           if [[ "${{ inputs.validate_function_coverage }}" == "true" ]]; then
             functionsCoverage=$(echo "$genhtml_output" | awk '/functions.*:/ {gsub(/[^0-9.]/, "", $2); print $2}')
             echo "Functions coverage is: '$functionsCoverage' %"
-            if ! (( $(echo "$functionsCoverage > ${{ inputs.threshold }}" | bc -l) )); then
+            if ! (( $(echo "$functionsCoverage >= ${{ inputs.threshold }}" | bc -l) )); then
               echo "---------------------------------------------"
               echo "FAILED: Functions coverage is lower than ${{ inputs.threshold }}%"
               echo "--------------------------------------------"
