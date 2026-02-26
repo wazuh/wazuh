@@ -26,7 +26,7 @@
 #else
 #include "agentd.h"
 // Forward declaration - agcom_dispatch is available in the same process on Windows
-extern size_t agcom_dispatch(char * command, char ** output);
+extern size_t agcom_dispatch(char* command, char** output);
 #endif
 
 #define SYS_SYNC_PROTOCOL_DB_PATH "queue/syscollector/db/syscollector_sync.db"
@@ -51,6 +51,8 @@ int wm_sync_message(const char* command, size_t command_len);
 pthread_cond_t sys_stop_condition = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t sys_stop_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool need_shutdown_wait = false;
+static pthread_t sys_main_thread;
+static bool sys_main_thread_initialized = false;
 pthread_mutex_t sys_reconnect_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool shutdown_process_started = false;
 
@@ -133,6 +135,7 @@ bool wm_sys_query_agentd(const char* command, char* output_buffer, size_t buffer
 
     // Connect to agent socket
     int sock = OS_ConnectUnixDomain(AGENT_SOCKET, SOCK_STREAM, MAX_RECV_SIZE);
+
     if (sock < 0)
     {
         mtdebug1(WM_SYS_LOGTAG, "Could not connect to agent socket: %s", strerror(errno));
@@ -166,6 +169,7 @@ bool wm_sys_query_agentd(const char* command, char* output_buffer, size_t buffer
         {
             mterror(WM_SYS_LOGTAG, "Failed to receive response from agent socket: %s", strerror(errno));
         }
+
         return false;
     }
 
@@ -193,6 +197,7 @@ bool wm_sys_query_agentd(const char* command, char* output_buffer, size_t buffer
     // Copy response to our temporary buffer (safely)
     size_t output_len = strlen(output);
     size_t max_copy = sizeof(response_buffer) - 1;
+
     if (output_len > max_copy)
     {
         mtwarn(WM_SYS_LOGTAG, "Response too large (%zu bytes), truncating to %zu bytes",
@@ -371,7 +376,8 @@ static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t* sys)
             .start = wm_sys_startmq,
             .send_binary = wm_sys_send_binary_msg
         };
-        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps, integrity_interval);
+        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps,
+                                   integrity_interval);
 
         if (syscollector_notify_data_clean_ptr && syscollector_delete_database_ptr)
         {
@@ -446,6 +452,10 @@ void* wm_sys_main(wm_sys_t* sys)
     w_cond_init(&sys_stop_condition, NULL);
     w_mutex_init(&sys_stop_mutex, NULL);
     w_mutex_init(&sys_reconnect_mutex, NULL);
+    w_mutex_lock(&sys_stop_mutex);
+    sys_main_thread = pthread_self();
+    sys_main_thread_initialized = true;
+    w_mutex_unlock(&sys_stop_mutex);
 
     if (!sys->flags.enabled)
     {
@@ -490,7 +500,9 @@ void* wm_sys_main(wm_sys_t* sys)
 
         // Get agentd query function setter pointer (cross-platform)
         syscollector_set_agentd_query_func_setter = so_get_function_sym(syscollector_module, "syscollector_set_agentd_query_func");
-    } else {
+    }
+    else
+    {
         mterror(WM_SYS_LOGTAG, "Can't load syscollector.");
         pthread_exit(NULL);
     }
@@ -563,7 +575,8 @@ void* wm_sys_main(wm_sys_t* sys)
                 .start = wm_sys_startmq,
                 .send_binary = wm_sys_send_binary_msg
             };
-            syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps, integrity_interval);
+            syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps,
+                                       integrity_interval);
 #ifndef WIN32
             // Launch inventory synchronization thread
             sync_module_running = 1;
@@ -604,6 +617,7 @@ void* wm_sys_main(wm_sys_t* sys)
     mtinfo(WM_SYS_LOGTAG, "Module finished.");
     w_mutex_lock(&sys_stop_mutex);
     need_shutdown_wait = false;
+    sys_main_thread_initialized = false;
     w_cond_signal(&sys_stop_condition);
     w_mutex_unlock(&sys_stop_mutex);
     return 0;
@@ -638,10 +652,20 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t* data)
         shutdown_process_started = true;
         syscollector_stop_ptr();
     }
+
     w_mutex_lock(&sys_stop_mutex);
-    while (need_shutdown_wait) {
+    const bool called_from_sys_main_thread = sys_main_thread_initialized && pthread_equal(pthread_self(), sys_main_thread);
+
+    if (called_from_sys_main_thread)
+    {
+        mtdebug1(WM_SYS_LOGTAG, "Stop called from syscollector worker thread. Skipping synchronous shutdown wait.");
+    }
+
+    while (need_shutdown_wait && !called_from_sys_main_thread)
+    {
         w_cond_wait(&sys_stop_condition, &sys_stop_mutex);
     }
+
     w_mutex_unlock(&sys_stop_mutex);
 }
 
@@ -795,22 +819,30 @@ void* wm_sync_module(__attribute__((unused)) void* args)
         sleep(1);
     }
 
-    while (sync_module_running) {
-        if (syscollector_sync_module_ptr) {
+    while (sync_module_running)
+    {
+        if (syscollector_sync_module_ptr)
+        {
             // Do not hold scan mutex while waiting for sync ACKs.
             bool sync_result = syscollector_sync_module_ptr(MODE_DELTA);
 
             // Recovery touches shared state; keep this section serialized.
-            if (sync_result && sync_module_running && syscollector_run_recovery_process_ptr) {
-                if (syscollector_lock_scan_mutex_ptr && syscollector_unlock_scan_mutex_ptr) {
+            if (sync_result && sync_module_running && syscollector_run_recovery_process_ptr)
+            {
+                if (syscollector_lock_scan_mutex_ptr && syscollector_unlock_scan_mutex_ptr)
+                {
                     syscollector_lock_scan_mutex_ptr();
                     syscollector_run_recovery_process_ptr();
                     syscollector_unlock_scan_mutex_ptr();
-                } else {
+                }
+                else
+                {
                     syscollector_run_recovery_process_ptr();
                 }
             }
-        } else {
+        }
+        else
+        {
             mtdebug1(WM_SYS_LOGTAG, "Sync function not available");
         }
 
