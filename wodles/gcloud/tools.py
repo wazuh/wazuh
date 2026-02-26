@@ -49,7 +49,7 @@ def get_script_arguments():
                         help='Subscription name')
 
     parser.add_argument('-c', '--credentials_file', dest='credentials_file',
-                        help='Path to credentials file', required=True)
+                        help='Path to credentials file')
 
     parser.add_argument('-m', '--max_messages', dest='max_messages', type=int,
                         help='Number of maximum messages pulled in each iteration', default=100)
@@ -71,8 +71,8 @@ def get_script_arguments():
 
     parser.add_argument('-t', '--num_threads', dest='n_threads', type=int,
                         help='Number of threads', required=False, default=min_num_threads)
-    
-    parser.add_argument('--reparse', action='store_true', dest='reparse', 
+
+    parser.add_argument('--reparse', action='store_true', dest='reparse',
                         help='Parse the log, even if its been parsed before', default=False)
 
     return parser.parse_args()
