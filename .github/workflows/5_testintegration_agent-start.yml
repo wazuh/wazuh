@@ -86,14 +86,6 @@ jobs:
             --entrypoint '/tests/smoke_startup_test.sh' \
             ${{ env.CONTAINER_NAME }}:${{ env.TAG }}
 
-      - name: Upload logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-deb-amd64-logs-${{ github.run_id }}
-          path: /tmp/packages/*.log
-          retention-days: 7
-
   test-linux-rpm-x86_64:
     if: |
       (github.event_name == 'workflow_run' &&
@@ -162,14 +154,6 @@ jobs:
             -v /tmp/packages:/packages \
             --entrypoint '/tests/smoke_startup_test.sh' \
             ${{ env.CONTAINER_NAME }}:${{ env.TAG }}
-
-      - name: Upload logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-rpm-x86_64-logs-${{ github.run_id }}
-          path: /tmp/packages/*.log
-          retention-days: 7
 
   test-windows:
     if: |
@@ -278,14 +262,6 @@ jobs:
             Write-Host "Agent service stopped successfully"
           }
 
-      - name: Upload logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-logs-${{ github.run_id }}
-          path: C:\Program Files (x86)\ossec-agent\*.log
-          retention-days: 7
-
   test-macos-arm64:
     if: |
       (github.event_name == 'workflow_run' &&
@@ -377,11 +353,3 @@ jobs:
         run: |
           sudo /Library/Ossec/bin/wazuh-control stop
           echo "Agent stopped successfully"
-
-      - name: Upload logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-arm64-logs-${{ github.run_id }}
-          path: /Library/Ossec/logs/
-          retention-days: 7
