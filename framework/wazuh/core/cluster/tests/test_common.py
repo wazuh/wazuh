@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import _hashlib
-import _io
 import abc
 import asyncio
 import hashlib
@@ -13,12 +12,12 @@ import os
 import sys
 from contextvars import ContextVar
 from datetime import datetime
-from unittest.mock import patch, MagicMock, mock_open, call, ANY, AsyncMock
+from unittest.mock import patch, MagicMock, call, ANY, AsyncMock, mock_open
 
 import cryptography
 import pytest
 from freezegun import freeze_time
-from uvloop import EventLoopPolicy, new_event_loop, Loop
+from uvloop import EventLoopPolicy, new_event_loop
 
 from wazuh import Wazuh
 from wazuh.core import exception
@@ -734,7 +733,7 @@ async def test_handler_send_string():
         with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
             assert exception.WazuhClusterError(3020).message.encode() in await handler.send_string(b"something")
             logger_mock.assert_called_once_with(
-                f'There was an error while trying to send a string: Error 3020 - Timeout sending request',
+                'There was an error while trying to send a string: Error 3020 - Timeout sending request',
                 exc_info=False)
 
 
