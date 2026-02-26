@@ -397,7 +397,7 @@ class EXPORTED Syscollector final
         bool                                                                     m_portsAll;
         bool                                                                     m_processes;
         bool                                                                     m_hotfixes;
-        bool                                                                     m_stopping;
+        std::atomic<bool>                                                        m_stopping;
         bool                                                                     m_initialized;
         bool                                                                     m_notify;
         std::atomic<bool>                                                        m_paused;
