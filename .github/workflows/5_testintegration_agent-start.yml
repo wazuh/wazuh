@@ -147,7 +147,7 @@ jobs:
           echo "Found package: $PACKAGE_NAME"
           VERSION=$(echo $PACKAGE_NAME | grep -oP '\d+\.\d+\.\d+' | head -n 1)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "CONTAINER_NAME=pkg_rpm_agent_builder_x86_64" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_rpm_agent_builder_amd64" >> $GITHUB_ENV
           echo "TAG=$VERSION" >> $GITHUB_ENV
 
       - name: Download docker image
@@ -217,7 +217,7 @@ jobs:
         id: package
         shell: pwsh
         run: |
-          $PACKAGE = Get-ChildItem -Path "C:\packages" -Filter "wazuh-agent*windows*.msi" -Recurse | Where-Object { $_.Name -notmatch 'debug' } | Select-Object -First 1 -ExpandProperty FullName
+          $PACKAGE = Get-ChildItem -Path "C:\packages" -Filter "wazuh-agent*windows*.msi" -File -Recurse | Where-Object { $_.Name -notmatch 'debug' } | Select-Object -First 1 -ExpandProperty FullName
           if (-not $PACKAGE) {
             Write-Host "ERROR: No MSI package found"
             Get-ChildItem -Path "C:\packages" -Recurse | Format-Table Name, FullName
