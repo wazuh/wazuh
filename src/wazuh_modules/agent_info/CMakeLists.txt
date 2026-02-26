@@ -48,6 +48,7 @@ include_directories(${SRC_FOLDER}/wazuh_modules/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/build/lib)
 link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")

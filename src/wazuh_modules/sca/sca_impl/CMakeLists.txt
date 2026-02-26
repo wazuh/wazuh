@@ -16,6 +16,7 @@ if(NOT DEFINED WAZUH_MAIN_PROJECT)
 endif()
 message(STATUS "SRC_FOLDER: ${SRC_FOLDER}")
 link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/build/lib)
 link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/libpcre2/.libs/)
 link_directories(${SRC_FOLDER}/external/openssl/)
@@ -148,7 +149,8 @@ target_link_libraries(
           ${OPENSSL_LIB}
           ${OPENSSL_CRYPTO_LIB})
 
-if(UNIT_TEST AND ("${TARGET}" STREQUAL "agent" OR "${TARGET}" STREQUAL "winagent"))
+if(UNIT_TEST AND ("${TARGET}" STREQUAL "agent" OR "${TARGET}" STREQUAL
+                                                  "winagent"))
   enable_testing()
   add_coverage_libraries(SCAImpl)
   add_subdirectory(tests)

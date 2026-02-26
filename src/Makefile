@@ -20,13 +20,14 @@ override TARGET := manager
 endif
 
 ifeq (${TARGET}, winagent)
-WAZUH_LIB_OUTPUT_PATH := win32/
+WAZUH_LIB_OUTPUT_PATH := build/lib/
 STRIP_TOOL := i686-w64-mingw32-strip
 libstdc++_path := $(shell sh -c 'i686-w64-mingw32-g++-posix --print-file-name=libstdc++-6.dll 2>/dev/null || echo not')
 LIBSTDCPP_NAME := libstdc++-6.dll
 libgcc_s_path := $(shell sh -c 'i686-w64-mingw32-g++-posix --print-file-name=libgcc_s_dw2-1.dll 2>/dev/null || echo not')
 LIBGCC_S_NAME := libgcc_s_dw2-1.dll
 else
+WAZUH_LIB_OUTPUT_PATH := build/lib/
 libstdc++_path := $(shell sh -c 'g++ --print-file-name=libstdc++.so.6 2>/dev/null || echo not')
 libgcc_s_path := $(shell sh -c 'g++ --print-file-name=libgcc_s.so.1 2>/dev/null || echo not')
 LIBSTDCPP_NAME := libstdc++.so.6
@@ -36,7 +37,7 @@ endif
 
 ifeq (, $(filter ${libstdc++_path}, not ${LIBSTDCPP_NAME}))
 ifeq (, $(filter ${libgcc_s_path}, not ${LIBGCC_S_NAME}))
-CPPLIBDEPS := ${LIBSTDCPP_NAME} ${LIBGCC_S_NAME}
+CPPLIBDEPS := ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME}
 endif
 endif
 
@@ -311,10 +312,12 @@ settings:
 BUILD_CMAKE_PROJECTS+=build_wazuh_cmake
 
 ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}: ${libstdc++_path}
+	mkdir -p ${WAZUH_LIB_OUTPUT_PATH}
 	cp $< $@
 	${STRIP_TOOL} -x $@
 
 ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME}: ${libgcc_s_path}
+	mkdir -p ${WAZUH_LIB_OUTPUT_PATH}
 	cp $< $@
 	${STRIP_TOOL} -x $@
 
@@ -804,48 +807,9 @@ clean-deps:
 	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_TAR) shared_modules/http-request/* shared_modules/http-request/.??* $(INDEXER_PLUGINS_DIR) $(WCS_FLAT_DIR)
 
 clean-internals:
-# Wazuh libraries
-	rm -f libwazuh.a
-	rm -f libwazuh_test.a
-	rm -f libwazuhext.*
-	rm -f libwazuhshared.*
-# Active responses
-	rm -f default-firewall-drop
-	rm -f pf
-	rm -f npf
-	rm -f ipfw
-	rm -f firewalld-drop
-	rm -f disable-account
-	rm -f host-deny
-	rm -f ip-customblock
-	rm -f restart-wazuh
-	rm -f route-null
-	rm -f kaspersky
-	rm -f wazuh-slack
-	rm -f firewall-drop
-	# Wazuh binaries
+# Wazuh binaries and libraries
 	rm -rf build
 	rm -rf unit_tests/build*
-	rm -f wazuh-manager-keystore
-	rm -f wazuh-agentd
-	rm -f wazuh-execd
-	rm -f wazuh-logcollector
-	rm -f wazuh-syscheckd
-	rm -f wazuh-modulesd
-	rm -f wazuh-remoted
-	rm -f wazuh-monitord
-	rm -f wazuh-authd
-	rm -f wazuh-db
-	rm -f wazuh-manager-modulesd
-	rm -f wazuh-manager-remoted
-	rm -f wazuh-manager-monitord
-	rm -f wazuh-manager-authd
-	rm -f wazuh-manager-db
-	rm -f manage_agents
-	rm -f verify-agent-conf
-# Compilation libraries
-	rm -rf libstdc++.so.6
-	rm -rf libgcc_s.so.1
 # Flatbuffers
 	rm -rf shared_modules/utils/flatbuffers/build
 	rm -rf shared_modules/utils/flatbuffers/include
@@ -863,26 +827,7 @@ clean-windows:
 	rm -f win32/internal_options.conf
 	rm -f win32/default-local_internal_options.conf
 	rm -f win32/default-ossec.conf
-	rm -f win32/default-ossec-pre6.conf
 	rm -f win32/VERSION.json
-# Active responses
-	rm -f win32/restart-wazuh.exe
-	rm -f win32/route-null.exe
-	rm -f win32/netsh.exe
-# Wazuh binaries
-	rm -f win32/wazuh-agent.exe
-	rm -f win32/wazuh-agent-eventchannel.exe
-	rm -f win32/setup-windows.exe
-	rm -f win32/setup-syscheck.exe
-	rm -f win32/setup-iis.exe
-	rm -f win32/os_win32ui.exe
-	rm -f win32/manage_agents.exe
-# Compilation libraries
-	rm -f win32/libwinpthreadpatched.a
-	rm -f win32/libwinpthread-1.dll
-	rm -f win32/libstdc++-6.dll
-	rm -f win32/libgcc_s_dw2-1.dll
-	rm -f win32/libgcc_s_sjlj-1.dll
 
 clean-config:
 	rm -f ../etc/ossec.mc

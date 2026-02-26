@@ -20,12 +20,12 @@ include_directories(${SHARED_MODULES}/utils)
 include_directories(${SHARED_MODULES}/common)
 
 link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/build/lib)
 link_directories(${SRC_FOLDER}/external/rocksdb/build)
 
 add_executable(${PROJECT_NAME} main.cpp)
 
-set_target_properties(
-  ${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
-                             "${CMAKE_BINARY_DIR}/bin")
+set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                                                 "${CMAKE_BINARY_DIR}/bin")
 
 target_link_libraries(${PROJECT_NAME} rocksdb wazuhext keystore)

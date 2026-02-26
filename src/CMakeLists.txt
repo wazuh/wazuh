@@ -143,6 +143,7 @@ message("==============================================")
 set(BENCHMARK_ENABLE_TESTING "OFF")
 
 link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/build/lib)
 
 # Wazuh headers
 include_directories(${SRC_FOLDER}/shared/include)
@@ -189,8 +190,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     PATHS /usr/i686-w64-mingw32/lib /usr/i686-w64-mingw32/sys-root/mingw/bin
           REQUIRED)
 
-  set(PATCHED_PTHREAD_LIB ${SRC_FOLDER}/win32/libwinpthreadpatched.a)
-  set(WIN_PTHREAD_DLL_COPY ${SRC_FOLDER}/win32/libwinpthread-1.dll)
+  set(PATCHED_PTHREAD_LIB ${SRC_FOLDER}/build/lib/libwinpthreadpatched.a)
+  set(WIN_PTHREAD_DLL_COPY ${SRC_FOLDER}/build/lib/libwinpthread-1.dll)
   add_custom_command(
     OUTPUT ${PATCHED_PTHREAD_LIB}
     COMMAND ${CMAKE_COMMAND} -E copy ${WIN_PTHREAD_STATIC_LIB}
@@ -208,8 +209,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
   # Common Windows libraries that all Windows executables need
   set(WAZUH_WINDOWS_LIBS
-      ${SRC_FOLDER}/libwazuhext.lib ${PATCHED_PTHREAD_LIB} wintrust psapi
-      crypt32 shlwapi
+      ${SRC_FOLDER}/build/lib/libwazuhext.lib ${PATCHED_PTHREAD_LIB} wintrust
+      psapi crypt32 shlwapi
       CACHE INTERNAL "Common Windows libraries for all executables")
 endif()
 

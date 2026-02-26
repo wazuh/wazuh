@@ -130,7 +130,7 @@ add_executable(
 target_compile_definitions(wazuh-agent PRIVATE OSSECHIDS ARGV0="wazuh-agent"
                                                _WIN32_WINNT=0x600)
 set_target_properties(
-  wazuh-agent PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/win32
+  wazuh-agent PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
                          OUTPUT_NAME wazuh-agent)
 target_link_libraries(
   wazuh-agent
@@ -160,7 +160,7 @@ target_compile_definitions(
                                    EVENTCHANNEL_SUPPORT _WIN32_WINNT=0x600)
 set_target_properties(
   wazuh-agent-eventchannel
-  PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/win32
+  PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
              OUTPUT_NAME wazuh-agent-eventchannel)
 target_link_libraries(
   wazuh-agent-eventchannel
@@ -187,7 +187,7 @@ add_executable(
 target_compile_definitions(setup-windows PRIVATE ARGV0="setup-windows"
                                                  _WIN32_WINNT=0x600)
 set_target_properties(
-  setup-windows PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/win32
+  setup-windows PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
                            OUTPUT_NAME setup-windows)
 target_link_libraries(setup-windows PRIVATE wazuh ${WIN_SYSTEM_LIBS})
 
@@ -199,7 +199,7 @@ add_executable(
 target_compile_definitions(setup-syscheck PRIVATE ARGV0="setup-syscheck"
                                                   _WIN32_WINNT=0x600)
 set_target_properties(
-  setup-syscheck PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/win32
+  setup-syscheck PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
                             OUTPUT_NAME setup-syscheck)
 target_link_libraries(setup-syscheck PRIVATE wazuh ${WIN_SYSTEM_LIBS})
 
@@ -209,8 +209,8 @@ add_executable(setup-iis $<TARGET_OBJECTS:win32_service_rk>
 target_compile_definitions(setup-iis PRIVATE ARGV0="setup-iis"
                                              _WIN32_WINNT=0x600)
 set_target_properties(
-  setup-iis PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/win32 OUTPUT_NAME
-                                                                    setup-iis)
+  setup-iis PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
+                       OUTPUT_NAME setup-iis)
 target_link_libraries(setup-iis PRIVATE wazuh ${WIN_SYSTEM_LIBS})
 
 # --- os_win32ui.exe ---
@@ -222,7 +222,7 @@ target_compile_definitions(os_win32ui PRIVATE ARGV0="wazuh-win32ui"
 target_include_directories(os_win32ui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ui/
                                               ${SRC_FOLDER}/syscheckd/include/)
 set_target_properties(
-  os_win32ui PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/win32 OUTPUT_NAME
-                                                                     os_win32ui)
+  os_win32ui PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
+                        OUTPUT_NAME os_win32ui)
 target_link_options(os_win32ui PRIVATE -mwindows)
 target_link_libraries(os_win32ui PRIVATE wazuh ${WIN_SYSTEM_LIBS})

@@ -81,7 +81,7 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT UNIT_TEST)
                  "${CMAKE_CURRENT_SOURCE_DIR}/src/main-server.c")
   set_target_properties(
     wazuh-manager-authd PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
-                                                     ${SRC_FOLDER})
+                                                     ${SRC_FOLDER}/build/bin)
   target_link_libraries(wazuh-manager-authd PRIVATE authd_lib)
 
   if(APPLE)

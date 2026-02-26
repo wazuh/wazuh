@@ -108,7 +108,7 @@ jobs:
           # Restore VERSION.json with commit info
           cp compiled-binaries/VERSION.json . || true
           # Verify key files exist
-          ls -la src/win32/*.exe src/*.dll || echo "Warning: Some binaries may be missing"
+          ls -la src/build/bin/*.exe src/build/lib/*.dll || echo "Warning: Some binaries may be missing"
 
       - name: Set PKG_NAME
         shell: bash

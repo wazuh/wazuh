@@ -40,9 +40,9 @@ function(add_active_response_executable name source)
   # Set ARGV0 definition for each binary
   target_compile_definitions(${name} PRIVATE ARGV0="${name}")
 
-  # Set output directory to src/ (same as Makefile)
+  # Set output directory to src/build/bin
   set_target_properties(${name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
-                                           ${SRC_FOLDER} OUTPUT_NAME ${name})
+                                           ${SRC_FOLDER}/build/bin OUTPUT_NAME ${name})
 
   # Link with libwazuh.a
   target_link_libraries(${name} PRIVATE wazuh)
@@ -114,7 +114,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     ${RESOURCE_OBJ_APP})
   target_compile_definitions(restart-wazuh PRIVATE ARGV0="restart-wazuh")
   set_target_properties(
-    restart-wazuh PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/win32
+    restart-wazuh PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
                              OUTPUT_NAME restart-wazuh)
   target_link_libraries(restart-wazuh PRIVATE wazuh ${WAZUH_WINDOWS_LIBS})
 
@@ -125,7 +125,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     ${SRC_FOLDER}/win32/route-null.rc ${RESOURCE_OBJ_APP})
   target_compile_definitions(route-null PRIVATE ARGV0="route-null")
   set_target_properties(
-    route-null PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/win32
+    route-null PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
                           OUTPUT_NAME route-null)
   target_link_libraries(route-null PRIVATE wazuh ${WAZUH_WINDOWS_LIBS})
 
@@ -135,6 +135,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
           ${SRC_FOLDER}/win32/netsh.rc ${RESOURCE_OBJ_APP})
   target_compile_definitions(netsh PRIVATE ARGV0="netsh")
   set_target_properties(netsh PROPERTIES RUNTIME_OUTPUT_DIRECTORY
-                                         ${SRC_FOLDER}/win32 OUTPUT_NAME netsh)
+                                         ${SRC_FOLDER}/build/bin OUTPUT_NAME netsh)
   target_link_libraries(netsh PRIVATE wazuh ${WAZUH_WINDOWS_LIBS})
 endif()

@@ -10,7 +10,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 set(ORIGINAL_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin)
 
 file(GLOB KEYSTORE_SRC "src/keyStore.cpp")
 
@@ -31,6 +31,7 @@ include_directories(${SHARED_MODULES}/utils)
 include_directories(${SHARED_MODULES}/common)
 
 link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/build/lib)
 link_directories(${SRC_FOLDER}/external/rocksdb/build)
 
 add_library(keystore STATIC ${KEYSTORE_SRC})
@@ -42,8 +43,9 @@ if(NOT UNIT_TEST)
 
   target_link_libraries(wazuh-manager-keystore keystore)
 
-  set_target_properties(wazuh-manager-keystore PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
-                                                          BUILD_RPATH "$ORIGIN/../lib")
+  set_target_properties(
+    wazuh-manager-keystore PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
+                                      BUILD_RPATH "$ORIGIN/../lib")
 endif(NOT UNIT_TEST)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ORIGINAL_RUNTIME_OUTPUT_DIRECTORY})

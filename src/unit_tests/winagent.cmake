@@ -1,20 +1,20 @@
 # WINAGENT NEEDS TO BE BUILT WITH WIN32 toolchain
 # cmake ../ -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake -DTARGET=winagent
 
-set(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.dll")
+set(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.dll;.lib")
 
 if(NOT CMAKE_CROSSCOMPILING)
   message(FATAL_ERROR "Cross compiling tools not enabled. Try running cmake as: \n cmake ../ -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake")
 endif()
 
 # Setup the compiling toolchain
-# Find the wazuh shared library
-find_library(WAZUHEXT NAMES wazuhext HINTS "${SRC_FOLDER}")
+# Find the wazuh shared library (delay-import .lib file)
+find_library(WAZUHEXT NAMES wazuhext libwazuhext HINTS "${SRC_FOLDER}/build/lib")
 set(uname "Win32")
 
 if(NOT WAZUHEXT)
-  message(FATAL_ERROR "WAZUHEXT is set to '${WAZUHEXT}', but did not find any file matching ${SRC_FOLDER}/${CMAKE_FIND_LIBRARY_PREFIXES}wazuhext${CMAKE_FIND_LIBRARY_SUFFIXES}")
-  message(FATAL_ERROR "libwazuhext not found in ${SRC_FOLDER} Aborting...")
+  message(FATAL_ERROR "WAZUHEXT is set to '${WAZUHEXT}', but did not find any file matching ${SRC_FOLDER}/build/lib/${CMAKE_FIND_LIBRARY_PREFIXES}wazuhext${CMAKE_FIND_LIBRARY_SUFFIXES}")
+  message(FATAL_ERROR "libwazuhext not found in ${SRC_FOLDER}/build/lib Aborting...")
 endif()
 
 # Find the wazuh sysinfo library
@@ -35,9 +35,9 @@ if(NOT AGENT_METADATA)
 endif()
 
 # Win32 pthread library
-find_library(PTHREAD NAMES libwinpthread-1.dll HINTS "${SRC_FOLDER}/win32")
+find_library(PTHREAD NAMES libwinpthread-1.dll HINTS "${SRC_FOLDER}/build/lib")
 if(NOT PTHREAD)
-  message(FATAL_ERROR "libwinpthread-1.dll not found in ${SRC_FOLDER}/win32 Aborting...")
+  message(FATAL_ERROR "libwinpthread-1.dll not found in ${SRC_FOLDER}/build/lib Aborting...")
 endif()
 
 # Static cmocka

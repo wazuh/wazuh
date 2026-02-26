@@ -98,7 +98,7 @@ elseif(NOT UNIT_TEST)
   add_executable(wazuh-logcollector "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
   set_target_properties(
     wazuh-logcollector PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
-                                                    ${SRC_FOLDER})
+                                                    ${SRC_FOLDER}/build/bin)
   target_link_libraries(wazuh-logcollector PRIVATE logcollector_lib)
 
   if(APPLE)

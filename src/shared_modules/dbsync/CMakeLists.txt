@@ -36,6 +36,7 @@ include_directories(${SHARED_MODULES}/common/)
 add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
 
 link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/build/lib)
 link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
 

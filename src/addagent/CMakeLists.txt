@@ -89,7 +89,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_compile_definitions(manage_agents_win PRIVATE ARGV0="manage-agents"
                                                          MA _WIN32_WINNT=0x600)
     set_target_properties(
-      manage_agents_win PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/win32
+      manage_agents_win PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
                                    OUTPUT_NAME manage_agents)
     target_link_libraries(
       manage_agents_win
@@ -112,7 +112,7 @@ elseif(NOT UNIT_TEST)
   add_executable(manage_agents "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
   set_target_properties(
     manage_agents PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
-                                               ${SRC_FOLDER})
+                                               ${SRC_FOLDER}/build/bin)
   target_link_libraries(manage_agents PRIVATE addagent_lib)
 
   if(APPLE)

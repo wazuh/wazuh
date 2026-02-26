@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(syscollector_test_tool)
 
-include_directories(${CMAKE_SOURCE_DIR}/)
+include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/testtool/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)

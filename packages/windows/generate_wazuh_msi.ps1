@@ -69,19 +69,10 @@ function BuildWazuhMsi(){
 
         # Define files to sign
         $filesToSign = @(
-            ".\*.exe",
+            "..\build\bin\*.exe",
             ".\InstallerScripts.vbs",
-            "..\*.dll",
-            ".\*.dll",
-            "..\build\bin\sysinfo.dll",
-            "..\build\bin\dbsync.dll",
-            "..\build\bin\libagent_sync_protocol.dll",
-            "..\build\bin\schema_validator.dll",
-            "..\build\bin\libagent_metadata.dll",
-            "..\build\bin\syscollector.dll",
-            "..\build\bin\sca.dll",
-            "..\build\bin\agent_info.dll",
-            "..\build\bin\libfimdb.dll"
+            "..\build\bin\*.dll",
+            "..\build\lib\*.dll"
         )
 
         # Sign the files
@@ -104,24 +95,11 @@ function BuildWazuhMsi(){
 
 function ExtractDebugSymbols(){
 
-	#all executables in current folder
-	$exeFiles = Get-ChildItem -Filter "*.exe"
-	$exeFiles += Get-ChildItem -Filter "*.dll"
-
-	#all executables in parent folder
-	cd .. #Get-ChildItem does not take "..\" so we have to do it manually
-	$exeFiles += Get-ChildItem -Filter "*.dll"
-
-	#plus a few more individual libraries
-	$exeFiles +=  Get-ChildItem -Filter "build\bin\sysinfo.dll"
-	$exeFiles +=  Get-ChildItem -Filter "build\bin\dbsync.dll"
-    $exeFiles +=  Get-ChildItem -Filter "build\bin\libagent_sync_protocol.dll"
-    $exeFiles +=  Get-ChildItem -Filter "build\bin\schema_validator.dll"
-    $exeFiles +=  Get-ChildItem -Filter "build\bin\libagent_metadata.dll"
-	$exeFiles +=  Get-ChildItem -Filter "build\bin\syscollector.dll"
-    $exeFiles +=  Get-ChildItem -Filter "build\bin\sca.dll"
-    $exeFiles +=  Get-ChildItem -Filter "build\bin\agent_info.dll"
-	$exeFiles +=  Get-ChildItem -Filter "build\bin\libfimdb.dll"
+	#all executables and DLLs from build directories
+	cd .. #Go to src folder
+	$exeFiles = @(Get-ChildItem -Path "build\bin\*.exe")
+	$exeFiles += @(Get-ChildItem -Path "build\bin\*.dll")
+	$exeFiles += @(Get-ChildItem -Path "build\lib\*.dll")
 	cd "win32"
 
 	#now loop

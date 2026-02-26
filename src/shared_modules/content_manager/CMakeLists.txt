@@ -38,6 +38,7 @@ include_directories(${SHARED_MODULES}/content_manager/src/components)
 
 # Link directories
 link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/build/lib)
 link_directories(${SRC_FOLDER}/external/lzma/build/)
 link_directories(${SRC_FOLDER}/external/rocksdb/build/)
 link_directories(${SRC_FOLDER}/external/zlib/)

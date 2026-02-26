@@ -405,11 +405,21 @@ endif()
 # ------------------------------------------------------------------------------
 
 if(NOT IS_AGENT)
-  # libffi builds in-source using autotools
-  if(EXISTS ${EXTERNAL_DIR}/libffi/.libs/libffi.a)
-    message(STATUS "Using precompiled libffi library")
+  # libffi builds in architecture-specific subdirectory (e.g.,
+  # x86_64-pc-linux-gnu) Find precompiled library in any architecture
+  # subdirectory
+  file(GLOB LIBFFI_PRECOMPILED "${EXTERNAL_DIR}/libffi/*/.libs/libffi.a")
+  if(LIBFFI_PRECOMPILED)
+    list(GET LIBFFI_PRECOMPILED 0 LIBFFI_LIBRARY)
+    message(STATUS "Using precompiled libffi library: ${LIBFFI_LIBRARY}")
     add_custom_target(libffi_external)
   else()
+    # Detect host architecture triplet for BUILD_BYPRODUCTS
+    execute_process(
+      COMMAND ${EXTERNAL_DIR}/libffi/config.guess
+      OUTPUT_VARIABLE LIBFFI_HOST
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+
     ExternalProject_Add(
       libffi_external
       SOURCE_DIR ${EXTERNAL_DIR}/libffi
@@ -418,13 +428,14 @@ if(NOT IS_AGENT)
       BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
       BUILD_IN_SOURCE TRUE
       INSTALL_COMMAND ""
-      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/libffi/.libs/libffi.a)
+      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/libffi/${LIBFFI_HOST}/.libs/libffi.a)
+
+    set(LIBFFI_LIBRARY ${EXTERNAL_DIR}/libffi/${LIBFFI_HOST}/.libs/libffi.a)
   endif()
 
   add_library(ext_libffi STATIC IMPORTED GLOBAL)
-  set_target_properties(
-    ext_libffi PROPERTIES IMPORTED_LOCATION
-                          ${EXTERNAL_DIR}/libffi/.libs/libffi.a)
+  set_target_properties(ext_libffi PROPERTIES IMPORTED_LOCATION
+                                              ${LIBFFI_LIBRARY})
   add_dependencies(ext_libffi libffi_external)
 endif()
 
@@ -1468,7 +1479,7 @@ elseif(IS_WINDOWS)
     PRIVATE -static-libgcc
             "-Wl,--export-all-symbols"
             "-Wl,--add-stdcall-alias"
-            "-Wl,-L,${SRC_FOLDER}/win32"
+            "-Wl,-L,${SRC_FOLDER}/build/lib"
             "-Wl,-Bstatic,--whole-archive"
             -lwinpthreadpatched
             ${WAZUHEXT_WHOLE_LIBS}
@@ -1493,7 +1504,7 @@ elseif(IS_WINDOWS)
     COMMAND
       i686-w64-mingw32-dlltool -D $<TARGET_FILE:wazuhext> --def
       ${CMAKE_CURRENT_BINARY_DIR}/libwazuhext.def --output-delaylib
-      ${SRC_FOLDER}/libwazuhext.lib
+      ${SRC_FOLDER}/build/lib/libwazuhext.lib
     COMMENT "Creating delay-import library libwazuhext.lib")
 
 else()
@@ -1509,13 +1520,13 @@ else()
             pthread)
 endif()
 
-# Output to src/ for backward compatibility
+# Output to src/build/lib
 set_target_properties(
   wazuhext
   PROPERTIES OUTPUT_NAME "wazuhext"
              PREFIX "lib"
-             LIBRARY_OUTPUT_DIRECTORY ${SRC_FOLDER}
-             RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}
+             LIBRARY_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/lib
+             RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
              POSITION_INDEPENDENT_CODE ON)
 
 # Provide include dirs to consumers of wazuhext
