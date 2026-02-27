@@ -4,11 +4,14 @@
 #include <future>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include <router/types.hpp>
 
 namespace router
 {
+
+using IngestEvent = std::pair<std::shared_ptr<const json::Json>, std::string>; // {header, rawEvent}
 
 /**
  * @brief Interface for the Router API
@@ -45,7 +48,7 @@ public:
     virtual std::list<prod::Entry> getEntries() const = 0;
 
     // Production: Ingest
-    virtual void postEvent(base::Event&& event) = 0;
+    virtual void postEvent(IngestEvent&& event) = 0;
 };
 
 class ITesterAPI
@@ -77,7 +80,9 @@ public:
     virtual std::size_t getTestTimeout() const = 0;
 };
 
-class IOrchestratorAPI : public IRouterAPI, public ITesterAPI
+class IOrchestratorAPI
+    : public IRouterAPI
+    , public ITesterAPI
 {
 public:
     virtual ~IOrchestratorAPI() = default;

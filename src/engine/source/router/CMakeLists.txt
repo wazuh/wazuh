@@ -34,6 +34,7 @@ target_link_libraries(router_router
     builder::ibuilder
     bk::ibk
     fastqueue::ifastqueue
+    rawevtindexer::irawindexer
 
     PRIVATE
     base
@@ -52,7 +53,7 @@ if(ENGINE_BUILD_TEST)
     # Mocks
     add_library(router_mocks INTERFACE)
     target_include_directories(router_mocks INTERFACE ${TEST_MOCK_DIR})
-    target_link_libraries(router_mocks INTERFACE GTest::gmock router::irouter)
+    target_link_libraries(router_mocks INTERFACE GTest::gmock router::irouter rawevtindexer::mocks)
     add_library(router::mocks ALIAS router_mocks)
 
     # # Router component test

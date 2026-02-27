@@ -215,6 +215,7 @@ Orchestrator::Orchestrator(const Options& opt)
     , m_envBuilder()
     , m_syncMutex()
     , m_isShutdown(false)
+    , m_rawIndexer(opt.m_rawIndexer)
     , m_storeTesterName(STORE_PATH_TESTER_TABLE)
     , m_storeRouterName(STORE_PATH_ROUTER_TABLE)
 {
@@ -247,7 +248,7 @@ Orchestrator::Orchestrator(const Options& opt)
 
     for (std::size_t i = 0; i < numThreads; ++i)
     {
-        auto r = std::make_shared<router::RouterWorker>(m_envBuilder, m_eventQueue);
+        auto r = std::make_shared<router::RouterWorker>(m_envBuilder, m_eventQueue, m_rawIndexer);
         if (auto err = initRouterWorker(r, routerEntries))
         {
             LOG_ERROR("Router: Cannot load initial states from store: {}", err->message);
@@ -485,7 +486,6 @@ std::list<prod::Entry> Orchestrator::getEntries() const
     return m_routerWorkers.front()->get()->getEntries();
 }
 
-
 /**************************************************************************
  * ITesterAPI
  *************************************************************************/
@@ -610,7 +610,7 @@ std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(base::Even
 
     if (m_eventQueue->empty())
     {
-        m_eventQueue->push(base::Event(nullptr));
+        m_eventQueue->push(IngestEvent {});
     }
 
     {
@@ -641,7 +641,7 @@ base::OptError Orchestrator::ingestTest(base::Event&& event,
     }
     if (m_eventQueue->empty())
     {
-        m_eventQueue->push(base::Event(nullptr));
+        m_eventQueue->push(IngestEvent {});
     }
 
     {
