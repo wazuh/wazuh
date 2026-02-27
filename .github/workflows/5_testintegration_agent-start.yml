@@ -1,28 +1,34 @@
 name: 5.X - Agent Startup Smoke Test
 
 on:
+  workflow_call:
+    inputs:
+      platform:
+        description: 'Platform to test (linux, windows, macos, all)'
+        required: false
+        type: string
+        default: 'all'
+
   workflow_dispatch:
     inputs:
       base_branch:
         description: 'Base branch'
         required: true
         default: 'main'
-
-  workflow_run:
-    workflows:
-      - "5.X - Build Wazuh agent Linux (DEB/RPM)"
-      - "5.X - Build Wazuh agent Windows (MSI)"
-      - "5.X - Build Wazuh agent macOS (PKG)"
-    types:
-      - completed
+      platform:
+        description: 'Platform to test'
+        required: false
+        type: choice
+        default: 'all'
+        options:
+          - all
+          - linux
+          - windows
+          - macos
 
 jobs:
   test-linux-deb-amd64:
-    if: |
-      (github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.name == '5.X - Build Wazuh agent Linux (DEB/RPM)') ||
-      github.event_name == 'workflow_dispatch'
+    if: inputs.platform == 'all' || inputs.platform == 'linux'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     name: Test Linux Agent DEB (amd64) startup
@@ -30,22 +36,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Determine branch/commit for artifact download
-        id: artifact_source
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Using base_branch from input: ${{ inputs.base_branch }}"
-            echo "branch=${{ inputs.base_branch }}" >> $GITHUB_OUTPUT
-            echo "use_branch=true" >> $GITHUB_OUTPUT
-          else
-            # workflow_run trigger
-            echo "Using commit from workflow_run: ${{ github.event.workflow_run.head_sha }}"
-            echo "commit=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
-            echo "use_branch=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Download DEB package artifact
+        uses: actions/download-artifact@v4
+        if: github.event_name == 'workflow_call'
+        with:
+          pattern: 'wazuh-agent*amd64*.deb'
+          path: /tmp/packages
+          merge-multiple: true
+
+      - name: Download DEB package artifact (manual)
         uses: dawidd6/action-download-artifact@v3
+        if: github.event_name == 'workflow_dispatch'
         with:
           workflow: 5_builderpackage_agent-linux.yml
           workflow_conclusion: success
@@ -55,8 +56,7 @@ jobs:
           if_no_artifact_found: fail
           check_artifacts: true
           search_artifacts: true
-          branch: ${{ steps.artifact_source.outputs.use_branch == 'true' && steps.artifact_source.outputs.branch || '' }}
-          commit: ${{ steps.artifact_source.outputs.use_branch == 'false' && steps.artifact_source.outputs.commit || '' }}
+          branch: ${{ inputs.base_branch }}
 
       - name: Get package name and version
         id: package
@@ -87,11 +87,7 @@ jobs:
             ${{ env.CONTAINER_NAME }}:${{ env.TAG }}
 
   test-linux-rpm-x86_64:
-    if: |
-      (github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.name == '5.X - Build Wazuh agent Linux (DEB/RPM)') ||
-      github.event_name == 'workflow_dispatch'
+    if: inputs.platform == 'all' || inputs.platform == 'linux'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     name: Test Linux Agent RPM (x86_64) startup
@@ -99,22 +95,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Determine branch/commit for artifact download
-        id: artifact_source
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Using base_branch from input: ${{ inputs.base_branch }}"
-            echo "branch=${{ inputs.base_branch }}" >> $GITHUB_OUTPUT
-            echo "use_branch=true" >> $GITHUB_OUTPUT
-          else
-            # workflow_run trigger
-            echo "Using commit from workflow_run: ${{ github.event.workflow_run.head_sha }}"
-            echo "commit=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
-            echo "use_branch=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Download RPM package artifact
+        uses: actions/download-artifact@v4
+        if: github.event_name == 'workflow_call'
+        with:
+          pattern: '*x86_64*.rpm'
+          path: /tmp/packages
+          merge-multiple: true
+
+      - name: Download RPM package artifact (manual)
         uses: dawidd6/action-download-artifact@v3
+        if: github.event_name == 'workflow_dispatch'
         with:
           workflow: 5_builderpackage_agent-linux.yml
           workflow_conclusion: success
@@ -124,8 +115,7 @@ jobs:
           if_no_artifact_found: fail
           check_artifacts: true
           search_artifacts: true
-          branch: ${{ steps.artifact_source.outputs.use_branch == 'true' && steps.artifact_source.outputs.branch || '' }}
-          commit: ${{ steps.artifact_source.outputs.use_branch == 'false' && steps.artifact_source.outputs.commit || '' }}
+          branch: ${{ inputs.base_branch }}
 
       - name: Get package name and version
         id: package
@@ -156,11 +146,7 @@ jobs:
             ${{ env.CONTAINER_NAME }}:${{ env.TAG }}
 
   test-windows:
-    if: |
-      (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.name == '5.X - Build Wazuh agent Windows (MSI)') ||
-      github.event_name == 'workflow_dispatch'
+    if: inputs.platform == 'all' || inputs.platform == 'windows'
     runs-on: windows-2022
     timeout-minutes: 30
     name: Test Windows Agent startup
@@ -168,23 +154,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Determine branch/commit for artifact download
-        id: artifact_source
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Using base_branch from input: ${{ inputs.base_branch }}"
-            echo "branch=${{ inputs.base_branch }}" >> $GITHUB_OUTPUT
-            echo "use_branch=true" >> $GITHUB_OUTPUT
-          else
-            # workflow_run trigger
-            echo "Using commit from workflow_run: ${{ github.event.workflow_run.head_sha }}"
-            echo "commit=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
-            echo "use_branch=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Download MSI package artifact
+        uses: actions/download-artifact@v4
+        if: github.event_name == 'workflow_call'
+        with:
+          pattern: 'wazuh-agent*windows*.msi'
+          path: C:\packages
+          merge-multiple: true
+
+      - name: Download MSI package artifact (manual)
         uses: dawidd6/action-download-artifact@v3
+        if: github.event_name == 'workflow_dispatch'
         with:
           workflow: 5_builderpackage_agent-windows.yml
           workflow_conclusion: success
@@ -194,8 +174,7 @@ jobs:
           if_no_artifact_found: fail
           check_artifacts: true
           search_artifacts: true
-          branch: ${{ steps.artifact_source.outputs.use_branch == 'true' && steps.artifact_source.outputs.branch || '' }}
-          commit: ${{ steps.artifact_source.outputs.use_branch == 'false' && steps.artifact_source.outputs.commit || '' }}
+          branch: ${{ inputs.base_branch }}
 
       - name: Get package name
         id: package
@@ -263,11 +242,7 @@ jobs:
           }
 
   test-macos-arm64:
-    if: |
-      (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.name == '5.X - Build Wazuh agent macOS (PKG)') ||
-      github.event_name == 'workflow_dispatch'
+    if: inputs.platform == 'all' || inputs.platform == 'macos'
     runs-on: macos-14
     timeout-minutes: 30
     name: Test macOS Agent (arm64) startup
@@ -275,22 +250,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Determine branch/commit for artifact download
-        id: artifact_source
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Using base_branch from input: ${{ inputs.base_branch }}"
-            echo "branch=${{ inputs.base_branch }}" >> $GITHUB_OUTPUT
-            echo "use_branch=true" >> $GITHUB_OUTPUT
-          else
-            # workflow_run trigger
-            echo "Using commit from workflow_run: ${{ github.event.workflow_run.head_sha }}"
-            echo "commit=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
-            echo "use_branch=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Download PKG package artifact
+        uses: actions/download-artifact@v4
+        if: github.event_name == 'workflow_call'
+        with:
+          pattern: 'wazuh-agent*arm64*.pkg'
+          path: /tmp/packages
+          merge-multiple: true
+
+      - name: Download PKG package artifact (manual)
         uses: dawidd6/action-download-artifact@v3
+        if: github.event_name == 'workflow_dispatch'
         with:
           workflow: 5_builderpackage_agent-macos.yml
           workflow_conclusion: success
@@ -300,8 +270,7 @@ jobs:
           if_no_artifact_found: fail
           check_artifacts: true
           search_artifacts: true
-          branch: ${{ steps.artifact_source.outputs.use_branch == 'true' && steps.artifact_source.outputs.branch || '' }}
-          commit: ${{ steps.artifact_source.outputs.use_branch == 'false' && steps.artifact_source.outputs.commit || '' }}
+          branch: ${{ inputs.base_branch }}
 
       - name: Get package name
         id: package

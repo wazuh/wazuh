@@ -607,3 +607,11 @@ jobs:
               aws s3 cp /tmp/$SYMBOLS_NAME.sha512 $S3_URI/
             fi
           fi
+
+  smoke-test-linux:
+    needs: [upload-deb-to-s3, upload-rpm-to-s3]
+    if: success()
+    uses: ./.github/workflows/5_testintegration_agent-start.yml
+    with:
+      platform: 'linux'
+    secrets: inherit
