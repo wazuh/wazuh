@@ -1,8 +1,10 @@
 #ifndef _IWINDEXER_CONNECTOR_HPP
 #define _IWINDEXER_CONNECTOR_HPP
 
+#include <functional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include <base/json.hpp>
@@ -34,6 +36,8 @@ class IWIndexerConnector
 {
 
 public:
+    using IocRecordCallback = std::function<void(const std::string&, const std::string&)>;
+
     virtual ~IWIndexerConnector() = default;
 
     /**
@@ -81,6 +85,47 @@ public:
      * @throws IndexerConnectorException if there is an error during the query
      */
     virtual bool existsPolicy(std::string_view space) = 0;
+
+    /**
+     * @brief Checks if IOC index data is available in the indexer.
+     *
+     * @return true if IOC index is available, false otherwise
+     */
+    virtual bool existsIocDataIndex() = 0;
+
+    /**
+     * @brief Retrieves the default IOC types handled by IOC sync.
+     *
+     * @return List of default IOC types
+     */
+    virtual std::vector<std::string> getDefaultIocTypes() = 0;
+
+    /**
+     * @brief Retrieves per-type IOC hashes from the IOC hashes manifest.
+     *
+     * Reads `__ioc_type_hashes__` from `.cti-iocs` and returns all available
+     * `hash.sha256` values for the supported IOC types.
+     *
+     * @return Map(type -> sha256 hash)
+     * @throws IndexerConnectorException if the manifest is missing or invalid
+     */
+    virtual std::unordered_map<std::string, std::string> getIocTypeHashes() = 0;
+
+    /**
+     * @brief Streams IOC documents for a specific IOC type.
+     *
+     * The connector handles query creation and pagination. For each valid
+     * IOC record, it invokes `onIoc` with key (`document.name`) and serialized
+     * value (`document` JSON).
+     *
+     * @param iocType IOC type (e.g. ipv4-addr, domain-name, url, file)
+     * @param batchSize Number of documents requested per page
+     * @param onIoc Callback invoked for each valid IOC record
+     * @return Number of IOC documents delivered to the callback
+     * @throws IndexerConnectorException if there is an indexer/query error
+     */
+    virtual std::size_t
+    streamIocsByType(std::string_view iocType, std::size_t batchSize, const IocRecordCallback& onIoc) = 0;
 };
 
 } // namespace wiconnector

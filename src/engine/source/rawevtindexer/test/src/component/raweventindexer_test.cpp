@@ -32,6 +32,18 @@ public:
 
     bool existsPolicy(std::string_view) override { return false; }
 
+    bool existsIocDataIndex() override { return false; }
+
+    std::vector<std::string> getDefaultIocTypes() override { return {}; }
+
+    std::unordered_map<std::string, std::string> getIocTypeHashes() override { return {}; }
+
+    std::size_t
+    streamIocsByType(std::string_view iocType, std::size_t batchSize, const IocRecordCallback& onIoc) override
+    {
+        return 0;
+    }
+
 private:
     std::mutex mutex;
 };

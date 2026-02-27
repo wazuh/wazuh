@@ -33,6 +33,7 @@
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
 #include <httpsrv/server.hpp>
+#include <iocsync/iocsync.hpp>
 #include <kvdbioc/manager.hpp>
 #include <kvdbstore/ikvdbmanager.hpp>
 #include <kvdbstore/kvdbManager.hpp>
@@ -236,6 +237,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<cm::store::CMStore> cmStore;
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
     std::shared_ptr<cm::sync::CMSync> cmSyncService;
+    std::shared_ptr<ioc::sync::IocSync> iocSyncService;
 
     try
     {
@@ -541,6 +543,33 @@ int main(int argc, char* argv[])
                                        }});
         }
 
+        // IOCSync
+        if (enableProcessing)
+        {
+            // Create IOC Sync Service
+            iocSyncService = std::make_shared<ioc::sync::IocSync>(indexerConnector, kvdbIOC, store);
+            LOG_INFO("IOC Sync Service initialized.");
+
+            // Add IOC sync to scheduler
+            auto iocSyncInterval = confManager.get<std::size_t>(conf::key::IOC_SYNC_INTERVAL);
+            if (iocSyncInterval > 0)
+            {
+                scheduler->scheduleTask("ioc-sync-task",
+                                        scheduler::TaskConfig {.interval = iocSyncInterval,
+                                                               .CPUPriority = 0,
+                                                               .timeout = 0,
+                                                               .taskFunction = [iocSyncService]()
+                                                               {
+                                                                   iocSyncService->synchronize();
+                                                               }});
+                LOG_INFO("IOC Sync task scheduled with interval: {} seconds", iocSyncInterval);
+            }
+            else
+            {
+                LOG_INFO("IOC Sync task disabled (interval = 0)");
+            }
+        }
+
         // Geo sync
         {
             auto geoSyncInterval = confManager.get<std::size_t>(conf::key::GEO_SYNC_INTERVAL);
@@ -683,6 +712,7 @@ int main(int argc, char* argv[])
         {
             // Synchronize on startup
             cmSyncService->synchronize();
+            iocSyncService->synchronize();
 
             while (engineRemoteServer->isRunning())
             {
