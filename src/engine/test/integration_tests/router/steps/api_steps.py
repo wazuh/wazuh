@@ -214,17 +214,15 @@ def delete_policy(policy_name: str):
 #  Router helpers
 # ===================================================================
 
-def create_route(route_name: str, policy_name: str, filter_name: str, priority: int) -> api_engine.GenericStatus_Response:
+def create_route(route_name: str, policy_name: str, priority: int) -> api_engine.GenericStatus_Response:
     """
     Creates a route:
       - name
-      - filter (filter name)
       - priority
       - namespaceId == policy_name (in our model: 'testing')
     """
     request = api_router.RoutePost_Request()
     request.route.name = route_name
-    request.route.filter = filter_name
     request.route.priority = priority
     # New model: we use namespaceId instead of policy store
     request.route.namespaceId = policy_name
@@ -273,13 +271,13 @@ def step_impl(context, policy_name: str, integration_name: str):
     setup_policy_with_integrations(initial_integration=integration_name)
 
 
-@given('I create a "{route_name}" route with priority "{priority}" that uses the filter "{filter_name}" and points to policy "{policy_name}"')
-def step_impl(context, route_name: str, priority: str, filter_name: str, policy_name: str):
+@given('I create a "{route_name}" route with priority "{priority}" that points to policy "{policy_name}"')
+def step_impl(context, route_name: str, priority: str, policy_name: str):
     # Clean previous routes
     router_tear_down()
 
     # Create the route pointing to namespaceId == policy_name
-    response = create_route(route_name, policy_name, filter_name, int(priority))
+    response = create_route(route_name, policy_name, int(priority))
     assert response.status == api_engine.OK, f"{response}"
 
 
@@ -287,9 +285,9 @@ def step_impl(context, route_name: str, priority: str, filter_name: str, policy_
 #  WHEN steps
 # ===================================================================
 
-@when('I send a request to the router to add a new route called "{route_name}" with the data from policy:"{policy_name}" filter:"{filter_name}" priority:"{priority}"')
-def step_impl(context, route_name: str, policy_name: str, filter_name: str, priority: str):
-    context.result = create_route(route_name, policy_name, filter_name, int(priority))
+@when('I send a request to the router to add a new route called "{route_name}" with priority "{priority}" that points to policy "{policy_name}"')
+def step_impl(context, route_name: str, priority: str, policy_name: str):
+    context.result = create_route(route_name, policy_name, int(priority))
 
 
 @when('I send a request to update the priority from route "{route_name}" to value of "{priority}"')
@@ -379,10 +377,9 @@ def step_impl(context, priority: str):
     assert response.route.priority == int(priority)
 
 
-@then('I should receive all the "{route_name}" route information. Filter "{filter_name}", policy "{policy_name}", priority "{priority}"')
-def step_impl(context, route_name: str, filter_name: str, policy_name: str, priority: str):
+@then('I should receive all the "{route_name}" route information with policy "{policy_name}" and priority "{priority}"')
+def step_impl(context, route_name: str, policy_name: str, priority: str):
     assert context.result.route.name == route_name, f"{context.result.route}"
-    assert context.result.route.filter == filter_name, f"{context.result.route}"
     assert context.result.route.priority == int(priority), f"{context.result.route}"
     # Conceptually "policy", in the new model is namespaceId
     assert context.result.route.namespaceId == policy_name, f"{context.result.route}"

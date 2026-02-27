@@ -280,9 +280,8 @@ class EntryPost final :
   enum : int {
     kNameFieldNumber = 1,
     kNamespaceIdFieldNumber = 2,
-    kFilterFieldNumber = 3,
-    kDescriptionFieldNumber = 5,
-    kPriorityFieldNumber = 4,
+    kDescriptionFieldNumber = 4,
+    kPriorityFieldNumber = 3,
   };
   // string name = 1;
   void clear_name();
@@ -312,21 +311,7 @@ class EntryPost final :
   std::string* _internal_mutable_namespaceid();
   public:
 
-  // string filter = 3;
-  void clear_filter();
-  const std::string& filter() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_filter(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_filter();
-  PROTOBUF_NODISCARD std::string* release_filter();
-  void set_allocated_filter(std::string* filter);
-  private:
-  const std::string& _internal_filter() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_filter(const std::string& value);
-  std::string* _internal_mutable_filter();
-  public:
-
-  // optional string description = 5;
+  // optional string description = 4;
   bool has_description() const;
   private:
   bool _internal_has_description() const;
@@ -344,7 +329,7 @@ class EntryPost final :
   std::string* _internal_mutable_description();
   public:
 
-  // uint32 priority = 4;
+  // uint32 priority = 3;
   void clear_priority();
   uint32_t priority() const;
   void set_priority(uint32_t value);
@@ -365,7 +350,6 @@ class EntryPost final :
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr namespaceid_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr filter_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr description_;
     uint32_t priority_;
   };
@@ -497,11 +481,10 @@ class Entry final :
   enum : int {
     kNameFieldNumber = 1,
     kNamespaceIdFieldNumber = 2,
-    kFilterFieldNumber = 3,
-    kDescriptionFieldNumber = 5,
-    kPriorityFieldNumber = 4,
-    kEntryStatusFieldNumber = 6,
-    kUptimeFieldNumber = 7,
+    kDescriptionFieldNumber = 4,
+    kPriorityFieldNumber = 3,
+    kEntryStatusFieldNumber = 5,
+    kUptimeFieldNumber = 6,
   };
   // string name = 1;
   void clear_name();
@@ -531,21 +514,7 @@ class Entry final :
   std::string* _internal_mutable_namespaceid();
   public:
 
-  // string filter = 3;
-  void clear_filter();
-  const std::string& filter() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_filter(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_filter();
-  PROTOBUF_NODISCARD std::string* release_filter();
-  void set_allocated_filter(std::string* filter);
-  private:
-  const std::string& _internal_filter() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_filter(const std::string& value);
-  std::string* _internal_mutable_filter();
-  public:
-
-  // optional string description = 5;
+  // optional string description = 4;
   bool has_description() const;
   private:
   bool _internal_has_description() const;
@@ -563,7 +532,7 @@ class Entry final :
   std::string* _internal_mutable_description();
   public:
 
-  // uint32 priority = 4;
+  // uint32 priority = 3;
   void clear_priority();
   uint32_t priority() const;
   void set_priority(uint32_t value);
@@ -572,7 +541,7 @@ class Entry final :
   void _internal_set_priority(uint32_t value);
   public:
 
-  // .com.wazuh.api.engine.router.State entry_status = 6;
+  // .com.wazuh.api.engine.router.State entry_status = 5;
   void clear_entry_status();
   ::com::wazuh::api::engine::router::State entry_status() const;
   void set_entry_status(::com::wazuh::api::engine::router::State value);
@@ -581,7 +550,7 @@ class Entry final :
   void _internal_set_entry_status(::com::wazuh::api::engine::router::State value);
   public:
 
-  // uint32 uptime = 7;
+  // uint32 uptime = 6;
   void clear_uptime();
   uint32_t uptime() const;
   void set_uptime(uint32_t value);
@@ -602,7 +571,6 @@ class Entry final :
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr namespaceid_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr filter_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr description_;
     uint32_t priority_;
     int entry_status_;
@@ -2867,57 +2835,7 @@ inline void EntryPost::set_allocated_namespaceid(std::string* namespaceid) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.EntryPost.namespaceId)
 }
 
-// string filter = 3;
-inline void EntryPost::clear_filter() {
-  _impl_.filter_.ClearToEmpty();
-}
-inline const std::string& EntryPost::filter() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.EntryPost.filter)
-  return _internal_filter();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void EntryPost::set_filter(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.filter_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.EntryPost.filter)
-}
-inline std::string* EntryPost::mutable_filter() {
-  std::string* _s = _internal_mutable_filter();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.router.EntryPost.filter)
-  return _s;
-}
-inline const std::string& EntryPost::_internal_filter() const {
-  return _impl_.filter_.Get();
-}
-inline void EntryPost::_internal_set_filter(const std::string& value) {
-  
-  _impl_.filter_.Set(value, GetArenaForAllocation());
-}
-inline std::string* EntryPost::_internal_mutable_filter() {
-  
-  return _impl_.filter_.Mutable(GetArenaForAllocation());
-}
-inline std::string* EntryPost::release_filter() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.EntryPost.filter)
-  return _impl_.filter_.Release();
-}
-inline void EntryPost::set_allocated_filter(std::string* filter) {
-  if (filter != nullptr) {
-    
-  } else {
-    
-  }
-  _impl_.filter_.SetAllocated(filter, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.filter_.IsDefault()) {
-    _impl_.filter_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.EntryPost.filter)
-}
-
-// uint32 priority = 4;
+// uint32 priority = 3;
 inline void EntryPost::clear_priority() {
   _impl_.priority_ = 0u;
 }
@@ -2937,7 +2855,7 @@ inline void EntryPost::set_priority(uint32_t value) {
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.EntryPost.priority)
 }
 
-// optional string description = 5;
+// optional string description = 4;
 inline bool EntryPost::_internal_has_description() const {
   bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
   return value;
@@ -3109,57 +3027,7 @@ inline void Entry::set_allocated_namespaceid(std::string* namespaceid) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.Entry.namespaceId)
 }
 
-// string filter = 3;
-inline void Entry::clear_filter() {
-  _impl_.filter_.ClearToEmpty();
-}
-inline const std::string& Entry::filter() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.Entry.filter)
-  return _internal_filter();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void Entry::set_filter(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.filter_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.filter)
-}
-inline std::string* Entry::mutable_filter() {
-  std::string* _s = _internal_mutable_filter();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.router.Entry.filter)
-  return _s;
-}
-inline const std::string& Entry::_internal_filter() const {
-  return _impl_.filter_.Get();
-}
-inline void Entry::_internal_set_filter(const std::string& value) {
-  
-  _impl_.filter_.Set(value, GetArenaForAllocation());
-}
-inline std::string* Entry::_internal_mutable_filter() {
-  
-  return _impl_.filter_.Mutable(GetArenaForAllocation());
-}
-inline std::string* Entry::release_filter() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.Entry.filter)
-  return _impl_.filter_.Release();
-}
-inline void Entry::set_allocated_filter(std::string* filter) {
-  if (filter != nullptr) {
-    
-  } else {
-    
-  }
-  _impl_.filter_.SetAllocated(filter, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.filter_.IsDefault()) {
-    _impl_.filter_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.Entry.filter)
-}
-
-// uint32 priority = 4;
+// uint32 priority = 3;
 inline void Entry::clear_priority() {
   _impl_.priority_ = 0u;
 }
@@ -3179,7 +3047,7 @@ inline void Entry::set_priority(uint32_t value) {
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.priority)
 }
 
-// optional string description = 5;
+// optional string description = 4;
 inline bool Entry::_internal_has_description() const {
   bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
   return value;
@@ -3247,7 +3115,7 @@ inline void Entry::set_allocated_description(std::string* description) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.Entry.description)
 }
 
-// .com.wazuh.api.engine.router.State entry_status = 6;
+// .com.wazuh.api.engine.router.State entry_status = 5;
 inline void Entry::clear_entry_status() {
   _impl_.entry_status_ = 0;
 }
@@ -3267,7 +3135,7 @@ inline void Entry::set_entry_status(::com::wazuh::api::engine::router::State val
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.entry_status)
 }
 
-// uint32 uptime = 7;
+// uint32 uptime = 6;
 inline void Entry::clear_uptime() {
   _impl_.uptime_ = 0u;
 }

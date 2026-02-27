@@ -11,36 +11,32 @@ ENABLED: State
 STATE_UNKNOWN: State
 
 class Entry(_message.Message):
-    __slots__ = ["description", "entry_status", "filter", "name", "namespaceId", "priority", "uptime"]
+    __slots__ = ["description", "entry_status", "name", "namespaceId", "priority", "uptime"]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
     ENTRY_STATUS_FIELD_NUMBER: _ClassVar[int]
-    FILTER_FIELD_NUMBER: _ClassVar[int]
     NAMESPACEID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     PRIORITY_FIELD_NUMBER: _ClassVar[int]
     UPTIME_FIELD_NUMBER: _ClassVar[int]
     description: str
     entry_status: State
-    filter: str
     name: str
     namespaceId: str
     priority: int
     uptime: int
-    def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., filter: _Optional[str] = ..., priority: _Optional[int] = ..., description: _Optional[str] = ..., entry_status: _Optional[_Union[State, str]] = ..., uptime: _Optional[int] = ...) -> None: ...
+    def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., priority: _Optional[int] = ..., description: _Optional[str] = ..., entry_status: _Optional[_Union[State, str]] = ..., uptime: _Optional[int] = ...) -> None: ...
 
 class EntryPost(_message.Message):
-    __slots__ = ["description", "filter", "name", "namespaceId", "priority"]
+    __slots__ = ["description", "name", "namespaceId", "priority"]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
-    FILTER_FIELD_NUMBER: _ClassVar[int]
     NAMESPACEID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     PRIORITY_FIELD_NUMBER: _ClassVar[int]
     description: str
-    filter: str
     name: str
     namespaceId: str
     priority: int
-    def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., filter: _Optional[str] = ..., priority: _Optional[int] = ..., description: _Optional[str] = ...) -> None: ...
+    def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., priority: _Optional[int] = ..., description: _Optional[str] = ...) -> None: ...
 
 class EpsDisable_Request(_message.Message):
     __slots__ = []
