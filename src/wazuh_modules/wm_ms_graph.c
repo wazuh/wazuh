@@ -32,6 +32,7 @@ static void wm_ms_graph_destroy(wm_ms_graph* ms_graph);
 static void wm_ms_graph_cleanup();
 cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph);
 static bool wm_ms_graph_ensure_valid_token(wm_ms_graph_auth *auth_config, ssize_t curl_max_size, bool* token_changed);
+static curl_response* wm_ms_graph_http_get_with_retry(char** headers, const char* url, size_t curl_max_size, const char* relationship_name);
 
 static int queue_fd; // Socket ID
 
@@ -208,6 +209,33 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t c
     }
 }
 
+static curl_response* wm_ms_graph_http_get_with_retry(char** headers, const char* url, size_t curl_max_size, const char* relationship_name) {
+    curl_response* response = NULL;
+    for (int attempt = 0; attempt <= WM_MS_GRAPH_MAX_RETRIES; attempt++) {
+        response = wurl_http_request(WURL_GET_METHOD, headers, url, "", curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT, NULL, true);
+        if (response && response->status_code == 429 && attempt < WM_MS_GRAPH_MAX_RETRIES) {
+            int retry_after = WM_MS_GRAPH_MAX_RETRY_AFTER_WARN;
+            char *retry_after_str = wm_read_http_header_element(response->header, WM_MS_GRAPH_RETRY_AFTER_REGEX);
+            if (retry_after_str) {
+                retry_after = atoi(retry_after_str);
+                os_free(retry_after_str);
+            }
+            if (retry_after > WM_MS_GRAPH_MAX_RETRY_AFTER_WARN) {
+                mtwarn(WM_MS_GRAPH_LOGTAG, "Retry-After value (%ds) for relationship '%s' exceeds (%ds).",
+                    retry_after, relationship_name, WM_MS_GRAPH_MAX_RETRY_AFTER_WARN);
+            }
+            mtdebug1(WM_MS_GRAPH_LOGTAG, "Received HTTP 429 for relationship '%s'. Retrying after %ds (attempt %d/%d).",
+                relationship_name, retry_after, attempt + 1, WM_MS_GRAPH_MAX_RETRIES);
+            wurl_free_response(response);
+            response = NULL;
+            w_sleep_until(time(NULL) + retry_after);
+            continue;
+        }
+        break;
+    }
+    return response;
+}
+
 void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* auth_config, const bool initial_scan) {
     char url[OS_SIZE_8192] = { '\0' };
     char auth_header[OS_SIZE_8192] = { '\0' };
@@ -336,7 +364,8 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
                 }
 
                 next_page = false;
-                response = wurl_http_request(WURL_GET_METHOD, headers, url, "", ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT, NULL, true);
+                response = wm_ms_graph_http_get_with_retry(headers, url, ms_graph->curl_max_size,
+                    ms_graph->resources[resource_num].relationships[relationship_num]);
                 if (response) {
                     if (response->status_code != 200) {
                         char status_code[4];
@@ -460,9 +489,22 @@ cJSON* wm_ms_graph_scan_apps_devices(const wm_ms_graph* ms_graph, const cJSON* a
             }
 
             next_page = false;
-            response = wurl_http_request(WURL_GET_METHOD, headers, url, "", ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT, NULL, true);
+            response = wm_ms_graph_http_get_with_retry(headers, url, ms_graph->curl_max_size, WM_MS_GRAPH_RELATIONSHIP_MANAGED_DEVICES);
             if (response) {
-                if (response->status_code == 200 && !response->max_size_reached) {
+                if (response->status_code != 200) {
+                    char status_code[4];
+                    snprintf(status_code, 4, "%ld", response->status_code);
+                    mtwarn(WM_MS_GRAPH_LOGTAG, "Received unsuccessful status code when attempting to get managed devices for app '%s': Status code was '%s' & response was '%s'",
+                        app_id->valuestring,
+                        status_code,
+                        response->body);
+                    if (response->status_code == 401) {
+                        auth_config->token_expiration_time = time(NULL);
+                    }
+                } else if (response->max_size_reached) {
+                    mtwarn(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to get managed devices for app '%s'. Consider increasing the value of 'curl_max_size'.",
+                        app_id->valuestring);
+                } else {
                     cJSON* body_parse = NULL;
                     if (body_parse = cJSON_Parse(response->body), body_parse) {
                         cJSON* logs = cJSON_GetObjectItem(body_parse, "value");
