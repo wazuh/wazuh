@@ -14,6 +14,8 @@ using namespace router;
 
 namespace
 {
+const cm::store::NamespaceId G_NAMESPACE_ID {"policy_test_0"};
+const cm::store::NamespaceId G_NAMESPACE_ALT {"policy"};
 const std::string G_NDJ_AGENT_HEADER {
     R"({"agent":{"id":"2887e1cf-9bf2-431a-b066-a46860080f56","name":"javier","type":"endpoint","version":"5.0.0","groups":["group1","group2"],"host":{"hostname":"myhost","os":{"name":"Amazon Linux 2","platform":"Linux"},"ip":["192.168.1.2"],"architecture":"x86_64"}}})"};
 const std::string G_NDJ_MODULE_SUBHEADER_1 {R"({"module": "logcollector", "collector": "file"})"};
@@ -39,8 +41,10 @@ class OrchestratorToTest : public router::Orchestrator
 {
 public:
     std::shared_ptr<store::mocks::MockStore> m_mockstore;
-    std::shared_ptr<queue::mocks::MockQueue<base::Event>> m_mockEventQueue;
-    std::list<std::shared_ptr<MockWorker>> m_mocks;
+    std::shared_ptr<fastqueue::mocks::MockQueue<IngestEvent>> m_mockEventQueue;
+    std::shared_ptr<fastqueue::mocks::MockQueue<test::EventTest>> m_mockTestQueue;
+    std::list<std::shared_ptr<MockRouterWorker>> m_routerMocks;
+    std::shared_ptr<MockTesterWorker> m_testerWorkerMock;
 
     OrchestratorToTest()
         : router::Orchestrator()
@@ -48,24 +52,29 @@ public:
         m_testTimeout = 1000;
         m_mockstore = std::make_shared<store::mocks::MockStore>();
         m_wStore = m_mockstore;
-        m_mockEventQueue = std::make_shared<queue::mocks::MockQueue<base::Event>>();
+        m_mockEventQueue = std::make_shared<fastqueue::mocks::MockQueue<IngestEvent>>();
+        m_mockTestQueue = std::make_shared<fastqueue::mocks::MockQueue<test::EventTest>>();
         m_eventQueue = m_mockEventQueue;
+        m_testQueue = m_mockTestQueue;
+
+        m_testerWorkerMock = std::make_shared<MockTesterWorker>();
+        m_testerWorker = m_testerWorkerMock;
     };
 
-    auto forEachWorkerMock(std::function<void(std::shared_ptr<MockWorker>)> func)
+    auto forEachWorkerMock(std::function<void(std::shared_ptr<MockRouterWorker>)> func)
     {
-        for (auto& mock : m_mocks)
+        for (auto& mock : m_routerMocks)
         {
             func(mock);
         }
     }
 
-    auto addMockWorker() -> std::shared_ptr<MockWorker>
+    auto addMockWorker() -> std::shared_ptr<MockRouterWorker>
     {
-        auto workerMock = std::make_shared<MockWorker>();
+        auto workerMock = std::make_shared<MockRouterWorker>();
 
-        m_workers.emplace_back(workerMock);
-        m_mocks.emplace_back(workerMock);
+        m_routerWorkers.emplace_back(workerMock);
+        m_routerMocks.emplace_back(workerMock);
 
         return workerMock;
     }
@@ -76,7 +85,7 @@ public:
 
     void expectDumpTester()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (!m_testerWorkerMock)
         {
             FAIL() << "No mock worker";
         }
@@ -84,18 +93,17 @@ public:
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        auto& firstWorkerMock = m_mocks.front();
-        EXPECT_CALL(*firstWorkerMock, getTester()).WillOnce(testing::ReturnRefOfCopy(itesterMock));
+        EXPECT_CALL(*m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
 
         EXPECT_CALL(*testerMock, getEntries()).WillOnce(testing::Return(std::list<test::Entry> {}));
 
         EXPECT_CALL(*(m_mockstore), upsertDoc(testing::_, testing::_))
-            .WillOnce(::testing::Return(store::mocks::storeOk()));
+            .WillRepeatedly(::testing::Return(store::mocks::storeOk()));
     }
 
     void expectPostEntryAddEntryFailture()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (!m_testerWorkerMock)
         {
             FAIL() << "No mock worker";
         }
@@ -103,13 +111,13 @@ public:
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_mocks.front(), getTester()).WillOnce(testing::ReturnRefOfCopy(itesterMock));
+        EXPECT_CALL(*m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
         EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectPostEntryEnableEntryFailture()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (!m_testerWorkerMock)
         {
             FAIL() << "No mock worker";
         }
@@ -117,18 +125,15 @@ public:
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        for (auto mock : m_mocks)
-        {
-            EXPECT_CALL(*mock, getTester()).WillRepeatedly(testing::ReturnRefOfCopy(itesterMock));
-            EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-        }
+        EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+        EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
         EXPECT_CALL(*testerMock, enableEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectPostEntrySuccess()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (!m_testerWorkerMock)
         {
             FAIL() << "No mock worker";
         }
@@ -136,13 +141,10 @@ public:
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        for (auto mock : m_mocks)
-        {
-            EXPECT_CALL(*mock, getTester()).WillRepeatedly(testing::ReturnRefOfCopy(itesterMock));
-            EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-            EXPECT_CALL(*testerMock, enableEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-            EXPECT_CALL(*testerMock, getEntries()).WillRepeatedly(testing::Return(std::list<test::Entry> {}));
-        }
+        EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+        EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+        EXPECT_CALL(*testerMock, enableEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+        EXPECT_CALL(*testerMock, getEntries()).WillRepeatedly(testing::Return(std::list<test::Entry> {}));
 
         EXPECT_CALL(*(m_mockstore), upsertDoc(testing::_, testing::_))
             .WillOnce(::testing::Return(store::mocks::storeOk()));
@@ -150,7 +152,7 @@ public:
 
     void expectDeleteEntryRemoveEntryFailture()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (!m_testerWorkerMock)
         {
             FAIL() << "No mock worker";
         }
@@ -158,13 +160,13 @@ public:
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_mocks.front(), getTester()).WillOnce(testing::ReturnRefOfCopy(itesterMock));
+        EXPECT_CALL(*m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
         EXPECT_CALL(*testerMock, removeEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectDeleteEntrySuccess()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (!m_testerWorkerMock)
         {
             FAIL() << "No mock worker";
         }
@@ -172,12 +174,9 @@ public:
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        for (auto mock : m_mocks)
-        {
-            EXPECT_CALL(*mock, getTester()).WillRepeatedly(testing::ReturnRefOfCopy(itesterMock));
-            EXPECT_CALL(*testerMock, removeEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-            EXPECT_CALL(*testerMock, getEntries()).WillRepeatedly(testing::Return(std::list<test::Entry> {}));
-        }
+        EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+        EXPECT_CALL(*testerMock, removeEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+        EXPECT_CALL(*testerMock, getEntries()).WillRepeatedly(testing::Return(std::list<test::Entry> {}));
 
         EXPECT_CALL(*(m_mockstore), upsertDoc(testing::_, testing::_))
             .WillOnce(::testing::Return(store::mocks::storeOk()));
@@ -185,7 +184,7 @@ public:
 
     void expectGetEntryGetEntryFailture()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (!m_testerWorkerMock)
         {
             FAIL() << "No mock worker";
         }
@@ -193,13 +192,13 @@ public:
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_mocks.front(), getTester()).WillOnce(testing::ReturnRefOfCopy(itesterMock));
+        EXPECT_CALL(*m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
         EXPECT_CALL(*testerMock, getEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectGetEntrySuccess()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (!m_testerWorkerMock)
         {
             FAIL() << "No mock worker";
         }
@@ -207,17 +206,14 @@ public:
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        for (auto mock : m_mocks)
-        {
-            EXPECT_CALL(*mock, getTester()).WillRepeatedly(testing::ReturnRefOfCopy(itesterMock));
-            EXPECT_CALL(*testerMock, getEntry(testing::_))
-                .WillRepeatedly(testing::Return(test::EntryPost {"test", "policy", 0}));
-        }
+        EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+        EXPECT_CALL(*testerMock, getEntry(testing::_))
+            .WillRepeatedly(testing::Return(test::EntryPost {"test", G_NAMESPACE_ALT, 0}));
     }
 
     void expectReloadEntryRebuildEntryFailture()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (!m_testerWorkerMock)
         {
             FAIL() << "No mock worker";
         }
@@ -225,13 +221,13 @@ public:
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_mocks.front(), getTester()).WillOnce(testing::ReturnRefOfCopy(itesterMock));
+        EXPECT_CALL(*m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
         EXPECT_CALL(*testerMock, rebuildEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectReloadEntryEnableEntryFailture()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (!m_testerWorkerMock)
         {
             FAIL() << "No mock worker";
         }
@@ -239,18 +235,15 @@ public:
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        for (auto mock : m_mocks)
-        {
-            EXPECT_CALL(*mock, getTester()).WillRepeatedly(testing::ReturnRefOfCopy(itesterMock));
-            EXPECT_CALL(*testerMock, rebuildEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-        }
+        EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+        EXPECT_CALL(*testerMock, rebuildEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
         EXPECT_CALL(*testerMock, enableEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectReloadSuccess()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (!m_testerWorkerMock)
         {
             FAIL() << "No mock worker";
         }
@@ -258,18 +251,15 @@ public:
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        for (auto mock : m_mocks)
-        {
-            EXPECT_CALL(*mock, getTester()).WillRepeatedly(testing::ReturnRefOfCopy(itesterMock));
-            EXPECT_CALL(*testerMock, rebuildEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-        }
+        EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+        EXPECT_CALL(*testerMock, rebuildEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
         EXPECT_CALL(*testerMock, enableEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
     }
 
     void expectGetGetEntriesEmpty()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (!m_testerWorkerMock)
         {
             FAIL() << "No mock worker";
         }
@@ -277,13 +267,13 @@ public:
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_mocks.front(), getTester()).WillOnce(testing::ReturnRefOfCopy(itesterMock));
+        EXPECT_CALL(*m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
         EXPECT_CALL(*testerMock, getEntries()).WillOnce(testing::Return(std::list<test::Entry> {}));
     }
 
     void expectGetEntriesSuccess()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (!m_testerWorkerMock)
         {
             FAIL() << "No mock worker";
         }
@@ -291,18 +281,15 @@ public:
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        for (auto mock : m_mocks)
-        {
-            EXPECT_CALL(*mock, getTester()).WillRepeatedly(testing::ReturnRefOfCopy(itesterMock));
-        }
+        EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
 
         EXPECT_CALL(*testerMock, getEntries())
-            .WillRepeatedly(testing::Return(std::list<test::Entry> {test::EntryPost {"test", "policy", 0}}));
+            .WillRepeatedly(testing::Return(std::list<test::Entry> {test::EntryPost {"test", G_NAMESPACE_ALT, 0}}));
     }
 
     void expectGetAssetsEmpty()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (!m_testerWorkerMock)
         {
             FAIL() << "No mock worker";
         }
@@ -310,13 +297,13 @@ public:
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_mocks.front(), getTester()).WillOnce(testing::ReturnRefOfCopy(itesterMock));
+        EXPECT_CALL(*m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
         EXPECT_CALL(*testerMock, getAssets(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectGetAssetsSuccess()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (!m_testerWorkerMock)
         {
             FAIL() << "No mock worker";
         }
@@ -324,12 +311,9 @@ public:
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        for (auto mock : m_mocks)
-        {
-            EXPECT_CALL(*mock, getTester()).WillRepeatedly(testing::ReturnRefOfCopy(itesterMock));
-            EXPECT_CALL(*testerMock, getAssets(testing::_))
-                .WillRepeatedly(testing::Return(std::unordered_set<std::string> {"decoder", "filter"}));
-        }
+        EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+        EXPECT_CALL(*testerMock, getAssets(testing::_))
+            .WillRepeatedly(testing::Return(std::unordered_set<std::string> {"decoder", "filter"}));
     }
 
     /**************************************************************************
@@ -338,7 +322,7 @@ public:
 
     void expectPostEntryAddEntryFailtureRouter()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
             FAIL() << "No mock worker";
         }
@@ -346,13 +330,13 @@ public:
         auto routerMock = std::make_shared<MockRouter>();
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
-        EXPECT_CALL(*m_mocks.front(), getRouter()).WillOnce(testing::ReturnRefOfCopy(irouterMock));
+        EXPECT_CALL(*m_routerMocks.front(), get()).WillOnce(testing::Return(irouterMock));
         EXPECT_CALL(*routerMock, addEntry(testing::_, testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectPostEntryEnableEntryFailtureRouter()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
             FAIL() << "No mock worker";
         }
@@ -360,9 +344,9 @@ public:
         auto routerMock = std::make_shared<MockRouter>();
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
-        for (auto mock : m_mocks)
+        for (auto mock : m_routerMocks)
         {
-            EXPECT_CALL(*mock, getRouter()).WillRepeatedly(testing::ReturnRefOfCopy(irouterMock));
+            EXPECT_CALL(*mock, get()).WillRepeatedly(testing::Return(irouterMock));
             EXPECT_CALL(*routerMock, addEntry(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
         }
 
@@ -371,7 +355,7 @@ public:
 
     void expectPostEntrySuccessRouter()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
             FAIL() << "No mock worker";
         }
@@ -379,9 +363,9 @@ public:
         auto routerMock = std::make_shared<MockRouter>();
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
-        for (auto mock : m_mocks)
+        for (auto mock : m_routerMocks)
         {
-            EXPECT_CALL(*mock, getRouter()).WillRepeatedly(testing::ReturnRefOfCopy(irouterMock));
+            EXPECT_CALL(*mock, get()).WillRepeatedly(testing::Return(irouterMock));
             EXPECT_CALL(*routerMock, addEntry(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
             EXPECT_CALL(*routerMock, enableEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
             EXPECT_CALL(*routerMock, getEntries()).WillRepeatedly(testing::Return(std::list<prod::Entry> {}));
@@ -393,7 +377,7 @@ public:
 
     void expectDeleteEntryRemoveEntryFailtureRouter()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
             FAIL() << "No mock worker";
         }
@@ -401,13 +385,13 @@ public:
         auto routerMock = std::make_shared<MockRouter>();
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
-        EXPECT_CALL(*m_mocks.front(), getRouter()).WillOnce(testing::ReturnRefOfCopy(irouterMock));
+        EXPECT_CALL(*m_routerMocks.front(), get()).WillOnce(testing::Return(irouterMock));
         EXPECT_CALL(*routerMock, removeEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectDeleteEntrySuccessRouter()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
             FAIL() << "No mock worker";
         }
@@ -415,9 +399,9 @@ public:
         auto routerMock = std::make_shared<MockRouter>();
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
-        for (auto mock : m_mocks)
+        for (auto mock : m_routerMocks)
         {
-            EXPECT_CALL(*mock, getRouter()).WillRepeatedly(testing::ReturnRefOfCopy(irouterMock));
+            EXPECT_CALL(*mock, get()).WillRepeatedly(testing::Return(irouterMock));
             EXPECT_CALL(*routerMock, removeEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
             EXPECT_CALL(*routerMock, getEntries()).WillRepeatedly(testing::Return(std::list<prod::Entry> {}));
         }
@@ -428,7 +412,7 @@ public:
 
     void expectGetEntryGetEntryFailtureRouter()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
             FAIL() << "No mock worker";
         }
@@ -436,13 +420,13 @@ public:
         auto routerMock = std::make_shared<MockRouter>();
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
-        EXPECT_CALL(*m_mocks.front(), getRouter()).WillOnce(testing::ReturnRefOfCopy(irouterMock));
+        EXPECT_CALL(*m_routerMocks.front(), get()).WillOnce(testing::Return(irouterMock));
         EXPECT_CALL(*routerMock, getEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectGetEntrySuccessRouter()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
             FAIL() << "No mock worker";
         }
@@ -450,17 +434,17 @@ public:
         auto routerMock = std::make_shared<MockRouter>();
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
-        for (auto mock : m_mocks)
+        for (auto mock : m_routerMocks)
         {
-            EXPECT_CALL(*mock, getRouter()).WillRepeatedly(testing::ReturnRefOfCopy(irouterMock));
+            EXPECT_CALL(*mock, get()).WillRepeatedly(testing::Return(irouterMock));
             EXPECT_CALL(*routerMock, getEntry(testing::_))
-                .WillRepeatedly(testing::Return(prod::EntryPost {"test", "policy", "filter", 10}));
+                .WillRepeatedly(testing::Return(prod::EntryPost {"test", G_NAMESPACE_ALT, "filter", 10}));
         }
     }
 
     void expectReloadEntryRebuildEntryFailtureRouter()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
             FAIL() << "No mock worker";
         }
@@ -468,13 +452,13 @@ public:
         auto routerMock = std::make_shared<MockRouter>();
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
-        EXPECT_CALL(*m_mocks.front(), getRouter()).WillOnce(testing::ReturnRefOfCopy(irouterMock));
+        EXPECT_CALL(*m_routerMocks.front(), get()).WillOnce(testing::Return(irouterMock));
         EXPECT_CALL(*routerMock, rebuildEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectReloadEntryEnableEntryFailtureRouter()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
             FAIL() << "No mock worker";
         }
@@ -482,9 +466,9 @@ public:
         auto routerMock = std::make_shared<MockRouter>();
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
-        for (auto mock : m_mocks)
+        for (auto mock : m_routerMocks)
         {
-            EXPECT_CALL(*mock, getRouter()).WillRepeatedly(testing::ReturnRefOfCopy(irouterMock));
+            EXPECT_CALL(*mock, get()).WillRepeatedly(testing::Return(irouterMock));
             EXPECT_CALL(*routerMock, rebuildEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
         }
 
@@ -493,7 +477,7 @@ public:
 
     void expectReloadSuccessRouter()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
             FAIL() << "No mock worker";
         }
@@ -501,9 +485,9 @@ public:
         auto routerMock = std::make_shared<MockRouter>();
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
-        for (auto mock : m_mocks)
+        for (auto mock : m_routerMocks)
         {
-            EXPECT_CALL(*mock, getRouter()).WillRepeatedly(testing::ReturnRefOfCopy(irouterMock));
+            EXPECT_CALL(*mock, get()).WillRepeatedly(testing::Return(irouterMock));
             EXPECT_CALL(*routerMock, rebuildEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
         }
 
@@ -512,7 +496,7 @@ public:
 
     void expectChangePriorityFailture()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
             FAIL() << "No mock worker";
         }
@@ -520,14 +504,14 @@ public:
         auto routerMock = std::make_shared<MockRouter>();
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
-        EXPECT_CALL(*m_mocks.front(), getRouter()).WillOnce(testing::ReturnRefOfCopy(irouterMock));
+        EXPECT_CALL(*m_routerMocks.front(), get()).WillOnce(testing::Return(irouterMock));
         EXPECT_CALL(*routerMock, changePriority(testing::_, testing::_))
             .WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectChangePrioritySuccess()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
             FAIL() << "No mock worker";
         }
@@ -535,9 +519,9 @@ public:
         auto routerMock = std::make_shared<MockRouter>();
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
-        for (auto mock : m_mocks)
+        for (auto mock : m_routerMocks)
         {
-            EXPECT_CALL(*mock, getRouter()).WillRepeatedly(testing::ReturnRefOfCopy(irouterMock));
+            EXPECT_CALL(*mock, get()).WillRepeatedly(testing::Return(irouterMock));
             EXPECT_CALL(*routerMock, changePriority(testing::_, testing::_))
                 .WillRepeatedly(testing::Return(std::nullopt));
             EXPECT_CALL(*routerMock, getEntries()).WillRepeatedly(testing::Return(std::list<prod::Entry> {}));
@@ -549,7 +533,7 @@ public:
 
     void expectGetGetEntriesEmptyRouter()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
             FAIL() << "No mock worker";
         }
@@ -557,13 +541,13 @@ public:
         auto routerMock = std::make_shared<MockRouter>();
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
-        EXPECT_CALL(*m_mocks.front(), getRouter()).WillOnce(testing::ReturnRefOfCopy(irouterMock));
+        EXPECT_CALL(*m_routerMocks.front(), get()).WillOnce(testing::Return(irouterMock));
         EXPECT_CALL(*routerMock, getEntries()).WillOnce(testing::Return(std::list<prod::Entry> {}));
     }
 
     void expectGetEntriesSuccessRouter()
     {
-        if (m_mocks.empty() || m_mocks.front() == nullptr || m_workers.empty() || m_workers.front() == nullptr)
+        if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
             FAIL() << "No mock worker";
         }
@@ -571,13 +555,14 @@ public:
         auto routerMock = std::make_shared<MockRouter>();
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
-        for (auto mock : m_mocks)
+        for (auto mock : m_routerMocks)
         {
-            EXPECT_CALL(*mock, getRouter()).WillRepeatedly(testing::ReturnRefOfCopy(irouterMock));
+            EXPECT_CALL(*mock, get()).WillRepeatedly(testing::Return(irouterMock));
         }
 
         EXPECT_CALL(*routerMock, getEntries())
-            .WillRepeatedly(testing::Return(std::list<prod::Entry> {prod::EntryPost {"test", "policy", "filter", 10}}));
+            .WillRepeatedly(
+                testing::Return(std::list<prod::Entry> {prod::EntryPost {"test", G_NAMESPACE_ALT, "filter", 10}}));
     }
 };
 
@@ -618,7 +603,8 @@ protected:
 TEST_F(OrchestratorTest, start)
 {
 
-    m_orchestrator->forEachWorkerMock([](auto mockWorker) { EXPECT_CALL(*mockWorker, start(testing::_)).Times(1); });
+    m_orchestrator->forEachWorkerMock([](auto mockWorker) { EXPECT_CALL(*mockWorker, start()).Times(1); });
+    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, start()).Times(1);
 
     ASSERT_NO_THROW(m_orchestrator->start());
 }
@@ -628,36 +614,37 @@ TEST_F(OrchestratorTest, stop)
 
     m_orchestrator->expectDumpTester();
     m_orchestrator->forEachWorkerMock([](auto mockWorker) { EXPECT_CALL(*mockWorker, stop()).Times(1); });
+    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, stop()).Times(1);
 
     ASSERT_NO_THROW(m_orchestrator->stop());
 }
 
 TEST_F(OrchestratorTest, entryPostPolicyNameEmptyFailture)
 {
-    EXPECT_TRUE(m_orchestrator->postTestEntry(test::EntryPost {"test", base::Name {}, 0}).has_value());
+    EXPECT_THROW((test::EntryPost {"test", cm::store::NamespaceId {""}, 0}), std::runtime_error);
 }
 
 TEST_F(OrchestratorTest, entryPostNameEmptyFailture)
 {
-    EXPECT_TRUE(m_orchestrator->postTestEntry(test::EntryPost {"", "policy/test/0", 0}).has_value());
+    EXPECT_TRUE(m_orchestrator->postTestEntry(test::EntryPost {"", G_NAMESPACE_ID, 0}).has_value());
 }
 
 TEST_F(OrchestratorTest, entryPostAddEntryFailture)
 {
     m_orchestrator->expectPostEntryAddEntryFailture();
-    EXPECT_TRUE(m_orchestrator->postTestEntry(test::EntryPost {"test", "policy/test/0", 0}).has_value());
+    EXPECT_TRUE(m_orchestrator->postTestEntry(test::EntryPost {"test", G_NAMESPACE_ID, 0}).has_value());
 }
 
 TEST_F(OrchestratorTest, PostEntryEnableEntryFailture)
 {
     m_orchestrator->expectPostEntryEnableEntryFailture();
-    EXPECT_TRUE(m_orchestrator->postTestEntry(test::EntryPost {"test", "policy/test/0", 0}).has_value());
+    EXPECT_TRUE(m_orchestrator->postTestEntry(test::EntryPost {"test", G_NAMESPACE_ID, 0}).has_value());
 }
 
 TEST_F(OrchestratorTest, entryPostSuccess)
 {
     m_orchestrator->expectPostEntrySuccess();
-    EXPECT_FALSE(m_orchestrator->postTestEntry(test::EntryPost {"test", "policy/test/0", 0}).has_value());
+    EXPECT_FALSE(m_orchestrator->postTestEntry(test::EntryPost {"test", G_NAMESPACE_ID, 0}).has_value());
 }
 
 TEST_F(OrchestratorTest, entryDeleteNameEmptyFailture)
@@ -779,40 +766,40 @@ TEST_F(OrchestratorTest, ingestNameEmptyFailture)
 
 TEST_F(OrchestratorTest, entryPostPolicyNameEmptyFailtureRouter)
 {
-    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", base::Name {}, "filter/test/0", 10}).has_value());
+    EXPECT_THROW((prod::EntryPost {"test", cm::store::NamespaceId {""}, "filter/test/0", 10}), std::runtime_error);
 }
 
 TEST_F(OrchestratorTest, entryPostFilterNameEmptyFailtureRouter)
 {
-    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", "policy/test/0", base::Name {}, 10}).has_value());
+    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", G_NAMESPACE_ID, base::Name {}, 10}).has_value());
 }
 
 TEST_F(OrchestratorTest, entryPostNameEmptyFailtureRouter)
 {
-    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"", "policy/test/0", "filter/test/0", 10}).has_value());
+    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"", G_NAMESPACE_ID, "filter/test/0", 10}).has_value());
 }
 
 TEST_F(OrchestratorTest, entryPostPriorityEqualZeroFailtureRouter)
 {
-    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", "policy/test/0", "filter/test/0", 0}).has_value());
+    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", G_NAMESPACE_ID, "filter/test/0", 0}).has_value());
 }
 
 TEST_F(OrchestratorTest, entryPostAddEntryFailtureRouter)
 {
     m_orchestrator->expectPostEntryAddEntryFailtureRouter();
-    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", "policy/test/0", "filter/test/0", 10}).has_value());
+    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", G_NAMESPACE_ID, "filter/test/0", 10}).has_value());
 }
 
 TEST_F(OrchestratorTest, PostEntryEnableEntryFailtureRouter)
 {
     m_orchestrator->expectPostEntryEnableEntryFailtureRouter();
-    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", "policy/test/0", "filter/test/0", 10}).has_value());
+    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", G_NAMESPACE_ID, "filter/test/0", 10}).has_value());
 }
 
 TEST_F(OrchestratorTest, entryPostSuccessRouter)
 {
     m_orchestrator->expectPostEntrySuccessRouter();
-    EXPECT_FALSE(m_orchestrator->postEntry(prod::EntryPost {"test", "policy/test/0", "filter/test/0", 10}).has_value());
+    EXPECT_FALSE(m_orchestrator->postEntry(prod::EntryPost {"test", G_NAMESPACE_ID, "filter/test/0", 10}).has_value());
 }
 
 TEST_F(OrchestratorTest, entryDeleteNameEmptyFailtureRouter)
