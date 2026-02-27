@@ -83,13 +83,3 @@ bool evalExpr(const base::Expression& expression, const base::Event& event)
     }
 }
 } // namespace
-
-namespace router
-{
-
-bool Environment::isAccepted(const base::Event& event) const
-{
-    return evalExpr(m_filter, event);
-}
-
-} // namespace router

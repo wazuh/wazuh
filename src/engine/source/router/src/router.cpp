@@ -26,7 +26,7 @@ base::OptError Router::addEntry(const prod::EntryPost& entryPost, bool ignoreFai
     auto entry = RuntimeEntry(entryPost);
     try
     {
-        auto uniqueEnv = m_envBuilder->create(entry.namespaceId(), entry.filter());
+        auto uniqueEnv = m_envBuilder->create(entry.namespaceId());
         entry.hash(uniqueEnv->hash());
         entry.environment() = std::move(uniqueEnv);
     }
@@ -82,7 +82,7 @@ base::OptError Router::rebuildEntry(const std::string& name)
     auto& entry = m_table.get(name);
     try
     {
-        auto uniqueEnv = m_envBuilder->create(entry.namespaceId(), entry.filter());
+        auto uniqueEnv = m_envBuilder->create(entry.namespaceId());
         entry.environment() = std::move(uniqueEnv);
         entry.lastUpdate(getStartTime());
         entry.hash(entry.environment()->hash());
@@ -168,23 +168,11 @@ base::RespOrError<prod::Entry> Router::getEntry(const std::string& name) const
 
 base::OptError Router::hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace)
 {
-    // Step 1: Get entry info (filter)
-    base::Name filter;
-    {
-        std::shared_lock lock {m_mutex};
-        if (!m_table.nameExists(name))
-        {
-            return base::Error {"The route does not exist"};
-        }
-        const auto& entry = m_table.get(name);
-        filter = entry.filter();
-    }
-
-    // Step 2: Create new environment WITHOUT any lock
+    // Step 1: Create new environment WITHOUT any lock
     std::unique_ptr<Environment> newEnv;
     try
     {
-        newEnv = m_envBuilder->create(newNamespace, filter);
+        newEnv = m_envBuilder->create(newNamespace);
     }
     catch (const std::exception& e)
     {
@@ -192,7 +180,7 @@ base::OptError Router::hotSwapNamespace(const std::string& name, const cm::store
             fmt::format("Failed to create environment with new namespace '{}': {}", newNamespace.toStr(), e.what())};
     }
 
-    // Step 3: Atomically swap the environment
+    // Step 2: Atomically swap the environment
     {
         std::unique_lock lock {m_mutex};
 
@@ -224,8 +212,7 @@ void Router::ingest(base::Event&& event)
 
     for (const auto& entry : m_table)
     {
-        // TODO: Remove filtering here and do it in the Environment
-        if (entry.status() == env::State::ENABLED && entry.environment()->isAccepted(event))
+        if (entry.status() == env::State::ENABLED)
         {
             processed = true;
             if (copies > 1)

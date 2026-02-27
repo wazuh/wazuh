@@ -31,7 +31,6 @@ PROTOBUF_CONSTEXPR EntryPost::EntryPost(
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.namespaceid_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.filter_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.description_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.priority_)*/0u} {}
 struct EntryPostDefaultTypeInternal {
@@ -49,7 +48,6 @@ PROTOBUF_CONSTEXPR Entry::Entry(
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.namespaceid_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.filter_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.description_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.priority_)*/0u
   , /*decltype(_impl_.entry_status_)*/0
@@ -269,10 +267,8 @@ const uint32_t TableStruct_router_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EntryPost, _impl_.name_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EntryPost, _impl_.namespaceid_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EntryPost, _impl_.filter_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EntryPost, _impl_.priority_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EntryPost, _impl_.description_),
-  ~0u,
   ~0u,
   ~0u,
   ~0u,
@@ -285,12 +281,10 @@ const uint32_t TableStruct_router_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _impl_.name_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _impl_.namespaceid_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _impl_.filter_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _impl_.priority_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _impl_.description_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _impl_.entry_status_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _impl_.uptime_),
-  ~0u,
   ~0u,
   ~0u,
   ~0u,
@@ -415,22 +409,22 @@ const uint32_t TableStruct_router_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   ~0u,  // no _inlined_string_donated_
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
-  { 0, 11, -1, sizeof(::com::wazuh::api::engine::router::EntryPost)},
-  { 16, 29, -1, sizeof(::com::wazuh::api::engine::router::Entry)},
-  { 36, 43, -1, sizeof(::com::wazuh::api::engine::router::RoutePost_Request)},
-  { 44, -1, -1, sizeof(::com::wazuh::api::engine::router::RouteDelete_Request)},
-  { 51, -1, -1, sizeof(::com::wazuh::api::engine::router::RouteGet_Request)},
-  { 58, 67, -1, sizeof(::com::wazuh::api::engine::router::RouteGet_Response)},
-  { 70, -1, -1, sizeof(::com::wazuh::api::engine::router::RouteReload_Request)},
-  { 77, -1, -1, sizeof(::com::wazuh::api::engine::router::RoutePatchPriority_Request)},
-  { 85, -1, -1, sizeof(::com::wazuh::api::engine::router::TableGet_Request)},
-  { 91, 100, -1, sizeof(::com::wazuh::api::engine::router::TableGet_Response)},
-  { 103, -1, -1, sizeof(::com::wazuh::api::engine::router::QueuePost_Request)},
-  { 110, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsUpdate_Request)},
-  { 118, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsGet_Request)},
-  { 124, 135, -1, sizeof(::com::wazuh::api::engine::router::EpsGet_Response)},
-  { 140, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsEnable_Request)},
-  { 146, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsDisable_Request)},
+  { 0, 10, -1, sizeof(::com::wazuh::api::engine::router::EntryPost)},
+  { 14, 26, -1, sizeof(::com::wazuh::api::engine::router::Entry)},
+  { 32, 39, -1, sizeof(::com::wazuh::api::engine::router::RoutePost_Request)},
+  { 40, -1, -1, sizeof(::com::wazuh::api::engine::router::RouteDelete_Request)},
+  { 47, -1, -1, sizeof(::com::wazuh::api::engine::router::RouteGet_Request)},
+  { 54, 63, -1, sizeof(::com::wazuh::api::engine::router::RouteGet_Response)},
+  { 66, -1, -1, sizeof(::com::wazuh::api::engine::router::RouteReload_Request)},
+  { 73, -1, -1, sizeof(::com::wazuh::api::engine::router::RoutePatchPriority_Request)},
+  { 81, -1, -1, sizeof(::com::wazuh::api::engine::router::TableGet_Request)},
+  { 87, 96, -1, sizeof(::com::wazuh::api::engine::router::TableGet_Response)},
+  { 99, -1, -1, sizeof(::com::wazuh::api::engine::router::QueuePost_Request)},
+  { 106, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsUpdate_Request)},
+  { 114, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsGet_Request)},
+  { 120, 131, -1, sizeof(::com::wazuh::api::engine::router::EpsGet_Response)},
+  { 136, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsEnable_Request)},
+  { 142, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsDisable_Request)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -454,47 +448,46 @@ static const ::_pb::Message* const file_default_instances[] = {
 
 const char descriptor_table_protodef_router_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
   "\n\014router.proto\022\033com.wazuh.api.engine.rou"
-  "ter\032\014engine.proto\"z\n\tEntryPost\022\014\n\004name\030\001"
-  " \001(\t\022\023\n\013namespaceId\030\002 \001(\t\022\016\n\006filter\030\003 \001("
-  "\t\022\020\n\010priority\030\004 \001(\r\022\030\n\013description\030\005 \001(\t"
-  "H\000\210\001\001B\016\n\014_description\"\300\001\n\005Entry\022\014\n\004name\030"
-  "\001 \001(\t\022\023\n\013namespaceId\030\002 \001(\t\022\016\n\006filter\030\003 \001"
-  "(\t\022\020\n\010priority\030\004 \001(\r\022\030\n\013description\030\005 \001("
-  "\tH\000\210\001\001\0228\n\014entry_status\030\006 \001(\0162\".com.wazuh"
-  ".api.engine.router.State\022\016\n\006uptime\030\007 \001(\r"
-  "B\016\n\014_description\"Y\n\021RoutePost_Request\022:\n"
-  "\005route\030\001 \001(\0132&.com.wazuh.api.engine.rout"
-  "er.EntryPostH\000\210\001\001B\010\n\006_route\"#\n\023RouteDele"
-  "te_Request\022\014\n\004name\030\001 \001(\t\" \n\020RouteGet_Req"
-  "uest\022\014\n\004name\030\001 \001(\t\"\247\001\n\021RouteGet_Response"
-  "\0222\n\006status\030\001 \001(\0162\".com.wazuh.api.engine."
-  "ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0226\n\005rout"
-  "e\030\003 \001(\0132\".com.wazuh.api.engine.router.En"
-  "tryH\001\210\001\001B\010\n\006_errorB\010\n\006_route\"#\n\023RouteRel"
-  "oad_Request\022\014\n\004name\030\001 \001(\t\"<\n\032RoutePatchP"
-  "riority_Request\022\014\n\004name\030\001 \001(\t\022\020\n\010priorit"
-  "y\030\002 \001(\r\"\022\n\020TableGet_Request\"\230\001\n\021TableGet"
-  "_Response\0222\n\006status\030\001 \001(\0162\".com.wazuh.ap"
-  "i.engine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001"
-  "\001\0221\n\005table\030\003 \003(\0132\".com.wazuh.api.engine."
-  "router.EntryB\010\n\006_error\"5\n\021QueuePost_Requ"
-  "est\022\023\n\013wazuh_event\030\001 \001(\tJ\004\010\002\020\003R\005event\":\n"
-  "\021EpsUpdate_Request\022\013\n\003eps\030\001 \001(\r\022\030\n\020refre"
-  "sh_interval\030\002 \001(\r\"\020\n\016EpsGet_Request\"\233\001\n\017"
-  "EpsGet_Response\0222\n\006status\030\001 \001(\0162\".com.wa"
-  "zuh.api.engine.ReturnStatus\022\022\n\005error\030\002 \001"
-  "(\tH\000\210\001\001\022\013\n\003eps\030\003 \001(\r\022\030\n\020refresh_interval"
-  "\030\004 \001(\r\022\017\n\007enabled\030\005 \001(\010B\010\n\006_error\"\023\n\021Eps"
-  "Enable_Request\"\024\n\022EpsDisable_Request*5\n\005"
-  "State\022\021\n\rSTATE_UNKNOWN\020\000\022\014\n\010DISABLED\020\001\022\013"
-  "\n\007ENABLED\020\002b\006proto3"
+  "ter\032\014engine.proto\"j\n\tEntryPost\022\014\n\004name\030\001"
+  " \001(\t\022\023\n\013namespaceId\030\002 \001(\t\022\020\n\010priority\030\003 "
+  "\001(\r\022\030\n\013description\030\004 \001(\tH\000\210\001\001B\016\n\014_descri"
+  "ption\"\260\001\n\005Entry\022\014\n\004name\030\001 \001(\t\022\023\n\013namespa"
+  "ceId\030\002 \001(\t\022\020\n\010priority\030\003 \001(\r\022\030\n\013descript"
+  "ion\030\004 \001(\tH\000\210\001\001\0228\n\014entry_status\030\005 \001(\0162\".c"
+  "om.wazuh.api.engine.router.State\022\016\n\006upti"
+  "me\030\006 \001(\rB\016\n\014_description\"Y\n\021RoutePost_Re"
+  "quest\022:\n\005route\030\001 \001(\0132&.com.wazuh.api.eng"
+  "ine.router.EntryPostH\000\210\001\001B\010\n\006_route\"#\n\023R"
+  "outeDelete_Request\022\014\n\004name\030\001 \001(\t\" \n\020Rout"
+  "eGet_Request\022\014\n\004name\030\001 \001(\t\"\247\001\n\021RouteGet_"
+  "Response\0222\n\006status\030\001 \001(\0162\".com.wazuh.api"
+  ".engine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001"
+  "\0226\n\005route\030\003 \001(\0132\".com.wazuh.api.engine.r"
+  "outer.EntryH\001\210\001\001B\010\n\006_errorB\010\n\006_route\"#\n\023"
+  "RouteReload_Request\022\014\n\004name\030\001 \001(\t\"<\n\032Rou"
+  "tePatchPriority_Request\022\014\n\004name\030\001 \001(\t\022\020\n"
+  "\010priority\030\002 \001(\r\"\022\n\020TableGet_Request\"\230\001\n\021"
+  "TableGet_Response\0222\n\006status\030\001 \001(\0162\".com."
+  "wazuh.api.engine.ReturnStatus\022\022\n\005error\030\002"
+  " \001(\tH\000\210\001\001\0221\n\005table\030\003 \003(\0132\".com.wazuh.api"
+  ".engine.router.EntryB\010\n\006_error\"5\n\021QueueP"
+  "ost_Request\022\023\n\013wazuh_event\030\001 \001(\tJ\004\010\002\020\003R\005"
+  "event\":\n\021EpsUpdate_Request\022\013\n\003eps\030\001 \001(\r\022"
+  "\030\n\020refresh_interval\030\002 \001(\r\"\020\n\016EpsGet_Requ"
+  "est\"\233\001\n\017EpsGet_Response\0222\n\006status\030\001 \001(\0162"
+  "\".com.wazuh.api.engine.ReturnStatus\022\022\n\005e"
+  "rror\030\002 \001(\tH\000\210\001\001\022\013\n\003eps\030\003 \001(\r\022\030\n\020refresh_"
+  "interval\030\004 \001(\r\022\017\n\007enabled\030\005 \001(\010B\010\n\006_erro"
+  "r\"\023\n\021EpsEnable_Request\"\024\n\022EpsDisable_Req"
+  "uest*5\n\005State\022\021\n\rSTATE_UNKNOWN\020\000\022\014\n\010DISA"
+  "BLED\020\001\022\013\n\007ENABLED\020\002b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_router_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_router_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_router_2eproto = {
-    false, false, 1379, descriptor_table_protodef_router_2eproto,
+    false, false, 1347, descriptor_table_protodef_router_2eproto,
     "router.proto",
     &descriptor_table_router_2eproto_once, descriptor_table_router_2eproto_deps, 1, 16,
     schemas, file_default_instances, TableStruct_router_2eproto::offsets,
@@ -552,7 +545,6 @@ EntryPost::EntryPost(const EntryPost& from)
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
     , decltype(_impl_.namespaceid_){}
-    , decltype(_impl_.filter_){}
     , decltype(_impl_.description_){}
     , decltype(_impl_.priority_){}};
 
@@ -571,14 +563,6 @@ EntryPost::EntryPost(const EntryPost& from)
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (!from._internal_namespaceid().empty()) {
     _this->_impl_.namespaceid_.Set(from._internal_namespaceid(), 
-      _this->GetArenaForAllocation());
-  }
-  _impl_.filter_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.filter_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_filter().empty()) {
-    _this->_impl_.filter_.Set(from._internal_filter(), 
       _this->GetArenaForAllocation());
   }
   _impl_.description_.InitDefault();
@@ -602,7 +586,6 @@ inline void EntryPost::SharedCtor(
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
     , decltype(_impl_.namespaceid_){}
-    , decltype(_impl_.filter_){}
     , decltype(_impl_.description_){}
     , decltype(_impl_.priority_){0u}
   };
@@ -613,10 +596,6 @@ inline void EntryPost::SharedCtor(
   _impl_.namespaceid_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.namespaceid_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.filter_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.filter_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   _impl_.description_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -637,7 +616,6 @@ inline void EntryPost::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.name_.Destroy();
   _impl_.namespaceid_.Destroy();
-  _impl_.filter_.Destroy();
   _impl_.description_.Destroy();
 }
 
@@ -653,7 +631,6 @@ void EntryPost::Clear() {
 
   _impl_.name_.ClearToEmpty();
   _impl_.namespaceid_.ClearToEmpty();
-  _impl_.filter_.ClearToEmpty();
   cached_has_bits = _impl_._has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
     _impl_.description_.ClearNonDefaultToEmpty();
@@ -690,27 +667,17 @@ const char* EntryPost::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx
         } else
           goto handle_unusual;
         continue;
-      // string filter = 3;
+      // uint32 priority = 3;
       case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
-          auto str = _internal_mutable_filter();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.router.EntryPost.filter"));
-        } else
-          goto handle_unusual;
-        continue;
-      // uint32 priority = 4;
-      case 4:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
           _impl_.priority_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
-      // optional string description = 5;
-      case 5:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
+      // optional string description = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
           auto str = _internal_mutable_description();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
@@ -768,30 +735,20 @@ uint8_t* EntryPost::_InternalSerialize(
         2, this->_internal_namespaceid(), target);
   }
 
-  // string filter = 3;
-  if (!this->_internal_filter().empty()) {
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_filter().data(), static_cast<int>(this->_internal_filter().length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.router.EntryPost.filter");
-    target = stream->WriteStringMaybeAliased(
-        3, this->_internal_filter(), target);
-  }
-
-  // uint32 priority = 4;
+  // uint32 priority = 3;
   if (this->_internal_priority() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(4, this->_internal_priority(), target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(3, this->_internal_priority(), target);
   }
 
-  // optional string description = 5;
+  // optional string description = 4;
   if (_internal_has_description()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_description().data(), static_cast<int>(this->_internal_description().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "com.wazuh.api.engine.router.EntryPost.description");
     target = stream->WriteStringMaybeAliased(
-        5, this->_internal_description(), target);
+        4, this->_internal_description(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -824,14 +781,7 @@ size_t EntryPost::ByteSizeLong() const {
         this->_internal_namespaceid());
   }
 
-  // string filter = 3;
-  if (!this->_internal_filter().empty()) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_filter());
-  }
-
-  // optional string description = 5;
+  // optional string description = 4;
   cached_has_bits = _impl_._has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
     total_size += 1 +
@@ -839,7 +789,7 @@ size_t EntryPost::ByteSizeLong() const {
         this->_internal_description());
   }
 
-  // uint32 priority = 4;
+  // uint32 priority = 3;
   if (this->_internal_priority() != 0) {
     total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_priority());
   }
@@ -867,9 +817,6 @@ void EntryPost::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROT
   }
   if (!from._internal_namespaceid().empty()) {
     _this->_internal_set_namespaceid(from._internal_namespaceid());
-  }
-  if (!from._internal_filter().empty()) {
-    _this->_internal_set_filter(from._internal_filter());
   }
   if (from._internal_has_description()) {
     _this->_internal_set_description(from._internal_description());
@@ -904,10 +851,6 @@ void EntryPost::InternalSwap(EntryPost* other) {
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.namespaceid_, lhs_arena,
       &other->_impl_.namespaceid_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.filter_, lhs_arena,
-      &other->_impl_.filter_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.description_, lhs_arena,
@@ -946,7 +889,6 @@ Entry::Entry(const Entry& from)
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
     , decltype(_impl_.namespaceid_){}
-    , decltype(_impl_.filter_){}
     , decltype(_impl_.description_){}
     , decltype(_impl_.priority_){}
     , decltype(_impl_.entry_status_){}
@@ -967,14 +909,6 @@ Entry::Entry(const Entry& from)
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (!from._internal_namespaceid().empty()) {
     _this->_impl_.namespaceid_.Set(from._internal_namespaceid(), 
-      _this->GetArenaForAllocation());
-  }
-  _impl_.filter_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.filter_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_filter().empty()) {
-    _this->_impl_.filter_.Set(from._internal_filter(), 
       _this->GetArenaForAllocation());
   }
   _impl_.description_.InitDefault();
@@ -1000,7 +934,6 @@ inline void Entry::SharedCtor(
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
     , decltype(_impl_.namespaceid_){}
-    , decltype(_impl_.filter_){}
     , decltype(_impl_.description_){}
     , decltype(_impl_.priority_){0u}
     , decltype(_impl_.entry_status_){0}
@@ -1013,10 +946,6 @@ inline void Entry::SharedCtor(
   _impl_.namespaceid_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.namespaceid_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.filter_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.filter_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   _impl_.description_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -1037,7 +966,6 @@ inline void Entry::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.name_.Destroy();
   _impl_.namespaceid_.Destroy();
-  _impl_.filter_.Destroy();
   _impl_.description_.Destroy();
 }
 
@@ -1053,7 +981,6 @@ void Entry::Clear() {
 
   _impl_.name_.ClearToEmpty();
   _impl_.namespaceid_.ClearToEmpty();
-  _impl_.filter_.ClearToEmpty();
   cached_has_bits = _impl_._has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
     _impl_.description_.ClearNonDefaultToEmpty();
@@ -1092,27 +1019,17 @@ const char* Entry::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
         } else
           goto handle_unusual;
         continue;
-      // string filter = 3;
+      // uint32 priority = 3;
       case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
-          auto str = _internal_mutable_filter();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.router.Entry.filter"));
-        } else
-          goto handle_unusual;
-        continue;
-      // uint32 priority = 4;
-      case 4:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
           _impl_.priority_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
-      // optional string description = 5;
-      case 5:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
+      // optional string description = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
           auto str = _internal_mutable_description();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
@@ -1120,18 +1037,18 @@ const char* Entry::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
         } else
           goto handle_unusual;
         continue;
-      // .com.wazuh.api.engine.router.State entry_status = 6;
-      case 6:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 48)) {
+      // .com.wazuh.api.engine.router.State entry_status = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 40)) {
           uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
           _internal_set_entry_status(static_cast<::com::wazuh::api::engine::router::State>(val));
         } else
           goto handle_unusual;
         continue;
-      // uint32 uptime = 7;
-      case 7:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 56)) {
+      // uint32 uptime = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 48)) {
           _impl_.uptime_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else
@@ -1187,43 +1104,33 @@ uint8_t* Entry::_InternalSerialize(
         2, this->_internal_namespaceid(), target);
   }
 
-  // string filter = 3;
-  if (!this->_internal_filter().empty()) {
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_filter().data(), static_cast<int>(this->_internal_filter().length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.router.Entry.filter");
-    target = stream->WriteStringMaybeAliased(
-        3, this->_internal_filter(), target);
-  }
-
-  // uint32 priority = 4;
+  // uint32 priority = 3;
   if (this->_internal_priority() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(4, this->_internal_priority(), target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(3, this->_internal_priority(), target);
   }
 
-  // optional string description = 5;
+  // optional string description = 4;
   if (_internal_has_description()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_description().data(), static_cast<int>(this->_internal_description().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "com.wazuh.api.engine.router.Entry.description");
     target = stream->WriteStringMaybeAliased(
-        5, this->_internal_description(), target);
+        4, this->_internal_description(), target);
   }
 
-  // .com.wazuh.api.engine.router.State entry_status = 6;
+  // .com.wazuh.api.engine.router.State entry_status = 5;
   if (this->_internal_entry_status() != 0) {
     target = stream->EnsureSpace(target);
     target = ::_pbi::WireFormatLite::WriteEnumToArray(
-      6, this->_internal_entry_status(), target);
+      5, this->_internal_entry_status(), target);
   }
 
-  // uint32 uptime = 7;
+  // uint32 uptime = 6;
   if (this->_internal_uptime() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(7, this->_internal_uptime(), target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(6, this->_internal_uptime(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -1256,14 +1163,7 @@ size_t Entry::ByteSizeLong() const {
         this->_internal_namespaceid());
   }
 
-  // string filter = 3;
-  if (!this->_internal_filter().empty()) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_filter());
-  }
-
-  // optional string description = 5;
+  // optional string description = 4;
   cached_has_bits = _impl_._has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
     total_size += 1 +
@@ -1271,18 +1171,18 @@ size_t Entry::ByteSizeLong() const {
         this->_internal_description());
   }
 
-  // uint32 priority = 4;
+  // uint32 priority = 3;
   if (this->_internal_priority() != 0) {
     total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_priority());
   }
 
-  // .com.wazuh.api.engine.router.State entry_status = 6;
+  // .com.wazuh.api.engine.router.State entry_status = 5;
   if (this->_internal_entry_status() != 0) {
     total_size += 1 +
       ::_pbi::WireFormatLite::EnumSize(this->_internal_entry_status());
   }
 
-  // uint32 uptime = 7;
+  // uint32 uptime = 6;
   if (this->_internal_uptime() != 0) {
     total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_uptime());
   }
@@ -1310,9 +1210,6 @@ void Entry::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF
   }
   if (!from._internal_namespaceid().empty()) {
     _this->_internal_set_namespaceid(from._internal_namespaceid());
-  }
-  if (!from._internal_filter().empty()) {
-    _this->_internal_set_filter(from._internal_filter());
   }
   if (from._internal_has_description()) {
     _this->_internal_set_description(from._internal_description());
@@ -1353,10 +1250,6 @@ void Entry::InternalSwap(Entry* other) {
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.namespaceid_, lhs_arena,
       &other->_impl_.namespaceid_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.filter_, lhs_arena,
-      &other->_impl_.filter_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.description_, lhs_arena,

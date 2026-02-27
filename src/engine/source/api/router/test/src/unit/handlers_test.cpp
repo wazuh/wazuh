@@ -36,7 +36,6 @@ INSTANTIATE_TEST_SUITE_P(
                 eEngine::router::RoutePost_Request protoReq;
                 protoReq.mutable_route()->set_name("name");
                 protoReq.mutable_route()->set_namespaceid("policy");
-                protoReq.mutable_route()->set_filter("filter");
                 protoReq.mutable_route()->set_priority(1);
                 return createRequest<eEngine::router::RoutePost_Request>(protoReq);
             },
@@ -55,7 +54,6 @@ INSTANTIATE_TEST_SUITE_P(
                 eEngine::router::RoutePost_Request protoReq;
                 protoReq.mutable_route()->set_name("name");
                 protoReq.mutable_route()->set_namespaceid("policy");
-                protoReq.mutable_route()->set_filter("filter");
                 protoReq.mutable_route()->set_priority(1);
                 return createRequest<eEngine::router::RoutePost_Request>(protoReq);
             },
@@ -100,7 +98,6 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 json::Json jsonReq;
                 jsonReq.setObject("/route");
-                jsonReq.setString("filter/name/0", "/route/filter");
                 jsonReq.setString("not-valid", "/route/namespaceId");
                 jsonReq.setInt(1, "/route/priority");
                 httplib::Request req;
@@ -115,7 +112,7 @@ INSTANTIATE_TEST_SUITE_P(
                     "Invalid namespace id: Invalid namespace ID: not-valid");
             },
             [](auto&) {}),
-        // Invalid filter
+        // TODO -> is repeated?
         HandlerT(
             []()
             {
@@ -130,7 +127,11 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePost(router); },
             []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid filter name: Name cannot be empty"); },
+            {
+                eEngine::GenericStatus_Response protoRes;
+                protoRes.set_status(eEngine::ReturnStatus::OK);
+                return userResponse<eEngine::GenericStatus_Response>(protoRes);
+             },
             [](auto&) {}),
         // Invalid priority (default 0)
         HandlerT(
@@ -139,7 +140,6 @@ INSTANTIATE_TEST_SUITE_P(
                 json::Json jsonReq;
                 jsonReq.setObject("/route");
                 jsonReq.setString("testing", "/route/namespaceId");
-                jsonReq.setString("filter/name/0", "/route/filter");
                 httplib::Request req;
                 req.body = jsonReq.str();
                 req.set_header("Content-Type", "plain/text");
@@ -169,7 +169,6 @@ INSTANTIATE_TEST_SUITE_P(
                 eEngine::router::RoutePost_Request protoReq;
                 protoReq.mutable_route()->set_name("name");
                 protoReq.mutable_route()->set_namespaceid("policy");
-                protoReq.mutable_route()->set_filter("filter");
                 protoReq.mutable_route()->set_priority(1);
                 protoReq.mutable_route()->set_description("description");
                 return createRequest<eEngine::router::RoutePost_Request>(protoReq);

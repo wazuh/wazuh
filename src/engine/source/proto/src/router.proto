@@ -16,21 +16,19 @@ message EntryPost
 {
     string name = 1;                 // Name of the route
     string namespaceId = 2;          // Namespace to end of the route
-    string filter = 3;               // Filter to apply to the route
-    uint32 priority = 4;             // Priority of the route
-    optional string description = 5; // Description of the route
+    uint32 priority = 3;             // Priority of the route
+    optional string description = 4; // Description of the route
 }
 
 message Entry
 {
     string name = 1;                 // Name of the route
     string namespaceId = 2;          // Namespace to end of the route
-    string filter = 3;               // Filter to apply to the route
-    uint32 priority = 4;             // Priority of the route
-    optional string description = 5; // Description of the route
+    uint32 priority = 3;             // Priority of the route
+    optional string description = 4; // Description of the route
 
-    State entry_status = 6; // Status of the entry [INACTIVE|ACTIVE]
-    uint32 uptime = 7;      // Last update of the route
+    State entry_status = 5; // Status of the entry [INACTIVE|ACTIVE]
+    uint32 uptime = 6;      // Last update of the route
 }
 
 /***************************************************
