@@ -38,7 +38,7 @@ jobs:
 
       - name: Download DEB package artifact
         uses: actions/download-artifact@v4
-        if: github.event_name == 'workflow_call'
+        if: inputs.base_branch == ''
         with:
           pattern: 'wazuh-agent*amd64*.deb'
           path: /tmp/packages
@@ -46,7 +46,7 @@ jobs:
 
       - name: Download DEB package artifact (manual)
         uses: dawidd6/action-download-artifact@v3
-        if: github.event_name == 'workflow_dispatch'
+        if: inputs.base_branch != ''
         with:
           workflow: 5_builderpackage_agent-linux.yml
           workflow_conclusion: success
@@ -97,7 +97,7 @@ jobs:
 
       - name: Download RPM package artifact
         uses: actions/download-artifact@v4
-        if: github.event_name == 'workflow_call'
+        if: inputs.base_branch == ''
         with:
           pattern: '*x86_64*.rpm'
           path: /tmp/packages
@@ -105,7 +105,7 @@ jobs:
 
       - name: Download RPM package artifact (manual)
         uses: dawidd6/action-download-artifact@v3
-        if: github.event_name == 'workflow_dispatch'
+        if: inputs.base_branch != ''
         with:
           workflow: 5_builderpackage_agent-linux.yml
           workflow_conclusion: success
@@ -156,7 +156,7 @@ jobs:
 
       - name: Download MSI package artifact
         uses: actions/download-artifact@v4
-        if: github.event_name == 'workflow_call'
+        if: inputs.base_branch == ''
         with:
           pattern: 'wazuh-agent*windows*.msi'
           path: C:\packages
@@ -164,7 +164,7 @@ jobs:
 
       - name: Download MSI package artifact (manual)
         uses: dawidd6/action-download-artifact@v3
-        if: github.event_name == 'workflow_dispatch'
+        if: inputs.base_branch != ''
         with:
           workflow: 5_builderpackage_agent-windows.yml
           workflow_conclusion: success
@@ -252,7 +252,7 @@ jobs:
 
       - name: Download PKG package artifact
         uses: actions/download-artifact@v4
-        if: github.event_name == 'workflow_call'
+        if: inputs.base_branch == ''
         with:
           pattern: 'wazuh-agent*arm64*.pkg'
           path: /tmp/packages
@@ -260,7 +260,7 @@ jobs:
 
       - name: Download PKG package artifact (manual)
         uses: dawidd6/action-download-artifact@v3
-        if: github.event_name == 'workflow_dispatch'
+        if: inputs.base_branch != ''
         with:
           workflow: 5_builderpackage_agent-macos.yml
           workflow_conclusion: success
