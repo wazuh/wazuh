@@ -28,19 +28,19 @@
 
 const char* upgrade_values[] = {
     [WM_UPGRADE_SUCCESSFUL] = "0",
-    [WM_UPGRADE_FAILED_DEPENDENCY] = "1",
+    [WM_UPGRADE_FAILED_INTERMEDIATE] = "1",
     [WM_UPGRADE_FAILED] = "2"
 };
 
 const char* upgrade_messages[] = {
     [WM_UPGRADE_SUCCESSFUL] = "Upgrade was successful",
-    [WM_UPGRADE_FAILED_DEPENDENCY] = "Upgrade failed due missing dependency",
+    [WM_UPGRADE_FAILED_INTERMEDIATE] = "Upgrade failed: intermediate version required",
     [WM_UPGRADE_FAILED] = "Upgrade failed"
 };
 
 static const char *task_statuses_map[] = {
     [WM_UPGRADE_SUCCESSFUL] = WM_TASK_STATUS_DONE,
-    [WM_UPGRADE_FAILED_DEPENDENCY] = WM_TASK_STATUS_FAILED,
+    [WM_UPGRADE_FAILED_INTERMEDIATE] = WM_TASK_STATUS_FAILED,
     [WM_UPGRADE_FAILED] = WM_TASK_STATUS_FAILED
 };
 

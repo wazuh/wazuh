@@ -140,7 +140,10 @@ if [ "$status" = "connected" -a $RESULT -eq 0 ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade finished successfully." >> ./logs/upgrade.log
 else
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed..." >> ./logs/upgrade.log
-    echo -ne "2" > ./var/upgrade/upgrade_result
+    # Only write generic failure code if no specific result was already set by the installer
+    if [ ! -s ./var/upgrade/upgrade_result ]; then
+        echo -ne "2" > ./var/upgrade/upgrade_result
+    fi
 fi
 
 rm -f $LOCK
