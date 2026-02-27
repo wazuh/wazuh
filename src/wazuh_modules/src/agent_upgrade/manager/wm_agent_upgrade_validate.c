@@ -165,7 +165,12 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *pla
 
                     os_strdup(upgrade_task->custom_version ? upgrade_task->custom_version : manager_version, upgrade_task->wpk_version);
 
-                    if (!upgrade_task->force_upgrade) {
+                    // Upgrading to v5.0.0+ requires the agent to be on v4.14.x first.
+                    // Direct upgrade from older versions is not supported and cannot be forced.
+                    if (compare_wazuh_versions(upgrade_task->wpk_version, WM_UPGRADE_5X_MINIMUM_VERSION, true) >= 0 &&
+                        compare_wazuh_versions(tmp_agent_version, WM_UPGRADE_REQUIRED_INTERMEDIATE_VERSION, true) < 0) {
+                        return_code = WM_UPGRADE_INTERMEDIATE_VERSION_REQUIRED;
+                    } else if (!upgrade_task->force_upgrade) {
                         if (compare_wazuh_versions(tmp_agent_version, upgrade_task->wpk_version, true) >= 0) {
                             return_code = WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT;
                         } else if (compare_wazuh_versions(upgrade_task->wpk_version, manager_version, true) > 0) {

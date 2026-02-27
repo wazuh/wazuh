@@ -254,6 +254,22 @@ if ($msi_new_version -ne $null) {
 }
 
 
+# Check version compatibility: direct upgrade to 5.x requires agent >= 4.14
+if ($msi_new_version -ne $null) {
+    try {
+        $target_ver = [Version]($msi_new_version -replace '^v', '')
+        $current_ver = [Version]($current_version -replace '^v', '')
+        if ($target_ver -ge [Version]"5.0.0" -and $current_ver -lt [Version]"4.14.0") {
+            write-output "$(Get-Date -format u) - Upgrade failed: direct upgrade to v5.0.0 is not supported from version $($current_version). Please upgrade to v4.14.x first." >> .\upgrade\upgrade.log
+            write-output "3" | out-file ".\upgrade\upgrade_result" -encoding ascii
+            remove_upgrade_files
+            exit 1
+        }
+    } catch {
+        write-output "$(Get-Date -format u) - Could not compare versions for compatibility check: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+    }
+}
+
 # Ensure no other instance of msiexec is running by stopping them
 try {
     $proc = Get-Process -Name "msiexec" -ErrorAction Stop
