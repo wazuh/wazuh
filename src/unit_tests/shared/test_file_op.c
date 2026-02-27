@@ -1022,6 +1022,7 @@ void test_get_UTC_modification_time_fail_get_handle(void **state) {
 
     expect_string(wrap_CreateFile, lpFileName, path);
     will_return(wrap_CreateFile, INVALID_HANDLE_VALUE);
+    expect_GetLastError_call(2);
 
     snprintf(buffer, OS_SIZE_128, FIM_WARN_OPEN_HANDLE_FILE, path, 2);
     expect_string(__wrap__mferror, formatted_msg, buffer);
@@ -1045,6 +1046,7 @@ void test_get_UTC_modification_time_fail_get_filetime(void **state) {
     expect_value(wrap_GetFileTime, hFile, (HANDLE)1234);
     will_return(wrap_GetFileTime, &modification_date);
     will_return(wrap_GetFileTime, 0);
+    expect_GetLastError_call(2);
 
     snprintf(buffer, OS_SIZE_128, FIM_WARN_GET_FILETIME, path, 2);
     expect_string(__wrap__mferror, formatted_msg, buffer);
