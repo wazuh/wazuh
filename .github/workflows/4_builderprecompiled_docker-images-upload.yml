@@ -11,7 +11,7 @@ on:
 
 jobs:
   Upload-package-building-images:
-    runs-on: ubuntu-24.04
+    runs-on: wz-linux-amd64
 
     steps:
       - name: Cancel previous runs

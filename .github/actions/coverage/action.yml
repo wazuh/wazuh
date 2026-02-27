@@ -59,27 +59,21 @@ runs:
           arguments+="--output-file build/coverage.info "
 
           # # Disable branch coverage
-          arguments+="-rc lcov_branch_coverage=0 "
+          arguments+="--rc branch_coverage=0 "
 
-          # Include test files
-          include_files=""
+          # Ignore lcov 2.x strict errors for unused include patterns, version mismatches,
+          # and gcov/lcov line range mismatches (gcov 13 + lcov 2.0 incompatibility)
+          arguments+="--ignore-errors unused,deprecated,mismatch,negative "
+
+          # Include source files using glob patterns (compatible with lcov 2.x)
           if [[ ${{ inputs.path }} =~ "shared_modules/utils" ]]; then
-            paths="."
+            arguments+="--include=$(pwd)/* "
           else
-            paths="src/ include/"
+            arguments+="--include=$(pwd)/src/* --include=$(pwd)/include/* "
           fi
 
-          for file in $(find $paths -type f -regextype posix-extended -regex ".*/*\.(hpp|cpp|h|c)")
-          do
-            file=$(echo $file | sed 's/\.\///g')
-            if [[ ! "$file" =~ "_generated.h" ]]; then
-              include_files+="--include=$(pwd)$dir/$file "
-            fi
-          done
-          arguments+="$include_files"
-
-          # Exclude scanContext.hpp
-          arguments+="--exclude=*/scanContext.hpp "
+          # Exclude generated headers and scanContext
+          arguments+="--exclude=*_generated.h --exclude=*/scanContext.hpp "
 
           echo "Executing: lcov $arguments"
           lcov $arguments
@@ -92,7 +86,7 @@ runs:
           cd ${{ inputs.path }}/build
 
           # Generate HTML report
-          genhtml coverage.info --output-directory coverage_report
+          genhtml coverage.info --output-directory coverage_report --ignore-errors unused,deprecated,mismatch,negative
 
       # Upload the coverage report as an artifact
       - name: Uploading coverage report
@@ -110,11 +104,8 @@ runs:
 
           cd ${{ inputs.path }}
 
-          # Obtain the coverage data
-          coverageData=($(lcov --list build/coverage.info | tail -n1 | grep -oE '[0-9.]+%'))
-
-          # Check if lines the coverage is greater than 90%
-          linesCoverage=$(echo "${coverageData[0]}" | sed 's/%//')
+          # Parse coverage directly from the .info file (avoids lcov version-dependent output format issues)
+          linesCoverage=$(awk -F: '/^LH:/{h+=$2}/^LF:/{f+=$2}END{if(f>0)printf "%.1f",h/f*100;else print "0.0"}' build/coverage.info)
           echo "Lines coverage is: $linesCoverage %"
           if ! (( $(echo "$linesCoverage > 90" | bc -l) )); then
             echo "----------------------------------------"
@@ -127,8 +118,7 @@ runs:
             echo "------------------------------------------"
           fi
 
-          # Check if functions coverage is greater than 90%
-          functionsCoverage=$(echo "${coverageData[1]}" | sed 's/%//')
+          functionsCoverage=$(awk -F: '/^FNH:/{h+=$2}/^FNF:/{f+=$2}END{if(f>0)printf "%.1f",h/f*100;else print "0.0"}' build/coverage.info)
           echo "Functions coverage is: $functionsCoverage %"
           if ! (( $(echo "$functionsCoverage > 90" | bc -l) )); then
             echo "---------------------------------------------"

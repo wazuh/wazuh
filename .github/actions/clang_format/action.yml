@@ -22,7 +22,7 @@ runs:
           sudo apt update
 
       # Dependencies for testing:
-      # - clang-format
+      # - clang-format (system default, v18 on Ubuntu 24.04)
       - name: Install dependencies
         uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:

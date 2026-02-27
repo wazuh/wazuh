@@ -18,7 +18,7 @@ jobs:
           fail-fast: false
           matrix:
               target: [agent, winagent, server]
-    runs-on: ubuntu-22.04
+    runs-on: wz-linux-amd64
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
