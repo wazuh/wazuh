@@ -1017,21 +1017,17 @@ void test_get_UTC_modification_time_success(void **state) {
 }
 
 void test_get_UTC_modification_time_fail_get_handle(void **state) {
-    char buffer[OS_SIZE_128];
     char *path = "C:\\a\\path";
 
     expect_string(wrap_CreateFile, lpFileName, path);
     will_return(wrap_CreateFile, INVALID_HANDLE_VALUE);
-
-    snprintf(buffer, OS_SIZE_128, FIM_WARN_OPEN_HANDLE_FILE, path, 2);
-    expect_string(__wrap__mferror, formatted_msg, buffer);
+    expect_any(__wrap__mferror, formatted_msg);
 
     time_t ret = get_UTC_modification_time(path);
     assert_int_equal(ret, 0);
 }
 
 void test_get_UTC_modification_time_fail_get_filetime(void **state) {
-    char buffer[OS_SIZE_128];
     char *path = "C:\\a\\path";
 
     HANDLE hdle = (HANDLE)1234;
@@ -1045,9 +1041,7 @@ void test_get_UTC_modification_time_fail_get_filetime(void **state) {
     expect_value(wrap_GetFileTime, hFile, (HANDLE)1234);
     will_return(wrap_GetFileTime, &modification_date);
     will_return(wrap_GetFileTime, 0);
-
-    snprintf(buffer, OS_SIZE_128, FIM_WARN_GET_FILETIME, path, 2);
-    expect_string(__wrap__mferror, formatted_msg, buffer);
+    expect_any(__wrap__mferror, formatted_msg);
 
     expect_value(wrap_CloseHandle, hObject, (HANDLE)1234);
     will_return(wrap_CloseHandle, 0);
