@@ -1032,11 +1032,22 @@ def test_handler_receive_file():
     """Test if a descriptor file is created for an incoming file."""
     handler = cluster_common.Handler(fernet_key, cluster_items)
 
-    assert handler.receive_file(b"data") == (b"ok ", b"Ready to receive new file")
-    assert "fd" in handler.in_file[b"data"]
-    assert isinstance(handler.in_file[b"data"]["fd"], _io.BufferedWriter)
-    assert "checksum" in handler.in_file[b"data"]
-    assert isinstance(handler.in_file[b"data"]["checksum"], _hashlib.HASH)
+    path = b"/queue/cluster/testfile"
+
+    with patch('builtins.open', mock_open()) as open_mock:
+        assert handler.receive_file(path) == (b"ok ", b"Ready to receive new file")
+    assert "fd" in handler.in_file[path]
+    assert handler.in_file[path]["fd"] == open_mock.return_value
+    assert "checksum" in handler.in_file[path]
+    assert isinstance(handler.in_file[path]["checksum"], _hashlib.HASH)
+
+
+def test_handler_receive_file_rejects_invalid_and_disallowed_paths():
+    """Ensure receive_file rejects invalid paths and writes outside allowed cluster directories."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+
+    # Disallowed path (attempt to write into /etc)
+    assert handler.receive_file(b"/etc/ossec.conf") == (b"err", b"Write path not allowed")
 
 
 def test_handler_update_file():
@@ -1526,14 +1537,14 @@ async def test_sync_wazuh_db_sync_ok(perf_counter_mock, json_dumps_mock):
                 send_request_mock.assert_called_once_with(command=b"cmd", data=b"OK")
                 json_dumps_mock.assert_called_with({'set_data_command': 'set_command',
                                                     'payload': {}, 'chunks': ['a', 'b']})
-                logger_debug_mock.assert_has_calls([call(f"Sending chunks.")])
+                logger_debug_mock.assert_has_calls([call("Sending chunks.")])
 
             send_string_mock.assert_called_with(b"")
 
     # Test else
     with patch.object(sync_wazuh_db.logger, "info") as logger_info_mock:
         assert await sync_wazuh_db.sync(start_time=-10, chunks=[]) is True
-        logger_info_mock.assert_called_once_with(f"Finished in 10.000s. Updated 0 chunks.")
+        logger_info_mock.assert_called_once_with("Finished in 10.000s. Updated 0 chunks.")
 
     # Test except
     with patch("wazuh.core.cluster.common.Handler.send_string", return_value=b'Error 1'):
