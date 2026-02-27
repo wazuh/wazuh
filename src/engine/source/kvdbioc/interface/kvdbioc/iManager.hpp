@@ -44,6 +44,14 @@ public:
     virtual void add(std::string_view dbName) = 0;
 
     /**
+     * @brief Check if a database exists and is registered.
+     *
+     * @param dbName DB identifier
+     * @return true if DB exists, false otherwise
+     */
+    virtual bool exists(std::string_view dbName) const noexcept = 0;
+
+    /**
      * @brief Add a key-value pair to the DB.
      *
      * @param dbName DB identifier
