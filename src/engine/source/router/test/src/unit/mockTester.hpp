@@ -14,6 +14,7 @@ public:
     MOCK_METHOD(base::OptError, addEntry, (const test::EntryPost&, bool), (override));
     MOCK_METHOD(base::OptError, removeEntry, (const std::string&), (override));
     MOCK_METHOD(base::OptError, rebuildEntry, (const std::string&), (override));
+    MOCK_METHOD(base::OptError, renameEntry, (const std::string&, const std::string&), (override));
     MOCK_METHOD(base::OptError, enableEntry, (const std::string&), (override));
     MOCK_METHOD(std::list<test::Entry>, getEntries, (), (const, override));
     MOCK_METHOD(base::RespOrError<test::Entry>, getEntry, (const std::string&), (const, override));

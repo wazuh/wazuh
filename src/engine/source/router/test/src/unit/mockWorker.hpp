@@ -3,6 +3,8 @@
 
 #include <gmock/gmock.h>
 
+#include "irouter.hpp"
+#include "itester.hpp"
 #include "iworker.hpp"
 #include "mockRouter.hpp"
 #include "mockTester.hpp"
@@ -10,14 +12,21 @@
 namespace router
 {
 
-class MockWorker : public router::IWorker
+class MockRouterWorker : public router::IWorker<router::IRouter>
 {
 
 public:
-    MOCK_METHOD(void, start, (const EpsLimit&), (override));
+    MOCK_METHOD(void, start, (), (override));
     MOCK_METHOD(void, stop, (), (override));
-    MOCK_METHOD(const std::shared_ptr<IRouter>&, getRouter, (), (const, override));
-    MOCK_METHOD(const std::shared_ptr<ITester>&, getTester, (), (const, override));
+    MOCK_METHOD(std::shared_ptr<router::IRouter>, get, (), (const, override));
+};
+
+class MockTesterWorker : public router::IWorker<router::ITester>
+{
+public:
+    MOCK_METHOD(void, start, (), (override));
+    MOCK_METHOD(void, stop, (), (override));
+    MOCK_METHOD(std::shared_ptr<router::ITester>, get, (), (const, override));
 };
 
 } // namespace router

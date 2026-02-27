@@ -53,46 +53,47 @@ if(ENGINE_BUILD_TEST)
     # Mocks
     add_library(router_mocks INTERFACE)
     target_include_directories(router_mocks INTERFACE ${TEST_MOCK_DIR})
-    target_link_libraries(router_mocks INTERFACE GTest::gmock router::irouter rawevtindexer::mocks)
+    target_link_libraries(router_mocks INTERFACE GTest::gmock router::irouter)
     add_library(router::mocks ALIAS router_mocks)
 
-    # # Router component test
-    # add_executable(router_ctest
-    #     ${COMPONENT_SRC_DIR}/router_test.cpp
-    #     ${COMPONENT_SRC_DIR}/tester_test.cpp
-    # )
-    # target_include_directories(router_ctest PRIVATE ${SRC_DIR})
-    # target_link_libraries(router_ctest
-    #     GTest::gmock_main
-    #     base
-    #     router::router
-    #     builder::mocks
-    #     store::mocks
-    #     bk::mocks
-    #     queue::mocks
-    # )
+    # Router component test
+    add_executable(router_ctest
+        ${COMPONENT_SRC_DIR}/router_test.cpp
+        ${COMPONENT_SRC_DIR}/tester_test.cpp
+    )
+    target_include_directories(router_ctest PRIVATE ${SRC_DIR})
+    target_link_libraries(router_ctest
+        GTest::gmock_main
+        base
+        router::router
+        builder::mocks
+        store::mocks
+        bk::mocks
+        fastqueue::mocks
+        rawevtindexer::mocks
+    )
 
-    # # Router unit test
-    # add_executable(router_utest
-    #     ${UNIT_SRC_DIR}/entryConverter_test.cpp
-    #     ${UNIT_SRC_DIR}/environment_test.cpp
-    #     ${UNIT_SRC_DIR}/environmentBuilder_test.cpp
-    #     ${UNIT_SRC_DIR}/router_test.cpp
-    #     ${UNIT_SRC_DIR}/tester_test.cpp
-    #     ${UNIT_SRC_DIR}/table_test.cpp
-    #     ${UNIT_SRC_DIR}/orchestrator_test.cpp
-    #     ${UNIT_SRC_DIR}/epsCounter_test.cpp
-    # )
-    # target_include_directories(router_utest PRIVATE ${SRC_DIR})
-    # target_link_libraries(router_utest
-    #     GTest::gmock_main
-    #     base
-    #     router::router
-    #     builder::mocks
-    #     store::mocks
-    #     bk::mocks
-    #     bk::rx
-    #     queue::mocks
-    # )
-    # gtest_discover_tests(router_utest router_ctest)
+    # Router unit test
+    add_executable(router_utest
+        # ${UNIT_SRC_DIR}/entryConverter_test.cpp
+        # ${UNIT_SRC_DIR}/environment_test.cpp
+        # ${UNIT_SRC_DIR}/environmentBuilder_test.cpp
+        ${UNIT_SRC_DIR}/router_test.cpp
+        ${UNIT_SRC_DIR}/tester_test.cpp
+        ${UNIT_SRC_DIR}/table_test.cpp
+        ${UNIT_SRC_DIR}/orchestrator_test.cpp
+    )
+    target_include_directories(router_utest PRIVATE ${SRC_DIR})
+    target_link_libraries(router_utest
+        GTest::gmock_main
+        base
+        router::router
+        builder::mocks
+        store::mocks
+        bk::mocks
+        bk::rx
+        fastqueue::mocks
+        rawevtindexer::mocks
+    )
+    gtest_discover_tests(router_utest router_ctest)
 endif(ENGINE_BUILD_TEST)
