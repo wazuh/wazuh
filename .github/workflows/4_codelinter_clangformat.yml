@@ -8,7 +8,7 @@ on:
 
 jobs:
   style:
-    runs-on: ubuntu-22.04
+    runs-on: wz-linux-amd64
 
     steps:
       - name: Cancel previous runs

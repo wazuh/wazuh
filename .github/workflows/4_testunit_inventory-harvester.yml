@@ -13,7 +13,7 @@ on:
 
 jobs:
   inventory-harvester-modules:
-    runs-on: ubuntu-22.04
+    runs-on: wz-linux-amd64
     steps:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master

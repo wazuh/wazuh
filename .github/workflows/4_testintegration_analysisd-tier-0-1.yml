@@ -24,7 +24,7 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-    runs-on: ubuntu-22.04
+    runs-on: wz-linux-amd64
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -85,7 +85,7 @@ jobs:
               QA_BRANCH="main"
           fi
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          sudo pip install qa-integration-framework/
+          sudo pip install --ignore-installed qa-integration-framework/
           sudo rm -rf qa-integration-framework/
       # Run analysisd integration tests.
       - name: Run analysisd integration tests

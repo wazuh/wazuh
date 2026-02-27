@@ -33,7 +33,7 @@ on:
 jobs:
   select-targets:
     name: Select build targets (Wazuh Managers)
-    runs-on: ubuntu-24.04
+    runs-on: wz-linux-amd64
     outputs:
       matrix: ${{ steps.set-matrix.outputs.result }}
     steps:
