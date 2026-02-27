@@ -31,6 +31,11 @@ class ISingletonManager : public BaseSingletonManager
 public:
     ~ISingletonManager() override = default;
 
+    /**
+     * @brief Get the managed singleton instance.
+     *
+     * @return Instance& Reference to the singleton instance.
+     */
     virtual Instance& instance() = 0;
 };
 
@@ -54,6 +59,13 @@ private:
     }
 
 public:
+    /**
+     * @brief Register a singleton manager strategy for a given instance type.
+     *
+     * @tparam Instance The singleton instance type.
+     * @tparam Strategy The manager strategy (must inherit from ISingletonManager<Instance>).
+     * @throws std::logic_error If a manager is already registered for this type.
+     */
     template<typename Instance, class Strategy>
     static void registerManager()
     {
@@ -71,6 +83,12 @@ public:
         strategyRegistry()[std::type_index(typeid(Instance))] = std::make_unique<Strategy>();
     }
 
+    /**
+     * @brief Unregister the singleton manager for a given instance type.
+     *
+     * @tparam Instance The singleton instance type.
+     * @throws std::logic_error If no manager is registered for this type.
+     */
     template<typename Instance>
     static void unregisterManager()
     {
@@ -83,6 +101,13 @@ public:
         strategyRegistry().erase(std::type_index(typeid(Instance)));
     }
 
+    /**
+     * @brief Get the singleton instance for a given type.
+     *
+     * @tparam Instance The singleton instance type.
+     * @return Instance& Reference to the singleton instance.
+     * @throws std::logic_error If no manager is registered for this type.
+     */
     template<typename Instance>
     static Instance& instance()
     {
@@ -96,6 +121,13 @@ public:
         return static_cast<ISingletonManager<Instance>*>(it->second.get())->instance();
     }
 
+    /**
+     * @brief Get the singleton manager for a given instance type.
+     *
+     * @tparam Instance The singleton instance type.
+     * @return ISingletonManager<Instance>& Reference to the manager.
+     * @throws std::logic_error If no manager is registered for this type.
+     */
     template<typename Instance>
     static ISingletonManager<Instance>& manager()
     {
@@ -109,6 +141,9 @@ public:
         return static_cast<ISingletonManager<Instance>&>(*it->second);
     }
 
+    /**
+     * @brief Remove all registered singleton managers.
+     */
     static void clear()
     {
         std::unique_lock lock(registryMutex());

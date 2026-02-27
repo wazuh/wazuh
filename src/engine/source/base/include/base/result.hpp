@@ -6,6 +6,11 @@
 namespace base::result
 {
 
+/**
+ * @brief Wraps an event payload together with a trace message and success/failure status.
+ *
+ * @tparam Event The type of the payload.
+ */
 template<typename Event>
 class Result
 {

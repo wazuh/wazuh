@@ -5,9 +5,26 @@
 #include <string>
 #include <string_view>
 
+/**
+ * @brief Namespace for string sanitization utilities.
+ */
 namespace sanitizer
 {
 
+/**
+ * @brief Normalize a string by lowercasing, replacing separators with underscores,
+ *        and discarding non-alphanumeric characters.
+ *
+ * Rules:
+ * - ASCII uppercase letters are converted to lowercase.
+ * - Alphanumeric characters and underscores are kept.
+ * - Space, '/', '.', '-', '\\', ':' are replaced by '_' (consecutive separators collapse).
+ * - Other characters are discarded.
+ * - Trailing '_' is removed.
+ *
+ * @param in Input string view.
+ * @param out Output string (cleared before writing).
+ */
 inline void basicNormalize(std::string_view in, std::string& out) noexcept
 {
     out.clear();
