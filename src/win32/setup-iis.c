@@ -24,6 +24,8 @@
 #define OSSECCONF   "ossec.conf"
 #define OS_MAXSTR   1024
 
+#define localtime_r(x, y) localtime_s(y, x)
+
 int total;
 
 

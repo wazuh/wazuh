@@ -635,13 +635,13 @@ InstallCommon()
 
     if [ ${NUNAME} = 'Darwin' ]
     then
-        if [ -f libwazuhext.dylib ]
+        if [ -f build/lib/libwazuhext.dylib ]
         then
-            ${INSTALL} -m 0750 -o root -g 0 libwazuhext.dylib ${INSTALLDIR}/lib
+            ${INSTALL} -m 0750 -o root -g 0 build/lib/libwazuhext.dylib ${INSTALLDIR}/lib
         fi
-    elif [ -f libwazuhext.so ]
+    elif [ -f build/lib/libwazuhext.so ]
     then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libwazuhext.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libwazuhext.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libwazuhext.so
@@ -840,18 +840,18 @@ InstallCommon()
     fi
 
 
-    if [ -f libstdc++.so.6 ]
+    if [ -f build/lib/libstdc++.so.6 ]
     then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libstdc++.so.6 ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libstdc++.so.6 ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libstdc++.so.6
         fi
     fi
 
-    if [ -f libgcc_s.so.1 ]
+    if [ -f build/lib/libgcc_s.so.1 ]
     then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libgcc_s.so.1 ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libgcc_s.so.1 ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libgcc_s.so.1
@@ -859,12 +859,12 @@ InstallCommon()
     fi
 
   if [ "X${INSTYPE}" = "Xagent" ]; then
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-syscheckd ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-logcollector ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-syscheckd ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-execd ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-modulesd ${INSTALLDIR}/bin/
   else
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-modulesd ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-modulesd ${INSTALLDIR}/bin/
   fi
   if [ "X${INSTYPE}" = "Xmanager" ]; then
     ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-manager-control
@@ -951,19 +951,19 @@ InstallCommon()
   ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/src/*.py ${INSTALLDIR}/active-response/bin/
   if [ "X${INSTYPE}" = "Xagent" ]; then
     ./init/fw-check.sh execute
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} firewall-drop ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} default-firewall-drop ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} pf ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} npf ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ipfw ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} firewalld-drop ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} disable-account ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} host-deny ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ip-customblock ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} restart-wazuh ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} route-null ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} kaspersky ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-slack ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/firewall-drop ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/default-firewall-drop ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/pf ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/npf ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/ipfw ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/firewalld-drop ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/disable-account ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/host-deny ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/ip-customblock ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/restart-wazuh ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/route-null ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/kaspersky ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/wazuh-slack ${INSTALLDIR}/active-response/bin/
   fi
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var
@@ -1124,9 +1124,9 @@ InstallLocal()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/firewall
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/api
 
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-monitord ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} verify-agent-conf ${INSTALLDIR}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-db ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-monitord ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/verify-agent-conf ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-db ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin/wazuh-manager-analysisd
 
     ### Install Python
@@ -1211,9 +1211,9 @@ InstallServer()
 {
 
     InstallLocal
-    if [ -f libwazuhshared.so ]
+    if [ -f build/lib/libwazuhshared.so ]
     then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libwazuhshared.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libwazuhshared.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libwazuhshared.so
@@ -1265,8 +1265,8 @@ InstallServer()
 
     TransferShared
 
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-remoted ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-authd ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-remoted ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-authd ${INSTALLDIR}/bin
 
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/router
@@ -1290,7 +1290,7 @@ InstallServer()
 
     # Keystore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-manager-keystore ${INSTALLDIR}/bin/wazuh-manager-keystore
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-keystore ${INSTALLDIR}/bin/wazuh-manager-keystore
 }
 
 InstallAgent()
@@ -1300,8 +1300,8 @@ InstallAgent()
 
     InstallSecurityConfigurationAssessmentFiles "agent"
 
-    ${INSTALL} -m 0750 -o root -g 0 manage_agents ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-agentd ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/manage_agents ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-agentd ${INSTALLDIR}/bin
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/incoming

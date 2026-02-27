@@ -20,6 +20,8 @@ include_directories(
   ${SRC_FOLDER}/external/nlohmann/
   ${SRC_FOLDER}/external/openssl/include/
   ${SRC_FOLDER}/external/zlib/
+  ${SRC_FOLDER}/external/rocksdb/include
+  ${SRC_FOLDER}/external/simdjson/include
   ${SRC_FOLDER}/client-agent/include
   ${SRC_FOLDER}/config/include
   ${SRC_FOLDER}/shared/include/error_messages
@@ -192,15 +194,16 @@ elseif(NOT UNIT_TEST)
                  "${SRC_FOLDER}/wazuh_modules/src/main.c")
   set_target_properties(
     ${WAZUH_MODULESD_DAEMON_NAME}
-    PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER})
+    PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
+                                 ${SRC_FOLDER}/build/bin)
   target_link_libraries(${WAZUH_MODULESD_DAEMON_NAME}
                         PRIVATE wazuh_modulesd_lib)
 
   if(APPLE)
     set_target_properties(
-      ${WAZUH_MODULESD_DAEMON_NAME} PROPERTIES
-      BUILD_WITH_INSTALL_RPATH TRUE
-      INSTALL_RPATH "@executable_path/../lib")
+      ${WAZUH_MODULESD_DAEMON_NAME}
+      PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE INSTALL_RPATH
+                                               "@executable_path/../lib")
   else()
     string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
   endif()

@@ -94,7 +94,8 @@ elseif(NOT UNIT_TEST)
                  "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
   set_target_properties(
     ${WAZUH_EXECD_DAEMON_NAME}
-    PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER})
+    PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
+                                 ${SRC_FOLDER}/build/bin)
   target_link_libraries(${WAZUH_EXECD_DAEMON_NAME} PRIVATE execd_lib)
 
   if(APPLE)

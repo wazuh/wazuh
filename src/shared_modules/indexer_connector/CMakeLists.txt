@@ -36,6 +36,7 @@ include_directories(${SHARED_MODULES}/keystore/include)
 
 # Link directories
 link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/build/lib)
 link_directories(${SRC_FOLDER}/external/rocksdb/build)
 link_directories(${SRC_FOLDER}/external/simdjson/build)
 link_directories(${SHARED_MODULES}/http-request/build)
@@ -46,14 +47,8 @@ set(INDEXER_CONNECTOR_SRC src/indexerConnectorAsync.cpp
 
 add_library(indexer_connector SHARED ${INDEXER_CONNECTOR_SRC})
 
-target_link_libraries(
-  indexer_connector PRIVATE
-  rocksdb
-  urlrequest
-  gcc_s
-  wazuhext
-  keystore
-  simdjson)
+target_link_libraries(indexer_connector PRIVATE rocksdb urlrequest gcc_s
+                                                wazuhext keystore simdjson)
 
 set_target_properties(indexer_connector PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                                    BUILD_RPATH "$ORIGIN/../lib")

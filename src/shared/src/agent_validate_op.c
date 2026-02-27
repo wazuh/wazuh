@@ -27,6 +27,7 @@
     #define chown(x,y,z) 0
     #define Privsep_GetUser(x) -1
     #define Privsep_GetGroup(x) -1
+    #define localtime_r(x, y) localtime_s(y, x)
 #endif
 
 /* Global variables */

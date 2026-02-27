@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(syscollector_test_tool)
 
-include_directories(${CMAKE_SOURCE_DIR}/)
+include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/testtool/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
@@ -10,8 +10,6 @@ include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${CMAKE_SOURCE_DIR}/src/)
 
 link_directories(${CMAKE_BINARY_DIR}/lib)
-link_directories(${SRC_FOLDER}/external/openssl/)
-link_directories(${SRC_FOLDER}/external/procps/)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

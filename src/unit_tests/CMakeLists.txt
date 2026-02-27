@@ -61,9 +61,11 @@ add_definitions(-DWAZUH_UNIT_TESTING)
 find_library(
   WAZUHLIB_WAZUH
   NAMES wazuh_test libwazuh_test.a
-  HINTS "${SRC_FOLDER}")
+  HINTS "${SRC_FOLDER}/build/lib")
 if(NOT WAZUHLIB_WAZUH)
-  message(FATAL_ERROR "libwazuh_test.a not found in ${SRC_FOLDER}. Aborting...")
+  message(
+    FATAL_ERROR
+      "libwazuh_test.a not found in ${SRC_FOLDER}/build/lib. Aborting...")
 endif()
 
 # Find libconfig

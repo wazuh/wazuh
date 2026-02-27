@@ -102,7 +102,7 @@ elseif(NOT UNIT_TEST)
   add_executable(wazuh-agentd "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
   set_target_properties(
     wazuh-agentd PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
-                                              ${SRC_FOLDER})
+                                              ${SRC_FOLDER}/build/bin)
   target_link_libraries(wazuh-agentd PRIVATE agentd_lib)
 
   if(APPLE)

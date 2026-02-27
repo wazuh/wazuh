@@ -166,7 +166,7 @@ elseif(NOT UNIT_TEST)
   add_executable(wazuh-syscheckd "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
   set_target_properties(
     wazuh-syscheckd PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY
-                                                   ${SRC_FOLDER})
+                                                   ${SRC_FOLDER}/build/bin)
   target_link_libraries(wazuh-syscheckd PRIVATE syscheckd_lib)
 
   if(APPLE)

@@ -1,18 +1,18 @@
 # Find the wazuh shared library
-find_library(WAZUHLIB NAMES libwazuh_test.a HINTS "${SRC_FOLDER}")
+find_library(WAZUHLIB NAMES libwazuh_test.a HINTS "${SRC_FOLDER}/build/lib")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  find_library(WAZUHEXT NAMES libwazuhext.dylib HINTS "${SRC_FOLDER}")
+  find_library(WAZUHEXT NAMES libwazuhext.dylib HINTS "${SRC_FOLDER}/build/lib")
 else()
-  find_library(WAZUHEXT NAMES libwazuhext.so HINTS "${SRC_FOLDER}")
+  find_library(WAZUHEXT NAMES libwazuhext.so HINTS "${SRC_FOLDER}/build/lib")
 endif()
 
 if(NOT WAZUHLIB)
-    message(FATAL_ERROR "libwazuh_test.a not found! Aborting...")
+    message(FATAL_ERROR "libwazuh_test.a not found in ${SRC_FOLDER}/build/lib! Aborting...")
 endif()
 
 if(NOT WAZUHEXT)
-    message(FATAL_ERROR "libwazuhext not found! Aborting...")
+    message(FATAL_ERROR "libwazuhext not found in ${SRC_FOLDER}/build/lib! Aborting...")
 endif()
 
 # Add compiling flags and set tests dependencies

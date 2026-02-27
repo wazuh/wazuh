@@ -2,19 +2,19 @@
 find_library(
   WAZUHLIB
   NAMES libwazuh_test.a
-  HINTS "${SRC_FOLDER}")
+  HINTS "${SRC_FOLDER}/build/lib")
 find_library(
   WAZUHEXT
   NAMES libwazuhext.so
-  HINTS "${SRC_FOLDER}")
+  HINTS "${SRC_FOLDER}/build/lib")
 set(uname "Linux")
 
 if(NOT WAZUHLIB)
-  message(FATAL_ERROR "libwazuh_test.a not found! Aborting...")
+  message(FATAL_ERROR "libwazuh_test.a not found in ${SRC_FOLDER}/build/lib! Aborting...")
 endif()
 
 if(NOT WAZUHEXT)
-  message(FATAL_ERROR "libwazuhext not found! Aborting...")
+  message(FATAL_ERROR "libwazuhext not found in ${SRC_FOLDER}/build/lib! Aborting...")
 endif()
 
 # Add compiling flags

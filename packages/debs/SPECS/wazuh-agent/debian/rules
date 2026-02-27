@@ -93,8 +93,6 @@ override_dh_install:
 
 	# Copying install scripts to /usr/share
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
-	cp gen_ossec.sh ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
-	cp add_localfiles.sh ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
 	cp VERSION.json ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
 
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src

@@ -14,6 +14,8 @@
 
 #ifdef WIN32
 
+#define localtime_r(x, y) localtime_s(y, x)
+
 #define BUFFER_SIZE 2048*256
 
 /* Event logging local structure */

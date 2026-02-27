@@ -184,6 +184,10 @@ if (NOT SHARED_MODULES)
     get_filename_component(SHARED_MODULES ${CMAKE_SOURCE_DIR}/shared_modules/ ABSOLUTE)
 endif()
 include_directories(${SHARED_MODULES}/utils)
+# Include external dependencies needed by shared modules and engine
+include_directories(${CMAKE_SOURCE_DIR}/external/cJSON)
+include_directories(${CMAKE_SOURCE_DIR}/external/cpp-httplib)
+include_directories(${CMAKE_SOURCE_DIR}/external/nlohmann)
 
 # Set the indexer connector build directory
 set(INDEXERCONNECTOR_LIB_BUILD_DIR "${CMAKE_SOURCE_DIR}/build/lib")
@@ -258,7 +262,7 @@ register_external_library(ZLIB::ZLIB             "${CMAKE_SOURCE_DIR}/external/z
 register_external_library(CURL::libcurl          "${CMAKE_SOURCE_DIR}/external/curl/include" "${CMAKE_SOURCE_DIR}/external/curl/lib/.libs/libcurl.a")
 set_target_properties(CURL_libcurl PROPERTIES INTERFACE_LINK_LIBRARIES "ZLIB_ZLIB;OpenSSL_SSL;OpenSSL_Crypto")
 register_external_library(maxminddb::maxminddb   "${CMAKE_SOURCE_DIR}/external/libmaxminddb/include" "${CMAKE_SOURCE_DIR}/external/libmaxminddb/build/libmaxminddb.a")
-target_include_directories(maxminddb_maxminddb INTERFACE "${CMAKE_SOURCE_DIR}/external/libmaxminddb/build/generated")
+target_include_directories(maxminddb_maxminddb INTERFACE "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/external/libmaxminddb/build/generated>")
 register_external_library(benchmark::benchmark   "${CMAKE_SOURCE_DIR}/external/benchmark/include" "${CMAKE_SOURCE_DIR}/external/benchmark/build/src/libbenchmark.a")
 register_external_library(benchmark::benchmark_main "${CMAKE_SOURCE_DIR}/external/benchmark/src" "${CMAKE_SOURCE_DIR}/external/benchmark/build/src/libbenchmark_main.a")
 set_target_properties(benchmark_benchmark_main PROPERTIES INTERFACE_LINK_LIBRARIES "benchmark_benchmark")

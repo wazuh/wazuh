@@ -32,7 +32,7 @@ fi
 # If file is set and execute flag is set
 if [ ! "X$FILE" = "X" ]; then
     if [ $# -eq 1 ] && [ "X$1" = "Xexecute" ]; then
-        cp -pr $FILE firewall-drop
+        cp -pr build/bin/$FILE build/bin/firewall-drop
     fi
 fi
 

@@ -29,10 +29,7 @@ runs:
         run: |
           cd src
           make deps TARGET=manager -j2
-          make build_gtest TARGET=manager -j2
-          make build_benchmark TARGET=manager -j2
-          make libwazuhext.so TARGET=manager -j2
-          make external/simdjson/build/libsimdjson.a TARGET=manager -j2
+          make build-external TARGET=manager TEST=1 -j2
         shell: bash
 
       - name: Build http-request

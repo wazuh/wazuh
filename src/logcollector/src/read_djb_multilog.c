@@ -14,6 +14,9 @@
 #include "logcollector.h"
 #include "sha1_op.h"
 
+#ifdef WIN32
+#define localtime_r(x, y) localtime_s(y, x)
+#endif
 
 /* To translate between month (int) to month (char) */
 static const char *(djb_month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",

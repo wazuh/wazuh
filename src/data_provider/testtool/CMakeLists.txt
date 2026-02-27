@@ -7,8 +7,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../src/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 
-link_directories(${SRC_FOLDER}/external/procps/)
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

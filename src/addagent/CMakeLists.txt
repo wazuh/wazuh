@@ -78,8 +78,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   if(UNIT_TEST)
     target_compile_definitions(wazuh-addagent PRIVATE WAZUH_UNIT_TESTING)
   endif()
-  target_link_libraries(wazuh-addagent PRIVATE ${SRC_FOLDER}/libwazuhext.lib
-                                               pthread wazuh)
+  target_link_libraries(wazuh-addagent PRIVATE ${WAZUH_WINDOWS_LIBS} wazuh)
 
   if(NOT UNIT_TEST)
     # Build manage_agents.exe Windows executable
@@ -90,20 +89,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_compile_definitions(manage_agents_win PRIVATE ARGV0="manage-agents"
                                                          MA _WIN32_WINNT=0x600)
     set_target_properties(
-      manage_agents_win PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/win32
+      manage_agents_win PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
                                    OUTPUT_NAME manage_agents)
     target_link_libraries(
       manage_agents_win
       PRIVATE wazuh-addagent
               wazuh
-              ${SRC_FOLDER}/libwazuhext.lib
+              ${WAZUH_WINDOWS_LIBS}
               wsock32
               wevtapi
-              shlwapi
               comctl32
               advapi32
               kernel32
-              psapi
               gdi32
               iphlpapi
               ws2_32
@@ -115,7 +112,7 @@ elseif(NOT UNIT_TEST)
   add_executable(manage_agents "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
   set_target_properties(
     manage_agents PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
-                                               ${SRC_FOLDER})
+                                               ${SRC_FOLDER}/build/bin)
   target_link_libraries(manage_agents PRIVATE addagent_lib)
 
   if(APPLE)

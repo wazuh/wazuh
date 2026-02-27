@@ -2,10 +2,6 @@ get_filename_component(FLATC_PATH ${SRC_FOLDER}/external/flatbuffers/build/
                        ABSOLUTE)
 set(FLATC_EXECUTABLE ${FLATC_PATH}/flatc)
 
-# Verify flatc exists (should be built by src/Makefile)
-if(NOT EXISTS ${FLATC_EXECUTABLE})
-  message(FATAL_ERROR "flatc not found at ${FLATC_EXECUTABLE}.")
-endif()
 message(STATUS "Using flatc from: ${FLATC_EXECUTABLE}")
 
 list(APPEND schemas inventorySync)
@@ -26,9 +22,8 @@ foreach(schema IN LISTS schemas)
 
   add_custom_command(
     OUTPUT "${OUTPUT_HEADER_GENERATED}"
-    COMMAND
-      ${CMAKE_COMMAND} -E make_directory
-      "${SRC_FOLDER}/shared_modules/utils/flatbuffers/include"
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+            "${SRC_FOLDER}/shared_modules/utils/flatbuffers/include"
     COMMAND
       ${FLATC_EXECUTABLE} ARGS -c ARGS -o
       "${SRC_FOLDER}/shared_modules/utils/flatbuffers/include" "${FBS_FILE}"
@@ -48,4 +43,7 @@ foreach(schema IN LISTS schemas)
 
   add_custom_target(${schema}_schema_input_target DEPENDS ${OUTPUT_HEADER})
   add_dependencies(compile_schemas_input ${schema}_schema_input_target)
+  if(TARGET flatbuffers_external)
+    add_dependencies(${schema}_schema_input_target flatbuffers_external)
+  endif()
 endforeach()

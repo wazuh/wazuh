@@ -41,8 +41,8 @@ jobs:
         with:
           name: wazuh-shared-libraries
           path: |
-            src/libwazuhext.so
-            src/libwazuhshared.so
+            src/build/lib/libwazuhext.so
+            src/build/lib/libwazuhshared.so
             src/build/lib/libindexer_connector.so
             src/build/lib/libcontent_manager.so
 
@@ -86,7 +86,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: wazuh-shared-libraries
-        path: src/
+        path: src/build/lib/
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -154,7 +154,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: wazuh-shared-libraries
-        path: src/
+        path: src/build/lib/
 
     - name: Set up Python
       uses: actions/setup-python@v5

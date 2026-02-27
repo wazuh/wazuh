@@ -57,8 +57,6 @@ function build() {
 
     # Add the auxiliar script used while installing the package
     mkdir -p ${INSTALLATION_SCRIPTS_DIR}/
-    cp ${SOURCES_PATH}/gen_ossec.sh ${INSTALLATION_SCRIPTS_DIR}/
-    cp ${SOURCES_PATH}/add_localfiles.sh ${INSTALLATION_SCRIPTS_DIR}/
     cp ${SOURCES_PATH}/VERSION.json ${INSTALLATION_SCRIPTS_DIR}/
 
     mkdir -p ${INSTALLATION_SCRIPTS_DIR}/src/init

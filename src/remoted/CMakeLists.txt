@@ -87,7 +87,7 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT UNIT_TEST)
   add_executable(wazuh-manager-remoted "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
   set_target_properties(
     wazuh-manager-remoted PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
-                                                       ${SRC_FOLDER})
+                                                       ${SRC_FOLDER}/build/bin)
   target_link_libraries(wazuh-manager-remoted PRIVATE remoted_lib)
 
   if(APPLE)

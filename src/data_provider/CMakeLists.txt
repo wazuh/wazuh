@@ -81,6 +81,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 
 link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/build/lib)
 link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/procps/)
@@ -206,7 +207,7 @@ elseif(APPLE)
   target_link_libraries(
     sysinfo
     PRIVATE cjson
-            ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a
+            plist
             ${iokit_lib}
             ${corefoundation_lib}
             groups

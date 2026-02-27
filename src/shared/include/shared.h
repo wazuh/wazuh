@@ -226,7 +226,6 @@ extern const char *__local_name;
 #include "file-queue.h"
 #include "json-queue.h"
 #include "read-agents.h"
-#include "report_op.h"
 #include "string_op.h"
 #include "randombytes.h"
 #include "labels_op.h"

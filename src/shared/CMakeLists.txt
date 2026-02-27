@@ -318,8 +318,8 @@ set_target_properties(
   wazuh
   PROPERTIES OUTPUT_NAME "wazuh"
              LINKER_LANGUAGE C
-             ARCHIVE_OUTPUT_DIRECTORY ${SRC_FOLDER}
-             LIBRARY_OUTPUT_DIRECTORY ${SRC_FOLDER}
+             ARCHIVE_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/lib
+             LIBRARY_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/lib
              POSITION_INDEPENDENT_CODE ON)
 
 # Add compile definitions
@@ -351,8 +351,8 @@ if(UNIT_TEST)
     wazuh_test
     PROPERTIES OUTPUT_NAME "wazuh_test"
                LINKER_LANGUAGE C
-               ARCHIVE_OUTPUT_DIRECTORY ${SRC_FOLDER}
-               LIBRARY_OUTPUT_DIRECTORY ${SRC_FOLDER}
+               ARCHIVE_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/lib
+               LIBRARY_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/lib
                POSITION_INDEPENDENT_CODE ON)
 
   # Add same compile definitions as production library
@@ -390,7 +390,7 @@ if(NOT IS_AGENT AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set_target_properties(
     wazuhshared
     PROPERTIES OUTPUT_NAME "wazuhshared"
-               LIBRARY_OUTPUT_DIRECTORY ${SRC_FOLDER}
+               LIBRARY_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/lib
                BUILD_WITH_INSTALL_RPATH TRUE
                INSTALL_RPATH "$ORIGIN"
                POSITION_INDEPENDENT_CODE ON)

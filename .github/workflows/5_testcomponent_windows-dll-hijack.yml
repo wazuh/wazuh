@@ -25,15 +25,14 @@ jobs:
       - name: Copy executables
         run: |
           mkdir -p src/exe_files
-          # We exclude the installer from the test
-          find src/win32/ -regex '.*wazuh-agent-[0-9]+.[0-9]+.[0-9]+\.exe$' -delete
-          # We remove the executables that aren't distributed in the signed installer
-          rm -f src/win32/setup-*.exe
-          cp src/win32/*.exe src/exe_files/
+          # Copy executables from build/bin
+          cp src/build/bin/*.exe src/exe_files/
+          # Remove test tools and examples that aren't distributed
+          rm -f src/exe_files/*_test_tool.exe
+          rm -f src/exe_files/*_example.exe
           # Copy DLL dependencies required by the executables
-          cp src/win32/*.dll src/exe_files/ 2>/dev/null || true
           cp src/build/bin/*.dll src/exe_files/ 2>/dev/null || true
-          cp src/*.dll src/exe_files/ 2>/dev/null || true
+          cp src/build/lib/*.dll src/exe_files/ 2>/dev/null || true
       - name: Upload Artifact executables
         uses: actions/upload-artifact@v4
         with:

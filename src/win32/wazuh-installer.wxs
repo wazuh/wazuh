@@ -202,7 +202,7 @@
                         <RegistryValue Root="HKLM" Key="SOFTWARE\[Manufacturer]\[ProductName]" Id="WazuhInstallDirProperty" Name="WazuhInstallDir" Type="string" Value="[APPLICATIONFOLDER]" />
                     </Component>
                     <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A">
-                        <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
+                        <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\build\bin\libwazuhext.dll" />
                     </Component>
                     <Component Id="DBSYNC_DLL" DiskId="1" Guid="E6DD27ED-1579-4369-B83D-FD618894B56C">
                         <File Id="DBSYNC_DLL" Name="dbsync.dll" Source="..\build\bin\dbsync.dll" />
@@ -248,25 +248,25 @@
                         <File Id="LICENSE.TXT" Name="LICENSE.txt" Source="LICENSE.txt" />
                     </Component>
                     <Component Id="LIBWINPTHREAD_1.DLL" DiskId="1" Guid="C15C5883-00FB-41D7-B9E6-53C8BC30761F">
-                        <File Id="LIBWINPTHREAD_1.DLL" Name="libwinpthread-1.dll" Source="libwinpthread-1.dll" />
+                        <File Id="LIBWINPTHREAD_1.DLL" Name="libwinpthread-1.dll" Source="..\build\lib\libwinpthread-1.dll" />
                     </Component>
                     <Component Id="LIBGCC_S_DW2_1.DLL" DiskId="1" Guid="EB7C893F-E5C8-4038-8FBA-EF33F8B72CB6">
-                        <File Id="LIBGCC_S_DW2_1.DLL" Name="libgcc_s_dw2-1.dll" Source="libgcc_s_dw2-1.dll" />
+                        <File Id="LIBGCC_S_DW2_1.DLL" Name="libgcc_s_dw2-1.dll" Source="..\build\lib\libgcc_s_dw2-1.dll" />
                     </Component>
                     <Component Id="LIBSTDCPP_6.DLL" DiskId="1" Guid="23EDBF99-6824-4128-8571-D77967B2980E">
-                        <File Id="LIBSTDCPP_6.DLL" Name="libstdc++-6.dll" Source="libstdc++-6.dll" />
+                        <File Id="LIBSTDCPP_6.DLL" Name="libstdc++-6.dll" Source="..\build\lib\libstdc++-6.dll" />
                     </Component>
                     <Component Id="MANAGE_AGENTS.EXE" DiskId="1" Guid="C15C5883-00FB-41D7-B7E6-53C8BC30761F">
-                        <File Id="MANAGE_AGENTS.EXE" Name="manage_agents.exe" Source="manage_agents.exe" />
+                        <File Id="MANAGE_AGENTS.EXE" Name="manage_agents.exe" Source="..\build\bin\manage_agents.exe" />
                     </Component>
                     <Component Id="WAZUH_AGENT_EVENTCHANNEL.EXE" DiskId="1" Guid="044E7997-12B6-4178-BD00-B90500DBA53F">
-                        <File Id="WAZUH_AGENT_EVENTCHANNEL.EXE" Name="wazuh-agent.exe" Source="wazuh-agent-eventchannel.exe" />
+                        <File Id="WAZUH_AGENT_EVENTCHANNEL.EXE" Name="wazuh-agent.exe" Source="..\build\bin\wazuh-agent-eventchannel.exe" />
                         <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install_eventchannel" />
                         <ServiceControl Id="svc_uninstall_eventchannel" Name="WazuhSvc" Remove="uninstall" Stop="both" Wait="yes" />
                         <Condition>VersionNT &gt;= 600</Condition>
                     </Component>
                     <Component Id="WAZUH_AGENT.EXE" DiskId="1" Guid="5CCEA6DC-8434-4137-9486-55AE3949266B">
-                        <File Id="WAZUH_AGENT.EXE" Name="wazuh-agent.exe" Source="wazuh-agent.exe" />
+                        <File Id="WAZUH_AGENT.EXE" Name="wazuh-agent.exe" Source="..\build\bin\wazuh-agent.exe" />
                         <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install" />
                         <ServiceControl Id="ServiceControl" Name="WazuhSvc" Stop="both" Remove="uninstall" Wait="yes" />
                         <Condition>VersionNT &lt; 600</Condition>
@@ -275,7 +275,7 @@
                         <File Id="VISTA_SEC.TXT" Name="vista_sec.txt" Source="vista_sec.txt" />
                     </Component>
                     <Component Id="WIN32UI.EXE" DiskId="1" Guid="E7ACBC6F-D8A0-410B-B8D2-2AD9F5152BA0">
-                        <File Id="WIN32UI.EXE" Name="win32ui.exe" Source="os_win32ui.exe"/>
+                        <File Id="WIN32UI.EXE" Name="win32ui.exe" Source="..\build\bin\os_win32ui.exe"/>
                         <File Id="WIN32UI.EXE.MANIFEST" Name="win32ui.exe.manifest" Source="win32ui.exe.manifest" />
                     </Component>
                     <Component Id="REMOVE_OLD_NSIS" Guid="3536239B-022D-4A9B-A7F8-2F64132115ED">
@@ -355,13 +355,13 @@
                     <Directory Id="ACTIVE_RESPONSE" Name="active-response">
                         <Directory Id="BIN" Name="bin">
                             <Component Id="RESTART_WAZUH.EXE" DiskId="1" Guid="5A405DD9-F4FF-4313-B242-A28DE03611CA">
-                                <File Id="RESTART_WAZUH.EXE" Name="restart-wazuh.exe" Source="restart-wazuh.exe" />
+                                <File Id="RESTART_WAZUH.EXE" Name="restart-wazuh.exe" Source="..\build\bin\restart-wazuh.exe" />
                             </Component>
                             <Component Id="ROUTE_NULL.EXE" DiskId="1" Guid="249F3287-B69D-46F0-9EB8-3FED24998E07">
-                                <File Id="ROUTE_NULL.EXE" Name="route-null.exe" Source="route-null.exe" />
+                                <File Id="ROUTE_NULL.EXE" Name="route-null.exe" Source="..\build\bin\route-null.exe" />
                             </Component>
                             <Component Id="NETSH.EXE" DiskId="1" Guid="292E9082-56BE-4258-9224-7F36A59CA433">
-                                <File Id="NETSH.EXE" Name="netsh.exe" Source="netsh.exe" />
+                                <File Id="NETSH.EXE" Name="netsh.exe" Source="..\build\bin\netsh.exe" />
                             </Component>
                             <Component Id="REMOVE_OLD_AR" Guid="E1915364-2E49-4B74-8DF9-5D6CC3B27DF0">
                                 <RemoveFile Id="AR_RESTART_OSSEC_CMD" Name="restart-ossec.cmd" On="install" />

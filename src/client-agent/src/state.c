@@ -20,6 +20,10 @@
 #define STATIC static
 #endif
 
+#ifdef WIN32
+#define localtime_r(x, y) localtime_s(y, x)
+#endif
+
 agent_state_t agent_state = { .status = GA_STATUS_PENDING };
 static pthread_mutex_t state_mutex;
 

@@ -207,7 +207,7 @@ build_standalone() {
 
     # Copy libraries and binaries
     cp ${WAZUH_PATH}/src/external/rocksdb/build/librocksdb.so.8 ${TEMP_DIR}/bin/lib
-    cp ${WAZUH_PATH}/src/libwazuhext.so ${TEMP_DIR}/bin/lib
+    cp ${WAZUH_PATH}/src/build/lib/libwazuhext.so ${TEMP_DIR}/bin/lib
     cp ${WAZUH_PATH}/src/build/lib/libindexer_connector.so ${TEMP_DIR}/bin/lib
     cp ${WAZUH_PATH}/src/build/lib/libcontent_manager.so ${TEMP_DIR}/bin/lib
     cp ${WAZUH_PATH}/gcc-libs/libstdc++.so.6* ${TEMP_DIR}/bin/lib/

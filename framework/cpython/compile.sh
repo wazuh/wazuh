@@ -69,7 +69,7 @@ mimic_full_wazuh_installation() {
     make -j -C "$WAZUH_ROOT_DIR/src" external INSTALLDIR=$WAZUH_INSTALLDIR
     # Install only libwazuhext to avoid full server compilation & installation
     mkdir -p "$WAZUH_INSTALLDIR/lib"
-    install -m 0750 $WAZUH_ROOT_DIR/src/libwazuhext.so "$WAZUH_INSTALLDIR/lib"
+    install -m 0750 $WAZUH_ROOT_DIR/src/build/lib/libwazuhext.so "$WAZUH_INSTALLDIR/lib"
     # Install python interpreter and its dependencies
     make -j -C "$WAZUH_ROOT_DIR/src" install_dependencies INSTALLDIR=$WAZUH_INSTALLDIR
 }

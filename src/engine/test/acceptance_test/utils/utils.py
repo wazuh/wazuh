@@ -20,7 +20,6 @@ WIN_WAZUH_PATH = os.path.join('C:','Program Files (x86)','ossec-agent')
 WIN_WAZUH_CONF = os.path.join(WIN_WAZUH_PATH, 'ossec.conf')
 WAZUH_SOURCES = os.path.join('/', 'wazuh')
 WAZUH_SOURCE_REPOSITORY = 'https://github.com/wazuh/wazuh.git'
-GEN_OSSEC = os.path.join(WAZUH_SOURCES, 'gen_ossec.sh')
 DEVNULL = open(os.devnull, 'w')
 
 stat_modes = [
