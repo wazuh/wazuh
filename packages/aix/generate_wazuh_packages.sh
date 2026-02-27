@@ -33,6 +33,16 @@ aix_minor=$(echo ${aix_version} | cut -d'.' -f 2)
 
 export PATH=$PATH:/opt/freeware/bin
 
+# Set up certificate bundle for secure connections
+CERT_BUNDLE="${current_path}/certificates/cacert.pem"
+if [[ -f "${CERT_BUNDLE}" ]]; then
+  export CURL_CA_BUNDLE="${CERT_BUNDLE}"
+  export SSL_CERT_FILE="${CERT_BUNDLE}"
+else
+  echo "Warning: Certificate bundle not found at ${CERT_BUNDLE}"
+  echo "SSL certificate verification may fail for HTTPS connections"
+fi
+
 show_help() {
   echo
   echo "Usage: $0 [OPTIONS]"
@@ -60,7 +70,7 @@ check_openssl() {
 # Function to install perl 5.10 on AIX
 build_perl() {
 
-  curl -LO http://www.cpan.org/src/5.0/perl-5.10.1.tar.gz -k -s
+  curl -LO https://www.cpan.org/src/5.0/perl-5.10.1.tar.gz -s
   gunzip perl-5.10.1.tar.gz && tar -xf perl-5.10.1.tar
   cd perl-5.10.1 && ./Configure -des -Dcc='gcc' -Dusethreads
   make && make install
@@ -76,7 +86,7 @@ build_cmake() {
   mv ${socket_lib} ${socket_lib}.bkp
   mkdir -p /home/aix
   cd /home/aix
-  curl -LO http://packages-dev.wazuh.com/deps/aix/precompiled-aix-cmake-3.12.4.tar.gz -k -s
+  curl -LO https://packages-dev.wazuh.com/deps/aix/precompiled-aix-cmake-3.12.4.tar.gz -s
   ln -s /usr/bin/make /usr/bin/gmake
   gunzip precompiled-aix-cmake-3.12.4.tar.gz
   tar -xf precompiled-aix-cmake-3.12.4.tar && cd cmake-3.12.4
@@ -102,92 +112,106 @@ build_environment() {
 
   rpm="rpm -Uvh --nodeps"
 
-  $rpm http://packages-dev.wazuh.com/deps/aix/libiconv-1.14-22.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/autoconf-2.71-1.aix6.1.noarch.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/automake-1.16.2-1.aix6.1.noarch.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/bash-4.4-4.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/bzip2-1.0.6-2.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/coreutils-8.25-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/expat-2.2.6-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/expat-devel-2.2.6-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/gettext-0.17-1.aix5.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/glib2-2.33.2-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/glib2-devel-2.33.2-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/gmp-6.1.1-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/gmp-devel-6.1.1-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/grep-3.0-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/gzip-1.8-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/info-6.4-1.aix5.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/libffi-3.2.1-2.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/libidn-1.33-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/libsigsegv-2.10-2.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/libtool-2.4.6-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/m4-1.4.18-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/make-4.3-1.aix5.3.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/openldap-2.4.44-6.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/openssl-1.0.2g-3.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/openssl-devel-1.0.2g-3.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/pcre-8.42-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/pkg-config-0.29.1-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/readline-7.0-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/sed-4.7-2.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/wget-1.19-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/zlib-1.2.11-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/popt-1.16-2.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/rsync-3.1.2-3.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/tar-1.32-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/curl-7.72.0-1.aix5.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/readline-devel-7.0-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/guile-1.8.8-2.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/unixODBC-2.3.1-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/db-4.8.24-4.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/gdbm-1.10-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/ncurses-6.2-2.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/sqlite-3.33.0-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/sqlite-libs-3.33.0-1.aix6.1.ppc.rpm || true
-  $rpm http://packages-dev.wazuh.com/deps/aix/python-2.7.15-1.aix6.1.ppc.rpm || true
+  # Function to download and install RPM
+  install_rpm() {
+    local url="$1"
+    local filename="$(basename "$url")"
+
+    echo "Downloading $filename..."
+    curl -LO "$url" -s || { echo "Failed to download $url"; return 1; }
+
+    echo "Installing $filename..."
+    $rpm "$filename" || true
+
+    rm -f "$filename"
+  }
+
+  install_rpm https://packages-dev.wazuh.com/deps/aix/libiconv-1.14-22.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/autoconf-2.71-1.aix6.1.noarch.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/automake-1.16.2-1.aix6.1.noarch.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/bash-4.4-4.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/bzip2-1.0.6-2.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/coreutils-8.25-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/expat-2.2.6-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/expat-devel-2.2.6-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/gettext-0.17-1.aix5.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/glib2-2.33.2-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/glib2-devel-2.33.2-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/gmp-6.1.1-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/gmp-devel-6.1.1-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/grep-3.0-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/gzip-1.8-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/info-6.4-1.aix5.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/libffi-3.2.1-2.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/libidn-1.33-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/libsigsegv-2.10-2.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/libtool-2.4.6-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/m4-1.4.18-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/make-4.3-1.aix5.3.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/openldap-2.4.44-6.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/openssl-1.0.2g-3.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/openssl-devel-1.0.2g-3.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/pcre-8.42-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/pkg-config-0.29.1-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/readline-7.0-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/sed-4.7-2.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/wget-1.19-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/zlib-1.2.11-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/popt-1.16-2.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/rsync-3.1.2-3.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/tar-1.32-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/curl-7.72.0-1.aix5.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/readline-devel-7.0-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/guile-1.8.8-2.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/unixODBC-2.3.1-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/db-4.8.24-4.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/gdbm-1.10-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/ncurses-6.2-2.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/sqlite-3.33.0-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/sqlite-libs-3.33.0-1.aix6.1.ppc.rpm
+  install_rpm https://packages-dev.wazuh.com/deps/aix/python-2.7.15-1.aix6.1.ppc.rpm
 
 
 
   if [[ "${aix_major}" = "6" ]] || [[ "${aix_major}" = "7" ]]; then
-    $rpm http://packages-dev.wazuh.com/deps/aix/mpfr-3.1.4-1.aix6.1.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/libmpc-1.0.3-2.aix6.1.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/file-5.32-1.aix6.1.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/file-libs-5.32-1.aix6.1.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/perl-5.30.3-2.aix6.1.ppc.rpm || true
+    install_rpm https://packages-dev.wazuh.com/deps/aix/mpfr-3.1.4-1.aix6.1.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/libmpc-1.0.3-2.aix6.1.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/file-5.32-1.aix6.1.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/file-libs-5.32-1.aix6.1.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/perl-5.30.3-2.aix6.1.ppc.rpm
   fi
 
   if [[ "${aix_major}" = "6" ]]; then
-    $rpm http://packages-dev.wazuh.com/deps/aix/gcc-6.3.0-1.aix6.1.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/gcc-cpp-6.3.0-1.aix6.1.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/libgcc-6.3.0-1.aix6.1.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/libstdc%2B%2B-6.3.0-1.aix6.1.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/libstdc%2B%2B-devel-6.3.0-1.aix6.1.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/gcc-c%2B%2B-6.3.0-1.aix6.1.ppc.rpm || true
+    install_rpm https://packages-dev.wazuh.com/deps/aix/gcc-6.3.0-1.aix6.1.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/gcc-cpp-6.3.0-1.aix6.1.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/libgcc-6.3.0-1.aix6.1.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/libstdc%2B%2B-6.3.0-1.aix6.1.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/libstdc%2B%2B-devel-6.3.0-1.aix6.1.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/gcc-c%2B%2B-6.3.0-1.aix6.1.ppc.rpm
   fi
 
   if [[ "${aix_major}" = "7" ]] && [[ "${aix_minor}" = "1" ]]; then
-    $rpm http://packages-dev.wazuh.com/deps/aix/gcc-6.3.0-1.aix7.1.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/gcc-cpp-6.3.0-1.aix7.1.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/libgcc-6.3.0-1.aix7.1.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/libstdc%2B%2B-6.3.0-1.aix7.1.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/libstdc%2B%2B-devel-6.3.0-1.aix7.1.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/gcc-c%2B%2B-6.3.0-1.aix7.1.ppc.rpm || true
+    install_rpm https://packages-dev.wazuh.com/deps/aix/gcc-6.3.0-1.aix7.1.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/gcc-cpp-6.3.0-1.aix7.1.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/libgcc-6.3.0-1.aix7.1.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/libstdc%2B%2B-6.3.0-1.aix7.1.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/libstdc%2B%2B-devel-6.3.0-1.aix7.1.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/gcc-c%2B%2B-6.3.0-1.aix7.1.ppc.rpm
   fi
 
   if [[ "${aix_major}" = "7" ]] && [[ "${aix_minor}" = "2" ]]; then
-    $rpm http://packages-dev.wazuh.com/deps/aix/gcc-6.3.0-1.aix7.2.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/gcc-cpp-6.3.0-1.aix7.2.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/libgcc-6.3.0-1.aix7.2.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/libstdc%2B%2B-6.3.0-1.aix7.2.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/libstdc%2B%2B-devel-6.3.0-1.aix7.2.ppc.rpm || true
-    $rpm http://packages-dev.wazuh.com/deps/aix/gcc-c%2B%2B-6.3.0-1.aix7.2.ppc.rpm || true
+    install_rpm https://packages-dev.wazuh.com/deps/aix/gcc-6.3.0-1.aix7.2.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/gcc-cpp-6.3.0-1.aix7.2.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/libgcc-6.3.0-1.aix7.2.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/libstdc%2B%2B-6.3.0-1.aix7.2.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/libstdc%2B%2B-devel-6.3.0-1.aix7.2.ppc.rpm
+    install_rpm https://packages-dev.wazuh.com/deps/aix/gcc-c%2B%2B-6.3.0-1.aix7.2.ppc.rpm
   fi
 
-  build_perl
+  build_perl || return 1
 
   if [[ "${aix_major}" = "6" ]] || [[ "${aix_major}" = "7" ]]; then
-    build_cmake
+    build_cmake || return 1
   fi
   return 0
 }
@@ -196,7 +220,7 @@ build_package() {
 
   source_code="http://api.github.com/repos/wazuh/wazuh/tarball/${reference}"
 
-  rm -f wazuh.tar.gz && curl -L ${source_code} -k -o wazuh.tar.gz -s
+  rm -f wazuh.tar.gz && curl -L ${source_code} -o wazuh.tar.gz -s
   rm -rf wazuh-wazuh-* wazuh-agent-*
   extracted_directory=$(gunzip -c wazuh.tar.gz | tar -xvf - | tail -n 1 | cut -d' ' -f2 | cut -d'/' -f1)
   wazuh_version=$(cat ${extracted_directory}/src/VERSION | cut -d'v' -f2)
@@ -294,7 +318,7 @@ main() {
         ;;
         "-e"|"--environment" )
           build_environment
-          exit 0
+          exit $?
         ;;
         "-p"|"--install-path")
           if [ -n "$2" ]
