@@ -77,12 +77,18 @@ inline auto getResponse(const RespOrError<T>& response) -> decltype(std::get<T>(
     return std::get<T>(response);
 }
 
+/**
+ * @copydoc getResponse(const RespOrError<T>&)
+ */
 template<typename T>
 inline auto getResponse(RespOrError<T>& response) -> decltype(std::get<T>(response))
 {
     return std::get<T>(response);
 }
 
+/**
+ * @copydoc getResponse(const RespOrError<T>&)
+ */
 template<typename T>
 inline auto getResponse(RespOrError<T>&& response) -> decltype(std::get<T>(std::move(response)))
 {
@@ -90,15 +96,15 @@ inline auto getResponse(RespOrError<T>&& response) -> decltype(std::get<T>(std::
 }
 
 /**
- * @brief Get the Response object
+ * @brief Get the Error object
  *
- * @note This function should be used only if isError(respOrError) returns false
+ * @note This function should be used only if isError(respOrError) returns true
  *
  * @tparam T Type of the response
- * @param response
- * @return T
+ * @param error The variant containing the error
+ * @return The Error object
  *
- * @throws std::bad_variant_access if response is an error
+ * @throws std::bad_variant_access if response is not an error
  */
 template<typename T>
 inline auto getError(const RespOrError<T>& error) -> decltype(std::get<Error>(error))
@@ -106,23 +112,39 @@ inline auto getError(const RespOrError<T>& error) -> decltype(std::get<Error>(er
     return std::get<Error>(error);
 }
 
+/**
+ * @copydoc getError(const RespOrError<T>&)
+ */
 template<typename T>
 inline auto getError(RespOrError<T>& error) -> decltype(std::get<Error>(error))
 {
     return std::get<Error>(error);
 }
 
+/**
+ * @copydoc getError(const RespOrError<T>&)
+ */
 template<typename T>
 inline auto getError(RespOrError<T>&& error) -> decltype(std::get<Error>(std::move(error)))
 {
     return std::get<Error>(std::move(error));
 }
 
+/**
+ * @brief Get the Error from an OptError.
+ *
+ * @param error The optional error.
+ * @return Error& Reference to the error.
+ * @throws std::bad_optional_access if error is not present.
+ */
 inline Error& getError(OptError& error)
 {
     return error.value();
 }
 
+/**
+ * @copydoc getError(OptError&)
+ */
 inline const Error& getError(const OptError& error)
 {
     return error.value();

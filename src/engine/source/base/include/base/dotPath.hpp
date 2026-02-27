@@ -53,12 +53,22 @@ private:
         }
     }
 
+    /**
+     * @brief Copy the content from another DotPath.
+     *
+     * @param rhs The DotPath to copy from.
+     */
     void copy(const DotPath& rhs)
     {
         m_str = rhs.m_str;
         m_parts = rhs.m_parts;
     }
 
+    /**
+     * @brief Move the content from another DotPath.
+     *
+     * @param rhs The DotPath to move from.
+     */
     void move(DotPath&& rhs) noexcept
     {
         m_str = std::move(rhs.m_str);
@@ -70,10 +80,10 @@ public:
     ~DotPath() = default;
 
     /**
-     * @brief Construct a new Dot Path object
+     * @brief Construct a new Dot Path object from a string.
      *
-     * @param str
-     * @throws std::runtime_error if the path is empty or has empty parts
+     * @param str The dot-separated path string.
+     * @throws std::runtime_error if the path has empty parts.
      */
     DotPath(const std::string& str)
         : m_str(str)
@@ -82,10 +92,10 @@ public:
     }
 
     /**
-     * @brief Construct a new Dot Path object
+     * @brief Construct a new Dot Path object from a C-string.
      *
-     * @param str
-     * @throws std::runtime_error if the path is empty or has empty parts
+     * @param str The dot-separated path C-string.
+     * @throws std::runtime_error if the path has empty parts.
      */
     DotPath(const char str[])
         : m_str(str)
@@ -94,11 +104,11 @@ public:
     }
 
     /**
-     * @brief Construct a new Dot Path object
+     * @brief Construct a new Dot Path from a range of path parts.
      *
-     * @param begin
-     * @param end
-     * @throws std::runtime_error if the path is empty or has empty parts
+     * @param begin Iterator to the first part.
+     * @param end Iterator past the last part.
+     * @throws std::runtime_error if the path has empty parts.
      */
     DotPath(decltype(m_parts.cbegin()) begin, const decltype(m_parts.cend())& end)
     {
@@ -115,16 +125,16 @@ public:
     }
 
     /**
-     * @brief Construct a new Dot Path object
+     * @brief Copy-construct a new Dot Path object.
      *
-     * @param rhs
+     * @param rhs The DotPath to copy from.
      */
     DotPath(const DotPath& rhs) { copy(rhs); }
 
     /**
-     * @brief Construct a new Dot Path object
+     * @brief Move-construct a new Dot Path object.
      *
-     * @param rhs
+     * @param rhs The DotPath to move from.
      */
     DotPath(DotPath&& rhs) noexcept { move(std::move(rhs)); }
 
@@ -166,9 +176,33 @@ public:
      */
     auto cend() const { return m_parts.cend(); }
 
+    /**
+     * @brief Equality comparison operator.
+     *
+     * @param lhs Left-hand side DotPath.
+     * @param rhs Right-hand side DotPath.
+     * @return true if both paths have the same string representation.
+     * @return false otherwise.
+     */
     friend bool operator==(const DotPath& lhs, const DotPath& rhs) { return lhs.m_str == rhs.m_str; }
+
+    /**
+     * @brief Inequality comparison operator.
+     *
+     * @param lhs Left-hand side DotPath.
+     * @param rhs Right-hand side DotPath.
+     * @return true if the paths differ.
+     * @return false otherwise.
+     */
     friend bool operator!=(const DotPath& lhs, const DotPath& rhs) { return !(lhs == rhs); }
 
+    /**
+     * @brief Stream insertion operator.
+     *
+     * @param os Output stream.
+     * @param dp The DotPath to print.
+     * @return std::ostream& The output stream.
+     */
     friend std::ostream& operator<<(std::ostream& os, const DotPath& dp)
     {
         os << dp.m_str;
