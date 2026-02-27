@@ -13740,10 +13740,8 @@ field: discard_events()
 Immediately stops event processing in the pipeline by setting the discard flag. This helper is used to prevent events from being enriched and/or indexed based on specific conditions.
 
 Behavior depends on policy configuration (index_discarded_events):
-- If false: All event fields will be preserved, only the discard flag is set to true.
-After that the event won't be enriched and it won't reach the indexer.
-- If true: All event fields will be erased (only the discard flag remains).
-This ensures that the event reaching the indexer will be almost empty.
+- If false: All event fields will be preserved, only the discard flag is set to true. After that the event won't be enriched and it won't reach the indexer.
+- If true: All event fields will be erased (only the discard flag remains). This ensures that the event reaching the indexer will be almost empty.
 
 Usage Rules:
 - Must be used with the exact target field 'wazuh.space.event_discarded'
