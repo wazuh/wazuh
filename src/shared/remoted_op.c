@@ -81,7 +81,8 @@ void parse_uname_string (char *uname,
                 }
             }
         } else {
-            *(str_tmp + strlen(str_tmp) - 1) = '\0';
+            size_t str_tmp_len = strlen(str_tmp);
+            if (str_tmp_len > 0 && str_tmp[str_tmp_len - 1] == ']') str_tmp[str_tmp_len - 1] = '\0';
         }
 
         // Get os_major
@@ -116,14 +117,20 @@ void parse_uname_string (char *uname,
                 *str_tmp = '\0';
                 str_tmp += 2;
                 os_strdup(str_tmp, osd->os_version);
-                *(osd->os_version + strlen(osd->os_version) - 1) = '\0';
+                {
+                    size_t ver_len = strlen(osd->os_version);
+                    if (ver_len > 0 && osd->os_version[ver_len - 1] == ']') osd->os_version[ver_len - 1] = '\0';
+                }
 
                 // os_major.os_minor (os_codename)
                 if (str_tmp = strstr(osd->os_version, " ("), str_tmp) {
                     *str_tmp = '\0';
                     str_tmp += 2;
                     os_strdup(str_tmp, osd->os_codename);
-                    *(osd->os_codename + strlen(osd->os_codename) - 1) = '\0';
+                    {
+                        size_t cod_len = strlen(osd->os_codename);
+                        if (cod_len > 0 && osd->os_codename[cod_len - 1] == ')') osd->os_codename[cod_len - 1] = '\0';
+                    }
                 }
 
                 // Get os_major
@@ -146,7 +153,8 @@ void parse_uname_string (char *uname,
                 }
 
             } else {
-                *(osd->os_name + strlen(osd->os_name) - 1) = '\0';
+                size_t name_len = strlen(osd->os_name);
+                if (name_len > 0 && osd->os_name[name_len - 1] == ']') osd->os_name[name_len - 1] = '\0';
             }
 
             // os_name|os_platform
