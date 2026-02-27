@@ -257,6 +257,33 @@ TEST_F(ScaTest, StopUnblocksPauseWaiters)
     pauseThread.join();
 }
 
+TEST_F(ScaTest, StopDoesNotBlockIfPauseMutexIsHeld)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto scaMock = std::make_shared<SCAMock>(mockDBSync, nullptr);
+
+    // Simulate contention on pause mutex. Stop() must not wait on this mutex.
+    scaMock->lockPauseMutex();
+
+    std::atomic<bool> stopReturned {false};
+    std::thread stopThread([&scaMock, &stopReturned]()
+    {
+        scaMock->Stop();
+        stopReturned.store(true);
+    });
+
+    for (int i = 0; i < 50 && !stopReturned.load(); ++i)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    EXPECT_TRUE(stopReturned.load());
+
+    // Always release mutex owned by this thread.
+    scaMock->unlockPauseMutex();
+    stopThread.join();
+}
+
 TEST_F(ScaTest, SetGlobalWmExecFunctionStoresPointer)
 {
     auto mockFunc = [](char*, char**, int*, int, const char*)
