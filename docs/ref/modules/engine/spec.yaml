@@ -1781,13 +1781,16 @@ components:
 
     TesterRunPost_Request:
       type: object
-      required: [name, event]
+      required: [name, event, agent_metadata]
       properties:
         name:
           $ref: "#/components/schemas/TesterSessionName"
         event:
           type: string
           description: "Event to test"
+        agent_metadata:
+          type: object
+          description: "Metadata about the agent sending the event"
         trace_level:
           type: string
           enum:
