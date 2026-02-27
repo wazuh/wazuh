@@ -39,4 +39,16 @@ class SCAMock : public SecurityConfigurationAssessment
             std::lock_guard<std::mutex> lock(m_pauseMutex);
             m_pauseCv.notify_all();
         }
+
+        /// @brief Testing helper to lock pause mutex from test thread.
+        void lockPauseMutex()
+        {
+            m_pauseMutex.lock();
+        }
+
+        /// @brief Testing helper to unlock pause mutex from test thread.
+        void unlockPauseMutex()
+        {
+            m_pauseMutex.unlock();
+        }
 };

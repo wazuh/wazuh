@@ -74,6 +74,17 @@ SecurityConfigurationAssessment::SecurityConfigurationAssessment(std::string dbP
     LoggingHelper::getInstance().log(LOG_INFO, "SCA initialized.");
 }
 
+SecurityConfigurationAssessment::~SecurityConfigurationAssessment()
+{
+    // Best-effort teardown guard: release possible waiters before condition_variable destruction.
+    m_keepRunning = false;
+    m_paused.store(false);
+    m_scanInProgress.store(false);
+    m_syncInProgress.store(false);
+    m_cv.notify_all();
+    m_pauseCv.notify_all();
+}
+
 void SecurityConfigurationAssessment::Run()
 {
     if (!m_enabled)
@@ -265,15 +276,14 @@ void SecurityConfigurationAssessment::Stop()
     LoggingHelper::getInstance().log(LOG_INFO, "SecurityConfigurationAssessment::Stop() called");
     m_keepRunning = false;
     m_paused.store(false);
+    m_scanInProgress.store(false);
+    m_syncInProgress.store(false);
 
     // Wake up the Run() loop if it's sleeping
-    m_cv.notify_one();
+    m_cv.notify_all();
 
     // Wake up pause() waiters so shutdown cannot block on condition variable destruction.
-    {
-        std::lock_guard<std::mutex> lock(m_pauseMutex);
-        m_pauseCv.notify_all();
-    }
+    m_pauseCv.notify_all();
 
     // Signal sync protocol to stop any ongoing operations
     if (m_spSyncProtocol)

@@ -35,7 +35,7 @@ class SecurityConfigurationAssessment
                                         std::shared_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr);
 
         /// @brief Destructor
-        ~SecurityConfigurationAssessment() = default;
+        ~SecurityConfigurationAssessment();
 
         /// @brief Deleted copy constructor
         SecurityConfigurationAssessment(const SecurityConfigurationAssessment&) = delete;
