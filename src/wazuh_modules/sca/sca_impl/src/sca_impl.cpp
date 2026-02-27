@@ -264,9 +264,16 @@ void SecurityConfigurationAssessment::Stop()
 {
     LoggingHelper::getInstance().log(LOG_INFO, "SecurityConfigurationAssessment::Stop() called");
     m_keepRunning = false;
+    m_paused.store(false);
 
     // Wake up the Run() loop if it's sleeping
     m_cv.notify_one();
+
+    // Wake up pause() waiters so shutdown cannot block on condition variable destruction.
+    {
+        std::lock_guard<std::mutex> lock(m_pauseMutex);
+        m_pauseCv.notify_all();
+    }
 
     // Signal sync protocol to stop any ongoing operations
     if (m_spSyncProtocol)
