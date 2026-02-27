@@ -86,7 +86,7 @@ Install()
     # Binary install will use the previous generated code.
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
         # Download external libraries if missing
-        find external/* > /dev/null 2>&1 || ${MAKEBIN} deps ${ALPINE_DEPS} TARGET=${INSTYPE}
+        [ -z "$(find external -mindepth 1 -maxdepth 1 -type d 2>/dev/null)" ] && ${MAKEBIN} deps ${ALPINE_DEPS} TARGET=${INSTYPE}
 
         if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
             CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"

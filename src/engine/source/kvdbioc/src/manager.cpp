@@ -275,6 +275,18 @@ void KVDBManager::add(std::string_view name)
     tryCleanRetired();
 }
 
+
+bool KVDBManager::exists(std::string_view dbName) const noexcept
+{
+    std::shared_lock<std::shared_mutex> lk(m_registryMutex);
+    auto it = m_handles.find(std::string(dbName));
+    if (it == m_handles.end())
+    {
+        return false;
+    }
+    return it->second->hasInstance();
+}
+
 std::optional<json::Json> KVDBManager::get(std::string_view dbName, std::string_view key) const
 {
     const std::string db(dbName);
