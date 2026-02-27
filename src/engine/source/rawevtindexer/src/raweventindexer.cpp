@@ -5,10 +5,8 @@
 namespace raweventindexer
 {
 
-RawEventIndexer::RawEventIndexer(std::weak_ptr<wiconnector::IWIndexerConnector> connector,
-                                 std::string_view indexName,
-                                 bool isEnabled)
-    : m_enabled(isEnabled)
+RawEventIndexer::RawEventIndexer(std::weak_ptr<wiconnector::IWIndexerConnector> connector, std::string_view indexName)
+    : m_enabled(false)
     , m_connector(std::move(connector))
     , m_indexName(indexName)
 {
@@ -104,6 +102,17 @@ void RawEventIndexer::disable()
 bool RawEventIndexer::isEnabled() const
 {
     return m_enabled.load(std::memory_order_acquire);
+}
+
+bool RawEventIndexer::onRemoteConfig(const json::Json& value)
+{
+    if (!value.isBool())
+    {
+        return false;
+    }
+
+    value.getBool().value() ? enable() : disable();
+    return true;
 }
 
 } // namespace raweventindexer

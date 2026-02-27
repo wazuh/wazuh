@@ -32,6 +32,11 @@ public:
 
     bool existsPolicy(std::string_view) override { return false; }
 
+    json::Json search(std::string_view, std::size_t, const json::Json&, const json::Json&) override
+    {
+        return json::Json {R"({"hits":{"hits":[]}})"};
+    }
+
 private:
     std::mutex mutex;
 };
@@ -39,7 +44,7 @@ private:
 TEST(RawEventIndexerComponentTest, EndToEndWorkflowWithDefaultIndex)
 {
     auto connector = std::make_shared<FakeIndexerConnector>();
-    raweventindexer::RawEventIndexer indexer(connector, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME, false);
+    raweventindexer::RawEventIndexer indexer(connector, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
 
     indexer.index(std::string {"ignored-while-disabled"});
     EXPECT_TRUE(connector->calls.empty());
@@ -64,7 +69,8 @@ TEST(RawEventIndexerComponentTest, EndToEndWorkflowWithDefaultIndex)
 TEST(RawEventIndexerComponentTest, ConnectorFailuresAreHandledAndFlowContinues)
 {
     auto connector = std::make_shared<FakeIndexerConnector>();
-    raweventindexer::RawEventIndexer indexer(connector, "wazuh-events-raw-v5-app", true);
+    raweventindexer::RawEventIndexer indexer(connector, "wazuh-events-raw-v5-app");
+    indexer.enable();
 
     connector->throwOnIndex.store(true);
     EXPECT_NO_THROW(indexer.index(std::string {"will-fail"}));
@@ -80,7 +86,8 @@ TEST(RawEventIndexerComponentTest, ConnectorFailuresAreHandledAndFlowContinues)
 TEST(RawEventIndexerComponentTest, SupportsConcurrentIndexingWhenEnabled)
 {
     auto connector = std::make_shared<FakeIndexerConnector>();
-    raweventindexer::RawEventIndexer indexer(connector, "wazuh-events-raw-v5-concurrent", true);
+    raweventindexer::RawEventIndexer indexer(connector, "wazuh-events-raw-v5-concurrent");
+    indexer.enable();
 
     constexpr int kThreads = 8;
     constexpr int kEventsPerThread = 50;
@@ -111,7 +118,8 @@ TEST(RawEventIndexerComponentTest, SupportsConcurrentIndexingWhenEnabled)
 TEST(RawEventIndexerComponentTest, NoThrowWhenConnectorExpiresAtRuntime)
 {
     auto connector = std::make_shared<FakeIndexerConnector>();
-    raweventindexer::RawEventIndexer indexer(connector, "wazuh-events-raw-v5", true);
+    raweventindexer::RawEventIndexer indexer(connector, "wazuh-events-raw-v5");
+    indexer.enable();
 
     connector.reset();
     EXPECT_NO_THROW(indexer.index(std::string {"payload"}));

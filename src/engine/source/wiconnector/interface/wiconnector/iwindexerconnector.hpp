@@ -81,6 +81,21 @@ public:
      * @throws IndexerConnectorException if there is an error during the query
      */
     virtual bool existsPolicy(std::string_view space) = 0;
+
+    /**
+     * @brief Executes a generic search query against an index.
+     *
+     * Intended for runtime settings and similar read-only lookups.
+     *
+     * @param index Target index name.
+     * @param size Maximum number of hits to return.
+     * @param query Search query object.
+     * @param source Source filter object (includes/excludes).
+     * @return Search response JSON (hits object).
+     * @throws std::exception on connector or query failures.
+     */
+    virtual json::Json
+    search(std::string_view index, std::size_t size, const json::Json& query, const json::Json& source) = 0;
 };
 
 } // namespace wiconnector

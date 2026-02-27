@@ -13,6 +13,7 @@ public:
     MOCK_METHOD(PolicyResources, getPolicy, (std::string_view space), (override));
     MOCK_METHOD(std::string, getPolicyHash, (std::string_view space), (override));
     MOCK_METHOD(bool, existsPolicy, (std::string_view space), (override));
+    MOCK_METHOD(json::Json, search, (std::string_view index, std::size_t size, const json::Json& query, const json::Json& source), (override));
 };
 } // namespace wiconnector::mocks
 

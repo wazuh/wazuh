@@ -1,5 +1,5 @@
-#ifndef _RAWEVENTINDEXER_RAWEVENTINDEXER_HPP
-#define _RAWEVENTINDEXER_RAWEVENTINDEXER_HPP
+#ifndef RAWEVENTINDEXER_RAWEVENTINDEXER_HPP
+#define RAWEVENTINDEXER_RAWEVENTINDEXER_HPP
 
 #include <atomic>
 #include <memory>
@@ -31,8 +31,7 @@ public:
      * @param isEnabled Initial enabled state (default: false)
      */
     explicit RawEventIndexer(std::weak_ptr<wiconnector::IWIndexerConnector> connector,
-                             std::string_view indexName = DEFAULT_INDEX_NAME,
-                             bool isEnabled = false);
+                             std::string_view indexName = DEFAULT_INDEX_NAME);
 
     /**
      * @copydoc IRawEventIndexer::index
@@ -64,9 +63,14 @@ public:
      */
     bool isEnabled() const override;
 
+    /**
+     * @copydoc IRawEventIndexer::onRemoteConfig
+     */
+    bool onRemoteConfig(const json::Json& value) override;
+
     ~RawEventIndexer() override = default;
 };
 
 } // namespace raweventindexer
 
-#endif // _RAWEVENTINDEXER_RAWEVENTINDEXER_HPP
+#endif // RAWEVENTINDEXER_RAWEVENTINDEXER_HPP

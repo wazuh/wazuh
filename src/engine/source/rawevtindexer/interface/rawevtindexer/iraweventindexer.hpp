@@ -1,8 +1,10 @@
-#ifndef _RAWEVENTINDEXER_IRAWEVENTINDEXER_HPP
-#define _RAWEVENTINDEXER_IRAWEVENTINDEXER_HPP
+#ifndef RAWEVENTINDEXER_IRAWEVENTINDEXER_HPP
+#define RAWEVENTINDEXER_IRAWEVENTINDEXER_HPP
 
 #include <string>
 #include <string_view>
+
+#include <base/json.hpp>
 
 namespace raweventindexer
 {
@@ -49,8 +51,16 @@ public:
      * @return true if the indexer is enabled, false otherwise.
      */
     virtual bool isEnabled() const = 0;
+
+    /**
+     * @brief Applies a remote runtime setting payload to this module.
+     *
+     * @param cnf Remote setting payload for this module.
+     * @return true if payload was accepted and applied, false otherwise.
+     */
+    virtual bool onRemoteConfig(const json::Json& value) = 0;
 };
 
 } // namespace raweventindexer
 
-#endif // _RAWEVENTINDEXER_IRAWEVENTINDEXER_HPP
+#endif // RAWEVENTINDEXER_IRAWEVENTINDEXER_HPP

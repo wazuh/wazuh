@@ -1,5 +1,5 @@
-#ifndef _RAWEVENTINDEXER_MOCKRAWEVENTINDEXER_HPP
-#define _RAWEVENTINDEXER_MOCKRAWEVENTINDEXER_HPP
+#ifndef RAWEVENTINDEXER_MOCKRAWEVENTINDEXER_HPP
+#define RAWEVENTINDEXER_MOCKRAWEVENTINDEXER_HPP
 
 #include <gmock/gmock.h>
 
@@ -16,7 +16,8 @@ public:
     MOCK_METHOD(void, enable, (), (override));
     MOCK_METHOD(void, disable, (), (override));
     MOCK_METHOD(bool, isEnabled, (), (const, override));
+    MOCK_METHOD(bool, onRemoteConfig, (const json::Json& cnf), (override));
 };
 } // namespace raweventindexer::mocks
 
-#endif // _RAWEVENTINDEXER_MOCKRAWEVENTINDEXER_HPP
+#endif // RAWEVENTINDEXER_MOCKRAWEVENTINDEXER_HPP
