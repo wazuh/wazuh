@@ -1,0 +1,11 @@
+- name: Test_429_Retry
+  description: Check ms-graph retry behavior when the API returns HTTP 429
+  configuration_parameters:
+    ENABLED: 'yes'
+    ONLY_FUTURE: 'no'
+    INTERVAL: '1s'
+    CURL_SIZE: '10M'
+    TENANT_ID: 'tenant_id'
+    RESOURCE_NAME: 'auditLogs'
+    RESOURCE_RELATIONSHIP1: 'signIns'
+    RESOURCE_RELATIONSHIP2: 'signIns'

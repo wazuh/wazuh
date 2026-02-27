@@ -48,6 +48,10 @@ int __wrap_isDebug() {
     return mock();
 }
 
+void __wrap_sleep(unsigned int seconds) {
+    check_expected(seconds);
+}
+
 static void wmodule_cleanup(wmodule *module){
     wm_ms_graph* module_data = (wm_ms_graph*)module->data;
     if(module_data){
@@ -3887,6 +3891,366 @@ static void test_wm_ms_graph_scan_apps_devices_renew_token_failed(void **state) 
     os_free(headers[0]);
 }
 
+static void test_wm_ms_graph_scan_apps_devices_unsuccessful_status_code(void **state) {
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
+    module_data->curl_max_size = 1024L;
+    module_data->page_size = 10;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("token", module_data->auth_config[0]->access_token);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
+    module_data->auth_config[0]->token_expiration_time = time(NULL) + 100;
+
+    curl_response* response;
+    os_calloc(1, sizeof(curl_response), response);
+    response->status_code = 400;
+    response->max_size_reached = false;
+    os_strdup("{\"error\":\"bad_request\"}", response->body);
+    os_strdup("test", response->header);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/managedDevices?$top=10&$select=id,deviceName'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, response);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "Received unsuccessful status code when attempting to get managed devices for app '12345': Status code was '400' & response was '{\"error\":\"bad_request\"}'");
+
+    char *headers[] = { NULL, NULL };
+    os_strdup("Authorization: Bearer token", headers[0]);
+    cJSON *app_id = cJSON_CreateString("12345");
+
+    cJSON *result = wm_ms_graph_scan_apps_devices(module_data, app_id, module_data->auth_config[0]->query_fqdn, headers, module_data->auth_config[0]);
+
+    assert_non_null(result);
+    assert_int_equal(cJSON_GetArraySize(result), 0);
+    cJSON_Delete(result);
+    cJSON_Delete(app_id);
+    os_free(headers[0]);
+}
+
+static void test_wm_ms_graph_scan_apps_devices_401_invalidates_token(void **state) {
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
+    module_data->curl_max_size = 1024L;
+    module_data->page_size = 10;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("token", module_data->auth_config[0]->access_token);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
+    module_data->auth_config[0]->token_expiration_time = time(NULL) + 100;
+
+    curl_response* response;
+    os_calloc(1, sizeof(curl_response), response);
+    response->status_code = 401;
+    response->max_size_reached = false;
+    os_strdup("{\"error\":\"unauthorized\"}", response->body);
+    os_strdup("test", response->header);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/managedDevices?$top=10&$select=id,deviceName'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, response);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "Received unsuccessful status code when attempting to get managed devices for app '12345': Status code was '401' & response was '{\"error\":\"unauthorized\"}'");
+
+    char *headers[] = { NULL, NULL };
+    os_strdup("Authorization: Bearer token", headers[0]);
+    cJSON *app_id = cJSON_CreateString("12345");
+
+    cJSON *result = wm_ms_graph_scan_apps_devices(module_data, app_id, module_data->auth_config[0]->query_fqdn, headers, module_data->auth_config[0]);
+
+    assert_non_null(result);
+    assert_int_equal(cJSON_GetArraySize(result), 0);
+    assert_int_equal(module_data->auth_config[0]->token_expiration_time, time(NULL));
+    cJSON_Delete(result);
+    cJSON_Delete(app_id);
+    os_free(headers[0]);
+}
+
+static void test_wm_ms_graph_scan_apps_devices_reached_curl_size(void **state) {
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
+    module_data->curl_max_size = 1024L;
+    module_data->page_size = 10;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("token", module_data->auth_config[0]->access_token);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
+    module_data->auth_config[0]->token_expiration_time = time(NULL) + 100;
+
+    curl_response* response;
+    os_calloc(1, sizeof(curl_response), response);
+    response->status_code = 200;
+    response->max_size_reached = true;
+    os_strdup("", response->body);
+    os_strdup("test", response->header);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/managedDevices?$top=10&$select=id,deviceName'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, response);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "Reached maximum CURL size when attempting to get managed devices for app '12345'. Consider increasing the value of 'curl_max_size'.");
+
+    char *headers[] = { NULL, NULL };
+    os_strdup("Authorization: Bearer token", headers[0]);
+    cJSON *app_id = cJSON_CreateString("12345");
+
+    cJSON *result = wm_ms_graph_scan_apps_devices(module_data, app_id, module_data->auth_config[0]->query_fqdn, headers, module_data->auth_config[0]);
+
+    assert_non_null(result);
+    assert_int_equal(cJSON_GetArraySize(result), 0);
+    cJSON_Delete(result);
+    cJSON_Delete(app_id);
+    os_free(headers[0]);
+}
+
+static void test_wm_ms_graph_http_get_with_retry_success_first_attempt(void **state) {
+    char *headers[] = { NULL, NULL };
+    os_strdup("Authorization: Bearer token", headers[0]);
+
+    curl_response* response;
+    os_calloc(1, sizeof(curl_response), response);
+    response->status_code = 200;
+    response->max_size_reached = false;
+    os_strdup("{\"value\":[]}", response->body);
+    os_strdup("test", response->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, response);
+
+    curl_response* result = wm_ms_graph_http_get_with_retry(headers, "https://example.com", 1024, "alerts_v2");
+
+    assert_non_null(result);
+    assert_int_equal(result->status_code, 200);
+    wurl_free_response(result);
+    os_free(headers[0]);
+}
+
+static void test_wm_ms_graph_http_get_with_retry_429_then_success(void **state) {
+    char *headers[] = { NULL, NULL };
+    os_strdup("Authorization: Bearer token", headers[0]);
+
+    curl_response* response_429;
+    os_calloc(1, sizeof(curl_response), response_429);
+    response_429->status_code = 429;
+    response_429->max_size_reached = false;
+    os_strdup("", response_429->body);
+    os_strdup("Retry-After: 5", response_429->header);
+
+    curl_response* response_200;
+    os_calloc(1, sizeof(curl_response), response_200);
+    response_200->status_code = 200;
+    response_200->max_size_reached = false;
+    os_strdup("{\"value\":[]}", response_200->body);
+    os_strdup("test", response_200->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, response_429);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 5s (attempt 1/3).");
+
+    expect_value(__wrap_sleep, seconds, 5);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, response_200);
+
+    curl_response* result = wm_ms_graph_http_get_with_retry(headers, "https://example.com", 1024, "alerts_v2");
+
+    assert_non_null(result);
+    assert_int_equal(result->status_code, 200);
+    wurl_free_response(result);
+    os_free(headers[0]);
+}
+
+static void test_wm_ms_graph_http_get_with_retry_429_exhausted(void **state) {
+    char *headers[] = { NULL, NULL };
+    os_strdup("Authorization: Bearer token", headers[0]);
+
+    // Attempt 1/3
+    curl_response* response_429_1;
+    os_calloc(1, sizeof(curl_response), response_429_1);
+    response_429_1->status_code = 429;
+    response_429_1->max_size_reached = false;
+    os_strdup("", response_429_1->body);
+    os_strdup("Retry-After: 5", response_429_1->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, response_429_1);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 5s (attempt 1/3).");
+    expect_value(__wrap_sleep, seconds, 5);
+
+    // Attempt 2/3
+    curl_response* response_429_2;
+    os_calloc(1, sizeof(curl_response), response_429_2);
+    response_429_2->status_code = 429;
+    response_429_2->max_size_reached = false;
+    os_strdup("", response_429_2->body);
+    os_strdup("Retry-After: 5", response_429_2->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, response_429_2);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 5s (attempt 2/3).");
+    expect_value(__wrap_sleep, seconds, 5);
+
+    // Attempt 3/3
+    curl_response* response_429_3;
+    os_calloc(1, sizeof(curl_response), response_429_3);
+    response_429_3->status_code = 429;
+    response_429_3->max_size_reached = false;
+    os_strdup("", response_429_3->body);
+    os_strdup("Retry-After: 5", response_429_3->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, response_429_3);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 5s (attempt 3/3).");
+    expect_value(__wrap_sleep, seconds, 5);
+
+    // Final attempt — retries exhausted, returns 429
+    curl_response* response_final;
+    os_calloc(1, sizeof(curl_response), response_final);
+    response_final->status_code = 429;
+    response_final->max_size_reached = false;
+    os_strdup("", response_final->body);
+    os_strdup("test", response_final->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, response_final);
+
+    curl_response* result = wm_ms_graph_http_get_with_retry(headers, "https://example.com", 1024, "alerts_v2");
+
+    assert_non_null(result);
+    assert_int_equal(result->status_code, 429);
+    wurl_free_response(result);
+    os_free(headers[0]);
+}
+
+static void test_wm_ms_graph_http_get_with_retry_429_retry_after_exceeds_warn(void **state) {
+    char *headers[] = { NULL, NULL };
+    os_strdup("Authorization: Bearer token", headers[0]);
+
+    curl_response* response_429;
+    os_calloc(1, sizeof(curl_response), response_429);
+    response_429->status_code = 429;
+    response_429->max_size_reached = false;
+    os_strdup("", response_429->body);
+    os_strdup("Retry-After: 400", response_429->header);
+
+    curl_response* response_200;
+    os_calloc(1, sizeof(curl_response), response_200);
+    response_200->status_code = 200;
+    response_200->max_size_reached = false;
+    os_strdup("{\"value\":[]}", response_200->body);
+    os_strdup("test", response_200->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, response_429);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "Retry-After value (400s) for relationship 'alerts_v2' exceeds (300s).");
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 400s (attempt 1/3).");
+
+    expect_value(__wrap_sleep, seconds, 400);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, response_200);
+
+    curl_response* result = wm_ms_graph_http_get_with_retry(headers, "https://example.com", 1024, "alerts_v2");
+
+    assert_non_null(result);
+    assert_int_equal(result->status_code, 200);
+    wurl_free_response(result);
+    os_free(headers[0]);
+}
+
 static void test_wm_ms_graph_ensure_valid_token_token_valid(void **state) {
     wm_ms_graph_auth auth = {0};
     auth.access_token = strdup("valid_token");
@@ -4091,6 +4455,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_renew_token_failed, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_apps_devices_renew_token, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_apps_devices_renew_token_failed, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_apps_devices_unsuccessful_status_code, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_apps_devices_401_invalidates_token, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_apps_devices_reached_curl_size, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_http_get_with_retry_success_first_attempt, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_http_get_with_retry_429_then_success, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_http_get_with_retry_429_exhausted, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_http_get_with_retry_429_retry_after_exceeds_warn, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_ensure_valid_token_token_valid, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_ensure_valid_token_token_expired_and_renewed, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_ensure_valid_token_token_missing_and_renewed, setup_conf, teardown_conf)

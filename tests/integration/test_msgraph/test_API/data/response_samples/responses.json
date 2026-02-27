@@ -50,6 +50,15 @@
       }
     },
     {
+      "url": "http://graph.microsoft.com/v1.0/auditLogs/signIns?$top=*&$filter=createdDateTime+ge+*+and+createdDateTime+lt+*",
+      "method": "GET",
+      "responseCode": 429,
+      "responseHeaders": {
+        "Retry-After": "10"
+      },
+      "responseBody": {}
+    },
+    {
       "url": "http://*/*/*/*$top=*&$filter=createdDateTime+ge+*+and+createdDateTime+lt+*",
       "method": "GET",
       "responseCode": 403,
