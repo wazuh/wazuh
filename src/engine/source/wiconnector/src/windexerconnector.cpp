@@ -32,6 +32,7 @@ constexpr std::string_view IOC_HASHES_DOC_ID {"__ioc_type_hashes__"}; ///< IOC h
 constexpr std::size_t SINGLE_RESULT_SIZE {1};                         ///< Size for single result queries
 constexpr std::size_t HASH_QUERY_SIZE {1};                            ///< Size for hash query (expecting single result)
 constexpr std::size_t SAFE_STREAM_PAGE_SIZE {1000};                   ///< Hard cap for streaming page size
+constexpr std::string_view REMOTE_CONF_INDEX {".wazuh-settings"};     ///< remote conf index name
 const std::array<std::string_view, 12> IOC_SOURCE_FILTER_INCLUDES = {"document.name",
                                                                      "document.type",
                                                                      "document.id",
@@ -749,6 +750,47 @@ std::size_t WIndexerConnector::queryByBatches(std::string_view indexName,
     }
 
     return processedDocs;
+}
+
+json::Json WIndexerConnector::getRemoteConfigEngine()
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    // TODO: Extract common helper to validate/extract first hit _source for single-doc searches.
+    nlohmann::json query = {{"match_all", nlohmann::json::object()}};
+    nlohmann::json source = {{"includes", {"engine"}}, {"excludes", nlohmann::json::array()}};
+
+    nlohmann::json hits = m_indexerConnectorAsync->search(REMOTE_CONF_INDEX, SINGLE_RESULT_SIZE, query, source);
+    size_t totalHits = getTotalHits(hits);
+
+    if (totalHits == 0)
+    {
+        throw IndexerConnectorException("Remote settings document not found");
+    }
+
+    const auto& hitArray = hits["hits"];
+    if (!hitArray.is_array() || hitArray.empty())
+    {
+        throw IndexerConnectorException("No hits returned for remote settings");
+    }
+
+    const auto& firstHit = hitArray[0];
+    if (!firstHit.contains("_source"))
+    {
+        throw IndexerConnectorException("Remote settings hit does not contain _source");
+    }
+
+    const auto& sourceData = firstHit["_source"];
+    if (!sourceData.contains("engine") || !sourceData["engine"].is_object())
+    {
+        throw IndexerConnectorException("Remote settings _source.engine missing or invalid");
+    }
+
+    return json::Json {sourceData["engine"].dump().c_str()};
 }
 
 }; // namespace wiconnector

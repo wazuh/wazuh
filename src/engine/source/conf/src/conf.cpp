@@ -65,6 +65,9 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // Raw Event Indexer
     addUnit<bool>(key::RAW_EVENT_INDEXER_ENABLED, "WAZUH_RAW_EVENT_INDEXER_ENABLED", false);
 
+    // RemoteConfig Indexer
+    addUnit<size_t>(key::REMOTE_CONF_REFRESH_INTERVAL, "WAZUH_REMOTE_CONF_REFRESH_INTERVAL", 300);
+
     // Queue event module
     addUnit<size_t>(key::EVENT_QUEUE_SIZE, "WAZUH_EVENT_QUEUE_SIZE", 0x1 << 17);
     addUnit<size_t>(key::EVENT_QUEUE_EPS, "WAZUH_EVENT_QUEUE_EPS", 0);

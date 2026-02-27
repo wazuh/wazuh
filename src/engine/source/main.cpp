@@ -39,6 +39,7 @@
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
 #include <rawevtindexer/raweventindexer.hpp>
+#include <remoteconf/remoteconfmanager.hpp>
 #include <router/orchestrator.hpp>
 #include <scheduler/scheduler.hpp>
 #include <schemf/schema.hpp>
@@ -230,6 +231,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
     std::shared_ptr<raweventindexer::RawEventIndexer> rawEventIndexer;
+    std::shared_ptr<remoteconf::RemoteConfManager> remoteConf;
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
     std::shared_ptr<cm::store::CMStore> cmStore;
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
@@ -604,6 +606,39 @@ int main(int argc, char* argv[])
             LOG_INFO("Archiver initialized.");
             exitHandler.add([archiver, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                             { archiver->deactivate(); });
+        }
+
+        // Raw Event Indexer
+        if (enableProcessing)
+        {
+            rawEventIndexer = std::make_shared<raweventindexer::RawEventIndexer>(
+                indexerConnector, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
+            LOG_INFO("Raw Event Indexer initialized (index: {}).",
+                     raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
+        }
+
+        // Remote runtime settings refresh
+        if (enableProcessing)
+        {
+            remoteConf = std::make_shared<remoteconf::RemoteConfManager>(indexerConnector, store);
+
+            remoteConf->initialize();
+
+            const auto remoteConfRefreshInterval =
+                confManager.get<std::size_t>(conf::key::REMOTE_CONF_REFRESH_INTERVAL);
+            scheduler->scheduleTask("remote-conf-refresh",
+                                    scheduler::TaskConfig {.interval = remoteConfRefreshInterval,
+                                                           .CPUPriority = 0,
+                                                           .timeout = 0,
+                                                           .taskFunction = [remoteConf]()
+                                                           {
+                                                               remoteConf->refresh();
+                                                           }});
+            LOG_INFO("Remote configuration refresh scheduled with interval: {} seconds.", remoteConfRefreshInterval);
+        }
+        else
+        {
+            LOG_INFO("Remote configuration refresh DISABLED (event processing is disabled).");
         }
 
         // Create and configure the api endpoints

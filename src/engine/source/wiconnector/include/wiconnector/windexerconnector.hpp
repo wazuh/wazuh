@@ -122,6 +122,18 @@ public:
     streamIocsByType(std::string_view iocType, std::size_t batchSize, const IocRecordCallback& onIoc) override;
 
     /**
+     * @brief Retrieves normalized remote engine configuration from wazuh-indexer.
+     *
+     * Implements IWIndexerConnector::getRemoteConfigEngine by reading one document
+     * from `.wazuh-settings`, extracting `/_source/engine`, validating it is an object,
+     * and returning only that object.
+     *
+     * @return json::Json Engine settings object with runtime key/value pairs.
+     * @throws std::exception on connector/search failures or invalid payload shape.
+     */
+    json::Json getRemoteConfigEngine() override;
+
+    /**
      * @brief Shuts down the indexer connector, releasing resources and stopping operations.
      *
      * This method ensures that the underlying asynchronous indexer connector is properly
