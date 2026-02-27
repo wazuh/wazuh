@@ -31,7 +31,7 @@
 
 
 extern OSHash *files_status;
-extern volatile int _startup_completed;
+extern atomic_int_t _startup_completed;
 
 bool w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t position);
 ssize_t w_set_to_pos(logreader *lf, long pos, int mode);
@@ -87,7 +87,7 @@ static int setup_local_hashmap(void **state) {
 }
 
 static int teardown_local_hashmap(void **state) {
-    _startup_completed = 0;
+    atomic_int_set(&_startup_completed, 0);
     if (teardown_hashmap(state) != 0) {
         return 1;
     }
@@ -2103,7 +2103,7 @@ void test_w_set_to_last_line_read_OSHash_Get_ex_fail(void ** state) {
     logreader log_reader = {.fp = (FILE *)1, .file = "test"};
 
     test_position = &position_stack;
-    _startup_completed = 0;
+    atomic_int_set(&_startup_completed, 0);
 
     expect_function_call(__wrap_pthread_rwlock_wrlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
@@ -2148,7 +2148,7 @@ void test_w_set_to_last_line_read_no_bookmark_runtime(void ** state) {
 
     test_position = &position_stack;
 
-    _startup_completed = 1;
+    atomic_int_set(&_startup_completed, 1);
 
     expect_function_call(__wrap_pthread_rwlock_wrlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
@@ -2198,7 +2198,7 @@ void test_w_set_to_last_line_read_no_bookmark_runtime_hash_error(void ** state) 
 
     test_position = &position_stack;
 
-    _startup_completed = 1;
+    atomic_int_set(&_startup_completed, 1);
 
     expect_function_call(__wrap_pthread_rwlock_wrlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
@@ -2253,7 +2253,7 @@ void test_w_set_to_last_line_read_no_bookmark_startup_hash_error(void ** state) 
 
     test_position = &position_stack;
 
-    _startup_completed = 0;
+    atomic_int_set(&_startup_completed, 0);
 
     expect_function_call(__wrap_pthread_rwlock_wrlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
