@@ -1,0 +1,53 @@
+name: 5.X - Coverity Docker image - Create and publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      docker_image_tag:
+        description: |
+          Tag name of the Docker image to be uploaded.
+          Use only '-', '_', '.' and alphanumeric characters.
+          Default is '5.0'.
+        required: false
+        default: '5.0'
+  push:
+    paths:
+      - 'tools/testing/coverity/**'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: wazuh/coverity-scan
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      PROJECT: wazuh/wazuh
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Coverity tarball
+        run: |
+          wget -q https://scan.coverity.com/download/linux64 \
+            --post-data "token=${{ secrets.COVERITY_SCAN_WAZUH_TOKEN }}&project=${PROJECT//\//%2F}" \
+            -O tools/testing/coverity/coverity_tool.tgz
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: tools/testing/coverity
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.docker_image_tag || '5.0' }}
