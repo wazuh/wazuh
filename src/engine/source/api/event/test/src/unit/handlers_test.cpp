@@ -4,7 +4,6 @@
 #include <api/event/handlers.hpp>
 #include <api/event/ndJsonParser.hpp>
 #include <archiver/mockArchiver.hpp>
-#include <rawevtindexer/mockraweventindexer.hpp>
 #include <router/mockRouter.hpp>
 
 using namespace api::adapter;
@@ -21,11 +20,9 @@ std::string makeBadRequestBodyFromParser(std::string_view body)
 {
     try
     {
-        protocol::EventHooks hooks {protocol::EventHook {}, protocol::EventHook {}};
-        hooks[0] = nullptr;
-        hooks[1] = nullptr;
-
-        protocol::parseNDJson(body, hooks);
+        // Single-hook API: pass an empty hook to validate parsing only.
+        protocol::EventHook noop {};
+        protocol::parseNDJson(body, noop);
 
         // If it didn't throw, this helper was used incorrectly for a "bad request" test.
         return "{\"error\": \"Expected parser error but parseNDJson() succeeded\", \"code\": 400}";
@@ -51,7 +48,7 @@ TEST_P(EventHandlerTest, Handler)
 
 using HandlerT = Params<::router::IRouterAPI, MockRouterAPI>;
 
-// Valid NDJson payloads for the new parser:
+// Valid NDJson payloads:
 //  - First line: H {json}\n
 //  - Each event starts with: E <ossec_event>
 static const std::string HDR1 = R"({"agent":{"name":"worker","id":"000"}})";
@@ -76,11 +73,9 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
             {
-                // Use Nice mocks because the handler always calls archiver->archive(),
-                // and rawIndexer may be null/disabled depending on the test.
+                // Nice mock: handler always may call archiver->archive()
                 auto archiver = std::make_shared<testing::NiceMock<archiver::mocks::MockArchiver>>();
-                std::shared_ptr<::raweventindexer::IRawEventIndexer> rawIndexer; // nullptr => raw indexing disabled
-                return pushEvent(orchestrator, archiver, rawIndexer);
+                return pushEvent(orchestrator, archiver);
             },
             []()
             {
@@ -102,8 +97,7 @@ INSTANTIATE_TEST_SUITE_P(
             [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
             {
                 auto archiver = std::make_shared<testing::NiceMock<archiver::mocks::MockArchiver>>();
-                std::shared_ptr<::raweventindexer::IRawEventIndexer> rawIndexer; // nullptr
-                return pushEvent(orchestrator, archiver, rawIndexer);
+                return pushEvent(orchestrator, archiver);
             },
             []()
             {
@@ -129,8 +123,7 @@ INSTANTIATE_TEST_SUITE_P(
             [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
             {
                 auto archiver = std::make_shared<testing::NiceMock<archiver::mocks::MockArchiver>>();
-                std::shared_ptr<::raweventindexer::IRawEventIndexer> rawIndexer; // nullptr
-                return pushEvent(orchestrator, archiver, rawIndexer);
+                return pushEvent(orchestrator, archiver);
             },
             []()
             {
@@ -139,35 +132,6 @@ INSTANTIATE_TEST_SUITE_P(
                 return res;
             },
             [](auto& mock) { EXPECT_CALL(mock, postEvent(testing::_)).Times(2); }),
-
-        // Success (1 event) + raw indexer enabled -> index() is called
-        HandlerT(
-            []()
-            {
-                httplib::Request req;
-                req.headers.emplace("Content-Type", "plain/text");
-                req.body = std::string("H ") + HDR1 + "\n" + "E " + EV1 + "\n";
-                return req;
-            },
-            [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
-            {
-                auto archiver = std::make_shared<testing::NiceMock<archiver::mocks::MockArchiver>>();
-
-                auto rawIndexer = std::make_shared<testing::NiceMock<raweventindexer::mocks::MockRawEventIndexer>>();
-                ON_CALL(*rawIndexer, isEnabled()).WillByDefault(testing::Return(true));
-
-                // Disambiguate overload: handler calls index(std::string) (rawDoc.str()).
-                EXPECT_CALL(*rawIndexer, index(testing::A<const std::string&>())).Times(1);
-
-                return pushEvent(orchestrator, archiver, rawIndexer);
-            },
-            []()
-            {
-                httplib::Response res;
-                res.status = httplib::StatusCode::OK_200;
-                return res;
-            },
-            [](auto& mock) { EXPECT_CALL(mock, postEvent(testing::_)); }),
 
         // Error parsing event (second header found where parser expects event marker)
         HandlerT(
@@ -181,8 +145,7 @@ INSTANTIATE_TEST_SUITE_P(
             [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
             {
                 auto archiver = std::make_shared<testing::NiceMock<archiver::mocks::MockArchiver>>();
-                std::shared_ptr<::raweventindexer::IRawEventIndexer> rawIndexer;
-                return pushEvent(orchestrator, archiver, rawIndexer);
+                return pushEvent(orchestrator, archiver);
             },
             []()
             {
@@ -212,13 +175,16 @@ INSTANTIATE_TEST_SUITE_P(
 
                 const std::string expectedArchived = std::string("H ") + HDR1 + "\n" + "E " + EV1;
 
-                // Disambiguate overload: handler calls archive(std::string_view).
                 EXPECT_CALL(*archiver, archive(testing::A<std::string_view>()))
                     .WillOnce(testing::Invoke([expectedArchived](std::string_view v)
                                               { EXPECT_EQ(v, std::string_view {expectedArchived}); }));
 
-                std::shared_ptr<::raweventindexer::IRawEventIndexer> rawIndexer;
-                return pushEvent(orchestrator, archiver, rawIndexer);
+                // inner handler stores only weak_ptr, so keep archiver alive by capturing it
+                auto inner = pushEvent(orchestrator, archiver);
+                return [archiver, inner](const httplib::Request& req, httplib::Response& res) mutable
+                {
+                    inner(req, res);
+                };
             },
             []()
             {
@@ -228,7 +194,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](auto& mock) { EXPECT_CALL(mock, postEvent(testing::_)); }),
 
-        // Success multiple events + raw indexer enabled -> index() called per event
+        // Success multiple events: ensure postEvent called twice
         HandlerT(
             []()
             {
@@ -240,12 +206,7 @@ INSTANTIATE_TEST_SUITE_P(
             [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
             {
                 auto archiver = std::make_shared<testing::NiceMock<archiver::mocks::MockArchiver>>();
-
-                auto rawIndexer = std::make_shared<testing::StrictMock<raweventindexer::mocks::MockRawEventIndexer>>();
-                EXPECT_CALL(*rawIndexer, isEnabled()).Times(1).WillOnce(testing::Return(true));
-                EXPECT_CALL(*rawIndexer, index(testing::A<const std::string&>())).Times(2);
-
-                return pushEvent(orchestrator, archiver, rawIndexer);
+                return pushEvent(orchestrator, archiver);
             },
             []()
             {

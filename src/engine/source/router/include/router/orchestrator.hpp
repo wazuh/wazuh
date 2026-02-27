@@ -9,6 +9,7 @@
 #include <bk/icontroller.hpp>
 #include <builder/ibuilder.hpp>
 #include <fastqueue/iqueue.hpp>
+#include <rawevtindexer/iraweventindexer.hpp>
 #include <store/istore.hpp>
 
 #include <router/iapi.hpp>
@@ -17,7 +18,7 @@
 namespace router
 {
 
-using ProdQueueType = fastqueue::IQueue<base::Event>;
+using ProdQueueType = fastqueue::IQueue<IngestEvent>;
 using TestQueueType = fastqueue::IQueue<test::EventTest>;
 
 // Forward declarations
@@ -33,9 +34,6 @@ class Orchestrator : public IOrchestratorAPI
 {
 
 protected:
-    class EpsCounter;                         ///< PIMPL for the EPS counter
-    std::shared_ptr<EpsCounter> m_epsCounter; ///< Counter to measure the events per second processed by the router
-
     constexpr static const char* STORE_PATH_TESTER_TABLE = "router/tester/0"; ///< Default path for the tester state
     constexpr static const char* STORE_PATH_ROUTER_TABLE = "router/router/0"; ///< Default path for the router state
 
@@ -52,9 +50,12 @@ protected:
 
     // Configuration options
     std::weak_ptr<store::IStore> m_wStore; ///< Read and store configurations
-    base::Name m_storeTesterName;                  ///< Path of internal configuration state for testers
-    base::Name m_storeRouterName;                  ///< Path of internal configuration state for routers
-    std::size_t m_testTimeout;                     ///< Timeout for the tests
+    base::Name m_storeTesterName;          ///< Path of internal configuration state for testers
+    base::Name m_storeRouterName;          ///< Path of internal configuration state for routers
+    std::size_t m_testTimeout;             ///< Timeout for the tests
+
+    // Raw Event Indexer
+    std::shared_ptr<raweventindexer::IRawEventIndexer> m_rawIndexer;
 
     template<typename T>
     using WorkerOp = std::function<base::OptError(const std::shared_ptr<IWorker<T>>&)>;
@@ -63,12 +64,9 @@ protected:
 
     void dumpTestersInternal() const; ///< Dump testers (m_syncMutex lock must be held)
     void dumpRoutersInternal() const; ///< Dump routers (m_syncMutex lock must be held)
-    void dumpEpsInternal() const;     ///< Dump EPS (m_syncMutex lock must be held)
 
-    void dumpTesters() const;                                                ///< Dump the testers to the store
-    void dumpRouters() const;                                                ///< Dump the routers to the store
-    void dumpEps() const;                                                    ///< Dump the EPS to the store
-    void loadEpsCounter(const std::weak_ptr<store::IStore>& wStore); ///< Load the EPS counter from the store
+    void dumpTesters() const; ///< Dump the testers to the store
+    void dumpRouters() const; ///< Dump the routers to the store
 
     /**
      * @brief Initialize a worker
@@ -101,6 +99,8 @@ public:
         std::shared_ptr<bk::IControllerMaker> m_controllerMaker; ///< Controller maker for creating controllers
         std::shared_ptr<ProdQueueType> m_prodQueue;              ///< The event queue
         std::shared_ptr<TestQueueType> m_testQueue;              ///< The test queue
+
+        std::shared_ptr<raweventindexer::IRawEventIndexer> m_rawIndexer; ///< Raw indexer used in worker drain path
 
         int m_testTimeout; ///< Timeout for handlers of testers
 
@@ -173,8 +173,7 @@ public:
     /**
      * @copydoc router::IRouterAPI::postEvent
      */
-    void postEvent(base::Event&& event) override { m_eventQueue->push(std::move(event)); }
-
+    void postEvent(IngestEvent&& event) override { m_eventQueue->push(std::move(event)); }
 
     /**************************************************************************
      * ITesterAPI

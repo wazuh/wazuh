@@ -1,8 +1,8 @@
 #ifndef _API_EVENT_NDJSONPARSER_HPP
 #define _API_EVENT_NDJSONPARSER_HPP
 
-#include <array>
 #include <functional>
+#include <memory>
 #include <stdexcept>
 #include <string_view>
 
@@ -12,12 +12,12 @@
 
 namespace api::event::protocol
 {
-using EventHook = std::function<void(const json::Json& header, std::string_view rawEvent)>;
-using EventHooks = std::array<EventHook, 2>;
+using IngestEvent = std::pair<std::shared_ptr<const json::Json>, std::string>; // {header, rawEvent}
+using EventHook = std::function<void(IngestEvent&&)>;
 
 constexpr auto PARSER_ERROR_MSG = "NDJson parser error, {}";
 
-inline void parseNDJson(std::string_view batch, const EventHooks& hooks)
+inline void parseNDJson(std::string_view batch, const EventHook& hook)
 {
     try
     {
@@ -39,7 +39,7 @@ inline void parseNDJson(std::string_view batch, const EventHooks& hooks)
         }
 
         std::string_view headerJson = headerLine.substr(2);
-        json::Json header(headerJson);
+        auto header = std::make_shared<const json::Json>(headerJson);
 
         // ---- Parse events using "\nE " as delimiter ----
         std::size_t pos = firstNewline + NEWLINE_SIZE;
@@ -77,13 +77,10 @@ inline void parseNDJson(std::string_view batch, const EventHooks& hooks)
 
             std::string_view rawEvent = batch.substr(eventStart, eventEnd - eventStart);
 
-            // Call all hooks with this event
-            for (const auto& hook : hooks)
+            if (hook)
             {
-                if (hook)
-                {
-                    hook(header, rawEvent);
-                }
+                IngestEvent ingestEvent {header, std::string(rawEvent)};
+                hook(std::move(ingestEvent));
             }
 
             // Move to next event position
