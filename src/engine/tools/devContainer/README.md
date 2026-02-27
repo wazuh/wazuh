@@ -116,7 +116,7 @@ docker-compose up -d
 ### wazuh_copy_certs.sh
 Deploys generated certificates to an existing wazuh-manager installation:
 - Copies SSL/TLS certificates from `e2e/certs/` to `/var/wazuh-manager/etc/certs/`
-- Sets appropriate ownership (`wazuh:wazuh`) and permissions (640)
+- Sets appropriate ownership (`wazuh-manager:wazuh-manager`) and permissions (640)
 - Maps certificate files to wazuh-manager expected names:
   - `wazuh-1-key.pem` → `manager-key.pem`
   - `wazuh-1.pem` → `manager.pem`
