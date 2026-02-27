@@ -228,7 +228,7 @@ static curl_response* wm_ms_graph_http_get_with_retry(char** headers, const char
                 relationship_name, retry_after, attempt + 1, WM_MS_GRAPH_MAX_RETRIES);
             wurl_free_response(response);
             response = NULL;
-            sleep(retry_after);
+            w_sleep_until(time(NULL) + retry_after);
             continue;
         }
         break;

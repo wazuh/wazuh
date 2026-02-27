@@ -48,10 +48,6 @@ int __wrap_isDebug() {
     return mock();
 }
 
-void __wrap_sleep(unsigned int seconds) {
-    check_expected(seconds);
-}
-
 static void wmodule_cleanup(wmodule *module){
     wm_ms_graph* module_data = (wm_ms_graph*)module->data;
     if(module_data){
@@ -1342,6 +1338,7 @@ void test_main_token(void **state) {
 }
 
 void test_main_relationships(void **state) {
+    current_time = 1;
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
@@ -4088,8 +4085,6 @@ static void test_wm_ms_graph_http_get_with_retry_429_then_success(void **state) 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 5s (attempt 1/3).");
 
-    expect_value(__wrap_sleep, seconds, 5);
-
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
     expect_any(__wrap_wurl_http_request, url);
@@ -4130,7 +4125,6 @@ static void test_wm_ms_graph_http_get_with_retry_429_exhausted(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 5s (attempt 1/3).");
-    expect_value(__wrap_sleep, seconds, 5);
 
     // Attempt 2/3
     curl_response* response_429_2;
@@ -4151,7 +4145,6 @@ static void test_wm_ms_graph_http_get_with_retry_429_exhausted(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 5s (attempt 2/3).");
-    expect_value(__wrap_sleep, seconds, 5);
 
     // Attempt 3/3
     curl_response* response_429_3;
@@ -4172,7 +4165,6 @@ static void test_wm_ms_graph_http_get_with_retry_429_exhausted(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 5s (attempt 3/3).");
-    expect_value(__wrap_sleep, seconds, 5);
 
     // Final attempt — retries exhausted, returns 429
     curl_response* response_final;
@@ -4231,8 +4223,6 @@ static void test_wm_ms_graph_http_get_with_retry_429_retry_after_exceeds_warn(vo
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 400s (attempt 1/3).");
-
-    expect_value(__wrap_sleep, seconds, 400);
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
