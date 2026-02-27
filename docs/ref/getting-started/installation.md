@@ -42,7 +42,7 @@ sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem /var/wazuh-manager/etc/c
 # Set proper permissions
 sudo chmod 500 /var/wazuh-manager/etc/certs
 sudo chmod 400 /var/wazuh-manager/etc/certs/*
-sudo chown -R wazuh:wazuh /var/wazuh-manager/etc/certs
+sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
 ```
 
 **Note:** Replace `node-1` with the name you used when generating the certificates.

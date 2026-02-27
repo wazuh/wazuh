@@ -151,7 +151,7 @@ Batch 100-500 events for optimal throughput. Header generated once per batch.
 
 ## Security
 
-Unix socket transport (no network exposure). Socket permissions: wazuh:wazuh 0660.
+Unix socket transport (no network exposure). Socket permissions: wazuh-manager:wazuh-manager 0660.
 
 ## References
 
