@@ -1,11 +1,328 @@
 name: 5.X - Agent Startup Smoke Test
 
 on:
+  workflow_call:
+    inputs:
+      platform:
+        description: 'Platform to test (linux, windows, macos, all)'
+        required: false
+        type: string
+        default: 'all'
+
   workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
+      platform:
+        description: 'Platform to test'
+        required: false
+        type: choice
+        default: 'all'
+        options:
+          - all
+          - linux
+          - windows
+          - macos
 
 jobs:
-  dummy_job:
-    if: false
+  test-linux-deb-amd64:
+    if: inputs.platform == 'all' || inputs.platform == 'linux'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    name: Test Linux Agent DEB (amd64) startup
     steps:
-      - run: echo "This is a dummy job and will never run"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download DEB package artifact
+        uses: actions/download-artifact@v4
+        if: inputs.base_branch == ''
+        with:
+          pattern: 'wazuh-agent*amd64*.deb'
+          path: /tmp/packages
+          merge-multiple: true
+
+      - name: Download DEB package artifact (manual)
+        uses: dawidd6/action-download-artifact@v3
+        if: inputs.base_branch != ''
+        with:
+          workflow: 5_builderpackage_agent-linux.yml
+          workflow_conclusion: success
+          name_is_regexp: true
+          name: 'wazuh-agent.*amd64.*\.deb'
+          path: /tmp/packages
+          if_no_artifact_found: fail
+          check_artifacts: true
+          search_artifacts: true
+          branch: ${{ inputs.base_branch }}
+
+      - name: Get package name and version
+        id: package
+        run: |
+          PACKAGE_NAME=$(find /tmp/packages -type f -name "wazuh-agent*amd64*.deb" ! -name "*dbg*" -exec basename {} \; | head -n1)
+          if [ -z "$PACKAGE_NAME" ]; then
+            echo "ERROR: No package found"
+            exit 1
+          fi
+          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
+          echo "Found package: $PACKAGE_NAME"
+          VERSION=$(echo $PACKAGE_NAME | grep -oP '\d+\.\d+\.\d+' | head -n 1)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_deb_agent_builder_amd64" >> $GITHUB_ENV
+          echo "TAG=$VERSION" >> $GITHUB_ENV
+
+      - name: Download docker image
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+
+      - name: Run smoke test in Docker
+        run: |
+          TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/5_testintegration_agent-start/
+          docker run --rm \
+            -v $TESTS_PATH:/tests \
+            -v /tmp/packages:/packages \
+            --entrypoint '/tests/smoke_startup_test.sh' \
+            ${{ env.CONTAINER_NAME }}:${{ env.TAG }}
+
+  test-linux-rpm-x86_64:
+    if: inputs.platform == 'all' || inputs.platform == 'linux'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    name: Test Linux Agent RPM (x86_64) startup
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download RPM package artifact
+        uses: actions/download-artifact@v4
+        if: inputs.base_branch == ''
+        with:
+          pattern: '*x86_64*.rpm'
+          path: /tmp/packages
+          merge-multiple: true
+
+      - name: Download RPM package artifact (manual)
+        uses: dawidd6/action-download-artifact@v3
+        if: inputs.base_branch != ''
+        with:
+          workflow: 5_builderpackage_agent-linux.yml
+          workflow_conclusion: success
+          name_is_regexp: true
+          name: 'wazuh-agent.*x86_64.*\.rpm'
+          path: /tmp/packages
+          if_no_artifact_found: fail
+          check_artifacts: true
+          search_artifacts: true
+          branch: ${{ inputs.base_branch }}
+
+      - name: Get package name and version
+        id: package
+        run: |
+          PACKAGE_NAME=$(find /tmp/packages -type f -name "wazuh-agent*x86_64*.rpm" ! -name "*dbg*" ! -name "*debug*" ! -name "*debuginfo*" -exec basename {} \; | head -n1)
+          if [ -z "$PACKAGE_NAME" ]; then
+            echo "ERROR: No package found"
+            exit 1
+          fi
+          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
+          echo "Found package: $PACKAGE_NAME"
+          VERSION=$(echo $PACKAGE_NAME | grep -oP '\d+\.\d+\.\d+' | head -n 1)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_rpm_agent_builder_amd64" >> $GITHUB_ENV
+          echo "TAG=$VERSION" >> $GITHUB_ENV
+
+      - name: Download docker image
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+
+      - name: Run smoke test in Docker
+        run: |
+          TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/5_testintegration_agent-start/
+          docker run --rm \
+            -v $TESTS_PATH:/tests \
+            -v /tmp/packages:/packages \
+            --entrypoint '/tests/smoke_startup_test.sh' \
+            ${{ env.CONTAINER_NAME }}:${{ env.TAG }}
+
+  test-windows:
+    if: inputs.platform == 'all' || inputs.platform == 'windows'
+    runs-on: windows-2022
+    timeout-minutes: 30
+    name: Test Windows Agent startup
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download MSI package artifact
+        uses: actions/download-artifact@v4
+        if: inputs.base_branch == ''
+        with:
+          pattern: 'wazuh-agent*windows*.msi'
+          path: C:\packages
+          merge-multiple: true
+
+      - name: Download MSI package artifact (manual)
+        uses: dawidd6/action-download-artifact@v3
+        if: inputs.base_branch != ''
+        with:
+          workflow: 5_builderpackage_agent-windows.yml
+          workflow_conclusion: success
+          name_is_regexp: true
+          name: 'wazuh-agent.*windows.*\.msi'
+          path: C:\packages
+          if_no_artifact_found: fail
+          check_artifacts: true
+          search_artifacts: true
+          branch: ${{ inputs.base_branch }}
+
+      - name: Get package name
+        id: package
+        shell: pwsh
+        run: |
+          $PACKAGE = Get-ChildItem -Path "C:\packages" -Filter "wazuh-agent*windows*.msi" -File -Recurse | Where-Object { $_.Name -notmatch 'debug' } | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $PACKAGE) {
+            Write-Host "ERROR: No MSI package found"
+            Get-ChildItem -Path "C:\packages" -Recurse | Format-Table Name, FullName
+            exit 1
+          }
+          echo "package-path=$PACKAGE" >> $env:GITHUB_OUTPUT
+          Write-Host "Found package: $PACKAGE"
+
+      - name: Install Wazuh agent
+        shell: pwsh
+        run: |
+          $msiPath = "${{ steps.package.outputs.package-path }}"
+          $arguments = @(
+            "/i"
+            "`"$msiPath`""
+            "/q"
+            "WAZUH_MANAGER=`"1.2.3.4`""
+            "/l installer.log"
+          )
+
+          Start-Process msiexec.exe -ArgumentList $arguments -Wait -NoNewWindow
+          $installerfile = Get-Content installer.log
+          if ($installerfile -match "Wazuh Agent -- Installation completed successfully") {
+            Write-Output "Installation successfully."
+          } else {
+            Write-Output "The installation could not be completed."
+            exit 1
+          }
+
+      - name: Start Wazuh agent service
+        shell: pwsh
+        run: |
+          Start-Service wazuhsvc
+
+      - name: Wait for agent to initialize
+        shell: pwsh
+        run: Start-Sleep -Seconds 10
+
+      - name: Verify agent is running
+        shell: pwsh
+        run: |
+          $service = Get-Service wazuhsvc
+          if ($service.Status -ne 'Running') {
+            Write-Host "ERROR: Service is not running. Status: $($service.Status)"
+            exit 1
+          }
+          Write-Host "Agent service is running"
+
+      - name: Stop Wazuh agent service
+        shell: pwsh
+        run: |
+          Stop-Service -Name wazuhsvc
+          $service = Get-Service -Name wazuhsvc
+          if ($service.Status -ne 'Stopped') {
+            Write-Host "WARNING: Service did not stop cleanly. Status: $($service.Status)"
+            exit 1
+          } else {
+            Write-Host "Agent service stopped successfully"
+          }
+
+  test-macos-arm64:
+    if: inputs.platform == 'all' || inputs.platform == 'macos'
+    runs-on: macos-14
+    timeout-minutes: 30
+    name: Test macOS Agent (arm64) startup
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download PKG package artifact
+        uses: actions/download-artifact@v4
+        if: inputs.base_branch == ''
+        with:
+          pattern: 'wazuh-agent*arm64*.pkg'
+          path: /tmp/packages
+          merge-multiple: true
+
+      - name: Download PKG package artifact (manual)
+        uses: dawidd6/action-download-artifact@v3
+        if: inputs.base_branch != ''
+        with:
+          workflow: 5_builderpackage_agent-macos.yml
+          workflow_conclusion: success
+          name_is_regexp: true
+          name: 'wazuh-agent.*arm64.*\.pkg'
+          path: /tmp/packages
+          if_no_artifact_found: fail
+          check_artifacts: true
+          search_artifacts: true
+          branch: ${{ inputs.base_branch }}
+
+      - name: Get package name
+        id: package
+        run: |
+          PACKAGE=$(find /tmp/packages -type f -name "wazuh-agent*.pkg" ! -name "*debug*" | head -n1)
+          if [ -z "$PACKAGE" ]; then
+            echo "ERROR: No PKG package found in /tmp/packages matching pattern 'wazuh-agent*.pkg' (excluding '*debug*')."
+            exit 1
+          fi
+          echo "package-path=$PACKAGE" >> $GITHUB_OUTPUT
+          echo "Found package: $PACKAGE"
+
+      - name: Install Wazuh agent
+        run: |
+          echo "WAZUH_MANAGER='1.2.3.4'" > /tmp/wazuh_envs
+          sudo installer -pkg "${{ steps.package.outputs.package-path }}" -target / | sudo tee installer.log
+          if grep -q "The install was successful" "installer.log"; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed."
+            exit 1
+          fi
+
+      - name: Test daemons with -t flag
+        run: |
+          DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-execd"
+          echo "Testing daemons with -t flag..."
+          for daemon in $DAEMONS; do
+            echo "Testing ${daemon}..."
+            if ! sudo /Library/Ossec/bin/${daemon} -t; then
+              echo "ERROR: ${daemon} -t failed with exit code $?"
+              exit 1
+            fi
+            echo "${daemon} -t passed"
+          done
+
+      - name: Start Wazuh agent
+        run: |
+          sudo /Library/Ossec/bin/wazuh-control start
+
+      - name: Wait for agent to initialize
+        run: sleep 10
+
+      - name: Verify agent is running
+        run: |
+          if ! sudo /Library/Ossec/bin/wazuh-control status; then
+            echo "ERROR: Agent status check failed"
+            exit 1
+          fi
+          echo "Agent is running"
+
+      - name: Stop Wazuh agent
+        run: |
+          sudo /Library/Ossec/bin/wazuh-control stop
+          echo "Agent stopped successfully"
