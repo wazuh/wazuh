@@ -14,6 +14,14 @@ namespace hlp::abs
 {
 // TODO: Split trace from extracted value and build a single Result and Parse definition for logpar and hlp.
 
+/**
+ * @brief Abstract parser result that supports nesting.
+ *
+ * Holds an optional extracted value, remaining input, success/failure state,
+ * a trace string, and optionally nested child results from sub-parsers.
+ *
+ * @tparam T The type of the extracted value.
+ */
 template<typename T>
 class Result
 {
@@ -139,54 +147,127 @@ public:
     std::string_view trace() const { return m_trace; }
 };
 
+/**
+ * @brief Create a success result with no value.
+ *
+ * @tparam T Result value type.
+ * @param remaining Remaining input.
+ * @return Result<T> A successful result without a value.
+ */
 template<typename T>
 auto makeSuccess(std::string_view remaining)
 {
     return Result<T>({}, remaining, true, {}, false);
 }
 
+/**
+ * @brief Create a success result with a value.
+ *
+ * @tparam T Result value type.
+ * @param value The extracted value.
+ * @param remaining Remaining input.
+ * @return Result<T> A successful result with a value.
+ */
 template<typename T>
 auto makeSuccess(T&& value, std::string_view remaining)
 {
     return Result<T>(std::move(value), remaining, true, {}, true);
 }
 
+/**
+ * @brief Create a success result with a value and nested results.
+ *
+ * @tparam T Result value type.
+ * @tparam Nested Nested result types.
+ * @param value The extracted value.
+ * @param remaining Remaining input.
+ * @param nested Nested child results.
+ * @return Result<T> A successful result.
+ */
 template<typename T, typename... Nested>
 auto makeSuccess(T&& value, std::string_view remaining, Nested&&... nested)
 {
     return Result<T>(std::move(value), remaining, true, {}, true, std::move(nested)...);
 }
 
+/**
+ * @brief Create a success result with no value but with nested results (vector).
+ *
+ * @tparam T Result value type.
+ * @param remaining Remaining input.
+ * @param nested Nested child results.
+ * @return Result<T> A successful result.
+ */
 template<typename T>
 auto makeSuccess(std::string_view remaining, typename Result<T>::Nested&& nested)
 {
     return Result<T>({}, remaining, true, {}, false, std::move(nested));
 }
 
+/**
+ * @brief Create a success result with no value but with nested results (variadic).
+ *
+ * @tparam T Result value type.
+ * @tparam Nested Nested result types.
+ * @param remaining Remaining input.
+ * @param nested Nested child results.
+ * @return Result<T> A successful result.
+ */
 template<typename T, typename... Nested>
 auto makeSuccess(std::string_view remaining, Nested&&... nested)
 {
     return Result<T>({}, remaining, true, {}, false, std::move(nested)...);
 }
 
+/**
+ * @brief Create a failure result.
+ *
+ * @tparam T Result value type.
+ * @param remaining Remaining input.
+ * @param trace Failure context/name.
+ * @return Result<T> A failure result.
+ */
 template<typename T>
 auto makeFailure(std::string_view remaining, std::string_view trace)
 {
     return Result<T>({}, remaining, false, trace, false);
 }
 
+/**
+ * @brief Create a failure result with nested results (vector).
+ *
+ * @tparam T Result value type.
+ * @param remaining Remaining input.
+ * @param trace Failure context/name.
+ * @param nested Nested child results.
+ * @return Result<T> A failure result.
+ */
 template<typename T>
 auto makeFailure(std::string_view remaining, std::string_view trace, typename Result<T>::Nested&& nested)
 {
     return Result<T>({}, remaining, false, trace, false, std::move(nested));
 }
 
+/**
+ * @brief Create a failure result with nested results (variadic).
+ *
+ * @tparam T Result value type.
+ * @param remaining Remaining input.
+ * @param trace Failure context/name.
+ * @param nested Nested child results.
+ * @return Result<T> A failure result.
+ */
 template<typename T, typename... Nested>
 auto makeFailure(std::string_view remaining, std::string_view trace, Nested&&... nested)
 {
     return Result<T>({}, remaining, false, trace, false, std::move(nested)...);
 }
 
+/**
+ * @brief Abstract parser type: a function from input to Result.
+ *
+ * @tparam T The type of the extracted value.
+ */
 template<typename T>
 using Parser = std::function<Result<T>(std::string_view)>;
 } // namespace hlp::abs
