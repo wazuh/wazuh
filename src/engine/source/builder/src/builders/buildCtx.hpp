@@ -8,6 +8,9 @@
 namespace builder::builders
 {
 
+/**
+ * @brief Concrete implementation of IBuildCtx, providing build context for all builders.
+ */
 class BuildCtx final : public IBuildCtx
 {
 private:

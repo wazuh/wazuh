@@ -463,7 +463,9 @@ inline bool isDefaultHelper(std::string_view sv)
 /* Expression parsers */
 /******************************************************************************/
 
-// operators (==, !=, <, >, <=, >=)
+/**
+ * @brief Comparison operator enumeration.
+ */
 enum class Operator
 {
     EQUAL,
@@ -474,6 +476,12 @@ enum class Operator
     LESS_THAN_OR_EQUAL
 };
 
+/**
+ * @brief Convert an Operator to its string representation.
+ *
+ * @param op The operator.
+ * @return constexpr const char* String representation.
+ */
 constexpr auto operatorToString(Operator op)
 {
     switch (op)

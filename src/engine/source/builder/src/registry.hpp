@@ -10,6 +10,11 @@
 namespace builder
 {
 
+/**
+ * @brief Concrete registry implementation using an unordered map.
+ *
+ * @tparam Builder Type of the builders stored.
+ */
 template<typename Builder>
 class Registry : public IRegistry<Builder>
 {

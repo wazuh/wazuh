@@ -12,6 +12,11 @@
 namespace builder
 {
 
+/**
+ * @brief Concrete implementation of IAllowedFields.
+ *
+ * Reads allowed-field definitions from a JSON document and performs per-asset-type field checks.
+ */
 class AllowedFields final : public IAllowedFields
 {
 private:
@@ -22,9 +27,9 @@ public:
     ~AllowedFields() override = default;
 
     /**
-     * @brief Construct a new Allowed Fields object
+     * @brief Construct a new Allowed Fields object from a JSON definition.
      *
-     * @param definition
+     * @param definition JSON document mapping asset types to their allowed fields.
      */
     AllowedFields(const json::Json& definition);
 

@@ -97,12 +97,21 @@ inline bool isEnabledResource(const json::Json& assetJson)
 /************* FILTER  HELPERS *************/
 namespace filter
 {
+/**
+ * @brief Filter type enumeration (pre-filter or post-filter).
+ */
 enum class FilterType
 {
     PRE_FILTER,
     POST_FILTER
 };
 
+/**
+ * @brief Convert a FilterType to its string representation.
+ *
+ * @param type The filter type.
+ * @return std::string_view String representation.
+ */
 inline std::string_view filterTypeToStr(const FilterType type)
 {
     switch (type)
@@ -113,6 +122,13 @@ inline std::string_view filterTypeToStr(const FilterType type)
     }
 }
 
+/**
+ * @brief Convert a string to a FilterType.
+ *
+ * @param str String representation.
+ * @return FilterType The corresponding filter type.
+ * @throws std::runtime_error If the string is not a valid filter type.
+ */
 inline FilterType strToFilterType(const std::string_view str)
 {
     if (str == filterTypeToStr(FilterType::PRE_FILTER))
@@ -123,6 +139,13 @@ inline FilterType strToFilterType(const std::string_view str)
         throw std::runtime_error(fmt::format("Unknown filter type string: '{}'", str));
 }
 
+/**
+ * @brief Get the filter type from a filter JSON representation.
+ *
+ * @param filterJson JSON representation of the filter.
+ * @return FilterType The filter type.
+ * @throws std::runtime_error If the type field is missing or invalid.
+ */
 inline FilterType getFilterType(const json::Json& filterJson)
 {
     auto typeJson = filterJson.getString(json::Json::formatJsonPath(TYPE_KEY));
