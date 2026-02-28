@@ -126,8 +126,8 @@ class EXPORTED SCA final
         /// @brief Private constructor for singleton pattern.
         SCA();
 
-        /// @brief Default destructor.
-        ~SCA() = default;
+        /// @brief Destructor.
+        ~SCA();
 
         /// @brief Deleted copy constructor to prevent copying.
         SCA(const SCA&) = delete;

@@ -335,7 +335,7 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
 }
 
 static int fim_startmq(const char* key, short type, short attempts) {
-    return StartMQ(key, type, attempts);
+    return StartMQPredicated(key, type, attempts, fim_shutdown_process_on);
 }
 
 static int fim_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc) {

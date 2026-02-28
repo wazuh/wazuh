@@ -13,6 +13,7 @@
 #include <mock_agent_sync_protocol.hpp>
 
 #include <chrono>
+#include <atomic>
 #include <memory>
 #include <string>
 #include <thread>
@@ -219,6 +220,75 @@ TEST_F(ScaTest, StopSetsKeepRunningToFalse)
 {
     m_sca->Stop();
     EXPECT_NE(m_logOutput.find("SCA module stopped."), std::string::npos);
+}
+
+TEST_F(ScaTest, StopUnblocksPauseWaiters)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto scaMock = std::make_shared<SCAMock>(mockDBSync, nullptr);
+
+    // Force pause() to block waiting for sync completion.
+    scaMock->setSyncInProgress(true);
+
+    std::atomic<bool> pauseReturned {false};
+    std::thread pauseThread([&scaMock, &pauseReturned]()
+    {
+        scaMock->pause();
+        pauseReturned.store(true);
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    scaMock->Stop();
+
+    // Stop() should wake pause() immediately through m_pauseCv notification.
+    for (int i = 0; i < 50 && !pauseReturned.load(); ++i)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    EXPECT_TRUE(pauseReturned.load());
+
+    // Safety net for cleanup in case of failure.
+    if (!pauseReturned.load())
+    {
+        scaMock->notifySyncComplete();
+    }
+
+    pauseThread.join();
+}
+
+TEST_F(ScaTest, StopCompletesAfterPauseMutexRelease)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto scaMock = std::make_shared<SCAMock>(mockDBSync, nullptr);
+
+    // Simulate contention on pause mutex and verify Stop() completes once lock is released.
+    scaMock->lockPauseMutex();
+
+    std::atomic<bool> stopReturned {false};
+    std::thread stopThread([&scaMock, &stopReturned]()
+    {
+        scaMock->Stop();
+        stopReturned.store(true);
+    });
+
+    for (int i = 0; i < 50 && !stopReturned.load(); ++i)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    EXPECT_FALSE(stopReturned.load());
+
+    // Always release mutex owned by this thread.
+    scaMock->unlockPauseMutex();
+
+    for (int i = 0; i < 50 && !stopReturned.load(); ++i)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    EXPECT_TRUE(stopReturned.load());
+    stopThread.join();
 }
 
 TEST_F(ScaTest, SetGlobalWmExecFunctionStoresPointer)
