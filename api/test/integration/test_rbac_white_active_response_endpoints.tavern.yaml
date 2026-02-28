@@ -1,9 +1,6 @@
 ---
 test_name: PUT ACTIVE-RESPONSE OVER A LIST OF AGENTS
 
-marks:
-  - xfail # This will be failing until we complete https://github.com/wazuh/wazuh/issues/34175, we need to remove before final merge.
-
 stages:
 
   - name: Runs an Active Response command on a specified agent (Allow)

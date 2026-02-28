@@ -1,8 +1,5 @@
 test_name: GET /overview/agents
 
-marks:
-  - xfail #This will be failing until we complete https://github.com/wazuh/wazuh/issues/34175, we need to remove before final merge.
-
 stages:
 
  - name: Get full agents overview

@@ -306,6 +306,9 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      timeout: 20
+      params:
+        wait_for_complete: true
     response:
       status_code: 200
       json:
@@ -327,6 +330,9 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         nodes_list: 'worker1,worker2'
+      timeout: 20
+      params:
+        wait_for_complete: true
     response:
       status_code: 200
       json:
