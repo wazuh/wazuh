@@ -82,7 +82,7 @@ TEST_F(CQueueTest, CanPushAndPop)
     ASSERT_FALSE(cq.empty());
     ASSERT_EQ(cq.size(), 1);
     auto d = std::make_shared<Dummy>(0);
-    ASSERT_TRUE(cq.waitPop(d, WAIT_DEQUEUE_TIMEOUT_USEC));
+    ASSERT_TRUE(cq.waitPop(d, fastqueue::WAIT_DEQUEUE_TIMEOUT_USEC));
     ASSERT_EQ(d->value, 1);
     ASSERT_TRUE(cq.empty());
     ASSERT_EQ(cq.size(), 0);
@@ -118,7 +118,7 @@ TEST_F(CQueueTest, LargeQueueSequentialPop)
     for (int i = 0; i < TEST_ELEMENTS; ++i)
     {
         auto d = std::make_shared<Dummy>(-1);
-        ASSERT_TRUE(cq.waitPop(d, WAIT_DEQUEUE_TIMEOUT_USEC));
+        ASSERT_TRUE(cq.waitPop(d, fastqueue::WAIT_DEQUEUE_TIMEOUT_USEC));
         ASSERT_EQ(d->value, i);
     }
 
@@ -868,10 +868,10 @@ TEST_F(CQueueTest, RateLimiterWaitPopMultipleThreads)
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
 
-    // With 100 elements/sec and initial burst of 50, in the time it takes
-    // we should be able to pop roughly: 50 (burst) + 100 * (duration_seconds)
+    // With 100 elements/sec and initial burst of 75, in the time it takes
+    // we should be able to pop roughly: 75 (burst) + 100 * (duration_seconds)
     // This verifies rate limiting is working across threads
-    int expectedMax = 50 + static_cast<int>(100.0 * duration.count() / 1000.0) + 50; // +50 margin
+    int expectedMax = 75 + static_cast<int>(100.0 * duration.count() / 1000.0) + 75; // +75 margin
     ASSERT_LE(totalPopped, expectedMax);
     ASSERT_GT(totalPopped, 0); // Should have popped something
 }

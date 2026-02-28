@@ -42,40 +42,6 @@ class EntryPost(_message.Message):
     priority: int
     def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., filter: _Optional[str] = ..., priority: _Optional[int] = ..., description: _Optional[str] = ...) -> None: ...
 
-class EpsDisable_Request(_message.Message):
-    __slots__ = []
-    def __init__(self) -> None: ...
-
-class EpsEnable_Request(_message.Message):
-    __slots__ = []
-    def __init__(self) -> None: ...
-
-class EpsGet_Request(_message.Message):
-    __slots__ = []
-    def __init__(self) -> None: ...
-
-class EpsGet_Response(_message.Message):
-    __slots__ = ["enabled", "eps", "error", "refresh_interval", "status"]
-    ENABLED_FIELD_NUMBER: _ClassVar[int]
-    EPS_FIELD_NUMBER: _ClassVar[int]
-    ERROR_FIELD_NUMBER: _ClassVar[int]
-    REFRESH_INTERVAL_FIELD_NUMBER: _ClassVar[int]
-    STATUS_FIELD_NUMBER: _ClassVar[int]
-    enabled: bool
-    eps: int
-    error: str
-    refresh_interval: int
-    status: _engine_pb2.ReturnStatus
-    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., eps: _Optional[int] = ..., refresh_interval: _Optional[int] = ..., enabled: bool = ...) -> None: ...
-
-class EpsUpdate_Request(_message.Message):
-    __slots__ = ["eps", "refresh_interval"]
-    EPS_FIELD_NUMBER: _ClassVar[int]
-    REFRESH_INTERVAL_FIELD_NUMBER: _ClassVar[int]
-    eps: int
-    refresh_interval: int
-    def __init__(self, eps: _Optional[int] = ..., refresh_interval: _Optional[int] = ...) -> None: ...
-
 class QueuePost_Request(_message.Message):
     __slots__ = ["wazuh_event"]
     WAZUH_EVENT_FIELD_NUMBER: _ClassVar[int]

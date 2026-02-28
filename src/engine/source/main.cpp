@@ -10,7 +10,7 @@
 
 #include <api/archiver/handlers.hpp>
 #include <api/cmcrud/handlers.hpp>
-#include <api/event/ndJsonParser.hpp>
+#include <api/event/handlers.hpp>
 #include <api/handlers.hpp>
 #include <api/rawevtindexer/handlers.hpp>
 #include <archiver/archiver.hpp>
@@ -30,6 +30,8 @@
 #include <conf/keys.hpp>
 #include <defs/defs.hpp>
 #include <eMessages/eMessage.h>
+#include <fastqueue/cqueue.hpp>
+#include <fastqueue/stdqueue.hpp>
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
 #include <httpsrv/server.hpp>
@@ -39,15 +41,13 @@
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
 #include <rawevtindexer/raweventindexer.hpp>
-#include <scheduler/scheduler.hpp>
-#include <streamlog/logger.hpp>
-#include <wiconnector/windexerconnector.hpp>
-// #include <metrics/manager.hpp>
-#include <queue/concurrentQueue.hpp>
 #include <router/orchestrator.hpp>
+#include <scheduler/scheduler.hpp>
 #include <schemf/schema.hpp>
 #include <store/drivers/fileDriver.hpp>
 #include <store/store.hpp>
+#include <streamlog/logger.hpp>
+#include <wiconnector/windexerconnector.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
 #include "stackExecutor.hpp"
@@ -485,28 +485,24 @@ int main(int argc, char* argv[])
             LOG_INFO("Content Manager CRUD Service initialized.");
         }
 
-        // Router
+        // Raw Event Indexer
+        if (enableProcessing)
         {
-            // External queues
-            using QEventType = base::queue::ConcurrentQueue<base::Event, QueueTraits>;
-            using QTestType = base::queue::ConcurrentQueue<router::test::QueueType>;
+            bool rawIndexerEnabled = confManager.get<bool>(conf::key::RAW_EVENT_INDEXER_ENABLED);
+            rawEventIndexer = std::make_shared<raweventindexer::RawEventIndexer>(
+                indexerConnector, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME, rawIndexerEnabled);
+            LOG_INFO("Raw Event Indexer initialized (index: {}, enabled: {}).",
+                     raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME,
+                     rawIndexerEnabled);
+        }
 
-            std::shared_ptr<QEventType> eventQueue {};
-            std::shared_ptr<QTestType> testQueue {};
-            {
-                // TODO queueFloodFile, queueFloodAttempts, queueFloodSleep -> Move to Queue.flood options
-                eventQueue = std::make_shared<QEventType>(confManager.get<int>(conf::key::QUEUE_SIZE),
-                                                          confManager.get<std::string>(conf::key::QUEUE_FLOOD_FILE),
-                                                          confManager.get<int>(conf::key::QUEUE_FLOOD_ATTEMPS),
-                                                          confManager.get<int>(conf::key::QUEUE_FLOOD_SLEEP),
-                                                          confManager.get<bool>(conf::key::QUEUE_DROP_ON_FLOOD));
-                LOG_DEBUG("Event queue created.");
-            }
+        // Orchestrator
+        {
+            const auto qSize = confManager.get<size_t>(conf::key::EVENT_QUEUE_SIZE);
+            const auto qEps = confManager.get<size_t>(conf::key::EVENT_QUEUE_EPS);
 
-            {
-                testQueue = std::make_shared<QTestType>(confManager.get<int>(conf::key::QUEUE_SIZE));
-                LOG_DEBUG("Test queue created.");
-            }
+            const auto eventQueue = std::make_shared<fastqueue::CQueue<router::IngestEvent>>(qSize, qEps);
+            const auto testQueue = std::make_shared<fastqueue::StdQueue<router::test::EventTest>>(qSize);
 
             router::Orchestrator::Options config {.m_numThreads = confManager.get<int>(conf::key::ORCHESTRATOR_THREADS),
                                                   .m_wStore = store,
@@ -514,13 +510,14 @@ int main(int argc, char* argv[])
                                                   .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>(),
                                                   .m_prodQueue = eventQueue,
                                                   .m_testQueue = testQueue,
+                                                  .m_rawIndexer = rawEventIndexer,
                                                   .m_testTimeout = confManager.get<int>(conf::key::SERVER_API_TIMEOUT)};
 
             orchestrator = std::make_shared<router::Orchestrator>(config);
             orchestrator->start();
 
             exitHandler.add([orchestrator]() { orchestrator->cleanup(); });
-            LOG_INFO("Router initialized.");
+            LOG_INFO("Orchestrator initialized and started.");
         }
 
         // CMsync
@@ -578,17 +575,6 @@ int main(int argc, char* argv[])
             LOG_INFO("Archiver initialized.");
             exitHandler.add([archiver, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                             { archiver->deactivate(); });
-        }
-
-        // Raw Event Indexer
-        if (enableProcessing)
-        {
-            bool rawIndexerEnabled = confManager.get<bool>(conf::key::RAW_EVENT_INDEXER_ENABLED);
-            rawEventIndexer = std::make_shared<raweventindexer::RawEventIndexer>(
-                indexerConnector, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME, rawIndexerEnabled);
-            LOG_INFO("Raw Event Indexer initialized (index: {}, enabled: {}).",
-                     raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME,
-                     rawIndexerEnabled);
         }
 
         // Create and configure the api endpoints
@@ -656,9 +642,10 @@ int main(int argc, char* argv[])
         {
             engineRemoteServer = std::make_shared<httpsrv::Server>("ENRICHED_EVENTS_SRV", 0, false);
 
-            engineRemoteServer->addRoute(httpsrv::Method::POST,
-                                         "/events/enriched", // TODO: Double check route
-                                         api::event::handlers::pushEvent(orchestrator, archiver, rawEventIndexer));
+            exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
+
+            engineRemoteServer->addRoute(
+                httpsrv::Method::POST, "/events/enriched", api::event::handlers::pushEvent(orchestrator, archiver));
 
             // starting in a new thread
             engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));

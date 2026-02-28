@@ -10,7 +10,6 @@
 #include <router/orchestrator.hpp>
 
 #include "entryConverter.hpp"
-#include "epsCounter.hpp"
 #include "router.hpp"
 #include "tester.hpp"
 #include "worker.hpp"
@@ -127,17 +126,6 @@ void Orchestrator::dumpRoutersInternal() const
     saveConfig(m_wStore, m_storeRouterName, jDump);
 }
 
-void Orchestrator::dumpEpsInternal() const
-{
-    json::Json jDump;
-    jDump.setObject();
-    jDump.setInt64(m_epsCounter->getEps(), "/eps");
-    jDump.setInt64(m_epsCounter->getRefreshInterval(), "/refreshInterval");
-    jDump.setBool(m_epsCounter->isActive(), "/active");
-    saveConfig(m_wStore, STORE_PATH_ROUTER_EPS, jDump);
-    LOG_INFO("Router: EPS settings dumped to the store");
-}
-
 void Orchestrator::dumpTesters() const
 {
     std::shared_lock lock {m_syncMutex};
@@ -150,55 +138,6 @@ void Orchestrator::dumpRouters() const
     dumpRoutersInternal();
 }
 
-void Orchestrator::dumpEps() const
-{
-    std::shared_lock lock {m_syncMutex};
-    dumpEpsInternal();
-}
-
-void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStore>& wStore)
-{
-    auto store = wStore.lock();
-    if (!store)
-    {
-        LOG_ERROR("Store is unavailable for loading the EPS counter, using default settings");
-        m_epsCounter = std::make_shared<EpsCounter>();
-        return;
-    }
-
-    auto epsResp = store->readDoc(STORE_PATH_ROUTER_EPS);
-    if (base::isError(epsResp))
-    {
-        LOG_WARNING("Router: EPS settings could not be loaded from the store due to '{}'. Using default settings",
-                    base::getError(epsResp).message);
-        m_epsCounter = std::make_shared<EpsCounter>();
-        dumpEpsInternal();
-        return;
-    }
-
-    auto epsJson = base::getResponse(epsResp);
-    if (!epsJson.isObject() || epsJson.isEmpty())
-    {
-        LOG_ERROR("Router: EPS settings found in the store are invalid. Using default settings");
-        m_epsCounter = std::make_shared<EpsCounter>();
-        dumpEpsInternal();
-        return;
-    }
-
-    auto eps = epsJson.getInt64("/eps");
-    auto refreshInterval = epsJson.getInt64("/refreshInterval");
-    auto active = epsJson.getBool("/active");
-
-    if (!eps || !refreshInterval || !active)
-    {
-        LOG_ERROR("Router: EPS settings found in the store are invalid. Using default settings");
-        m_epsCounter = std::make_shared<EpsCounter>();
-        dumpEpsInternal();
-        return;
-    }
-
-    m_epsCounter = std::make_shared<EpsCounter>(eps.value(), refreshInterval.value(), active.value());
-}
 /**************************************************************************
  * Manage configuration - Loader
  *************************************************************************/
@@ -276,6 +215,7 @@ Orchestrator::Orchestrator(const Options& opt)
     , m_envBuilder()
     , m_syncMutex()
     , m_isShutdown(false)
+    , m_rawIndexer(opt.m_rawIndexer)
     , m_storeTesterName(STORE_PATH_TESTER_TABLE)
     , m_storeRouterName(STORE_PATH_ROUTER_TABLE)
 {
@@ -306,21 +246,9 @@ Orchestrator::Orchestrator(const Options& opt)
         LOG_INFO("No thread count provided. Using {} worker threads based on system hardware.", numThreads);
     }
 
-    // Initialize the EpsCounter
-    loadEpsCounter(m_wStore);
-
-    // Create the workers
-    EpsLimit epsLimit = [epsCounter = m_epsCounter]() -> bool
-    {
-        if (epsCounter->isActive())
-        {
-            return epsCounter->limitReached();
-        }
-        return false;
-    };
     for (std::size_t i = 0; i < numThreads; ++i)
     {
-        auto r = std::make_shared<router::RouterWorker>(m_envBuilder, m_eventQueue, epsLimit);
+        auto r = std::make_shared<router::RouterWorker>(m_envBuilder, m_eventQueue, m_rawIndexer);
         if (auto err = initRouterWorker(r, routerEntries))
         {
             LOG_ERROR("Router: Cannot load initial states from store: {}", err->message);
@@ -373,10 +301,6 @@ void Orchestrator::cleanup()
     m_eventQueue.reset();
     m_testQueue.reset();
     m_wStore.reset();
-    if (m_epsCounter && m_epsCounter->isActive())
-    {
-        m_epsCounter->stop();
-    }
 }
 
 /**************************************************************************
@@ -562,52 +486,6 @@ std::list<prod::Entry> Orchestrator::getEntries() const
     return m_routerWorkers.front()->get()->getEntries();
 }
 
-base::OptError Orchestrator::changeEpsSettings(uint eps, uint refreshInterval)
-{
-    try
-    {
-        m_epsCounter->changeSettings(eps, refreshInterval);
-    }
-    catch (const std::exception& e)
-    {
-        return base::Error {e.what()};
-    }
-
-    dumpEps();
-
-    return std::nullopt;
-}
-
-base::RespOrError<std::tuple<uint, uint, bool>> Orchestrator::getEpsSettings() const
-{
-    return std::make_tuple(m_epsCounter->getEps(), m_epsCounter->getRefreshInterval(), m_epsCounter->isActive());
-}
-
-base::OptError Orchestrator::activateEpsCounter(bool activate)
-{
-    if (activate)
-    {
-        if (m_epsCounter->isActive())
-        {
-            return base::Error {"EPS counter is already active"};
-        }
-
-        m_epsCounter->start();
-    }
-    else
-    {
-        if (!m_epsCounter->isActive())
-        {
-            return base::Error {"EPS counter is already inactive"};
-        }
-
-        m_epsCounter->stop();
-    }
-
-    dumpEps();
-    return std::nullopt;
-}
-
 /**************************************************************************
  * ITesterAPI
  *************************************************************************/
@@ -732,7 +610,7 @@ std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(base::Even
 
     if (m_eventQueue->empty())
     {
-        m_eventQueue->push(base::Event(nullptr));
+        m_eventQueue->push(IngestEvent {});
     }
 
     {
@@ -763,7 +641,7 @@ base::OptError Orchestrator::ingestTest(base::Event&& event,
     }
     if (m_eventQueue->empty())
     {
-        m_eventQueue->push(base::Event(nullptr));
+        m_eventQueue->push(IngestEvent {});
     }
 
     {

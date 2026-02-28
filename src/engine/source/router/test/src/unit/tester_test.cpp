@@ -7,7 +7,7 @@
 #include "tester.hpp"
 
 const std::string ENVIRONMENT_NAME = "Test";
-const std::string POLICY_NAME = "policy/name/0";
+const cm::store::NamespaceId POLICY_NAMESPACE {"policy_name_0"};
 const uint32_t LIFESPAM = 1234;
 
 class TesterTest : public ::testing::Test
@@ -83,7 +83,7 @@ public:
 
 TEST_F(TesterTest, AddEntryRepeatdly)
 {
-    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, LIFESPAM};
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
     const std::string hash = "hash";
     std::unordered_set<base::Name> fakeAssets {};
     fakeAssets.insert(base::Name("asset/test/0"));
@@ -103,19 +103,19 @@ TEST_F(TesterTest, AddEntryRepeatdly)
 
 TEST_F(TesterTest, AddEntrySuccess)
 {
-    auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, LIFESPAM};
+    auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
     const std::string hash = "hash";
     std::unordered_set<base::Name> fakeAssets {};
     fakeAssets.insert(base::Name("asset/test/0"));
 
     addEntryCallers(fakeAssets, hash);
-    auto error = m_test->addEntry(entryPostOne);
+    auto error = m_test->addEntry(entryPostOne, /*ignoreFail=*/false);
     EXPECT_EQ(error, std::nullopt);
 
-    auto entryPostTwo = router::test::EntryPost {ENVIRONMENT_NAME + "mirror", POLICY_NAME, LIFESPAM};
+    auto entryPostTwo = router::test::EntryPost {ENVIRONMENT_NAME + "mirror", POLICY_NAMESPACE, LIFESPAM};
 
     addEntryCallers(fakeAssets, hash);
-    error = m_test->addEntry(entryPostTwo);
+    error = m_test->addEntry(entryPostTwo, /*ignoreFail=*/false);
     EXPECT_EQ(error, std::nullopt);
 
     stopControllerCall(2);
@@ -123,14 +123,38 @@ TEST_F(TesterTest, AddEntrySuccess)
 
 TEST_F(TesterTest, FailedCreatingEnvironment)
 {
-    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, "decoder", LIFESPAM};
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, cm::store::NamespaceId {"decoder"}, LIFESPAM};
+
+    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_)).WillOnce(::testing::Return(nullptr));
+    EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_)).Times(0);
 
     auto error = m_test->addEntry(entryPost, /*ignoreFail=*/false);
 
     EXPECT_TRUE(error.has_value());
 
     EXPECT_STREQ(error.value().message.c_str(),
-                 "Failed to create the testing environment: The asset name is empty or it is not a policy");
+                 "Failed to create the testing environment: Failed to build policy 'decoder'");
+}
+
+TEST_F(TesterTest, FailedCreatingEnvironmentControllerNull)
+{
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
+    std::unordered_set<base::Name> fakeAssets {};
+    fakeAssets.insert(base::Name("asset/test/0"));
+
+    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_))
+        .WillOnce(::testing::Return(m_mockPolicy));
+    EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
+    EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(base::Expression {}));
+    EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
+        .WillOnce(::testing::Return(nullptr));
+    EXPECT_CALL(*m_mockPolicy, hash()).Times(0);
+
+    auto error = m_test->addEntry(entryPost, /*ignoreFail=*/false);
+
+    EXPECT_TRUE(error.has_value());
+    EXPECT_STREQ(error.value().message.c_str(),
+                 "Failed to create the testing environment: Failed to create controller for policy 'policy_name_0'");
 }
 
 TEST_F(TesterTest, FailedRemovingEnvironment)
@@ -144,13 +168,13 @@ TEST_F(TesterTest, FailedRemovingEnvironment)
 
 TEST_F(TesterTest, SuccessRemovingEnvironment)
 {
-    auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, LIFESPAM};
+    auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
     const std::string hash = "hash";
     std::unordered_set<base::Name> fakeAssets {};
     fakeAssets.insert(base::Name("asset/test/0"));
 
     addEntryCallers(fakeAssets, hash);
-    m_test->addEntry(entryPostOne);
+    m_test->addEntry(entryPostOne, /*ignoreFail=*/false);
     stopControllerCall();
 
     auto error = m_test->removeEntry(ENVIRONMENT_NAME);
@@ -169,13 +193,13 @@ TEST_F(TesterTest, FaildedRebuildingEnvironment)
 
 TEST_F(TesterTest, FaildedRebuildingEnvironmentMakeControllerError)
 {
-    auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, LIFESPAM};
+    auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
     std::unordered_set<base::Name> fakeAssets {};
     const std::string hash = "hash";
     fakeAssets.insert(base::Name("asset/test/0"));
 
     addEntryCallers(fakeAssets, hash);
-    m_test->addEntry(entryPostOne);
+    m_test->addEntry(entryPostOne, /*ignoreFail=*/false);
     stopControllerCall();
 
     rebuildEntryFailture();
@@ -187,13 +211,13 @@ TEST_F(TesterTest, FaildedRebuildingEnvironmentMakeControllerError)
 
 TEST_F(TesterTest, SuccessRebuildingEnvironment)
 {
-    auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, LIFESPAM};
+    auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
     std::unordered_set<base::Name> fakeAssets {};
     const std::string hash = "hash";
     fakeAssets.insert(base::Name("asset/test/0"));
 
     addEntryCallers(fakeAssets, hash);
-    m_test->addEntry(entryPostOne);
+    m_test->addEntry(entryPostOne, /*ignoreFail=*/false);
     EXPECT_CALL(*m_mockController, stop());
 
     rebuildEntryCallersSuccess(fakeAssets, hash);
@@ -213,13 +237,13 @@ TEST_F(TesterTest, FailedEnableEntry)
 
 TEST_F(TesterTest, SuccessEnableEntry)
 {
-    auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, LIFESPAM};
+    auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
     const std::string hash = "hash";
     std::unordered_set<base::Name> fakeAssets {};
     fakeAssets.insert(base::Name("asset/test/0"));
 
     addEntryCallers(fakeAssets, hash);
-    m_test->addEntry(entryPostOne);
+    m_test->addEntry(entryPostOne, /*ignoreFail=*/false);
     stopControllerCall();
 
     auto error = m_test->enableEntry(ENVIRONMENT_NAME);
@@ -229,18 +253,18 @@ TEST_F(TesterTest, SuccessEnableEntry)
 
 TEST_F(TesterTest, SuccessGetEntries)
 {
-    auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, LIFESPAM};
+    auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
     const std::string hash = "hash";
     std::unordered_set<base::Name> fakeAssets {};
     fakeAssets.insert(base::Name("asset/test/0"));
 
     addEntryCallers(fakeAssets, hash);
-    m_test->addEntry(entryPostOne);
+    m_test->addEntry(entryPostOne, /*ignoreFail=*/false);
 
-    auto entryPostTwo = router::test::EntryPost {ENVIRONMENT_NAME + "mirror", POLICY_NAME, LIFESPAM};
+    auto entryPostTwo = router::test::EntryPost {ENVIRONMENT_NAME + "mirror", POLICY_NAMESPACE, LIFESPAM};
 
     addEntryCallers(fakeAssets, hash);
-    m_test->addEntry(entryPostTwo);
+    m_test->addEntry(entryPostTwo, /*ignoreFail=*/false);
 
     stopControllerCall(2);
 
@@ -258,11 +282,11 @@ TEST_F(TesterTest, FailtureGetEntry)
 
 TEST_F(TesterTest, SuccessGetEntry)
 {
-    auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, LIFESPAM};
+    auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
     std::unordered_set<base::Name> fakeAssets {};
     fakeAssets.insert(base::Name("asset/test/0"));
     addEntryCallers(fakeAssets, "");
-    m_test->addEntry(entryPostOne);
+    m_test->addEntry(entryPostOne, /*ignoreFail=*/false);
     // EXPECT_CALL(*m_mockController, stop());
 
     // auto response = m_test->getEntry(ENVIRONMENT_NAME);
@@ -274,7 +298,7 @@ TEST_F(TesterTest, SuccessGetEntry)
 
 TEST_F(TesterTest, SuccessIngestTest)
 {
-    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, LIFESPAM};
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
     const std::string hash = "hash";
     std::unordered_set<base::Name> fakeAssets {};
     fakeAssets.insert(base::Name("asset/test/0"));
@@ -311,7 +335,7 @@ TEST_F(TesterTest, FailtureIngestTestNameNotExist)
 
 TEST_F(TesterTest, FailtureIngestTestNotEnabled)
 {
-    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, LIFESPAM};
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
     const std::string hash = "hash";
     std::unordered_set<base::Name> fakeAssets {};
     fakeAssets.insert(base::Name("asset/test/0"));
@@ -332,7 +356,7 @@ TEST_F(TesterTest, FailtureIngestTestNotEnabled)
 
 TEST_F(TesterTest, FailtureIngestTestNotSubscribe)
 {
-    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, LIFESPAM};
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
     const std::string hash = "hash";
     std::unordered_set<base::Name> fakeAssets {};
     fakeAssets.insert(base::Name("asset/test/0"));
@@ -366,7 +390,7 @@ TEST_F(TesterTest, FailtureGetAssetsNameNotExist)
 
 TEST_F(TesterTest, FailtureGetAssetsNameNotEnabled)
 {
-    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, LIFESPAM};
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
     const std::string hash = "hash";
     std::unordered_set<base::Name> fakeAssets {};
     fakeAssets.insert(base::Name("asset/test/0"));
@@ -385,7 +409,7 @@ TEST_F(TesterTest, FailtureGetAssetsNameNotEnabled)
 
 TEST_F(TesterTest, SuccessGetAssets)
 {
-    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, LIFESPAM};
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
     const std::string hash = "hash";
     std::unordered_set<base::Name> fakeAssets {};
     fakeAssets.insert(base::Name("asset/test/0"));
@@ -411,7 +435,7 @@ TEST_F(TesterTest, FailtureUpdateLastUsedNameNotExist)
 
 TEST_F(TesterTest, SucessUpdateLast)
 {
-    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, LIFESPAM};
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
     const std::string hash = "hash";
     std::unordered_set<base::Name> fakeAssets {};
     fakeAssets.insert(base::Name("asset/test/0"));

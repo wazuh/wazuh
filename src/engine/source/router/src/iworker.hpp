@@ -8,8 +8,6 @@
 namespace router
 {
 
-using EpsLimit = std::function<bool()>;
-
 template<typename T>
 class IWorker
 {
@@ -19,7 +17,6 @@ public:
     /**
      * @brief Start the worker
      *
-     * @param epsCounter The counter to measure the events per second
      */
     virtual void start() = 0;
 

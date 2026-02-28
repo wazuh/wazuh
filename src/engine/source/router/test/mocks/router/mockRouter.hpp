@@ -22,10 +22,7 @@ public:
     MOCK_METHOD(base::OptError, reloadEntry, (const std::string& name), (override));
     MOCK_METHOD(base::OptError, changeEntryPriority, (const std::string& name, size_t priority), (override));
     MOCK_METHOD(std::list<::router::prod::Entry>, getEntries, (), (const, override));
-    MOCK_METHOD(void, postEvent, (base::Event && event), (override));
-    MOCK_METHOD(base::OptError, changeEpsSettings, (uint eps, uint refreshInterval), (override));
-    MOCK_METHOD((base::RespOrError<std::tuple<uint, uint, bool>>), getEpsSettings, (), (const, override));
-    MOCK_METHOD(base::OptError, activateEpsCounter, (bool activate), (override));
+    MOCK_METHOD(void, postEvent, (::router::IngestEvent && event), (override));
 };
 
 } // namespace router::mocks

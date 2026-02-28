@@ -1,10 +1,24 @@
 #include "worker.hpp"
 
+#include <base/eventParser.hpp>
 #include <base/logging.hpp>
 #include <base/process.hpp>
+#include <base/utils/timeUtils.hpp>
+#include <rawevtindexer/iraweventindexer.hpp>
 
 namespace router
 {
+
+namespace
+{
+std::string makeRawIndexPayload(const IngestEvent& queuedEvent, const std::string& timestamp)
+{
+    json::Json rawDoc(*queuedEvent.first);
+    rawDoc.setString(timestamp, "/@timestamp");
+    rawDoc.setString(queuedEvent.second, "/event/original");
+    return rawDoc.str();
+}
+} // namespace
 
 void RouterWorker::start()
 {
@@ -17,26 +31,44 @@ void RouterWorker::start()
     m_thread = std::thread(
         [this, functionName = logging::getLambdaName(__FUNCTION__, "routerWorkerThread")]()
         {
-            std::size_t tID = std::hash<std::thread::id> {}(std::this_thread::get_id());
+            const std::size_t tID = std::hash<std::thread::id> {}(std::this_thread::get_id());
             LOG_DEBUG_L(functionName.c_str(), "Router Worker {} started", tID);
 
             base::process::setThreadName("ORProd-" + std::to_string(tID));
 
             while (m_isRunning)
             {
-                // Process production queue
-                if (!m_epsLimit())
+                IngestEvent queuedEvent {};
+                if (!m_rQueue->waitPop(queuedEvent, fastqueue::WAIT_DEQUEUE_TIMEOUT_USEC))
                 {
-                    base::Event event {};
-                    if (m_rQueue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC) && event != nullptr)
-                    {
-                        m_router->ingest(std::move(event));
-                    }
+                    continue;
                 }
-                else
+
+                // Sentinel used to wake up workers (e.g. test path)
+                if (queuedEvent.first == nullptr || queuedEvent.second.empty())
                 {
-                    // If EPS limit is reached, wait for a while before processing the next event
-                    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_EPS_TIMEOUT_MSEC));
+                    continue;
+                }
+
+                try
+                {
+                    const auto timestamp = base::utils::time::getCurrentISO8601();
+
+                    // Raw indexing (now throttled by queue drain)
+                    if (m_rawIndexer && m_rawIndexer->isEnabled())
+                    {
+                        m_rawIndexer->index(makeRawIndexPayload(queuedEvent, timestamp));
+                    }
+
+                    // Parse + route to pipeline
+                    auto event = base::eventParsers::parseLegacyEvent(queuedEvent.second, *queuedEvent.first);
+                    event->setString(timestamp, "/@timestamp");
+                    m_router->ingest(std::move(event));
+                    // TODO: Log metrics
+                }
+                catch (const std::exception& e)
+                {
+                    LOG_ERROR_L(functionName.c_str(), "Failed processing queued event in router worker: {}", e.what());
                 }
             }
             LOG_DEBUG_L(functionName.c_str(), "Router Worker {} finished", tID);
@@ -76,8 +108,8 @@ void TesterWorker::start()
             while (m_isRunning)
             {
                 // Process test queue
-                test::QueueType testEvent {};
-                if (m_tQueue->tryPop(testEvent) && testEvent != nullptr)
+                test::EventTest testEvent {};
+                if (m_tQueue->waitPop(testEvent, fastqueue::WAIT_DEQUEUE_TIMEOUT_USEC) && testEvent != nullptr)
                 {
                     auto& [event, opt, callback] = *testEvent;
                     auto output = m_tester->ingestTest(std::move(event), opt);
@@ -87,13 +119,8 @@ void TesterWorker::start()
                     }
                     catch (const std::exception& e)
                     {
-                        LOG_ERROR_L(functionName.c_str(), "Error when executing API callback: ", e.what());
+                        LOG_ERROR_L(functionName.c_str(), "Error when executing API callback: {}", e.what());
                     }
-                }
-                else
-                {
-                    // Wait for a while before processing the next event
-                    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_EPS_TIMEOUT_MSEC));
                 }
             }
             LOG_DEBUG_L(functionName.c_str(), "Tester Worker {} finished", tID);

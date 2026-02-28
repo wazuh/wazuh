@@ -1,48 +1,31 @@
-#include <atomic>
-#include <mutex>
+#include <memory>
 #include <string>
+#include <string_view>
 #include <thread>
-#include <utility>
 #include <vector>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <rawevtindexer/raweventindexer.hpp>
+#include <wiconnector/mockswindexerconnector.hpp>
 
-class FakeIndexerConnector final : public wiconnector::IWIndexerConnector
-{
-public:
-    std::vector<std::pair<std::string, std::string>> calls;
-    std::atomic<bool> throwOnIndex {false};
-
-    void index(std::string_view index, std::string_view data) override
-    {
-        if (throwOnIndex.load())
-        {
-            throw std::runtime_error("forced index failure");
-        }
-
-        std::lock_guard<std::mutex> lock(mutex);
-        calls.emplace_back(std::string(index), std::string(data));
-    }
-
-    wiconnector::PolicyResources getPolicy(std::string_view) override { return {}; }
-
-    std::string getPolicyHash(std::string_view) override { return {}; }
-
-    bool existsPolicy(std::string_view) override { return false; }
-
-private:
-    std::mutex mutex;
-};
+using ::testing::Eq;
+using ::testing::StrictMock;
 
 TEST(RawEventIndexerComponentTest, EndToEndWorkflowWithDefaultIndex)
 {
-    auto connector = std::make_shared<FakeIndexerConnector>();
+    auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
     raweventindexer::RawEventIndexer indexer(connector, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME, false);
 
     indexer.index(std::string {"ignored-while-disabled"});
-    EXPECT_TRUE(connector->calls.empty());
+
+    EXPECT_CALL(*connector,
+                index(Eq(std::string_view {raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME}), Eq(std::string_view {"payload-1"})));
+    EXPECT_CALL(*connector,
+                index(Eq(std::string_view {raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME}), Eq(std::string_view {"payload-2"})));
+    EXPECT_CALL(*connector,
+                index(Eq(std::string_view {raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME}), Eq(std::string_view {"payload-3"})));
 
     indexer.enable();
     indexer.index(std::string {"payload-1"});
@@ -51,39 +34,32 @@ TEST(RawEventIndexerComponentTest, EndToEndWorkflowWithDefaultIndex)
 
     indexer.disable();
     indexer.index(std::string {"ignored-after-disable"});
-
-    ASSERT_EQ(connector->calls.size(), 3U);
-    EXPECT_EQ(connector->calls[0].first, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
-    EXPECT_EQ(connector->calls[1].first, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
-    EXPECT_EQ(connector->calls[2].first, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
-    EXPECT_EQ(connector->calls[0].second, "payload-1");
-    EXPECT_EQ(connector->calls[1].second, "payload-2");
-    EXPECT_EQ(connector->calls[2].second, "payload-3");
 }
 
 TEST(RawEventIndexerComponentTest, ConnectorFailuresAreHandledAndFlowContinues)
 {
-    auto connector = std::make_shared<FakeIndexerConnector>();
+    auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
     raweventindexer::RawEventIndexer indexer(connector, "wazuh-events-raw-v5-app", true);
 
-    connector->throwOnIndex.store(true);
+    EXPECT_CALL(*connector, index(Eq(std::string_view {"wazuh-events-raw-v5-app"}), Eq(std::string_view {"will-fail"})))
+        .WillOnce(::testing::Throw(std::runtime_error("forced index failure")));
+
+    EXPECT_CALL(*connector, index(Eq(std::string_view {"wazuh-events-raw-v5-app"}), Eq(std::string_view {"will-pass"})));
+
     EXPECT_NO_THROW(indexer.index(std::string {"will-fail"}));
-
-    connector->throwOnIndex.store(false);
     EXPECT_NO_THROW(indexer.index(std::string {"will-pass"}));
-
-    ASSERT_EQ(connector->calls.size(), 1U);
-    EXPECT_EQ(connector->calls[0].first, "wazuh-events-raw-v5-app");
-    EXPECT_EQ(connector->calls[0].second, "will-pass");
 }
 
 TEST(RawEventIndexerComponentTest, SupportsConcurrentIndexingWhenEnabled)
 {
-    auto connector = std::make_shared<FakeIndexerConnector>();
+    auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
     raweventindexer::RawEventIndexer indexer(connector, "wazuh-events-raw-v5-concurrent", true);
 
     constexpr int kThreads = 8;
     constexpr int kEventsPerThread = 50;
+
+    EXPECT_CALL(*connector, index(Eq(std::string_view {"wazuh-events-raw-v5-concurrent"}), ::testing::_))
+        .Times(kThreads * kEventsPerThread);
 
     std::vector<std::thread> workers;
     workers.reserve(kThreads);
@@ -104,13 +80,11 @@ TEST(RawEventIndexerComponentTest, SupportsConcurrentIndexingWhenEnabled)
     {
         worker.join();
     }
-
-    ASSERT_EQ(connector->calls.size(), static_cast<size_t>(kThreads * kEventsPerThread));
 }
 
 TEST(RawEventIndexerComponentTest, NoThrowWhenConnectorExpiresAtRuntime)
 {
-    auto connector = std::make_shared<FakeIndexerConnector>();
+    auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
     raweventindexer::RawEventIndexer indexer(connector, "wazuh-events-raw-v5", true);
 
     connector.reset();

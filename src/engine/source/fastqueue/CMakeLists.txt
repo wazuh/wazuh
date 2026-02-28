@@ -38,7 +38,7 @@ if(ENGINE_BUILD_TEST)
   # Mocks
   add_library(fastqueue_mocks INTERFACE)
   target_include_directories(fastqueue_mocks INTERFACE ${TEST_MOCK_DIR})
-  target_link_libraries(fastqueue_mocks INTERFACE GTest::gmock fastqueue)
+  target_link_libraries(fastqueue_mocks INTERFACE GTest::gmock fastqueue::fastqueue)
   add_library(fastqueue::mocks ALIAS fastqueue_mocks)
 
   # Component test

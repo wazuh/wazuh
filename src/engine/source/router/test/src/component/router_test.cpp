@@ -4,6 +4,7 @@
 #include <builder/mockBuilder.hpp>
 #include <builder/mockPolicy.hpp>
 #include <queue/mockQueue.hpp>
+#include <rawevtindexer/mockraweventindexer.hpp>
 #include <store/mockStore.hpp>
 
 #include <router/orchestrator.hpp>
@@ -13,6 +14,14 @@
 constexpr auto SERVER_API_TIMEOUT {100000};
 constexpr auto NUM_THREADS {1};
 
+namespace
+{
+router::prod::EntryPost makeProdEntry(const std::string& name, const std::string& ns, const std::string& filter, size_t priority)
+{
+    return router::prod::EntryPost {name, cm::store::NamespaceId {ns}, base::Name {filter}, priority};
+}
+}
+
 class OrchestratorRouterTest : public ::testing::Test
 {
 protected:
@@ -21,8 +30,9 @@ protected:
     std::shared_ptr<store::mocks::MockStore> m_mockStore;
     std::shared_ptr<bk::mocks::MockMakerController> m_mockControllerMaker;
     std::shared_ptr<bk::mocks::MockController> m_mockController;
-    std::shared_ptr<queue::mocks::MockQueue<base::Event>> m_mockQueueRouter;
-    std::shared_ptr<queue::mocks::MockQueue<router::test::QueueType>> m_mockQueueTester;
+    std::shared_ptr<fastqueue::mocks::MockQueue<router::IngestEvent>> m_mockQueueRouter;
+    std::shared_ptr<fastqueue::mocks::MockQueue<router::test::EventTest>> m_mockQueueTester;
+    std::shared_ptr<raweventindexer::mocks::MockRawEventIndexer> m_mockRawIndexer;
 
     std::shared_ptr<router::Orchestrator> m_orchestrator;
 
@@ -36,8 +46,9 @@ public:
         m_mockPolicy = std::make_shared<builder::mocks::MockPolicy>();
         m_mockControllerMaker = std::make_shared<bk::mocks::MockMakerController>();
         m_mockController = std::make_shared<bk::mocks::MockController>();
-        m_mockQueueRouter = std::make_shared<queue::mocks::MockQueue<base::Event>>();
-        m_mockQueueTester = std::make_shared<queue::mocks::MockQueue<router::test::QueueType>>();
+        m_mockQueueRouter = std::make_shared<fastqueue::mocks::MockQueue<router::IngestEvent>>();
+        m_mockQueueTester = std::make_shared<fastqueue::mocks::MockQueue<router::test::EventTest>>();
+        m_mockRawIndexer = std::make_shared<raweventindexer::mocks::MockRawEventIndexer>();
 
         router::Orchestrator::Options config {.m_numThreads = NUM_THREADS,
                                               .m_wStore = m_mockStore,
@@ -45,6 +56,7 @@ public:
                                               .m_controllerMaker = m_mockControllerMaker,
                                               .m_prodQueue = m_mockQueueRouter,
                                               .m_testQueue = m_mockQueueTester,
+                                              .m_rawIndexer = m_mockRawIndexer,
                                               .m_testTimeout = SERVER_API_TIMEOUT};
 
         EXPECT_CALL(*m_mockStore, readDoc(testing::_))
@@ -61,37 +73,25 @@ public:
                     }
                     if (name == "policy/wazuh/0")
                     {
-                        // Handle other cases or return a default value
                         return json::Json {POLICY_JSON};
                     }
                     if (name == "router/eps/0")
                     {
                         return json::Json {EPS_JSON};
                     }
-                    return json::Json {};
-                }));
-
-        EXPECT_CALL(*m_mockStore, readDoc(testing::_))
-            .WillRepeatedly(testing::Invoke(
-                [&](const base::Name& name)
-                {
                     if (name == "integration/wazuh-core-fake/0")
                     {
                         return json::Json {INTEGRATION_JSON};
                     }
-                    else if (name == "decoder/fake/0")
+                    if (name == "decoder/fake/0")
                     {
                         return json::Json {DECODER_JSON};
                     }
-                    else if (name == "filter/allow-all/0")
+                    if (name == "filter/allow-all/0")
                     {
-                        // Handle other cases or return a default value
                         return json::Json {FILTER_JSON};
                     }
-                    else
-                    {
-                        return json::Json {};
-                    }
+                    return json::Json {};
                 }));
 
         EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
@@ -99,8 +99,8 @@ public:
 
         m_orchestrator = std::make_shared<router::Orchestrator>(config);
 
-        EXPECT_CALL(*m_mockQueueTester, tryPop(testing::_)).WillRepeatedly(testing::Return(false));
-        EXPECT_CALL(*m_mockQueueRouter, waitPop(testing::_, testing::_)).WillRepeatedly(testing::Return(true));
+        EXPECT_CALL(*m_mockQueueTester, waitPop(testing::_, testing::_)).WillRepeatedly(testing::Return(false));
+        EXPECT_CALL(*m_mockQueueRouter, waitPop(testing::_, testing::_)).WillRepeatedly(testing::Return(false));
         m_orchestrator->start();
     }
 };
@@ -119,12 +119,12 @@ void expectBuildPolicyOk(std::shared_ptr<builder::mocks::MockBuilder> mockbuilde
     EXPECT_CALL(*mockPolicy, hash()).WillOnce(::testing::ReturnRefOfCopy(std::string {"hash"}));
 
     // Build filter
-    EXPECT_CALL(*mockbuilder, buildAsset(testing::_)).WillOnce(::testing::Return(emptyExpression));
+    EXPECT_CALL(*mockbuilder, buildAsset(testing::_, testing::_)).WillOnce(::testing::Return(emptyExpression));
 }
 } // namespace
 TEST_F(OrchestratorRouterTest, AddRoute)
 {
-    router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
+    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
 
     // Build Valid policy
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
@@ -140,8 +140,8 @@ TEST_F(OrchestratorRouterTest, AddRoute)
 
 TEST_F(OrchestratorRouterTest, AddMultipleRoutes)
 {
-    router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
-    router::prod::EntryPost entryTwo("routeTwo", "policy/wazuh/0", "filter/allow-all/0", 11);
+    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
+    auto entryTwo = makeProdEntry("routeTwo", "wazuh", "filter/allow-all/0", 11);
 
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_CALL(*m_mockStore, upsertDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
@@ -157,7 +157,7 @@ TEST_F(OrchestratorRouterTest, AddMultipleRoutes)
 
 TEST_F(OrchestratorRouterTest, AddEqualRoute)
 {
-    router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
+    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
 
     // Add ok
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
@@ -184,7 +184,7 @@ TEST_F(OrchestratorRouterTest, DeleteRouteWithoutName)
 
 TEST_F(OrchestratorRouterTest, DeleteRoute)
 {
-    router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
+    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
 
     // Insert route after delete
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
@@ -200,7 +200,7 @@ TEST_F(OrchestratorRouterTest, DeleteRoute)
 
 TEST_F(OrchestratorRouterTest, DeleteTheEqualRouteTwoTimes)
 {
-    router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
+    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
 
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_CALL(*m_mockStore, upsertDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
@@ -228,8 +228,8 @@ TEST_F(OrchestratorRouterTest, GetEntryWithoutName)
 
 TEST_F(OrchestratorRouterTest, GetEntry)
 {
-    router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
-    router::prod::EntryPost entryTwo("routeTwo", "policy/wazuh/0", "filter/allow-all/0", 11);
+    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
+    auto entryTwo = makeProdEntry("routeTwo", "wazuh", "filter/allow-all/0", 11);
 
     EXPECT_CALL(*m_mockStore, upsertDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
@@ -259,7 +259,7 @@ TEST_F(OrchestratorRouterTest, ReloadEntryWithoutName)
 
 TEST_F(OrchestratorRouterTest, ReloadEntry)
 {
-    router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
+    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
 
     EXPECT_CALL(*m_mockStore, upsertDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
@@ -277,7 +277,7 @@ TEST_F(OrchestratorRouterTest, ReloadEntry)
 
 TEST_F(OrchestratorRouterTest, ChangePriority)
 {
-    router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
+    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
 
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_CALL(*m_mockStore, upsertDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
@@ -293,8 +293,8 @@ TEST_F(OrchestratorRouterTest, ChangePriority)
 
 TEST_F(OrchestratorRouterTest, ChangePriorityBusy)
 {
-    router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
-    router::prod::EntryPost entryTwo("routeTwo", "policy/wazuh/0", "filter/allow-all/0", 11);
+    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
+    auto entryTwo = makeProdEntry("routeTwo", "wazuh", "filter/allow-all/0", 11);
 
     EXPECT_CALL(*m_mockStore, upsertDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
@@ -309,57 +309,4 @@ TEST_F(OrchestratorRouterTest, ChangePriorityBusy)
     EXPECT_EQ(base::getResponse(m_orchestrator->getEntry("route")).priority(), 10);
 
     m_orchestrator->stop();
-}
-
-TEST_F(OrchestratorRouterTest, GetEPS)
-{
-    auto res = m_orchestrator->getEpsSettings();
-    ASSERT_FALSE(base::isError(res));
-    auto [eps, interval, active] = base::getResponse(res);
-    EXPECT_EQ(eps, 1);
-    EXPECT_EQ(interval, 1);
-    EXPECT_FALSE(active);
-}
-
-TEST_F(OrchestratorRouterTest, ChangeEPS)
-{
-    EXPECT_CALL(*m_mockStore, upsertDoc(testing::_, testing::_)).WillOnce(testing::Return(std::nullopt));
-    auto res = m_orchestrator->changeEpsSettings(2, 2);
-    ASSERT_FALSE(base::isError(res));
-    auto [eps, interval, active] = base::getResponse(m_orchestrator->getEpsSettings());
-    EXPECT_EQ(eps, 2);
-    EXPECT_EQ(interval, 2);
-}
-
-TEST_F(OrchestratorRouterTest, ChangeEPSError)
-{
-    auto res = m_orchestrator->changeEpsSettings(0, 1);
-    ASSERT_TRUE(base::isError(res));
-    res = m_orchestrator->changeEpsSettings(1, 0);
-    ASSERT_TRUE(base::isError(res));
-    res = m_orchestrator->changeEpsSettings(0, 0);
-    ASSERT_TRUE(base::isError(res));
-}
-
-TEST_F(OrchestratorRouterTest, ActivateEPS)
-{
-    EXPECT_CALL(*m_mockStore, upsertDoc(testing::_, testing::_))
-        .Times(2)
-        .WillRepeatedly(testing::Return(std::nullopt));
-
-    auto res = m_orchestrator->activateEpsCounter(true);
-    ASSERT_FALSE(base::isError(res));
-    auto [eps, interval, active] = base::getResponse(m_orchestrator->getEpsSettings());
-    EXPECT_TRUE(active);
-
-    res = m_orchestrator->activateEpsCounter(true);
-    ASSERT_TRUE(base::isError(res));
-
-    res = m_orchestrator->activateEpsCounter(false);
-    ASSERT_FALSE(base::isError(res));
-    std::tie(eps, interval, active) = base::getResponse(m_orchestrator->getEpsSettings());
-    EXPECT_FALSE(active);
-
-    res = m_orchestrator->activateEpsCounter(false);
-    ASSERT_TRUE(base::isError(res));
 }

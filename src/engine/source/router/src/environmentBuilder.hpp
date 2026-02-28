@@ -92,6 +92,11 @@ public:
         }
 
         auto policy = builder->buildPolicy(namespaceId, trace, sandbox);
+        if (policy == nullptr)
+        {
+            throw std::runtime_error {fmt::format("Failed to build policy '{}'", namespaceId.toStr())};
+        }
+
         if (policy->assets().empty())
         {
             throw std::runtime_error {fmt::format("Policy '{}' has no assets", namespaceId.toStr())};
@@ -104,6 +109,11 @@ public:
                        [](const auto& name) { return name.toStr(); });
 
         auto controller = m_controllerMaker->create(policy->expression(), assetNames);
+        if (controller == nullptr)
+        {
+            throw std::runtime_error {fmt::format("Failed to create controller for policy '{}'", namespaceId.toStr())};
+        }
+
         return {controller, policy->hash()};
     }
 
@@ -133,8 +143,10 @@ public:
             {
                 controller->stop();
             }
-            throw std::runtime_error {fmt::format(
-                "Failed to create environment with policy '{}' and filter '{}': {}", namespaceId.toStr(), filterName, e.what())};
+            throw std::runtime_error {fmt::format("Failed to create environment with policy '{}' and filter '{}': {}",
+                                                  namespaceId.toStr(),
+                                                  filterName,
+                                                  e.what())};
         }
     }
 };
