@@ -56,6 +56,13 @@ enum class Type
 
 };
 
+/**
+ * @brief Check if a schema type has properties (i.e., is a container type).
+ *
+ * @param type The schema type.
+ * @return true if the type is OBJECT, NESTED, or FLAT_OBJECT.
+ * @return false otherwise.
+ */
 inline constexpr bool hasProperties(Type type)
 {
     switch (type)
@@ -67,6 +74,12 @@ inline constexpr bool hasProperties(Type type)
     }
 }
 
+/**
+ * @brief Convert a schema Type to its string representation.
+ *
+ * @param type The schema type.
+ * @return constexpr const char* The string name, or "error" for unknown types.
+ */
 inline constexpr auto typeToStr(Type type)
 {
     switch (type)
@@ -116,6 +129,12 @@ inline constexpr auto typeToStr(Type type)
     }
 }
 
+/**
+ * @brief Convert a string to a schema Type.
+ *
+ * @param strType The type name string.
+ * @return Type The corresponding schema type, or Type::ERROR if unknown.
+ */
 inline constexpr auto strToType(std::string_view strType)
 {
     if (typeToStr(Type::BOOLEAN) == strType)
@@ -203,6 +222,12 @@ inline constexpr auto strToType(std::string_view strType)
     return Type::ERROR;
 }
 
+/**
+ * @brief Convert a schema Type to the corresponding JSON type.
+ *
+ * @param type The schema type.
+ * @return json::Json::Type The corresponding JSON type, or Null for unmapped types.
+ */
 inline constexpr auto typeToJType(Type type)
 {
     switch (type)

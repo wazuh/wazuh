@@ -23,6 +23,12 @@ using namespace rxu;
 namespace bk::rx
 {
 
+/**
+ * @brief Reactive (RxCpp) backend controller implementation.
+ *
+ * Builds an observable pipeline from a logical expression and processes
+ * events reactively.  Supports tracing individual expression nodes.
+ */
 class Controller final : public IController
 {
 private:
@@ -131,6 +137,9 @@ public:
     void unsubscribeAll() override;
 };
 
+/**
+ * @brief Factory for creating rx::Controller instances.
+ */
 class ControllerMaker : public IControllerMaker
 {
 public:

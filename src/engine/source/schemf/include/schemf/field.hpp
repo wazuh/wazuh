@@ -37,7 +37,14 @@ public:
         Type type = Type::ERROR;
         std::map<std::string, Field> properties = {};
 
-        friend std::ostream& operator<<(std::ostream& os, const Parameters& parameters)
+    /**
+     * @brief Stream insertion operator for Field::Parameters.
+     *
+     * @param os Output stream.
+     * @param parameters The parameters to print.
+     * @return std::ostream& The output stream.
+     */
+    friend std::ostream& operator<<(std::ostream& os, const Parameters& parameters)
         {
             os << "FieldParameters(" << "Type:" << typeToStr(parameters.type) << std::boolalpha
                 << "Properties:" << parameters.properties.size() << ")";
@@ -55,6 +62,7 @@ public:
      */
     explicit Field(const Parameters& parameters);
 
+    /** @brief Default constructor, creates a field with Type::ERROR. */
     Field()
         : m_type(Type::ERROR)
     {
@@ -65,11 +73,26 @@ public:
     Field& operator=(const Field&) = default;
     Field& operator=(Field&&) = default;
 
+    /**
+     * @brief Equality comparison operator.
+     *
+     * @param lhs Left-hand side Field.
+     * @param rhs Right-hand side Field.
+     * @return true if type and properties are equal.
+     */
     friend bool operator==(const Field& lhs, const Field& rhs)
     {
         return lhs.m_type == rhs.m_type && lhs.m_properties == rhs.m_properties;
     }
+    /** @brief Inequality comparison operator. */
     friend bool operator!=(const Field& lhs, const Field& rhs) { return !(lhs == rhs); }
+    /**
+     * @brief Stream insertion operator.
+     *
+     * @param os Output stream.
+     * @param field The field to print.
+     * @return std::ostream& The output stream.
+     */
     friend std::ostream& operator<<(std::ostream& os, const Field& field)
     {
         os << "Field(Type:" << typeToStr(field.m_type) << std::boolalpha
@@ -106,18 +129,18 @@ public:
     /**
      * @brief Add a property to the field.
      *
-     * @param name
-     * @param field
+     * @param name Name of the property.
+     * @param field The Field to add.
      *
      * @throw std::runtime_error If the field is not an object or an array of objects.
      */
     void addProperty(const std::string& name, const Field& field);
 
     /**
-     * @brief Add a property to the field.
+     * @brief Add a property to the field from parameters.
      *
-     * @param name
-     * @param parameters
+     * @param name Name of the property.
+     * @param parameters Parameters to construct the field with.
      *
      * @throw std::runtime_error If the field is not an object or an array of objects.
      */

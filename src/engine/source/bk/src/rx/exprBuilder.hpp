@@ -13,12 +13,18 @@
 namespace bk::rx::detail
 {
 
+/**
+ * @brief Builds an RxCpp observable pipeline from a logical expression tree.
+ */
 class ExprBuilder
 {
 private:
     using RxEvent = std::shared_ptr<base::result::Result<base::Event>>;
     using Observable = rxcpp::observable<RxEvent>;
 
+    /**
+     * @brief Build parameters shared during recursive expression building.
+     */
     struct BuildParams
     {
         Publisher publisher;
@@ -26,6 +32,15 @@ private:
         const std::unordered_set<std::string>& traceables;
     };
 
+    /**
+     * @brief Recursively build the observable pipeline from an expression.
+     *
+     * @param input The input observable.
+     * @param expression The expression node to process.
+     * @param params Shared build parameters (traces, traceables, publisher).
+     * @return Observable The resulting observable.
+     * @throws std::runtime_error If the expression is null or has an unsupported type.
+     */
     Observable recBuild(const Observable& input, const base::Expression& expression, BuildParams& params)
     {
         // Error if empty expression
@@ -160,6 +175,15 @@ public:
     virtual ~ExprBuilder() = default;
     ExprBuilder() = default;
 
+    /**
+     * @brief Build the complete observable pipeline from a top-level expression.
+     *
+     * @param expression The root expression.
+     * @param traces Map to populate with trace objects keyed by expression name.
+     * @param traceables Set of expression names that should be traced.
+     * @param input The source observable.
+     * @return Observable The output observable.
+     */
     Observable build(const base::Expression& expression,
                      std::unordered_map<std::string, std::shared_ptr<Tracer>>& traces,
                      const std::unordered_set<std::string>& traceables,

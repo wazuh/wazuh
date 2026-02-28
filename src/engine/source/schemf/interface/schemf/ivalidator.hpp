@@ -34,8 +34,11 @@ public:
 
     virtual ~BaseToken() = default;
 
+    /** @brief Check if this token holds a JSON type. */
     virtual bool isJType() const { return false; }
+    /** @brief Check if this token holds a schema type. */
     virtual bool isSType() const { return false; }
+    /** @brief Check if this token holds a JSON value. */
     virtual bool isValue() const { return false; }
 };
 
@@ -69,7 +72,9 @@ public:
         return std::shared_ptr<JTypeToken>(new JTypeToken(type));
     }
 
+    /** @copydoc BaseToken::isJType */
     bool isJType() const override { return true; }
+    /** @brief Get the JSON type held by this token. */
     json::Json::Type type() const { return m_type; }
 };
 
@@ -99,7 +104,9 @@ public:
         return std::shared_ptr<STypeToken>(new STypeToken(type));
     }
 
+    /** @copydoc BaseToken::isSType */
     bool isSType() const override { return true; }
+    /** @brief Get the schema type held by this token. */
     Type type() const { return m_type; }
 };
 
@@ -130,13 +137,22 @@ public:
         return std::shared_ptr<ValueToken>(new ValueToken(value));
     }
 
+    /** @copydoc BaseToken::isValue */
     bool isValue() const override { return true; }
+    /** @brief Get the JSON value held by this token. */
     const json::Json& value() const { return m_value; }
 };
 
-using ValueValidator = std::function<base::OptError(const json::Json&)>;
-using ValidationToken = std::shared_ptr<BaseToken>;
+using ValueValidator = std::function<base::OptError(const json::Json&)>; ///< Validates a JSON value.
+using ValidationToken = std::shared_ptr<BaseToken>;                    ///< Token describing a validation intent.
 
+/**
+ * @brief Wrap a ValueValidator so it validates each element of an array individually.
+ *
+ * @param validator The per-element validator.
+ * @return ValueValidator A validator that applies the original validator to each array element,
+ *         or to the value directly if it is not an array. Returns nullptr if the input is nullptr.
+ */
 inline ValueValidator asArray(const ValueValidator& validator)
 {
     if (validator == nullptr)
@@ -178,13 +194,28 @@ private:
     ValueValidator m_validator;
 
 public:
+    /**
+     * @brief Construct a new ValidationResult.
+     *
+     * @param validator Runtime validator, or nullptr if no runtime validation is needed.
+     */
     explicit ValidationResult(const ValueValidator& validator = nullptr)
         : m_validator(validator)
     {
     }
 
+    /**
+     * @brief Check if runtime validation is required.
+     *
+     * @return true if a runtime validator is present.
+     */
     bool needsRuntimeValidation() const { return m_validator != nullptr; }
 
+    /**
+     * @brief Get the runtime validator function.
+     *
+     * @return ValueValidator The validator, or nullptr.
+     */
     ValueValidator getValidator() const { return m_validator; }
 };
 
