@@ -257,12 +257,12 @@ TEST_F(ScaTest, StopUnblocksPauseWaiters)
     pauseThread.join();
 }
 
-TEST_F(ScaTest, StopDoesNotBlockIfPauseMutexIsHeld)
+TEST_F(ScaTest, StopCompletesAfterPauseMutexRelease)
 {
     auto mockDBSync = std::make_shared<MockDBSync>();
     auto scaMock = std::make_shared<SCAMock>(mockDBSync, nullptr);
 
-    // Simulate contention on pause mutex. Stop() must not wait on this mutex.
+    // Simulate contention on pause mutex and verify Stop() completes once lock is released.
     scaMock->lockPauseMutex();
 
     std::atomic<bool> stopReturned {false};
@@ -277,10 +277,17 @@ TEST_F(ScaTest, StopDoesNotBlockIfPauseMutexIsHeld)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    EXPECT_TRUE(stopReturned.load());
+    EXPECT_FALSE(stopReturned.load());
 
     // Always release mutex owned by this thread.
     scaMock->unlockPauseMutex();
+
+    for (int i = 0; i < 50 && !stopReturned.load(); ++i)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    EXPECT_TRUE(stopReturned.load());
     stopThread.join();
 }
 
