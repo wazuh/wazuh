@@ -53,9 +53,7 @@ public:
     inline const base::Name& name() const override { return m_name; }
 
     /**
-     * @brief Get the policy hash.
-     *
-     * @return const std::string& Hash of the policy.
+     * @copydoc IPolicy::hash
      */
     inline const std::string& hash() const override { return m_hash; }
 
@@ -71,8 +69,8 @@ public:
 
     /**
      * @copydoc IPolicy::getGraphivzStr
+     * @throws std::runtime_error Always (not implemented).
      */
-    // TODO: Implement
     inline std::string getGraphivzStr() const override { throw std::runtime_error("Not implemented"); }
 };
 } // namespace builder::policy

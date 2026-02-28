@@ -561,6 +561,12 @@ struct DefaultPrecedencePolicy
 class ParenthOpenToken final : public BaseToken
 {
 private:
+    /**
+     * @brief Construct a ParenthOpenToken.
+     *
+     * @param text Token text.
+     * @param pos Position in the expression.
+     */
     ParenthOpenToken(std::string&& text, size_t pos)
         : BaseToken(std::move(text), pos)
     {
@@ -603,6 +609,12 @@ public:
 class ParenthCloseToken final : public BaseToken
 {
 private:
+    /**
+     * @brief Construct a ParenthCloseToken.
+     *
+     * @param text Token text.
+     * @param pos Position in the expression.
+     */
     ParenthCloseToken(std::string&& text, size_t pos)
         : BaseToken(std::move(text), pos)
     {
@@ -635,14 +647,14 @@ public:
     bool isParenthesisClose() const override { return true; }
 };
 
-using Token = std::shared_ptr<BaseToken>;
+using Token = std::shared_ptr<BaseToken>; ///< Shared pointer to any token.
 
-using OpToken = details::OpToken<details::DefaultPrecedencePolicy>;
-using UnaryOpToken = details::UnaryOpToken<details::DefaultPrecedencePolicy>;
-using BinaryOpToken = details::BinaryOpToken<details::DefaultPrecedencePolicy>;
-using OrToken = details::OrToken<details::DefaultPrecedencePolicy>;
-using AndToken = details::AndToken<details::DefaultPrecedencePolicy>;
-using NotToken = details::NotToken<details::DefaultPrecedencePolicy>;
+using OpToken = details::OpToken<details::DefaultPrecedencePolicy>;           ///< Operator token with default precedence.
+using UnaryOpToken = details::UnaryOpToken<details::DefaultPrecedencePolicy>; ///< Unary operator token with default precedence.
+using BinaryOpToken = details::BinaryOpToken<details::DefaultPrecedencePolicy>; ///< Binary operator token with default precedence.
+using OrToken = details::OrToken<details::DefaultPrecedencePolicy>;   ///< OR token with default precedence.
+using AndToken = details::AndToken<details::DefaultPrecedencePolicy>; ///< AND token with default precedence.
+using NotToken = details::NotToken<details::DefaultPrecedencePolicy>; ///< NOT token with default precedence.
 
 /**
  * @brief Namespace containing traits for logical expression tokens.

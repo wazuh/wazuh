@@ -62,6 +62,11 @@ struct is_in_list<T> : std::false_type
 };
 } // namespace detail
 
+/**
+ * @brief Composite registry that manages multiple typed IRegistry instances.
+ *
+ * @tparam Builders Variadic list of builder types to register.
+ */
 template<typename... Builders>
 class MetaRegistry : public std::enable_shared_from_this<MetaRegistry<Builders...>>
 {
@@ -80,7 +85,12 @@ protected: // To expose registry tuple in the mock class
     auto& getRegistryTuple() { return m_registryTuple; }
 
 public:
-    // Static create method with a template template parameter
+    /**
+     * @brief Create a MetaRegistry, instantiating each sub-registry with the given Registry template.
+     *
+     * @tparam Registry Registry implementation template.
+     * @return std::shared_ptr<MetaRegistry> The new MetaRegistry instance.
+     */
     template<template<typename> typename Registry>
     [[nodiscard]] static std::shared_ptr<MetaRegistry> create()
     {
@@ -92,6 +102,13 @@ public:
         return ptr;
     }
 
+    /**
+     * @brief Add a builder entry to the typed sub-registry.
+     *
+     * @tparam Builder The builder type (must be one of the Builders in the MetaRegistry).
+     * @param name Name of the builder.
+     * @param entry Builder to add.
+     */
     template<typename Builder>
     void add(const std::string& name, const Builder& entry)
     {
@@ -104,6 +121,13 @@ public:
         registry->add(name, entry);
     }
 
+    /**
+     * @brief Get a builder entry from the typed sub-registry.
+     *
+     * @tparam Builder The builder type (must be one of the Builders in the MetaRegistry).
+     * @param name Name of the builder.
+     * @return The builder entry, or an error if not found.
+     */
     template<typename Builder>
     auto get(const std::string& name) const
     {

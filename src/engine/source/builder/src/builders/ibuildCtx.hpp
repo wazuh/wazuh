@@ -17,31 +17,29 @@ namespace builder::builders
 {
 
 /**
- * @brief Control flags for the runtime
- *
+ * @brief Control flags for the runtime.
  */
 struct RunState
 {
-    bool trace;   // Active/Inactive trace messages
-    bool sandbox; // Active/Inactive test mode
-    bool check;   // Active/Inactive hard type enforcement mode
+    bool trace;   ///< Whether trace messages are active.
+    bool sandbox; ///< Whether test/sandbox mode is active.
+    bool check;   ///< Whether hard type enforcement mode is active.
 };
 
 /**
- * @brief Context for the builder
- *
+ * @brief Context for the builder, tracks the current build scope.
  */
 struct Context
 {
-    std::string assetName;           // Name of the current asset being built
-    std::string integrationName;     // Name of the current integration being built
-    std::string integrationCategory; // Name of the current integration category being built
-    std::string policyName;          // Name of the current policy being built
-    std::string stageName;           // Name of the current stage being built
-    std::string opName;              // Name of the current operation being built
+    std::string assetName;           ///< Name of the current asset being built.
+    std::string integrationName;     ///< Name of the current integration being built.
+    std::string integrationCategory; ///< Category of the current integration being built.
+    std::string policyName;          ///< Name of the current policy being built.
+    std::string stageName;           ///< Name of the current stage being built.
+    std::string opName;              ///< Name of the current operation being built.
     std::optional<std::unordered_map<std::string, bool>>
-        availableKvdbs; // Available KVDBs: nullopt = no validation, value = validate with this map
-    bool indexDiscardedEvents;       // Policy configuration: whether to index discarded events
+        availableKvdbs;              ///< Available KVDBs: nullopt = no validation, value = validate with this map.
+    bool indexDiscardedEvents;       ///< Policy configuration: whether to index discarded events.
 };
 
 /**

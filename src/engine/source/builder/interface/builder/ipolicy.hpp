@@ -9,6 +9,9 @@
 namespace builder
 {
 
+/**
+ * @brief Interface for a built policy.
+ */
 class IPolicy
 {
 public:
@@ -43,9 +46,9 @@ public:
     virtual const base::Expression& expression() const = 0;
 
     /**
-     * @brief Get the Graphivz Str object
+     * @brief Get the Graphviz string representation of the policy.
      *
-     * @return std::string
+     * @return std::string Graphviz DOT string.
      */
     virtual std::string getGraphivzStr() const = 0;
 };
