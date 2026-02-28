@@ -29,14 +29,15 @@ class SCAMock : public SecurityConfigurationAssessment
         /// @param inProgress Whether sync is in progress
         void setSyncInProgress(bool inProgress)
         {
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
             m_syncInProgress.store(inProgress);
         }
 
         /// @brief Notify pause condition variable (to simulate sync completion)
         void notifySyncComplete()
         {
-            m_syncInProgress.store(false);
             std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_syncInProgress.store(false);
             m_pauseCv.notify_all();
         }
 
