@@ -38,6 +38,7 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_SYSTEM_NOT_SUPPORTED] = "The WPK for this platform is not available",
     [WM_UPGRADE_UPGRADE_ALREADY_IN_PROGRESS] = "Upgrade procedure could not start. Agent already upgrading",
     [WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED] = "Remote upgrade is not available for this agent version",
+    [WM_UPGRADE_INTERMEDIATE_VERSION_REQUIRED] = "Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first",
     [WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT] = "Current agent version is greater or equal",
     [WM_UPGRADE_NEW_VERSION_GREATER_MASTER] = "Upgrading an agent to a version higher than the manager requires the force flag",
     [WM_UPGRADE_URL_NOT_FOUND] = "The repository is not reachable",

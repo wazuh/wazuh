@@ -244,6 +244,7 @@ For more information, visit:
   https://documentation.wazuh.com/current/upgrade-guide/
 ═════════════════════════════════════════════════════════════════
 EOF
+    echo -n "3" > %{_localstatedir}/var/upgrade/upgrade_result
     exit 1
   fi
 fi

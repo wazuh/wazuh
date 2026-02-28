@@ -90,6 +90,7 @@ Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later."
         echo "For more information, visit:"
         echo "  https://documentation.wazuh.com/current/upgrade-guide/"
         echo "═════════════════════════════════════════════════════════════════"
+        echo -n "3" > ${DIR}/var/upgrade/upgrade_result
         exit 1
     fi
 

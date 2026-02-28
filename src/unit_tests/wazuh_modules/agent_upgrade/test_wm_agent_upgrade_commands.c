@@ -1176,7 +1176,7 @@ void test_wm_agent_upgrade_process_agent_result_command_failed(void **state)
     int agents[2];
     wm_upgrade_agent_status_task *upgrade_agent_status_task = NULL;
     char *agent_status = "Failed";
-    char *agent_error = "Upgrade procedure exited with error code";
+    char *agent_error = "Upgrade procedure exited with error code: 2";
 
     agents[0] = 25;
     agents[1] = OS_INVALID;

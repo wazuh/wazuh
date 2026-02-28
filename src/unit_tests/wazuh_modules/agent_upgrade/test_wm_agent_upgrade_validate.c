@@ -1304,6 +1304,81 @@ void test_wm_agent_upgrade_validate_version_upgrade_force(void **state)
     assert_string_equal(task->wpk_version, "v5.0.0");
 }
 
+void test_wm_agent_upgrade_validate_version_upgrade_intermediate_required(void **state)
+{
+    wm_upgrade_task *task = state[1];
+    char *wazuh_version = "v4.13.0";
+    char *platform = "ubuntu";
+
+    task->force_upgrade = false;
+    os_strdup("v5.0.0", task->custom_version);
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
+
+    assert_int_equal(ret, WM_UPGRADE_INTERMEDIATE_VERSION_REQUIRED);
+    assert_string_equal(task->wpk_version, "v5.0.0");
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_intermediate_required_force(void **state)
+{
+    wm_upgrade_task *task = state[1];
+    char *wazuh_version = "v4.13.0";
+    char *platform = "ubuntu";
+
+    task->force_upgrade = true;
+    os_strdup("v5.0.0", task->custom_version);
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_version, "v5.0.0");
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_intermediate_required(void **state)
+{
+    wm_upgrade_task *task = state[1];
+    char *wazuh_version = "v4.13.0";
+    char *platform = "ubuntu";
+
+    task->force_upgrade = false;
+    os_strdup("v5.0.0", task->custom_version);
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
+
+    assert_int_equal(ret, WM_UPGRADE_INTERMEDIATE_VERSION_REQUIRED);
+    assert_string_equal(task->wpk_version, "v5.0.0");
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_intermediate_required_force(void **state)
+{
+    wm_upgrade_task *task = state[1];
+    char *wazuh_version = "v4.13.0";
+    char *platform = "ubuntu";
+
+    task->force_upgrade = true;
+    os_strdup("v5.0.0", task->custom_version);
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
+
+    assert_int_equal(ret, WM_UPGRADE_INTERMEDIATE_VERSION_REQUIRED);
+    assert_string_equal(task->wpk_version, "v5.0.0");
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_5x_to_5x(void **state)
+{
+    wm_upgrade_task *task = state[1];
+    char *wazuh_version = "v5.0.0";
+    char *platform = "ubuntu";
+
+    task->force_upgrade = true;
+    os_strdup("v5.0.1", task->custom_version);
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_version, "v5.0.1");
+}
+
 void test_wm_agent_upgrade_validate_version_version_null(void **state)
 {
     wm_upgrade_task *task = state[1];
@@ -1800,6 +1875,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_older_version, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_greater_version, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_force, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_intermediate_required, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_intermediate_required_force, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_5x_to_5x, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_version_null, setup_validate_wpk_version, teardown_validate_wpk_version),
         // wm_agent_upgrade_validate_wpk
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_exist, setup_validate_wpk, teardown_validate_wpk),
