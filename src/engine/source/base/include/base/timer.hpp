@@ -6,6 +6,11 @@
 namespace base::chrono
 {
 
+/**
+ * @brief Simple high-resolution timer for measuring elapsed time.
+ *
+ * Starts counting on construction. Call elapsed() to retrieve the duration.
+ */
 class Timer
 {
 private:
@@ -21,10 +26,10 @@ public:
     }
 
     /**
-     * @brief Get the elapsed time
+     * @brief Get the elapsed time since construction.
      *
-     * This function is used to get the elapsed time since the timer was started.
-     * @return T Elapsed time
+     * @tparam T Duration type (default: std::chrono::milliseconds).
+     * @return The elapsed time count in the given duration type.
      */
     template<typename T = std::chrono::milliseconds>
     auto elapsed() const

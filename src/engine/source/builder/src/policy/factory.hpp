@@ -58,13 +58,11 @@ constexpr std::string_view AssetPipelineStageToStr(const AssetPipelineStage stag
  */
 struct SubgraphData
 {
-    // Order in which the assets were read / built
-    std::vector<base::Name> orderedAssets;
-    // Quick access by name (for filters, checks, etc.)
-    std::unordered_map<base::Name, Asset> assets;
+    std::vector<base::Name> orderedAssets;                   ///< Order in which the assets were read/built.
+    std::unordered_map<base::Name, Asset> assets;            ///< Quick access to assets by name.
 };
 
-using BuiltAssets = std::unordered_map<AssetPipelineStage, SubgraphData>;
+using BuiltAssets = std::unordered_map<AssetPipelineStage, SubgraphData>; ///< Map of pipeline stages to built asset data.
 
 /**
  * @brief Build the assets of the policy.

@@ -21,17 +21,24 @@
 namespace builder
 {
 
+/**
+ * @brief External dependencies required by the Builder.
+ */
 struct BuilderDeps
 {
-    size_t logparDebugLvl = 0;
-    std::shared_ptr<hlp::logpar::Logpar> logpar = nullptr;
-
-    std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;
-    std::shared_ptr<geo::IManager> geoManager;
-    std::shared_ptr<streamlog::ILogManager> logManager;
-    std::weak_ptr<wiconnector::IWIndexerConnector> iConnector;
+    size_t logparDebugLvl = 0;                                       ///< Debug level for the log parser.
+    std::shared_ptr<hlp::logpar::Logpar> logpar = nullptr;           ///< Log parser instance.
+    std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;            ///< KVDB manager.
+    std::shared_ptr<geo::IManager> geoManager;                       ///< Geo-location manager.
+    std::shared_ptr<streamlog::ILogManager> logManager;              ///< Stream log manager.
+    std::weak_ptr<wiconnector::IWIndexerConnector> iConnector;       ///< Wazuh-Indexer connector.
 };
 
+/**
+ * @brief Concrete builder that builds policies and assets, and provides validation.
+ *
+ * Implements both IBuilder (build policies/assets) and IValidator (validate integrations/assets/policies).
+ */
 class Builder final
     : public IBuilder
     , public IValidator
@@ -78,24 +85,24 @@ public:
     base::Expression buildAsset(const base::Name& name, const cm::store::NamespaceId& namespaceId) const override;
 
     /**
-     * @copydoc IBuilder::validateIntegration
+     * @copydoc IValidator::softIntegrationValidate
      */
     base::OptError softIntegrationValidate(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
                                            const cm::store::dataType::Integration& integration) const override;
 
     /**
-     * @copydoc IBuilder::validateAsset
+     * @copydoc IValidator::validateAsset
      */
     base::OptError validateAsset(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
                                  const json::Json& assetJson) const override;
 
     /**
-     * @copydoc IBuilder::validateAssetShallow
+     * @copydoc IValidator::validateAssetShallow
      */
     base::OptError validateAssetShallow(const json::Json& assetJson) const override;
 
     /**
-     * @copydoc IBuilder::validatePolicy
+     * @copydoc IValidator::softPolicyValidate
      */
     base::OptError softPolicyValidate(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
                                       const cm::store::dataType::Policy& policy) const override;

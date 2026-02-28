@@ -102,6 +102,13 @@ private:
         currentState = VisitState::Visited;
     }
 
+    /**
+     * @brief Add a node to the graph (internal).
+     *
+     * @param key Node identifier.
+     * @param value Node value (moved).
+     * @throws std::runtime_error If a node with the same key already exists.
+     */
     void _addNode(K key, T&& value)
     {
         if (m_nodes.end() != m_nodes.find(key))
@@ -111,6 +118,13 @@ private:
         m_nodes[key] = std::move(value);
     }
 
+    /**
+     * @brief Add a directed edge between two nodes (internal).
+     *
+     * @param from Source node key.
+     * @param to Destination node key.
+     * @throws std::runtime_error If the edge already exists.
+     */
     void _addEdge(K from, K to)
     {
         if (m_edges.end() == m_edges.find(from))
@@ -132,6 +146,12 @@ private:
         }
     }
 
+    /**
+     * @brief Delete a node from the graph (internal).
+     *
+     * @param key Node identifier to remove.
+     * @throws std::runtime_error If the node does not exist.
+     */
     void _deleteNode(K key)
     {
         if (m_nodes.end() == m_nodes.find(key))
@@ -142,6 +162,12 @@ private:
         m_edges.erase(key);
     }
 
+    /**
+     * @brief Preorder traversal helper (internal).
+     *
+     * @param key Current node key.
+     * @param visitor Function called for each visited node.
+     */
     void _preOrder(K key, std::function<void(const K&, const T&)> visitor) const
     {
         visitor(key, m_nodes.at(key));
@@ -195,14 +221,16 @@ public:
      *
      * @param id Node id.
      * @param node Node value.
+     * @throws std::runtime_error If a node with the same id already exists.
      */
     void addNode(K id, T node) { _addNode(id, std::move(node)); }
 
     /**
      * @brief Add directed edge to graph.
      *
-     * @param from Node id.
-     * @param to Node id.
+     * @param from Source node id.
+     * @param to Destination node id.
+     * @throws std::runtime_error If the edge already exists.
      */
     void addEdge(K from, K to) { _addEdge(from, to); }
 
@@ -216,6 +244,7 @@ public:
      * @param id Injected node id.
      * @param node Injected node value.
      * @param parent Parent node id.
+     * @throws std::runtime_error If a node with the same id already exists or if the edge already exists.
      */
     void injectNode(K id, T node, K parent)
     {
@@ -240,6 +269,7 @@ public:
      *
      * @param id Id of the node.
      * @return const T& Value of the node.
+     * @throws std::runtime_error If the node does not exist.
      */
     const T& node(K id) const
     {
@@ -399,6 +429,14 @@ public:
         return ss.str();
     }
 
+    /**
+     * @brief Equality comparison operator.
+     *
+     * @param lhs Left-hand side Graph.
+     * @param rhs Right-hand side Graph.
+     * @return true if root, nodes and edges are all equal.
+     * @return false otherwise.
+     */
     friend bool operator==(const Graph& lhs, const Graph& rhs)
     {
         bool root = lhs.m_root == rhs.m_root;

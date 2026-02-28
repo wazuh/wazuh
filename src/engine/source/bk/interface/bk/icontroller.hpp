@@ -118,12 +118,22 @@ public:
     /**
      * @brief Create a new controller.
      *
-     * @return std::shared_ptr<IController>
+     * @param expression The expression to build the controller from.
+     * @param traceables Set of traceable expression names.
+     * @param endCallback Callback invoked when expression processing finishes.
+     * @return std::shared_ptr<IController> The new controller.
      */
     virtual std::shared_ptr<IController> create(const base::Expression& expression,
                                                 const std::unordered_set<std::string>& traceables,
                                                 const std::function<void()>& endCallback) = 0;
 
+    /**
+     * @brief Create a new controller without an end callback.
+     *
+     * @param expression The expression to build the controller from.
+     * @param traceables Set of traceable expression names.
+     * @return std::shared_ptr<IController> The new controller.
+     */
     std::shared_ptr<IController> create(const base::Expression& expression,
                                         const std::unordered_set<std::string>& traceables)
     {

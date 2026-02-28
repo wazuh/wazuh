@@ -57,8 +57,16 @@ public:
      * @return const std::vector<base::Name>&
      */
     inline const std::vector<base::Name>& parents() const { return m_parents; }
+    /** @brief Get a mutable reference to the parents of the asset. */
     std::vector<base::Name>& parents() { return m_parents; }
 
+    /**
+     * @brief Equality comparison operator.
+     *
+     * @param lhs Left-hand side asset.
+     * @param rhs Right-hand side asset.
+     * @return true if name, expression and parents are all equal.
+     */
     friend bool operator==(const Asset& lhs, const Asset& rhs)
     {
         return lhs.m_name == rhs.m_name && lhs.m_expression == rhs.m_expression && lhs.m_parents == rhs.m_parents;
