@@ -138,6 +138,8 @@ static rwlock_t files_update_rwlock;
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
 
+STATIC atomic_int_t _startup_completed = ATOMIC_INT_INITIALIZER(0);
+
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 
 STATIC w_macos_log_procceses_t * macos_processes = NULL;
@@ -432,7 +434,7 @@ void LogCollectorStart()
              */
 #ifdef WIN32
             if (current->fp) {
-                if (current->future == 0) {
+                if (current->future == 0 || atomic_int_get(&_startup_completed)) {
                     w_set_to_last_line_read(current);
                 } else {
                     int64_t offset = w_set_to_pos(current, 0, SEEK_END);
@@ -451,7 +453,7 @@ void LogCollectorStart()
         /* On Windows we need to forward the seek for wildcard files */
 #ifdef WIN32
             if (current->fp) {
-                if (current->future == 0) {
+                if (current->future == 0 || atomic_int_get(&_startup_completed)) {
                     w_set_to_last_line_read(current);
                 } else {
                     int64_t offset = w_set_to_pos(current, 0, SEEK_END);
@@ -483,6 +485,8 @@ void LogCollectorStart()
     w_create_thread(lccom_main, NULL);
 #endif
     set_can_read(1);
+    atomic_int_set(&_startup_completed, 1);
+    mdebug1("Startup completed. Runtime-discovered files will be read from beginning.");
     /* Daemon loop */
     while (1) {
 
@@ -1068,7 +1072,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
 /* Windows and fseek causes some weird issues */
 #ifndef WIN32
     if (do_fseek == 1 && S_ISREG(stat_fd.st_mode)) {
-        if (lf->future == 0) {
+        if (lf->future == 0 || atomic_int_get(&_startup_completed)) {
             if (w_set_to_last_line_read(lf) < 0) {
                 goto error;
             }
@@ -2257,7 +2261,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         }
 #ifdef WIN32
                         if (current->fp != NULL) {
-                            if (current->future == 0) {
+                            if (current->future == 0 || atomic_int_get(&_startup_completed)) {
                                 w_set_to_last_line_read(current);
                             } else {
                                 int64_t offset = w_set_to_pos(current, 0, SEEK_END);
@@ -2795,9 +2799,22 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
     }
 
     if (data = (os_file_status_t *)OSHash_Get_ex(files_status, lf->file), data == NULL) {
-        w_set_to_pos(lf, 0, SEEK_END);
-        if (w_update_hash_node(lf->file, w_ftell(lf->fp)) == -1) {
-            merror(HUPDATE_ERROR, lf->file, files_status_name);
+        if (atomic_int_get(&_startup_completed)) {
+            mdebug1("New file '%s' discovered at runtime with no bookmark. Reading from beginning.", lf->file);
+            if (w_set_to_pos(lf, 0, SEEK_SET) < 0) {
+                return -1;
+            }
+            if (w_update_hash_node(lf->file, 0) == -1) {
+                merror(HUPDATE_ERROR, lf->file, files_status_name);
+            }
+        } else {
+            int64_t end_pos = w_set_to_pos(lf, 0, SEEK_END);
+            if (end_pos < 0) {
+                return -1;
+            }
+            if (w_update_hash_node(lf->file, end_pos) == -1) {
+                merror(HUPDATE_ERROR, lf->file, files_status_name);
+            }
         }
         return 0;
     }
