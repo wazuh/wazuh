@@ -4,9 +4,13 @@
 #include <hlp/hlp.hpp>
 #include <schemf/ivalidator.hpp>
 
+/**
+ * @brief Value validator factories for schema field types.
+ */
 namespace schemf::validators
 {
 
+/** @brief Validator that checks if a JSON value is a boolean. */
 inline ValueValidator getBoolValidator()
 {
     return [](const json::Json& value) -> base::OptError
@@ -20,6 +24,7 @@ inline ValueValidator getBoolValidator()
     };
 }
 
+/** @brief Validator that checks if a JSON value is a short (int8 range). */
 inline ValueValidator getShortValidator()
 {
     return [](const json::Json& value) -> base::OptError
@@ -40,6 +45,7 @@ inline ValueValidator getShortValidator()
     };
 }
 
+/** @brief Validator that checks if a JSON value is an integer. */
 inline ValueValidator getIntegerValidator()
 {
     return [](const json::Json& value) -> base::OptError
@@ -53,6 +59,7 @@ inline ValueValidator getIntegerValidator()
     };
 }
 
+/** @brief Validator that checks if a JSON value is a long (int64). */
 inline ValueValidator getLongValidator()
 {
     return [](const json::Json& value) -> base::OptError
@@ -66,6 +73,7 @@ inline ValueValidator getLongValidator()
     };
 }
 
+/** @brief Validator that checks if a JSON value is a float. */
 inline ValueValidator getFloatValidator()
 {
     return [](const json::Json& value) -> base::OptError
@@ -79,6 +87,7 @@ inline ValueValidator getFloatValidator()
     };
 }
 
+/** @brief Validator that checks if a JSON value is a double. */
 inline ValueValidator getDoubleValidator()
 {
     return [](const json::Json& value) -> base::OptError
@@ -92,6 +101,7 @@ inline ValueValidator getDoubleValidator()
     };
 }
 
+/** @brief Validator that checks if a JSON value is an unsigned long (uint64). */
 inline ValueValidator getUnsignedLongValidator()
 {
     return [](const json::Json& value) -> base::OptError
@@ -105,6 +115,7 @@ inline ValueValidator getUnsignedLongValidator()
     };
 }
 
+/** @brief Validator that checks if a JSON value is a string. */
 inline ValueValidator getStringValidator()
 {
     return [](const json::Json& value) -> base::OptError
@@ -118,6 +129,7 @@ inline ValueValidator getStringValidator()
     };
 }
 
+/** @brief Validator that checks if a JSON value is a valid date string. */
 inline ValueValidator getDateValidator()
 {
     // TODO parametrize date format
@@ -142,6 +154,7 @@ inline ValueValidator getDateValidator()
     };
 }
 
+/** @brief Validator that checks if a JSON value is a valid IP address string. */
 inline ValueValidator getIpValidator()
 {
     auto ipParser = hlp::parsers::getIPParser({});
@@ -164,6 +177,7 @@ inline ValueValidator getIpValidator()
     };
 }
 
+/** @brief Validator that checks if a JSON value is a valid base64 binary string. */
 inline ValueValidator getBinaryValidator()
 {
     auto binaryParser = hlp::parsers::getBinaryParser({});
@@ -186,6 +200,7 @@ inline ValueValidator getBinaryValidator()
     };
 }
 
+/** @brief Validator that checks if a JSON value is an object. */
 inline ValueValidator getObjectValidator()
 {
     return [](const json::Json& value) -> base::OptError
@@ -199,6 +214,7 @@ inline ValueValidator getObjectValidator()
     };
 }
 
+/** @brief Validator that always returns an error (incompatible type). */
 inline ValueValidator getIncompatibleValidator()
 {
     return [](const json::Json& value) -> base::OptError

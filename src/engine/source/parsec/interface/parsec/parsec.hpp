@@ -21,6 +21,12 @@ namespace parsec
 /****************************************************************************************
  * Type definitions
  ****************************************************************************************/
+/**
+ * @brief Trace information for parser combinators.
+ *
+ * Captures success/failure status, position index, an optional message,
+ * and optionally nested traces from sub-parsers.
+ */
 class Trace
 {
 public:
@@ -81,11 +87,17 @@ public:
     }
     bool operator!=(const Trace& other) const { return !(*this == other); }
 
+    /** @brief Whether the parser succeeded. */
     bool success() const { return m_success; }
+    /** @brief The position index in the input text. */
     size_t index() const { return m_index; }
+    /** @brief Optional trace message (const). */
     const messageT& message() const { return m_message; }
+    /** @brief Optional trace message (move). */
     messageT&& message() { return std::move(m_message); }
+    /** @brief Optional nested traces from sub-parsers (const). */
     const nestedTracesT& innerTraces() const { return m_innerTraces; }
+    /** @brief Optional nested traces from sub-parsers (move). */
     nestedTracesT&& innerTraces() { return std::move(m_innerTraces); }
 };
 
@@ -201,6 +213,7 @@ public:
      */
     Trace&& trace() { return std::move(m_trace); }
 
+    /** @brief Get the parser position index from the trace. */
     size_t index() const { return m_trace.index(); }
 };
 
@@ -242,6 +255,12 @@ Result<T> makeError(std::string&& error, size_t index, Trace::nestedTracesT&& in
                       Trace {false, index, std::make_optional<std::string>(std::move(error)), std::move(innerTrace)}};
 }
 
+/**
+ * @brief Find the first (deepest) error trace in a nested trace tree.
+ *
+ * @param trace The root trace to search.
+ * @return const Trace& Reference to the first error trace found.
+ */
 inline const Trace& firstError(const Trace& trace)
 {
     if (trace.innerTraces().has_value())
@@ -258,6 +277,12 @@ inline const Trace& firstError(const Trace& trace)
     return trace;
 }
 
+/**
+ * @brief Collect all leaf-level error traces from a nested trace tree.
+ *
+ * @param trace The root trace to search.
+ * @return std::list<const Trace*> Pointers to all leaf error traces.
+ */
 inline std::list<const Trace*> getLeafErrors(const Trace& trace)
 {
     std::list<const Trace*> errors;
@@ -277,6 +302,14 @@ inline std::list<const Trace*> getLeafErrors(const Trace& trace)
     return errors;
 }
 
+/**
+ * @brief Build a tree-formatted detailed trace string.
+ *
+ * @param trace The trace node.
+ * @param last Whether this is the last sibling.
+ * @param prefix Current indentation prefix.
+ * @return std::string The formatted trace tree.
+ */
 inline std::string detailedTrace(const Trace& trace, bool last, std::string prefix = "")
 {
     std::string tr = prefix;
@@ -298,6 +331,14 @@ inline std::string detailedTrace(const Trace& trace, bool last, std::string pref
     return tr;
 }
 
+/**
+ * @brief Format a trace into a human-readable error report.
+ *
+ * @param text The original input text.
+ * @param trace The trace to format.
+ * @param debugLvl Debug verbosity level (>0 includes detailed trace tree).
+ * @return std::string Formatted error report.
+ */
 inline std::string formatTrace(std::string_view text, const Trace& trace, size_t debugLvl)
 {
     std::string tr;
@@ -606,7 +647,7 @@ Parser<Tx> fmap(std::function<Tx(T)> f, const Parser<T>& p)
     };
 }
 
-/* Monadic binding helper type */
+/** @brief Monadic binding helper: factory function type for creating a new parser from a value. */
 template<typename Tx, typename T>
 using M = std::function<Parser<Tx>(T)>;
 
@@ -643,7 +684,7 @@ Parser<Tx> operator>>=(const Parser<T>& p, M<Tx, T> f)
     };
 }
 
-/* List of values helper type */
+/** @brief List of values collected by the many/many1 combinators. */
 template<typename T>
 using Values = std::list<T>;
 

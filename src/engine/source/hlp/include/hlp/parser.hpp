@@ -18,8 +18,7 @@
  */
 namespace hlp::parser
 {
-// Mapper functions dont check
-using Mapper = std::function<void(json::Json&)>;
+using Mapper = std::function<void(json::Json&)>; ///< Maps parsed data into a JSON event.
 
 /**
  * @brief Empty mapper function, used when a parser has semantic parser but it is told to not map.
@@ -31,11 +30,15 @@ inline Mapper noMapper()
     return [](json::Json&) {
     };
 }
-using SemParser = std::function<std::variant<Mapper, base::Error>(std::string_view)>;
+using SemParser = std::function<std::variant<Mapper, base::Error>(std::string_view)>; ///< Semantic parser: validates parsed text and returns a Mapper or Error.
+
+/**
+ * @brief Token produced by the syntax parsing phase.
+ */
 struct SemToken
 {
-    std::string_view parsed;
-    SemParser semParser;
+    std::string_view parsed; ///< The substring consumed by the syntax parser.
+    SemParser semParser;     ///< The semantic parser for this token.
 };
 
 /**
@@ -51,9 +54,9 @@ inline SemParser noSemParser()
     };
 }
 
-using ResultT = SemToken;
-using Result = abs::Result<ResultT>;
-using Parser = abs::Parser<ResultT>;
+using ResultT = SemToken;              ///< Result value type for HLP parsers.
+using Result = abs::Result<ResultT>;   ///< HLP parser result type.
+using Parser = abs::Parser<ResultT>;   ///< HLP parser type.
 
 /**
  * @brief Runs three steps of parsing: syntax, semantic and mapping. Returns an error if any of the steps fails at any
@@ -120,8 +123,18 @@ inline std::optional<base::Error> run(const Parser& parser, std::string_view tex
  * @brief Combinators used by HLP.
  *
  */
+/**
+ * @brief HLP-level parser combinators.
+ */
 namespace combinator
 {
+/**
+ * @brief Try the left parser first; if it fails, try the right parser.
+ *
+ * @param lhs Left parser.
+ * @param rhs Right parser.
+ * @return Parser A parser that succeeds if either parser succeeds.
+ */
 inline Parser choice(const Parser& lhs, const Parser& rhs)
 {
     return [lhs, rhs](std::string_view input) -> Result
@@ -142,6 +155,12 @@ inline Parser choice(const Parser& lhs, const Parser& rhs)
     };
 }
 
+/**
+ * @brief Make a parser optional. Always succeeds.
+ *
+ * @param parser The parser to wrap.
+ * @return Parser A parser that always succeeds.
+ */
 inline Parser opt(const Parser& parser)
 {
     return [parser](std::string_view input) -> Result
@@ -156,6 +175,12 @@ inline Parser opt(const Parser& parser)
     };
 }
 
+/**
+ * @brief Sequence combinator: run all parsers in order, fail if any fails.
+ *
+ * @param parsers Vector of parsers to run sequentially.
+ * @return Parser A parser that succeeds if all parsers succeed.
+ */
 inline Parser all(const std::vector<Parser>& parsers)
 {
     return [parsers](std::string_view input) -> Result
