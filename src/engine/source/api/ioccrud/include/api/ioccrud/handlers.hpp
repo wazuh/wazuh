@@ -14,13 +14,15 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kv
                                const std::shared_ptr<scheduler::IScheduler>& scheduler,
                                  const std::shared_ptr<store::IStore>& store);
 
+adapter::RouteHandler getIocState(const std::shared_ptr<store::IStore>& store);
+
 inline void registerHandlers(const std::shared_ptr<::kvdbioc::IKVDBManager>& kvdbManager,
                              const std::shared_ptr<scheduler::IScheduler>& scheduler,
                              const std::shared_ptr<store::IStore>& store,
                              const std::shared_ptr<httpsrv::Server>& server)
 {
     server->addRoute(httpsrv::Method::POST, "/content/ioc/update", syncIoc(kvdbManager, scheduler, store));
-    server->addRoute(httpsrv::Method::GET, "/content/ioc/state", syncIoc(kvdbManager, scheduler, store));
+    server->addRoute(httpsrv::Method::GET, "/content/ioc/state", getIocState(store));
 }
 
 } // namespace api::ioccrud::handlers

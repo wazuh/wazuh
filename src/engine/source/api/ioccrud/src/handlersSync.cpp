@@ -56,6 +56,14 @@ void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManage
     if (!kvdbManager)
     {
         LOG_WARNING_L(lambdaName.c_str(), "KVDB Manager is not available, aborting IOC sync");
+        // Try to store error before returning
+        if (auto store = weakStore.lock())
+        {
+            store::Doc errorDoc;
+            errorDoc.setString(fileHash, "/hash");
+            errorDoc.setString("KVDB Manager is not available", "/lastError");
+            store->upsertDoc(base::Name(std::string(IOC_STATUS_DOC)), errorDoc);
+        }
         return;
     }
 
@@ -73,6 +81,11 @@ void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManage
         if (!file.is_open())
         {
             LOG_WARNING_L(lambdaName.c_str(), "Failed to open file: {}", filePath);
+            // Store error
+            store::Doc errorDoc;
+            errorDoc.setString(fileHash, "/hash");
+            errorDoc.setString(fmt::format("Failed to open file: {}", filePath), "/lastError");
+            storeRef->upsertDoc(base::Name(std::string(IOC_STATUS_DOC)), errorDoc);
             return;
         }
 
@@ -123,6 +136,11 @@ void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManage
             {
                 LOG_WARNING_L(lambdaName.c_str(), "Error processing line {}: {}", lineNumber, e.what());
                 file.close();
+                // Store error
+                store::Doc errorDoc;
+                errorDoc.setString(fileHash, "/hash");
+                errorDoc.setString(fmt::format("Error processing line {}: {}", lineNumber, e.what()), "/lastError");
+                storeRef->upsertDoc(base::Name(std::string(IOC_STATUS_DOC)), errorDoc);
                 return;
             }
         }
@@ -155,6 +173,7 @@ void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManage
         {
             store::Doc statusDoc;
             statusDoc.setString(fileHash, "/hash");
+            statusDoc.setString("", "/lastError"); // Clear last error on success
             auto updateResult = storeRef->upsertDoc(base::Name(std::string(IOC_STATUS_DOC)), statusDoc);
             if (base::isError(updateResult))
             {
@@ -175,6 +194,18 @@ void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManage
     catch (const std::exception& e)
     {
         LOG_WARNING_L(lambdaName.c_str(), "IOC sync failed: {}", e.what());
+        // Store error
+        try
+        {
+            store::Doc errorDoc;
+            errorDoc.setString(fileHash, "/hash");
+            errorDoc.setString(fmt::format("IOC sync failed: {}", e.what()), "/lastError");
+            storeRef->upsertDoc(base::Name(std::string(IOC_STATUS_DOC)), errorDoc);
+        }
+        catch (...)
+        {
+            // Ignore errors when storing error status
+        }
     }
 }
 
@@ -312,6 +343,79 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kv
             res =
                 adapter::userErrorResponse<ResponseType>(fmt::format("Failed to schedule IOC sync task: {}", e.what()));
             return;
+        }
+    };
+}
+
+adapter::RouteHandler getIocState(const std::shared_ptr<store::IStore>& store)
+{
+    return [weakStore = std::weak_ptr<store::IStore>(store)](const httplib::Request& req, httplib::Response& res)
+    {
+        using ResponseType = eIoc::GetIocState_Response;
+
+        // Get store reference
+        auto storeRef = weakStore.lock();
+        if (!storeRef)
+        {
+            ResponseType eResponse;
+            eResponse.set_status(eEngine::ReturnStatus::ERROR);
+            eResponse.set_hash("");
+            eResponse.set_updating(false);
+            eResponse.set_lasterror("Store is not available");
+            
+            // Convert to JSON manually
+            const auto result = eMessage::eMessageToJson<ResponseType>(eResponse);
+            if (std::holds_alternative<base::Error>(result))
+            {
+                res.status = httplib::StatusCode::InternalServerError_500;
+                res.set_content("Failed to serialize response", "plain/text");
+            }
+            else
+            {
+                res.status = httplib::StatusCode::OK_200;
+                res.set_content(std::get<std::string>(result), "application/json");
+            }
+            return;
+        }
+
+        // Read current state from store
+        std::string currentHash;
+        std::string lastError;
+        auto docResp = storeRef->readDoc(base::Name(std::string(IOC_STATUS_DOC)));
+        if (base::isError(docResp))
+        {
+            // Document doesn't exist yet
+            currentHash = "";
+            lastError = "";
+        }
+        else
+        {
+            auto doc = base::getResponse(docResp);
+            currentHash = doc.getString("/hash").value_or("");
+            lastError = doc.getString("/lastError").value_or("");
+        }
+
+        // Check if synchronization is in progress
+        bool updating = g_syncInProgress.load();
+
+        // Build response
+        ResponseType eResponse;
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+        eResponse.set_hash(currentHash);
+        eResponse.set_updating(updating);
+        eResponse.set_lasterror(lastError);
+
+        // Convert to JSON manually
+        const auto result = eMessage::eMessageToJson<ResponseType>(eResponse);
+        if (std::holds_alternative<base::Error>(result))
+        {
+            res.status = httplib::StatusCode::InternalServerError_500;
+            res.set_content("Failed to serialize response", "plain/text");
+        }
+        else
+        {
+            res.status = httplib::StatusCode::OK_200;
+            res.set_content(std::get<std::string>(result), "application/json");
         }
     };
 }
