@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <chrono>
+
 #include <base/logging.hpp>
 #include <queue/mockQueue.hpp>
 #include <store/mockStore.hpp>
@@ -78,6 +80,19 @@ public:
 
         return workerMock;
     }
+
+    void setContentionState(bool contended, int64_t startUsec, int64_t lastWarningUsec, uint64_t dropped)
+    {
+        m_eventQueueContended.store(contended, std::memory_order_relaxed);
+        m_contentionStartUsec.store(startUsec, std::memory_order_relaxed);
+        m_lastContentionWarningUsec.store(lastWarningUsec, std::memory_order_relaxed);
+        m_droppedEventsInContention.store(dropped, std::memory_order_relaxed);
+    }
+
+    bool isQueueContended() const { return m_eventQueueContended.load(std::memory_order_relaxed); }
+    int64_t contentionStartUsec() const { return m_contentionStartUsec.load(std::memory_order_relaxed); }
+    int64_t lastContentionWarningUsec() const { return m_lastContentionWarningUsec.load(std::memory_order_relaxed); }
+    uint64_t droppedEventsInContention() const { return m_droppedEventsInContention.load(std::memory_order_relaxed); }
 
     /**************************************************************************
      * TESTER EXPECTS CALL
@@ -868,4 +883,50 @@ TEST_F(OrchestratorTest, entriesGetSuccessRouter)
 {
     m_orchestrator->expectGetEntriesSuccessRouter();
     EXPECT_FALSE(m_orchestrator->getEntries().empty());
+}
+
+TEST_F(OrchestratorTest, postEventPushFailureStartsContention)
+{
+    IngestEvent event {std::make_shared<json::Json>(R"({"k":"v"})"), "raw-event"};
+
+    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, push(testing::_)).WillOnce(testing::Return(false));
+
+    m_orchestrator->postEvent(std::move(event));
+
+    EXPECT_TRUE(m_orchestrator->isQueueContended());
+    EXPECT_GT(m_orchestrator->contentionStartUsec(), 0);
+    EXPECT_GT(m_orchestrator->lastContentionWarningUsec(), 0);
+    EXPECT_EQ(m_orchestrator->droppedEventsInContention(), 1U);
+}
+
+TEST_F(OrchestratorTest, postEventPushFailureIncrementsDroppedDuringContention)
+{
+    auto nowUsec =
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
+            .count();
+
+    m_orchestrator->setContentionState(true, nowUsec, nowUsec, 3);
+
+    IngestEvent event {std::make_shared<json::Json>(R"({"k":"v"})"), "raw-event"};
+    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, push(testing::_)).WillOnce(testing::Return(false));
+
+    m_orchestrator->postEvent(std::move(event));
+
+    EXPECT_TRUE(m_orchestrator->isQueueContended());
+    EXPECT_EQ(m_orchestrator->droppedEventsInContention(), 4U);
+}
+
+TEST_F(OrchestratorTest, postEventPushSuccessResetsContentionState)
+{
+    m_orchestrator->setContentionState(true, 123, 456, 10);
+
+    IngestEvent event {std::make_shared<json::Json>(R"({"k":"v"})"), "raw-event"};
+    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, push(testing::_)).WillOnce(testing::Return(true));
+
+    m_orchestrator->postEvent(std::move(event));
+
+    EXPECT_FALSE(m_orchestrator->isQueueContended());
+    EXPECT_EQ(m_orchestrator->contentionStartUsec(), 0);
+    EXPECT_EQ(m_orchestrator->lastContentionWarningUsec(), 0);
+    EXPECT_EQ(m_orchestrator->droppedEventsInContention(), 0U);
 }

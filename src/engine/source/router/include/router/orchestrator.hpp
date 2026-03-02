@@ -2,6 +2,7 @@
 #define _ROUTER_ORCHESTATOR_HPP
 
 #include <atomic>
+#include <cstdint>
 #include <list>
 #include <memory>
 #include <shared_mutex>
@@ -47,6 +48,13 @@ protected:
     std::shared_ptr<ProdQueueType> m_eventQueue;      ///< The event queue
     std::shared_ptr<TestQueueType> m_testQueue;       ///< The test queue
     std::shared_ptr<EnvironmentBuilder> m_envBuilder; ///< The environment builder
+
+    // Event queue contention monitoring
+    std::atomic<bool> m_eventQueueContended {false};       ///< True while push failures are ongoing
+    std::atomic<int64_t> m_contentionStartUsec {0};        ///< First push failure timestamp (steady_clock, usec)
+    std::atomic<int64_t> m_lastContentionWarningUsec {0};  ///< Last warning timestamp (steady_clock, usec)
+    std::atomic<uint64_t> m_droppedEventsInContention {0}; ///< Failed push count in current contention window
+    static constexpr int64_t CONTENTION_WARNING_INTERVAL_USEC = 60LL * 1000LL * 1000LL; ///< 1 minute
 
     // Configuration options
     std::weak_ptr<store::IStore> m_wStore; ///< Read and store configurations
@@ -173,7 +181,7 @@ public:
     /**
      * @copydoc router::IRouterAPI::postEvent
      */
-    void postEvent(IngestEvent&& event) override { m_eventQueue->push(std::move(event)); }
+    void postEvent(IngestEvent&& event) override;
 
     /**************************************************************************
      * ITesterAPI

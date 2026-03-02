@@ -1,3 +1,4 @@
+#include <chrono>
 #include <list>
 #include <memory>
 #include <string_view>
@@ -190,6 +191,55 @@ base::OptError Orchestrator::initTesterWorker(const std::shared_ptr<IWorker<ITes
 }
 
 // Public
+void Orchestrator::postEvent(IngestEvent&& event)
+{
+    if (m_eventQueue->push(std::move(event)))
+    {
+        if (m_eventQueueContended.exchange(false, std::memory_order_relaxed))
+        {
+            m_contentionStartUsec.store(0, std::memory_order_relaxed);
+            m_lastContentionWarningUsec.store(0, std::memory_order_relaxed);
+            m_droppedEventsInContention.store(0, std::memory_order_relaxed);
+        }
+        return;
+    }
+
+    const auto nowUsec =
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
+            .count();
+
+    m_droppedEventsInContention.fetch_add(1, std::memory_order_relaxed);
+
+    bool expected = false;
+    if (m_eventQueueContended.compare_exchange_strong(
+            expected, true, std::memory_order_relaxed, std::memory_order_relaxed))
+    {
+        m_contentionStartUsec.store(nowUsec, std::memory_order_relaxed);
+        m_lastContentionWarningUsec.store(nowUsec, std::memory_order_relaxed);
+        return;
+    }
+
+    const auto contentionStartUsec = m_contentionStartUsec.load(std::memory_order_relaxed);
+    if (contentionStartUsec == 0 || (nowUsec - contentionStartUsec) < CONTENTION_WARNING_INTERVAL_USEC)
+    {
+        return;
+    }
+
+    const auto lastWarningUsec = m_lastContentionWarningUsec.load(std::memory_order_relaxed);
+    if ((nowUsec - lastWarningUsec) < CONTENTION_WARNING_INTERVAL_USEC)
+    {
+        return;
+    }
+
+    m_lastContentionWarningUsec.store(nowUsec, std::memory_order_relaxed);
+
+    LOG_WARNING("Event queue has remained contended for at least 60 seconds. Dropped events during contention: {}. "
+                "Approx queue size: {}, approx free slots: {}.",
+                m_droppedEventsInContention.load(std::memory_order_relaxed),
+                m_eventQueue->size(),
+                m_eventQueue->aproxFreeSlots());
+}
+
 void Orchestrator::Options::validate() const
 {
     if (m_numThreads < 0 || m_numThreads > 128)
