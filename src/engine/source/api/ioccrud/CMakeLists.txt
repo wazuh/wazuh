@@ -14,6 +14,7 @@ target_link_libraries(api_ioccrud
     PUBLIC
     api::adapter
     kvdbioc::ikvdb
+    scheduler::ischeduler
 )
 add_library(api::ioccrud ALIAS api_ioccrud)
 

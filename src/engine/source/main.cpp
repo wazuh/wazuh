@@ -629,6 +629,10 @@ int main(int argc, char* argv[])
                 cmCrudService, orchestrator, apiServer, apiResourcePayloadMaxBytes, apiResourceKvdbPayloadMaxBytes);
             LOG_DEBUG("Content Manager CRUD API registered.");
 
+            // IOC CRUD
+            api::ioccrud::handlers::registerHandlers(kvdbIOC, scheduler, apiServer);
+            LOG_DEBUG("IOC CRUD API registered.");
+
             // Finally start the API server
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
         }

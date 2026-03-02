@@ -2,18 +2,21 @@
 #define _API_IOCCRUD_HANDLERS_HPP
 
 #include <kvdbioc/iManager.hpp>
+#include <scheduler/ischeduler.hpp>
 
 #include <api/adapter/adapter.hpp>
 
 namespace api::ioccrud::handlers
 {
 
-adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kvdbManager);
+adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kvdbManager,
+                               const std::shared_ptr<scheduler::IScheduler>& scheduler);
 
 inline void registerHandlers(const std::shared_ptr<::kvdbioc::IKVDBManager>& kvdbManager,
+                             const std::shared_ptr<scheduler::IScheduler>& scheduler,
                              const std::shared_ptr<httpsrv::Server>& server)
 {
-    server->addRoute(httpsrv::Method::POST, "/content/ioc/update", syncIoc(kvdbManager));
+    server->addRoute(httpsrv::Method::POST, "/content/ioc/update", syncIoc(kvdbManager, scheduler));
 }
 
 } // namespace api::ioccrud::handlers
