@@ -2672,6 +2672,126 @@ void test_wm_office365_get_logs_from_blob_ok(void **state) {
 
 }
 
+// wm_office365_normalize_array_of_objects tests
+
+void test_wm_office365_normalize_array_of_objects_invalid_input(void **state) {
+    // NULL log, absent field, and non-array field must all be no-ops that don't crash
+    (void)state;
+    static const char *keys[] = {"Name", "NewValue", "OldValue", NULL};
+
+    wm_office365_normalize_array_of_objects(NULL, "ModifiedProperties", keys);
+
+    cJSON *log = cJSON_Parse("{\"Operation\":\"Update\",\"ModifiedProperties\":\"scalar\"}");
+    assert_non_null(log);
+
+    wm_office365_normalize_array_of_objects(log, "ModifiedProperties", keys);
+    assert_int_equal(cJSON_GetObjectItem(log, "ModifiedProperties")->type, cJSON_String);
+
+    wm_office365_normalize_array_of_objects(log, "NonExistentField", keys);
+    assert_null(cJSON_GetObjectItem(log, "NonExistentField"));
+
+    cJSON_Delete(log);
+}
+
+void test_wm_office365_normalize_array_of_objects_all_objects(void **state) {
+    // All items already proper objects — needs_normalization stays false, array untouched
+    (void)state;
+    static const char *keys[] = {"Name", "NewValue", "OldValue", NULL};
+
+    cJSON *log = cJSON_Parse("{\"ModifiedProperties\":["
+                             "{\"Name\":\"Prop1\",\"NewValue\":\"val1\",\"OldValue\":\"\"},"
+                             "{\"Name\":\"Prop2\",\"NewValue\":\"val2\",\"OldValue\":\"\"}"
+                             "]}");
+    assert_non_null(log);
+
+    wm_office365_normalize_array_of_objects(log, "ModifiedProperties", keys);
+
+    cJSON *field = cJSON_GetObjectItem(log, "ModifiedProperties");
+    assert_int_equal(cJSON_GetArraySize(field), 2);
+    assert_string_equal(cJSON_GetObjectItem(cJSON_GetArrayItem(field, 0), "Name")->valuestring, "Prop1");
+    assert_string_equal(cJSON_GetObjectItem(cJSON_GetArrayItem(field, 1), "Name")->valuestring, "Prop2");
+
+    cJSON_Delete(log);
+}
+
+void test_wm_office365_normalize_array_of_objects_all_strings(void **state) {
+    // All items are plain strings — the undocumented Microsoft API inconsistency
+    // (confirmed for Exchange and AzureActiveDirectory workloads).
+    // Each string must become {Name: <value>, NewValue: "", OldValue: ""}
+    (void)state;
+    static const char *keys[] = {"Name", "NewValue", "OldValue", NULL};
+
+    cJSON *log = cJSON_Parse("{\"ModifiedProperties\":[\"AttachmentCollection\",\"Recipients\"]}");
+    assert_non_null(log);
+
+    wm_office365_normalize_array_of_objects(log, "ModifiedProperties", keys);
+
+    cJSON *field = cJSON_GetObjectItem(log, "ModifiedProperties");
+    assert_int_equal(cJSON_GetArraySize(field), 2);
+
+    cJSON *item0 = cJSON_GetArrayItem(field, 0);
+    assert_string_equal(cJSON_GetObjectItem(item0, "Name")->valuestring, "AttachmentCollection");
+    assert_string_equal(cJSON_GetObjectItem(item0, "NewValue")->valuestring, "");
+    assert_string_equal(cJSON_GetObjectItem(item0, "OldValue")->valuestring, "");
+
+    cJSON *item1 = cJSON_GetArrayItem(field, 1);
+    assert_string_equal(cJSON_GetObjectItem(item1, "Name")->valuestring, "Recipients");
+    assert_string_equal(cJSON_GetObjectItem(item1, "NewValue")->valuestring, "");
+    assert_string_equal(cJSON_GetObjectItem(item1, "OldValue")->valuestring, "");
+
+    cJSON_Delete(log);
+}
+
+void test_wm_office365_normalize_array_of_objects_mixed(void **state) {
+    // Mixed array: plain strings get wrapped into objects, existing objects are preserved as-is
+    (void)state;
+    static const char *keys[] = {"Name", "NewValue", "OldValue", NULL};
+
+    cJSON *log = cJSON_Parse("{\"ModifiedProperties\":["
+                             "\"StringItem\","
+                             "{\"Name\":\"ObjItem\",\"NewValue\":\"new\",\"OldValue\":\"old\"}"
+                             "]}");
+    assert_non_null(log);
+
+    wm_office365_normalize_array_of_objects(log, "ModifiedProperties", keys);
+
+    cJSON *field = cJSON_GetObjectItem(log, "ModifiedProperties");
+    assert_int_equal(cJSON_GetArraySize(field), 2);
+
+    cJSON *item0 = cJSON_GetArrayItem(field, 0);
+    assert_string_equal(cJSON_GetObjectItem(item0, "Name")->valuestring, "StringItem");
+    assert_string_equal(cJSON_GetObjectItem(item0, "NewValue")->valuestring, "");
+    assert_string_equal(cJSON_GetObjectItem(item0, "OldValue")->valuestring, "");
+
+    cJSON *item1 = cJSON_GetArrayItem(field, 1);
+    assert_string_equal(cJSON_GetObjectItem(item1, "Name")->valuestring, "ObjItem");
+    assert_string_equal(cJSON_GetObjectItem(item1, "NewValue")->valuestring, "new");
+    assert_string_equal(cJSON_GetObjectItem(item1, "OldValue")->valuestring, "old");
+
+    cJSON_Delete(log);
+}
+
+void test_wm_office365_normalize_array_of_objects_name_value_keys(void **state) {
+    // Parameters/ExtendedProperties use a two-key schema {Name, Value}
+    // instead of the three-key ModifiedProperties schema {Name, NewValue, OldValue}
+    (void)state;
+    static const char *keys[] = {"Name", "Value", NULL};
+
+    cJSON *log = cJSON_Parse("{\"Parameters\":[\"SomeParam\"]}");
+    assert_non_null(log);
+
+    wm_office365_normalize_array_of_objects(log, "Parameters", keys);
+
+    cJSON *field = cJSON_GetObjectItem(log, "Parameters");
+    assert_int_equal(cJSON_GetArraySize(field), 1);
+
+    cJSON *item0 = cJSON_GetArrayItem(field, 0);
+    assert_string_equal(cJSON_GetObjectItem(item0, "Name")->valuestring, "SomeParam");
+    assert_string_equal(cJSON_GetObjectItem(item0, "Value")->valuestring, "");
+
+    cJSON_Delete(log);
+}
+
 void test_wm_office365_execute_scan_all(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     wm_office365_state tenant_state_struc;
@@ -3383,6 +3503,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_response_code_400, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_response_no_array, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_ok, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_normalize_array_of_objects_invalid_input, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_normalize_array_of_objects_all_objects, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_normalize_array_of_objects_all_strings, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_normalize_array_of_objects_mixed, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_normalize_array_of_objects_name_value_keys, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_initial_scan_only_future_events, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_access_token_null, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_manage_subscription_error, setup_conf, teardown_conf),

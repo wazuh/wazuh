@@ -94,6 +94,21 @@ STATIC cJSON* wm_office365_get_content_blobs(const char* url, const char* token,
 STATIC cJSON* wm_office365_get_logs_from_blob(const char* url, const char* token, size_t max_size, bool* buffer_size_reached, char **error_msg);
 
 /**
+ * @brief Normalize a Collection field of an Office365 log entry that is documented
+ *        as an array of objects but may arrive as an array of plain strings due to
+ *        an undocumented Microsoft API inconsistency observed across multiple workloads
+ *        (Exchange, AzureActiveDirectory, etc.). This ensures the field always contains
+ *        objects so the index mapping remains consistent.
+ *        See: https://github.com/wazuh/wazuh/issues/28448
+ *             https://github.com/wazuh/wazuh/issues/34521
+ * @param log       cJSON object representing a single Office365 log entry
+ * @param field     Name of the field to normalize (e.g. "ModifiedProperties")
+ * @param keys      NULL-terminated array of key names to populate when a plain string
+ *                  is found. The string value is placed in keys[0]; the rest are set to "".
+ */
+STATIC void wm_office365_normalize_array_of_objects(cJSON *log, const char *field, const char **keys);
+
+/**
  * @brief Get tenant and subscription node from office365 failure list
  * @param fails Office365 failure list
  * @param tenant_id Tenant ID to search
@@ -438,6 +453,13 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                                         if (log) {
                                             cJSON *office365 = cJSON_CreateObject();
 
+                                            // Normalize Collection fields that O365 may return as plain strings instead of objects (undocumented API inconsistency).
+                                            static const char *modified_properties_keys[] = {"Name", "NewValue", "OldValue", NULL};
+                                            wm_office365_normalize_array_of_objects(log, "ModifiedProperties", modified_properties_keys);
+                                            static const char *name_value_keys[]     = {"Name", "Value", NULL};
+                                            wm_office365_normalize_array_of_objects(log, "Parameters",         name_value_keys);
+                                            wm_office365_normalize_array_of_objects(log, "ExtendedProperties", name_value_keys);
+
                                             cJSON_AddStringToObject(log, "Subscription", current_subscription->subscription_name);
 
                                             cJSON_AddStringToObject(office365, "integration", WM_OFFICE365_CONTEXT.name);
@@ -750,6 +772,51 @@ STATIC cJSON* wm_office365_get_logs_from_blob(const char* url, const char* token
     os_free(headers);
 
     return logs_array;
+}
+
+STATIC void wm_office365_normalize_array_of_objects(cJSON *log, const char *field, const char **keys) {
+    cJSON *array = cJSON_GetObjectItem(log, field);
+
+    if (!array || array->type != cJSON_Array) {
+        return;
+    }
+
+    int size = cJSON_GetArraySize(array);
+    bool needs_normalization = false;
+
+    for (int i = 0; i < size; i++) {
+        cJSON *item = cJSON_GetArrayItem(array, i);
+        if (item && item->type == cJSON_String) {
+            needs_normalization = true;
+            break;
+        }
+    }
+
+    if (!needs_normalization) {
+        return;
+    }
+
+    cJSON *new_array = cJSON_CreateArray();
+
+    for (int i = 0; i < size; i++) {
+        cJSON *item = cJSON_GetArrayItem(array, i);
+        if (!item) {
+            continue;
+        }
+        if (item->type == cJSON_String) {
+            cJSON *obj = cJSON_CreateObject();
+            // keys[0] receives the string value; all remaining keys are set to "".
+            cJSON_AddStringToObject(obj, keys[0], item->valuestring);
+            for (int k = 1; keys[k] != NULL; k++) {
+                cJSON_AddStringToObject(obj, keys[k], "");
+            }
+            cJSON_AddItemToArray(new_array, obj);
+        } else {
+            cJSON_AddItemToArray(new_array, cJSON_Duplicate(item, true));
+        }
+    }
+
+    cJSON_ReplaceItemInObject(log, field, new_array);
 }
 
 STATIC wm_office365_fail* wm_office365_get_fail_by_tenant_and_subscription(wm_office365_fail* fails, char* tenant_id, char* subscription_name) {
