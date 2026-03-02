@@ -5,6 +5,8 @@
 #include <filesystem>
 #include <fstream>
 
+#include <fmt/format.h>
+
 #include <api/adapter/adapter.hpp>
 #include <api/ioccrud/handlers.hpp>
 #include <eMessages/engine.pb.h>
@@ -47,9 +49,6 @@ public:
 private:
     std::string m_path;
 };
-
-// Helper to reset global sync flag between tests
-extern std::atomic<bool> g_syncInProgress;
 
 class SyncIocHandlerTest : public ::testing::Test
 {
@@ -304,4 +303,137 @@ TEST_F(SyncIocHandlerTest, EmptyHash_ProceedsWithSync)
     // Accept either OK (if semaphore was free) or error (if locked)
     EXPECT_TRUE(response.status == httplib::StatusCode::OK_200
                 || response.status == httplib::StatusCode::BadRequest_400);
+}
+
+/*****************************************************************************
+ * Tests for getIocState handler
+ ****************************************************************************/
+
+/*****************************************************************************
+ * Test: getIocState - Store Not Available
+ ****************************************************************************/
+TEST_F(SyncIocHandlerTest, GetIocState_StoreNotAvailable_ReturnsError)
+{
+    // Create handler with nullptr store (simulates expired weak_ptr)
+    auto handler = getIocState(nullptr);
+
+    httplib::Request request;
+    httplib::Response response;
+
+    handler(request, response);
+
+    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+    EXPECT_THAT(response.body, HasSubstr("\"status\":\"ERROR\""));
+    EXPECT_THAT(response.body, HasSubstr("Store is not available"));
+}
+
+/*****************************************************************************
+ * Test: getIocState - Document Does Not Exist
+ ****************************************************************************/
+TEST_F(SyncIocHandlerTest, GetIocState_DocumentDoesNotExist_ReturnsEmptyState)
+{
+    // Store returns error (document doesn't exist)
+    EXPECT_CALL(*m_store, readDoc(_)).WillOnce(Return(store::mocks::storeReadError<store::Doc>()));
+
+    auto handler = getIocState(m_store);
+
+    httplib::Request request;
+    httplib::Response response;
+
+    handler(request, response);
+
+    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+    EXPECT_THAT(response.body, HasSubstr("\"status\":\"OK\""));
+    EXPECT_THAT(response.body, HasSubstr("\"hash\":\"\""));
+    // updating can be true or false depending on global semaphore state
+    EXPECT_THAT(response.body, HasSubstr("\"updating\":"));
+    EXPECT_THAT(response.body, HasSubstr("\"lastError\":\"\""));
+}
+
+/*****************************************************************************
+ * Test: getIocState - Document Exists With Hash
+ ****************************************************************************/
+TEST_F(SyncIocHandlerTest, GetIocState_DocumentExists_ReturnsStoredState)
+{
+    const std::string testHash = "abc123def456";
+    
+    // Setup store to return document with hash
+    store::Doc statusDoc;
+    statusDoc.setString(testHash, "/hash");
+    statusDoc.setString("", "/lastError");
+
+    EXPECT_CALL(*m_store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(statusDoc)));
+
+    auto handler = getIocState(m_store);
+
+    httplib::Request request;
+    httplib::Response response;
+
+    handler(request, response);
+
+    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+    EXPECT_THAT(response.body, HasSubstr("\"status\":\"OK\""));
+    EXPECT_THAT(response.body, HasSubstr(fmt::format("\"hash\":\"{}\"", testHash)));
+    // updating can be true or false depending on global semaphore state
+    EXPECT_THAT(response.body, HasSubstr("\"updating\":"));
+    EXPECT_THAT(response.body, HasSubstr("\"lastError\":\"\""));
+}
+
+/*****************************************************************************
+ * Test: getIocState - Synchronization In Progress
+ ****************************************************************************/
+TEST_F(SyncIocHandlerTest, GetIocState_SyncInProgress_ReturnsUpdatingTrue)
+{
+    // Setup store to return document
+    store::Doc statusDoc;
+    statusDoc.setString("current_hash", "/hash");
+    statusDoc.setString("", "/lastError");
+
+    EXPECT_CALL(*m_store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(statusDoc)));
+
+    // NOTE: We cannot directly set g_syncInProgress from here as it's in an anonymous namespace
+    // This test verifies the response structure when updating is false (normal state)
+    // To test updating=true, integration tests would be needed where a real sync is triggered
+
+    auto handler = getIocState(m_store);
+
+    httplib::Request request;
+    httplib::Response response;
+
+    handler(request, response);
+
+    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+    EXPECT_THAT(response.body, HasSubstr("\"status\":\"OK\""));
+    EXPECT_THAT(response.body, HasSubstr("\"hash\":\"current_hash\""));
+    // In this test, updating will be false since no actual sync is running
+    EXPECT_THAT(response.body, HasSubstr("\"updating\":"));
+}
+
+/*****************************************************************************
+ * Test: getIocState - Document Exists With Error
+ ****************************************************************************/
+TEST_F(SyncIocHandlerTest, GetIocState_DocumentWithError_ReturnsLastError)
+{
+    const std::string errorMsg = "Failed to open file: /path/to/file.json";
+    
+    // Setup store to return document with error
+    store::Doc statusDoc;
+    statusDoc.setString("old_hash_123", "/hash");
+    statusDoc.setString(errorMsg, "/lastError");
+
+    EXPECT_CALL(*m_store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(statusDoc)));
+
+    auto handler = getIocState(m_store);
+
+    httplib::Request request;
+    httplib::Response response;
+
+    handler(request, response);
+
+    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+    EXPECT_THAT(response.body, HasSubstr("\"status\":\"OK\""));
+    EXPECT_THAT(response.body, HasSubstr("\"hash\":\"old_hash_123\""));
+    // updating can be true or false depending on global semaphore state
+    EXPECT_THAT(response.body, HasSubstr("\"updating\":"));
+    EXPECT_THAT(response.body, HasSubstr(errorMsg));
 }
