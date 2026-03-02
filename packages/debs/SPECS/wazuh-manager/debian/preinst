@@ -8,13 +8,12 @@ WAZUH_TMP_DIR="${DIR}/packages_files/manager_config_files"
 VERSION="$2"
 MAJOR=$(echo "$VERSION" | cut -dv -f2 | cut -d. -f1)
 
-# environment configuration
-if [ ! -d ${WAZUH_TMP_DIR} ]; then
-    mkdir -p ${WAZUH_TMP_DIR}
-else
-    rm -rf ${WAZUH_TMP_DIR}
-    mkdir -p ${WAZUH_TMP_DIR}
-fi
+prepare_tmp_dir() {
+    if [ -d "${WAZUH_TMP_DIR}" ]; then
+        rm -rf "${WAZUH_TMP_DIR}"
+    fi
+    mkdir -p "${WAZUH_TMP_DIR}"
+}
 
 case "$1" in
     install|upgrade)
@@ -87,6 +86,10 @@ EOF
                 exit 1
             fi
 
+            # environment configuration (original behavior, after hard-block checks)
+            prepare_tmp_dir
+            touch "${WAZUH_TMP_DIR}/rollback_prepared"
+
             if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
                 systemctl stop wazuh-manager.service > /dev/null 2>&1
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
@@ -139,13 +142,7 @@ EOF
                     rm -f /etc/rc.d/init.d/wazuh-api || true
                 fi
             fi
-        fi
 
-        if [ ! -z "$2" ] && [ ! -f ${DIR}/etc/wazuh-manager.conf ] ; then
-            touch ${WAZUH_TMP_DIR}/create_conf
-        fi
-
-        if [ "$1" = "upgrade" ]; then
             # RBAC database
             if [ -f ${DIR}/api/configuration/security/rbac.db ]; then
                 cp -fp ${DIR}/api/configuration/security/rbac.db ${WAZUH_TMP_DIR}/rbac.db
@@ -160,6 +157,13 @@ EOF
             if [ -d ${DIR}/queue/agent-groups ]; then
                 mv -f ${DIR}/queue/agent-groups ${WAZUH_TMP_DIR}/
             fi
+        else
+            # environment configuration (original behavior for install)
+            prepare_tmp_dir
+        fi
+
+        if [ ! -z "$2" ] && [ ! -f ${DIR}/etc/wazuh-manager.conf ] ; then
+            touch ${WAZUH_TMP_DIR}/create_conf
         fi
 
         # Delete old service
