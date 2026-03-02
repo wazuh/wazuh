@@ -22,7 +22,7 @@ namespace api::ioccrud::handlers
 namespace eIoc = com::wazuh::api::engine::ioc;
 namespace eEngine = com::wazuh::api::engine;
 
-namespace
+namespace detail
 {
 // Global flag to track if a synchronization is in progress
 std::atomic<bool> g_syncInProgress {false};
@@ -209,7 +209,7 @@ void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManage
     }
 }
 
-} // namespace
+} // namespace detail
 
 adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kvdbManager,
                               const std::shared_ptr<scheduler::IScheduler>& scheduler,
@@ -253,7 +253,7 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kv
 
         // Read current hash from store
         std::string storedHash;
-        auto docResp = storeRef->readDoc(base::Name(std::string(IOC_STATUS_DOC)));
+        auto docResp = storeRef->readDoc(base::Name(std::string(detail::IOC_STATUS_DOC)));
         if (base::isError(docResp))
         {
             // Document doesn't exist, create it with empty hash
@@ -261,7 +261,7 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kv
             LOG_DEBUG_L(lambdaName.c_str(), "IOC status document does not exist, will be created on first sync");
             store::Doc statusDoc;
             statusDoc.setString("", "/hash");
-            auto createResult = storeRef->upsertDoc(base::Name(std::string(IOC_STATUS_DOC)), statusDoc);
+            auto createResult = storeRef->upsertDoc(base::Name(std::string(detail::IOC_STATUS_DOC)), statusDoc);
             if (base::isError(createResult))
             {
                 LOG_WARNING_L(lambdaName.c_str(),
@@ -292,7 +292,7 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kv
 
         // Check if synchronization is already in progress
         bool expected = false;
-        if (!g_syncInProgress.compare_exchange_strong(expected, true))
+        if (!detail::g_syncInProgress.compare_exchange_strong(expected, true))
         {
             res = adapter::userErrorResponse<ResponseType>("IOC synchronization already in progress");
             return;
@@ -302,7 +302,7 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kv
         std::ifstream fileCheck(filePath);
         if (!fileCheck.is_open())
         {
-            g_syncInProgress.store(false); // Release the semaphore
+            detail::g_syncInProgress.store(false); // Release the semaphore
             res = adapter::userErrorResponse<ResponseType>(fmt::format("File not found: {}", filePath));
             return;
         }
@@ -312,7 +312,7 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kv
         auto schedulerRef = weakScheduler.lock();
         if (!schedulerRef)
         {
-            g_syncInProgress.store(false); // Release the semaphore
+            detail::g_syncInProgress.store(false); // Release the semaphore
             res = adapter::internalErrorResponse<ResponseType>("Scheduler is not available");
             return;
         }
@@ -325,7 +325,7 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kv
                                               .timeout = 0,     // No timeout
                                               .taskFunction = [weakKvdbManager, weakStore, filePath, fileHash]()
                                               {
-                                                  performIOCSync(weakKvdbManager, weakStore, filePath, fileHash);
+                                                  detail::performIOCSync(weakKvdbManager, weakStore, filePath, fileHash);
                                               }};
 
             // Schedule the task with a unique name
@@ -339,7 +339,7 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kv
         }
         catch (const std::exception& e)
         {
-            g_syncInProgress.store(false); // Release the semaphore on error
+            detail::g_syncInProgress.store(false); // Release the semaphore on error
             res =
                 adapter::userErrorResponse<ResponseType>(fmt::format("Failed to schedule IOC sync task: {}", e.what()));
             return;
@@ -381,7 +381,7 @@ adapter::RouteHandler getIocState(const std::shared_ptr<store::IStore>& store)
         // Read current state from store
         std::string currentHash;
         std::string lastError;
-        auto docResp = storeRef->readDoc(base::Name(std::string(IOC_STATUS_DOC)));
+        auto docResp = storeRef->readDoc(base::Name(std::string(detail::IOC_STATUS_DOC)));
         if (base::isError(docResp))
         {
             // Document doesn't exist yet
@@ -396,7 +396,7 @@ adapter::RouteHandler getIocState(const std::shared_ptr<store::IStore>& store)
         }
 
         // Check if synchronization is in progress
-        bool updating = g_syncInProgress.load();
+        bool updating = detail::g_syncInProgress.load();
 
         // Build response
         ResponseType eResponse;

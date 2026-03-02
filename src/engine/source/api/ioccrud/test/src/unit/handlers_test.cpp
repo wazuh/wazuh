@@ -356,7 +356,7 @@ TEST_F(SyncIocHandlerTest, GetIocState_DocumentDoesNotExist_ReturnsEmptyState)
 TEST_F(SyncIocHandlerTest, GetIocState_DocumentExists_ReturnsStoredState)
 {
     const std::string testHash = "abc123def456";
-    
+
     // Setup store to return document with hash
     store::Doc statusDoc;
     statusDoc.setString(testHash, "/hash");
@@ -415,7 +415,7 @@ TEST_F(SyncIocHandlerTest, GetIocState_SyncInProgress_ReturnsUpdatingTrue)
 TEST_F(SyncIocHandlerTest, GetIocState_DocumentWithError_ReturnsLastError)
 {
     const std::string errorMsg = "Failed to open file: /path/to/file.json";
-    
+
     // Setup store to return document with error
     store::Doc statusDoc;
     statusDoc.setString("old_hash_123", "/hash");
@@ -436,4 +436,178 @@ TEST_F(SyncIocHandlerTest, GetIocState_DocumentWithError_ReturnsLastError)
     // updating can be true or false depending on global semaphore state
     EXPECT_THAT(response.body, HasSubstr("\"updating\":"));
     EXPECT_THAT(response.body, HasSubstr(errorMsg));
+}
+
+/*****************************************************************************
+ * Tests for performIOCSync function (internal implementation)
+ ****************************************************************************/
+
+/*****************************************************************************
+ * Test: performIOCSync - Successful Sync
+ ****************************************************************************/
+TEST_F(SyncIocHandlerTest, PerformIOCSync_Success_UpdatesHashAndClearsError)
+{
+    // Create test file with valid IOC data
+    TempIOCFile tempFile;
+    const std::string testHash = "test_hash_123";
+
+    // Setup mocks
+    EXPECT_CALL(*m_kvdbManager, exists(_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*m_kvdbManager, add(_)).Times(AtLeast(1));
+    EXPECT_CALL(*m_kvdbManager, get(_, _)).WillRepeatedly(Return(std::nullopt)); // IOCs are new
+    EXPECT_CALL(*m_kvdbManager, put(_, _, _)).Times(AtLeast(1));
+    EXPECT_CALL(*m_kvdbManager, hotSwap(_, _)).Times(AtLeast(1));
+
+    // Expect store to be updated with hash and no error
+    EXPECT_CALL(*m_store, upsertDoc(_, _))
+        .WillOnce(
+            [&testHash](const base::Name& name, const store::Doc& doc)
+            {
+                auto hash = doc.getString("/hash");
+                auto lastError = doc.getString("/lastError");
+                EXPECT_EQ(hash.value_or(""), testHash);
+                EXPECT_EQ(lastError.value_or("not_empty"), "");
+                return store::mocks::storeOk();
+            });
+
+    // Reset semaphore before test
+    detail::g_syncInProgress.store(false);
+
+    // Call the sync function
+    detail::performIOCSync(m_kvdbManager, m_store, tempFile.path(), testHash);
+}
+
+/*****************************************************************************
+ * Test: performIOCSync - File Not Found
+ ****************************************************************************/
+TEST_F(SyncIocHandlerTest, PerformIOCSync_FileNotFound_StoresError)
+{
+    const std::string nonExistentFile = "/tmp/nonexistent_file_12345.json";
+    const std::string testHash = "test_hash_456";
+
+    // Expect error to be stored
+    EXPECT_CALL(*m_store, upsertDoc(_, _))
+        .WillOnce(
+            [&testHash](const base::Name& name, const store::Doc& doc)
+            {
+                auto hash = doc.getString("/hash");
+                auto lastError = doc.getString("/lastError");
+                EXPECT_EQ(hash.value_or(""), testHash);
+                EXPECT_THAT(lastError.value_or(""), HasSubstr("Failed to open file"));
+                return store::mocks::storeOk();
+            });
+
+    // Reset semaphore before test
+    detail::g_syncInProgress.store(false);
+
+    // Call the sync function with non-existent file
+    detail::performIOCSync(m_kvdbManager, m_store, nonExistentFile, testHash);
+}
+
+/*****************************************************************************
+ * Test: performIOCSync - Invalid JSON
+ ****************************************************************************/
+TEST_F(SyncIocHandlerTest, PerformIOCSync_InvalidJSON_StoresError)
+{
+    // Create file with invalid JSON
+    TempIOCFile tempFile("invalid json content {{{");
+    const std::string testHash = "test_hash_789";
+
+    // Setup partial mocks - DB might be created before error
+    EXPECT_CALL(*m_kvdbManager, exists(_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*m_kvdbManager, add(_)).Times(AtMost(2));
+
+    // Expect error to be stored
+    EXPECT_CALL(*m_store, upsertDoc(_, _))
+        .WillOnce(
+            [&testHash](const base::Name& name, const store::Doc& doc)
+            {
+                auto hash = doc.getString("/hash");
+                auto lastError = doc.getString("/lastError");
+                EXPECT_EQ(hash.value_or(""), testHash);
+                EXPECT_THAT(lastError.value_or(""), HasSubstr("Error processing line"));
+                return store::mocks::storeOk();
+            });
+
+    // Reset semaphore before test
+    detail::g_syncInProgress.store(false);
+
+    // Call the sync function
+    detail::performIOCSync(m_kvdbManager, m_store, tempFile.path(), testHash);
+}
+
+/*****************************************************************************
+ * Test: performIOCSync - KVDB Manager Not Available
+ ****************************************************************************/
+TEST_F(SyncIocHandlerTest, PerformIOCSync_KVDBNotAvailable_StoresError)
+{
+    TempIOCFile tempFile;
+    const std::string testHash = "test_hash_kvdb";
+
+    // Expect error to be stored when KVDB is not available
+    EXPECT_CALL(*m_store, upsertDoc(_, _))
+        .WillOnce(
+            [&testHash](const base::Name& name, const store::Doc& doc)
+            {
+                auto hash = doc.getString("/hash");
+                auto lastError = doc.getString("/lastError");
+                EXPECT_EQ(hash.value_or(""), testHash);
+                EXPECT_THAT(lastError.value_or(""), HasSubstr("KVDB Manager is not available"));
+                return store::mocks::storeOk();
+            });
+
+    // Reset semaphore before test
+    detail::g_syncInProgress.store(false);
+
+    // Call with null weak_ptr (will expire immediately)
+    std::weak_ptr<::kvdbioc::IKVDBManager> nullWeak;
+    detail::performIOCSync(nullWeak, m_store, tempFile.path(), testHash);
+}
+
+/*****************************************************************************
+ * Test: performIOCSync - Store Not Available
+ ****************************************************************************/
+TEST_F(SyncIocHandlerTest, PerformIOCSync_StoreNotAvailable_NoError)
+{
+    TempIOCFile tempFile;
+    const std::string testHash = "test_hash_store";
+
+    // No expectations on store since it's not available
+
+    // Reset semaphore before test
+    detail::g_syncInProgress.store(false);
+
+    // Call with null store weak_ptr (will expire immediately)
+    std::weak_ptr<store::IStore> nullWeak;
+    detail::performIOCSync(m_kvdbManager, nullWeak, tempFile.path(), testHash);
+
+    // Test passes if no crash occurs
+}
+
+/*****************************************************************************
+ * Test: performIOCSync - Semaphore Released After Execution
+ ****************************************************************************/
+TEST_F(SyncIocHandlerTest, PerformIOCSync_SemaphoreReleasedAfterExecution)
+{
+    TempIOCFile tempFile;
+    const std::string testHash = "test_hash_semaphore";
+
+    // Setup minimal mocks
+    EXPECT_CALL(*m_kvdbManager, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*m_kvdbManager, get(_, _)).WillRepeatedly(Return(std::nullopt));
+    EXPECT_CALL(*m_kvdbManager, put(_, _, _)).Times(AtLeast(0));
+    EXPECT_CALL(*m_kvdbManager, hotSwap(_, _)).Times(AtLeast(0));
+    EXPECT_CALL(*m_store, upsertDoc(_, _)).WillOnce(Return(store::mocks::storeOk()));
+
+    // Reset semaphore before test
+    detail::g_syncInProgress.store(false);
+
+    // Manually set semaphore to simulate it being set
+    detail::g_syncInProgress.store(true);
+
+    // Call the sync function
+    detail::performIOCSync(m_kvdbManager, m_store, tempFile.path(), testHash);
+
+    // Verify semaphore is released after execution
+    EXPECT_FALSE(detail::g_syncInProgress.load());
 }

@@ -1,6 +1,10 @@
 #ifndef _API_IOCCRUD_HANDLERS_HPP
 #define _API_IOCCRUD_HANDLERS_HPP
 
+#include <atomic>
+#include <memory>
+#include <string_view>
+
 #include <kvdbioc/iManager.hpp>
 #include <scheduler/ischeduler.hpp>
 #include <store/istore.hpp>
@@ -11,10 +15,22 @@ namespace api::ioccrud::handlers
 {
 
 adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kvdbManager,
-                               const std::shared_ptr<scheduler::IScheduler>& scheduler,
-                                 const std::shared_ptr<store::IStore>& store);
+                              const std::shared_ptr<scheduler::IScheduler>& scheduler,
+                              const std::shared_ptr<store::IStore>& store);
 
 adapter::RouteHandler getIocState(const std::shared_ptr<store::IStore>& store);
+
+// Internal implementation details exposed for testing
+namespace detail
+{
+extern std::atomic<bool> g_syncInProgress;
+extern const std::string_view IOC_STATUS_DOC;
+
+void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManager,
+                    const std::weak_ptr<store::IStore>& weakStore,
+                    const std::string& filePath,
+                    const std::string& fileHash);
+} // namespace detail
 
 inline void registerHandlers(const std::shared_ptr<::kvdbioc::IKVDBManager>& kvdbManager,
                              const std::shared_ptr<scheduler::IScheduler>& scheduler,
