@@ -45,10 +45,7 @@ do                                                                      \
 {                                                                       \
     try                                                                 \
     {                                                                   \
-        if(!m_stopping.load())                                          \
-        {                                                               \
-            task();                                                     \
-        }                                                               \
+        task();                                                         \
     }                                                                   \
     catch(const std::exception& ex)                                     \
     {                                                                   \
@@ -232,7 +229,7 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
     {
         m_logFunction(LOG_ERROR, data.dump());
     }
-    else if (!m_stopping.load())
+    else
     {
         if (data.is_array())
         {
@@ -1791,6 +1788,12 @@ void Syscollector::scanBrowserExtensions()
 
 void Syscollector::scan()
 {
+    if (m_stopping.load())
+    {
+        m_logFunction(LOG_DEBUG, "Syscollector is stopping, skipping evaluation.");
+        return;
+    }
+
     if (m_paused)
     {
         m_logFunction(LOG_DEBUG, "Syscollector is paused, skipping evaluation.");
