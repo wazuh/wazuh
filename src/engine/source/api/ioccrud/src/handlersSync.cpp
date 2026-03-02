@@ -27,13 +27,21 @@ namespace
 // Global flag to track if a synchronization is in progress
 std::atomic<bool> g_syncInProgress {false};
 
+// Store document name for IOC sync status
+constexpr std::string_view IOC_STATUS_DOC = "ioc/remote-status/0";
+
 /**
  * @brief Perform IOC synchronization from a file
  *
  * @param weakKvdbManager Weak pointer to KVDB Manager
+ * @param weakStore Weak pointer to Store
  * @param filePath Path to the ndjson file containing IOCs
+ * @param fileHash Hash of the file being synchronized
  */
-void performIOCSync(std::weak_ptr<::kvdbioc::IKVDBManager> weakKvdbManager, const std::string& filePath)
+void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManager,
+                    const std::weak_ptr<store::IStore>& weakStore,
+                    const std::string& filePath,
+                    const std::string& fileHash)
 {
     auto lambdaName = logging::getLambdaName("syncIoc", "asyncTask");
     LOG_INFO_L(lambdaName.c_str(), "Starting IOC synchronization from file: {}", filePath);
@@ -48,6 +56,13 @@ void performIOCSync(std::weak_ptr<::kvdbioc::IKVDBManager> weakKvdbManager, cons
     if (!kvdbManager)
     {
         LOG_WARNING_L(lambdaName.c_str(), "KVDB Manager is not available, aborting IOC sync");
+        return;
+    }
+
+    auto storeRef = weakStore.lock();
+    if (!storeRef)
+    {
+        LOG_WARNING_L(lambdaName.c_str(), "Store is not available, aborting IOC sync");
         return;
     }
 
@@ -134,6 +149,28 @@ void performIOCSync(std::weak_ptr<::kvdbioc::IKVDBManager> weakKvdbManager, cons
 
         LOG_INFO_L(
             lambdaName.c_str(), "IOC synchronization completed successfully. {} DBs updated.", tempDatabases.size());
+
+        // Update the hash in the store after successful synchronization
+        try
+        {
+            store::Doc statusDoc;
+            statusDoc.setString(fileHash, "/hash");
+            auto updateResult = storeRef->upsertDoc(base::Name(std::string(IOC_STATUS_DOC)), statusDoc);
+            if (base::isError(updateResult))
+            {
+                LOG_WARNING_L(lambdaName.c_str(),
+                              "Failed to update IOC status in store: {}",
+                              base::getError(updateResult).message);
+            }
+            else
+            {
+                LOG_DEBUG_L(lambdaName.c_str(), "IOC status updated in store with hash: {}", fileHash);
+            }
+        }
+        catch (const std::exception& e)
+        {
+            LOG_WARNING_L(lambdaName.c_str(), "Exception updating IOC status: {}", e.what());
+        }
     }
     catch (const std::exception& e)
     {
@@ -144,11 +181,12 @@ void performIOCSync(std::weak_ptr<::kvdbioc::IKVDBManager> weakKvdbManager, cons
 } // namespace
 
 adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kvdbManager,
-                              const std::shared_ptr<scheduler::IScheduler>& scheduler)
+                              const std::shared_ptr<scheduler::IScheduler>& scheduler,
+                              const std::shared_ptr<store::IStore>& store)
 {
     return [weakKvdbManager = std::weak_ptr<::kvdbioc::IKVDBManager>(kvdbManager),
-            weakScheduler = std::weak_ptr<scheduler::IScheduler>(scheduler)](const httplib::Request& req,
-                                                                             httplib::Response& res)
+            weakScheduler = std::weak_ptr<scheduler::IScheduler>(scheduler),
+            weakStore = std::weak_ptr<store::IStore>(store)](const httplib::Request& req, httplib::Response& res)
     {
         using RequestType = eIoc::UpdateIoc_Request;
         using ResponseType = eEngine::GenericStatus_Response;
@@ -172,7 +210,54 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kv
         }
 
         const std::string filePath = protoReq.path();
-        // const std::string& fileHash = protoReq.hash(); // TODO: Use hash for optimization
+        const std::string fileHash = protoReq.hash();
+
+        // Get store reference
+        auto storeRef = weakStore.lock();
+        if (!storeRef)
+        {
+            res = adapter::internalErrorResponse<ResponseType>("Store is not available");
+            return;
+        }
+
+        // Read current hash from store
+        std::string storedHash;
+        auto docResp = storeRef->readDoc(base::Name(std::string(IOC_STATUS_DOC)));
+        if (base::isError(docResp))
+        {
+            // Document doesn't exist, create it with empty hash
+            auto lambdaName = logging::getLambdaName("syncIoc", "handler");
+            LOG_DEBUG_L(lambdaName.c_str(), "IOC status document does not exist, will be created on first sync");
+            store::Doc statusDoc;
+            statusDoc.setString("", "/hash");
+            auto createResult = storeRef->upsertDoc(base::Name(std::string(IOC_STATUS_DOC)), statusDoc);
+            if (base::isError(createResult))
+            {
+                LOG_WARNING_L(lambdaName.c_str(),
+                              "Failed to create IOC status document: {}",
+                              base::getError(createResult).message);
+            }
+            storedHash = "";
+        }
+        else
+        {
+            auto doc = base::getResponse(docResp);
+            auto hashOpt = doc.getString("/hash");
+            storedHash = hashOpt.value_or("");
+        }
+
+        // Compare hashes - if they match, no sync needed
+        if (!fileHash.empty() && fileHash == storedHash)
+        {
+            auto lambdaName = logging::getLambdaName("syncIoc", "handler");
+            LOG_DEBUG_L(
+                lambdaName.c_str(), "IOC file hash matches stored hash ({}), skipping synchronization", fileHash);
+            ResponseType eResponse;
+            eResponse.set_status(eEngine::ReturnStatus::OK);
+            eResponse.set_error("IOC data is already up to date");
+            res = adapter::userResponse(eResponse);
+            return;
+        }
 
         // Check if synchronization is already in progress
         bool expected = false;
@@ -207,9 +292,9 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kv
             scheduler::TaskConfig taskConfig {.interval = 0,    // One-time task (execute as soon as possible)
                                               .CPUPriority = 0, // Normal priority
                                               .timeout = 0,     // No timeout
-                                              .taskFunction = [weakKvdbManager, filePath]()
+                                              .taskFunction = [weakKvdbManager, weakStore, filePath, fileHash]()
                                               {
-                                                  performIOCSync(weakKvdbManager, filePath);
+                                                  performIOCSync(weakKvdbManager, weakStore, filePath, fileHash);
                                               }};
 
             // Schedule the task with a unique name
