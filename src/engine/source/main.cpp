@@ -8,11 +8,7 @@
 #include <thread>
 #include <vector>
 
-#include <api/archiver/handlers.hpp>
-#include <api/cmcrud/handlers.hpp>
-#include <api/event/handlers.hpp>
 #include <api/handlers.hpp>
-#include <api/rawevtindexer/handlers.hpp>
 #include <archiver/archiver.hpp>
 #include <base/eventParser.hpp>
 #include <base/libwazuhshared.hpp>

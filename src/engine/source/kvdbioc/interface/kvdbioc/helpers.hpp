@@ -5,6 +5,8 @@
 
 #include <base/json.hpp>
 
+#include <kvdbioc/iManager.hpp>
+
 namespace kvdbioc::details
 {
 
@@ -123,6 +125,39 @@ inline std::pair<std::string, std::string> getDbAndKeyFromIOC(const json::Json& 
 
     return {dbName, key};
 
+}
+
+/**
+ * @brief Update a value in the KVDB, appending to an array if the key already exists.
+ *
+ * @param manager The KVDB manager instance to use for DB operations.
+ * @param dbName The name of the database to update.
+ * @param key The key to update in the database.
+ * @param newValue The new JSON value to add. If the key already exists, this value will be appended to the existing
+ * value as an array.
+ * @throws std::runtime_error if the DB doesn't exist or on RocksDB errors.
+ */
+inline void updateValueInDB(const std::shared_ptr<IKVDBManager>& manager,
+                            const std::string& dbName,
+                            const std::string& key,
+                            const json::Json& newValue)
+{
+    // Check if key exists in DB
+    auto existingValueOpt = manager->get(dbName, key);
+
+    if (!existingValueOpt.has_value())
+    {
+        manager->put(dbName, key, newValue.str());
+        return;
+    }
+
+    auto& candidateValue = existingValueOpt.value();
+    if (!candidateValue.isArray())
+    {
+        candidateValue.setArray(); // This never should happen in our use case, but if it does, overwrite.
+    }
+    candidateValue.appendJson(newValue);
+    manager->put(dbName, key, candidateValue.str());
 }
 
 } // namespace kvdbioc::details
