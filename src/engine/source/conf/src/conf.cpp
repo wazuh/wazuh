@@ -64,7 +64,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // Raw Event Indexer
     addUnit<bool>(key::RAW_EVENT_INDEXER_ENABLED, "WAZUH_RAW_EVENT_INDEXER_ENABLED", false);
 
-    // Queue event module (100 EPS and 2^17 events buffer by default)
+    // Queue event module
     addUnit<size_t>(key::EVENT_QUEUE_SIZE, "WAZUH_EVENT_QUEUE_SIZE", 0x1 << 17);
     addUnit<size_t>(key::EVENT_QUEUE_EPS, "WAZUH_EVENT_QUEUE_EPS", 0);
 

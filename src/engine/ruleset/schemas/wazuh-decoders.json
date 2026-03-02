@@ -12988,6 +12988,14 @@
             "string"
           ]
         },
+        "wazuh.space.event_discarded": {
+          "description": "Module: ecs\nIndexerType: boolean\n\nIndicates whether the event would have been discarded by the Wazuh Engine during the filtering phase when the active policy has `index_discarded_events` set to `true`.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "boolean",
+            "string"
+          ]
+        },
         "wazuh.space.name": {
           "description": "Module: ecs\nIndexerType: keyword\n\nWazuh space name.",
           "type": [
