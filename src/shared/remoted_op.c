@@ -82,7 +82,7 @@ void parse_uname_string (char *uname,
             }
         } else {
             size_t str_tmp_len = strlen(str_tmp);
-            if (str_tmp_len > 0 && str_tmp[str_tmp_len - 1] == ']') str_tmp[str_tmp_len - 1] = '\0';
+            if (str_tmp_len > 0) str_tmp[str_tmp_len - 1] = '\0';
         }
 
         // Get os_major
@@ -117,20 +117,16 @@ void parse_uname_string (char *uname,
                 *str_tmp = '\0';
                 str_tmp += 2;
                 os_strdup(str_tmp, osd->os_version);
-                {
                     size_t ver_len = strlen(osd->os_version);
                     if (ver_len > 0 && osd->os_version[ver_len - 1] == ']') osd->os_version[ver_len - 1] = '\0';
-                }
 
                 // os_major.os_minor (os_codename)
                 if (str_tmp = strstr(osd->os_version, " ("), str_tmp) {
                     *str_tmp = '\0';
                     str_tmp += 2;
                     os_strdup(str_tmp, osd->os_codename);
-                    {
                         size_t cod_len = strlen(osd->os_codename);
                         if (cod_len > 0 && osd->os_codename[cod_len - 1] == ')') osd->os_codename[cod_len - 1] = '\0';
-                    }
                 }
 
                 // Get os_major

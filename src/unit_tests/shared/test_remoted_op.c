@@ -23,6 +23,19 @@ int teardown_remoted_op(void **state) {
     return 0;
 }
 
+static void free_os_data(os_data *osd, char *uname) {
+    os_free(osd->os_name);
+    os_free(osd->os_version);
+    os_free(osd->os_codename);
+    os_free(osd->os_major);
+    os_free(osd->os_minor);
+    os_free(osd->os_build);
+    os_free(osd->os_platform);
+    os_free(osd->os_arch);
+    os_free(osd);
+    os_free(uname);
+}
+
 /* tests */
 
 /* Tests get_os_arch */
@@ -256,6 +269,63 @@ root:xnu-6153.141.1~1/RELEASE_X86_64 |x86_64 [Mac OS X|darwin: 10.15.6 (Catalina
     os_free(osd->os_arch);
     os_free(osd);
     os_free(uname);
+}
+
+// Tests for heap-based NULL write buffer underflows — empty field variants
+void test_parse_uname_string_empty_fields(void **state)
+{
+    typedef struct {
+        const char *uname;
+        const char *os_name;
+        const char *os_version;
+        const char *os_codename;
+        const char *os_major;
+        const char *os_minor;
+        const char *os_build;
+        const char *os_platform;
+        const char *os_arch;
+    } tc_t;
+
+    static const tc_t cases[] = {
+        /* os_version empty — uname ends with ": "                    */
+        { "Linux x86_64 [Ubuntu: ","Ubuntu","",NULL, NULL, NULL, NULL, NULL,"x86_64" },
+        /* os_codename empty — uname ends with " ("                   */
+        { "Linux x86_64 [Ubuntu|ubuntu: 1 ()", "Ubuntu", "1", "", "1", NULL, NULL, "ubuntu", "x86_64" },
+        /* os_name empty — uname ends with " ["                       */
+        { "Linux x86_64 [","",NULL, NULL, NULL, NULL, NULL, NULL,"x86_64" },
+        /* os_version empty — Arch Linux, no closing ']'              */
+        { "Linux x86_64 [Arch Linux|arch: ","Arch Linux", "",NULL, NULL, NULL, NULL, "arch","x86_64" },
+        /* os_codename empty — closed by ']' with no content          */
+        { "Linux x86_64 [Ubuntu|ubuntu: 20.04 (]", "Ubuntu","20.04","","20", "04", NULL, "ubuntu","x86_64" },
+        /* Windows path — str_tmp empty, no closing ']'               */
+        { "Windows [Ver: ","Windows","",NULL, NULL, NULL, NULL,"windows",NULL },
+    };
+
+#define ASSERT_FIELD(exp, got) \
+    do { if (exp) { assert_string_equal(exp, got); } else { assert_null(got); } } while (0)
+
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        char *uname = NULL;
+        os_strdup(cases[i].uname, uname);
+
+        os_data *osd = NULL;
+        os_calloc(1, sizeof(os_data), osd);
+
+        parse_uname_string(uname, osd);
+
+        ASSERT_FIELD(cases[i].os_name,     osd->os_name);
+        ASSERT_FIELD(cases[i].os_version,  osd->os_version);
+        ASSERT_FIELD(cases[i].os_codename, osd->os_codename);
+        ASSERT_FIELD(cases[i].os_major,    osd->os_major);
+        ASSERT_FIELD(cases[i].os_minor,    osd->os_minor);
+        ASSERT_FIELD(cases[i].os_build,    osd->os_build);
+        ASSERT_FIELD(cases[i].os_platform, osd->os_platform);
+        ASSERT_FIELD(cases[i].os_arch,     osd->os_arch);
+
+        free_os_data(osd, uname);
+    }
+
+#undef ASSERT_FIELD
 }
 
 /* Tests parse_agent_update_msg */
@@ -549,200 +619,6 @@ void test_parse_agent_update_msg_ok_labels(void **state)
     wdb_free_agent_info_data(agent_data);
 }
 
-// Tests for CVE candidate — heap-based NULL write buffer underflows
-
-// Triggers L119: os_version underflow — empty string after ": "
-void test_parse_uname_string_empty_os_version(void **state)
-{
-    char *uname = NULL;
-    os_strdup("Linux x86_64 [Ubuntu: ", uname);
-
-    os_data *osd = NULL;
-    os_calloc(1, sizeof(os_data), osd);
-
-    parse_uname_string(uname, osd);
-
-    assert_string_equal("Ubuntu", osd->os_name);
-    assert_string_equal("", osd->os_version);
-    assert_null(osd->os_codename);
-    assert_null(osd->os_major);
-    assert_null(osd->os_minor);
-    assert_null(osd->os_build);
-    assert_null(osd->os_platform);
-    assert_string_equal("x86_64", osd->os_arch);
-
-    os_free(osd->os_name);
-    os_free(osd->os_version);
-    os_free(osd->os_codename);
-    os_free(osd->os_major);
-    os_free(osd->os_minor);
-    os_free(osd->os_build);
-    os_free(osd->os_platform);
-    os_free(osd->os_arch);
-    os_free(osd);
-    os_free(uname);
-}
-
-// Triggers L126: os_codename underflow — empty string after " ("
-void test_parse_uname_string_empty_os_codename(void **state)
-{
-    char *uname = NULL;
-    os_strdup("Linux x86_64 [Ubuntu|ubuntu: 1 ()", uname);
-
-    os_data *osd = NULL;
-    os_calloc(1, sizeof(os_data), osd);
-
-    parse_uname_string(uname, osd);
-
-    assert_string_equal("Ubuntu", osd->os_name);
-    assert_string_equal("1", osd->os_version);
-    assert_string_equal("", osd->os_codename);
-    assert_string_equal("1", osd->os_major);
-    assert_null(osd->os_minor);
-    assert_null(osd->os_build);
-    assert_string_equal("ubuntu", osd->os_platform);
-    assert_string_equal("x86_64", osd->os_arch);
-
-    os_free(osd->os_name);
-    os_free(osd->os_version);
-    os_free(osd->os_codename);
-    os_free(osd->os_major);
-    os_free(osd->os_minor);
-    os_free(osd->os_build);
-    os_free(osd->os_platform);
-    os_free(osd->os_arch);
-    os_free(osd);
-    os_free(uname);
-}
-
-// Triggers L149: os_name underflow — empty string after " ["
-void test_parse_uname_string_empty_os_name(void **state)
-{
-    char *uname = NULL;
-    os_strdup("Linux x86_64 [", uname);
-
-    os_data *osd = NULL;
-    os_calloc(1, sizeof(os_data), osd);
-
-    parse_uname_string(uname, osd);
-
-    assert_string_equal("", osd->os_name);
-    assert_null(osd->os_version);
-    assert_null(osd->os_codename);
-    assert_null(osd->os_major);
-    assert_null(osd->os_minor);
-    assert_null(osd->os_build);
-    assert_null(osd->os_platform);
-    assert_string_equal("x86_64", osd->os_arch);
-
-    os_free(osd->os_name);
-    os_free(osd->os_version);
-    os_free(osd->os_codename);
-    os_free(osd->os_major);
-    os_free(osd->os_minor);
-    os_free(osd->os_build);
-    os_free(osd->os_platform);
-    os_free(osd->os_arch);
-    os_free(osd);
-    os_free(uname);
-}
-
-// Triggers L119 conditional guard: os_version = "]" (len=1) is stripped to "".
-void test_parse_uname_string_arch_linux_empty_version(void **state)
-{
-    char *uname = NULL;
-    os_strdup("Linux x86_64 [Arch Linux|arch: ", uname);
-
-    os_data *osd = NULL;
-    os_calloc(1, sizeof(os_data), osd);
-
-    parse_uname_string(uname, osd);
-
-    assert_string_equal("Arch Linux", osd->os_name);
-    assert_string_equal("", osd->os_version);
-    assert_null(osd->os_codename);
-    assert_null(osd->os_major);
-    assert_null(osd->os_minor);
-    assert_null(osd->os_build);
-    assert_string_equal("arch", osd->os_platform);
-    assert_string_equal("x86_64", osd->os_arch);
-
-    os_free(osd->os_name);
-    os_free(osd->os_version);
-    os_free(osd->os_codename);
-    os_free(osd->os_major);
-    os_free(osd->os_minor);
-    os_free(osd->os_build);
-    os_free(osd->os_platform);
-    os_free(osd->os_arch);
-    os_free(osd);
-    os_free(uname);
-}
-
-// Triggers L126 underflow — TRUE crash trigger for os_codename.
-void test_parse_uname_string_codename_closed_by_bracket(void **state)
-{
-    char *uname = NULL;
-    os_strdup("Linux x86_64 [Ubuntu|ubuntu: 20.04 (]", uname);
-
-    os_data *osd = NULL;
-    os_calloc(1, sizeof(os_data), osd);
-
-    parse_uname_string(uname, osd);
-
-    assert_string_equal("Ubuntu", osd->os_name);
-    assert_string_equal("20.04", osd->os_version);
-    assert_string_equal("", osd->os_codename);
-    assert_string_equal("20", osd->os_major);
-    assert_string_equal("04", osd->os_minor);
-    assert_null(osd->os_build);
-    assert_string_equal("ubuntu", osd->os_platform);
-    assert_string_equal("x86_64", osd->os_arch);
-
-    os_free(osd->os_name);
-    os_free(osd->os_version);
-    os_free(osd->os_codename);
-    os_free(osd->os_major);
-    os_free(osd->os_minor);
-    os_free(osd->os_build);
-    os_free(osd->os_platform);
-    os_free(osd->os_arch);
-    os_free(osd);
-    os_free(uname);
-}
-
-// Triggers L84: str_tmp underflow (Windows path) — no closing ']'
-void test_parse_uname_string_empty_windows_version(void **state)
-{
-    char *uname = NULL;
-    os_strdup("Windows [Ver: ", uname);
-
-    os_data *osd = NULL;
-    os_calloc(1, sizeof(os_data), osd);
-
-    parse_uname_string(uname, osd);
-
-    assert_string_equal("Windows", osd->os_name);
-    assert_string_equal("", osd->os_version);
-    assert_null(osd->os_codename);
-    assert_null(osd->os_major);
-    assert_null(osd->os_minor);
-    assert_null(osd->os_build);
-    assert_string_equal("windows", osd->os_platform);
-    assert_null(osd->os_arch);
-
-    os_free(osd->os_name);
-    os_free(osd->os_version);
-    os_free(osd->os_codename);
-    os_free(osd->os_major);
-    os_free(osd->os_minor);
-    os_free(osd->os_build);
-    os_free(osd->os_platform);
-    os_free(osd->os_arch);
-    os_free(osd);
-    os_free(uname);
-}
-
 int main()
 {
     const struct CMUnitTest tests[] =
@@ -762,13 +638,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_parse_uname_string_windows2, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_uname_string_linux, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_uname_string_macos, setup_remoted_op, teardown_remoted_op),
-        // Test heap underflow via strlen - 1 on empty strings
-        cmocka_unit_test_setup_teardown(test_parse_uname_string_empty_os_version, setup_remoted_op, teardown_remoted_op),
-        cmocka_unit_test_setup_teardown(test_parse_uname_string_arch_linux_empty_version, setup_remoted_op, teardown_remoted_op),
-        cmocka_unit_test_setup_teardown(test_parse_uname_string_empty_os_codename, setup_remoted_op, teardown_remoted_op),
-        cmocka_unit_test_setup_teardown(test_parse_uname_string_codename_closed_by_bracket, setup_remoted_op, teardown_remoted_op),
-        cmocka_unit_test_setup_teardown(test_parse_uname_string_empty_os_name, setup_remoted_op, teardown_remoted_op),
-        cmocka_unit_test_setup_teardown(test_parse_uname_string_empty_windows_version, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_uname_string_empty_fields, setup_remoted_op, teardown_remoted_op),
         // Tests parse_agent_update_msg
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_missing_uname, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_missing_config_sum, setup_remoted_op, teardown_remoted_op),
