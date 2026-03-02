@@ -385,6 +385,18 @@ TEST_F(CQueueTest, WaitPopWithDifferentTimeouts)
     ASSERT_LT(duration, std::chrono::milliseconds(100));  // But not too long
 }
 
+TEST_F(CQueueTest, WaitPopWithNegativeTimeoutIsNonBlocking)
+{
+    CQueue<std::shared_ptr<Dummy>> cq(MIN_QUEUE_CAPACITY);
+    std::shared_ptr<Dummy> value;
+
+    auto start = std::chrono::steady_clock::now();
+    ASSERT_FALSE(cq.waitPop(value, -1));
+    auto duration = std::chrono::steady_clock::now() - start;
+
+    ASSERT_LT(duration, std::chrono::milliseconds(10));
+}
+
 TEST_F(CQueueTest, BulkPopExceedsAvailable)
 {
     CQueue<std::shared_ptr<Dummy>> cq(MIN_QUEUE_CAPACITY);

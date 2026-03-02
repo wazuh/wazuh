@@ -49,8 +49,8 @@ public:
      * @brief Wait for and pop an element from the queue.
      *
      * @param element A reference to store the popped element.
-     * @param timeout The maximum time to wait for an element in microseconds (0 for no wait, negative for infinite
-     * wait).
+     * @param timeout The maximum time to wait for an element in microseconds.
+     *        Values less than 0 are treated as 0 (no wait).
      * @return true if an element was popped successfully, false if timeout occurred or queue is empty.
      */
     virtual bool waitPop(T& element, int64_t timeout) = 0;

@@ -6,7 +6,6 @@
 #include <stdexcept>
 #include <thread>
 
-
 namespace fastqueue
 {
 
@@ -74,6 +73,11 @@ public:
      */
     bool waitAcquire(size_t count, int64_t timeoutMicros)
     {
+        if (timeoutMicros <= 0)
+        {
+            return tryAcquire(count);
+        }
+
         auto startTime = std::chrono::steady_clock::now();
         auto timeoutDuration = std::chrono::microseconds(timeoutMicros);
 
