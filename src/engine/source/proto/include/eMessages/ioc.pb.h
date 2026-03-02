@@ -486,11 +486,12 @@ class GetIocState_Response final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kHashFieldNumber = 1,
-    kErrorFieldNumber = 3,
-    kUpdatingFieldNumber = 2,
+    kHashFieldNumber = 2,
+    kLastErrorFieldNumber = 4,
+    kStatusFieldNumber = 1,
+    kUpdatingFieldNumber = 3,
   };
-  // string hash = 1;
+  // string hash = 2;
   void clear_hash();
   const std::string& hash() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -504,21 +505,30 @@ class GetIocState_Response final :
   std::string* _internal_mutable_hash();
   public:
 
-  // string error = 3;
-  void clear_error();
-  const std::string& error() const;
+  // string lastError = 4;
+  void clear_lasterror();
+  const std::string& lasterror() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_error(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_error();
-  PROTOBUF_NODISCARD std::string* release_error();
-  void set_allocated_error(std::string* error);
+  void set_lasterror(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_lasterror();
+  PROTOBUF_NODISCARD std::string* release_lasterror();
+  void set_allocated_lasterror(std::string* lasterror);
   private:
-  const std::string& _internal_error() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_error(const std::string& value);
-  std::string* _internal_mutable_error();
+  const std::string& _internal_lasterror() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_lasterror(const std::string& value);
+  std::string* _internal_mutable_lasterror();
   public:
 
-  // bool updating = 2;
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  void clear_status();
+  ::com::wazuh::api::engine::ReturnStatus status() const;
+  void set_status(::com::wazuh::api::engine::ReturnStatus value);
+  private:
+  ::com::wazuh::api::engine::ReturnStatus _internal_status() const;
+  void _internal_set_status(::com::wazuh::api::engine::ReturnStatus value);
+  public:
+
+  // bool updating = 3;
   void clear_updating();
   bool updating() const;
   void set_updating(bool value);
@@ -536,7 +546,8 @@ class GetIocState_Response final :
   typedef void DestructorSkippable_;
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr hash_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr error_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr lasterror_;
+    int status_;
     bool updating_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
@@ -662,7 +673,27 @@ inline void UpdateIoc_Request::set_allocated_hash(std::string* hash) {
 
 // GetIocState_Response
 
-// string hash = 1;
+// .com.wazuh.api.engine.ReturnStatus status = 1;
+inline void GetIocState_Response::clear_status() {
+  _impl_.status_ = 0;
+}
+inline ::com::wazuh::api::engine::ReturnStatus GetIocState_Response::_internal_status() const {
+  return static_cast< ::com::wazuh::api::engine::ReturnStatus >(_impl_.status_);
+}
+inline ::com::wazuh::api::engine::ReturnStatus GetIocState_Response::status() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.ioc.GetIocState_Response.status)
+  return _internal_status();
+}
+inline void GetIocState_Response::_internal_set_status(::com::wazuh::api::engine::ReturnStatus value) {
+  
+  _impl_.status_ = value;
+}
+inline void GetIocState_Response::set_status(::com::wazuh::api::engine::ReturnStatus value) {
+  _internal_set_status(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.ioc.GetIocState_Response.status)
+}
+
+// string hash = 2;
 inline void GetIocState_Response::clear_hash() {
   _impl_.hash_.ClearToEmpty();
 }
@@ -712,7 +743,7 @@ inline void GetIocState_Response::set_allocated_hash(std::string* hash) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.ioc.GetIocState_Response.hash)
 }
 
-// bool updating = 2;
+// bool updating = 3;
 inline void GetIocState_Response::clear_updating() {
   _impl_.updating_ = false;
 }
@@ -732,54 +763,54 @@ inline void GetIocState_Response::set_updating(bool value) {
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.ioc.GetIocState_Response.updating)
 }
 
-// string error = 3;
-inline void GetIocState_Response::clear_error() {
-  _impl_.error_.ClearToEmpty();
+// string lastError = 4;
+inline void GetIocState_Response::clear_lasterror() {
+  _impl_.lasterror_.ClearToEmpty();
 }
-inline const std::string& GetIocState_Response::error() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.ioc.GetIocState_Response.error)
-  return _internal_error();
+inline const std::string& GetIocState_Response::lasterror() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.ioc.GetIocState_Response.lastError)
+  return _internal_lasterror();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void GetIocState_Response::set_error(ArgT0&& arg0, ArgT... args) {
+void GetIocState_Response::set_lasterror(ArgT0&& arg0, ArgT... args) {
  
- _impl_.error_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.ioc.GetIocState_Response.error)
+ _impl_.lasterror_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.ioc.GetIocState_Response.lastError)
 }
-inline std::string* GetIocState_Response::mutable_error() {
-  std::string* _s = _internal_mutable_error();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.ioc.GetIocState_Response.error)
+inline std::string* GetIocState_Response::mutable_lasterror() {
+  std::string* _s = _internal_mutable_lasterror();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.ioc.GetIocState_Response.lastError)
   return _s;
 }
-inline const std::string& GetIocState_Response::_internal_error() const {
-  return _impl_.error_.Get();
+inline const std::string& GetIocState_Response::_internal_lasterror() const {
+  return _impl_.lasterror_.Get();
 }
-inline void GetIocState_Response::_internal_set_error(const std::string& value) {
+inline void GetIocState_Response::_internal_set_lasterror(const std::string& value) {
   
-  _impl_.error_.Set(value, GetArenaForAllocation());
+  _impl_.lasterror_.Set(value, GetArenaForAllocation());
 }
-inline std::string* GetIocState_Response::_internal_mutable_error() {
+inline std::string* GetIocState_Response::_internal_mutable_lasterror() {
   
-  return _impl_.error_.Mutable(GetArenaForAllocation());
+  return _impl_.lasterror_.Mutable(GetArenaForAllocation());
 }
-inline std::string* GetIocState_Response::release_error() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.ioc.GetIocState_Response.error)
-  return _impl_.error_.Release();
+inline std::string* GetIocState_Response::release_lasterror() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.ioc.GetIocState_Response.lastError)
+  return _impl_.lasterror_.Release();
 }
-inline void GetIocState_Response::set_allocated_error(std::string* error) {
-  if (error != nullptr) {
+inline void GetIocState_Response::set_allocated_lasterror(std::string* lasterror) {
+  if (lasterror != nullptr) {
     
   } else {
     
   }
-  _impl_.error_.SetAllocated(error, GetArenaForAllocation());
+  _impl_.lasterror_.SetAllocated(lasterror, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.error_.IsDefault()) {
-    _impl_.error_.Set("", GetArenaForAllocation());
+  if (_impl_.lasterror_.IsDefault()) {
+    _impl_.lasterror_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.ioc.GetIocState_Response.error)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.ioc.GetIocState_Response.lastError)
 }
 
 #ifdef __GNUC__

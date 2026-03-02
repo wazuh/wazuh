@@ -35,8 +35,8 @@ message GetIocState_Request {}
 
 message GetIocState_Response
 {
-    string hash = 1;   ///< MD5 hash of the current IOCs in the manager
-    bool updating = 2; ///< Indicates if the IOC manager is currently performing an update
-    string error =
-        3; ///< If an error occurred during the last update, the error message will be included here. Empty if no error.
+    ReturnStatus status = 1; // Status of the query
+    string hash = 2;         ///< MD5 hash of the current IOCs in the manager
+    bool updating = 3;       ///< Indicates if the IOC manager is currently performing an update
+    string lastError = 4;    ///< If an error occurred during the last update, the error message will be included here.
 }
