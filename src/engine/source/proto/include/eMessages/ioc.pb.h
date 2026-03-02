@@ -23,6 +23,7 @@
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/arena.h>
 #include <google/protobuf/arenastring.h>
+#include <google/protobuf/generated_message_bases.h>
 #include <google/protobuf/generated_message_util.h>
 #include <google/protobuf/metadata_lite.h>
 #include <google/protobuf/generated_message_reflection.h>
@@ -50,6 +51,12 @@ namespace wazuh {
 namespace api {
 namespace engine {
 namespace ioc {
+class GetIocState_Request;
+struct GetIocState_RequestDefaultTypeInternal;
+extern GetIocState_RequestDefaultTypeInternal _GetIocState_Request_default_instance_;
+class GetIocState_Response;
+struct GetIocState_ResponseDefaultTypeInternal;
+extern GetIocState_ResponseDefaultTypeInternal _GetIocState_Response_default_instance_;
 class UpdateIoc_Request;
 struct UpdateIoc_RequestDefaultTypeInternal;
 extern UpdateIoc_RequestDefaultTypeInternal _UpdateIoc_Request_default_instance_;
@@ -59,6 +66,8 @@ extern UpdateIoc_RequestDefaultTypeInternal _UpdateIoc_Request_default_instance_
 }  // namespace wazuh
 }  // namespace com
 PROTOBUF_NAMESPACE_OPEN
+template<> ::com::wazuh::api::engine::ioc::GetIocState_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::ioc::GetIocState_Request>(Arena*);
+template<> ::com::wazuh::api::engine::ioc::GetIocState_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::ioc::GetIocState_Response>(Arena*);
 template<> ::com::wazuh::api::engine::ioc::UpdateIoc_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::ioc::UpdateIoc_Request>(Arena*);
 PROTOBUF_NAMESPACE_CLOSE
 namespace com {
@@ -236,6 +245,304 @@ class UpdateIoc_Request final :
   union { Impl_ _impl_; };
   friend struct ::TableStruct_ioc_2eproto;
 };
+// -------------------------------------------------------------------
+
+class GetIocState_Request final :
+    public ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.ioc.GetIocState_Request) */ {
+ public:
+  inline GetIocState_Request() : GetIocState_Request(nullptr) {}
+  explicit PROTOBUF_CONSTEXPR GetIocState_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  GetIocState_Request(const GetIocState_Request& from);
+  GetIocState_Request(GetIocState_Request&& from) noexcept
+    : GetIocState_Request() {
+    *this = ::std::move(from);
+  }
+
+  inline GetIocState_Request& operator=(const GetIocState_Request& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline GetIocState_Request& operator=(GetIocState_Request&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const GetIocState_Request& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const GetIocState_Request* internal_default_instance() {
+    return reinterpret_cast<const GetIocState_Request*>(
+               &_GetIocState_Request_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    1;
+
+  friend void swap(GetIocState_Request& a, GetIocState_Request& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(GetIocState_Request* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(GetIocState_Request* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  GetIocState_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<GetIocState_Request>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyFrom;
+  inline void CopyFrom(const GetIocState_Request& from) {
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl(*this, from);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeFrom;
+  void MergeFrom(const GetIocState_Request& from) {
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl(*this, from);
+  }
+  public:
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "com.wazuh.api.engine.ioc.GetIocState_Request";
+  }
+  protected:
+  explicit GetIocState_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.ioc.GetIocState_Request)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+  };
+  friend struct ::TableStruct_ioc_2eproto;
+};
+// -------------------------------------------------------------------
+
+class GetIocState_Response final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.ioc.GetIocState_Response) */ {
+ public:
+  inline GetIocState_Response() : GetIocState_Response(nullptr) {}
+  ~GetIocState_Response() override;
+  explicit PROTOBUF_CONSTEXPR GetIocState_Response(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  GetIocState_Response(const GetIocState_Response& from);
+  GetIocState_Response(GetIocState_Response&& from) noexcept
+    : GetIocState_Response() {
+    *this = ::std::move(from);
+  }
+
+  inline GetIocState_Response& operator=(const GetIocState_Response& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline GetIocState_Response& operator=(GetIocState_Response&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const GetIocState_Response& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const GetIocState_Response* internal_default_instance() {
+    return reinterpret_cast<const GetIocState_Response*>(
+               &_GetIocState_Response_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    2;
+
+  friend void swap(GetIocState_Response& a, GetIocState_Response& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(GetIocState_Response* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(GetIocState_Response* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  GetIocState_Response* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<GetIocState_Response>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const GetIocState_Response& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const GetIocState_Response& from) {
+    GetIocState_Response::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(GetIocState_Response* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "com.wazuh.api.engine.ioc.GetIocState_Response";
+  }
+  protected:
+  explicit GetIocState_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kHashFieldNumber = 1,
+    kErrorFieldNumber = 3,
+    kUpdatingFieldNumber = 2,
+  };
+  // string hash = 1;
+  void clear_hash();
+  const std::string& hash() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_hash(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_hash();
+  PROTOBUF_NODISCARD std::string* release_hash();
+  void set_allocated_hash(std::string* hash);
+  private:
+  const std::string& _internal_hash() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_hash(const std::string& value);
+  std::string* _internal_mutable_hash();
+  public:
+
+  // string error = 3;
+  void clear_error();
+  const std::string& error() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_error(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_error();
+  PROTOBUF_NODISCARD std::string* release_error();
+  void set_allocated_error(std::string* error);
+  private:
+  const std::string& _internal_error() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_error(const std::string& value);
+  std::string* _internal_mutable_error();
+  public:
+
+  // bool updating = 2;
+  void clear_updating();
+  bool updating() const;
+  void set_updating(bool value);
+  private:
+  bool _internal_updating() const;
+  void _internal_set_updating(bool value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.ioc.GetIocState_Response)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr hash_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr error_;
+    bool updating_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_ioc_2eproto;
+};
 // ===================================================================
 
 
@@ -347,9 +654,141 @@ inline void UpdateIoc_Request::set_allocated_hash(std::string* hash) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.ioc.UpdateIoc_Request.hash)
 }
 
+// -------------------------------------------------------------------
+
+// GetIocState_Request
+
+// -------------------------------------------------------------------
+
+// GetIocState_Response
+
+// string hash = 1;
+inline void GetIocState_Response::clear_hash() {
+  _impl_.hash_.ClearToEmpty();
+}
+inline const std::string& GetIocState_Response::hash() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.ioc.GetIocState_Response.hash)
+  return _internal_hash();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void GetIocState_Response::set_hash(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.hash_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.ioc.GetIocState_Response.hash)
+}
+inline std::string* GetIocState_Response::mutable_hash() {
+  std::string* _s = _internal_mutable_hash();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.ioc.GetIocState_Response.hash)
+  return _s;
+}
+inline const std::string& GetIocState_Response::_internal_hash() const {
+  return _impl_.hash_.Get();
+}
+inline void GetIocState_Response::_internal_set_hash(const std::string& value) {
+  
+  _impl_.hash_.Set(value, GetArenaForAllocation());
+}
+inline std::string* GetIocState_Response::_internal_mutable_hash() {
+  
+  return _impl_.hash_.Mutable(GetArenaForAllocation());
+}
+inline std::string* GetIocState_Response::release_hash() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.ioc.GetIocState_Response.hash)
+  return _impl_.hash_.Release();
+}
+inline void GetIocState_Response::set_allocated_hash(std::string* hash) {
+  if (hash != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.hash_.SetAllocated(hash, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.hash_.IsDefault()) {
+    _impl_.hash_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.ioc.GetIocState_Response.hash)
+}
+
+// bool updating = 2;
+inline void GetIocState_Response::clear_updating() {
+  _impl_.updating_ = false;
+}
+inline bool GetIocState_Response::_internal_updating() const {
+  return _impl_.updating_;
+}
+inline bool GetIocState_Response::updating() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.ioc.GetIocState_Response.updating)
+  return _internal_updating();
+}
+inline void GetIocState_Response::_internal_set_updating(bool value) {
+  
+  _impl_.updating_ = value;
+}
+inline void GetIocState_Response::set_updating(bool value) {
+  _internal_set_updating(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.ioc.GetIocState_Response.updating)
+}
+
+// string error = 3;
+inline void GetIocState_Response::clear_error() {
+  _impl_.error_.ClearToEmpty();
+}
+inline const std::string& GetIocState_Response::error() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.ioc.GetIocState_Response.error)
+  return _internal_error();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void GetIocState_Response::set_error(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.error_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.ioc.GetIocState_Response.error)
+}
+inline std::string* GetIocState_Response::mutable_error() {
+  std::string* _s = _internal_mutable_error();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.ioc.GetIocState_Response.error)
+  return _s;
+}
+inline const std::string& GetIocState_Response::_internal_error() const {
+  return _impl_.error_.Get();
+}
+inline void GetIocState_Response::_internal_set_error(const std::string& value) {
+  
+  _impl_.error_.Set(value, GetArenaForAllocation());
+}
+inline std::string* GetIocState_Response::_internal_mutable_error() {
+  
+  return _impl_.error_.Mutable(GetArenaForAllocation());
+}
+inline std::string* GetIocState_Response::release_error() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.ioc.GetIocState_Response.error)
+  return _impl_.error_.Release();
+}
+inline void GetIocState_Response::set_allocated_error(std::string* error) {
+  if (error != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.error_.SetAllocated(error, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.error_.IsDefault()) {
+    _impl_.error_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.ioc.GetIocState_Response.error)
+}
+
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
 
 // @@protoc_insertion_point(namespace_scope)
 

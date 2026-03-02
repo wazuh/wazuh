@@ -39,12 +39,38 @@ struct UpdateIoc_RequestDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 UpdateIoc_RequestDefaultTypeInternal _UpdateIoc_Request_default_instance_;
+PROTOBUF_CONSTEXPR GetIocState_Request::GetIocState_Request(
+    ::_pbi::ConstantInitialized) {}
+struct GetIocState_RequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR GetIocState_RequestDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~GetIocState_RequestDefaultTypeInternal() {}
+  union {
+    GetIocState_Request _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 GetIocState_RequestDefaultTypeInternal _GetIocState_Request_default_instance_;
+PROTOBUF_CONSTEXPR GetIocState_Response::GetIocState_Response(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.hash_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.error_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.updating_)*/false
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct GetIocState_ResponseDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR GetIocState_ResponseDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~GetIocState_ResponseDefaultTypeInternal() {}
+  union {
+    GetIocState_Response _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 GetIocState_ResponseDefaultTypeInternal _GetIocState_Response_default_instance_;
 }  // namespace ioc
 }  // namespace engine
 }  // namespace api
 }  // namespace wazuh
 }  // namespace com
-static ::_pb::Metadata file_level_metadata_ioc_2eproto[1];
+static ::_pb::Metadata file_level_metadata_ioc_2eproto[3];
 static constexpr ::_pb::EnumDescriptor const** file_level_enum_descriptors_ioc_2eproto = nullptr;
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_ioc_2eproto = nullptr;
 
@@ -57,28 +83,50 @@ const uint32_t TableStruct_ioc_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(prot
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::ioc::UpdateIoc_Request, _impl_.path_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::ioc::UpdateIoc_Request, _impl_.hash_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::ioc::GetIocState_Request, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::ioc::GetIocState_Response, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::ioc::GetIocState_Response, _impl_.hash_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::ioc::GetIocState_Response, _impl_.updating_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::ioc::GetIocState_Response, _impl_.error_),
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, -1, sizeof(::com::wazuh::api::engine::ioc::UpdateIoc_Request)},
+  { 8, -1, -1, sizeof(::com::wazuh::api::engine::ioc::GetIocState_Request)},
+  { 14, -1, -1, sizeof(::com::wazuh::api::engine::ioc::GetIocState_Response)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
   &::com::wazuh::api::engine::ioc::_UpdateIoc_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::ioc::_GetIocState_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::ioc::_GetIocState_Response_default_instance_._instance,
 };
 
 const char descriptor_table_protodef_ioc_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
   "\n\tioc.proto\022\030com.wazuh.api.engine.ioc\032\014e"
   "ngine.proto\"/\n\021UpdateIoc_Request\022\014\n\004path"
-  "\030\001 \001(\t\022\014\n\004hash\030\002 \001(\tb\006proto3"
+  "\030\001 \001(\t\022\014\n\004hash\030\002 \001(\t\"\025\n\023GetIocState_Requ"
+  "est\"E\n\024GetIocState_Response\022\014\n\004hash\030\001 \001("
+  "\t\022\020\n\010updating\030\002 \001(\010\022\r\n\005error\030\003 \001(\tb\006prot"
+  "o3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_ioc_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_ioc_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_ioc_2eproto = {
-    false, false, 108, descriptor_table_protodef_ioc_2eproto,
+    false, false, 202, descriptor_table_protodef_ioc_2eproto,
     "ioc.proto",
-    &descriptor_table_ioc_2eproto_once, descriptor_table_ioc_2eproto_deps, 1, 1,
+    &descriptor_table_ioc_2eproto_once, descriptor_table_ioc_2eproto_deps, 1, 3,
     schemas, file_default_instances, TableStruct_ioc_2eproto::offsets,
     file_level_metadata_ioc_2eproto, file_level_enum_descriptors_ioc_2eproto,
     file_level_service_descriptors_ioc_2eproto,
@@ -348,6 +396,326 @@ void UpdateIoc_Request::InternalSwap(UpdateIoc_Request* other) {
       file_level_metadata_ioc_2eproto[0]);
 }
 
+// ===================================================================
+
+class GetIocState_Request::_Internal {
+ public:
+};
+
+GetIocState_Request::GetIocState_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.ioc.GetIocState_Request)
+}
+GetIocState_Request::GetIocState_Request(const GetIocState_Request& from)
+  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
+  GetIocState_Request* const _this = this; (void)_this;
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.ioc.GetIocState_Request)
+}
+
+
+
+
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData GetIocState_Request::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetIocState_Request::GetClassData() const { return &_class_data_; }
+
+
+
+
+
+
+
+::PROTOBUF_NAMESPACE_ID::Metadata GetIocState_Request::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_ioc_2eproto_getter, &descriptor_table_ioc_2eproto_once,
+      file_level_metadata_ioc_2eproto[1]);
+}
+
+// ===================================================================
+
+class GetIocState_Response::_Internal {
+ public:
+};
+
+GetIocState_Response::GetIocState_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.ioc.GetIocState_Response)
+}
+GetIocState_Response::GetIocState_Response(const GetIocState_Response& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  GetIocState_Response* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.hash_){}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.updating_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.hash_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.hash_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_hash().empty()) {
+    _this->_impl_.hash_.Set(from._internal_hash(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_error().empty()) {
+    _this->_impl_.error_.Set(from._internal_error(), 
+      _this->GetArenaForAllocation());
+  }
+  _this->_impl_.updating_ = from._impl_.updating_;
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.ioc.GetIocState_Response)
+}
+
+inline void GetIocState_Response::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.hash_){}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.updating_){false}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.hash_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.hash_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+GetIocState_Response::~GetIocState_Response() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.ioc.GetIocState_Response)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void GetIocState_Response::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.hash_.Destroy();
+  _impl_.error_.Destroy();
+}
+
+void GetIocState_Response::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void GetIocState_Response::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.ioc.GetIocState_Response)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.hash_.ClearToEmpty();
+  _impl_.error_.ClearToEmpty();
+  _impl_.updating_ = false;
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* GetIocState_Response::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // string hash = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          auto str = _internal_mutable_hash();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.ioc.GetIocState_Response.hash"));
+        } else
+          goto handle_unusual;
+        continue;
+      // bool updating = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
+          _impl_.updating_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string error = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_error();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.ioc.GetIocState_Response.error"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* GetIocState_Response::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.ioc.GetIocState_Response)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // string hash = 1;
+  if (!this->_internal_hash().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_hash().data(), static_cast<int>(this->_internal_hash().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.ioc.GetIocState_Response.hash");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_hash(), target);
+  }
+
+  // bool updating = 2;
+  if (this->_internal_updating() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(2, this->_internal_updating(), target);
+  }
+
+  // string error = 3;
+  if (!this->_internal_error().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_error().data(), static_cast<int>(this->_internal_error().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.ioc.GetIocState_Response.error");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_error(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.ioc.GetIocState_Response)
+  return target;
+}
+
+size_t GetIocState_Response::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.ioc.GetIocState_Response)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string hash = 1;
+  if (!this->_internal_hash().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_hash());
+  }
+
+  // string error = 3;
+  if (!this->_internal_error().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_error());
+  }
+
+  // bool updating = 2;
+  if (this->_internal_updating() != 0) {
+    total_size += 1 + 1;
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData GetIocState_Response::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    GetIocState_Response::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetIocState_Response::GetClassData() const { return &_class_data_; }
+
+
+void GetIocState_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<GetIocState_Response*>(&to_msg);
+  auto& from = static_cast<const GetIocState_Response&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.ioc.GetIocState_Response)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_hash().empty()) {
+    _this->_internal_set_hash(from._internal_hash());
+  }
+  if (!from._internal_error().empty()) {
+    _this->_internal_set_error(from._internal_error());
+  }
+  if (from._internal_updating() != 0) {
+    _this->_internal_set_updating(from._internal_updating());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void GetIocState_Response::CopyFrom(const GetIocState_Response& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.ioc.GetIocState_Response)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool GetIocState_Response::IsInitialized() const {
+  return true;
+}
+
+void GetIocState_Response::InternalSwap(GetIocState_Response* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.hash_, lhs_arena,
+      &other->_impl_.hash_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.error_, lhs_arena,
+      &other->_impl_.error_, rhs_arena
+  );
+  swap(_impl_.updating_, other->_impl_.updating_);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata GetIocState_Response::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_ioc_2eproto_getter, &descriptor_table_ioc_2eproto_once,
+      file_level_metadata_ioc_2eproto[2]);
+}
+
 // @@protoc_insertion_point(namespace_scope)
 }  // namespace ioc
 }  // namespace engine
@@ -358,6 +726,14 @@ PROTOBUF_NAMESPACE_OPEN
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::ioc::UpdateIoc_Request*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::ioc::UpdateIoc_Request >(Arena* arena) {
   return Arena::CreateMessageInternal< ::com::wazuh::api::engine::ioc::UpdateIoc_Request >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::ioc::GetIocState_Request*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::ioc::GetIocState_Request >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::ioc::GetIocState_Request >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::ioc::GetIocState_Response*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::ioc::GetIocState_Response >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::ioc::GetIocState_Response >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE
 

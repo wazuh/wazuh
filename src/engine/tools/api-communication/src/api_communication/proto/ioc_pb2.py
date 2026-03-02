@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 import api_communication.proto.engine_pb2 as _engine_pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tioc.proto\x12\x18\x63om.wazuh.api.engine.ioc\x1a\x0c\x65ngine.proto\"/\n\x11UpdateIoc_Request\x12\x0c\n\x04path\x18\x01 \x01(\t\x12\x0c\n\x04hash\x18\x02 \x01(\tb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tioc.proto\x12\x18\x63om.wazuh.api.engine.ioc\x1a\x0c\x65ngine.proto\"/\n\x11UpdateIoc_Request\x12\x0c\n\x04path\x18\x01 \x01(\t\x12\x0c\n\x04hash\x18\x02 \x01(\t\"\x15\n\x13GetIocState_Request\"E\n\x14GetIocState_Response\x12\x0c\n\x04hash\x18\x01 \x01(\t\x12\x10\n\x08updating\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\tb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'ioc_pb2', globals())
@@ -23,4 +23,8 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
   _UPDATEIOC_REQUEST._serialized_start=53
   _UPDATEIOC_REQUEST._serialized_end=100
+  _GETIOCSTATE_REQUEST._serialized_start=102
+  _GETIOCSTATE_REQUEST._serialized_end=123
+  _GETIOCSTATE_RESPONSE._serialized_start=125
+  _GETIOCSTATE_RESPONSE._serialized_end=194
 # @@protoc_insertion_point(module_scope)

@@ -20,3 +20,23 @@ message UpdateIoc_Request
 }
 
 // message UpdateIoc_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Query the IOC manager for a specific indicator
+ *
+ * endpoint: GET /content/ioc/state
+ *
+ * Retrieves the current state of the IOC manager;
+ * - The last hash
+ * - Whether an update is currently in progress
+ * - If an error occurred during the last update, the error message will be included in the response
+ **************************************************/
+message GetIocState_Request {}
+
+message GetIocState_Response
+{
+    string hash = 1;   ///< MD5 hash of the current IOCs in the manager
+    bool updating = 2; ///< Indicates if the IOC manager is currently performing an update
+    string error =
+        3; ///< If an error occurred during the last update, the error message will be included here. Empty if no error.
+}

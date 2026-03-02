@@ -20,6 +20,7 @@ inline void registerHandlers(const std::shared_ptr<::kvdbioc::IKVDBManager>& kvd
                              const std::shared_ptr<httpsrv::Server>& server)
 {
     server->addRoute(httpsrv::Method::POST, "/content/ioc/update", syncIoc(kvdbManager, scheduler, store));
+    server->addRoute(httpsrv::Method::GET, "/content/ioc/state", syncIoc(kvdbManager, scheduler, store));
 }
 
 } // namespace api::ioccrud::handlers

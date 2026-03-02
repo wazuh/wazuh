@@ -630,7 +630,7 @@ int main(int argc, char* argv[])
             LOG_DEBUG("Content Manager CRUD API registered.");
 
             // IOC CRUD
-            api::ioccrud::handlers::registerHandlers(kvdbIOC, scheduler, apiServer);
+            api::ioccrud::handlers::registerHandlers(kvdbIOC, scheduler, store, apiServer);
             LOG_DEBUG("IOC CRUD API registered.");
 
             // Finally start the API server
