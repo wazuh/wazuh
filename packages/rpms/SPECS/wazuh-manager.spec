@@ -557,7 +557,7 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/internal_options*
 %attr(640, root, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/local_internal_options.conf
 %attr(640, root, root) %{_localstatedir}/etc/localtime
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/etc/shared
+%dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc/shared
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/agent-template.conf
 %attr(660, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/shared/default/*
