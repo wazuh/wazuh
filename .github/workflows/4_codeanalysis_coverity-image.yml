@@ -2,6 +2,14 @@ name: 4.X - Coverity Docker image - Create and publish
 
 on:
   workflow_dispatch:
+    inputs:
+      docker_image_tag:
+        description: |
+          Tag name of the Docker image to be uploaded.
+          Use only '-', '_', '.' and alphanumeric characters.
+          Default is '4.x'.
+        required: false
+        default: '4.x'
   push:
     paths:
       - 'tools/testing/coverity/**'
@@ -12,7 +20,7 @@ env:
 
 jobs:
   build-and-push-image:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     permissions:
       contents: read
@@ -37,18 +45,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          flavor: |
-            latest=true
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: tools/testing/coverity
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.docker_image_tag || '4.x' }}

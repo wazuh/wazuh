@@ -19,9 +19,9 @@ on:
         description: |
           Tag name of the Docker image to be uploaded.
           Use only '-', '_', '.' and alphanumeric characters.
-          Default is '5.0'.
+          Default is '5.x'.
         required: false
-        default: '5.0'
+        default: '5.x'
 
 env:
   REGISTRY: ghcr.io
