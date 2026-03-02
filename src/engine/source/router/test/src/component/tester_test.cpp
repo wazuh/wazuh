@@ -91,10 +91,6 @@ public:
                     {
                         return json::Json {DECODER_JSON};
                     }
-                    if (name == "filter/allow-all/0")
-                    {
-                        return json::Json {FILTER_JSON};
-                    }
                     return json::Json {};
                 }));
 

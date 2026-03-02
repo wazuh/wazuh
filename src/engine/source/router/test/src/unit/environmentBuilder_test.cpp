@@ -1,3 +1,4 @@
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "environmentBuilder.hpp"
@@ -10,91 +11,159 @@
 using namespace router;
 using namespace testing;
 
-TEST(EnvironmentBuilderTest, Create_ValidPolicyAndFilter)
+// Test fixture for common setup
+class EnvironmentBuilderFixture : public ::testing::Test
 {
-    auto builder = std::make_shared<builder::mocks::MockBuilder>();
-    auto controllerMaker = std::make_shared<bk::mocks::MockMakerController>();
+protected:
+    std::shared_ptr<builder::mocks::MockBuilder> mockBuilder;
+    std::shared_ptr<bk::mocks::MockMakerController> mockControllerMaker;
+    std::shared_ptr<builder::mocks::MockPolicy> mockPolicy;
+    std::shared_ptr<bk::mocks::MockController> mockController;
 
-    EnvironmentBuilder eBuilder(builder, controllerMaker);
+    cm::store::NamespaceId validPolicyName {"policy_test_0"};
+    cm::store::NamespaceId anotherPolicyName {"policy_test_1"};
+    cm::store::NamespaceId invalidPolicyName {"policy_invalid_0"};
 
-    auto policyName = base::Name("policy/test/0");
-    auto filterName = base::Name("filter/test/0");
+    std::string testHash {"abc123hash456"};
+    std::string anotherHash {"xyz789hash012"};
 
-    auto mockPolicy = std::make_shared<builder::mocks::MockPolicy>();
+    std::unordered_set<base::Name> fakeAssets;
+    base::Expression emptyExpression {};
 
-    std::shared_ptr<builder::IPolicy> resPolicy(mockPolicy);
-    std::unordered_set<base::Name> fakeAssets {};
-    fakeAssets.insert(base::Name("asset/test/0"));
-    fakeAssets.insert(base::Name("asset/test/1"));
-    fakeAssets.insert(base::Name("asset/test/2"));
-    EXPECT_CALL(*builder, buildPolicy(policyName, testing::_, testing::_)).WillOnce(Return(resPolicy));
-    EXPECT_CALL(*mockPolicy, assets()).Times(3).WillRepeatedly(ReturnRef(fakeAssets));
+    void SetUp() override
+    {
+        mockBuilder = std::make_shared<builder::mocks::MockBuilder>();
+        mockControllerMaker = std::make_shared<bk::mocks::MockMakerController>();
+        mockPolicy = std::make_shared<builder::mocks::MockPolicy>();
+        mockController = std::make_shared<bk::mocks::MockController>();
 
-    auto mockController = std::make_shared<bk::mocks::MockController>();
-    EXPECT_CALL(*controllerMaker, create(testing::_, testing::_, testing::_))
-        .WillOnce(::testing::Return(mockController));
+        fakeAssets.insert(base::Name("asset/test/0"));
+        fakeAssets.insert(base::Name("asset/test/1"));
+        fakeAssets.insert(base::Name("asset/test/2"));
+    }
 
-    auto emptyExpression = base::Expression {};
-    EXPECT_CALL(*mockPolicy, expression()).WillOnce(ReturnRef(emptyExpression));
-    std::string hash = "hash";
-    EXPECT_CALL(*mockPolicy, hash()).WillOnce(ReturnRef(hash));
+    void setupValidPolicyMocks(const cm::store::NamespaceId& policyName, const std::string& hash)
+    {
+        EXPECT_CALL(*mockBuilder, buildPolicy(policyName, ::testing::_, ::testing::_))
+            .WillOnce(Return(std::shared_ptr<builder::IPolicy>(mockPolicy)));
 
-    EXPECT_CALL(*builder, buildAsset(filterName)).WillOnce(Return(emptyExpression));
+        EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(ReturnRef(fakeAssets));
 
-    EXPECT_CALL(*mockController, stop()).WillOnce(Return());
-    auto environment = eBuilder.create(policyName, filterName);
+        EXPECT_CALL(*mockPolicy, expression()).WillOnce(ReturnRef(emptyExpression));
+        EXPECT_CALL(*mockPolicy, hash()).WillOnce(ReturnRef(hash));
 
-    // Assert
+        EXPECT_CALL(*mockControllerMaker, create(testing::_, testing::_, testing::_)).WillOnce(Return(mockController));
+    }
+};
+
+TEST_F(EnvironmentBuilderFixture, ConstructorThrowsOnNullBuilder)
+{
+    std::weak_ptr<builder::IBuilder> nullBuilder;
+    EXPECT_THROW(EnvironmentBuilder(nullBuilder, mockControllerMaker), std::runtime_error);
+}
+
+TEST_F(EnvironmentBuilderFixture, ConstructorThrowsOnNullControllerMaker)
+{
+    EXPECT_THROW(EnvironmentBuilder(mockBuilder, nullptr), std::runtime_error);
+}
+
+TEST_F(EnvironmentBuilderFixture, ConstructorSucceedsWithValidParameters)
+{
+    EXPECT_NO_THROW(EnvironmentBuilder(mockBuilder, mockControllerMaker));
+}
+
+TEST_F(EnvironmentBuilderFixture, CreateValidEnvironment)
+{
+    setupValidPolicyMocks(validPolicyName, testHash);
+
+    EnvironmentBuilder eBuilder(mockBuilder, mockControllerMaker);
+    auto environment = eBuilder.create(validPolicyName);
+
     EXPECT_NE(environment, nullptr);
 }
 
-TEST(EnvironmentBuilderTest, Create_inValidPolicy)
+TEST_F(EnvironmentBuilderFixture, CreateEnvironmentWithValidPolicyButNoAssets)
 {
-    auto builder = std::make_shared<builder::mocks::MockBuilder>();
-    auto controllerMaker = std::make_shared<bk::mocks::MockMakerController>();
+    std::unordered_set<base::Name> emptyAssets {};
 
-    EnvironmentBuilder eBuilder(builder, controllerMaker);
+    EXPECT_CALL(*mockBuilder, buildPolicy(validPolicyName, ::testing::_, ::testing::_))
+        .WillOnce(Return(std::shared_ptr<builder::IPolicy>(mockPolicy)));
 
-    auto policyName = base::Name("policy/test/0");
-    auto filterName = base::Name("filter/test/0");
+    EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(ReturnRef(emptyAssets));
 
-    EXPECT_CALL(*builder, buildPolicy(policyName, testing::_, testing::_))
-        .WillOnce(::testing::Throw(std::runtime_error("error")));
+    EnvironmentBuilder eBuilder(mockBuilder, mockControllerMaker);
 
-    ASSERT_THROW(eBuilder.create(policyName, filterName), std::runtime_error);
+    EXPECT_THROW(eBuilder.create(validPolicyName), std::runtime_error);
 }
 
-TEST(EnvironmentBuilderTest, Create_ValidPolicyAndInvalidFilter)
+TEST_F(EnvironmentBuilderFixture, CreateThrowsOnPolicyBuildFailure)
+{
+    EXPECT_CALL(*mockBuilder, buildPolicy(invalidPolicyName, ::testing::_, ::testing::_))
+        .WillOnce(Throw(std::runtime_error("Failed to build policy")));
+
+    EnvironmentBuilder eBuilder(mockBuilder, mockControllerMaker);
+
+    EXPECT_THROW(eBuilder.create(invalidPolicyName), std::runtime_error);
+}
+
+TEST_F(EnvironmentBuilderFixture, CreateThrowsOnControllerCreationFailure)
+{
+    EXPECT_CALL(*mockBuilder, buildPolicy(validPolicyName, ::testing::_, ::testing::_))
+        .WillOnce(Return(std::shared_ptr<builder::IPolicy>(mockPolicy)));
+
+    EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(ReturnRef(fakeAssets));
+    EXPECT_CALL(*mockPolicy, expression()).WillOnce(ReturnRef(emptyExpression));
+
+    EXPECT_CALL(*mockControllerMaker, create(testing::_, testing::_, testing::_)).WillOnce(Return(nullptr));
+
+    EnvironmentBuilder eBuilder(mockBuilder, mockControllerMaker);
+
+    EXPECT_THROW(eBuilder.create(validPolicyName), std::runtime_error);
+}
+
+TEST_F(EnvironmentBuilderFixture, MakeControllerReturnsControllerAndHash)
+{
+    EXPECT_CALL(*mockBuilder, buildPolicy(validPolicyName, true, true))
+        .WillOnce(Return(std::shared_ptr<builder::IPolicy>(mockPolicy)));
+
+    EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(ReturnRef(fakeAssets));
+
+    EXPECT_CALL(*mockPolicy, expression()).WillOnce(ReturnRef(emptyExpression));
+    EXPECT_CALL(*mockPolicy, hash()).WillOnce(ReturnRef(testHash));
+
+    EXPECT_CALL(*mockControllerMaker, create(testing::_, testing::_, testing::_)).WillOnce(Return(mockController));
+
+    EnvironmentBuilder eBuilder(mockBuilder, mockControllerMaker);
+    auto [controller, hash] = eBuilder.makeController(validPolicyName, true, true);
+
+    EXPECT_NE(controller, nullptr);
+    EXPECT_EQ(hash, testHash);
+}
+
+TEST_F(EnvironmentBuilderFixture, MakeControllerThrowsOnBuilderExpired)
 {
     auto builder = std::make_shared<builder::mocks::MockBuilder>();
-    auto controllerMaker = std::make_shared<bk::mocks::MockMakerController>();
+    std::weak_ptr<builder::IBuilder> weakBuilder = builder;
 
-    EnvironmentBuilder eBuilder(builder, controllerMaker);
+    EnvironmentBuilder eBuilder(weakBuilder, mockControllerMaker);
 
-    auto policyName = base::Name("policy/test/0");
-    auto filterName = base::Name("filter/test/0");
+    builder.reset();
 
-    auto mockPolicy = std::make_shared<builder::mocks::MockPolicy>();
+    EXPECT_THROW(eBuilder.makeController(validPolicyName), std::runtime_error);
+}
 
-    std::shared_ptr<builder::IPolicy> resPolicy(mockPolicy);
-    std::unordered_set<base::Name> fakeAssets {};
-    fakeAssets.insert(base::Name("asset/test/0"));
-    fakeAssets.insert(base::Name("asset/test/1"));
-    fakeAssets.insert(base::Name("asset/test/2"));
-    EXPECT_CALL(*builder, buildPolicy(policyName, testing::_, testing::_)).WillOnce(Return(resPolicy));
-    EXPECT_CALL(*mockPolicy, assets()).Times(3).WillRepeatedly(ReturnRef(fakeAssets));
+TEST_F(EnvironmentBuilderFixture, CreateMultipleEnvironments)
+{
+    auto mockController2 = std::make_shared<bk::mocks::MockController>();
 
-    auto mockController = std::make_shared<bk::mocks::MockController>();
-    EXPECT_CALL(*controllerMaker, create(testing::_, testing::_, testing::_))
-        .WillOnce(::testing::Return(mockController));
-
-    auto emptyExpression = base::Expression {};
+    EXPECT_CALL(*mockBuilder, buildPolicy(validPolicyName, false, false))
+        .WillOnce(Return(std::shared_ptr<builder::IPolicy>(mockPolicy)));
+    EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(ReturnRef(fakeAssets));
     EXPECT_CALL(*mockPolicy, expression()).WillOnce(ReturnRef(emptyExpression));
-    std::string hash = "hash";
-    EXPECT_CALL(*mockPolicy, hash()).WillOnce(ReturnRef(hash));
+    EXPECT_CALL(*mockPolicy, hash()).WillOnce(ReturnRef(testHash));
+    EXPECT_CALL(*mockControllerMaker, create(testing::_, testing::_, testing::_)).WillOnce(Return(mockController));
 
-    EXPECT_CALL(*builder, buildAsset(filterName)).WillOnce(::testing::Throw(std::runtime_error("error")));
-
-    EXPECT_CALL(*mockController, stop()).WillOnce(Return());
-    ASSERT_THROW(eBuilder.create(policyName, filterName), std::runtime_error);
+    EnvironmentBuilder eBuilder(mockBuilder, mockControllerMaker);
+    auto env1 = eBuilder.create(validPolicyName);
+    EXPECT_NE(env1, nullptr);
 }

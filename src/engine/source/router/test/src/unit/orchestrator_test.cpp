@@ -116,7 +116,7 @@ public:
             .WillRepeatedly(::testing::Return(store::mocks::storeOk()));
     }
 
-    void expectPostEntryAddEntryFailture()
+    void expectPostEntryAddEntryFailure()
     {
         if (!m_testerWorkerMock)
         {
@@ -130,7 +130,7 @@ public:
         EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
-    void expectPostEntryEnableEntryFailture()
+    void expectPostEntryEnableEntryFailure()
     {
         if (!m_testerWorkerMock)
         {
@@ -165,7 +165,7 @@ public:
             .WillOnce(::testing::Return(store::mocks::storeOk()));
     }
 
-    void expectDeleteEntryRemoveEntryFailture()
+    void expectDeleteEntryRemoveEntryFailure()
     {
         if (!m_testerWorkerMock)
         {
@@ -197,7 +197,7 @@ public:
             .WillOnce(::testing::Return(store::mocks::storeOk()));
     }
 
-    void expectGetEntryGetEntryFailture()
+    void expectGetEntryGetEntryFailure()
     {
         if (!m_testerWorkerMock)
         {
@@ -226,7 +226,7 @@ public:
             .WillRepeatedly(testing::Return(test::EntryPost {"test", G_NAMESPACE_ALT, 0}));
     }
 
-    void expectReloadEntryRebuildEntryFailture()
+    void expectReloadEntryRebuildEntryFailure()
     {
         if (!m_testerWorkerMock)
         {
@@ -240,7 +240,7 @@ public:
         EXPECT_CALL(*testerMock, rebuildEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
-    void expectReloadEntryEnableEntryFailture()
+    void expectReloadEntryEnableEntryFailure()
     {
         if (!m_testerWorkerMock)
         {
@@ -328,14 +328,14 @@ public:
 
         EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
         EXPECT_CALL(*testerMock, getAssets(testing::_))
-            .WillRepeatedly(testing::Return(std::unordered_set<std::string> {"decoder", "filter"}));
+            .WillRepeatedly(testing::Return(std::unordered_set<std::string> {"decoder"}));
     }
 
     /**************************************************************************
      * ROUTER EXPECTS CALL
      *************************************************************************/
 
-    void expectPostEntryAddEntryFailtureRouter()
+    void expectPostEntryAddEntryFailureRouter()
     {
         if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
@@ -349,7 +349,7 @@ public:
         EXPECT_CALL(*routerMock, addEntry(testing::_, testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
-    void expectPostEntryEnableEntryFailtureRouter()
+    void expectPostEntryEnableEntryFailureRouter()
     {
         if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
@@ -390,7 +390,7 @@ public:
             .WillOnce(::testing::Return(store::mocks::storeOk()));
     }
 
-    void expectDeleteEntryRemoveEntryFailtureRouter()
+    void expectDeleteEntryRemoveEntryFailureRouter()
     {
         if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
@@ -425,7 +425,7 @@ public:
             .WillOnce(::testing::Return(store::mocks::storeOk()));
     }
 
-    void expectGetEntryGetEntryFailtureRouter()
+    void expectGetEntryGetEntryFailureRouter()
     {
         if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
@@ -453,11 +453,11 @@ public:
         {
             EXPECT_CALL(*mock, get()).WillRepeatedly(testing::Return(irouterMock));
             EXPECT_CALL(*routerMock, getEntry(testing::_))
-                .WillRepeatedly(testing::Return(prod::EntryPost {"test", G_NAMESPACE_ALT, "filter", 10}));
+                .WillRepeatedly(testing::Return(prod::EntryPost {"test", G_NAMESPACE_ALT, 10}));
         }
     }
 
-    void expectReloadEntryRebuildEntryFailtureRouter()
+    void expectReloadEntryRebuildEntryFailureRouter()
     {
         if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
@@ -471,7 +471,7 @@ public:
         EXPECT_CALL(*routerMock, rebuildEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
-    void expectReloadEntryEnableEntryFailtureRouter()
+    void expectReloadEntryEnableEntryFailureRouter()
     {
         if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
@@ -509,7 +509,7 @@ public:
         EXPECT_CALL(*routerMock, enableEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
     }
 
-    void expectChangePriorityFailture()
+    void expectChangePriorityFailure()
     {
         if (m_routerMocks.empty() || m_routerMocks.front() == nullptr)
         {
@@ -577,7 +577,7 @@ public:
 
         EXPECT_CALL(*routerMock, getEntries())
             .WillRepeatedly(
-                testing::Return(std::list<prod::Entry> {prod::EntryPost {"test", G_NAMESPACE_ALT, "filter", 10}}));
+                testing::Return(std::list<prod::Entry> {prod::EntryPost {"test", G_NAMESPACE_ALT, 10}}));
     }
 };
 
@@ -634,25 +634,25 @@ TEST_F(OrchestratorTest, stop)
     ASSERT_NO_THROW(m_orchestrator->stop());
 }
 
-TEST_F(OrchestratorTest, entryPostPolicyNameEmptyFailture)
+TEST_F(OrchestratorTest, entryPostPolicyNameEmptyFailure)
 {
     EXPECT_THROW((test::EntryPost {"test", cm::store::NamespaceId {""}, 0}), std::runtime_error);
 }
 
-TEST_F(OrchestratorTest, entryPostNameEmptyFailture)
+TEST_F(OrchestratorTest, entryPostNameEmptyFailure)
 {
     EXPECT_TRUE(m_orchestrator->postTestEntry(test::EntryPost {"", G_NAMESPACE_ID, 0}).has_value());
 }
 
-TEST_F(OrchestratorTest, entryPostAddEntryFailture)
+TEST_F(OrchestratorTest, entryPostAddEntryFailure)
 {
-    m_orchestrator->expectPostEntryAddEntryFailture();
+    m_orchestrator->expectPostEntryAddEntryFailure();
     EXPECT_TRUE(m_orchestrator->postTestEntry(test::EntryPost {"test", G_NAMESPACE_ID, 0}).has_value());
 }
 
-TEST_F(OrchestratorTest, PostEntryEnableEntryFailture)
+TEST_F(OrchestratorTest, PostEntryEnableEntryFailure)
 {
-    m_orchestrator->expectPostEntryEnableEntryFailture();
+    m_orchestrator->expectPostEntryEnableEntryFailure();
     EXPECT_TRUE(m_orchestrator->postTestEntry(test::EntryPost {"test", G_NAMESPACE_ID, 0}).has_value());
 }
 
@@ -662,14 +662,14 @@ TEST_F(OrchestratorTest, entryPostSuccess)
     EXPECT_FALSE(m_orchestrator->postTestEntry(test::EntryPost {"test", G_NAMESPACE_ID, 0}).has_value());
 }
 
-TEST_F(OrchestratorTest, entryDeleteNameEmptyFailture)
+TEST_F(OrchestratorTest, entryDeleteNameEmptyFailure)
 {
     EXPECT_TRUE(m_orchestrator->deleteTestEntry("").has_value());
 }
 
-TEST_F(OrchestratorTest, entryDeleteRemoveEntryFailture)
+TEST_F(OrchestratorTest, entryDeleteRemoveEntryFailure)
 {
-    m_orchestrator->expectDeleteEntryRemoveEntryFailture();
+    m_orchestrator->expectDeleteEntryRemoveEntryFailure();
     EXPECT_TRUE(m_orchestrator->deleteTestEntry("test").has_value());
 }
 
@@ -679,14 +679,14 @@ TEST_F(OrchestratorTest, entryDeleteSuccess)
     EXPECT_FALSE(m_orchestrator->deleteTestEntry("test").has_value());
 }
 
-TEST_F(OrchestratorTest, entryGetNameEmptyFailture)
+TEST_F(OrchestratorTest, entryGetNameEmptyFailure)
 {
     EXPECT_TRUE(base::isError(m_orchestrator->getTestEntry("")));
 }
 
-TEST_F(OrchestratorTest, entryGetGetEntryFailture)
+TEST_F(OrchestratorTest, entryGetGetEntryFailure)
 {
-    m_orchestrator->expectGetEntryGetEntryFailture();
+    m_orchestrator->expectGetEntryGetEntryFailure();
     EXPECT_TRUE(base::isError(m_orchestrator->getTestEntry("test")));
 }
 
@@ -696,20 +696,20 @@ TEST_F(OrchestratorTest, entryGetSuccess)
     EXPECT_FALSE(base::isError(m_orchestrator->getTestEntry("test")));
 }
 
-TEST_F(OrchestratorTest, entryReloadNameEmptyFailture)
+TEST_F(OrchestratorTest, entryReloadNameEmptyFailure)
 {
     EXPECT_TRUE(base::isError(m_orchestrator->reloadTestEntry("")));
 }
 
-TEST_F(OrchestratorTest, entryReloadRebuildEntryFailture)
+TEST_F(OrchestratorTest, entryReloadRebuildEntryFailure)
 {
-    m_orchestrator->expectReloadEntryRebuildEntryFailture();
+    m_orchestrator->expectReloadEntryRebuildEntryFailure();
     EXPECT_TRUE(base::isError(m_orchestrator->reloadTestEntry("test")));
 }
 
-TEST_F(OrchestratorTest, entryReloadEnableEntryFailture)
+TEST_F(OrchestratorTest, entryReloadEnableEntryFailure)
 {
-    m_orchestrator->expectReloadEntryEnableEntryFailture();
+    m_orchestrator->expectReloadEntryEnableEntryFailure();
     EXPECT_TRUE(base::isError(m_orchestrator->reloadTestEntry("test")));
 }
 
@@ -719,7 +719,7 @@ TEST_F(OrchestratorTest, entryReloadSuccess)
     EXPECT_FALSE(base::isError(m_orchestrator->reloadTestEntry("test")));
 }
 
-TEST_F(OrchestratorTest, entriesGetGetEntriesFailture)
+TEST_F(OrchestratorTest, entriesGetGetEntriesFailure)
 {
     m_orchestrator->expectGetGetEntriesEmpty();
     EXPECT_TRUE(m_orchestrator->getTestEntries().empty());
@@ -731,7 +731,7 @@ TEST_F(OrchestratorTest, entriesGetSuccess)
     EXPECT_FALSE(m_orchestrator->getTestEntries().empty());
 }
 
-TEST_F(OrchestratorTest, getAssetsNameEmptyFailture)
+TEST_F(OrchestratorTest, getAssetsNameEmptyFailure)
 {
     EXPECT_TRUE(base::isError(m_orchestrator->getAssets("")));
 }
@@ -748,7 +748,7 @@ TEST_F(OrchestratorTest, getAssetsSuccess)
     EXPECT_FALSE(base::isError(m_orchestrator->getAssets("test")));
 }
 
-TEST_F(OrchestratorTest, ingestTraceLevelNoneAssetNotEmptyFailture)
+TEST_F(OrchestratorTest, ingestTraceLevelNoneAssetNotEmptyFailure)
 {
     m_orchestrator->expectGetAssetsSuccess();
     test::Options opt(test::Options::TraceLevel::NONE, std::unordered_set<std::string> {"anyAsset"}, "test");
@@ -762,7 +762,7 @@ TEST_F(OrchestratorTest, ingestTraceLevelNoneAssetNotEmptyFailture)
     EXPECT_TRUE(base::isError(result));
 }
 
-TEST_F(OrchestratorTest, ingestNameEmptyFailture)
+TEST_F(OrchestratorTest, ingestNameEmptyFailure)
 {
     m_orchestrator->expectGetAssetsSuccess();
     test::Options opt(test::Options::TraceLevel::NONE, std::unordered_set<std::string> {}, "");
@@ -779,52 +779,47 @@ TEST_F(OrchestratorTest, ingestNameEmptyFailture)
  * ROUTER EXPECTS CALL
  *************************************************************************/
 
-TEST_F(OrchestratorTest, entryPostPolicyNameEmptyFailtureRouter)
+TEST_F(OrchestratorTest, entryPostPolicyNameEmptyFailureRouter)
 {
-    EXPECT_THROW((prod::EntryPost {"test", cm::store::NamespaceId {""}, "filter/test/0", 10}), std::runtime_error);
+    EXPECT_THROW((prod::EntryPost {"test", cm::store::NamespaceId {""}, 10}), std::runtime_error);
 }
 
-TEST_F(OrchestratorTest, entryPostFilterNameEmptyFailtureRouter)
+TEST_F(OrchestratorTest, entryPostNameEmptyFailureRouter)
 {
-    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", G_NAMESPACE_ID, base::Name {}, 10}).has_value());
+    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"", G_NAMESPACE_ID, 10}).has_value());
 }
 
-TEST_F(OrchestratorTest, entryPostNameEmptyFailtureRouter)
+TEST_F(OrchestratorTest, entryPostPriorityEqualZeroFailureRouter)
 {
-    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"", G_NAMESPACE_ID, "filter/test/0", 10}).has_value());
+    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", G_NAMESPACE_ID, 0}).has_value());
 }
 
-TEST_F(OrchestratorTest, entryPostPriorityEqualZeroFailtureRouter)
+TEST_F(OrchestratorTest, entryPostAddEntryFailureRouter)
 {
-    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", G_NAMESPACE_ID, "filter/test/0", 0}).has_value());
+    m_orchestrator->expectPostEntryAddEntryFailureRouter();
+    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", G_NAMESPACE_ID, 10}).has_value());
 }
 
-TEST_F(OrchestratorTest, entryPostAddEntryFailtureRouter)
+TEST_F(OrchestratorTest, PostEntryEnableEntryFailureRouter)
 {
-    m_orchestrator->expectPostEntryAddEntryFailtureRouter();
-    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", G_NAMESPACE_ID, "filter/test/0", 10}).has_value());
-}
-
-TEST_F(OrchestratorTest, PostEntryEnableEntryFailtureRouter)
-{
-    m_orchestrator->expectPostEntryEnableEntryFailtureRouter();
-    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", G_NAMESPACE_ID, "filter/test/0", 10}).has_value());
+    m_orchestrator->expectPostEntryEnableEntryFailureRouter();
+    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", G_NAMESPACE_ID, 10}).has_value());
 }
 
 TEST_F(OrchestratorTest, entryPostSuccessRouter)
 {
     m_orchestrator->expectPostEntrySuccessRouter();
-    EXPECT_FALSE(m_orchestrator->postEntry(prod::EntryPost {"test", G_NAMESPACE_ID, "filter/test/0", 10}).has_value());
+    EXPECT_FALSE(m_orchestrator->postEntry(prod::EntryPost {"test", G_NAMESPACE_ID, 10}).has_value());
 }
 
-TEST_F(OrchestratorTest, entryDeleteNameEmptyFailtureRouter)
+TEST_F(OrchestratorTest, entryDeleteNameEmptyFailureRouter)
 {
     EXPECT_TRUE(m_orchestrator->deleteEntry("").has_value());
 }
 
-TEST_F(OrchestratorTest, entryDeleteRemoveEntryFailtureRouter)
+TEST_F(OrchestratorTest, entryDeleteRemoveEntryFailureRouter)
 {
-    m_orchestrator->expectDeleteEntryRemoveEntryFailtureRouter();
+    m_orchestrator->expectDeleteEntryRemoveEntryFailureRouter();
     EXPECT_TRUE(m_orchestrator->deleteEntry("test").has_value());
 }
 
@@ -834,14 +829,14 @@ TEST_F(OrchestratorTest, entryDeleteSuccessRouter)
     EXPECT_FALSE(m_orchestrator->deleteEntry("test").has_value());
 }
 
-TEST_F(OrchestratorTest, entryGetNameEmptyFailtureRouter)
+TEST_F(OrchestratorTest, entryGetNameEmptyFailureRouter)
 {
     EXPECT_TRUE(base::isError(m_orchestrator->getEntry("")));
 }
 
-TEST_F(OrchestratorTest, entryGetGetEntryFailtureRouter)
+TEST_F(OrchestratorTest, entryGetGetEntryFailureRouter)
 {
-    m_orchestrator->expectGetEntryGetEntryFailtureRouter();
+    m_orchestrator->expectGetEntryGetEntryFailureRouter();
     EXPECT_TRUE(base::isError(m_orchestrator->getEntry("test")));
 }
 
@@ -851,7 +846,7 @@ TEST_F(OrchestratorTest, entryGetSuccessRouter)
     EXPECT_FALSE(base::isError(m_orchestrator->getEntry("test")));
 }
 
-TEST_F(OrchestratorTest, entryReloadNameEmptyFailtureRouter)
+TEST_F(OrchestratorTest, entryReloadNameEmptyFailureRouter)
 {
     EXPECT_TRUE(base::isError(m_orchestrator->reloadEntry("")));
 }
@@ -861,9 +856,9 @@ TEST_F(OrchestratorTest, changeEntryPriorityNameNotFound)
     EXPECT_TRUE(base::isError(m_orchestrator->changeEntryPriority("", 10)));
 }
 
-TEST_F(OrchestratorTest, changeEntryPriorityFailture)
+TEST_F(OrchestratorTest, changeEntryPriorityFailure)
 {
-    m_orchestrator->expectChangePriorityFailture();
+    m_orchestrator->expectChangePriorityFailure();
     EXPECT_TRUE(base::isError(m_orchestrator->changeEntryPriority("test", 10)));
 }
 
@@ -873,7 +868,7 @@ TEST_F(OrchestratorTest, changeEntryPrioritySuccess)
     EXPECT_FALSE(base::isError(m_orchestrator->changeEntryPriority("test", 10)));
 }
 
-TEST_F(OrchestratorTest, entriesGetGetEntriesFailtureRouter)
+TEST_F(OrchestratorTest, entriesGetGetEntriesFailureRouter)
 {
     m_orchestrator->expectGetGetEntriesEmptyRouter();
     EXPECT_TRUE(m_orchestrator->getEntries().empty());

@@ -75,9 +75,9 @@ if(ENGINE_BUILD_TEST)
 
     # Router unit test
     add_executable(router_utest
-        # ${UNIT_SRC_DIR}/entryConverter_test.cpp
-        # ${UNIT_SRC_DIR}/environment_test.cpp
-        # ${UNIT_SRC_DIR}/environmentBuilder_test.cpp
+        ${UNIT_SRC_DIR}/entryConverter_test.cpp
+        ${UNIT_SRC_DIR}/environment_test.cpp
+        ${UNIT_SRC_DIR}/environmentBuilder_test.cpp
         ${UNIT_SRC_DIR}/router_test.cpp
         ${UNIT_SRC_DIR}/tester_test.cpp
         ${UNIT_SRC_DIR}/table_test.cpp

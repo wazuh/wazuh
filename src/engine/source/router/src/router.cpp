@@ -58,7 +58,6 @@ base::OptError Router::addEntry(const prod::EntryPost& entryPost, bool ignoreFai
     }
 
     return std::nullopt;
-    ;
 }
 
 base::OptError Router::removeEntry(const std::string& name)

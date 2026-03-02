@@ -16,9 +16,9 @@ constexpr auto NUM_THREADS {1};
 
 namespace
 {
-router::prod::EntryPost makeProdEntry(const std::string& name, const std::string& ns, const std::string& filter, size_t priority)
+router::prod::EntryPost makeProdEntry(const std::string& name, const std::string& ns, size_t priority)
 {
-    return router::prod::EntryPost {name, cm::store::NamespaceId {ns}, base::Name {filter}, priority};
+    return router::prod::EntryPost {name, cm::store::NamespaceId {ns}, priority};
 }
 }
 
@@ -87,10 +87,6 @@ public:
                     {
                         return json::Json {DECODER_JSON};
                     }
-                    if (name == "filter/allow-all/0")
-                    {
-                        return json::Json {FILTER_JSON};
-                    }
                     return json::Json {};
                 }));
 
@@ -118,13 +114,13 @@ void expectBuildPolicyOk(std::shared_ptr<builder::mocks::MockBuilder> mockbuilde
     EXPECT_CALL(*mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(emptyExpression));
     EXPECT_CALL(*mockPolicy, hash()).WillOnce(::testing::ReturnRefOfCopy(std::string {"hash"}));
 
-    // Build filter
-    EXPECT_CALL(*mockbuilder, buildAsset(testing::_, testing::_)).WillOnce(::testing::Return(emptyExpression));
+    // // Build filter
+    // EXPECT_CALL(*mockbuilder, buildAsset(testing::_, testing::_)).WillOnce(::testing::Return(emptyExpression));
 }
 } // namespace
 TEST_F(OrchestratorRouterTest, AddRoute)
 {
-    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
+    auto entry = makeProdEntry("route", "wazuh", 10);
 
     // Build Valid policy
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
@@ -140,8 +136,8 @@ TEST_F(OrchestratorRouterTest, AddRoute)
 
 TEST_F(OrchestratorRouterTest, AddMultipleRoutes)
 {
-    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
-    auto entryTwo = makeProdEntry("routeTwo", "wazuh", "filter/allow-all/0", 11);
+    auto entry = makeProdEntry("route", "wazuh", 10);
+    auto entryTwo = makeProdEntry("routeTwo", "wazuh", 11);
 
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_CALL(*m_mockStore, upsertDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
@@ -157,7 +153,7 @@ TEST_F(OrchestratorRouterTest, AddMultipleRoutes)
 
 TEST_F(OrchestratorRouterTest, AddEqualRoute)
 {
-    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
+    auto entry = makeProdEntry("route", "wazuh", 10);
 
     // Add ok
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
@@ -184,7 +180,7 @@ TEST_F(OrchestratorRouterTest, DeleteRouteWithoutName)
 
 TEST_F(OrchestratorRouterTest, DeleteRoute)
 {
-    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
+    auto entry = makeProdEntry("route", "wazuh", 10);
 
     // Insert route after delete
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
@@ -200,7 +196,7 @@ TEST_F(OrchestratorRouterTest, DeleteRoute)
 
 TEST_F(OrchestratorRouterTest, DeleteTheEqualRouteTwoTimes)
 {
-    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
+    auto entry = makeProdEntry("route", "wazuh", 10);
 
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_CALL(*m_mockStore, upsertDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
@@ -228,8 +224,8 @@ TEST_F(OrchestratorRouterTest, GetEntryWithoutName)
 
 TEST_F(OrchestratorRouterTest, GetEntry)
 {
-    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
-    auto entryTwo = makeProdEntry("routeTwo", "wazuh", "filter/allow-all/0", 11);
+    auto entry = makeProdEntry("route", "wazuh", 10);
+    auto entryTwo = makeProdEntry("routeTwo", "wazuh", 11);
 
     EXPECT_CALL(*m_mockStore, upsertDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
@@ -259,7 +255,7 @@ TEST_F(OrchestratorRouterTest, ReloadEntryWithoutName)
 
 TEST_F(OrchestratorRouterTest, ReloadEntry)
 {
-    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
+    auto entry = makeProdEntry("route", "wazuh", 10);
 
     EXPECT_CALL(*m_mockStore, upsertDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
@@ -277,7 +273,7 @@ TEST_F(OrchestratorRouterTest, ReloadEntry)
 
 TEST_F(OrchestratorRouterTest, ChangePriority)
 {
-    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
+    auto entry = makeProdEntry("route", "wazuh", 10);
 
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_CALL(*m_mockStore, upsertDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
@@ -293,8 +289,8 @@ TEST_F(OrchestratorRouterTest, ChangePriority)
 
 TEST_F(OrchestratorRouterTest, ChangePriorityBusy)
 {
-    auto entry = makeProdEntry("route", "wazuh", "filter/allow-all/0", 10);
-    auto entryTwo = makeProdEntry("routeTwo", "wazuh", "filter/allow-all/0", 11);
+    auto entry = makeProdEntry("route", "wazuh", 10);
+    auto entryTwo = makeProdEntry("routeTwo", "wazuh", 11);
 
     EXPECT_CALL(*m_mockStore, upsertDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);

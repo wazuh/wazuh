@@ -313,11 +313,6 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 81, -1, -1, sizeof(::com::wazuh::api::engine::router::TableGet_Request)},
   { 87, 96, -1, sizeof(::com::wazuh::api::engine::router::TableGet_Response)},
   { 99, -1, -1, sizeof(::com::wazuh::api::engine::router::QueuePost_Request)},
-  { 106, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsUpdate_Request)},
-  { 114, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsGet_Request)},
-  { 120, 131, -1, sizeof(::com::wazuh::api::engine::router::EpsGet_Response)},
-  { 136, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsEnable_Request)},
-  { 142, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsDisable_Request)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -360,22 +355,15 @@ const char descriptor_table_protodef_router_2eproto[] PROTOBUF_SECTION_VARIABLE(
   " \001(\tH\000\210\001\001\0221\n\005table\030\003 \003(\0132\".com.wazuh.api"
   ".engine.router.EntryB\010\n\006_error\"5\n\021QueueP"
   "ost_Request\022\023\n\013wazuh_event\030\001 \001(\tJ\004\010\002\020\003R\005"
-  "event\":\n\021EpsUpdate_Request\022\013\n\003eps\030\001 \001(\r\022"
-  "\030\n\020refresh_interval\030\002 \001(\r\"\020\n\016EpsGet_Requ"
-  "est\"\233\001\n\017EpsGet_Response\0222\n\006status\030\001 \001(\0162"
-  "\".com.wazuh.api.engine.ReturnStatus\022\022\n\005e"
-  "rror\030\002 \001(\tH\000\210\001\001\022\013\n\003eps\030\003 \001(\r\022\030\n\020refresh_"
-  "interval\030\004 \001(\r\022\017\n\007enabled\030\005 \001(\010B\010\n\006_erro"
-  "r\"\023\n\021EpsEnable_Request\"\024\n\022EpsDisable_Req"
-  "uest*5\n\005State\022\021\n\rSTATE_UNKNOWN\020\000\022\014\n\010DISA"
-  "BLED\020\001\022\013\n\007ENABLED\020\002b\006proto3"
+  "event*5\n\005State\022\021\n\rSTATE_UNKNOWN\020\000\022\014\n\010DIS"
+  "ABLED\020\001\022\013\n\007ENABLED\020\002b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_router_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_router_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_router_2eproto = {
-    false, false, 1347, descriptor_table_protodef_router_2eproto,
+    false, false, 1068, descriptor_table_protodef_router_2eproto,
     "router.proto",
     &descriptor_table_router_2eproto_once, descriptor_table_router_2eproto_deps, 1, 11,
     schemas, file_default_instances, TableStruct_router_2eproto::offsets,

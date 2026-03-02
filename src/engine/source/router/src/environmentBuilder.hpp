@@ -24,23 +24,6 @@ private:
     std::weak_ptr<builder::IBuilder> m_builder;              ///< The builder used to construct the policy.
     std::shared_ptr<bk::IControllerMaker> m_controllerMaker; ///< The controller maker used to construct the controller.
 
-    /**
-     * @brief Get the Expression object.
-     *
-     * @return base::Expression The constructed expression.
-     * @throws std::runtime_error if the Expression cannot be built.
-     */
-    base::Expression getExpression(const base::Name& filterName, const cm::store::NamespaceId& namespaceId)
-    {
-        auto builder = m_builder.lock();
-        if (builder == nullptr)
-        {
-            throw std::runtime_error {"The builder is not available"};
-        }
-
-        return builder->buildAsset(filterName, namespaceId);
-    }
-
 public:
     /**
      * @brief Create a new EnvironmentBuilder
