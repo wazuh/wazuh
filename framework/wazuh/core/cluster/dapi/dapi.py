@@ -21,7 +21,6 @@ from typing import Callable, Dict, Tuple, List
 from sqlalchemy.exc import OperationalError
 
 import api.configuration as aconf
-from api.constants import SECURITY_CONFIG_PATH
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 import wazuh.core.manager
@@ -40,6 +39,7 @@ from wazuh.rbac.preprocessor import optimize_resources
 
 authentication_funcs = {'check_token', 'check_user_master', 'get_permissions', 'get_security_conf'}
 events_funcs = {'send_event_to_analysisd'}
+SECURITY_CONFIG_PATH = os.path.join(common.SECURITY_PATH, 'security.yaml')
 
 # DAPI callables must be part of this strict allowlist.
 # These are the only public framework/API entry points expected to be distributed through DAPI.
