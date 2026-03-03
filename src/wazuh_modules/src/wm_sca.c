@@ -298,7 +298,7 @@ static void sca_log_callback(const modules_log_level_t level, const char* log, _
 
 // SCA message queue functions
 static int wm_sca_startmq(const char* key, short type, short attempts) {
-    return StartMQ(key, type, attempts);
+    return StartMQPredicated(key, type, attempts, wm_sca_is_shutting_down);
 }
 
 static int wm_sca_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
@@ -509,7 +509,7 @@ void * wm_sca_main(wm_sca_t * data) {
 
 static int wm_sca_start(wm_sca_t *sca) {
     // Initialize message queue
-    g_sca_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+    g_sca_queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, wm_sca_is_shutting_down);
     if (g_sca_queue < 0) {
         merror("Cannot initialize SCA message queue.");
         return -1;
@@ -611,7 +611,7 @@ static int wm_sca_send_stateless(const char* message) {
     if (SendMSGPredicated(g_sca_queue, message, "sca", SCA_MQ, wm_sca_is_shutting_down) < 0) {
         merror("Error sending message to queue");
 
-        if ((g_sca_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+        if ((g_sca_queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, wm_sca_is_shutting_down)) < 0) {
             merror("Cannot restart SCA message queue");
             return -1;
         }

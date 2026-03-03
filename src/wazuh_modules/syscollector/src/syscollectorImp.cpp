@@ -45,10 +45,7 @@ do                                                                      \
 {                                                                       \
     try                                                                 \
     {                                                                   \
-        if(!m_stopping)                                                 \
-        {                                                               \
-            task();                                                     \
-        }                                                               \
+        task();                                                         \
     }                                                                   \
     catch(const std::exception& ex)                                     \
     {                                                                   \
@@ -232,7 +229,7 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
     {
         m_logFunction(LOG_ERROR, data.dump());
     }
-    else if (!m_stopping)
+    else
     {
         if (data.is_array())
         {
@@ -618,7 +615,7 @@ bool Syscollector::handleNotifyDataClean()
 
     // If all collectors are disabled, retry indefinitely until success or stopping
     // Otherwise, respect the configured retry limit
-    while (!ret && !m_stopping)
+    while (!ret && !m_stopping.load())
     {
         attempt++;
 
@@ -647,12 +644,12 @@ bool Syscollector::handleNotifyDataClean()
             }
 
             // Wait before next retry with fixed interval
-            for (unsigned int i = 0; i < DATACLEAN_RETRY_WAIT_SECONDS && !m_stopping; i++)
+            for (unsigned int i = 0; i < DATACLEAN_RETRY_WAIT_SECONDS && !m_stopping.load(); i++)
             {
                 std::this_thread::sleep_for(std::chrono::seconds(1));
             }
 
-            if (m_stopping)
+            if (m_stopping.load())
             {
                 if (m_logFunction)
                 {
@@ -680,11 +677,16 @@ bool Syscollector::handleNotifyDataClean()
 
 void Syscollector::destroy()
 {
-    std::unique_lock<std::mutex> lock{m_scan_mutex};
     m_stopping = true;
     m_cv.notify_all();
 
-    lock.unlock();
+    std::unique_lock<std::mutex> lock{m_scan_mutex, std::try_to_lock};
+    const bool scanMutexAvailable = lock.owns_lock();
+
+    if (scanMutexAvailable)
+    {
+        lock.unlock();
+    }
 
     // Signal sync protocols to stop any ongoing operations
     if (m_spSyncProtocol)
@@ -695,6 +697,16 @@ void Syscollector::destroy()
     if (m_spSyncProtocolVD)
     {
         m_spSyncProtocolVD->stop();
+    }
+
+    if (!scanMutexAvailable)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "Stop requested while scan mutex is busy; skipping synchronous syscollector resource teardown.");
+        }
+
+        return;
     }
 
     // Explicitly release all resources to ensure clean state between tests
@@ -1776,6 +1788,12 @@ void Syscollector::scanBrowserExtensions()
 
 void Syscollector::scan()
 {
+    if (m_stopping.load())
+    {
+        m_logFunction(LOG_DEBUG, "Syscollector is stopping, skipping evaluation.");
+        return;
+    }
+
     if (m_paused)
     {
         m_logFunction(LOG_DEBUG, "Syscollector is paused, skipping evaluation.");
@@ -1848,8 +1866,8 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 
     while (!m_cv.wait_for(scan_lock, std::chrono::seconds{m_intervalValue}, [&]()
 {
-    return m_stopping;
-}))
+    return m_stopping.load();
+    }))
     {
         if (m_paused)
         {
@@ -2666,12 +2684,12 @@ bool Syscollector::pause()
     {
         bool scanDone = !m_scanning.load();
         bool syncDone = !m_syncing.load();
-        return (scanDone && syncDone) || m_stopping;
+        return (scanDone && syncDone) || m_stopping.load();
     });
 
     if (m_logFunction)
     {
-        if (m_stopping)
+        if (m_stopping.load())
         {
             m_logFunction(LOG_DEBUG, "Syscollector module pause interrupted by shutdown");
         }
@@ -2682,7 +2700,7 @@ bool Syscollector::pause()
     }
 
     // Return false if interrupted by shutdown, true if successfully paused
-    return !m_stopping;
+    return !m_stopping.load();
 }
 
 void Syscollector::resume()
@@ -3315,7 +3333,7 @@ std::optional<nlohmann::json> Syscollector::fetchDocumentLimitsFromAgentd()
     constexpr auto REQUEST_COMMAND = "getdoclimits syscollector";
 
     // Retry loop until success or stop signal
-    while (!m_stopping)
+    while (!m_stopping.load())
     {
         // Use std::string for idiomatic C++ memory management
         std::string response_buffer;

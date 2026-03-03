@@ -225,6 +225,13 @@ SCA::SCA()
 {
 }
 
+SCA::~SCA()
+{
+    // modulesd shutdown goes through exit() while worker threads can still be alive.
+    // Releasing ownership avoids SecurityConfigurationAssessment teardown races at process exit.
+    (void)m_sca.release();
+}
+
 void SCA::init()
 {
     if (!m_sca)
