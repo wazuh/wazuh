@@ -1407,13 +1407,13 @@ paths:
 
         **Behavior**:
         - If the hash matches the previously stored hash, returns OK without performing sync.
-        - If the hash differs or is empty, schedules an asynchronous synchronization task.
+        - If the hash differs, schedules an asynchronous synchronization task.
         - Only one synchronization can run at a time (enforced by internal semaphore).
         - Updates are performed using a hot-swap mechanism to avoid service interruption.
 
         **Error handling**:
         - File path validation is performed before scheduling.
-        - Synchronization errors are stored and can be retrieved via `/content/ioc/state`.
+        - An empty `hash` field results in a 400 Bad Request (`Field /hash cannot be empty`).
 
       requestBody:
         required: true

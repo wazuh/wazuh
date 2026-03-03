@@ -1,5 +1,5 @@
-#ifndef _API_IOCCRUD_HANDLERS_HPP
-#define _API_IOCCRUD_HANDLERS_HPP
+#ifndef API_IOCCRUD_HANDLERS_HPP
+#define API_IOCCRUD_HANDLERS_HPP
 
 #include <atomic>
 #include <memory>
@@ -43,4 +43,4 @@ inline void registerHandlers(const std::shared_ptr<::kvdbioc::IKVDBManager>& kvd
 
 } // namespace api::ioccrud::handlers
 
-#endif // _API_IOCCRUD_HANDLERS_HPP
+#endif // API_IOCCRUD_HANDLERS_HPP

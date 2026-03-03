@@ -20,7 +20,7 @@ def run(args):
 
         # Display the IOC state (to Json)
         if args["output_format"] == "json":
-            print(json.dumps(response.state, indent=4))
+            print(json.dumps(response, indent=4))
         else:
             # Display the IOC in yml
             print(dict_to_str_yml(response))

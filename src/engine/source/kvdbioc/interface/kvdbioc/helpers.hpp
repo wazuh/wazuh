@@ -1,6 +1,8 @@
 #ifndef KVDBIOC_HELPERS_HPP
 #define KVDBIOC_HELPERS_HPP
 
+#include <array>
+#include <stdexcept>
 #include <string_view>
 
 #include <base/json.hpp>

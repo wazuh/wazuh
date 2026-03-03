@@ -61,6 +61,8 @@ protected:
         m_kvdbManager = std::make_shared<kvdbioc::MockKVDBManager>();
         m_scheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
         m_store = std::make_shared<store::mocks::MockStore>();
+        // Ensure the semaphore is not locked before tests
+        detail::g_syncInProgress.store(false);
     }
 
     void TearDown() override
@@ -498,9 +500,6 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_Success_UpdatesHashAndClearsError)
                 return store::mocks::storeOk();
             });
 
-    // Reset semaphore before test
-    detail::g_syncInProgress.store(false);
-
     // Call the sync function
     detail::performIOCSync(m_kvdbManager, m_store, tempFile.path(), testHash);
 }
@@ -530,9 +529,6 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_FileNotFound_StoresError)
                 EXPECT_THAT(lastError.value_or(""), HasSubstr("Failed to open file"));
                 return store::mocks::storeOk();
             });
-
-    // Reset semaphore before test
-    detail::g_syncInProgress.store(false);
 
     // Call the sync function with non-existent file
     detail::performIOCSync(m_kvdbManager, m_store, nonExistentFile, testHash);
@@ -566,9 +562,6 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_InvalidJSON_StoresError)
                 return store::mocks::storeOk();
             });
 
-    // Reset semaphore before test
-    detail::g_syncInProgress.store(false);
-
     // Call the sync function
     detail::performIOCSync(m_kvdbManager, m_store, tempFile.path(), testHash);
 }
@@ -599,9 +592,6 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_KVDBNotAvailable_StoresError)
                 return store::mocks::storeOk();
             });
 
-    // Reset semaphore before test
-    detail::g_syncInProgress.store(false);
-
     // Call with null weak_ptr (will expire immediately)
     std::weak_ptr<::kvdbioc::IKVDBManager> nullWeak;
     detail::performIOCSync(nullWeak, m_store, tempFile.path(), testHash);
@@ -616,9 +606,6 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_StoreNotAvailable_NoError)
     const std::string testHash = "test_hash_store";
 
     // No expectations on store since it's not available
-
-    // Reset semaphore before test
-    detail::g_syncInProgress.store(false);
 
     // Call with null store weak_ptr (will expire immediately)
     std::weak_ptr<store::IStore> nullWeak;
@@ -641,9 +628,6 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_SemaphoreReleasedAfterExecution)
     EXPECT_CALL(*m_kvdbManager, put(_, _, _)).Times(AtLeast(0));
     EXPECT_CALL(*m_kvdbManager, hotSwap(_, _)).Times(AtLeast(0));
     EXPECT_CALL(*m_store, upsertDoc(_, _)).WillOnce(Return(store::mocks::storeOk()));
-
-    // Reset semaphore before test
-    detail::g_syncInProgress.store(false);
 
     // Manually set semaphore to simulate it being set
     detail::g_syncInProgress.store(true);
@@ -680,8 +664,6 @@ TEST_F(SyncIocHandlerTest, SyncInProgress_Returns400)
     EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
     EXPECT_THAT(response.body, HasSubstr("IOC synchronization already in progress"));
 
-    // Cleanup: release semaphore for other tests
-    detail::g_syncInProgress.store(false);
 }
 
 /*****************************************************************************
@@ -750,7 +732,6 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_MixedValidInvalid_ProcessesValid)
                 return store::mocks::storeOk();
             });
 
-    detail::g_syncInProgress.store(false);
     detail::performIOCSync(m_kvdbManager, m_store, tempFile.path(), testHash);
 }
 
@@ -797,7 +778,6 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_MultipleTypes_CreatesMultipleDatabases
                 return store::mocks::storeOk();
             });
 
-    detail::g_syncInProgress.store(false);
     detail::performIOCSync(m_kvdbManager, m_store, tempFile.path(), testHash);
 }
 
@@ -831,7 +811,6 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_ProductionDbNotExist_CleansUpTemp)
                 return store::mocks::storeOk();
             });
 
-    detail::g_syncInProgress.store(false);
     detail::performIOCSync(m_kvdbManager, m_store, tempFile.path(), testHash);
 }
 
@@ -866,7 +845,6 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_EmptyFile_UpdatesHashWithoutError)
                 return store::mocks::storeOk();
             });
 
-    detail::g_syncInProgress.store(false);
     detail::performIOCSync(m_kvdbManager, m_store, emptyPath, testHash);
 
     // Cleanup
@@ -910,6 +888,5 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_DuplicateIOCs_AppendsToArray)
     EXPECT_CALL(*m_kvdbManager, hotSwap(_, _)).Times(AtLeast(1));
     EXPECT_CALL(*m_store, upsertDoc(_, _)).WillOnce(Return(store::mocks::storeOk()));
 
-    detail::g_syncInProgress.store(false);
     detail::performIOCSync(m_kvdbManager, m_store, tempFile.path(), testHash);
 }
