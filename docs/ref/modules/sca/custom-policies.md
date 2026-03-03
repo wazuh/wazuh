@@ -55,6 +55,9 @@ checks:
     compliance:
       pci_dss: ["2.2.4"]
       nist_800_53: ["CM.1"]
+    mitre:
+      tactic: ["TA0008"]
+      technique: ["T1021"]
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^# && r:Port && !r:\s*\t*22$'
@@ -138,6 +141,7 @@ Checks define what actions the agent performs and how results are evaluated.
 | rationale   | No        | String                    | Any string            |
 | remediation | No        | String                    | Any string            |
 | compliance  | No        | Object                    | See [Compliance keys](#compliance-keys) |
+| mitre       | No        | Object                    | See [MITRE keys](#mitre-keys) |
 | references  | No        | Array of strings          | Any string            |
 | condition   | Yes       | String                    | all, any, none        |
 | rules       | Yes       | Array of strings          | Any string            |
@@ -153,6 +157,12 @@ The `compliance` field is an object that maps compliance framework keys to array
 `cmmc`, `fedramp`, `gdpr`, `hipaa`, `iso_27001`, `nis2`, `nist_800_171`, `nist_800_53`, `pci_dss`, `tsc`
 
 Unknown keys are rejected with a warning and excluded from the check.
+
+#### MITRE keys
+
+The `mitre` field is an object that maps MITRE ATT&CK categories to arrays of identifier strings. The following keys are supported:
+
+`tactic`, `technique`, `subtechnique`, `mitigation`
 
 ---
 
