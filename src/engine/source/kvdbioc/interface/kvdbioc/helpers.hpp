@@ -16,7 +16,6 @@ namespace
 constexpr std::string_view IOC_NAME_KEY = "/name"; ///< JSON pointer to the IOC name field, used as the key in KVDB
 constexpr std::string_view IOC_TYPE_KEY = "/type"; ///< JSON pointer to the IOC type field, used for type inference
 
-
 /**
  * @brief Enumeration of supported IOC types for type inference and DB routing
  *
@@ -25,13 +24,14 @@ constexpr std::string_view IOC_TYPE_KEY = "/type"; ///< JSON pointer to the IOC 
  */
 enum class IOCType
 {
-    CONNECTION,
-    URL_FULL,
-    URL_DOMAIN,
-    HASH_MD5,
-    HASH_SHA1,
-    HASH_SHA256,
-    UNKNOWN
+    CONNECTION = 0,
+    URL_FULL = 1,
+    URL_DOMAIN = 2,
+    HASH_MD5 = 3,
+    HASH_SHA1 = 4,
+    HASH_SHA256 = 5,
+    UNKNOWN = 6,
+    DB_COUNT = UNKNOWN
 };
 
 inline IOCType parseIOCType(std::string_view key)
@@ -83,48 +83,64 @@ inline std::string getTypeFromIOC(const json::Json& iocDoc)
     return type.value();
 }
 
+/**
+ * @brief Get the DB name corresponding to a given IOC type.
+ *
+ * @param type The IOCType enum value representing the type of the IOC.
+ * @return std::string_view The name of the database corresponding to the IOC type.
+ * @throws std::runtime_error if the IOC type is unknown.
+ */
+inline std::string_view dbNameFromType(IOCType type)
+{
+    switch (type)
+    {
+        case IOCType::CONNECTION: return "ioc-connections";
+        case IOCType::URL_FULL: return "ioc-urls-full";
+        case IOCType::URL_DOMAIN: return "ioc-urls-domain";
+        case IOCType::HASH_MD5: return "ioc-hashes-md5";
+        case IOCType::HASH_SHA1: return "ioc-hashes-sha1";
+        case IOCType::HASH_SHA256: return "ioc-hashes-sha256";
+        default: throw std::runtime_error("Unknown IOC type: " + std::to_string(static_cast<int>(type)));
+    }
+}
+
+constexpr std::array<std::string_view, static_cast<size_t>(IOCType::DB_COUNT)> DB_NAMES = {
+    "ioc-connections", "ioc-urls-full", "ioc-urls-domain", "ioc-hashes-md5", "ioc-hashes-sha1", "ioc-hashes-sha256"};
+
 } // namespace
+
+/**
+ * @brief Initialize the required databases in the KVDB if they don't already exist.
+ *
+ * @param manager The KVDB manager instance to use for DB operations.
+ * @throws std::runtime_error on RocksDB errors during DB creation.
+ */
+inline void initializeDBs(const std::shared_ptr<IKVDBManager>& manager)
+{
+    for (const auto& dbName : DB_NAMES)
+    {
+        if (!manager->exists(dbName))
+        {
+            manager->add(dbName);
+        }
+    }
+}
 
 /**
  * @brief Extract the DB name and key from an IOC document.
  *
  * @param iocDoc The JSON document representing the IOC, expected to contain "name" and "type" fields.
- * @return std::pair<std::string, std::string> A pair containing the DB name (determined by the IOC type) and the key (the IOC name).
+ * @return std::pair<std::string, std::string> A pair containing the DB name (determined by the IOC type) and the key
+ * (the IOC name).
  */
 inline std::pair<std::string, std::string> getDbAndKeyFromIOC(const json::Json& iocDoc)
 {
     std::string key = getKeyFromIOC(iocDoc);
     std::string typeStr = getTypeFromIOC(iocDoc);
     IOCType type = parseIOCType(typeStr);
-
-    // Determine DB name based on IOC type
-    std::string dbName;
-    switch (type)
-    {
-        case IOCType::CONNECTION:
-            dbName = "ioc-connections";
-            break;
-        case IOCType::URL_FULL:
-            dbName = "ioc-urls-full";
-            break;
-        case IOCType::URL_DOMAIN:
-            dbName = "ioc-urls-domain";
-            break;
-        case IOCType::HASH_MD5:
-            dbName = "ioc-hashes-md5";
-            break;
-        case IOCType::HASH_SHA1:
-            dbName = "ioc-hashes-sha1";
-            break;
-        case IOCType::HASH_SHA256:
-            dbName = "ioc-hashes-sha256";
-            break;
-        default:
-            throw std::runtime_error("Unknown IOC type: " + typeStr);
-    }
+    std::string dbName = std::string(dbNameFromType(type));
 
     return {dbName, key};
-
 }
 
 /**
@@ -154,7 +170,9 @@ inline void updateValueInDB(const std::shared_ptr<IKVDBManager>& manager,
     auto& candidateValue = existingValueOpt.value();
     if (!candidateValue.isArray())
     {
-        candidateValue.setArray(); // This never should happen in our use case, but if it does, overwrite.
+        auto oldValue = candidateValue;
+        candidateValue.setArray();
+        candidateValue.appendJson(oldValue);
     }
     candidateValue.appendJson(newValue);
     manager->put(dbName, key, candidateValue.str());

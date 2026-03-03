@@ -35,9 +35,9 @@ public:
         }
         else
         {
-            // Default valid IOC content
-            ofs << R"({"name":"192.168.1.1","type":"connection"})" << "\n";
-            ofs << R"({"name":"example.com","type":"url-domain"})" << "\n";
+            // Default valid IOC content with supported types
+            ofs << R"({"type":"connection","name":"192.168.1.1","source":"test"})" << "\n";
+            ofs << R"({"type":"url-domain","name":"example.com","source":"test"})" << "\n";
         }
         ofs.close();
     }
@@ -102,6 +102,27 @@ TEST_F(SyncIocHandlerTest, EmptyPath_Returns400)
 
     EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
     EXPECT_THAT(response.body, HasSubstr("Field /path cannot be empty"));
+}
+
+/*****************************************************************************
+ * Test: Empty Hash
+ ****************************************************************************/
+TEST_F(SyncIocHandlerTest, EmptyHash_Returns400)
+{
+    TempIOCFile tempFile;
+    auto handler = syncIoc(m_kvdbManager, m_scheduler, m_store);
+
+    com::wazuh::api::engine::ioc::UpdateIoc_Request protoReq;
+    protoReq.set_path(tempFile.path());
+    protoReq.set_hash("");
+
+    auto request = api::adapter::createRequest(protoReq);
+    httplib::Response response;
+
+    handler(request, response);
+
+    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_THAT(response.body, HasSubstr("Field /hash cannot be empty"));
 }
 
 /*****************************************************************************
@@ -451,8 +472,14 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_Success_UpdatesHashAndClearsError)
     TempIOCFile tempFile;
     const std::string testHash = "test_hash_123";
 
-    // Setup mocks
-    EXPECT_CALL(*m_kvdbManager, exists(_)).WillRepeatedly(Return(false));
+    // Setup mocks - exists returns false for temp DBs, true for production DBs
+    EXPECT_CALL(*m_kvdbManager, exists(_))
+        .WillRepeatedly(
+            [](std::string_view dbName)
+            {
+                // Temp DBs have random suffix like "_1234", production DBs don't
+                return dbName.find('_') == std::string_view::npos; // True if no underscore (production DB)
+            });
     EXPECT_CALL(*m_kvdbManager, add(_)).Times(AtLeast(1));
     EXPECT_CALL(*m_kvdbManager, get(_, _)).WillRepeatedly(Return(std::nullopt)); // IOCs are new
     EXPECT_CALL(*m_kvdbManager, put(_, _, _)).Times(AtLeast(1));
@@ -484,15 +511,21 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_FileNotFound_StoresError)
 {
     const std::string nonExistentFile = "/tmp/nonexistent_file_12345.json";
     const std::string testHash = "test_hash_456";
+    const std::string existingHash = "old_hash_preserved";
 
-    // Expect error to be stored
+    // Mock readDoc to return existing hash (will be preserved)
+    store::Doc existingDoc;
+    existingDoc.setString(existingHash, "/hash");
+    EXPECT_CALL(*m_store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(existingDoc)));
+
+    // Expect error to be stored with hash preserved
     EXPECT_CALL(*m_store, upsertDoc(_, _))
         .WillOnce(
-            [&testHash](const base::Name& name, const store::Doc& doc)
+            [&existingHash](const base::Name& name, const store::Doc& doc)
             {
                 auto hash = doc.getString("/hash");
                 auto lastError = doc.getString("/lastError");
-                EXPECT_EQ(hash.value_or(""), testHash);
+                EXPECT_EQ(hash.value_or(""), existingHash); // Hash should be preserved
                 EXPECT_THAT(lastError.value_or(""), HasSubstr("Failed to open file"));
                 return store::mocks::storeOk();
             });
@@ -505,7 +538,7 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_FileNotFound_StoresError)
 }
 
 /*****************************************************************************
- * Test: performIOCSync - Invalid JSON
+ * Test: performIOCSync - Invalid JSON (all lines skipped)
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, PerformIOCSync_InvalidJSON_StoresError)
 {
@@ -513,19 +546,22 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_InvalidJSON_StoresError)
     TempIOCFile tempFile("invalid json content {{{");
     const std::string testHash = "test_hash_789";
 
-    // Setup partial mocks - DB might be created before error
-    EXPECT_CALL(*m_kvdbManager, exists(_)).WillRepeatedly(Return(false));
-    EXPECT_CALL(*m_kvdbManager, add(_)).Times(AtMost(2));
+    // Setup mocks - no DBs should be created or swapped since all lines are invalid
+    EXPECT_CALL(*m_kvdbManager, exists(_)).Times(0);
+    EXPECT_CALL(*m_kvdbManager, add(_)).Times(0);
+    EXPECT_CALL(*m_kvdbManager, hotSwap(_, _)).Times(0);
 
-    // Expect error to be stored
+    // Expect hash to be updated since sync "completes" (with 0 processed, 1 skipped)
+    // The lastError should contain information about skipped lines
     EXPECT_CALL(*m_store, upsertDoc(_, _))
         .WillOnce(
             [&testHash](const base::Name& name, const store::Doc& doc)
             {
                 auto hash = doc.getString("/hash");
                 auto lastError = doc.getString("/lastError");
-                EXPECT_EQ(hash.value_or(""), testHash);
-                EXPECT_THAT(lastError.value_or(""), HasSubstr("Error processing line"));
+                EXPECT_EQ(hash.value_or(""), testHash); // Hash is updated even with skipped lines
+                // LastError should contain message about skipped lines
+                EXPECT_THAT(lastError.value_or(""), HasSubstr("skipped"));
                 return store::mocks::storeOk();
             });
 
@@ -543,15 +579,21 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_KVDBNotAvailable_StoresError)
 {
     TempIOCFile tempFile;
     const std::string testHash = "test_hash_kvdb";
+    const std::string existingHash = "preserved_hash_kvdb";
 
-    // Expect error to be stored when KVDB is not available
+    // Mock readDoc to return existing hash (will be preserved)
+    store::Doc existingDoc;
+    existingDoc.setString(existingHash, "/hash");
+    EXPECT_CALL(*m_store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(existingDoc)));
+
+    // Expect error to be stored with hash preserved
     EXPECT_CALL(*m_store, upsertDoc(_, _))
         .WillOnce(
-            [&testHash](const base::Name& name, const store::Doc& doc)
+            [&existingHash](const base::Name& name, const store::Doc& doc)
             {
                 auto hash = doc.getString("/hash");
                 auto lastError = doc.getString("/lastError");
-                EXPECT_EQ(hash.value_or(""), testHash);
+                EXPECT_EQ(hash.value_or(""), existingHash); // Hash should be preserved
                 EXPECT_THAT(lastError.value_or(""), HasSubstr("KVDB Manager is not available"));
                 return store::mocks::storeOk();
             });

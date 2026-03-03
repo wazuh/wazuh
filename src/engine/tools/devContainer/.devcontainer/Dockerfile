@@ -17,7 +17,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends lcov docker-compose bc clang-format jq \
         inetutils-ping inetutils-telnet inetutils-tools nmap \
         libc6-dev curl policycoreutils automake autoconf libtool libssl-dev procps \
-        gcc-14 g++-14
+        gcc-14 g++-14 rocksdb-tools
 
 # Set gcc-14 and g++-14 as default
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 14 \

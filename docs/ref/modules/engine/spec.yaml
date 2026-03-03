@@ -1427,11 +1427,6 @@ paths:
                 value:
                   path: "/var/lib/wazuh-server/iocs/threat-intel.ndjson"
                   hash: "5d41402abc4b2a76b9719d911017c592"
-              update_without_hash:
-                summary: Force update without hash checking
-                value:
-                  path: "/var/lib/wazuh-server/iocs/threat-intel.ndjson"
-                  hash: ""
       responses:
         "200":
           description: Success - Synchronization scheduled or skipped
@@ -1462,6 +1457,11 @@ paths:
                   value:
                     status: "ERROR"
                     error: "Field /path cannot be empty"
+                empty_hash:
+                  summary: Hash field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Field /hash cannot be empty"
                 file_not_found:
                   summary: File does not exist
                   value:
@@ -1884,7 +1884,7 @@ components:
     #################################
     UpdateIoc_Request:
       type: object
-      required: [path]
+      required: [path, hash]
       properties:
         path:
           type: string
@@ -1892,7 +1892,7 @@ components:
           example: "/var/lib/wazuh-server/iocs/threat-intel.ndjson"
         hash:
           type: string
-          description: "MD5 hash of the IOC file. Used to skip sync if unchanged. Empty string forces sync."
+          description: "MD5 hash of the IOC file. Required for change detection and skipping unnecessary syncs."
           example: "5d41402abc4b2a76b9719d911017c592"
 
     GetIocState_Response:

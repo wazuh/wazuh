@@ -24,7 +24,7 @@ adapter::RouteHandler getIocState(const std::shared_ptr<store::IStore>& store);
 namespace detail
 {
 extern std::atomic<bool> g_syncInProgress;
-extern const std::string_view IOC_STATUS_DOC;
+extern const base::Name IOC_STATUS_DOC;
 
 void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManager,
                     const std::weak_ptr<store::IStore>& weakStore,
