@@ -24,22 +24,16 @@ subgraph routerTable["Router Table"]
   subgraph routeA["Route prod"]
    direction LR
    policyA("Security Policy")
-   filterA{"Filter"}
-   filterA -.-> policyA
   end
 
   subgraph routeB["Route QA"]
    direction LR
    policyB("Security Policy")
-   filterB{"Filter"}
-   filterB -.-> policyB
   end
 
   subgraph routeC["Route Dev"]
    direction LR
    policyC("Security Policy")
-   filterC{"Filter"}
-   filterC -.-> policyC
   end
 end
 
@@ -57,7 +51,7 @@ end
 eventA@{ shape: doc, label: "Incoming</br>event" }
 eventA:::EventBoxClass
 eventA-->routeSelector
-routeSelector-.->filterA & filterB & filterC
+routeSelector-.->policyA & policyB & policyC
 
 
 ```
@@ -827,7 +821,7 @@ This naming structure ensures clear versioning and categorization of assets. The
 - **decoders** – Responsible for normalizing events, transforming raw data into a structured format.
 - **rules** – Handle security analysis and event enrichment, identifying threats and adding contextual information.
 - **outputs** – Define storage policies for processed events, determining how and where data is stored.
-- **filters** – Used for event routing, ensuring events are correctly directed to the appropriate policies.
+- **filters** – Used in event processing pipelines, applied as pre-filters and post-filters within assets.
 - **integrations** – Serve as manifests for other assets, grouping related assets that support a common goal. Typically used to bundle all assets required for specific services.
 
 All API calls to the Catalog support name-path operations, allowing users to manage specific assets or entire groups efficiently. (Refer to the API documentation for a full list of available catalog operations.)
@@ -842,7 +836,7 @@ Each policy contains references to asset names, and during the building process,
 
 Following the same Catalog-first approach, policies are stored before they are actually used. Policies are only referenced when defining routes, ensuring that all assets and relationships are pre-validated before execution.
 
-The Orchestrator is responsible for pairing filters with policies, ensuring that specific types of events are processed by the appropriate policies. It also manages loaded policies, routing priority and some event processing configuration.
+The Orchestrator is responsible for managing routes that pair namespaces with policies, ensuring that events are processed by the appropriate policies. It also manages loaded policies, routing priority and some event processing configuration.
 
 The Engine also introduces the concept of testing sessions, which are specialized policies designed for processing test events via the API. These sessions allow users to validate how their policies will behave before deploying them in production, ensuring correctness and expected functionality.
 
@@ -853,7 +847,7 @@ For a complete list of API calls related to routing and policy management, refer
 The Engine is composed of distinct modules, each responsible for managing a specific aspect of event processing:
 - Catalog → Manages assets (decoders, rules, filters, outputs, integrations).
 - Policy → Manages policies, defining how assets are organized and processed.
-- Orchestrator → Manages routes, pairing filters with policies to control event processing.
+- Orchestrator → Manages routes, mapping namespaces to policies to control event processing.
 
 All modules follow the same naming convention, ensuring that every item—whether an asset, policy, or route—can be stored and identified homogeneously by the Store module.
 

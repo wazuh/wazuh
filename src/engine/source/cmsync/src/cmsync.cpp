@@ -300,8 +300,9 @@ cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view origi
     try
     {
         // [KVDB/DECODER/INTEGRATIONS]: Add here any extra assets to the temporary namespace
+
         // [OUTPUTS]: Add local outputs for the current namespace
-        // TODO
+
         // [FILTERS]: Necesary filter for the route to work
         cmcrudPtr->upsertResource(newNs, cm::store::ResourceType::FILTER, createAllowAllFilter().str());
     }

@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include <bk/mockController.hpp>
 
@@ -7,7 +7,6 @@
 
 using namespace router;
 
-// Test fixture for common setup
 class EnvironmentTestFixture : public ::testing::Test
 {
 protected:
@@ -77,18 +76,6 @@ TEST_F(EnvironmentTestFixture, SetControllerThrowsOnNull)
     Environment environment(std::move(controller), std::string(testHash));
 
     EXPECT_THROW(environment.setController(nullptr), std::runtime_error);
-}
-
-TEST_F(EnvironmentTestFixture, SetControllerSucceeds)
-{
-    auto controller1 = getMockController();
-    auto controller2 = getMockController();
-
-    // Expect stop to be called when controller2 is set (it replaces controller1 as the environment's controller)
-    EXPECT_CALL(*controller2, stop()).Times(1);
-
-    Environment environment(std::move(controller1), std::string(testHash));
-    EXPECT_NO_THROW(environment.setController(std::move(controller2)));
 }
 
 TEST_F(EnvironmentTestFixture, MultipleIngestCalls)

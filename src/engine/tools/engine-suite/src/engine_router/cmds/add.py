@@ -21,7 +21,7 @@ def run(args):
     # Create the request
     request = erouter.RoutePost_Request()
     request.route.name = route
-    request.route.policy = policy
+    request.route.namespaceId = policy
     request.route.priority = priority
     if args['description']:
         request.route.description = args['description']

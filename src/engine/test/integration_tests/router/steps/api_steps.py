@@ -25,10 +25,6 @@ api_client = APIClient(SOCKET_PATH)
 # Namespace == policy name in CM
 POLICY_NS = "testing"
 
-# Resource names
-FILTER_ALLOW_ALL_NAME = "filter/allow-all/0"
-FILTER_ALLOW_ALL_UUID = "b540db06-a761-4c02-8880-1d3e3b964063"
-
 # UUIDs (must match init.py and tester tests)
 DECODER_TEST_UUID = "2faeea8b-672b-4b42-8f91-657d7810d636"
 DECODER_OTHER_UUID = "594ea807-a037-408d-95b8-9a124ea333df"
@@ -117,46 +113,6 @@ def cm_resource_delete_by_uuid(space: str, uuid: str):
     err, resp = send_recv(req, api_engine.GenericStatus_Response())
     assert err is None, f"Error deleting resource '{uuid}' in '{space}': {err}"
     assert resp.status == api_engine.OK, f"{resp}"
-
-
-def create_filter(filter_name: str):
-    """
-    Creates the filter in CM with the minimal shape:
-      name: filter/allow-all/0
-    """
-    assert filter_name == FILTER_ALLOW_ALL_NAME, (
-        f"Router steps only support '{FILTER_ALLOW_ALL_NAME}' for now"
-    )
-    filter_yaml = f"""\
-name: {FILTER_ALLOW_ALL_NAME}
-id: {FILTER_ALLOW_ALL_UUID}
-enabled: true
-type: pre-filter
-check: exists($event.original)
-"""
-
-    req = api_crud.resourcePost_Request()
-    req.space = POLICY_NS
-    req.type = "filter"
-    req.ymlContent = filter_yaml
-    err, resp = send_recv(req, api_engine.GenericStatus_Response())
-    assert err is None, f"Error creating filter '{filter_name}': {err}"
-    assert resp.status == api_engine.OK, f"{resp}"
-
-
-def delete_filter(filter_name: str):
-    """
-    Deletes the filter by name using resourceList + resourceDelete (uuid).
-    """
-    assert filter_name == FILTER_ALLOW_ALL_NAME, (
-        f"Router steps only support '{FILTER_ALLOW_ALL_NAME}' for now"
-    )
-
-    resources = cm_resource_list(POLICY_NS, "filter")
-    matches = [r for r in resources if r.name == filter_name]
-    assert matches, f"Filter '{filter_name}' not found in namespace '{POLICY_NS}'"
-    # Assume only one
-    cm_resource_delete_by_uuid(POLICY_NS, matches[0].uuid)
 
 
 def setup_policy_with_integrations(initial_integration: str):
@@ -332,16 +288,6 @@ def step_impl(context, policy_name: str, integration_name: str):
 @when('I send a request to delete the policy "{policy_name}"')
 def step_impl(context, policy_name: str):
     delete_policy(policy_name)
-
-
-@when('I send a request to {request} the filter "{filter_name}"')
-def step_impl(context, request: str, filter_name: str):
-    if request == "create":
-        create_filter(filter_name)
-    elif request == "delete":
-        delete_filter(filter_name)
-    else:
-        assert False, f"The request {request} is not allowed."
 
 
 # ===================================================================

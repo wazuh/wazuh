@@ -146,7 +146,7 @@ The **Wazuh-Engine** is composed of multiple modules that work together to provi
 
 2. **Orchestrator**
    The Orchestrator module manages runtime routes and policy testing:
-   - **Router**: Decides which policy to apply for each incoming event. It refers to a **Routes Table** that defines filters, priorities, and mappings to specific policies.
+   - **Router**: Decides which policy to apply for each incoming event. It refers to a **Routes Table** that defines priorities and mappings to specific policies.
    - **Tester**: Evaluates events against the assigned policies. It uses a **Session Table** to store context/state of session. The Tester returns the outcome of policy checks (e.g., alerts and traces).
 
 3. **Backend**
@@ -203,14 +203,14 @@ The **Server** module provides the primary interface for both incoming agent eve
 The **Orchestrator** determines how incoming events are routed and tested against policies:
 
 - **Router**:
-  - Uses a **Routes Table** to map events to policies based on defined filters and priorities.
+  - Uses a **Routes Table** to map events to policies based on defined priorities.
   - Example of a routes table:
 
-    | Route name (ID)   | Priority | Filter        | Policy                   |
-    |-------------------|----------|---------------|--------------------------|
-    | router_example    | 1        | filter_1      | policy_1                 |
-    | ...               | ...      | filter_2      | policy_2                 |
-    | default           | 255      | * (catch-all) | wazuh-default-policy     |
+    | Route name (ID)   | Priority | Policy                   |
+    |-------------------|----------|--------------------------|
+    | router_example    | 1        | policy_1                 |
+    | ...               | ...      | policy_2                 |
+    | default           | 255      | wazuh-default-policy     |
 
 - **Tester**:
   - Uses a **Session Table** to maintain session state.

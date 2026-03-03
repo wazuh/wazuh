@@ -5,8 +5,7 @@
 
 using namespace router;
 
-// Test fixture for common setup and utilities
-class EntryConverterFixture : public ::testing::Test
+class EntryConverterTestFixture : public ::testing::Test
 {
 protected:
     const cm::store::NamespaceId prodNamespace {"policy_test_0"};
@@ -16,9 +15,8 @@ protected:
     const std::string description {"Test description"};
 };
 
-TEST_F(EntryConverterFixture, prodEntryConverter)
+TEST_F(EntryConverterTestFixture, prodEntryConverter)
 {
-    // Check if can be converted to json and back to prod::EntryPost
     ::prod::EntryPost entryPost(prodEntryName, prodNamespace, 100);
     entryPost.description(description);
 
@@ -35,7 +33,7 @@ TEST_F(EntryConverterFixture, prodEntryConverter)
     EXPECT_EQ(entryPost.priority(), entryPost2.priority());
 }
 
-TEST_F(EntryConverterFixture, testEntryConverter)
+TEST_F(EntryConverterTestFixture, testEntryConverter)
 {
     ::test::EntryPost entryPost(testEntryName, testNamespace, 3600);
     entryPost.description(description);
@@ -57,7 +55,7 @@ using ::testing::Combine;
 using ::testing::Values;
 
 class EntryConverterParameterizedTest
-    : public EntryConverterFixture
+    : public EntryConverterTestFixture
     , public ::testing::WithParamInterface<std::tuple<std::string, cm::store::NamespaceId, std::size_t>>
 {
 };
@@ -87,7 +85,7 @@ INSTANTIATE_TEST_SUITE_P(ProdEntryVariations,
                                         cm::store::NamespaceId {"policy_custom_99"}),
                                  Values(1, 100, 500, 1000)));
 
-TEST_F(EntryConverterFixture, ProdEntryArrayConversion)
+TEST_F(EntryConverterTestFixture, ProdEntryArrayConversion)
 {
     ::prod::EntryPost entry1(prodEntryName, prodNamespace, 100);
     entry1.description("First entry");
@@ -116,7 +114,7 @@ TEST_F(EntryConverterFixture, ProdEntryArrayConversion)
     EXPECT_EQ(converted2.description(), entry2.description());
 }
 
-TEST_F(EntryConverterFixture, TestEntryArrayConversion)
+TEST_F(EntryConverterTestFixture, TestEntryArrayConversion)
 {
     ::test::EntryPost entry1(testEntryName, testNamespace, 3600);
     entry1.description("First test entry");
@@ -145,7 +143,7 @@ TEST_F(EntryConverterFixture, TestEntryArrayConversion)
     EXPECT_EQ(converted2.description(), entry2.description());
 }
 
-TEST_F(EntryConverterFixture, ProdEntryValidation)
+TEST_F(EntryConverterTestFixture, ProdEntryValidation)
 {
     ::prod::EntryPost validEntry(prodEntryName, prodNamespace, 500);
     EXPECT_FALSE(validEntry.validate());
@@ -166,7 +164,7 @@ TEST_F(EntryConverterFixture, ProdEntryValidation)
     EXPECT_THAT(result->message, ::testing::HasSubstr("cannot be greater than 1000"));
 }
 
-TEST_F(EntryConverterFixture, TestEntryValidation)
+TEST_F(EntryConverterTestFixture, TestEntryValidation)
 {
     ::test::EntryPost validEntry(testEntryName, testNamespace, 3600);
     EXPECT_FALSE(validEntry.validate());
@@ -177,7 +175,7 @@ TEST_F(EntryConverterFixture, TestEntryValidation)
     EXPECT_THAT(result->message, ::testing::HasSubstr("Name cannot be empty"));
 }
 
-TEST_F(EntryConverterFixture, ProdEntryWithoutDescription)
+TEST_F(EntryConverterTestFixture, ProdEntryWithoutDescription)
 {
     ::prod::EntryPost entryPost(prodEntryName, prodNamespace, 250);
     ::prod::Entry entry(entryPost);
@@ -192,7 +190,7 @@ TEST_F(EntryConverterFixture, ProdEntryWithoutDescription)
     EXPECT_EQ(entryPost.priority(), entryPost2.priority());
 }
 
-TEST_F(EntryConverterFixture, TestEntryWithoutDescription)
+TEST_F(EntryConverterTestFixture, TestEntryWithoutDescription)
 {
     ::test::EntryPost entryPost(testEntryName, testNamespace, 1800);
     ::test::Entry entry(entryPost);

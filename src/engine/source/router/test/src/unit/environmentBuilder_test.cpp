@@ -11,7 +11,6 @@
 using namespace router;
 using namespace testing;
 
-// Test fixture for common setup
 class EnvironmentBuilderFixture : public ::testing::Test
 {
 protected:

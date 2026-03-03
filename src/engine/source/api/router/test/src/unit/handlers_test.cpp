@@ -106,32 +106,10 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePost(router); },
-            []()
-            {
+            []() {
                 return userErrorResponse<eEngine::GenericStatus_Response>(
                     "Invalid namespace id: Invalid namespace ID: not-valid");
             },
-            [](auto&) {}),
-        // TODO -> is repeated?
-        HandlerT(
-            []()
-            {
-                json::Json jsonReq;
-                jsonReq.setObject("/route");
-                jsonReq.setString("testing", "/route/namespaceId");
-                jsonReq.setInt(1, "/route/priority");
-                httplib::Request req;
-                req.body = jsonReq.str();
-                req.set_header("Content-Type", "plain/text");
-                return req;
-            },
-            [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePost(router); },
-            []()
-            {
-                eEngine::GenericStatus_Response protoRes;
-                protoRes.set_status(eEngine::ReturnStatus::OK);
-                return userResponse<eEngine::GenericStatus_Response>(protoRes);
-             },
             [](auto&) {}),
         // Invalid priority (default 0)
         HandlerT(
@@ -339,8 +317,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePatchPriority(router); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>("error"); },
-            [](auto& mock)
-            {
+            [](auto& mock) {
                 EXPECT_CALL(mock, changeEntryPriority(testing::_, 1)).WillOnce(testing::Return(base::Error {"error"}));
             }),
         // Wrong request type
