@@ -254,6 +254,7 @@ TEST_F(SCAEventHandlerTest, GetChecksForPolicy)
                         "reason",
                         "condition",
                         "compliance",
+                        "mitre",
                         "rules",
                         "version"
                     }

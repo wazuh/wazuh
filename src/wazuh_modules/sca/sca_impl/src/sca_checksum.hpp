@@ -44,6 +44,7 @@ namespace sca
                                   const std::string& refs,
                                   const std::string& condition,
                                   const std::string& compliance,
+                                  const std::string& mitre,
                                   const std::string& rules,
                                   const std::string& regexType);
 
