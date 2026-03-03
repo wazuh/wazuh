@@ -741,7 +741,14 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
 
     if (check.contains("compliance") && check["compliance"].is_string())
     {
-        check["compliance"] = StringToJsonArray(check["compliance"].get<std::string>());
+        try
+        {
+            check["compliance"] = nlohmann::json::parse(check["compliance"].get<std::string>());
+        }
+        catch (const nlohmann::json::parse_error&)
+        {
+            check.erase("compliance");
+        }
     }
 
     if (check.contains("mitre") && check["mitre"].is_string())
