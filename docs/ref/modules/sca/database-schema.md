@@ -91,7 +91,7 @@ This table stores individual checks associated with a policy. Each check include
 |           | `result`      | TEXT      | Current evaluation result (Passed, Failed, Not run, Not applicable)      | check.result | keyword      |
 |           | `reason`      | TEXT      | Explanation for the check's result                                       | check.reason | text         |
 |           | `condition`   | TEXT      | Logical condition under which the check applies (all, any, none)        | check.condition | keyword    |
-|           | `compliance`  | TEXT      | Compliance mapping (e.g., CIS ID, NIST tag)                             | check.compliance | keyword   |
+|           | `compliance`  | TEXT      | JSON-serialized compliance object (see [Compliance format](#compliance-format)) | check.compliance.* | keyword |
 |           | `rules`       | TEXT      | Serialized rule(s) logic used to perform the actual check               | check.rules | text          |
 |           | `regex_type`  | TEXT      | Internal regex engine identifier for rule evaluation                    | N/A         | N/A          |
 |     ✔️    | `version`     | INTEGER   | Monotonic version for stateful synchronization                          | state.document_version | long |
@@ -109,6 +109,14 @@ This table stores individual checks associated with a policy. Each check include
 - `Failed`: Check failed
 - `Not applicable`: Check is not applicable to this system
 
+#### Compliance format
+
+The `compliance` column stores a JSON-serialized object that maps compliance framework keys to arrays of identifier strings. Only the following keys are allowed:
+
+`cmmc`, `fedramp`, `gdpr`, `hipaa`, `iso_27001`, `nis2`, `nist_800_171`, `nist_800_53`, `pci_dss`, `tsc`
+
+Unknown keys are rejected with a warning during policy parsing and excluded from the stored value.
+
 **Example Data:**
 ```sql
 INSERT INTO sca_check (checksum, id, policy_id, name, description, rationale, remediation, refs, result, reason,
@@ -125,7 +133,7 @@ VALUES (
     'Passed',
     NULL,
     'all',
-    'cis:5.2.1,cis_csc:14.6',
+    '{"pci_dss":["5.2.1"],"nist_800_53":["14.6"]}',
     '[{"type":"file","path":"/etc/ssh/sshd_config","permissions":"600"}]',
     'pcre2',
     1,

@@ -18,9 +18,10 @@ Stateful events are persisted for reliable synchronization with the manager via 
     "check":
     {
         "compliance":
-        [
-            "int:2.1.1"
-        ],
+        {
+            "pci_dss": ["2.2.4"],
+            "nist_800_53": ["CM.1"]
+        },
         "condition": "all",
         "description": "Disabling SMBv1 mitigates known vulnerabilities.",
         "id": "CUST001",
@@ -78,9 +79,10 @@ Stateless events are sent immediately through the message queue for real-time al
         "check":
         {
             "compliance":
-            [
-                "int:2.1.1"
-            ],
+            {
+                "pci_dss": ["2.2.4"],
+                "nist_800_53": ["CM.1"]
+            },
             "condition": "all",
             "description": "Disabling SMBv1 mitigates known vulnerabilities.",
             "id": "CUST001",
