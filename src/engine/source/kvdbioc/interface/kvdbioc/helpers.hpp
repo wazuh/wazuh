@@ -1,5 +1,5 @@
-#ifndef _KVDBIOC_HELPERS_HPP
-#define _KVDBIOC_HELPERS_HPP
+#ifndef KVDBIOC_HELPERS_HPP
+#define KVDBIOC_HELPERS_HPP
 
 #include <string_view>
 
@@ -10,11 +10,8 @@
 namespace kvdbioc::details
 {
 
-namespace
-{
-
-constexpr std::string_view IOC_NAME_KEY = "/name"; ///< JSON pointer to the IOC name field, used as the key in KVDB
-constexpr std::string_view IOC_TYPE_KEY = "/type"; ///< JSON pointer to the IOC type field, used for type inference
+inline constexpr std::string_view IOC_NAME_KEY = "/name"; ///< JSON pointer to the IOC name field, used as the key in KVDB
+inline constexpr std::string_view IOC_TYPE_KEY = "/type"; ///< JSON pointer to the IOC type field, used for type inference
 
 /**
  * @brief Enumeration of supported IOC types for type inference and DB routing
@@ -34,7 +31,13 @@ enum class IOCType
     DB_COUNT = UNKNOWN
 };
 
-inline IOCType parseIOCType(std::string_view key)
+/**
+ * @brief Parse a string into an IOCType enum value.
+ *
+ * @param key The string representation of the IOC type.
+ * @return IOCType The corresponding enum value, or IOCType::UNKNOWN if not recognized.
+ */
+inline constexpr IOCType parseIOCType(std::string_view key)
 {
     if (key == "connection")
         return IOCType::CONNECTION;
@@ -90,7 +93,7 @@ inline std::string getTypeFromIOC(const json::Json& iocDoc)
  * @return std::string_view The name of the database corresponding to the IOC type.
  * @throws std::runtime_error if the IOC type is unknown.
  */
-inline std::string_view dbNameFromType(IOCType type)
+inline constexpr std::string_view dbNameFromType(IOCType type)
 {
     switch (type)
     {
@@ -100,14 +103,12 @@ inline std::string_view dbNameFromType(IOCType type)
         case IOCType::HASH_MD5: return "ioc-hashes-md5";
         case IOCType::HASH_SHA1: return "ioc-hashes-sha1";
         case IOCType::HASH_SHA256: return "ioc-hashes-sha256";
-        default: throw std::runtime_error("Unknown IOC type: " + std::to_string(static_cast<int>(type)));
+        default: throw std::runtime_error("Unknown IOC type");
     }
 }
 
-constexpr std::array<std::string_view, static_cast<size_t>(IOCType::DB_COUNT)> DB_NAMES = {
+inline constexpr std::array<std::string_view, static_cast<size_t>(IOCType::DB_COUNT)> DB_NAMES = {
     "ioc-connections", "ioc-urls-full", "ioc-urls-domain", "ioc-hashes-md5", "ioc-hashes-sha1", "ioc-hashes-sha256"};
-
-} // namespace
 
 /**
  * @brief Initialize the required databases in the KVDB if they don't already exist.
@@ -180,4 +181,4 @@ inline void updateValueInDB(const std::shared_ptr<IKVDBManager>& manager,
 
 } // namespace kvdbioc::details
 
-#endif // _KVDBIOC_HELPERS_HPP
+#endif // KVDBIOC_HELPERS_HPP

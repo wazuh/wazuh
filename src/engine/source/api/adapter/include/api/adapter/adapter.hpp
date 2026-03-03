@@ -1,5 +1,5 @@
-#ifndef _API_ADAPTER_HPP
-#define _API_ADAPTER_HPP
+#ifndef API_ADAPTER_HPP
+#define API_ADAPTER_HPP
 
 #include <variant>
 
@@ -265,4 +265,4 @@ ResOrErrorResp<ReqAndHandler<Req, IHandler>> getReqAndHandler(const httplib::Req
 
 } // namespace api::adapter
 
-#endif // _API_ADAPTER_HPP
+#endif // API_ADAPTER_HPP

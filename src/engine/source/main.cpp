@@ -32,6 +32,7 @@
 #include <geo/manager.hpp>
 #include <httpsrv/server.hpp>
 #include <kvdbioc/manager.hpp>
+#include <kvdbioc/helpers.hpp>
 #include <kvdbstore/ikvdbmanager.hpp>
 #include <kvdbstore/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
@@ -301,6 +302,8 @@ int main(int argc, char* argv[])
             auto kvdbPath = std::filesystem::path(confManager.get<std::string>(conf::key::KVDB_IOC_PATH));
             kvdbIOC = std::make_shared<kvdbioc::KVDBManager>(kvdbPath, store);
             LOG_INFO("KVDB IOC initialized.");
+            // Initialize required DBs for iocs
+            kvdbioc::details::initializeDBs(kvdbIOC);
         }
 
         // GEO

@@ -1,5 +1,5 @@
-#ifndef _API_ADAPTER_HELPERS_HPP
-#define _API_ADAPTER_HELPERS_HPP
+#ifndef API_ADAPTER_HELPERS_HPP
+#define API_ADAPTER_HELPERS_HPP
 
 #include <functional>
 #include <optional>
@@ -34,4 +34,4 @@ ResOrErrorResp<T> tryGetProperty(bool exists, PropGetter<T> propGetter, std::str
 
 } // namespace api::adapter::helpers
 
-#endif // _API_ADAPTER_HELPERS_HPP
+#endif // API_ADAPTER_HELPERS_HPP
