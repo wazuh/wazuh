@@ -288,5 +288,98 @@ TEST(PatternMatchesTest, REG_MULTI_SZtest)
     EXPECT_TRUE(*patternMatch);
 }
 
-// NOLINTEND(bugprone-unchecked-optional-access, modernize-raw-string-literal)
+// Regression test for GitHub issue #16760:
+// SCA ignores some lines in command outputs in macOS Ventura.
+// The pattern r:powernap\s*\t*1 must match the line " powernap             1"
+// in the full pmset -g custom output.
+TEST(PatternMatchesTest, Issue16760_PmsetPowernapMatchesInFullOutput)
+{
+    const std::string content = "Battery Power:\n"
+                                " Sleep On Power Button 1\n"
+                                " lowpowermode         0\n"
+                                " standby              1\n"
+                                " ttyskeepawake        1\n"
+                                " hibernatemode        3\n"
+                                " powernap             1\n"
+                                " hibernatefile        /var/vm/sleepimage\n"
+                                " displaysleep         2\n"
+                                " womp                 0\n"
+                                " networkoversleep     0\n"
+                                " sleep                1\n"
+                                " lessbright           1\n"
+                                " tcpkeepalive         1\n"
+                                " disksleep            10\n"
+                                "AC Power:\n"
+                                " Sleep On Power Button 1\n"
+                                " lowpowermode         0\n"
+                                " standby              1\n"
+                                " ttyskeepawake        1\n"
+                                " hibernatemode        3\n"
+                                " powernap             1\n"
+                                " hibernatefile        /var/vm/sleepimage\n"
+                                " displaysleep         10\n"
+                                " womp                 1\n"
+                                " networkoversleep     0\n"
+                                " sleep                1\n"
+                                " tcpkeepalive         1\n"
+                                " disksleep            10";
+    const std::string pattern = "r:powernap\\s*\\t*1";
+    const auto patternMatch = PatternMatches(content, pattern);
+    ASSERT_TRUE(patternMatch.has_value());
+    // The pattern MUST match - powernap 1 is present in the output
+    EXPECT_TRUE(*patternMatch);
+}
 
+// Same scenario but with negated pattern (as used in the actual SCA rule)
+TEST(PatternMatchesTest, Issue16760_NegatedPmsetPowernapDetectsMatch)
+{
+    const std::string content = "Battery Power:\n"
+                                " Sleep On Power Button 1\n"
+                                " lowpowermode         0\n"
+                                " standby              1\n"
+                                " ttyskeepawake        1\n"
+                                " hibernatemode        3\n"
+                                " powernap             1\n"
+                                " hibernatefile        /var/vm/sleepimage\n"
+                                " displaysleep         2\n"
+                                " womp                 0\n"
+                                " networkoversleep     0\n"
+                                " sleep                1\n"
+                                " lessbright           1\n"
+                                " tcpkeepalive         1\n"
+                                " disksleep            10\n"
+                                "AC Power:\n"
+                                " Sleep On Power Button 1\n"
+                                " lowpowermode         0\n"
+                                " standby              1\n"
+                                " ttyskeepawake        1\n"
+                                " hibernatemode        3\n"
+                                " powernap             1\n"
+                                " hibernatefile        /var/vm/sleepimage\n"
+                                " displaysleep         10\n"
+                                " womp                 1\n"
+                                " networkoversleep     0\n"
+                                " sleep                1\n"
+                                " tcpkeepalive         1\n"
+                                " disksleep            10";
+    // Negated pattern: "not c:pmset -g -> r:powernap\s*\t*1"
+    // The negation is handled externally by CommandRuleEvaluator;
+    // PatternMatches receives the inner pattern prefixed with '!'
+    const std::string pattern = "!r:powernap\\s*\\t*1";
+    const auto patternMatch = PatternMatches(content, pattern);
+    ASSERT_TRUE(patternMatch.has_value());
+    // The negated match should FAIL (return false) because powernap 1 IS present
+    EXPECT_FALSE(*patternMatch);
+}
+
+// Test that a single line with powernap matches correctly
+TEST(PatternMatchesTest, Issue16760_SingleLinePowernapMatch)
+{
+    const std::string content = " powernap             1";
+    const std::string pattern = "r:powernap\\s*\\t*1";
+    const auto patternMatch = PatternMatches(content, pattern);
+    ASSERT_TRUE(patternMatch.has_value());
+    EXPECT_TRUE(*patternMatch);
+}
+
+// NOLINTEND(bugprone-unchecked-optional-access, modernize-raw-string-literal)
