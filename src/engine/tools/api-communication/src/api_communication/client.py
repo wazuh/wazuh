@@ -68,7 +68,12 @@ class APIClient:
         if method == "delete":
             # Older httpx versions don't accept body args on delete() directly.
             return client.request("DELETE", url, content=body, headers=header, timeout=timeout)
-        return client.post(url, content=body, headers=header, timeout=timeout)
+        elif method == "get":
+            return client.get(url, headers=header, timeout=timeout)
+        elif method == "post":
+            return client.post(url, content=body, headers=header, timeout=timeout)
+        else:
+            raise ValueError(f'Unsupported HTTP method: {method}')
 
     def send_recv(self, message: Message) -> Tuple[Optional[str], dict]:
         """Send a message to the API socket and receive the response

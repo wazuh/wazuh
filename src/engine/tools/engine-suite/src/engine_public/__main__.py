@@ -6,6 +6,8 @@ from shared.default_settings import Constants as DefaultSettings
 from engine_public.cmds.cm.policy_validate import configure as configure_policy_validate
 from engine_public.cmds.cm.validate import configure as configure_validate
 from engine_public.cmds.cm.logtest_cleanup import configure as configure_logtest_cleanup
+from engine_public.cmds.ioc.state import configure as configure_ioc_state
+from engine_public.cmds.ioc.update import configure as configure_ioc_update
 
 def parse_args():
     meta = metadata('engine-suite')
@@ -51,6 +53,23 @@ def parse_args():
     configure_policy_validate(cm_subparsers)
     configure_validate(cm_subparsers)
     configure_logtest_cleanup(cm_subparsers)
+
+    # ==========================================================
+    # IOC commands (Indicator of Compromise operations)
+    # ==========================================================
+    ioc_parser = subparsers.add_parser(
+        'ioc',
+        help='IOC (Indicator of Compromise) operations'
+    )
+
+    ioc_subparsers = ioc_parser.add_subparsers(
+        title='ioc commands',
+        required=True,
+        dest='ioc_command'
+    )
+
+    configure_ioc_state(ioc_subparsers)
+    configure_ioc_update(ioc_subparsers)
 
     try:
         import argcomplete
