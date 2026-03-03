@@ -40,150 +40,24 @@ from wazuh.rbac.preprocessor import optimize_resources
 authentication_funcs = {'check_token', 'check_user_master', 'get_permissions', 'get_security_conf'}
 events_funcs = {'send_event_to_analysisd'}
 SECURITY_CONFIG_PATH = os.path.join(common.SECURITY_PATH, 'security.yaml')
+ALLOWED_DAPI_CALLABLE_PACKAGES = frozenset(c_common.ALLOWED_CALLABLES_PACKAGES)
 
-# DAPI callables must be part of this strict allowlist.
-# These are the only public framework/API entry points expected to be distributed through DAPI.
-ALLOWED_DAPI_CALLABLES = {
-    ('api.authentication', 'check_token'),
-    ('api.authentication', 'check_user_master'),
-    ('api.authentication', 'get_security_conf'),
-    ('wazuh.active_response', 'run_command'),
-    ('wazuh.agent', 'add_agent'),
-    ('wazuh.agent', 'assign_agents_to_group'),
-    ('wazuh.agent', 'check_uninstall_permission'),
-    ('wazuh.agent', 'create_group'),
-    ('wazuh.agent', 'delete_agents'),
-    ('wazuh.agent', 'delete_groups'),
-    ('wazuh.agent', 'get_agent_conf'),
-    ('wazuh.agent', 'get_agent_config'),
-    ('wazuh.agent', 'get_agent_groups'),
-    ('wazuh.agent', 'get_agents'),
-    ('wazuh.agent', 'get_agents_in_group'),
-    ('wazuh.agent', 'get_agents_keys'),
-    ('wazuh.agent', 'get_agents_summary'),
-    ('wazuh.agent', 'get_agents_summary_os'),
-    ('wazuh.agent', 'get_agents_summary_status'),
-    ('wazuh.agent', 'get_agents_sync_group'),
-    ('wazuh.agent', 'get_distinct_agents'),
-    ('wazuh.agent', 'get_file_conf'),
-    ('wazuh.agent', 'get_full_overview'),
-    ('wazuh.agent', 'get_group_files'),
-    ('wazuh.agent', 'get_outdated_agents'),
-    ('wazuh.agent', 'get_upgrade_result'),
-    ('wazuh.agent', 'reconnect_agents'),
-    ('wazuh.agent', 'remove_agent_from_group'),
-    ('wazuh.agent', 'remove_agent_from_groups'),
-    ('wazuh.agent', 'remove_agents_from_group'),
-    ('wazuh.agent', 'restart_agents'),
-    ('wazuh.agent', 'restart_agents_by_group'),
-    ('wazuh.agent', 'restart_agents_by_node'),
-    ('wazuh.agent', 'upgrade_agents'),
-    ('wazuh.agent', 'upload_group_file'),
-    ('wazuh.analysis', 'reload_ruleset'),
-    ('wazuh.cdb_list', 'delete_list_file'),
-    ('wazuh.cdb_list', 'get_list_file'),
-    ('wazuh.cdb_list', 'get_lists'),
-    ('wazuh.cdb_list', 'get_path_lists'),
-    ('wazuh.cdb_list', 'upload_list_file'),
-    ('wazuh.ciscat', 'get_ciscat_results'),
-    ('wazuh.cluster', 'get_health_nodes'),
-    ('wazuh.cluster', 'get_node_ruleset_integrity'),
-    ('wazuh.cluster', 'get_node_wrapper'),
-    ('wazuh.cluster', 'get_nodes_info'),
-    ('wazuh.cluster', 'get_ruleset_sync_status'),
-    ('wazuh.cluster', 'get_status_json'),
-    ('wazuh.cluster', 'read_config_wrapper'),
-    ('wazuh.core.manager', 'query_update_check_service'),
-    ('wazuh.core.manager', 'status'),
-    ('wazuh.core.security', 'revoke_tokens'),
-    ('wazuh.decoder', 'delete_decoder_file'),
-    ('wazuh.decoder', 'get_decoder_file'),
-    ('wazuh.decoder', 'get_decoders'),
-    ('wazuh.decoder', 'get_decoders_files'),
-    ('wazuh.decoder', 'upload_decoder_file'),
-    ('wazuh.event', 'send_event_to_analysisd'),
-    ('wazuh.logtest', 'end_logtest_session'),
-    ('wazuh.logtest', 'run_logtest'),
-    ('wazuh.manager', 'get_api_config'),
-    ('wazuh.manager', 'get_basic_info'),
-    ('wazuh.manager', 'get_config'),
-    ('wazuh.manager', 'get_status'),
-    ('wazuh.manager', 'get_update_information'),
-    ('wazuh.manager', 'ossec_log'),
-    ('wazuh.manager', 'ossec_log_summary'),
-    ('wazuh.manager', 'read_ossec_conf'),
-    ('wazuh.manager', 'restart'),
-    ('wazuh.manager', 'update_ossec_conf'),
-    ('wazuh.manager', 'validation'),
-    ('wazuh.mitre', 'mitre_groups'),
-    ('wazuh.mitre', 'mitre_metadata'),
-    ('wazuh.mitre', 'mitre_mitigations'),
-    ('wazuh.mitre', 'mitre_references'),
-    ('wazuh.mitre', 'mitre_software'),
-    ('wazuh.mitre', 'mitre_tactics'),
-    ('wazuh.mitre', 'mitre_techniques'),
-    ('wazuh.rbac.preprocessor', 'get_permissions'),
-    ('wazuh.rootcheck', 'clear'),
-    ('wazuh.rootcheck', 'get_last_scan'),
-    ('wazuh.rootcheck', 'get_rootcheck_agent'),
-    ('wazuh.rootcheck', 'run'),
-    ('wazuh.rule', 'delete_rule_file'),
-    ('wazuh.rule', 'get_groups'),
-    ('wazuh.rule', 'get_requirement'),
-    ('wazuh.rule', 'get_rule_file'),
-    ('wazuh.rule', 'get_rules'),
-    ('wazuh.rule', 'get_rules_files'),
-    ('wazuh.rule', 'upload_rule_file'),
-    ('wazuh.sca', 'get_sca_checks'),
-    ('wazuh.sca', 'get_sca_list'),
-    ('wazuh.security', 'add_policy'),
-    ('wazuh.security', 'add_role'),
-    ('wazuh.security', 'add_rule'),
-    ('wazuh.security', 'create_user'),
-    ('wazuh.security', 'edit_run_as'),
-    ('wazuh.security', 'get_policies'),
-    ('wazuh.security', 'get_rbac_actions'),
-    ('wazuh.security', 'get_rbac_resources'),
-    ('wazuh.security', 'get_roles'),
-    ('wazuh.security', 'get_rules'),
-    ('wazuh.security', 'get_security_config'),
-    ('wazuh.security', 'get_user_me'),
-    ('wazuh.security', 'get_users'),
-    ('wazuh.security', 'remove_policies'),
-    ('wazuh.security', 'remove_role_policy'),
-    ('wazuh.security', 'remove_role_rule'),
-    ('wazuh.security', 'remove_roles'),
-    ('wazuh.security', 'remove_rules'),
-    ('wazuh.security', 'remove_user_role'),
-    ('wazuh.security', 'remove_users'),
-    ('wazuh.security', 'revoke_current_user_tokens'),
-    ('wazuh.security', 'set_role_policy'),
-    ('wazuh.security', 'set_role_rule'),
-    ('wazuh.security', 'set_user_role'),
-    ('wazuh.security', 'update_policy'),
-    ('wazuh.security', 'update_role'),
-    ('wazuh.security', 'update_rule'),
-    ('wazuh.security', 'update_security_config'),
-    ('wazuh.security', 'update_user'),
-    ('wazuh.security', 'wrapper_revoke_tokens'),
-    ('wazuh.stats', 'deprecated_get_daemons_stats'),
-    ('wazuh.stats', 'get_agents_component_stats_json'),
-    ('wazuh.stats', 'get_daemons_stats'),
-    ('wazuh.stats', 'get_daemons_stats_agents'),
-    ('wazuh.stats', 'hourly'),
-    ('wazuh.stats', 'totals'),
-    ('wazuh.stats', 'weekly'),
-    ('wazuh.syscheck', 'clear'),
-    ('wazuh.syscheck', 'files'),
-    ('wazuh.syscheck', 'last_scan'),
-    ('wazuh.syscheck', 'run'),
-    ('wazuh.syscollector', 'get_item_agent'),
-    ('wazuh.task', 'get_task_status'),
-}
+def _resolve_callable_target(module_path: str, func_name: str, qualname: str) -> Callable:
+    """Resolve encoded callable target (module function or class static method)."""
+    relative_mod = module_path.removeprefix(f"{module_path.split('.')[0]}")
+    module = import_module(relative_mod, package=module_path.split('.')[0])
+
+    qualname_parts = qualname.split('.') if qualname else [func_name]
+    classname = qualname_parts[0] if len(qualname_parts) > 1 else None
+
+    if classname is None:
+        return getattr(module, func_name)
+
+    return getattr(getattr(module, classname), func_name)
 
 
 def _resolve_allowed_dapi_callable(encoded_callable: Dict) -> Callable:
-    """Decode a DAPI callable only if it belongs to the strict allowlist."""
+    """Decode a DAPI callable only if it belongs to allowed packages and public symbols."""
     if '__wazuh__' in encoded_callable:
         raise exception.WazuhInternalError(1000,
                                            extra_message='Decoding bound callables from DAPI payload is not allowed',
@@ -191,25 +65,39 @@ def _resolve_allowed_dapi_callable(encoded_callable: Dict) -> Callable:
 
     module_path = encoded_callable.get('__module__')
     func_name = encoded_callable.get('__name__')
+    qualname = encoded_callable.get('__qualname__')
 
-    if not module_path or not func_name:
+    if not module_path or not func_name or not qualname:
         raise exception.WazuhInternalError(1000,
                                            extra_message='Invalid callable format in DAPI payload',
                                            cmd_error=True)
 
-    if (module_path, func_name) not in ALLOWED_DAPI_CALLABLES:
+    package_name = module_path.split('.')[0]
+    if package_name not in ALLOWED_DAPI_CALLABLE_PACKAGES:
+        raise exception.WazuhInternalError(1000,
+                                           extra_message=(
+                                               f"Decoding callable from module '{module_path}' is not allowed"
+                                           ),
+                                           cmd_error=True)
+
+    if func_name.startswith('_'):
         raise exception.WazuhInternalError(1000,
                                            extra_message=(
                                                f"Callable '{module_path}.{func_name}' is not allowed in DAPI payload"
                                            ),
                                            cmd_error=True)
 
-    module = import_module(module_path)
-    resolved = getattr(module, func_name)
+    resolved = _resolve_callable_target(module_path=module_path, func_name=func_name, qualname=qualname)
     if not callable(resolved):
         raise exception.WazuhInternalError(1000,
                                            extra_message=f"Decoded object '{module_path}.{func_name}' is not callable",
                                            cmd_error=True)
+
+    if resolved.__module__.split('.')[0] not in ALLOWED_DAPI_CALLABLE_PACKAGES:
+        raise exception.WazuhInternalError(1000,
+                                           extra_message=f"Decoded callable '{module_path}.{func_name}' is not allowed",
+                                           cmd_error=True)
+
     return resolved
 
 
