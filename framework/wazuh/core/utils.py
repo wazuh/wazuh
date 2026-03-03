@@ -968,14 +968,14 @@ def xml_to_dict(root, section_path: list):
         """Convert an XML element into a nested dictionary."""
         result = {}
 
-        for child in element:
-            if len(child):  # Has children
+        if len(element):
+            for child in element:
                 result[child.tag] = element_to_dict(child)
-            else:
-                result[child.tag] = {
-                    'attrib': child.attrib,
-                    'value': child.text.strip() if child.text else None
-                }
+        else:
+            result = {
+                'attrib': element.attrib,
+                'value': element.text.strip() if element.text else None
+            }
 
         return result
 
