@@ -549,7 +549,7 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-modulesd
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/rbac_control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-keystore
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/etc
+%dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc
 %attr(660, root, wazuh-manager) %ghost %{_localstatedir}/etc/wazuh-manager.conf
 %attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.cert
 %attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.key
@@ -557,7 +557,7 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/internal_options*
 %attr(640, root, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/local_internal_options.conf
 %attr(640, root, root) %{_localstatedir}/etc/localtime
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/etc/shared
+%dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc/shared
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/agent-template.conf
 %attr(660, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/shared/default/*
