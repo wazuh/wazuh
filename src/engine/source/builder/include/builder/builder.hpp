@@ -6,6 +6,7 @@
 #include <cmstore/icmstore.hpp>
 #include <defs/idefinitions.hpp>
 #include <geo/imanager.hpp>
+#include <kvdbioc/iManager.hpp>
 #include <kvdbstore/ikvdbmanager.hpp>
 #include <logpar/logpar.hpp>
 #include <schemf/ischema.hpp>
