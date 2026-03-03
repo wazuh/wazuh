@@ -87,8 +87,9 @@ STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd);
  * }
  * @param queue_fd File descriptor of the upgrade queue
  * @param state upgrade result state
+ * @param raw_code raw numeric code read from upgrade_result file
  * */
-STATIC void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state);
+STATIC void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state, unsigned int raw_code);
 
 void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config, const int enabled) {
 
@@ -244,26 +245,26 @@ STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd) {
         }
         fclose(result_file);
 
-        wm_upgrade_agent_state state;
-        for (state = 0; state < WM_UPGRADE_MAX_STATE; state++) {
-            // File can either be "0\n", "1\n" or "2\n", so we are expecting a positive match
-            if (strstr(buffer, upgrade_values[state]) != NULL) {
-                // Matched value, send message
-                wm_upgrade_agent_send_ack_message(queue_fd, state);
-                return true;
-            }
+        char *endptr;
+        unsigned long raw_code = strtoul(buffer, &endptr, 10);
+        if (endptr != buffer && (*endptr == '\0' || *endptr == '\n' || *endptr == '\r')) {
+            wm_upgrade_agent_state state = (raw_code < WM_UPGRADE_MAX_STATE)
+                                           ? (wm_upgrade_agent_state)raw_code
+                                           : WM_UPGRADE_FAILED;
+            wm_upgrade_agent_send_ack_message(queue_fd, state, (unsigned int)raw_code);
+            return true;
         }
     }
     return false;
 }
 
-STATIC void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state) {
+STATIC void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state, unsigned int raw_code) {
     int msg_delay = 1000000 / wm_max_eps;
     cJSON* root = cJSON_CreateObject();
     cJSON* parameters = cJSON_CreateObject();
 
     cJSON_AddStringToObject(root, task_manager_json_keys[WM_TASK_COMMAND], task_manager_commands_list[WM_TASK_UPGRADE_UPDATE_STATUS]);
-    cJSON_AddNumberToObject(parameters, task_manager_json_keys[WM_TASK_ERROR], atoi(upgrade_values[state]));
+    cJSON_AddNumberToObject(parameters, task_manager_json_keys[WM_TASK_ERROR], raw_code);
     cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], upgrade_messages[state]);
     cJSON_AddStringToObject(parameters,  task_manager_json_keys[WM_TASK_STATUS], task_statuses_map[state]);
     cJSON_AddItemToObject(root, task_manager_json_keys[WM_TASK_PARAMETERS], parameters);
