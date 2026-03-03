@@ -1636,6 +1636,89 @@ TEST_F(SCAEventHandlerTest, ValidateAndHandleStatefulMessage_ValidationFailure)
     }
 }
 
+TEST_F(SCAEventHandlerTest, ValidateAndHandleStatefulMessage_ValidComplianceAndMitre)
+{
+    auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
+
+    try
+    {
+        validatorFactory.initialize();
+    }
+    catch (const std::exception& e)
+    {
+        GTEST_SKIP() << "Schemas not available for validation test: " << e.what();
+    }
+
+    if (!validatorFactory.isInitialized() || !validatorFactory.getValidator("wazuh-states-sca"))
+    {
+        GTEST_SKIP() << "SCA schema validator not available";
+    }
+
+    nlohmann::json validEvent =
+    {
+        {"check",
+         {{"id", "check001"},
+          {"name", "Ensure SSH is configured"},
+          {"result", "passed"},
+          {"condition", "all"},
+          {"compliance", {{"pci_dss", {"7.1", "7.2"}}, {"nist_800_53", {"CM.6"}}}},
+          {"mitre", {{"tactic", {"TA0005"}}, {"technique", {"T1548"}}}},
+          {"rules", {"f:/etc/ssh/sshd_config -> r:PermitRootLogin no"}}}},
+        {"policy", {{"id", "unix_audit"}, {"name", "Unix Audit"}, {"file", "unix_audit.yml"}}},
+        {"state", {{"modified_at", "2025-01-01T00:00:00Z"}}},
+        {"checksum", {{"hash", {{"sha1", "abc123def456abc123def456abc123def456abc1"}}}}}
+    };
+
+    nlohmann::json checkData = {{"id", "check001"}, {"policy_id", "unix_audit"}};
+    std::vector<nlohmann::json> failedChecks;
+
+    bool result = handler->ValidateAndHandleStatefulMessage(validEvent, "test context", checkData, &failedChecks);
+
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(failedChecks.empty());
+}
+
+TEST_F(SCAEventHandlerTest, ValidateAndHandleStatefulMessage_MitreAttackInComplianceIsRejected)
+{
+    auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
+
+    try
+    {
+        validatorFactory.initialize();
+    }
+    catch (const std::exception& e)
+    {
+        GTEST_SKIP() << "Schemas not available for validation test: " << e.what();
+    }
+
+    if (!validatorFactory.isInitialized() || !validatorFactory.getValidator("wazuh-states-sca"))
+    {
+        GTEST_SKIP() << "SCA schema validator not available";
+    }
+
+    // Old format: mitre stored inside compliance as mitre_attack — not a valid key in new schema
+    nlohmann::json invalidEvent =
+    {
+        {"check",
+         {{"id", "check001"},
+          {"name", "Ensure SSH is configured"},
+          {"result", "passed"},
+          {"condition", "all"},
+          {"compliance", {{"mitre_attack", {{"tactic", {"TA0005"}}}}}}}},
+        {"policy", {{"id", "unix_audit"}, {"name", "Unix Audit"}, {"file", "unix_audit.yml"}}},
+        {"state", {{"modified_at", "2025-01-01T00:00:00Z"}}},
+        {"checksum", {{"hash", {{"sha1", "abc123def456abc123def456abc123def456abc1"}}}}}
+    };
+
+    nlohmann::json checkData = {{"id", "check001"}, {"policy_id", "unix_audit"}};
+    std::vector<nlohmann::json> failedChecks;
+
+    bool result = handler->ValidateAndHandleStatefulMessage(invalidEvent, "test context", checkData, &failedChecks);
+
+    EXPECT_FALSE(result);
+    EXPECT_FALSE(failedChecks.empty());
+}
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
