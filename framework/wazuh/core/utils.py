@@ -864,7 +864,7 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
 
 
 def check_remote_commands(new_conf: Element, original_conf: Element):
-    """Check if higher version agents are allowed.
+    """Check remote commands are allowed.
 
     Parameters
     ----------
@@ -875,8 +875,8 @@ def check_remote_commands(new_conf: Element, original_conf: Element):
 
     Raises
     ------
-    WazuhError(1127)
-        Raised if the agents allow_higher_versions setting is modified in the configuration to upload.
+    WazuhError(1124)
+        Raised if remote command settings are modified in the configuration to upload.
     """
 
     def _filter_remote_commands(commands: list, exceptions: list) -> list:
@@ -1069,7 +1069,7 @@ def check_agents_allow_higher_versions(new_conf: Element, original_conf: Element
     """
 
     AUTH_HIERACHY = ['ossec_config', 'auth', 'allow_higher_versions']
-    REMOTE_HIERACHY = ['ossec_config', 'remote', 'allow_higher_versions']
+    REMOTE_HIERACHY = ['ossec_config', 'remote', 'agents', 'allow_higher_versions']
     upload_configuration = configuration.api_conf['upload_configuration']
 
     if not upload_configuration['agents']['allow_higher_versions']['allow']:
