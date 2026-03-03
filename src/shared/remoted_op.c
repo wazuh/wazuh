@@ -81,8 +81,7 @@ void parse_uname_string (char *uname,
                 }
             }
         } else {
-            size_t str_tmp_len = strlen(str_tmp);
-            if (str_tmp_len > 0) str_tmp[str_tmp_len - 1] = '\0';
+            mwarn("Windows uname missing closing ']' in version field: '%s'", str_tmp);
         }
 
         // Get os_major
