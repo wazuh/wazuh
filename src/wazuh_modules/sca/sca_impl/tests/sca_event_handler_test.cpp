@@ -1656,14 +1656,17 @@ TEST_F(SCAEventHandlerTest, ValidateAndHandleStatefulMessage_ValidComplianceAndM
 
     nlohmann::json validEvent =
     {
-        {"check",
-         {{"id", "check001"},
-          {"name", "Ensure SSH is configured"},
-          {"result", "passed"},
-          {"condition", "all"},
-          {"compliance", {{"pci_dss", {"7.1", "7.2"}}, {"nist_800_53", {"CM.6"}}}},
-          {"mitre", {{"tactic", {"TA0005"}}, {"technique", {"T1548"}}}},
-          {"rules", {"f:/etc/ssh/sshd_config -> r:PermitRootLogin no"}}}},
+        {
+            "check",
+            {   {"id", "check001"},
+                {"name", "Ensure SSH is configured"},
+                {"result", "passed"},
+                {"condition", "all"},
+                {"compliance", {{"pci_dss", {"7.1", "7.2"}}, {"nist_800_53", {"CM.6"}}}},
+                {"mitre", {{"tactic", {"TA0005"}}, {"technique", {"T1548"}}}},
+                {"rules", {"f:/etc/ssh/sshd_config -> r:PermitRootLogin no"}}
+            }
+        },
         {"policy", {{"id", "unix_audit"}, {"name", "Unix Audit"}, {"file", "unix_audit.yml"}}},
         {"state", {{"modified_at", "2025-01-01T00:00:00Z"}}},
         {"checksum", {{"hash", {{"sha1", "abc123def456abc123def456abc123def456abc1"}}}}}
@@ -1699,12 +1702,15 @@ TEST_F(SCAEventHandlerTest, ValidateAndHandleStatefulMessage_MitreAttackInCompli
     // Old format: mitre stored inside compliance as mitre_attack — not a valid key in new schema
     nlohmann::json invalidEvent =
     {
-        {"check",
-         {{"id", "check001"},
-          {"name", "Ensure SSH is configured"},
-          {"result", "passed"},
-          {"condition", "all"},
-          {"compliance", {{"mitre_attack", {{"tactic", {"TA0005"}}}}}}}},
+        {
+            "check",
+            {   {"id", "check001"},
+                {"name", "Ensure SSH is configured"},
+                {"result", "passed"},
+                {"condition", "all"},
+                {"compliance", {{"mitre_attack", {{"tactic", {"TA0005"}}}}}}
+            }
+        },
         {"policy", {{"id", "unix_audit"}, {"name", "Unix Audit"}, {"file", "unix_audit.yml"}}},
         {"state", {{"modified_at", "2025-01-01T00:00:00Z"}}},
         {"checksum", {{"hash", {{"sha1", "abc123def456abc123def456abc123def456abc1"}}}}}
