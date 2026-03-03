@@ -1270,7 +1270,7 @@ void test_wm_agent_upgrade_validate_version_upgrade_older_version(void **state)
 
     int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
-    assert_int_equal(ret, WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT);
+    assert_int_equal(ret, WM_UPGRADE_NEW_VERSION_LESS_OR_EQUAL_THAN_CURRENT);
     assert_string_equal(task->wpk_version, "v4.14.0");
 }
 

@@ -172,7 +172,7 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *pla
                         return_code = WM_UPGRADE_INTERMEDIATE_VERSION_REQUIRED;
                     } else if (!upgrade_task->force_upgrade) {
                         if (compare_wazuh_versions(tmp_agent_version, upgrade_task->wpk_version, true) >= 0) {
-                            return_code = WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT;
+                            return_code = WM_UPGRADE_NEW_VERSION_LESS_OR_EQUAL_THAN_CURRENT;
                         } else if (compare_wazuh_versions(upgrade_task->wpk_version, manager_version, true) > 0) {
                             return_code = WM_UPGRADE_NEW_VERSION_GREATER_MASTER;
                         }
