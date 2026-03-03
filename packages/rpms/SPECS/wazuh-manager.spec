@@ -578,6 +578,8 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/enrichment
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/enrichment/geo
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/enrichment/geo/0
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/enrichment/ioc
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/enrichment/ioc/0
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/outputs
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/outputs/*.yml
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework

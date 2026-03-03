@@ -44,6 +44,7 @@ add_library(builder STATIC
 	# Enrichment
 	${SRC_DIR}/builders/enrichment/enrichment.cpp
 	${SRC_DIR}/builders/enrichment/geo.cpp
+	${SRC_DIR}/builders/enrichment/ioc.cpp
 
     # Map
     ${SRC_DIR}/builders/opmap/map.cpp
@@ -72,6 +73,7 @@ target_link_libraries(builder
     schemf::ischema
     base
     kvdbstore::ikvdb
+	kvdbioc::ikvdb
 	store::istore
     geo::igeo
     streamlogger::istreamlogger

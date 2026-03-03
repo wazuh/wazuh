@@ -43,6 +43,8 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/wazuh-manager/engine/store/enrichment,wazuh-manager,wazuh-manager,770,directory,drwxrwx---,,
 /var/wazuh-manager/engine/store/enrichment/geo,wazuh-manager,wazuh-manager,770,directory,drwxrwx---,,
 /var/wazuh-manager/engine/store/enrichment/geo/0,wazuh-manager,wazuh-manager,660,file,-rw-rw----,,
+/var/wazuh-manager/engine/store/enrichment/ioc,wazuh-manager,wazuh-manager,770,directory,drwxrwx---,,
+/var/wazuh-manager/engine/store/enrichment/ioc/0,wazuh-manager,wazuh-manager,660,file,-rw-rw----,,
 /var/wazuh-manager/engine/store/geo,root,root,755,directory,drwxr-xr-x,,
 /var/wazuh-manager/engine/store/geo/mmdb,root,wazuh-manager,770,directory,drwxrwx---,,
 /var/wazuh-manager/engine/store/geo/mmdb/0,wazuh-manager,wazuh-manager,660,file,-rw-rw----,,
