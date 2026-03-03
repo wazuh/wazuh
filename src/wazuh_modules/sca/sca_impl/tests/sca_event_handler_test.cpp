@@ -294,7 +294,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput1)
                         {"rationale", "Security best practices"},
                         {"status", "passed"},
                         {"condition", "all"},
-                        {"compliance", {"cis:1.1", "pci_dss:2.2"}},
+                        {"compliance", {{"pci_dss", {"7.1"}}, {"gdpr", {"32"}}}},
                         {"remediation", "Enable the firewall service"},
                         {"refs", "Ref1, Ref2"},
                         {"rules", {"Rule1", "Rule2"}}
@@ -356,7 +356,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput2)
                 {"rationale", "Security best practices"},
                 {"status", "passed"},
                 {"condition", "all"},
-                {"compliance", {"cis:1.1", "pci_dss:2.2"}},
+                {"compliance", {{"pci_dss", {"7.1"}}, {"gdpr", {"32"}}}},
                 {"remediation", "Enable the firewall service"},
                 {"refs", "Ref1, Ref2"},
                 {"rules", {"Rule1", "Rule2"}}
@@ -411,7 +411,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_WithVersion)
                 {"rationale", "Ensures version is properly tracked"},
                 {"status", "passed"},
                 {"condition", "all"},
-                {"compliance", {"cis:1.1"}},
+                {"compliance", {{"pci_dss", {"7.1"}}}},
                 {"remediation", "No remediation needed"},
                 {"refs", "Ref1, Ref2"},
                 {"rules", {"Rule1"}},
@@ -516,7 +516,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput1)
                     {   {"checksum", "abc123"},
                         {"id", "chk1"},
                         {"result", "passed"},
-                        {"compliance", {"cis:1.1", "cis_csc:13", "pci_dss:2.2", "tsc:CC6"}},
+                        {"compliance", {{"pci_dss", {"2.2"}}, {"tsc", {"CC6"}}}},
                         {"condition", "all"},
                         {"description", "Description of cramfs filesystem."},
                         {"rationale", "Disable unneeded filesystem types to reduce attack surface."},
@@ -585,7 +585,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput2)
             {   {"checksum", "abc123"},
                 {"id", "chk1"},
                 {"result", "failed"},
-                {"compliance", {"cis:1.2", "pci_dss:1.1"}},
+                {"compliance", {{"pci_dss", {"1.1"}}, {"gdpr", {"32"}}}},
                 {"condition", "any"},
                 {"description", "Short check description"},
                 {"rationale", "Minimize risk"},
@@ -714,7 +714,7 @@ TEST_F(SCAEventHandlerTest, NormalizeCheck)
 {
     nlohmann::json check = {{"id", "1234"},
         {"refs", "ref1, ref2"},
-        {"compliance", "cis:1.1.1, cis:1.1.2"},
+        {"compliance", R"({"pci_dss":["7.1","7.2"]})"},
         {"rules", "rule1, rule2"},
         {"policy_id", "my_policy"}
     };
@@ -728,8 +728,22 @@ TEST_F(SCAEventHandlerTest, NormalizeCheck)
     ASSERT_TRUE(check.contains("rules"));
 
     EXPECT_EQ(check["references"], nlohmann::json::array({"ref1", "ref2"}));
-    EXPECT_EQ(check["compliance"], nlohmann::json::array({"cis:1.1.1", "cis:1.1.2"}));
+    EXPECT_TRUE(check["compliance"].is_object());
+    EXPECT_EQ(check["compliance"]["pci_dss"], nlohmann::json({"7.1", "7.2"}));
     EXPECT_EQ(check["rules"], nlohmann::json::array({"rule1", "rule2"}));
+}
+
+TEST_F(SCAEventHandlerTest, NormalizeCheck_InvalidComplianceJson)
+{
+    nlohmann::json check = {{"id", "1234"},
+        {"compliance", "not valid json"},
+        {"rules", "rule1"}
+    };
+
+    handler->NormalizeCheck(check);
+
+    EXPECT_FALSE(check.contains("compliance"));
+    ASSERT_TRUE(check.contains("rules"));
 }
 
 TEST_F(SCAEventHandlerTest, NormalizePolicy)

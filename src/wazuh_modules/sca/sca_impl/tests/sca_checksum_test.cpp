@@ -18,7 +18,7 @@ class SCAChecksumIntegrationTest : public ::testing::Test
                 {"remediation", "Fix any integration issues"},
                 {"refs", "https://integration.test"},
                 {"condition", "all"},
-                {"compliance", "TEST_STANDARD"},
+                {"compliance", R"({"pci_dss":["3.2.1"]})"},
                 {"rules", "file:/etc/test -> exists"}
             };
         }
@@ -40,7 +40,7 @@ class SCAChecksumTest : public ::testing::Test
                 {"remediation", "Steps to remediate the issue"},
                 {"refs", "https://example.com/ref1,https://example.com/ref2"},
                 {"condition", "all"},
-                {"compliance", "PCI_DSS_3.2.1"},
+                {"compliance", R"({"pci_dss":["3.2.1"]})"},
                 {"mitre", "{\"tactic\":[\"TA0005\"],\"technique\":[\"T1548\"]}"},
                 {"rules", "file:$SSH_CONFIG -> exists"}
             };
@@ -89,7 +89,7 @@ TEST_F(SCAChecksumTest, CalculateChecksumFromFields_ValidData_ReturnsNonEmptyStr
                                                   "Steps to remediate the issue",
                                                   "https://example.com/ref1,https://example.com/ref2",
                                                   "all",
-                                                  "PCI_DSS_3.2.1",
+                                                  R"({"pci_dss":["3.2.1"]})",
                                                   "{\"tactic\":[\"TA0005\"],\"technique\":[\"T1548\"]}",
                                                   "file:$SSH_CONFIG -> exists",
                                                   "");
@@ -190,7 +190,7 @@ TEST_F(SCAChecksumTest, SpecialCharacters_HandledCorrectly)
         {"remediation", "Remediation with unicode: αβγδε"},
         {"refs", "ref1;ref2,ref3|ref4"},
         {"condition", "any || all"},
-        {"compliance", "PCI_DSS_3.2.1 && NIST_800_53"},
+        {"compliance", R"({"pci_dss":["3.2.1"],"nist_800_53":["SC-13"]})"},
         {"rules", "command[bash] -> 'echo test' contains 'test'"}
     };
 
