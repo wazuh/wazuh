@@ -21,7 +21,7 @@ env:
 
 jobs:
   prepare:
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     outputs:
       project: ${{ steps.vars.outputs.PROJECT }}
       jobs: ${{ steps.vars.outputs.JOBS }}
@@ -54,7 +54,7 @@ jobs:
           echo "DESCRIPTION=$DESCRIPTION" >> $GITHUB_OUTPUT
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     needs: prepare
     permissions:
       contents: read
@@ -97,7 +97,7 @@ jobs:
           path: wazuh.tgz
 
   upload:
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     needs: [prepare, build]
     steps:
       - name: Checkout code

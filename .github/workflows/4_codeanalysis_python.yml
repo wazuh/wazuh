@@ -13,7 +13,7 @@ env:
 
 jobs:
   bandit-scan:
-    runs-on: ubuntu-24.04
+    runs-on: wz-linux-amd64
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4

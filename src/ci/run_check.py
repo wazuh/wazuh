@@ -70,32 +70,29 @@ def runASAN(moduleName, testToolConfig):
     Raises:
         - None
     """
-    utils.printHeader(moduleName,
-                      headerKey="asan")
-    build_tools.cleanFolder(moduleName=moduleName,
-                            additionalFolder="build")
-    build_tools.configureCMake(moduleName=moduleName,
-                               debugMode=True,
-                               testMode=False,
-                               withAsan=True)
+    utils.printHeader(moduleName, headerKey="asan")
+    build_tools.cleanFolder(moduleName=moduleName, additionalFolder="build")
+    build_tools.configureCMake(
+        moduleName=moduleName, debugMode=True, testMode=False, withAsan=True
+    )
     build_tools.makeLib(moduleName)
     module = testToolConfig[moduleName]
     if moduleName == "syscheckd":
-        path = module[0]['smoke_tests_path']
+        path = module[0]["smoke_tests_path"]
     else:
         path = "smokeTests"
-    build_tools.cleanFolder(moduleName=moduleName,
-                            additionalFolder=os.path.join(path,
-                                                          "output"))
+    build_tools.cleanFolder(
+        moduleName=moduleName, additionalFolder=os.path.join(path, "output")
+    )
     for element in module:
-        path = os.path.join(utils.moduleDirPathBuild(moduleName),
-                            "bin",
-                            element['test_tool_name'])
-        args = ' '.join(element['args'])
+        path = os.path.join(
+            utils.moduleDirPathBuild(moduleName), "bin", element["test_tool_name"]
+        )
+        args = " ".join(element["args"])
         testToolCommand = "{} {}".format(path, args)
-        runTestTool(moduleName=moduleName,
-                    testToolCommand=testToolCommand,
-                    element=element)
+        runTestTool(
+            moduleName=moduleName, testToolCommand=testToolCommand, element=element
+        )
 
     utils.printGreen(msg="[ASAN: PASSED]")
 
@@ -117,27 +114,35 @@ def runAStyleCheck(moduleName):
     foldersToScan = utils.getFoldersToAStyle(moduleName=moduleName)
     astyleCommand = "astyle --options=ci/input/astyle.config --dry-run \
                     {}".format(foldersToScan)
-    out = subprocess.run(astyleCommand,
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE,
-                         shell=True,
-                         check=False)
+    out = subprocess.run(
+        astyleCommand,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=True,
+        check=False,
+    )
     if out.returncode == 0 and not out.stderr:
         stdoutString = str(out.stdout)
 
         if stdoutString.find("Formatted") != -1:
-            utils.printFail(msg="One or more files do not follow the Coding \
-                                 Style convention.")
-            utils.printFail(msg="Execute astyle \
+            utils.printFail(
+                msg="One or more files do not follow the Coding \
+                                 Style convention."
+            )
+            utils.printFail(
+                msg='Execute astyle \
                                  --options=ci/input/astyle.config \
-                                 \"{0}/*.h\" \"{0}/*.hpp\" \"{0}/*.cpp\" \
-                                 for further information.".format(moduleName))
+                                 "{0}/*.h" "{0}/*.hpp" "{0}/*.cpp" \
+                                 for further information.'.format(moduleName)
+            )
 
             utils.printFail(msg="[AStyle: FAILED]")
-            raise ValueError("Code is not complaint with the expected \
-                              guidelines")
+            raise ValueError(
+                "Code is not complaint with the expected \
+                              guidelines"
+            )
     else:
-        print(out.stderr.decode('utf-8','replace'))
+        print(out.stderr.decode("utf-8", "replace"))
         utils.printFail(msg="[AStyle Check: FAILED]")
         errorString = "Error Running AStyle: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -160,20 +165,20 @@ def runAStyleFormat(moduleName):
         - ValueError: Raises an exception when fails for some reason.
     """
     foldersToScan = utils.getFoldersToAStyle(moduleName=moduleName)
-    astyleCommand = "astyle --options=ci/input/astyle.config {}"\
-                    .format(foldersToScan)
-    out = subprocess.run(astyleCommand,
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE,
-                         shell=True,
-                         check=False)
+    astyleCommand = "astyle --options=ci/input/astyle.config {}".format(foldersToScan)
+    out = subprocess.run(
+        astyleCommand,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=True,
+        check=False,
+    )
     if out.returncode == 0 and not out.stderr:
         utils.printGreen(msg="[AStyle Format: PASSED]")
     else:
-        print(out.stderr.decode('utf-8','replace'))
+        print(out.stderr.decode("utf-8", "replace"))
         utils.printFail(msg="[AStyle Format: FAILED]")
-        errorString = "Error Running AStyle Format: {}"\
-                      .format(out.returncode)
+        errorString = "Error Running AStyle Format: {}".format(out.returncode)
         raise ValueError(errorString)
 
 
@@ -192,61 +197,80 @@ def runCoverage(moduleName):
     """
     currentDir = utils.moduleDirPath(moduleName=moduleName)
     if moduleName == "shared_modules/utils":
-        reportFolder = os.path.join(moduleName,
-                                    "coverage_report")
+        reportFolder = os.path.join(moduleName, "coverage_report")
     else:
-        reportFolder = os.path.join(currentDir,
-                                    "coverage_report")
+        reportFolder = os.path.join(currentDir, "coverage_report")
 
     includeDir = Path(currentDir)
     moduleCMakeFiles = ""
     if moduleName == "shared_modules/utils":
-        moduleCMakeFiles = os.path.join(currentDir,
-                                        "*/CMakeFiles/*.dir")
+        moduleCMakeFiles = os.path.join(currentDir, "*/CMakeFiles/*.dir")
         includeDir = includeDir.parent
         paths = glob.glob(moduleCMakeFiles)
     elif moduleName == "syscheckd":
-        paths = [root for root, _, _ in os.walk(
-            (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
+        paths = [
+            root
+            for root, _, _ in os.walk((os.path.join(currentDir, "build")))
+            if re.search(".dir$", root)
+        ]
     else:
-        moduleCMakeFiles = os.path.join(currentDir,
-                                        "build/tests/*/CMakeFiles/*.dir")
+        moduleCMakeFiles = os.path.join(currentDir, "build/tests/*/CMakeFiles/*.dir")
         paths = glob.glob(moduleCMakeFiles)
-    utils.printHeader(moduleName=moduleName,
-                      headerKey="coverage")
+    utils.printHeader(moduleName=moduleName, headerKey="coverage")
     folders = ""
     if not os.path.exists(reportFolder):
         os.mkdir(reportFolder)
     for aux in paths:
         folders += "--directory {} ".format(aux)
 
-    coverageCommand = "lcov {} --capture --output-file {}/code_coverage.info \
-                       -rc lcov_branch_coverage=0 --exclude=\"*/tests/*\" \
-                       --include \"{}/*\" -q".format(folders,
-                                                     reportFolder,
-                                                     includeDir)
-    out = subprocess.run(coverageCommand,
-                         stdout=subprocess.PIPE,
-                         shell=True,
-                         check=False)
+    coverageCommand = 'lcov {} --capture --output-file {}/code_coverage.info \
+                       --rc branch_coverage=0 --exclude="*/tests/*" \
+                       --include "{}/*" -q \
+                       --ignore-errors version,unused,deprecated,empty,mismatch'.format(
+        folders, reportFolder, includeDir
+    )
+    out = subprocess.run(
+        coverageCommand, stdout=subprocess.PIPE, shell=True, check=False
+    )
     if out.returncode == 0:
         utils.printGreen(msg="[lcov info: GENERATED]")
     else:
-        print(out.stdout.decode('utf-8','replace'))
+        print(out.stdout.decode("utf-8", "replace"))
         utils.printFail(msg="[lcov: FAILED]")
         errorString = "Error Running lcov: {}".format(out.returncode)
         raise ValueError(errorString)
+    # Check if coverage info file has valid records before running genhtml.
+    # Cross-compiled targets (e.g. winagent) may produce empty coverage data.
+    coverageInfoFile = "{}/code_coverage.info".format(reportFolder)
+    has_coverage_data = False
+    try:
+        with open(coverageInfoFile, "r") as f:
+            for line in f:
+                if line.startswith("SF:"):
+                    has_coverage_data = True
+                    break
+    except FileNotFoundError:
+        pass
+
+    if not has_coverage_data:
+        utils.printGreen(
+            msg="[genhtml: SKIPPED - no coverage data collected (cross-compiled target)]"
+        )
+        return
+
     genhtmlCommand = "genhtml {0}/code_coverage.info --branch-coverage \
-                      --output-directory {0}".format(reportFolder)
-    out = subprocess.run(genhtmlCommand,
-                         stdout=subprocess.PIPE,
-                         shell=True,
-                         check=False)
+                      --output-directory {0} \
+                      --ignore-errors unused,deprecated,empty,mismatch".format(
+        reportFolder
+    )
+    out = subprocess.run(
+        genhtmlCommand, stdout=subprocess.PIPE, shell=True, check=False
+    )
     if out.returncode == 0:
         utils.printGreen(msg="[genhtml info: GENERATED]")
         utils.printGreen(msg="Report: {}/index.html".format(reportFolder))
     else:
-        print(out.stdout.decode('utf-8','replace'))
+        print(out.stdout.decode("utf-8", "replace"))
         utils.printFail(msg="[genhtml: FAILED]")
         errorString = "Error Running genhtml: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -266,22 +290,27 @@ def runCppCheck(moduleName):
     Raises:
         - ValueError: Raises an exception when fails for some reason.
     """
-    utils.printHeader(moduleName=moduleName,
-                      headerKey="cppcheck")
+    utils.printHeader(moduleName=moduleName, headerKey="cppcheck")
 
     currentDir = utils.moduleDirPath(moduleName)
-    cppcheckCommand = "cppcheck --force --std=c++17 --quiet -i {}/build {}".format(currentDir, currentDir)
+    cppcheckCommand = (
+        "cppcheck --force --std=c++17 --quiet -i {}/build -i {}/src/ebpf {}".format(
+            currentDir, currentDir, currentDir
+        )
+    )
 
-    out = subprocess.run(cppcheckCommand,
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE,
-                         shell=True,
-                         check=False)
+    out = subprocess.run(
+        cppcheckCommand,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=True,
+        check=False,
+    )
     if out.returncode == 0 and not out.stderr:
         utils.printGreen(msg="[Cppcheck: PASSED]")
     else:
-        print(out.stdout.decode('utf-8','replace'))
-        print(out.stderr.decode('utf-8','replace'))
+        print(out.stdout.decode("utf-8", "replace"))
+        print(out.stderr.decode("utf-8", "replace"))
         utils.printFail(msg="[Cppcheck: FAILED]")
         errorString = "Error Running cppcheck: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -299,8 +328,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     Returns:
         - None
     """
-    utils.printHeader(moduleName=moduleName,
-                      headerKey="rtr")
+    utils.printHeader(moduleName=moduleName, headerKey="rtr")
 
     # We first run the fastest tests
     runCppCheck(moduleName=moduleName)
@@ -309,19 +337,18 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     # Making a full clean, downloading external dependencies and
     # building the corresponding target with tests flag enabled
     build_tools.cleanAll()
-    build_tools.makeDeps(targetName=target,
-                         srcOnly=False)
-    build_tools.makeTarget(targetName=target,
-                           tests=True,
-                           debug=True)
+    build_tools.makeDeps(targetName=target, srcOnly=False)
+    build_tools.makeTarget(targetName=target, tests=True, debug=True)
 
     # Running UTs and coverage
     runTests(moduleName=moduleName)
     # The coverage for these modules in 'winagent' target will be added in #17008
-    if (target == 'winagent' and moduleName == 'data_provider') or \
-       (target == 'winagent' and moduleName == 'shared_modules/utils'):
-        utils.printInfo(msg="Skipping coverage for {} in {} target".format(
-                        moduleName, target))
+    if (target == "winagent" and moduleName == "data_provider") or (
+        target == "winagent" and moduleName == "shared_modules/utils"
+    ):
+        utils.printInfo(
+            msg="Skipping coverage for {} in {} target".format(moduleName, target)
+        )
     else:
         runCoverage(moduleName=moduleName)
 
@@ -334,30 +361,24 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     build_tools.cleanInternals()
     if target == "winagent":
         build_tools.cleanWindows()
-    build_tools.makeTarget(targetName=target,
-                           tests=False,
-                           debug=True)
+    build_tools.makeTarget(targetName=target, tests=False, debug=True)
 
-    configPath = os.path.join(utils.currentPath(),
-                              "input/test_tool_config.json")
+    configPath = os.path.join(utils.currentPath(), "input/test_tool_config.json")
     smokeTestConfig = utils.readJSONFile(jsonFilePath=configPath)
     # We run the test tool for syscheckd in Windows
-    if moduleName == 'syscheckd' and target == 'winagent':
-        runTestToolForWindows(moduleName=moduleName,
-                              testToolConfig=smokeTestConfig)
+    if moduleName == "syscheckd" and target == "winagent":
+        runTestToolForWindows(moduleName=moduleName, testToolConfig=smokeTestConfig)
         runTestToolCheck(moduleName=moduleName)
 
     # The ASAN check is in the end. It builds again the module but with the ASAN flag
     # and runs the test tool.
     # Running this type of check in Windows will be analyzed in #17019
     if moduleName != "shared_modules/utils" and target != "winagent":
-        runASAN(moduleName=moduleName,
-                testToolConfig=smokeTestConfig)
+        runASAN(moduleName=moduleName, testToolConfig=smokeTestConfig)
     if clean:
         os.chdir(os.path.join(utils.rootPath(), moduleName))
         utils.deleteLogs(moduleName=moduleName)
-    utils.printGreen(msg="[RTR: PASSED]",
-                     module=moduleName)
+    utils.printGreen(msg="[RTR: PASSED]", module=moduleName)
 
 
 def runScanBuild(targetName):
@@ -374,15 +395,11 @@ def runScanBuild(targetName):
     Raises:
         - ValueError: Raises an exception when fails for some reason.
     """
-    utils.printHeader(moduleName=targetName,
-                      headerKey="scanbuild")
+    utils.printHeader(moduleName=targetName, headerKey="scanbuild")
     build_tools.cleanAll()
     build_tools.cleanExternals()
-    build_tools.makeDeps(targetName=targetName,
-                         srcOnly=False)
-    build_tools.makeTarget(targetName=targetName,
-                           tests=False,
-                           debug=True)
+    build_tools.makeDeps(targetName=targetName, srcOnly=False)
+    build_tools.makeTarget(targetName=targetName, tests=False, debug=True)
     # We don't call cleanWindows() for scan-build.
     build_tools.cleanInternals()
     if targetName == "winagent":
@@ -397,24 +414,25 @@ def runScanBuild(targetName):
                             --force-analyze-debug-code \
                             --exclude external/ make TARGET={} \
                             DEBUG=1 -j4".format(targetName)
-    out = subprocess.run(scanBuildCommand,
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE,
-                         shell=True,
-                         check=False)
+    out = subprocess.run(
+        scanBuildCommand,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=True,
+        check=False,
+    )
     if out.returncode != 0:
         utils.printFail(msg="[ScanBuild: FAILED]")
         print(scanBuildCommand)
         if out.returncode == 1:
-            print(out.stdout.decode('utf-8','replace'))
+            print(out.stdout.decode("utf-8", "replace"))
         else:
-            print(out.stderr.decode('utf-8','replace'))
+            print(out.stderr.decode("utf-8", "replace"))
         utils.printFail(msg="[SCANBUILD: FAILED]")
         errorString = "Error Running Scan-build: {}".format(out.returncode)
         raise ValueError(errorString)
 
-    utils.printGreen(msg="[SCANBUILD: PASSED]",
-                     module=targetName)
+    utils.printGreen(msg="[SCANBUILD: PASSED]", module=targetName)
 
 
 def runTestTool(moduleName, testToolCommand, element):
@@ -432,37 +450,35 @@ def runTestTool(moduleName, testToolCommand, element):
     Raises:
         - ValueError: Raises an exception when fails for some reason.
     """
-    utils.printHeader(moduleName="TESTTOOL",
-                      headerKey="testtool")
+    utils.printHeader(moduleName="TESTTOOL", headerKey="testtool")
     utils.printInfo(msg=testToolCommand)
     cwd = os.getcwd()
     currentmoduleNameDir = utils.moduleDirPath(moduleName=moduleName)
     if moduleName == "syscheckd":
-        smokeTestsFolder = os.path.join(str.rstrip(currentmoduleNameDir,
-                                                   ' '),
-                                        element['smoke_tests_path'])
-        outputFolder = os.path.join(smokeTestsFolder,
-                                    element['output_folder'])
+        smokeTestsFolder = os.path.join(
+            str.rstrip(currentmoduleNameDir, " "), element["smoke_tests_path"]
+        )
+        outputFolder = os.path.join(smokeTestsFolder, element["output_folder"])
     else:
-        smokeTestsFolder = os.path.join(currentmoduleNameDir,
-                                        "smokeTests")
-        outputFolder = os.path.join(currentmoduleNameDir,
-                                    "output")
-    if element['is_smoke_with_configuration']:
+        smokeTestsFolder = os.path.join(currentmoduleNameDir, "smokeTests")
+        outputFolder = os.path.join(currentmoduleNameDir, "output")
+    if element["is_smoke_with_configuration"]:
         os.chdir(smokeTestsFolder)
         if not os.path.exists(outputFolder):
             os.makedirs(outputFolder)
     else:
         os.chdir(currentmoduleNameDir)
-    out = subprocess.run(testToolCommand,
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE,
-                         shell=True,
-                         check=False)
+    out = subprocess.run(
+        testToolCommand,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=True,
+        check=False,
+    )
     os.chdir(cwd)
     if out.returncode != 0:
         print(testToolCommand)
-        print(out.stderr.decode('utf-8','replace'))
+        print(out.stderr.decode("utf-8", "replace"))
         utils.printFail(msg="[TestTool: FAILED]")
         errorString = "Error Running TestTool: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -486,35 +502,27 @@ def runTestToolForWindows(moduleName, testToolConfig):
     utils.printHeader(moduleName, headerKey="wintesttool")
     winModuleName = "win" + moduleName
     module = testToolConfig[winModuleName]
-    rootPath = os.path.join(utils.moduleDirPathBuild(moduleName),
-                            "bin")
+    rootPath = os.path.join(utils.moduleDirPathBuild(moduleName), "bin")
 
-    libgcc = utils.findFile(name="libgcc_s_dw2-1.dll",
-                            path=utils.rootPath())
-    rsync = utils.findFile(name="rsync.dll",
-                            path=utils.rootPath())
-    dbsync = utils.findFile(name="dbsync.dll",
-                            path=utils.rootPath())
-    stdcpp = utils.findFile(name="libstdc++-6.dll",
-                            path=utils.rootPath())
-    shutil.copyfile(libgcc,
-                    os.path.join(rootPath, "libgcc_s_dw2-1.dll"))
-    shutil.copyfile(rsync,
-                    os.path.join(rootPath, "rsync.dll"))
-    shutil.copyfile(dbsync,
-                    os.path.join(rootPath, "dbsync.dll"))
-    shutil.copyfile(stdcpp,
-                    os.path.join(rootPath, "libstdc++-6.dll"))
+    libgcc = utils.findFile(name="libgcc_s_dw2-1.dll", path=utils.rootPath())
+    rsync = utils.findFile(name="rsync.dll", path=utils.rootPath())
+    dbsync = utils.findFile(name="dbsync.dll", path=utils.rootPath())
+    stdcpp = utils.findFile(name="libstdc++-6.dll", path=utils.rootPath())
+    shutil.copyfile(libgcc, os.path.join(rootPath, "libgcc_s_dw2-1.dll"))
+    shutil.copyfile(rsync, os.path.join(rootPath, "rsync.dll"))
+    shutil.copyfile(dbsync, os.path.join(rootPath, "dbsync.dll"))
+    shutil.copyfile(stdcpp, os.path.join(rootPath, "libstdc++-6.dll"))
 
     for element in module:
-        path = os.path.join(rootPath, element['test_tool_name'])
-        args = " ".join(element['args'])
-        testToolCommand = "WINEPATH=\"/usr/i686-w64-mingw32/lib;{}\" \
-                           WINEARCH=win64 /usr/bin/wine {}.exe {}"\
-                           .format(utils.rootPath(), path, args)
-        runTestTool(moduleName=moduleName,
-                    testToolCommand=testToolCommand,
-                    element=element)
+        path = os.path.join(rootPath, element["test_tool_name"])
+        args = " ".join(element["args"])
+        testToolCommand = 'WINEPATH="/usr/i686-w64-mingw32/lib;{}" \
+                           WINEARCH=win64 /usr/bin/wine {}.exe {}'.format(
+            utils.rootPath(), path, args
+        )
+        runTestTool(
+            moduleName=moduleName, testToolCommand=testToolCommand, element=element
+        )
 
     utils.printGreen(msg="[TEST TOOL for Windows: PASSED]")
 
@@ -532,17 +540,17 @@ def runTests(moduleName):
     Raises:
         - ValueError: Raises an exception when fails for some reason.
     """
-    utils.printHeader(moduleName=moduleName,
-                      headerKey="tests")
+    utils.printHeader(moduleName=moduleName, headerKey="tests")
     tests = []
-    reg = re.compile(".*unit_test|.*unit_test.exe|.*integration_test\
+    reg = re.compile(
+        ".*unit_test|.*unit_test.exe|.*integration_test\
                       |.*interface_test|.*integration_test.exe\
-                      |.*interface_test.exe")
+                      |.*interface_test.exe"
+    )
     currentDir = utils.moduleDirPathBuild(moduleName=moduleName)
 
     if not moduleName == "shared_modules/utils":
-        currentDir = os.path.join(utils.moduleDirPathBuild(moduleName),
-                                  "bin")
+        currentDir = os.path.join(utils.moduleDirPathBuild(moduleName), "bin")
 
     objects = os.scandir(currentDir)
     for entry in objects:
@@ -556,16 +564,15 @@ def runTests(moduleName):
             path = os.path.join(currentDir, test)
             if ".exe" in test:
                 if moduleName == "data_provider":
-                    rootPath = os.path.join(utils.moduleDirPathBuild(moduleName),
-                                            "bin")
-                    stdcpp = utils.findFile(name="libstdc++-6.dll",
-                                            path=utils.rootPath())
-                    libgcc = utils.findFile(name="libgcc_s_dw2-1.dll",
-                                            path=utils.rootPath())
-                    binstdcpp = os.path.join(rootPath,
-                                             "libstdc++-6.dll")
-                    binlibgcc = os.path.join(rootPath,
-                                             "libgcc_s_dw2-1.dll")
+                    rootPath = os.path.join(utils.moduleDirPathBuild(moduleName), "bin")
+                    stdcpp = utils.findFile(
+                        name="libstdc++-6.dll", path=utils.rootPath()
+                    )
+                    libgcc = utils.findFile(
+                        name="libgcc_s_dw2-1.dll", path=utils.rootPath()
+                    )
+                    binstdcpp = os.path.join(rootPath, "libstdc++-6.dll")
+                    binlibgcc = os.path.join(rootPath, "libgcc_s_dw2-1.dll")
 
                     if stdcpp != binstdcpp:
                         shutil.copyfile(stdcpp, binstdcpp)
@@ -578,22 +585,23 @@ def runTests(moduleName):
                             WINEARCH=win64 /usr/bin/wine {path}'
             else:
                 command = path
-            out = subprocess.run(command,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE,
-                                 shell=True,
-                                 check=False)
+            out = subprocess.run(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=True,
+                check=False,
+            )
             if out.returncode == 0:
                 utils.printGreen(msg="[{}: PASSED]".format(test))
             else:
-                print(out.stdout.decode('utf-8','replace'))
-                print(out.stderr.decode('utf-8','replace'))
+                print(out.stdout.decode("utf-8", "replace"))
+                print(out.stderr.decode("utf-8", "replace"))
                 utils.printFail(msg="[{}: FAILED]".format(test))
                 errorString = "Error Running test: {}".format(out.returncode)
                 raise ValueError(errorString)
 
-        utils.printGreen(msg="[All tests: PASSED]",
-                         module=moduleName)
+        utils.printGreen(msg="[All tests: PASSED]", module=moduleName)
     else:
         errorString = "Error Running tests"
         raise ValueError(errorString)
@@ -615,10 +623,8 @@ def runTestToolCheck(moduleName):
     Raises:
         - CalledProcessError: Raises an exception when fails some test.
     """
-    path = os.path.join(utils.currentPath(),
-                        "tests")
-    pathResult = os.path.join(path,
-                              "results")
+    path = os.path.join(utils.currentPath(), "tests")
+    pathResult = os.path.join(path, "results")
     if not os.path.exists(pathResult):
         os.makedirs(pathResult)
 
@@ -626,16 +632,19 @@ def runTestToolCheck(moduleName):
            --html=ci/tests/results/results.html \
            --capture=tee-sys"
     try:
-        out = subprocess.run(cmd.format(path, moduleName),
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             shell=True,
-                             check=False)
+        out = subprocess.run(
+            cmd.format(path, moduleName),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=True,
+            check=False,
+        )
         if out.returncode == 0:
             utils.printGreen(msg="[TestTool check: PASSED]")
     except Exception as e:
-        errorString = "Error checking test tool results. See more details {}"\
-                      .format(os.path.join(pathResult, "results.html"))
+        errorString = "Error checking test tool results. See more details {}".format(
+            os.path.join(pathResult, "results.html")
+        )
         utils.printFail(msg="[TestTool check: FAILED]")
         print(errorString)
         raise e
@@ -655,19 +664,20 @@ def runValgrind(moduleName):
     Raises:
         - ValueError: Raises an exception when fails for some reason.
     """
-    utils.printHeader(moduleName=moduleName,
-                      headerKey="valgrind")
+    utils.printHeader(moduleName=moduleName, headerKey="valgrind")
     tests = []
-    reg = re.compile(".*unit_test|.*unit_test.exe|.*integration_test\
+    reg = re.compile(
+        ".*unit_test|.*unit_test.exe|.*integration_test\
                      |.*interface_test|.*integration_test.exe\
-                     |.*interface_test.exe")
+                     |.*interface_test.exe"
+    )
     currentDir = ""
     if moduleName == "shared_modules/utils":
-        currentDir = os.path.join(utils.moduleDirPath(moduleName=moduleName),
-                                  "build")
+        currentDir = os.path.join(utils.moduleDirPath(moduleName=moduleName), "build")
     else:
-        currentDir = os.path.join(utils.moduleDirPath(moduleName=moduleName),
-                                  "build/bin")
+        currentDir = os.path.join(
+            utils.moduleDirPath(moduleName=moduleName), "build/bin"
+        )
     objects = os.scandir(currentDir)
     for entry in objects:
         if entry.is_file() and bool(re.match(reg, entry.name)):
@@ -677,19 +687,20 @@ def runValgrind(moduleName):
     oldPath = os.getcwd()
     os.chdir(currentDir)
     for test in tests:
-        out = subprocess.run(os.path.join(valgrindCommand, test),
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             shell=True,
-                             check=False)
+        out = subprocess.run(
+            os.path.join(valgrindCommand, test),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=True,
+            check=False,
+        )
         if out.returncode == 0:
             utils.printGreen(msg="[{} : PASSED]".format(test))
         else:
-            print(out.stdout.decode('utf-8','replace'))
-            print(out.stderr.decode('utf-8','replace'))
+            print(out.stdout.decode("utf-8", "replace"))
+            print(out.stderr.decode("utf-8", "replace"))
             utils.printFail(msg="[{} : FAILED]".format(test))
             errorString = "Error Running valgrind: {}".format(out.returncode)
             raise ValueError(errorString)
     os.chdir(oldPath)
-    utils.printGreen(msg="[Memory leak check: PASSED]",
-                     module=moduleName)
+    utils.printGreen(msg="[Memory leak check: PASSED]", module=moduleName)

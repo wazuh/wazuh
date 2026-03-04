@@ -10,11 +10,11 @@ from wazuh_testing.utils import file
 
 @pytest.fixture()
 def symlink_target(test_metadata: dict) -> str:
-    path = test_metadata.get('symlink_target')
+    path = test_metadata.get("symlink_target")
     if file.exists(path):
         file.remove_file(path)
 
-    if not '.' in path:
+    if not "." in path:
         file.recursive_directory_creation(path)
     else:
         file.write_file(path)
@@ -26,7 +26,7 @@ def symlink_target(test_metadata: dict) -> str:
 
 @pytest.fixture()
 def symlink(symlink_target: Path, test_metadata: dict) -> str:
-    symlink_path = test_metadata.get('symlink')
+    symlink_path = test_metadata.get("symlink")
     if file.exists(symlink_path):
         file.remove_file(symlink_path)
 
@@ -39,11 +39,11 @@ def symlink(symlink_target: Path, test_metadata: dict) -> str:
 
 @pytest.fixture()
 def symlink_new_target(test_metadata: dict) -> Path:
-    path = test_metadata.get('symlink_new_target')
+    path = test_metadata.get("symlink_new_target")
     if file.exists(path):
         file.remove_file(path)
 
-    if not '\\.' in path:
+    if not "." in path:
         file.recursive_directory_creation(path)
     else:
         file.write_file(path)
