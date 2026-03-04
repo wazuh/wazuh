@@ -350,20 +350,20 @@ test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
 
 stages:
 
-  - name: Try to show the config of logcollector/localfile through a worker
+  - name: Try to show the config of auth/auth through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/configuration/logcollector/localfile"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/configuration/auth/auth"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       <<: *permission_denied
 
-  - name: Try to show the config of logcollector/localfile through a worker
+  - name: Try to show the config of auth/auth through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/logcollector/localfile"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/auth/auth"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

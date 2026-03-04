@@ -3521,7 +3521,7 @@ components:
       schema:
         type: string
         format: symbols_alphanumeric_param
-    component:
+    agent_component:
       in: path
       name: component
       description: "Selected agent's component"
@@ -3530,17 +3530,24 @@ components:
         type: string
         enum:
         - agent
-        - analysis
-        - auth
         - com
         - logcollector
-        - mail
+        - syscheck
+        - wmodules
+    manager_component:
+      in: path
+      name: component
+      description: "Selected manager's component"
+      required: true
+      schema:
+        type: string
+        enum:
+        - auth
         - monitor
         - request
-        - syscheck
         - wazuh-manager-db
         - wmodules
-    configuration:
+    agent_configuration:
       in: path
       name: configuration
       description: |
@@ -3581,51 +3588,6 @@ components:
         <td><code>&lt;anti_tampering&gt;</code></td>
         </tr>
         <tr>
-        <td>analysis</td>
-        <td>global</td>
-        <td><code>&lt;global&gt;</code></td>
-        </tr>
-        <tr>
-        <td>analysis</td>
-        <td>active_response</td>
-        <td><code>&lt;active-response&gt;</code></td>
-        </tr>
-        <tr>
-        <td>analysis</td>
-        <td>alerts</td>
-        <td><code>&lt;alerts&gt;</code></td>
-        </tr>
-        <tr>
-        <td>analysis</td>
-        <td>command</td>
-        <td><code>&lt;command&gt;</code></td>
-        </tr>
-        <tr>
-        <td>analysis</td>
-        <td>internal</td>
-        <td><code>&lt;analysisd&gt;</code></td>
-        </tr>
-        <tr>
-        <td>auth</td>
-        <td>auth</td>
-        <td><code>&lt;auth&gt;</code></td>
-        </tr>
-        <tr>
-        <td>com</td>
-        <td>active-response</td>
-        <td><code>&lt;active-response&gt;</code></td>
-        </tr>
-        <tr>
-        <td>com</td>
-        <td>logging</td>
-        <td><code>&lt;logging&gt;</code></td>
-        </tr>
-        <tr>
-        <td>com</td>
-        <td>cluster</td>
-        <td><code>&lt;cluster&gt;</code></td>
-        </tr>
-        <tr>
         <td>logcollector</td>
         <td>localfile</td>
         <td><code>&lt;localfile&gt;</code></td>
@@ -3641,41 +3603,6 @@ components:
         <td><code>&lt;logcollector&gt;</code></td>
         </tr>
         <tr>
-        <td>mail</td>
-        <td>global</td>
-        <td><code>&lt;global&gt;&lt;email...&gt;</code></td>
-        </tr>
-        <tr>
-        <td>monitor</td>
-        <td>global</td>
-        <td><code>&lt;global&gt;</code></td>
-        </tr>
-        <tr>
-        <td>monitor</td>
-        <td>internal</td>
-        <td><code>&lt;monitord&gt;</code></td>
-        </tr>
-        <tr>
-        <td>monitor</td>
-        <td>reports</td>
-        <td><code>&lt;reports&gt;</code></td>
-        </tr>
-        <tr>
-        <td>request</td>
-        <td>global</td>
-        <td><code>&lt;global&gt;</code></td>
-        </tr>
-        <tr>
-        <td>request</td>
-        <td>remote</td>
-        <td><code>&lt;remote&gt;</code></td>
-        </tr>
-        <tr>
-        <td>request</td>
-        <td>internal</td>
-        <td><code>&lt;remoted&gt;</code></td>
-        </tr>
-        <tr>
         <td>syscheck</td>
         <td>syscheck</td>
         <td><code>&lt;syscheck&gt;</code></td>
@@ -3689,6 +3616,73 @@ components:
         <td>syscheck</td>
         <td>internal</td>
         <td><code>&lt;syscheck&gt;</code>, <code>&lt;rootcheck&gt;</code></td>
+        </tr>
+        <tr>
+        <td>wmodules</td>
+        <td>wmodules</td>
+        <td><code>&lt;wodle&gt;</code></td>
+        </tr>
+        </tbody>
+        </table>
+      required: true
+      schema:
+        type: string
+        enum:
+        - client
+        - buffer
+        - labels
+        - internal
+        - anti_tampering
+        - active-response
+        - logging
+        - localfile
+        - socket
+        - syscheck
+        - rootcheck
+        - wmodules
+    manager_configuration:
+      in: path
+      name: configuration
+      description: |
+        <p>Selected manager's configuration to read. The configuration to read depends on the selected component.
+        The following table shows all available combinations of component and configuration values:</p>
+        <table class="table table-striped table-bordered">
+        <thead>
+        <tr>
+        <th>Component</th>
+        <th>Configuration</th>
+        <th>Tag</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+        <td>auth</td>
+        <td>auth</td>
+        <td><code>&lt;auth&gt;</code></td>
+        </tr>
+        <tr>
+        <td>monitor</td>
+        <td>global</td>
+        <td><code>&lt;global&gt;</code></td>
+        </tr>
+        <tr>
+        <td>monitor</td>
+        <td>internal</td>
+        <td><code>&lt;monitord&gt;</code></td>
+        </tr>
+        <td>request</td>
+        <td>global</td>
+        <td><code>&lt;global&gt;</code></td>
+        </tr>
+        <tr>
+        <td>request</td>
+        <td>remote</td>
+        <td><code>&lt;remote&gt;</code></td>
+        </tr>
+        <tr>
+        <td>request</td>
+        <td>internal</td>
+        <td><code>&lt;remoted&gt;</code></td>
         </tr>
         <tr>
         <td>wazuh-manager-db</td>
@@ -3711,25 +3705,10 @@ components:
       schema:
         type: string
         enum:
-        - client
-        - buffer
-        - labels
-        - internal
-        - anti_tampering
         - global
-        - active_response
-        - alerts
-        - command
         - auth
-        - logging
-        - reports
-        - active-response
-        - cluster
-        - localfile
-        - socket
+        - internal
         - remote
-        - syscheck
-        - rootcheck
         - wdb
         - wmodules
     daemons_list:
@@ -4897,8 +4876,8 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/component'
-        - $ref: '#/components/parameters/configuration'
+        - $ref: '#/components/parameters/agent_component'
+        - $ref: '#/components/parameters/agent_configuration'
       responses:
         '200':
           description: "Get agent configuration"
@@ -8663,8 +8642,8 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/component'
-        - $ref: '#/components/parameters/configuration'
+        - $ref: '#/components/parameters/manager_component'
+        - $ref: '#/components/parameters/manager_configuration'
       responses:
         '200':
           description: "Cluster configuration on-demand"

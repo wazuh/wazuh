@@ -902,10 +902,10 @@ stages:
 test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
 
 stages:
-  - name: Try to get logcollector localfile configuration (worker1)
+  - name: Try to get auth/auth configuration (worker1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/logcollector/localfile"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/auth/auth"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

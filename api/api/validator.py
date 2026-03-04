@@ -206,21 +206,26 @@ api_config_schema = {
     }
 }
 
-WAZUH_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
+WAZUH_AGENT_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
     {
         'agent': {"client", "buffer", "labels", "internal", "anti_tampering"},
-        'analysis': {"global", "active_response", "alerts", "command", "internal"},
-        'auth': {"auth"},
-        'com': {"active-response", "logging", "internal", "cluster"},
+        'com': {"active-response", "logging", "internal"},
         'logcollector': {"localfile", "socket", "internal"},
-        'mail': {"global", "alerts", "internal"},
-        'monitor': {"global", "internal", "reports"},
-        'request': {"global", "remote", "internal"},
         'syscheck': {"syscheck", "rootcheck", "internal"},
+        'wmodules': {"wmodules"}
+    }
+)
+
+WAZUH_MANAGER_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
+    {
+        'auth': {"auth"},
+        'monitor': {"global", "internal"},
+        'request': {"global", "remote", "internal"},
         'wazuh-manager-db': {"wdb", "internal"},
         'wmodules': {"wmodules"}
     }
 )
+
 
 
 def check_exp(exp: str, regex: re.Pattern) -> bool:
@@ -311,7 +316,7 @@ def is_safe_path(path: str, basedir: str = common.WAZUH_PATH, relative: bool = T
     return os.path.commonpath([full_path, full_basedir]) == full_basedir
 
 
-def check_component_configuration_pair(component: str, configuration: str) -> WazuhError:
+def check_component_configuration_pair(component: str, configuration: str, is_manager: bool = False) -> WazuhError:
     """
 
     Parameters
@@ -320,6 +325,8 @@ def check_component_configuration_pair(component: str, configuration: str) -> Wa
         Wazuh component name.
     configuration : str
         Component configuration.
+    is_manager : bool
+        True if the component is a manager component. False if it is an agent component. Default is False.
 
     Returns
     -------
@@ -327,9 +334,13 @@ def check_component_configuration_pair(component: str, configuration: str) -> Wa
         It can either return a `WazuhError` or `None`, depending on the given component and configuration. The exception
         is returned and not raised because we use the object to create a problem on API level.
     """
-    if configuration not in WAZUH_COMPONENT_CONFIGURATION_MAPPING[component]:
+    mapping = WAZUH_MANAGER_COMPONENT_CONFIGURATION_MAPPING if is_manager else WAZUH_AGENT_COMPONENT_CONFIGURATION_MAPPING
+
+    if component not in mapping:
+        return WazuhError(1118, extra_message=f"Valid components: {list(mapping.keys())}")
+    if configuration not in mapping[component]:
         return WazuhError(1128, extra_message=f"Valid configuration values for '{component}': "
-                                              f"{WAZUH_COMPONENT_CONFIGURATION_MAPPING[component]}")
+                                              f"{mapping[component]}")
 
 
 @Draft4Validator.FORMAT_CHECKER.checks("alphanumeric")

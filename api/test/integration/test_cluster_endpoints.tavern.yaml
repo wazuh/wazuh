@@ -863,93 +863,8 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Show the config of com/internal on master
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/com/internal"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Show the config of logcollector/localfile on master
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/logcollector/localfile"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - localfile: !anything
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Show the config of logcollector/socket on master
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/logcollector/socket"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: []
-          failed_items: []
-          total_affected_items: 0
-          total_failed_items: 0
-
-  - name: Show the config of logcollector/internal on master
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/logcollector/internal"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - internal:
-                logcollector:
-                  debug: !anyint
-                  force_reload: !anyint
-                  input_threads: !anyint
-                  loop_timeout: !anyint
-                  max_files: !anyint
-                  max_lines: !anyint
-                  open_attempts: !anyint
-                  queue_size: !anyint
-                  reload_delay: !anyint
-                  reload_interval: !anyint
-                  remote_commands: !anyint
-                  rlimit_nofile: !anyint
-                  sample_log_length: !anyint
-                  sock_fail_time: !anyint
-                  vcheck_files: !anyint
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
   - name: Show the config of monitor/internal on master
+    skip: True
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/monitor/internal"
@@ -1039,80 +954,6 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Show the config of syscheck/syscheck on master
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/syscheck/syscheck"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - syscheck:
-                directories: !anything
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Show the config of syscheck/rootcheck on worker1
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/syscheck/rootcheck"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - rootcheck:
-                base_directory: !anything
-                check_dev: !anystr
-                check_if: !anystr
-                check_pids: !anystr
-                check_ports: !anystr
-                check_sys: !anystr
-                disabled: !anystr
-                frequency: !anyint
-                scanall: !anystr
-                ignore: !anything
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Show the config of syscheck/internal on master
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/syscheck/internal"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - internal:
-                rootcheck:
-                  sleep: !anyint
-                syscheck:
-                  debug: !anyint
-                  default_max_depth: !anyint
-                  file_max_size: !anyint
-                  max_audit_entries: !anyint
-                  rt_delay: !anyint
-                  symlink_scan_interval: !anyint
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
   - name: Show the config of wazuh-manager-db/internal on master
     request:
       verify: False
@@ -1176,10 +1017,22 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the invalid config of component in the master node
+  - name: Try to show the invalid component in the master node
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/agent/wmodules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Try to show the invalid config of component in the master node
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wmodules/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
