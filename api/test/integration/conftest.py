@@ -119,7 +119,7 @@ def down_env():
     """Stop and remove all Docker containers."""
     os.chdir(env_path)
     with open(docker_log_path, mode='a') as f_docker:
-        current_process = subprocess.Popen(["docker", "compose", "down"],
+        current_process = subprocess.Popen(["docker", "compose", "down", "-v"],
                                            stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
         current_process.wait()
     os.chdir(current_path)
@@ -497,10 +497,10 @@ def pytest_runtest_makereport(item, call):
     elif report.outcome == 'failed':
         results[report.location[0]]['error'] += 1
 
-    if report.when == 'setup' and \
-            report.longrepr and ('api_test did not yield a value' in report.longrepr.reprcrash.message or
-                                 'StopIteration' in report.longrepr.reprcrash.message):
-        report.sections.append(('Environment section', environment_status))
+    if report.when == 'setup' and report.longrepr:
+        repr_text = str(report.longrepr)
+        if 'api_test did not yield a value' in repr_text or 'StopIteration' in repr_text:
+            report.sections.append(('Environment section', environment_status))
 
 
 @pytest.hookimpl(optionalhook=True)
