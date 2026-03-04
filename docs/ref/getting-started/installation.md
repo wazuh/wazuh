@@ -255,10 +255,10 @@ Install the agent:
 sudo installer -pkg wazuh-agent-*.pkg -target /
 ```
 
-You can optionally specify configuration parameters:
+You can optionally specify configuration parameters by writing them to `/tmp/wazuh_envs` before running the installer:
 
 ```bash
-sudo WAZUH_MANAGER='10.0.0.2' WAZUH_AGENT_NAME='macbook-01' installer -pkg wazuh-agent-*.pkg -target /
+echo "WAZUH_MANAGER='10.0.0.2'" > /tmp/wazuh_envs && echo "WAZUH_AGENT_NAME='macbook-01'" >> /tmp/wazuh_envs && sudo installer -pkg wazuh-agent-*.pkg -target /
 ```
 
 Start the agent service:
