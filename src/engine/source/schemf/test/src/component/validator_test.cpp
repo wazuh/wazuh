@@ -108,49 +108,47 @@ const json::Json J_DOUBLE_RANGE {"null"};
 const json::Json J_DATE_RANGE {"null"};
 const json::Json J_IP_RANGE {"null"};
 
-const std::map<ST, json::Json> SCHEMA_JSON = {
-    {ST::BOOLEAN, J_BOOL},
-    {ST::BYTE, J_BYTE},
-    {ST::SHORT, J_SHORT},
-    {ST::INTEGER, J_INTEGER},
-    {ST::LONG, J_LONG},
-    {ST::FLOAT, J_FLOAT},
-    {ST::HALF_FLOAT, J_HALF_FLOAT},
-    {ST::SCALED_FLOAT, J_SCALED_FLOAT},
-    {ST::DOUBLE, J_DOUBLE},
-    {ST::KEYWORD, J_KEYWORD},
-    {ST::TEXT, J_TEXT},
-    {ST::MATCH_ONLY_TEXT, J_MATCH_ONLY_TEXT},
-    {ST::WILDCARD, J_WILDCARD},
-    {ST::CONSTANT_KEYWORD, J_CONSTANT_KEYWORD},
-    {ST::DATE, J_DATE},
-    {ST::DATE_NANOS, J_DATE_NANOS},
-    {ST::IP, J_IP},
-    {ST::BINARY, J_BINARY},
-    {ST::OBJECT, J_OBJECT},
-    {ST::NESTED, J_NESTED},
-    {ST::FLAT_OBJECT, J_FLAT_OBJECT},
-    {ST::GEO_POINT, J_GEO_POINT},
-    {ST::UNSIGNED_LONG, J_UNSIGNED_LONG},
-    {ST::COMPLETION, J_COMPLETION},
-    {ST::SEARCH_AS_YOU_TYPE, J_SEARCH_AS_YOU_TYPE},
-    {ST::TOKEN_COUNT, J_TOKEN_COUNT},
-    {ST::SEMANTIC, J_SEMANTIC},
-    {ST::JOIN, J_JOIN},
-    {ST::KNN_VECTOR, J_KNN_VECTOR},
-    {ST::SPARSE_VECTOR, J_SPARSE_VECTOR},
-    {ST::RANK_FEATURE, J_RANK_FEATURE},
-    {ST::RANK_FEATURES, J_RANK_FEATURES},
-    {ST::PERCOLATOR, J_PERCOLATOR},
-    {ST::STAR_TREE, J_STAR_TREE},
-    {ST::DERIVED, J_DERIVED},
-    {ST::INTEGER_RANGE, J_INTEGER_RANGE},
-    {ST::LONG_RANGE, J_LONG_RANGE},
-    {ST::FLOAT_RANGE, J_FLOAT_RANGE},
-    {ST::DOUBLE_RANGE, J_DOUBLE_RANGE},
-    {ST::DATE_RANGE, J_DATE_RANGE},
-    {ST::IP_RANGE, J_IP_RANGE}
-};
+const std::map<ST, json::Json> SCHEMA_JSON = {{ST::BOOLEAN, J_BOOL},
+                                              {ST::BYTE, J_BYTE},
+                                              {ST::SHORT, J_SHORT},
+                                              {ST::INTEGER, J_INTEGER},
+                                              {ST::LONG, J_LONG},
+                                              {ST::FLOAT, J_FLOAT},
+                                              {ST::HALF_FLOAT, J_HALF_FLOAT},
+                                              {ST::SCALED_FLOAT, J_SCALED_FLOAT},
+                                              {ST::DOUBLE, J_DOUBLE},
+                                              {ST::KEYWORD, J_KEYWORD},
+                                              {ST::TEXT, J_TEXT},
+                                              {ST::MATCH_ONLY_TEXT, J_MATCH_ONLY_TEXT},
+                                              {ST::WILDCARD, J_WILDCARD},
+                                              {ST::CONSTANT_KEYWORD, J_CONSTANT_KEYWORD},
+                                              {ST::DATE, J_DATE},
+                                              {ST::DATE_NANOS, J_DATE_NANOS},
+                                              {ST::IP, J_IP},
+                                              {ST::BINARY, J_BINARY},
+                                              {ST::OBJECT, J_OBJECT},
+                                              {ST::NESTED, J_NESTED},
+                                              {ST::FLAT_OBJECT, J_FLAT_OBJECT},
+                                              {ST::GEO_POINT, J_GEO_POINT},
+                                              {ST::UNSIGNED_LONG, J_UNSIGNED_LONG},
+                                              {ST::COMPLETION, J_COMPLETION},
+                                              {ST::SEARCH_AS_YOU_TYPE, J_SEARCH_AS_YOU_TYPE},
+                                              {ST::TOKEN_COUNT, J_TOKEN_COUNT},
+                                              {ST::SEMANTIC, J_SEMANTIC},
+                                              {ST::JOIN, J_JOIN},
+                                              {ST::KNN_VECTOR, J_KNN_VECTOR},
+                                              {ST::SPARSE_VECTOR, J_SPARSE_VECTOR},
+                                              {ST::RANK_FEATURE, J_RANK_FEATURE},
+                                              {ST::RANK_FEATURES, J_RANK_FEATURES},
+                                              {ST::PERCOLATOR, J_PERCOLATOR},
+                                              {ST::STAR_TREE, J_STAR_TREE},
+                                              {ST::DERIVED, J_DERIVED},
+                                              {ST::INTEGER_RANGE, J_INTEGER_RANGE},
+                                              {ST::LONG_RANGE, J_LONG_RANGE},
+                                              {ST::FLOAT_RANGE, J_FLOAT_RANGE},
+                                              {ST::DOUBLE_RANGE, J_DOUBLE_RANGE},
+                                              {ST::DATE_RANGE, J_DATE_RANGE},
+                                              {ST::IP_RANGE, J_IP_RANGE}};
 
 DotPath getField(ST stype)
 {
@@ -352,33 +350,82 @@ INSTANTIATE_TEST_SUITE_P(
            BuildT(ST::SCALED_FLOAT, {ST::FLOAT, ST::HALF_FLOAT, ST::SCALED_FLOAT}, {ST::DOUBLE}, {JT::Number}),
            BuildT(ST::DOUBLE, {ST::FLOAT, ST::HALF_FLOAT, ST::SCALED_FLOAT, ST::DOUBLE}, {}, {JT::Number}),
            BuildT(ST::KEYWORD,
-                  {ST::TEXT, ST::KEYWORD, ST::MATCH_ONLY_TEXT, ST::CONSTANT_KEYWORD, ST::WILDCARD,
-                    ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY, ST::COMPLETION, ST::SEARCH_AS_YOU_TYPE,
-                    ST::SEMANTIC, ST::WILDCARD},
+                  {ST::TEXT,
+                   ST::KEYWORD,
+                   ST::MATCH_ONLY_TEXT,
+                   ST::CONSTANT_KEYWORD,
+                   ST::WILDCARD,
+                   ST::DATE,
+                   ST::DATE_NANOS,
+                   ST::IP,
+                   ST::BINARY,
+                   ST::COMPLETION,
+                   ST::SEARCH_AS_YOU_TYPE,
+                   ST::SEMANTIC,
+                   ST::WILDCARD},
                   {},
                   {JT::String}),
            BuildT(ST::MATCH_ONLY_TEXT,
-                  {ST::MATCH_ONLY_TEXT, ST::TEXT, ST::KEYWORD, ST::CONSTANT_KEYWORD, ST::WILDCARD,
-                    ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY, ST::COMPLETION, ST::SEARCH_AS_YOU_TYPE,
-                    ST::SEMANTIC, ST::WILDCARD},
+                  {ST::MATCH_ONLY_TEXT,
+                   ST::TEXT,
+                   ST::KEYWORD,
+                   ST::CONSTANT_KEYWORD,
+                   ST::WILDCARD,
+                   ST::DATE,
+                   ST::DATE_NANOS,
+                   ST::IP,
+                   ST::BINARY,
+                   ST::COMPLETION,
+                   ST::SEARCH_AS_YOU_TYPE,
+                   ST::SEMANTIC,
+                   ST::WILDCARD},
                   {},
                   {JT::String}),
            BuildT(ST::CONSTANT_KEYWORD,
-                  {ST::CONSTANT_KEYWORD, ST::TEXT, ST::KEYWORD, ST::MATCH_ONLY_TEXT, ST::WILDCARD,
-                    ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY, ST::COMPLETION, ST::SEARCH_AS_YOU_TYPE,
-                    ST::SEMANTIC, ST::WILDCARD},
+                  {ST::CONSTANT_KEYWORD,
+                   ST::TEXT,
+                   ST::KEYWORD,
+                   ST::MATCH_ONLY_TEXT,
+                   ST::WILDCARD,
+                   ST::DATE,
+                   ST::DATE_NANOS,
+                   ST::IP,
+                   ST::BINARY,
+                   ST::COMPLETION,
+                   ST::SEARCH_AS_YOU_TYPE,
+                   ST::SEMANTIC,
+                   ST::WILDCARD},
                   {},
                   {JT::String}),
            BuildT(ST::TEXT,
-                  {ST::TEXT, ST::KEYWORD, ST::MATCH_ONLY_TEXT, ST::CONSTANT_KEYWORD, ST::WILDCARD,
-                    ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY, ST::COMPLETION, ST::SEARCH_AS_YOU_TYPE,
-                    ST::SEMANTIC, ST::WILDCARD},
+                  {ST::TEXT,
+                   ST::KEYWORD,
+                   ST::MATCH_ONLY_TEXT,
+                   ST::CONSTANT_KEYWORD,
+                   ST::WILDCARD,
+                   ST::DATE,
+                   ST::DATE_NANOS,
+                   ST::IP,
+                   ST::BINARY,
+                   ST::COMPLETION,
+                   ST::SEARCH_AS_YOU_TYPE,
+                   ST::SEMANTIC,
+                   ST::WILDCARD},
                   {},
                   {JT::String}),
            BuildT(ST::WILDCARD,
-                  {ST::WILDCARD, ST::TEXT, ST::KEYWORD, ST::MATCH_ONLY_TEXT, ST::CONSTANT_KEYWORD,
-                    ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY, ST::COMPLETION, ST::SEARCH_AS_YOU_TYPE,
-                    ST::SEMANTIC},
+                  {ST::WILDCARD,
+                   ST::TEXT,
+                   ST::KEYWORD,
+                   ST::MATCH_ONLY_TEXT,
+                   ST::CONSTANT_KEYWORD,
+                   ST::DATE,
+                   ST::DATE_NANOS,
+                   ST::IP,
+                   ST::BINARY,
+                   ST::COMPLETION,
+                   ST::SEARCH_AS_YOU_TYPE,
+                   ST::SEMANTIC},
                   {},
                   {JT::String}),
            BuildT(ST::DATE, {ST::DATE}, {ST::TEXT, ST::WILDCARD, ST::KEYWORD}, {JT::String}),
@@ -390,22 +437,53 @@ INSTANTIATE_TEST_SUITE_P(
            BuildT(ST::FLAT_OBJECT, {ST::FLAT_OBJECT}, {}, {JT::Object}),
            BuildT(ST::TOKEN_COUNT, {ST::TOKEN_COUNT}, {}, {JT::Number}),
            BuildT(ST::SEMANTIC,
-                   {ST::SEMANTIC, ST::SEARCH_AS_YOU_TYPE, ST::KEYWORD, ST::MATCH_ONLY_TEXT, ST::CONSTANT_KEYWORD,
-                    ST::WILDCARD, ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY, ST::COMPLETION, ST::TEXT,
-                    ST::SEMANTIC, ST::WILDCARD},
+                  {ST::SEMANTIC,
+                   ST::SEARCH_AS_YOU_TYPE,
+                   ST::KEYWORD,
+                   ST::MATCH_ONLY_TEXT,
+                   ST::CONSTANT_KEYWORD,
+                   ST::WILDCARD,
+                   ST::DATE,
+                   ST::DATE_NANOS,
+                   ST::IP,
+                   ST::BINARY,
+                   ST::COMPLETION,
+                   ST::TEXT,
+                   ST::SEMANTIC,
+                   ST::WILDCARD},
                   {},
                   {JT::String}),
            BuildT(ST::UNSIGNED_LONG, {ST::UNSIGNED_LONG}, {}, {JT::Number}),
            BuildT(ST::COMPLETION,
-                  {ST::COMPLETION, ST::KEYWORD, ST::MATCH_ONLY_TEXT, ST::CONSTANT_KEYWORD, ST::WILDCARD,
-                    ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY, ST::TEXT, ST::SEARCH_AS_YOU_TYPE,
-                    ST::SEMANTIC, ST::WILDCARD},
+                  {ST::COMPLETION,
+                   ST::KEYWORD,
+                   ST::MATCH_ONLY_TEXT,
+                   ST::CONSTANT_KEYWORD,
+                   ST::WILDCARD,
+                   ST::DATE,
+                   ST::DATE_NANOS,
+                   ST::IP,
+                   ST::BINARY,
+                   ST::TEXT,
+                   ST::SEARCH_AS_YOU_TYPE,
+                   ST::SEMANTIC,
+                   ST::WILDCARD},
                   {},
                   {JT::String}),
            BuildT(ST::SEARCH_AS_YOU_TYPE,
-                   {ST::SEARCH_AS_YOU_TYPE, ST::KEYWORD, ST::MATCH_ONLY_TEXT, ST::CONSTANT_KEYWORD, ST::WILDCARD,
-                    ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY, ST::COMPLETION, ST::TEXT,
-                    ST::SEMANTIC, ST::WILDCARD},
+                  {ST::SEARCH_AS_YOU_TYPE,
+                   ST::KEYWORD,
+                   ST::MATCH_ONLY_TEXT,
+                   ST::CONSTANT_KEYWORD,
+                   ST::WILDCARD,
+                   ST::DATE,
+                   ST::DATE_NANOS,
+                   ST::IP,
+                   ST::BINARY,
+                   ST::COMPLETION,
+                   ST::TEXT,
+                   ST::SEMANTIC,
+                   ST::WILDCARD},
                   {},
                   {JT::String}),
            BuildT(ST::GEO_POINT, {ST::GEO_POINT}, {}, {JT::Object}),
@@ -426,18 +504,18 @@ class IncompatibleTypeTest : public Test
 protected:
     std::shared_ptr<Schema> schema;
     const std::set<ST> INCOMPATIBLE_TYPES = {ST::KNN_VECTOR,
-                                              ST::SPARSE_VECTOR,
-                                              ST::RANK_FEATURE,
-                                              ST::RANK_FEATURES,
-                                              ST::PERCOLATOR,
-                                              ST::STAR_TREE,
-                                              ST::DERIVED,
-                                              ST::INTEGER_RANGE,
-                                              ST::LONG_RANGE,
-                                              ST::FLOAT_RANGE,
-                                              ST::DOUBLE_RANGE,
-                                              ST::DATE_RANGE,
-                                              ST::IP_RANGE};
+                                             ST::SPARSE_VECTOR,
+                                             ST::RANK_FEATURE,
+                                             ST::RANK_FEATURES,
+                                             ST::PERCOLATOR,
+                                             ST::STAR_TREE,
+                                             ST::DERIVED,
+                                             ST::INTEGER_RANGE,
+                                             ST::LONG_RANGE,
+                                             ST::FLOAT_RANGE,
+                                             ST::DOUBLE_RANGE,
+                                             ST::DATE_RANGE,
+                                             ST::IP_RANGE};
 
     void SetUp() override
     {
@@ -463,10 +541,9 @@ TEST_F(IncompatibleTypeTest, IncompatibleTypesRejectAllJTypes)
         {
             auto valToken = JTypeToken::create(jtype);
             auto result = validator->validate(target, valToken);
-            EXPECT_TRUE(base::isError(result))
-                << fmt::format("Incompatible type {} should reject JSON type {}",
-                               schemf::typeToStr(incompatibleType),
-                               json::Json::typeToStr(jtype));
+            EXPECT_TRUE(base::isError(result)) << fmt::format("Incompatible type {} should reject JSON type {}",
+                                                              schemf::typeToStr(incompatibleType),
+                                                              json::Json::typeToStr(jtype));
         }
     }
 }
@@ -483,10 +560,9 @@ TEST_F(IncompatibleTypeTest, IncompatibleTypesOnlyAcceptThemselves)
         // TODO: check usage Should accept self
         auto selfToken = STypeToken::create(incompatibleType);
         auto selfResult = validator->validate(target, selfToken);
-        EXPECT_FALSE(base::isError(selfResult))
-            << fmt::format("Incompatible type {} should accept itself: {}",
-                           schemf::typeToStr(incompatibleType),
-                           base::getError(selfResult).message);
+        EXPECT_FALSE(base::isError(selfResult)) << fmt::format("Incompatible type {} should accept itself: {}",
+                                                               schemf::typeToStr(incompatibleType),
+                                                               base::getError(selfResult).message);
 
         // Should reject all other types
         for (auto otherType : ALLSCHEMATYPES)
@@ -496,13 +572,41 @@ TEST_F(IncompatibleTypeTest, IncompatibleTypesOnlyAcceptThemselves)
 
             auto valToken = STypeToken::create(otherType);
             auto result = validator->validate(target, valToken);
-            EXPECT_TRUE(base::isError(result))
-                << fmt::format("Incompatible type {} should reject schema type {}",
-                               schemf::typeToStr(incompatibleType),
-                               schemf::typeToStr(otherType));
+            EXPECT_TRUE(base::isError(result)) << fmt::format("Incompatible type {} should reject schema type {}",
+                                                              schemf::typeToStr(incompatibleType),
+                                                              schemf::typeToStr(otherType));
         }
     }
 }
 
 } // namespace incompatibletypetest
 
+namespace fieldmappingruletest
+{
+
+TEST(ValidatorFieldMappingRules, UnknownFieldAllowedOnlyForUnderscoreRoot)
+{
+    auto schema = std::make_shared<Schema>();
+    schema->addField("host.domain", Field(Field::Parameters {.type = ST::KEYWORD}));
+
+    std::shared_ptr<IValidator> validator = schema;
+
+    // Allowed temporary fields (root starts with '_')
+    EXPECT_FALSE(base::isError(validator->validate(DotPath("_tmp"), VT {})));
+    EXPECT_FALSE(base::isError(validator->validate(DotPath("_abc"), VT {})));
+    EXPECT_FALSE(base::isError(validator->validate(DotPath("_host.domain"), VT {})));
+
+    // Known WCS field
+    EXPECT_FALSE(base::isError(validator->validate(DotPath("host.domain"), VT {})));
+
+    // Unknown non-temporary fields must fail
+    auto invalidNested = validator->validate(DotPath("host.domain._id"), VT {});
+    EXPECT_TRUE(base::isError(invalidNested));
+    EXPECT_NE(base::getError(invalidNested).message.find("host.domain._id"), std::string::npos);
+
+    auto invalidCustom = validator->validate(DotPath("host123.doman"), VT {});
+    EXPECT_TRUE(base::isError(invalidCustom));
+    EXPECT_NE(base::getError(invalidCustom).message.find("host123.doman"), std::string::npos);
+}
+
+} // namespace fieldmappingruletest
