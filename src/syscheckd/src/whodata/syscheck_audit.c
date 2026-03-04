@@ -373,8 +373,6 @@ void audit_rules_to_realtime() {
         if (syscheck.realtime == NULL) {
             if (realtime_start() < 0) {
                 w_mutex_unlock(&syscheck.fim_realtime_mutex);
-                // Fallback: switch realtime directories to scheduled mode.
-                // Lock ordering: directories_lock first, then fim_realtime_mutex.
                 w_rwlock_wrlock(&syscheck.directories_lock);
                 OSList_foreach(node_it, syscheck.directories) {
                     dir_it = node_it->data;
@@ -541,8 +539,6 @@ void *audit_main(audit_data_t *audit_data) {
     // Clean regexes used for parsing events
     clean_regex();
 
-    // Initialize realtime engine before acquiring directories_lock to maintain
-    // consistent lock ordering (directories_lock -> fim_realtime_mutex).
     int realtime_started = 0;
     w_mutex_lock(&syscheck.fim_realtime_mutex);
     if (syscheck.realtime == NULL) {
@@ -566,7 +562,6 @@ void *audit_main(audit_data_t *audit_data) {
             dir_it->options &= ~ WHODATA_ACTIVE;
 
             if (realtime_started < 0) {
-                // realtime_start() failed, fallback to scheduled mode
                 dir_it->options |= SCHEDULED_ACTIVE;
             } else {
                 dir_it->options |= REALTIME_ACTIVE;
