@@ -836,12 +836,14 @@ async def get_node_config(node_id: str, component: str, wait_for_complete: bool 
         API response.
     """
     f_kwargs = {'node_id': node_id,
-                'section': kwargs.get('configuration', None)
+                'component': component,
+                'config': kwargs.get('configuration', None)
                 }
 
     nodes = raise_if_exc(await get_system_nodes())
+    raise_if_exc(check_component_configuration_pair(f_kwargs['component'], f_kwargs['config']))
 
-    dapi = DistributedAPI(f=manager.read_ossec_conf,
+    dapi = DistributedAPI(f=manager.get_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
