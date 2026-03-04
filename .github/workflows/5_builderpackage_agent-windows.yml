@@ -374,3 +374,11 @@ jobs:
           else
             echo "Warning: Debug symbols checksum file not found, skipping"
           fi
+
+  smoke-test-windows:
+    needs: [upload-windows-i686-to-s3]
+    if: success()
+    uses: ./.github/workflows/5_testintegration_agent-start.yml
+    with:
+      platform: 'windows'
+    secrets: inherit
