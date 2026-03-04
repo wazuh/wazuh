@@ -287,7 +287,7 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kv
 
         // Read current hash from store
         std::string storedHash;
-        auto docResp = storeRef->readDoc(base::Name(std::string(detail::IOC_STATUS_DOC)));
+        auto docResp = storeRef->readDoc(detail::IOC_STATUS_DOC);
         if (base::isError(docResp))
         {
             // Document doesn't exist, create it with empty hash
@@ -295,7 +295,7 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kv
             LOG_DEBUG_L(lambdaName.c_str(), "IOC status document does not exist, will be created on first sync");
             store::Doc statusDoc;
             statusDoc.setString("", detail::DOC_HASH_KEY);
-            auto createResult = storeRef->upsertDoc(base::Name(std::string(detail::IOC_STATUS_DOC)), statusDoc);
+            auto createResult = storeRef->upsertDoc(detail::IOC_STATUS_DOC, statusDoc);
             if (base::isError(createResult))
             {
                 LOG_WARNING_L(lambdaName.c_str(),
@@ -416,7 +416,7 @@ adapter::RouteHandler getIocState(const std::shared_ptr<store::IStore>& store)
         // Read current state from store
         std::string currentHash;
         std::string lastError;
-        auto docResp = storeRef->readDoc(base::Name(std::string(detail::IOC_STATUS_DOC)));
+        auto docResp = storeRef->readDoc(detail::IOC_STATUS_DOC);
         if (base::isError(docResp))
         {
             // Document doesn't exist yet

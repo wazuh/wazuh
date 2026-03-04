@@ -20,6 +20,7 @@ EXTRA_TESTS=(
   "engine-private geo -h"
   "engine-private rawevt -h"
   "engine-public cm -h"
+  "engine-public ioc -h"
 )
 
 echo "=========================================="

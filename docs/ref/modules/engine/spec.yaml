@@ -1399,7 +1399,7 @@ paths:
         The file must be in **nd-json** (newline-delimited JSON) format, where each line 
         represents a single IOC JSON object containing at minimum:
         - `name`: The IOC value (IP, domain, hash, etc.)
-        - `type`: The IOC type (e.g., "connection", "url-domain", "file-hash")
+        - `type`: The IOC type (e.g., "connection", "url_domain", "file_hash")
 
         **Hash-based optimization**: The `hash` field (typically MD5) is used to skip the 
         update if the file content hasn't changed since the last synchronization, improving 
