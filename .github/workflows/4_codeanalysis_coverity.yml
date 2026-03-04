@@ -2,6 +2,27 @@ name: 4.X - Coverity Scan
 
 on:
   workflow_dispatch:
+    inputs:
+      project:
+        description: "Project (use ossec-wazuh for development)"
+        required: true
+        type: choice
+        options:
+          - wazuh
+          - ossec-wazuh
+      threads:
+        description: "Number of threads for make -j (0 = auto)"
+        required: false
+        default: 0
+        type: number
+      docker_image_tag:
+        description: |
+          Tag name of the Docker image to be uploaded.
+          Use only '-', '_', '.' and alphanumeric characters.
+          Default is '4.x'.
+        required: false
+        default: '4.x'
+
 
 env:
   REGISTRY: ghcr.io
@@ -70,6 +91,7 @@ jobs:
         uses: ./.github/actions/coverity/build
         with:
           command: make -C src TARGET=server COVERITY=YES -j${{ needs.prepare.outputs.jobs }}
+          docker_image_tag: ${{ github.event.inputs.docker_image_tag }}
 
       - name: List files
         run: ls -l cov-int/emit/*/emit-db*

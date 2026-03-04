@@ -9,7 +9,7 @@ EMAIL="${EMAIL:-devel@wazuh.com}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(realpath "$SCRIPT_DIR/../../..")"
 COVERITY_DIR="$SCRIPT_DIR"
-IMAGE="ghcr.io/wazuh/coverity-scan:latest"
+IMAGE="ghcr.io/wazuh/coverity-scan"
 COV_DIR="$ROOT_DIR/cov-int"
 TARBALL="$ROOT_DIR/wazuh.tgz"
 TOOL_TGZ="$COVERITY_DIR/coverity_tool.tgz"
@@ -23,7 +23,7 @@ DESCRIPTION="Version $VERSION - Git ref $BRANCH"
 # Usage
 function usage() {
     cat <<EOF
-Usage: $0 [--build-image] [--build] [--upload] [--clean] [--jobs N] [--help]
+Usage: $0 [--build-image] [--build] [--upload] [--clean] [--jobs N] [--tag <tag>] [--help]
 
 Options:
   --build-image   Build the Docker image and download Coverity tool (exits after)
@@ -31,6 +31,7 @@ Options:
   --upload        Upload wazuh.tgz to Coverity
   --clean         Remove generated files (cov-int/ and wazuh.tgz)
   --jobs N        Number of parallel jobs to use for build (default: $(nproc))
+  --tag <tag>     Tag used for building the Coverity analysis image
   --help          Show this help
 
 No arguments: runs both --build and --upload
@@ -47,6 +48,7 @@ DO_BUILD_IMAGE=false
 DO_BUILD=false
 DO_UPLOAD=false
 DO_CLEAN=false
+TAG='latest'
 
 if [[ $# -eq 0 ]]; then
     DO_BUILD=true
@@ -66,12 +68,22 @@ else
                 fi
                 JOBS="$1"
                 ;;
+            --tag)
+                shift
+                if [[ $# -eq 0 ]]; then
+                    echo "Error: No tag was introduced"
+                    exit 1
+                fi
+                TAG="$1"
+                ;;
             --help) usage; exit 0 ;;
             *) echo "Unknown option: $1"; usage; exit 1 ;;
         esac
         shift
     done
 fi
+
+IMAGE="$IMAGE:$TAG"
 
 # Always clean up coverity_tool.tgz if it gets created
 trap '[[ -f "$TOOL_TGZ" ]] && rm -f "$TOOL_TGZ"' EXIT
