@@ -180,11 +180,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         bool sendEndAndWaitAck(uint64_t session,
                                const std::vector<PersistedData>& dataToSync);
 
-        /// @brief Receives an endack message from the server
-        /// @param timeout Timeout to wait for Ack
-        /// @return True on success, false on failure
-        bool receiveEndAck(std::chrono::seconds timeout);
-
         /// @brief Sends a flatbuffer message as a string to the server
         /// @param fbData Flatbuffer data
         /// @return True on success, false on failure
@@ -254,6 +249,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// @brief Indicates that the manager reported a error, forcing the sync to fail.
             bool syncFailed = false;
 
+            /// @brief Indicates that the manager is still processing the session (EndAck with Processing status).
+            bool processingAckReceived = false;
+
             /// @brief Ranges requested by the manager via ReqRet message.
             std::vector<std::pair<uint64_t, uint64_t>> reqRetRanges;
 
@@ -285,6 +283,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                 endAckReceived = false;
                 reqRetReceived = false;
                 syncFailed = false;
+                processingAckReceived = false;
                 reqRetRanges.clear();
                 phase = SyncPhase::Idle;
                 session = 0;
