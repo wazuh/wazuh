@@ -39,7 +39,7 @@
  * @retval WM_UPGRADE_SYSTEM_NOT_SUPPORTED
  * @retval WM_UPGRADE_URL_NOT_FOUND
  * @retval WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST
- * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
+ * @retval WM_UPGRADE_NEW_VERSION_LESS_OR_EQUAL_THAN_CURRENT
  * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER
  * @retval WM_UPGRADE_UNKNOWN_ERROR
  * */
@@ -58,7 +58,7 @@ STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_tas
  * @retval WM_UPGRADE_SYSTEM_NOT_SUPPORTED
  * @retval WM_UPGRADE_URL_NOT_FOUND
  * @retval WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST
- * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
+ * @retval WM_UPGRADE_NEW_VERSION_LESS_OR_EQUAL_THAN_CURRENT
  * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER
  * @retval WM_UPGRADE_UNKNOWN_ERROR
  * */
@@ -191,13 +191,13 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const 
     }
 
     if (task->error_code) {
-        char *error = NULL;
+        char error_buf[256];
         if (task->error_code == 1) {
-            error = upgrade_error_codes[WM_UPGRADE_UPGRADE_ERROR_MISSING_PACKAGE];
+            snprintf(error_buf, sizeof(error_buf), "%s", upgrade_error_codes[WM_UPGRADE_INTERMEDIATE_VERSION_REQUIRED]);
         } else {
-            error = upgrade_error_codes[WM_UPGRADE_UPGRADE_ERROR];
+            snprintf(error_buf, sizeof(error_buf), "%s: %d", upgrade_error_codes[WM_UPGRADE_UPGRADE_ERROR], task->error_code);
         }
-        json_task_module_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agents_array, task->status, error);
+        json_task_module_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agents_array, task->status, error_buf);
     } else {
         json_task_module_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agents_array, task->status, NULL);
     }

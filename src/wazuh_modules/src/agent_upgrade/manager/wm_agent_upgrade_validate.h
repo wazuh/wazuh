@@ -54,7 +54,7 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS
  * @retval WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED
- * @retval WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT
+ * @retval WM_UPGRADE_NEW_VERSION_LESS_OR_EQUAL_THAN_CURRENT
  * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
