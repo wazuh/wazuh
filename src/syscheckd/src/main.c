@@ -330,7 +330,18 @@ int main(int argc, char **argv)
 
             w_mutex_lock(&syscheck.fim_realtime_mutex);
             if (syscheck.realtime == NULL) {
-                realtime_start();
+                if (realtime_start() < 0) {
+                    // Fallback: switch realtime directories to scheduled mode.
+                    // directories_lock is not needed here because no other
+                    // threads are running yet during initialization.
+                    OSList_foreach(node_it, syscheck.directories) {
+                        dir_it = node_it->data;
+                        if (dir_it->options & REALTIME_ACTIVE) {
+                            dir_it->options &= ~REALTIME_ACTIVE;
+                            dir_it->options |= SCHEDULED_ACTIVE;
+                        }
+                    }
+                }
             }
             w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
