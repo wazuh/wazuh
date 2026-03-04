@@ -6,6 +6,20 @@
 namespace schemf
 {
 
+namespace
+{
+bool isTemporaryField(const DotPath& name)
+{
+    if (name.isRoot())
+    {
+        return false;
+    }
+
+    const auto& root = name.parts().front();
+    return !root.empty() && root.front() == '_';
+}
+} // namespace
+
 void Schema::Validator::registerCompatibles()
 {
     m_compatibles.emplace(Type::BOOLEAN,
@@ -138,9 +152,8 @@ void Schema::Validator::registerCompatibles()
                           ValidationInfo {json::Json::Type::Object, validators::getObjectValidator(), {}});
     m_compatibles.emplace(Type::GEO_POINT,
                           ValidationInfo {json::Json::Type::Object, validators::getObjectValidator(), {}});
-    m_compatibles.emplace(
-        Type::UNSIGNED_LONG,
-        ValidationInfo {json::Json::Type::Number, validators::getUnsignedLongValidator(), {}});
+    m_compatibles.emplace(Type::UNSIGNED_LONG,
+                          ValidationInfo {json::Json::Type::Number, validators::getUnsignedLongValidator(), {}});
     m_compatibles.emplace(Type::COMPLETION,
                           ValidationInfo {json::Json::Type::String,
                                           validators::getStringValidator(),
@@ -290,13 +303,22 @@ base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& n
 
 base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& name, const ValidationToken& token) const
 {
+    // Root target (.) is allowed (e.g. merge operations into event root)
+    if (name.isRoot())
+    {
+        return ValidationResult();
+    }
 
-    // If not a schema field, allways return success with no runtime validator
+    // If not a schema field, allow only temporary fields rooted at '_'
     if (!m_schema.hasField(name))
     {
-        // TODO: When custom fields are merged into the schema (ECS + custom),
-        // any unknown field should become a hard error instead of being allowed.
-        return ValidationResult();
+        if (isTemporaryField(name))
+        {
+            return ValidationResult();
+        }
+
+        return base::Error {fmt::format(
+            "Field '{}' is not defined in WCS schema and is not a temporary field (root must start with '_')", name)};
     }
 
     // If no token, runtime validation only
