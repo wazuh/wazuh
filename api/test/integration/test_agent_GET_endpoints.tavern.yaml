@@ -1708,7 +1708,7 @@ stages:
   - name: Try to show config of a non existing agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/config/mail/global"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999/config/wmodules/wmodules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1720,7 +1720,7 @@ stages:
   - name: Try to show config of an invalid agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong_name/config/mail/global"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong_name/config/wmodules/wmodules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1732,7 +1732,7 @@ stages:
   - name: Request Error Component Parameter
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/wrong_component/global"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/wrong_component/wmodules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1744,7 +1744,7 @@ stages:
   - name: Request Error Configuration Parameter
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/mail/wrong_configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/wmodules/wrong_configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
