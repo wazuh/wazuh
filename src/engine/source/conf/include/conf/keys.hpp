@@ -29,7 +29,8 @@ constexpr std::string_view INDEXER_SSL_CA_BUNDLE = "analysisd.indexer_ssl_certif
 constexpr std::string_view INDEXER_SSL_CERTIFICATE = "analysisd.indexer_ssl_certificate";
 constexpr std::string_view INDEXER_SSL_KEY = "analysisd.indexer_ssl_key";
 
-constexpr std::string_view RAW_EVENT_INDEXER_ENABLED = "analysisd.raw_event_indexer_enabled";
+constexpr std::string_view REMOTE_RAW_EVENT_INDEXER = "index_raw_events";
+constexpr std::string_view REMOTE_CONF_REFRESH_INTERVAL = "analysisd.remote_conf_refresh_interval";
 
 constexpr std::string_view QUEUE_SIZE = "analysisd.queue_size";
 constexpr std::string_view QUEUE_FLOOD_FILE = "analysisd.queue_flood_file";

@@ -61,8 +61,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<std::string>(key::INDEXER_SSL_CERTIFICATE, "WAZUH_INDEXER_SSL_CERTIFICATE", "");
     addUnit<std::string>(key::INDEXER_SSL_KEY, "WAZUH_INDEXER_SSL_KEY", "");
 
-    // Raw Event Indexer
-    addUnit<bool>(key::RAW_EVENT_INDEXER_ENABLED, "WAZUH_RAW_EVENT_INDEXER_ENABLED", false);
+    addUnit<size_t>(key::REMOTE_CONF_REFRESH_INTERVAL, "WAZUH_REMOTE_CONF_REFRESH_INTERVAL", 300);
 
     // Queue module
     addUnit<int>(key::QUEUE_SIZE, "WAZUH_QUEUE_SIZE", 1000000);

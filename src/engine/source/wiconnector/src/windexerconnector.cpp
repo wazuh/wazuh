@@ -459,4 +459,20 @@ bool WIndexerConnector::existsPolicy(std::string_view space)
     return totalHits > 0;
 }
 
+json::Json
+WIndexerConnector::search(std::string_view index, std::size_t size, const json::Json& query, const json::Json& source)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    const auto queryJson = nlohmann::json::parse(query.str());
+    const auto sourceJson = nlohmann::json::parse(source.str());
+
+    const auto hits = m_indexerConnectorAsync->search(std::string(index), size, queryJson, sourceJson);
+    return json::Json {hits.dump().c_str()};
+}
+
 }; // namespace wiconnector
