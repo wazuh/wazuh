@@ -15,6 +15,7 @@
 #include <winternl.h>
 #include <ntstatus.h>
 #include <iphlpapi.h>
+#include <shellapi.h>
 #include <memory>
 #include <list>
 #include <set>
@@ -65,6 +66,10 @@ static const std::map<std::string, DWORD> gs_firmwareTableProviderSignature
     {"RSMB", 0x52534D42}
 };
 
+// ProcessCommandLineInformation (PROCESSINFOCLASS value 60) is available on Windows 8.1+.
+// Used with NtQueryInformationProcess to retrieve the full command line of a process.
+static constexpr auto ProcessCommandLineInformation = static_cast<PROCESSINFOCLASS>(60);
+
 class SysInfoProcess final
 {
     public:
@@ -97,6 +102,40 @@ class SysInfoProcess final
             }
 
             // else: Unable to retrieve executable path from current process.
+            return ret;
+        }
+
+        // Retrieve the full command line (executable + arguments) using NtQueryInformationProcess.
+        // Available on Windows 8.1+ (PROCESSINFOCLASS value 60).
+        std::wstring cmdLineW()
+        {
+            std::wstring ret;
+            ULONG size = 0;
+
+            // First call: get required buffer size
+            auto status = NtQueryInformationProcess(
+                m_hProcess, ProcessCommandLineInformation, nullptr, 0, &size);
+
+            if (STATUS_INFO_LENGTH_MISMATCH != status && STATUS_BUFFER_OVERFLOW != status
+                && STATUS_BUFFER_TOO_SMALL != status)
+            {
+                return ret;
+            }
+
+            auto buffer = std::make_unique<BYTE[]>(size);
+            status = NtQueryInformationProcess(
+                m_hProcess, ProcessCommandLineInformation, buffer.get(), size, &size);
+
+            if (NT_SUCCESS(status))
+            {
+                const auto* unicodeStr = reinterpret_cast<UNICODE_STRING*>(buffer.get());
+
+                if (unicodeStr->Buffer && unicodeStr->Length > 0)
+                {
+                    ret.assign(unicodeStr->Buffer, unicodeStr->Length / sizeof(WCHAR));
+                }
+            }
+
             return ret;
         }
 
@@ -348,7 +387,6 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
 
         // Current process information
         jsProcessInfo["name"]       = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(processName(processEntry));
-        jsProcessInfo["cmd"]        = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8((isSystemProcess(pId)) ? "none" : process.cmd());
         jsProcessInfo["stime"]      = process.kernelModeTime();
         jsProcessInfo["size"]       = process.pageFileUsage();
         jsProcessInfo["ppid"]       = processEntry.th32ParentProcessID;
@@ -359,6 +397,77 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
         jsProcessInfo["utime"]      = process.userModeTime();
         jsProcessInfo["vm_size"]    = process.virtualSize();
         jsProcessInfo["start_time"] = process.creationTime();
+
+        if (isSystemProcess(pId))
+        {
+            jsProcessInfo["cmd"]    = "none";
+            jsProcessInfo["argvs"]  = "";
+        }
+        else
+        {
+            std::string commandLine;
+            std::string commandLineArgs;
+
+            // Try to get the full command line (executable + arguments) via NtQueryInformationProcess
+            const auto fullCmdLineW = process.cmdLineW();
+
+            if (!fullCmdLineW.empty())
+            {
+                // Convert full command line to UTF-8
+                const int utf8Size = WideCharToMultiByte(
+                    CP_UTF8, 0, fullCmdLineW.c_str(), static_cast<int>(fullCmdLineW.size()),
+                    nullptr, 0, nullptr, nullptr);
+
+                if (utf8Size > 0)
+                {
+                    commandLine.resize(utf8Size);
+                    WideCharToMultiByte(
+                        CP_UTF8, 0, fullCmdLineW.c_str(), static_cast<int>(fullCmdLineW.size()),
+                        commandLine.data(), utf8Size, nullptr, nullptr);
+                }
+
+                // Parse arguments using CommandLineToArgvW for proper Windows command-line tokenization
+                int argc = 0;
+                const auto argv = CommandLineToArgvW(fullCmdLineW.c_str(), &argc);
+
+                if (argv && argc > 1)
+                {
+                    for (int i = 1; i < argc; ++i)
+                    {
+                        const int argSize = WideCharToMultiByte(
+                            CP_UTF8, 0, argv[i], -1, nullptr, 0, nullptr, nullptr);
+
+                        if (argSize > 0)
+                        {
+                            std::string arg(argSize - 1, '\0');
+                            WideCharToMultiByte(
+                                CP_UTF8, 0, argv[i], -1, arg.data(), argSize, nullptr, nullptr);
+
+                            if (!commandLineArgs.empty())
+                            {
+                                commandLineArgs += " ";
+                            }
+
+                            commandLineArgs += arg;
+                        }
+                    }
+                }
+
+                if (argv)
+                {
+                    LocalFree(argv);
+                }
+            }
+            else
+            {
+                // Fallback: use executable path only (previous behavior)
+                commandLine = process.cmd();
+            }
+
+            jsProcessInfo["cmd"]    = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(commandLine);
+            jsProcessInfo["argvs"]  = commandLineArgs;
+        }
+
         CloseHandle(processHandle);
     }
 
