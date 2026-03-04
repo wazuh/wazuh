@@ -371,7 +371,21 @@ void audit_rules_to_realtime() {
     if (realtime_check) {
         w_mutex_lock(&syscheck.fim_realtime_mutex);
         if (syscheck.realtime == NULL) {
-            realtime_start();
+            if (realtime_start() < 0) {
+                w_mutex_unlock(&syscheck.fim_realtime_mutex);
+                // Fallback: switch realtime directories to scheduled mode.
+                // Lock ordering: directories_lock first, then fim_realtime_mutex.
+                w_rwlock_wrlock(&syscheck.directories_lock);
+                OSList_foreach(node_it, syscheck.directories) {
+                    dir_it = node_it->data;
+                    if (dir_it->options & REALTIME_ACTIVE) {
+                        dir_it->options &= ~REALTIME_ACTIVE;
+                        dir_it->options |= SCHEDULED_ACTIVE;
+                    }
+                }
+                w_rwlock_unlock(&syscheck.directories_lock);
+                return;
+            }
         }
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
     }
@@ -526,6 +540,18 @@ void *audit_main(audit_data_t *audit_data) {
 
     // Clean regexes used for parsing events
     clean_regex();
+
+    // Initialize realtime engine before acquiring directories_lock to maintain
+    // consistent lock ordering (directories_lock -> fim_realtime_mutex).
+    int realtime_started = 0;
+    w_mutex_lock(&syscheck.fim_realtime_mutex);
+    if (syscheck.realtime == NULL) {
+        if (realtime_start() < 0) {
+            realtime_started = -1;
+        }
+    }
+    w_mutex_unlock(&syscheck.fim_realtime_mutex);
+
     // Change Audit monitored folders to Inotify.
     w_rwlock_wrlock(&syscheck.directories_lock);
     OSList_foreach(node_it, syscheck.directories) {
@@ -538,14 +564,14 @@ void *audit_main(audit_data_t *audit_data) {
                 continue;
             }
             dir_it->options &= ~ WHODATA_ACTIVE;
-            dir_it->options |= REALTIME_ACTIVE;
 
-            w_mutex_lock(&syscheck.fim_realtime_mutex);
-            if (syscheck.realtime == NULL) {
-                realtime_start();
+            if (realtime_started < 0) {
+                // realtime_start() failed, fallback to scheduled mode
+                dir_it->options |= SCHEDULED_ACTIVE;
+            } else {
+                dir_it->options |= REALTIME_ACTIVE;
+                realtime_adddir(path, dir_it);
             }
-            w_mutex_unlock(&syscheck.fim_realtime_mutex);
-            realtime_adddir(path, dir_it);
             free(path);
         }
     }
@@ -553,15 +579,13 @@ void *audit_main(audit_data_t *audit_data) {
     OSList_foreach(node_it, syscheck.wildcards) {
         dir_it = node_it->data;
         if ((dir_it->options & WHODATA_ACTIVE)) {
-
-            w_mutex_lock(&syscheck.fim_realtime_mutex);
-            if (syscheck.realtime == NULL) {
-                realtime_start();
-            }
-            w_mutex_unlock(&syscheck.fim_realtime_mutex);
-
             dir_it->options &= ~ WHODATA_ACTIVE;
-            dir_it->options |= REALTIME_ACTIVE;
+
+            if (realtime_started < 0) {
+                dir_it->options |= SCHEDULED_ACTIVE;
+            } else {
+                dir_it->options |= REALTIME_ACTIVE;
+            }
         }
     }
 
