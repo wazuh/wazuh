@@ -43,9 +43,9 @@ inline constexpr IOCType parseIOCType(std::string_view key)
 {
     if (key == "connection")
         return IOCType::CONNECTION;
-    else if (key == "url-full")
+    else if (key == "url_full")
         return IOCType::URL_FULL;
-    else if (key == "url-domain")
+    else if (key == "url_domain")
         return IOCType::URL_DOMAIN;
     else if (key == "hash_md5")
         return IOCType::HASH_MD5;
@@ -99,18 +99,18 @@ inline constexpr std::string_view dbNameFromType(IOCType type)
 {
     switch (type)
     {
-        case IOCType::CONNECTION: return "ioc-connections";
-        case IOCType::URL_FULL: return "ioc-urls-full";
-        case IOCType::URL_DOMAIN: return "ioc-urls-domain";
-        case IOCType::HASH_MD5: return "ioc-hashes-md5";
-        case IOCType::HASH_SHA1: return "ioc-hashes-sha1";
-        case IOCType::HASH_SHA256: return "ioc-hashes-sha256";
+        case IOCType::CONNECTION: return "ioc_connections";
+        case IOCType::URL_FULL: return "ioc_urls_full";
+        case IOCType::URL_DOMAIN: return "ioc_urls_domain";
+        case IOCType::HASH_MD5: return "ioc_hashes_md5";
+        case IOCType::HASH_SHA1: return "ioc_hashes_sha1";
+        case IOCType::HASH_SHA256: return "ioc_hashes_sha256";
         default: throw std::runtime_error("Unknown IOC type");
     }
 }
 
 inline constexpr std::array<std::string_view, static_cast<size_t>(IOCType::DB_COUNT)> DB_NAMES = {
-    "ioc-connections", "ioc-urls-full", "ioc-urls-domain", "ioc-hashes-md5", "ioc-hashes-sha1", "ioc-hashes-sha256"};
+    "ioc_connections", "ioc_urls_full", "ioc_urls_domain", "ioc_hashes_md5", "ioc_hashes_sha1", "ioc_hashes_sha256"};
 
 /**
  * @brief Initialize the required databases in the KVDB if they don't already exist.
