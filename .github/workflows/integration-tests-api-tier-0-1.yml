@@ -11,6 +11,7 @@ on:
     paths:
         - ".github/workflows/integration-tests-api-tier-0-1.yml"
         - "api/**"
+        - "framework/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_api/**"

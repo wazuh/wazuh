@@ -31,6 +31,9 @@ from wazuh.core.wdb import AsyncWazuhDBConnection, WazuhDBConnection
 
 IGNORED_WDB_EXCEPTIONS = ['Cannot execute Global database query; FOREIGN KEY constraint failed']
 
+_ALLOWED_PREFIXES = (
+    os.path.join(common.WAZUH_PATH, "queue/cluster"),
+)
 
 class Response:
     """
@@ -955,7 +958,16 @@ class Handler(asyncio.Protocol):
         bytes
             Response message.
         """
-        self.in_file[data] = {'fd': open(common.WAZUH_PATH + data.decode(), 'wb'), 'checksum': hashlib.sha256()}
+        # Decode path requested by peer node
+        rel = data.decode()
+
+        dst = os.path.realpath(os.path.join(common.WAZUH_PATH, rel.lstrip("/")))
+
+        if not any(os.path.commonpath([dst, root]) == root for root in _ALLOWED_PREFIXES):
+            return b"err", b"Write path not allowed"
+
+        self.in_file[data] = {"fd": open(dst, "wb"), "checksum": hashlib.sha256()}
+        
         return b"ok ", b"Ready to receive new file"
 
     def update_file(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -1129,7 +1141,7 @@ class Handler(asyncio.Protocol):
         """
         try:
             exc = json.loads(data.decode(), object_hook=as_wazuh_object)
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError:
             exc = exception.WazuhClusterError(3000, extra_message=data.decode())
 
         return exc
@@ -1624,7 +1636,7 @@ class SyncWazuhdb(SyncTask):
                                                                       f'not be sent to the master node: {task_id}')
 
             # Specify under which task_id the JSON can be found in the master/worker.
-            self.logger.debug(f"Sending chunks.")
+            self.logger.debug("Sending chunks.")
             await self.server.send_request(command=self.cmd, data=task_id)
         else:
             self.logger.info(f"Finished in {(utils.get_utc_now().timestamp() - start_time):.3f}s. Updated 0 chunks.")
