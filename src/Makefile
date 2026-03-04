@@ -621,8 +621,8 @@ $(INDEXER_PLUGINS_DIR)/alerts.json: | $(INDEXER_PLUGINS_DIR)
 	@success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STREAMS_PATH)/$(notdir $@)"; \
-		echo "curl -f -s -o $@ $$url"; \
-		if curl -f -s -o $@ "$$url" 2>/dev/null; then \
+		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(CURL) $@ $(CACERT_OPT) -f "$$url" 2>/dev/null; then \
 			success=1; \
 			break; \
 		fi; \
@@ -637,8 +637,8 @@ $(INDEXER_PLUGINS_DIR)/%.json: | $(INDEXER_PLUGINS_DIR)
 	@success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STATES_PATH)/$(notdir $@)"; \
-		echo "curl -f -s -o $@ $$url"; \
-		if curl -f -s -o $@ "$$url" 2>/dev/null; then \
+		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(CURL) $@ $(CACERT_OPT) -f "$$url" 2>/dev/null; then \
 			success=1; \
 			break; \
 		fi; \
@@ -658,8 +658,8 @@ $(WCS_FLAT_DIR)/%-ecs-flat.yml: | $(WCS_FLAT_DIR)
 	subdir=$(patsubst %-ecs-flat.yml,%,$(@F)); \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(WCS_FLAT_STATELESS_PATH)/$$subdir/docs/ecs_flat.yml"; \
-		echo "curl -f -s -o $@ $$url"; \
-		if curl -f -s -o $@ "$$url" 2>/dev/null; then \
+		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(CURL) $@ $(CACERT_OPT) -f "$$url" 2>/dev/null; then \
 			success=1; \
 			break; \
 		fi; \
