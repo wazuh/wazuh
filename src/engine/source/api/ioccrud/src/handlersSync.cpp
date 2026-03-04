@@ -128,7 +128,9 @@ void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManage
 
         // Generate random suffix for temporary databases
         const std::string tmpSuffix = "_" + base::utils::generators::randomHexString(4);
-        std::unordered_set<std::string> tempDatabases;
+
+        // Initialize all temporary databases at once
+        kvdbioc::details::initializeDBs(kvdbManager, tmpSuffix);
 
         // Process file line by line
         std::string line;
@@ -155,18 +157,9 @@ void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManage
                 // Create temporary DB name
                 std::string tmpDbName = dbName + tmpSuffix;
 
-                // Create temporary database if it doesn't exist
-                if (tempDatabases.find(tmpDbName) == tempDatabases.end())
-                {
-                    if (!kvdbManager->exists(tmpDbName))
-                    {
-                        kvdbManager->add(tmpDbName);
-                    }
-                    tempDatabases.insert(tmpDbName);
-                }
-
                 // Update value in DB
                 kvdbioc::details::updateValueInDB(kvdbManager, tmpDbName, key, iocDoc);
+
                 ++processedLines;
             }
             catch (const std::exception& e)
@@ -196,17 +189,18 @@ void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManage
             LOG_DEBUG_L(lambdaName.c_str(), "Processed {} IOC entries from file", processedLines);
         }
 
-        // Perform hot-swap for each temporary database to production, if not exist, delete the temp db and skip
-        for (const auto& tmpDbName : tempDatabases)
+        // Perform hot-swap for ALL temporary databases to production
+        size_t dbsUpdated = 0;
+        for (const auto& dbName : kvdbioc::details::DB_NAMES)
         {
-            // Extract original DB name by removing the temporary suffix
-            std::string originalDbName = tmpDbName.substr(0, tmpDbName.length() - tmpSuffix.length());
+            std::string tmpDbName = std::string(dbName) + tmpSuffix;
+            std::string originalDbName = std::string(dbName);
 
             if (!kvdbManager->exists(originalDbName))
             {
                 LOG_WARNING_L(
                     lambdaName.c_str(), "Original DB {} does not exist, skipping hot-swap for this DB", originalDbName);
-                // Clean up the temporary database since it won't be used
+                // Clean up the temporary database since production DB doesn't exist
                 try
                 {
                     kvdbManager->remove(tmpDbName);
@@ -216,16 +210,16 @@ void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManage
                 {
                     LOG_WARNING_L(lambdaName.c_str(), "Failed to delete temporary DB {}: {}", tmpDbName, e.what());
                 }
-                continue; // Skip to next database
+                continue;
             }
 
-            // Hot-swap: move tmp DB to production
+            // Hot-swap: move tmp DB to production (even if empty)
             kvdbManager->hotSwap(tmpDbName, originalDbName);
             LOG_DEBUG_L(lambdaName.c_str(), "Hot-swap completed for DB: {}", originalDbName);
+            ++dbsUpdated;
         }
 
-        LOG_INFO_L(
-            lambdaName.c_str(), "IOC synchronization completed successfully. {} DBs updated.", tempDatabases.size());
+        LOG_INFO_L(lambdaName.c_str(), "IOC synchronization completed successfully. {} DBs updated.", dbsUpdated);
 
         // Update the hash in the store after successful synchronization
         std::string message =

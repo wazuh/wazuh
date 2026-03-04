@@ -12,8 +12,8 @@
 namespace kvdbioc::details
 {
 
-inline constexpr std::string_view IOC_NAME_KEY = "/name"; ///< JSON pointer to the IOC name field, used as the key in KVDB
-inline constexpr std::string_view IOC_TYPE_KEY = "/type"; ///< JSON pointer to the IOC type field, used for type inference
+inline constexpr std::string_view IOC_NAME_KEY = "/name"; ///< Path to the IOC name field, used as the key in KVDB
+inline constexpr std::string_view IOC_TYPE_KEY = "/type"; ///< Path to the IOC type field, used for type inference
 
 /**
  * @brief Enumeration of supported IOC types for type inference and DB routing
@@ -116,15 +116,18 @@ inline constexpr std::array<std::string_view, static_cast<size_t>(IOCType::DB_CO
  * @brief Initialize the required databases in the KVDB if they don't already exist.
  *
  * @param manager The KVDB manager instance to use for DB operations.
+ * @param suffix Optional suffix to append to database names (e.g., for temporary databases).
  * @throws std::runtime_error on RocksDB errors during DB creation.
  */
-inline void initializeDBs(const std::shared_ptr<IKVDBManager>& manager)
+inline void initializeDBs(const std::shared_ptr<IKVDBManager>& manager, std::string_view suffix = "")
 {
     for (const auto& dbName : DB_NAMES)
     {
-        if (!manager->exists(dbName))
+        std::string fullDbName = suffix.empty() ? std::string(dbName) : std::string(dbName) + std::string(suffix);
+
+        if (!manager->exists(fullDbName))
         {
-            manager->add(dbName);
+            manager->add(fullDbName);
         }
     }
 }

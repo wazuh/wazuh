@@ -543,10 +543,14 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_InvalidJSON_StoresError)
     TempIOCFile tempFile("invalid json content {{{");
     const std::string testHash = "test_hash_789";
 
-    // Setup mocks - no DBs should be created or swapped since all lines are invalid
-    EXPECT_CALL(*m_kvdbManager, exists(_)).Times(0);
-    EXPECT_CALL(*m_kvdbManager, add(_)).Times(0);
-    EXPECT_CALL(*m_kvdbManager, hotSwap(_, _)).Times(0);
+    // Setup mocks - temp DBs will be created and then cleaned up since prod DBs don't exist
+    // 6 exists() calls for temp DB creation, 6 add() calls to create them
+    EXPECT_CALL(*m_kvdbManager, exists(_))
+        .Times(12) // 6 for temp DBs (don't exist), 6 for prod DBs during hot-swap (don't exist)
+        .WillRepeatedly(Return(false));
+    EXPECT_CALL(*m_kvdbManager, add(_)).Times(6);        // Create 6 temp DBs
+    EXPECT_CALL(*m_kvdbManager, remove(_)).Times(6);     // Cleanup temp DBs since prod doesn't exist
+    EXPECT_CALL(*m_kvdbManager, hotSwap(_, _)).Times(0); // No hot-swap since prod DBs don't exist
 
     // Expect hash to be updated since sync "completes" (with 0 processed, 1 skipped)
     // The lastError should contain information about skipped lines
@@ -663,7 +667,6 @@ TEST_F(SyncIocHandlerTest, SyncInProgress_Returns400)
 
     EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
     EXPECT_THAT(response.body, HasSubstr("IOC synchronization already in progress"));
-
 }
 
 /*****************************************************************************
@@ -827,11 +830,14 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_EmptyFile_UpdatesHashWithoutError)
 
     const std::string testHash = "empty_file_hash";
 
-    // No KVDB operations should happen
-    EXPECT_CALL(*m_kvdbManager, exists(_)).Times(0);
-    EXPECT_CALL(*m_kvdbManager, add(_)).Times(0);
-    EXPECT_CALL(*m_kvdbManager, put(_, _, _)).Times(0);
-    EXPECT_CALL(*m_kvdbManager, hotSwap(_, _)).Times(0);
+    // Temp DBs will be created and then cleaned up since prod DBs don't exist
+    EXPECT_CALL(*m_kvdbManager, exists(_))
+        .Times(12) // 6 for temp DBs (don't exist), 6 for prod DBs during hot-swap (don't exist)
+        .WillRepeatedly(Return(false));
+    EXPECT_CALL(*m_kvdbManager, add(_)).Times(6);        // Create 6 temp DBs
+    EXPECT_CALL(*m_kvdbManager, put(_, _, _)).Times(0);  // No data inserted
+    EXPECT_CALL(*m_kvdbManager, remove(_)).Times(6);     // Cleanup temp DBs since prod doesn't exist
+    EXPECT_CALL(*m_kvdbManager, hotSwap(_, _)).Times(0); // No hot-swap since prod DBs don't exist
 
     // Hash should be updated (0 processed, 0 skipped = success)
     EXPECT_CALL(*m_store, upsertDoc(_, _))
