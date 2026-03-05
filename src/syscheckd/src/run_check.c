@@ -685,7 +685,9 @@ void start_daemon()
 #endif
 
     // Decide startup synchronization delay behavior before baseline scan populates the DB.
-    fim_set_initial_sync_wait_policy(fim_has_data_in_database());
+    // Keep restart behavior unchanged by honoring persisted-state presence even if the current tables are empty.
+    const bool has_existing_state = fim_has_persisted_state_before_init || fim_has_data_in_database();
+    fim_set_initial_sync_wait_policy(has_existing_state);
 
     // Create File integrity monitoring base-line
     minfo(FIM_FREQUENCY_TIME, syscheck.time);

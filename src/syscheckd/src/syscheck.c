@@ -34,6 +34,7 @@ int audit_queue_full_reported = 0;
 int synced_docs_files = 0;
 int synced_docs_registry_keys = 0;
 int synced_docs_registry_values = 0;
+bool fim_has_persisted_state_before_init = false;
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -401,6 +402,9 @@ bool fetch_document_limits_from_agentd(){
 }
 
 void fim_initialize() {
+    // Capture whether this startup is reusing an existing persistent FIM DB.
+    fim_has_persisted_state_before_init = (IsFile(FIM_DB_DISK_PATH) == 0);
+
     // Create store data
 #ifndef WIN32
     FIMDBErrorCode ret_val = fim_db_init(FIM_DB_DISK,
