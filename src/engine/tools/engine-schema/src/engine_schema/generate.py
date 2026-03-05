@@ -6,10 +6,7 @@ import tempfile
 from pathlib import Path
 
 from . import resource_handler as rs
-
 from .drivers import ecs
-
-
 
 
 def _merge_yaml_dicts(dict1: dict, dict2: dict) -> dict:
@@ -113,7 +110,10 @@ def _build_fields_schema(base_template: dict, properties: dict, file_id: str, na
     return t
 
 
-def build_geo_as_enrichment_map_from_flat(wcs_flat: Dict[str, Dict[str, Any]], exclude_ip_fields: Set[str] | None = None,) -> Dict[str, Dict[str, str]]:
+def build_geo_as_enrichment_map_from_flat(
+    wcs_flat: Dict[str, Dict[str, Any]],
+    exclude_ip_fields: Set[str] | None = None,
+) -> Dict[str, Dict[str, str]]:
     exclude_ip_fields = exclude_ip_fields or set()
     result: Dict[str, Dict[str, str]] = {}
 
@@ -188,8 +188,188 @@ def build_geo_as_enrichment_map_from_flat(wcs_flat: Dict[str, Dict[str, Any]], e
 
     return result
 
-def generate(wcs_path: str, resource_handler: rs.ResourceHandler, exclude_geo: Set[str]) -> Tuple[dict, dict, dict, dict, dict]:
 
+# ---------------------------------------------------------------------
+# New: Enrichment sources generator (connection / url_full / url_domain / hash)
+# ---------------------------------------------------------------------
+
+def build_enrichment_sources_config_from_flat(
+    wcs_flat: Dict[str, Dict[str, Any]],
+    enrichment_cfg: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Generates a config file with source fields used to enrich events per DB type.
+
+    Output format:
+      {
+        "connection": { "sources": [ {"ip_field": "...", "port_field": "..."} ] },
+        "url_full": { "sources": ["url.full", "url.original"] },
+        "url_domain": { "sources": ["..."] },
+        "hash_md5": { "sources": [...] },
+        "hash_sha1": { "sources": [...] },
+        "hash_sha256": { "sources": [...] }
+      }
+    """
+
+    def field_type(meta: Any) -> str:
+        if isinstance(meta, dict) and isinstance(meta.get("type"), str):
+            return meta["type"].lower()
+        return ""
+
+    def field_desc(meta: Any) -> str:
+        if isinstance(meta, dict) and isinstance(meta.get("short"), str):
+            return meta["short"]
+        return ""
+
+    def is_excluded(field: str, exclude_trees: Set[str]) -> bool:
+        for t in exclude_trees:
+            if field == t or field.startswith(t + "."):
+                return True
+        return False
+
+    def effective_exclude_trees(type_name: str) -> Set[str]:
+        g = enrichment_cfg.get("global", {}) or {}
+        types = enrichment_cfg.get("types", {}) or {}
+        global_trees = set(g.get("exclude_trees", []) or [])
+        type_trees = set((((types.get(type_name, {}) or {}).get("exclude", {}) or {}).get("exclude_trees", []) or []))
+        return global_trees | type_trees
+
+    out: Dict[str, Any] = {
+        "connection": {"sources": []},
+        "url_full": {"sources": []},
+        "url_domain": {"sources": []},
+    }
+
+    types_cfg = enrichment_cfg.get("types", {}) or {}
+
+    # 1) connection
+    conn_cfg = types_cfg.get("connection", {}) or {}
+    if conn_cfg.get("enabled", False):
+        exclude_trees = effective_exclude_trees("connection")
+        include = (conn_cfg.get("include", {}) or {})
+        rule = (include.get("sibling_pair_rule", {}) or {})
+        ip_names = rule.get("ip_field_names", []) or []
+        port_names = rule.get("port_field_names", []) or []
+
+        # group leaves by parent
+        by_parent: DefaultDict[str, Dict[str, str]] = defaultdict(dict)
+        for f in wcs_flat.keys():
+            if is_excluded(f, exclude_trees):
+                continue
+            if "." not in f:
+                continue
+            parent, leaf = f.rsplit(".", 1)
+            by_parent[parent][leaf] = f
+
+        sources: List[Dict[str, str]] = []
+        for parent, leaf_map in sorted(by_parent.items()):
+            ip_field = None
+            port_field = None
+
+            for ip_leaf in ip_names:
+                cand = leaf_map.get(ip_leaf)
+                if cand and field_type(wcs_flat.get(cand, {})) == "ip":
+                    ip_field = cand
+                    break
+
+            for port_leaf in port_names:
+                cand = leaf_map.get(port_leaf)
+                if cand:
+                    port_field = cand
+                    break
+
+            if ip_field and port_field:
+                sources.append({"ip_field": ip_field, "port_field": port_field})
+
+        out["connection"]["sources"] = sources
+
+    # 2) url_full
+    url_full_cfg = types_cfg.get("url_full", {}) or {}
+    if url_full_cfg.get("enabled", False):
+        exclude_trees = effective_exclude_trees("url_full")
+        include = (url_full_cfg.get("include", {}) or {})
+        explicit_fields = include.get("explicit_fields", []) or []
+
+        selected: Set[str] = set()
+        for f in explicit_fields:
+            if f in wcs_flat and not is_excluded(f, exclude_trees):
+                selected.add(f)
+
+        out["url_full"]["sources"] = sorted(selected)
+
+    # 3) url_domain
+    url_domain_cfg = types_cfg.get("url_domain", {}) or {}
+    if url_domain_cfg.get("enabled", False):
+        exclude_trees = effective_exclude_trees("url_domain")
+        include = (url_domain_cfg.get("include", {}) or {})
+
+        by_contains = include.get("by_field_contains", []) or []
+        explicit_fields = include.get("explicit_fields", []) or []
+
+        # OJO: ahora esto se usa como EXCLUSION por description
+        desc_cfg = include.get("by_description_exact", {}) or {}
+        desc_enabled = bool(desc_cfg.get("enabled", False))
+        desc_values = set(desc_cfg.get("values", []) or [])
+
+        selected: Set[str] = set()
+
+        # explicit
+        for f in explicit_fields:
+            if f in wcs_flat and not is_excluded(f, exclude_trees):
+                selected.add(f)
+
+        # by contains on field name
+        for f in wcs_flat.keys():
+            if is_excluded(f, exclude_trees):
+                continue
+            if any(tok in f for tok in by_contains):
+                selected.add(f)
+
+        # EXCLUDE by description exact
+        if desc_enabled and desc_values:
+            to_remove: Set[str] = set()
+            for f in selected:
+                meta = wcs_flat.get(f)
+                if meta is None:
+                    continue
+                if field_desc(meta) in desc_values:
+                    to_remove.add(f)
+            selected -= to_remove
+
+        out["url_domain"]["sources"] = sorted(selected)
+
+    # 4) hash by algorithm (flat structure: hash_md5, hash_sha1, etc.)
+    hash_cfg = types_cfg.get("hash", {}) or {}
+    if hash_cfg.get("enabled", False):
+        algorithms = (hash_cfg.get("algorithms", {}) or {})
+        for algorithm_name, algorithm_cfg in algorithms.items():
+            algorithm_cfg = algorithm_cfg or {}
+            if not algorithm_cfg.get("enabled", False):
+                continue
+
+            # global + (hash exclude) + (algo exclude)
+            g_trees = set((enrichment_cfg.get("global", {}) or {}).get("exclude_trees", []) or [])
+            hash_trees = set(((hash_cfg.get("exclude", {}) or {}).get("exclude_trees", []) or []))
+            algo_trees = set((((algorithm_cfg.get("exclude", {}) or {}).get("exclude_trees", []) or [])))
+            exclude_trees = g_trees | hash_trees | algo_trees
+
+            include = (algorithm_cfg.get("include", {}) or {})
+            tokens = include.get("by_field_contains", []) or []
+
+            selected: Set[str] = set()
+            for f in wcs_flat.keys():
+                if is_excluded(f, exclude_trees):
+                    continue
+                if any(tok in f for tok in tokens):
+                    selected.add(f)
+
+            # Use flat key format: hash_md5, hash_sha1, etc.
+            out[f"hash_{algorithm_name}"] = {"sources": sorted(selected)}
+
+    return out
+
+
+def generate(wcs_path: str, resource_handler: rs.ResourceHandler, exclude_geo: Set[str], enrichment_cfg: dict) -> Tuple[dict, dict, dict, dict, dict, dict]:
     print('Loading resources...')
     temp_file_path = None
     try:
@@ -215,6 +395,11 @@ def generate(wcs_path: str, resource_handler: rs.ResourceHandler, exclude_geo: S
 
         print('Generating geo/as enrichment map...')
         geo_enrichment_map = build_geo_as_enrichment_map_from_flat(wcs_flat, exclude_geo)
+        print('Success.')
+
+        # New: generate enrichment sources config
+        print('Generating enrichment sources config...')
+        enrichment_sources_config = build_enrichment_sources_config_from_flat(wcs_flat, enrichment_cfg)
         print('Success.')
 
         # Generate field tree from ecs_flat
@@ -251,7 +436,14 @@ def generate(wcs_path: str, resource_handler: rs.ResourceHandler, exclude_geo: S
         logpar_template["fields"] = field_tree.get_jlogpar()
         print('Success.')
 
-        return decoder_fields_schema, mappings_properties, logpar_template, engine_schema, geo_enrichment_map
+        return (
+            decoder_fields_schema,
+            mappings_properties,
+            logpar_template,
+            engine_schema,
+            geo_enrichment_map,
+            enrichment_sources_config,
+        )
 
     finally:
         # Clean up temporary file if it was created

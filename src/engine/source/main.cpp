@@ -454,6 +454,7 @@ int main(int argc, char* argv[])
             builderDeps.logparDebugLvl = 0;
             builderDeps.logpar = logpar;
             builderDeps.kvdbManager = kvdbManager;
+            builderDeps.kvdbIocManager = kvdbIOC;
             builderDeps.geoManager = geoManager;
             builderDeps.logManager = streamLogger;
             builderDeps.iConnector = indexerConnector;

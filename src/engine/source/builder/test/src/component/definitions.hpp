@@ -369,6 +369,30 @@ public:
         EXPECT_CALL(*m_spMocks->m_spMockStore, readDoc(base::Name("enrichment/geo/0")))
             .WillRepeatedly(testing::Return(base::RespOrError<store::Doc>(geoConfig)));
 
+        // Configure MockStore to return a valid IOC configuration for enrichment/ioc/0
+        auto iocConfig = json::Json(R"({
+            "hash_md5": {
+                "sources": []
+            },
+            "hash_sha1": {
+                "sources": []
+            },
+            "hash_sha256": {
+                "sources": []
+            },
+            "url_domain": {
+                "sources": []
+            },
+            "url_full": {
+                "sources": []
+            },
+            "connection": {
+                "sources": []
+            }
+        })");
+        EXPECT_CALL(*m_spMocks->m_spMockStore, readDoc(base::Name("enrichment/ioc/0")))
+            .WillRepeatedly(testing::Return(base::RespOrError<store::Doc>(iocConfig)));
+
         m_spBuilder = std::make_shared<builder::Builder>(
             m_spMocks->m_spStore, m_spMocks->m_spSchemf, m_spMocks->m_spDefBuilder, emptyAllowedFields, builderDeps, m_spMocks->m_spMockStore);
     }

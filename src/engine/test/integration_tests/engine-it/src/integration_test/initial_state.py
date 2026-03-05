@@ -124,26 +124,77 @@ def init_geo_store(env_path: Path, test_path: Path):
 
 def init_enrichments_store(env_path: Path):
     """
-    Initialize geo store structure and JSON metadata for databases.
-    Creates store/geo/mmdb/0 with nested structure for all databases.
+    Initialize enrichment store structure and JSON metadata for databases.
+    Creates store/enrichment/{geo,ioc}/0 with nested configuration.
     """
-    enrichment_geo_path = env_path / "store" / "enrichment" / "geo"
-    enrichment_geo_path.mkdir(parents=True, exist_ok=True)
 
-    # Create nested store metadata JSON
-    metadata = {
+    enrichment_path = env_path / "store" / "enrichment"
+    geo_path = enrichment_path / "geo"
+    ioc_path = enrichment_path / "ioc"
+
+    geo_path.mkdir(parents=True, exist_ok=True)
+    ioc_path.mkdir(parents=True, exist_ok=True)
+
+    # -------------------------
+    # GEO enrichment metadata
+    # -------------------------
+    geo_metadata = {
         "client.ip": {
             "as_field": "client.as",
             "geo_field": "client.geo"
         }
     }
 
-    # Write JSON to store/geo/mmdb/0 (single file with nested structure)
-    store_json_path = enrichment_geo_path / "0"
-    with open(store_json_path, "w") as f:
-        json.dump(metadata, f, indent=4)
+    geo_json_path = geo_path / "0"
+    with open(geo_json_path, "w") as f:
+        json.dump(geo_metadata, f, indent=4)
 
-    print(f"Initialized enrichments")
+    # -------------------------
+    # IOC enrichment metadata
+    # -------------------------
+    ioc_metadata = {
+        "connection": {
+            "sources": [
+                {
+                    "ip_field": "client.ip",
+                    "port_field": "client.port"
+                }
+            ]
+        },
+        "url_full": {
+            "sources": [
+                "url.full",
+                "http.request.referrer"
+            ]
+        },
+        "url_domain": {
+            "sources": [
+                "url.domain",
+                "dns.question.name"
+            ]
+        },
+        "hash_md5": {
+            "sources": [
+                "file.hash.md5"
+            ]
+        },
+        "hash_sha1": {
+            "sources": [
+                "file.hash.sha1"
+            ]
+        },
+        "hash_sha256": {
+            "sources": [
+                "file.hash.sha256"
+            ]
+        }
+    }
+
+    ioc_json_path = ioc_path / "0"
+    with open(ioc_json_path, "w") as f:
+        json.dump(ioc_metadata, f, indent=4)
+
+    print("Initialized enrichment stores (geo + ioc)")
 
 # ===================================================================
 #  YAML builders (decoders / integrations / filter)

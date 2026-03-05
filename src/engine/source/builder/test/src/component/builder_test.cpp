@@ -331,8 +331,24 @@ protected:
         ON_CALL(*mockStore, readDoc(base::Name("enrichment/geo/0")))
             .WillByDefault(testing::Return(base::RespOrError<store::Doc>(geoConfig)));
 
-        m_builder = std::make_shared<Builder>(
-            m_mocks->m_spStore, m_mocks->m_spSchemf, m_mocks->m_spDefBuilder, emptyAllowedFields, builderDeps, mockStore);
+        // Configure MockStore to return a valid IOC configuration
+        auto iocConfig = json::Json(R"({
+            "hash_md5": {"sources": []},
+            "hash_sha1": {"sources": []},
+            "hash_sha256": {"sources": []},
+            "url_domain": {"sources": []},
+            "url_full": {"sources": []},
+            "connection": {"sources": []}
+        })");
+        ON_CALL(*mockStore, readDoc(base::Name("enrichment/ioc/0")))
+            .WillByDefault(testing::Return(base::RespOrError<store::Doc>(iocConfig)));
+
+        m_builder = std::make_shared<Builder>(m_mocks->m_spStore,
+                                              m_mocks->m_spSchemf,
+                                              m_mocks->m_spDefBuilder,
+                                              emptyAllowedFields,
+                                              builderDeps,
+                                              mockStore);
     }
 };
 
@@ -536,8 +552,24 @@ protected:
         EXPECT_CALL(*mockStore, readDoc(base::Name("enrichment/geo/0")))
             .WillRepeatedly(testing::Return(base::RespOrError<store::Doc>(geoConfig)));
 
-        m_builder = std::make_shared<Builder>(
-            m_mocks->m_spStore, m_mocks->m_spSchemf, m_mocks->m_spDefBuilder, emptyAllowedFields, builderDeps, mockStore);
+        // Configure MockStore to return a valid IOC configuration
+        auto iocConfig = json::Json(R"({
+            "hash_md5": {"sources": []},
+            "hash_sha1": {"sources": []},
+            "hash_sha256": {"sources": []},
+            "url_domain": {"sources": []},
+            "url_full": {"sources": []},
+            "connection": {"sources": []}
+        })");
+        EXPECT_CALL(*mockStore, readDoc(base::Name("enrichment/ioc/0")))
+            .WillRepeatedly(testing::Return(base::RespOrError<store::Doc>(iocConfig)));
+
+        m_builder = std::make_shared<Builder>(m_mocks->m_spStore,
+                                              m_mocks->m_spSchemf,
+                                              m_mocks->m_spDefBuilder,
+                                              emptyAllowedFields,
+                                              builderDeps,
+                                              mockStore);
     }
 };
 
@@ -693,18 +725,32 @@ protected:
         auto emptyAllowedFields = std::make_shared<AllowedFields>();
         auto mockStore = std::make_shared<store::mocks::MockStore>();
 
-        // Configure MockStore to return a valid GeoIP configuration
+        // Configure MockStore to return configurations for enrichments
         auto geoConfig = json::Json(R"({
             "/source/ip": {
                 "geo_field": "/source/geo",
                 "as_field": "/source/as"
             }
         })");
-        EXPECT_CALL(*mockStore, readDoc(testing::_))
+        auto iocConfig = json::Json(R"({
+            "hash_md5": {"sources": []},
+            "hash_sha1": {"sources": []},
+            "hash_sha256": {"sources": []},
+            "url_domain": {"sources": []},
+            "url_full": {"sources": []},
+            "connection": {"sources": []}
+        })");
+        EXPECT_CALL(*mockStore, readDoc(base::Name("enrichment/geo/0")))
             .WillRepeatedly(testing::Return(base::RespOrError<store::Doc>(geoConfig)));
+        EXPECT_CALL(*mockStore, readDoc(base::Name("enrichment/ioc/0")))
+            .WillRepeatedly(testing::Return(base::RespOrError<store::Doc>(iocConfig)));
 
-        m_builder = std::make_shared<Builder>(
-            m_mocks->m_spStore, m_mocks->m_spSchemf, m_mocks->m_spDefBuilder, emptyAllowedFields, builderDeps, mockStore);
+        m_builder = std::make_shared<Builder>(m_mocks->m_spStore,
+                                              m_mocks->m_spSchemf,
+                                              m_mocks->m_spDefBuilder,
+                                              emptyAllowedFields,
+                                              builderDeps,
+                                              mockStore);
     }
 };
 

@@ -5,6 +5,7 @@
 
 #include <cmstore/datapolicy.hpp>
 #include <geo/imanager.hpp>
+#include <kvdbioc/iManager.hpp>
 
 #include "builders/types.hpp"
 
@@ -59,6 +60,18 @@ std::pair<base::Expression, std::string> getUnclassifiedFilter(const cm::store::
  */
 EnrichmentBuilder getGeoEnrichmentBuilder(const std::shared_ptr<geo::IManager>& geoManager,
                                           const json::Json& configDoc);
+
+/**
+ * @brief Get the IOC Enrichment Builder for a specific IOC DB type.
+ *
+ * @param kvdbIocManager IOC KVDB manager instance.
+ * @param configDoc Configuration document with IOC field mappings.
+ * @param iocType IOC DB type (e.g. ipv4-addr, file, url, domain-name).
+ * @return EnrichmentBuilder
+ */
+EnrichmentBuilder getIocEnrichmentBuilder(const std::shared_ptr<kvdbioc::IKVDBManager>& kvdbIocManager,
+                                          const json::Json& configDoc,
+                                          std::string_view iocType);
 
 /**
  * @brief Get the filter expression to handle discarded events according to policy configuration.

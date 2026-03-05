@@ -6,6 +6,7 @@
 #include <cmstore/icmstore.hpp>
 #include <defs/idefinitions.hpp>
 #include <geo/imanager.hpp>
+#include <kvdbioc/iManager.hpp>
 #include <kvdbstore/ikvdbmanager.hpp>
 #include <logpar/logpar.hpp>
 #include <schemf/ischema.hpp>
@@ -27,6 +28,7 @@ struct BuilderDeps
     std::shared_ptr<hlp::logpar::Logpar> logpar = nullptr;
 
     std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;
+    std::shared_ptr<kvdbioc::IKVDBManager> kvdbIocManager;
     std::shared_ptr<geo::IManager> geoManager;
     std::shared_ptr<streamlog::ILogManager> logManager;
     std::weak_ptr<wiconnector::IWIndexerConnector> iConnector;
