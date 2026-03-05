@@ -22,6 +22,7 @@ from integration import WazuhGCloudIntegration
 try:
     from google.cloud import storage
     from google.api_core import exceptions as google_exceptions
+    import google.auth
     import pytz
 except ImportError as e:
     raise exceptions.WazuhIntegrationException(errcode=1003, package=e.name)
@@ -61,7 +62,11 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         self.bucket_name = bucket_name
         self.bucket = None
         try:
-            self.client = storage.client.Client.from_service_account_json(credentials_file)
+            if credentials_file:
+                self.client = storage.client.Client.from_service_account_json(credentials_file)
+            else:
+                credentials, project = google.auth.default()
+                self.client = storage.client.Client(credentials=credentials, project=project)
         except JSONDecodeError as error:
             raise exceptions.GCloudError(1000, credentials_file=credentials_file) from error
         except FileNotFoundError as error:
