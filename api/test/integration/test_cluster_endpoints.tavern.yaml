@@ -705,7 +705,7 @@ stages:
           total_failed_items: 0
 
   - name: Show the config of monitor/internal on master
-    skip: True
+    skip: True # https://github.com/wazuh/wazuh/issues/33608
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/monitor/internal"
