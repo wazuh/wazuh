@@ -4380,7 +4380,7 @@ components:
       description: "Filter by OS version"
       schema:
         type: string
-        format: alphanumeric
+        format: alphanumeric_symbols
     older_than:
       in: query
       name: older_than
