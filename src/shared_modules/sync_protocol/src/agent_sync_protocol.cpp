@@ -863,6 +863,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
         unsigned int attempt = 0;
         bool resendEnd = true;
+
         while (attempt <= m_retries)
         {
             if (resendEnd && !sendFlatBufferMessageAsString(messageVector))
@@ -882,8 +883,8 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
             const bool gotResponse = m_syncState.cv.wait_for(lock, m_timeout, [&]
             {
                 return m_syncState.endAckReceived || m_syncState.syncFailed
-                    || m_syncState.reqRetReceived || m_syncState.processingAckReceived
-                    || shouldStop();
+                || m_syncState.reqRetReceived || m_syncState.processingAckReceived
+                || shouldStop();
             });
 
             if (!gotResponse || shouldStop())
@@ -893,6 +894,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
                     m_logger(LOG_DEBUG, "Timeout waiting for EndAck or ReqRet. Retrying...");
                     attempt++;
                 }
+
                 continue;
             }
 
