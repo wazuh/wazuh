@@ -1,15 +1,15 @@
 policy:
-  id: sca_compliance_valid_keys
-  file: sca_compliance_valid_keys.yaml
-  name: Test Compliance Valid Keys Policy
+  id: cis_win_compliance_valid_keys
+  file: cis_win_compliance_valid_keys.yaml
+  name: Test Compliance Valid Keys Policy (Windows)
   description: Test policy to validate the new compliance flat-object format with only allowed keys
 
 requirements:
-  title: Check Linux platform
-  description: Requirements for running the policy against Linux systems.
+  title: Check Windows family platform
+  description: Requirements for running the policy against Windows family.
   condition: any
   rules:
-    - f:/proc/sys/kernel/ostype -> Linux
+    - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows'
 
 checks:
 
@@ -24,7 +24,7 @@ checks:
       gdpr: ["32"]
     condition: any
     rules:
-      - f:/etc/os-release
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:.'
 
   - id: 99002
     title: Test check with all 10 valid compliance keys
@@ -44,4 +44,4 @@ checks:
       tsc: ["CC6.1"]
     condition: any
     rules:
-      - f:/etc/passwd
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:.'

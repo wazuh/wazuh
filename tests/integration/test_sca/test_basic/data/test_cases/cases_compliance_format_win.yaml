@@ -1,11 +1,11 @@
 - name: 'valid_keys'
-  description: SCA scan with valid compliance keys in new flat-object format
+  description: SCA scan with valid compliance keys in new flat-object format (Windows)
   configuration_parameters:
     ENABLED: 'yes'
     INTERVAL: 3600
-    POLICY_FILE: cis_lin_compliance_valid_keys.yaml
+    POLICY_FILE: cis_win_compliance_valid_keys.yaml
   metadata:
-    policy_file: cis_lin_compliance_valid_keys.yaml
+    policy_file: cis_win_compliance_valid_keys.yaml
     results: 2
     scenario: valid_keys
     checks:
@@ -32,13 +32,13 @@
         invalid_key_warnings: []
 
 - name: 'invalid_keys'
-  description: SCA scan with mix of valid and invalid compliance keys
+  description: SCA scan with mix of valid and invalid compliance keys (Windows)
   configuration_parameters:
     ENABLED: 'yes'
     INTERVAL: 3600
-    POLICY_FILE: cis_lin_compliance_invalid_keys.yaml
+    POLICY_FILE: cis_win_compliance_invalid_keys.yaml
   metadata:
-    policy_file: cis_lin_compliance_invalid_keys.yaml
+    policy_file: cis_win_compliance_invalid_keys.yaml
     results: 1
     scenario: invalid_keys
     checks:
@@ -59,13 +59,13 @@
           - soc_2
 
 - name: 'old_format'
-  description: SCA scan with old array-of-objects compliance format
+  description: SCA scan with old array-of-objects compliance format (Windows)
   configuration_parameters:
     ENABLED: 'yes'
     INTERVAL: 3600
-    POLICY_FILE: cis_lin_compliance_old_format.yaml
+    POLICY_FILE: cis_win_compliance_old_format.yaml
   metadata:
-    policy_file: cis_lin_compliance_old_format.yaml
+    policy_file: cis_win_compliance_old_format.yaml
     results: 1
     scenario: old_format
     checks:

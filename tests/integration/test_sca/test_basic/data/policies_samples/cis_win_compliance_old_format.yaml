@@ -1,15 +1,15 @@
 policy:
-  id: sca_compliance_old_format
-  file: sca_compliance_old_format.yaml
-  name: Test Compliance Old Format Policy
+  id: cis_win_compliance_old_format
+  file: cis_win_compliance_old_format.yaml
+  name: Test Compliance Old Format Policy (Windows)
   description: Test policy to validate that old array-of-objects compliance format is rejected
 
 requirements:
-  title: Check Linux platform
-  description: Requirements for running the policy against Linux systems.
+  title: Check Windows family platform
+  description: Requirements for running the policy against Windows family.
   condition: any
   rules:
-    - f:/proc/sys/kernel/ostype -> Linux
+    - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows'
 
 checks:
 
@@ -24,4 +24,4 @@ checks:
       - nist_800_53: [AU.14, AC.7]
     condition: any
     rules:
-      - f:/etc/os-release
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:.'
