@@ -17,8 +17,14 @@ add_executable(sysInfoWindows_unit_test
 link_directories("${CMAKE_SOURCE_DIR}/lib/")
 
 target_link_libraries(sysInfoWindows_unit_test
+    sysinfo
     wbemuuid
     wuguid
+    psapi
+    iphlpapi
+    ws2_32
+    ntdll
+    shell32
     debug gtestd
     debug gmockd
     debug gtest_maind

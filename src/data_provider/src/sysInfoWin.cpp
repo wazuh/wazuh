@@ -114,17 +114,17 @@ class SysInfoProcess final
 
             // First call: get required buffer size
             auto status = NtQueryInformationProcess(
-                m_hProcess, ProcessCommandLineInformation, nullptr, 0, &size);
+                              m_hProcess, ProcessCommandLineInformation, nullptr, 0, &size);
 
             if (STATUS_INFO_LENGTH_MISMATCH != status && STATUS_BUFFER_OVERFLOW != status
-                && STATUS_BUFFER_TOO_SMALL != status)
+                    && STATUS_BUFFER_TOO_SMALL != status)
             {
                 return ret;
             }
 
             auto buffer = std::make_unique<BYTE[]>(size);
             status = NtQueryInformationProcess(
-                m_hProcess, ProcessCommandLineInformation, buffer.get(), size, &size);
+                         m_hProcess, ProcessCommandLineInformation, buffer.get(), size, &size);
 
             if (NT_SUCCESS(status))
             {
@@ -407,16 +407,17 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
         {
             std::string commandLine;
             std::string commandLineArgs;
+            bool cmdLineFromNtApi = false;
 
             // Try to get the full command line (executable + arguments) via NtQueryInformationProcess
             const auto fullCmdLineW = process.cmdLineW();
 
             if (!fullCmdLineW.empty())
             {
-                // Convert full command line to UTF-8
+                // Convert full command line from UTF-16 to UTF-8
                 const int utf8Size = WideCharToMultiByte(
-                    CP_UTF8, 0, fullCmdLineW.c_str(), static_cast<int>(fullCmdLineW.size()),
-                    nullptr, 0, nullptr, nullptr);
+                                         CP_UTF8, 0, fullCmdLineW.c_str(), static_cast<int>(fullCmdLineW.size()),
+                                         nullptr, 0, nullptr, nullptr);
 
                 if (utf8Size > 0)
                 {
@@ -424,6 +425,7 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
                     WideCharToMultiByte(
                         CP_UTF8, 0, fullCmdLineW.c_str(), static_cast<int>(fullCmdLineW.size()),
                         commandLine.data(), utf8Size, nullptr, nullptr);
+                    cmdLineFromNtApi = true;
                 }
 
                 // Parse arguments using CommandLineToArgvW for proper Windows command-line tokenization
@@ -435,13 +437,15 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
                     for (int i = 1; i < argc; ++i)
                     {
                         const int argSize = WideCharToMultiByte(
-                            CP_UTF8, 0, argv[i], -1, nullptr, 0, nullptr, nullptr);
+                                                CP_UTF8, 0, argv[i], -1, nullptr, 0, nullptr, nullptr);
 
                         if (argSize > 0)
                         {
-                            std::string arg(argSize - 1, '\0');
+                            std::string arg(argSize, '\0');
                             WideCharToMultiByte(
                                 CP_UTF8, 0, argv[i], -1, arg.data(), argSize, nullptr, nullptr);
+                            // Remove the trailing NUL before appending
+                            arg.resize(argSize - 1);
 
                             if (!commandLineArgs.empty())
                             {
@@ -458,13 +462,17 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
                     LocalFree(argv);
                 }
             }
-            else
+
+            if (!cmdLineFromNtApi)
             {
-                // Fallback: use executable path only (previous behavior)
-                commandLine = process.cmd();
+                // Fallback: use executable path only (previous behavior).
+                // process.cmd() returns an ANSI string, so convert it to UTF-8.
+                commandLine = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(process.cmd());
             }
 
-            jsProcessInfo["cmd"]    = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(commandLine);
+            // cmdLineFromNtApi path: commandLine is already UTF-8 (converted from wide string above).
+            // Fallback path: commandLine was converted from ANSI to UTF-8 above.
+            jsProcessInfo["cmd"]    = commandLine;
             jsProcessInfo["argvs"]  = commandLineArgs;
         }
 

@@ -12,8 +12,10 @@
 
 #include <set>
 #include <stdio.h>
+#include <algorithm>
 #include "packages/packagesWindowsParserHelper.h"
 #include "sysInfoWin_test.h"
+#include "sysInfo.hpp"
 #include <iostream>
 
 
@@ -271,4 +273,230 @@ TEST_F(SysInfoWinTest, GetHistoryTest)
 
     EXPECT_EQ(hotfixSet.size(), static_cast<unsigned int>(1));
     EXPECT_EQ(*hotfixSet.begin(), "KB123456");
+}
+
+// Helper: check if a PID corresponds to a system process (PID 0 or 4)
+static bool isSystemPid(const std::string& pidStr)
+{
+    return pidStr == "0" || pidStr == "4";
+}
+
+// Test: Process command line retrieval via NtQueryInformationProcess
+
+// Verify that processes() returns a non-empty JSON array with expected fields.
+TEST_F(SysInfoWinTest, ProcessListIsNotEmpty)
+{
+    SysInfo sysInfo;
+    const auto processes = sysInfo.processes();
+    ASSERT_TRUE(processes.is_array());
+    EXPECT_FALSE(processes.empty()) << "Process list should not be empty";
+}
+
+// Verify that every process entry contains the expected fields including cmd and argvs.
+TEST_F(SysInfoWinTest, AllProcessesHaveCmdAndArgvsFields)
+{
+    SysInfo sysInfo;
+    const auto processes = sysInfo.processes();
+
+    for (const auto& proc : processes)
+    {
+        ASSERT_TRUE(proc.contains("pid"))  << "Missing 'pid' field: "  << proc.dump();
+        ASSERT_TRUE(proc.contains("cmd"))  << "Missing 'cmd' field: "  << proc.dump();
+        ASSERT_TRUE(proc.contains("argvs")) << "Missing 'argvs' field: " << proc.dump();
+        ASSERT_TRUE(proc.contains("name")) << "Missing 'name' field: " << proc.dump();
+    }
+}
+
+// Verify that system processes (PID 0 and 4) have cmd="none" and argvs="" as expected.
+TEST_F(SysInfoWinTest, SystemProcessesHaveNoneCmd)
+{
+    SysInfo sysInfo;
+    const auto processes = sysInfo.processes();
+
+    for (const auto& proc : processes)
+    {
+        const auto pid = proc.at("pid").get<std::string>();
+
+        if (isSystemPid(pid))
+        {
+            EXPECT_EQ(proc.at("cmd").get<std::string>(), "none")
+                    << "System process PID " << pid << " should have cmd='none'";
+            EXPECT_EQ(proc.at("argvs").get<std::string>(), "")
+                    << "System process PID " << pid << " should have empty argvs";
+        }
+    }
+}
+
+// Verify that non-system processes have a non-empty cmd field.
+TEST_F(SysInfoWinTest, NonSystemProcessesHaveNonEmptyCmd)
+{
+    SysInfo sysInfo;
+    const auto processes = sysInfo.processes();
+    int nonSystemCount = 0;
+
+    for (const auto& proc : processes)
+    {
+        const auto pid = proc.at("pid").get<std::string>();
+
+        if (!isSystemPid(pid))
+        {
+            const auto cmd = proc.at("cmd").get<std::string>();
+
+            // Some processes may not be accessible (access denied), so cmd could be empty.
+            // But the majority should have a non-empty cmd.
+            if (!cmd.empty())
+            {
+                nonSystemCount++;
+            }
+        }
+    }
+
+    EXPECT_GT(nonSystemCount, 0) << "At least some non-system processes should have a non-empty cmd";
+}
+
+// Verify that the current test process is present in the process list
+// and has a non-empty cmd that contains the executable name.
+TEST_F(SysInfoWinTest, CurrentProcessHasCommandLine)
+{
+    SysInfo sysInfo;
+    const auto processes = sysInfo.processes();
+    const auto currentPid = std::to_string(GetCurrentProcessId());
+
+    bool found = false;
+
+    for (const auto& proc : processes)
+    {
+        if (proc.at("pid").get<std::string>() == currentPid)
+        {
+            found = true;
+            const auto cmd = proc.at("cmd").get<std::string>();
+            EXPECT_FALSE(cmd.empty())
+                    << "Current process (PID " << currentPid << ") should have a non-empty cmd";
+
+            // The cmd should contain the test executable name
+            const auto cmdLower = [&cmd]()
+            {
+                std::string lower = cmd;
+                std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+                return lower;
+            }
+            ();
+            EXPECT_NE(cmdLower.find("sysinfowindows_unit_test"), std::string::npos)
+                    << "Current process cmd should contain the test executable name, got: " << cmd;
+            break;
+        }
+    }
+
+    EXPECT_TRUE(found) << "Current process (PID " << currentPid << ") should be in the process list";
+}
+
+// Verify that at least one process with arguments has a populated argvs field.
+// On a typical Windows system, processes like svchost.exe always run with arguments.
+TEST_F(SysInfoWinTest, SomeProcessesHaveArgvs)
+{
+    SysInfo sysInfo;
+    const auto processes = sysInfo.processes();
+    int withArgvs = 0;
+
+    for (const auto& proc : processes)
+    {
+        const auto pid = proc.at("pid").get<std::string>();
+
+        if (!isSystemPid(pid))
+        {
+            const auto argvs = proc.at("argvs").get<std::string>();
+
+            if (!argvs.empty())
+            {
+                withArgvs++;
+            }
+        }
+    }
+
+    EXPECT_GT(withArgvs, 0)
+            << "At least one non-system process should have populated argvs "
+            << "(e.g., svchost.exe -k ...)";
+}
+
+// Verify that when argvs is populated, cmd contains more than just an executable path.
+// This validates that the full command line is retrieved, not just the path.
+TEST_F(SysInfoWinTest, CmdContainsArgumentsWhenArgvsPopulated)
+{
+    SysInfo sysInfo;
+    const auto processes = sysInfo.processes();
+
+    for (const auto& proc : processes)
+    {
+        const auto pid = proc.at("pid").get<std::string>();
+
+        if (!isSystemPid(pid))
+        {
+            const auto cmd   = proc.at("cmd").get<std::string>();
+            const auto argvs = proc.at("argvs").get<std::string>();
+
+            if (!argvs.empty() && !cmd.empty())
+            {
+                // If argvs has content, cmd should contain more than just a file path.
+                // Specifically, cmd should contain at least a space separating the exe from args.
+                EXPECT_NE(cmd.find(" "), std::string::npos)
+                        << "Process PID " << pid << " has argvs='" << argvs
+                        << "' but cmd has no spaces: '" << cmd << "'";
+            }
+        }
+    }
+}
+
+// Verify that the callback-based processes() overload produces the same data.
+TEST_F(SysInfoWinTest, CallbackVersionProducesSameData)
+{
+    SysInfo sysInfo;
+    const auto directResult = sysInfo.processes();
+
+    nlohmann::json callbackResult = nlohmann::json::array();
+    sysInfo.processes([&callbackResult](nlohmann::json & data)
+    {
+        callbackResult.push_back(data);
+    });
+
+    EXPECT_EQ(directResult.size(), callbackResult.size())
+            << "Both processes() overloads should return the same number of processes";
+}
+
+// Verify that svchost.exe processes (if present) have populated argvs.
+// svchost.exe always runs with -k arguments on a normal Windows system.
+TEST_F(SysInfoWinTest, SvchostProcessesHaveArguments)
+{
+    SysInfo sysInfo;
+    const auto processes = sysInfo.processes();
+    int svchostCount = 0;
+    int svchostWithArgvs = 0;
+
+    for (const auto& proc : processes)
+    {
+        const auto name = proc.at("name").get<std::string>();
+        auto nameLower = name;
+        std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
+
+        if (nameLower == "svchost.exe")
+        {
+            svchostCount++;
+            const auto argvs = proc.at("argvs").get<std::string>();
+
+            if (!argvs.empty())
+            {
+                svchostWithArgvs++;
+
+                // svchost.exe always uses -k flag
+                EXPECT_NE(argvs.find("-k"), std::string::npos)
+                        << "svchost.exe argvs should contain '-k', got: " << argvs;
+            }
+        }
+    }
+
+    if (svchostCount > 0)
+    {
+        EXPECT_GT(svchostWithArgvs, 0)
+                << "At least one svchost.exe should have populated argvs "
+                << "(found " << svchostCount << " svchost.exe processes)";
+    }
 }
