@@ -225,7 +225,7 @@ def test_sca_compliance_format(test_configuration, test_metadata, prepare_cis_po
     # Phase 3: Validate compliance in event JSON
     # ------------------------------------------------------------------
     events_by_check = {}
-    for match in re.finditer(r'Sending SCA event: (.+)', log_content):
+    for match in re.finditer(patterns.SCA_SENDING_EVENT, log_content):
         json_str = match.group(1)
         check_id, compliance = extract_compliance_from_event_json(json_str)
         if check_id:
