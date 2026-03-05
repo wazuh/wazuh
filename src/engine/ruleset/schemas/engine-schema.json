@@ -5946,6 +5946,9 @@
     "wazuh.schema.version": {
       "type": "keyword"
     },
+    "wazuh.space.event_discarded": {
+      "type": "boolean"
+    },
     "wazuh.space.name": {
       "type": "keyword"
     }

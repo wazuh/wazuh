@@ -105,7 +105,7 @@ protected:
             tmpDir,                                   // basePath
             "wazuh-${name}-${YYYY}-${MM}-${DD}.json", // pattern
             0,                                        // maxSize (no limit)
-            1024                                      // bufferSize
+            fastqueue::MIN_QUEUE_CAPACITY,            // bufferSize
         };
 
         // Set up default mock store
@@ -428,10 +428,10 @@ TEST_P(BufferSizeTest, DifferentBufferSizes)
 
 INSTANTIATE_TEST_SUITE_P(BufferSizes,
                          BufferSizeTest,
-                         ::testing::Values(1,      // Minimum
-                                           10,     // Small
-                                           1024,   // Default
-                                           1 << 20 // Large (1MB)
+                         ::testing::Values(fastqueue::MIN_QUEUE_CAPACITY,     // Minimum allowed buffer size
+                                           fastqueue::MIN_QUEUE_CAPACITY * 2, // Small
+                                           1 << 17,                           // Default (128KB)
+                                           1 << 20                            // Large (1MB)
                                            ));
 
 // Test writer lifecycle
@@ -818,19 +818,31 @@ TEST_F(ChannelHandlerTest, WriterNonCopyable)
 TEST_F(ChannelHandlerTest, BufferOverflowBehavior)
 {
     auto config = defaultConfig;
-    config.bufferSize = 2; // Very small buffer
+    config.bufferSize = fastqueue::MIN_QUEUE_CAPACITY; // Set buffer size to minimum to trigger overflow quickly
 
     auto handler = createBasicHandler("overflow-test", config);
     auto writer = handler->createWriter();
+    std::size_t messageSuccessCount = 0;
+    std::size_t messageFailureCount = 0;
 
     // Overwhelm the buffer quickly
-    for (int i = 0; i < 100; ++i)
+    for (int i = 0; i < fastqueue::MIN_QUEUE_CAPACITY * 2; ++i)
     {
-        (*writer)("rapid message " + std::to_string(i));
+        if ((*writer)("rapid message " + std::to_string(i)))
+        {
+            messageSuccessCount++;
+        }
+        else
+        {
+            messageFailureCount++;
+        }
     }
 
     // Give time for processing
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    EXPECT_GT(messageSuccessCount, fastqueue::MIN_QUEUE_CAPACITY) << "No messages were successfully written";
+    EXPECT_LT(messageFailureCount, fastqueue::MIN_QUEUE_CAPACITY) << "Too many messages failed due to buffer overflow";
 
     // Should not crash, though some messages might be lost due to buffer limits
     // This tests the robustness of the system under stress

@@ -64,6 +64,7 @@ target_link_libraries(rawevtindexer_ctest
         GTest::gtest_main
         GTest::gmock
         rawevtindexer::rawevtindexer
+        rawevtindexer::mocks
 )
 target_include_directories(rawevtindexer_ctest PRIVATE ${SRC_DIR})
 gtest_discover_tests(rawevtindexer_ctest)

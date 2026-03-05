@@ -302,6 +302,18 @@ TEST_F(StdQueueTest, WaitPopWithDifferentTimeouts)
     ASSERT_EQ(value->value, 42);
 }
 
+TEST_F(StdQueueTest, WaitPopWithNegativeTimeoutIsNonBlocking)
+{
+    StdQueue<std::shared_ptr<Dummy>> sq(MIN_QUEUE_CAPACITY);
+
+    std::shared_ptr<Dummy> value;
+    auto start = std::chrono::steady_clock::now();
+    ASSERT_FALSE(sq.waitPop(value, -1));
+    auto duration = std::chrono::steady_clock::now() - start;
+
+    ASSERT_LT(duration, std::chrono::milliseconds(10));
+}
+
 TEST_F(StdQueueTest, BulkPopExceedsAvailable)
 {
     StdQueue<std::shared_ptr<Dummy>> sq(MIN_QUEUE_CAPACITY);

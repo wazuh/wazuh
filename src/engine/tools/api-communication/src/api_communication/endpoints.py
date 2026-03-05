@@ -70,14 +70,6 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
         endpoint = 'router/route/patchPriority'
     if isinstance(message, router.TableGet_Request):
         endpoint = 'router/table/get'
-    if isinstance(message, router.EpsGet_Request):
-        endpoint = 'router/eps/getSettings'
-    if isinstance(message, router.EpsEnable_Request):
-        endpoint = 'router/eps/activate'
-    if isinstance(message, router.EpsDisable_Request):
-        endpoint = 'router/eps/deactivate'
-    if isinstance(message, router.EpsUpdate_Request):
-        endpoint = 'router/eps/changeSettings'
 
     # Tester
     if isinstance(message, tester.SessionPost_Request):

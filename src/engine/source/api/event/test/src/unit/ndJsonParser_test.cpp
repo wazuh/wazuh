@@ -20,11 +20,11 @@ using Expc = Expected<SuccessExpected, FailureExpected>;
 static auto SUCCESS = Expc::success();
 static auto FAILURE = Expc::failure();
 
-// Mode to keep all cases (including previously standalone ones) in the same parametrized suite.
+// Mode to keep all cases in the same parametrized suite.
 enum class CaseMode
 {
     Runner,            // uses runNDJson(batch) and compares with Expc (SUCCESS/FAILURE)
-    NullHooksNoThrow,  // calls parseNDJson(batch, {nullptr,nullptr}) and expects no throw
+    NullHookNoThrow,   // calls parseNDJson(batch, {}) and expects no throw
     HookThrowsWrapped, // calls parseNDJson with a throwing hook and checks wrapped message
     RunnerThrows       // expects runNDJson(batch) to throw
 };
@@ -73,29 +73,6 @@ std::string makeRawNdJson(Args&&... args)
     }
 
     return rawNdJson;
-}
-
-template<size_t multiplyOriginalJson = 1, typename... Args>
-std::vector<base::Event> makeResult(Args&&... args)
-{
-    std::vector<base::Event> result;
-    std::vector<base::Event> events;
-    (
-        [&events](const auto& arg)
-        {
-            base::Event event = std::make_shared<json::Json>(arg);
-            events.push_back(event);
-        }(args),
-        ...);
-
-    for (size_t i = 0; i < multiplyOriginalJson; ++i)
-    {
-        for (const auto& event : events)
-        {
-            result.push_back(std::make_shared<json::Json>(*std::static_pointer_cast<json::Json>(event)));
-        }
-    }
-    return result;
 }
 
 // ===================== Expected builder for H/E =====================
@@ -215,22 +192,19 @@ std::vector<base::Event> makeResultHE(Args&&... args)
 
 // ===================== Runner that adapts parseNDJson() to the old test shape =====================
 //
-// Uses a hook to build a vector<base::Event> so we can keep the same validation logic.
-//
-// NOTE: This assumes ndJsonParser.hpp was updated to:
-//   using EventHook = std::function<void(const json::Json& header, std::string_view rawEvent)>;
+// Uses the single hook to build a vector<base::Event>.
+// parseNDJson hook receives IngestEvent = { shared_ptr<const json::Json> header, std::string rawEvent }
 static std::vector<base::Event> runNDJson(std::string_view batch)
 {
     std::vector<base::Event> out;
 
-    EventHooks hooks {EventHook {}, EventHook {}};
-    hooks[0] = [&](const json::Json& header, std::string_view rawEvent)
+    EventHook hook = [&](IngestEvent&& ingest)
     {
-        base::Event ev = base::eventParsers::parseLegacyEvent(rawEvent, header);
+        base::Event ev = base::eventParsers::parseLegacyEvent(std::string_view {ingest.second}, *ingest.first);
         out.push_back(std::move(ev));
     };
 
-    parseNDJson(batch, hooks);
+    parseNDJson(batch, hook);
     return out;
 }
 
@@ -278,24 +252,23 @@ TEST_P(NdJsonParserTest, Parse)
             break;
         }
 
-        case CaseMode::NullHooksNoThrow:
+        case CaseMode::NullHookNoThrow:
         {
-            EventHooks hooks {nullptr, nullptr};
-            ASSERT_NO_THROW(parseNDJson(batch, hooks));
+            EventHook empty {};
+            ASSERT_NO_THROW(parseNDJson(batch, empty));
             break;
         }
 
         case CaseMode::HookThrowsWrapped:
         {
-            EventHooks hooks {EventHook {}, EventHook {}};
-            hooks[0] = [](const json::Json&, std::string_view)
+            EventHook throwing = [](IngestEvent&&)
             {
                 throw std::runtime_error {"hook failure"};
             };
 
             try
             {
-                parseNDJson(batch, hooks);
+                parseNDJson(batch, throwing);
                 FAIL() << "Expected std::runtime_error";
             }
             catch (const std::runtime_error& ex)
@@ -378,28 +351,28 @@ INSTANTIATE_TEST_SUITE_P(
         // FAIL: first line is not H
         EventT(makeRawNdJson(E(EV1)), FAILURE(), CaseMode::Runner, ""),
 
-        // FAIL: extra header-like line before the first event (new parser expects "E " after header)
+        // FAIL: extra header-like line before the first event
         EventT(makeRawNdJson(H(HDR1), H(HDR2), E(EV1)), FAILURE(), CaseMode::Runner, ""),
 
-        // FAIL: header without JSON (json parser should fail in parseNDJson or legacy parser path)
+        // FAIL: header without JSON
         EventT(makeRawNdJson("H    ", E(EV1)), FAILURE(), CaseMode::Runner, ""),
 
         // FAIL: invalid JSON header
         EventT(makeRawNdJson("H {invalid", E(EV1)), FAILURE(), CaseMode::Runner, ""),
 
-        // FAIL: unexpected line (neither empty nor "E ") outside an event
+        // FAIL: unexpected line outside an event
         EventT(makeRawNdJson(H(HDR1), "stray line", E(EV1)), FAILURE(), CaseMode::Runner, ""),
 
-        // FAIL: E without payload (empty) -> legacy event parser should fail
+        // FAIL: E without payload -> legacy event parser should fail
         EventT(std::string(H(HDR1) + "\nE "), FAILURE(), CaseMode::Runner, ""),
 
         // FAIL: event not compliant with OSSEC (missing ':') -> legacy event parser should fail
         EventT(makeRawNdJson(H(HDR1), E("bad-payload-without-colons")), FAILURE(), CaseMode::Runner, ""),
 
-        // WorksWithNullHooks
+        // WorksWithNullHook
         EventT(std::string {"H " + HDR1 + "\nE " + EV1},
                SUCCESS(std::vector<base::Event> {}),
-               CaseMode::NullHooksNoThrow,
+               CaseMode::NullHookNoThrow,
                ""),
 
         // WrapsExceptionThrownByHook

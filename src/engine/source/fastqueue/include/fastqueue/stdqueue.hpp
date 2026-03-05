@@ -150,12 +150,14 @@ public:
      */
     bool waitPop(T& element, int64_t timeout = 0) override
     {
+        const int64_t normalizedTimeout = (timeout < 0) ? 0 : timeout;
+
         if (m_rateLimiter)
         {
             auto startTime = std::chrono::steady_clock::now();
 
             // Wait for rate limiter token
-            if (!m_rateLimiter->waitAcquire(1, timeout))
+            if (!m_rateLimiter->waitAcquire(1, normalizedTimeout))
             {
                 return false; // Rate limiter timeout
             }
@@ -163,17 +165,13 @@ public:
             // Calculate remaining timeout for queue operation
             auto elapsed =
                 std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - startTime);
-            int64_t remainingTimeout = timeout - elapsed.count();
-
-            if (remainingTimeout <= 0)
-            {
-                return false; // No time left
-            }
+            int64_t remainingTimeout = normalizedTimeout - elapsed.count();
+            remainingTimeout = (remainingTimeout < 0) ? 0 : remainingTimeout;
 
             return waitPopInternal(element, remainingTimeout);
         }
 
-        return waitPopInternal(element, timeout);
+        return waitPopInternal(element, normalizedTimeout);
     }
 
     /**
@@ -265,12 +263,7 @@ private:
     {
         std::unique_lock<std::mutex> lock(m_mutex);
 
-        if (timeout < 0)
-        {
-            // Infinite wait
-            m_condVar.wait(lock, [this] { return !m_queue.empty(); });
-        }
-        else if (timeout == 0)
+        if (timeout == 0)
         {
             // No wait
             if (m_queue.empty())

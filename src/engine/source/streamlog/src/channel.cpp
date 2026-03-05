@@ -564,7 +564,7 @@ ChannelHandler::ChannelHandler(RotationConfig config,
         }
         return m_config.basePath / replacePlaceholders(now);
     }();
-    m_stateData.queue = std::make_shared<base::queue::ConcurrentQueue<std::string>>(m_config.bufferSize);
+    m_stateData.queue = std::make_shared<FastQueueType>(m_config.bufferSize);
     m_stateData.lastRotation = std::chrono::system_clock::now();
     m_stateData.lastRotationCheck = m_stateData.lastRotation;
 

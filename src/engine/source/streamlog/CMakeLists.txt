@@ -6,7 +6,7 @@ set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 # INTERFACE
 add_library(streamlogger_istreamlogger INTERFACE)
 target_include_directories(streamlogger_istreamlogger INTERFACE ${IFACE_DIR})
-target_link_libraries(streamlogger_istreamlogger INTERFACE base queue scheduler::ischeduler store::istore)
+target_link_libraries(streamlogger_istreamlogger INTERFACE base scheduler::ischeduler store::istore)
 add_library(streamlogger::istreamlogger ALIAS streamlogger_istreamlogger)
 
 # Implementation
@@ -21,7 +21,7 @@ target_include_directories(streamlogger_streamlogger
 target_link_libraries(streamlogger_streamlogger
     PUBLIC
     base
-    queue
+    fastqueue::fastqueue
     scheduler::ischeduler
     streamlogger::istreamlogger
     store::istore
