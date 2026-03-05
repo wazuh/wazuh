@@ -9,6 +9,7 @@
 
 #include <rawevtindexer/raweventindexer.hpp>
 
+// TODO: Use indexer connector mock when available instead of this fake implementation
 class FakeIndexerConnector final : public wiconnector::IWIndexerConnector
 {
 public:
@@ -28,7 +29,14 @@ public:
 
     wiconnector::PolicyResources getPolicy(std::string_view) override { return {}; }
 
-    std::string getPolicyHash(std::string_view) override { return {}; }
+     std::pair<std::string, bool> getPolicyHashAndEnabled(std::string_view space) override
+    {
+        if (space.empty())
+        {
+            throw std::invalid_argument("space name cannot be empty");
+        }
+        return {"dummy-hash", true};
+    }
 
     bool existsPolicy(std::string_view) override { return false; }
 
