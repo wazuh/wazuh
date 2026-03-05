@@ -1,19 +1,19 @@
-#ifndef _KVDBIOC_HELPERS_HPP
-#define _KVDBIOC_HELPERS_HPP
+#ifndef KVDBIOC_HELPERS_HPP
+#define KVDBIOC_HELPERS_HPP
 
+#include <array>
+#include <stdexcept>
 #include <string_view>
 
 #include <base/json.hpp>
 
+#include <kvdbioc/iManager.hpp>
+
 namespace kvdbioc::details
 {
 
-namespace
-{
-
-constexpr std::string_view IOC_NAME_KEY = "/name"; ///< JSON pointer to the IOC name field, used as the key in KVDB
-constexpr std::string_view IOC_TYPE_KEY = "/type"; ///< JSON pointer to the IOC type field, used for type inference
-
+inline constexpr std::string_view IOC_NAME_KEY = "/name"; ///< Path to the IOC name field, used as the key in KVDB
+inline constexpr std::string_view IOC_TYPE_KEY = "/type"; ///< Path to the IOC type field, used for type inference
 
 /**
  * @brief Enumeration of supported IOC types for type inference and DB routing
@@ -23,22 +23,29 @@ constexpr std::string_view IOC_TYPE_KEY = "/type"; ///< JSON pointer to the IOC 
  */
 enum class IOCType
 {
-    CONNECTION,
-    URL_FULL,
-    URL_DOMAIN,
-    HASH_MD5,
-    HASH_SHA1,
-    HASH_SHA256,
-    UNKNOWN
+    CONNECTION = 0,
+    URL_FULL = 1,
+    URL_DOMAIN = 2,
+    HASH_MD5 = 3,
+    HASH_SHA1 = 4,
+    HASH_SHA256 = 5,
+    UNKNOWN = 6,
+    DB_COUNT = UNKNOWN
 };
 
-inline IOCType parseIOCType(std::string_view key)
+/**
+ * @brief Parse a string into an IOCType enum value.
+ *
+ * @param key The string representation of the IOC type.
+ * @return IOCType The corresponding enum value, or IOCType::UNKNOWN if not recognized.
+ */
+inline constexpr IOCType parseIOCType(std::string_view key)
 {
     if (key == "connection")
         return IOCType::CONNECTION;
-    else if (key == "url-full")
+    else if (key == "url_full")
         return IOCType::URL_FULL;
-    else if (key == "url-domain")
+    else if (key == "url_domain")
         return IOCType::URL_DOMAIN;
     else if (key == "hash_md5")
         return IOCType::HASH_MD5;
@@ -81,50 +88,102 @@ inline std::string getTypeFromIOC(const json::Json& iocDoc)
     return type.value();
 }
 
-} // namespace
+/**
+ * @brief Get the DB name corresponding to a given IOC type.
+ *
+ * @param type The IOCType enum value representing the type of the IOC.
+ * @return std::string_view The name of the database corresponding to the IOC type.
+ * @throws std::runtime_error if the IOC type is unknown.
+ */
+inline constexpr std::string_view dbNameFromType(IOCType type)
+{
+    switch (type)
+    {
+        case IOCType::CONNECTION: return "ioc_connections";
+        case IOCType::URL_FULL: return "ioc_urls_full";
+        case IOCType::URL_DOMAIN: return "ioc_urls_domain";
+        case IOCType::HASH_MD5: return "ioc_hashes_md5";
+        case IOCType::HASH_SHA1: return "ioc_hashes_sha1";
+        case IOCType::HASH_SHA256: return "ioc_hashes_sha256";
+        default: throw std::runtime_error("Unknown IOC type");
+    }
+}
+
+inline constexpr std::array<std::string_view, static_cast<size_t>(IOCType::DB_COUNT)> DB_NAMES = {
+    "ioc_connections", "ioc_urls_full", "ioc_urls_domain", "ioc_hashes_md5", "ioc_hashes_sha1", "ioc_hashes_sha256"};
+
+/**
+ * @brief Initialize the required databases in the KVDB if they don't already exist.
+ *
+ * @param manager The KVDB manager instance to use for DB operations.
+ * @param suffix Optional suffix to append to database names (e.g., for temporary databases).
+ * @throws std::runtime_error on RocksDB errors during DB creation.
+ */
+inline void initializeDBs(const std::shared_ptr<IKVDBManager>& manager, std::string_view suffix = "")
+{
+    for (const auto& dbName : DB_NAMES)
+    {
+        std::string fullDbName = suffix.empty() ? std::string(dbName) : std::string(dbName) + std::string(suffix);
+
+        if (!manager->exists(fullDbName))
+        {
+            manager->add(fullDbName);
+        }
+    }
+}
 
 /**
  * @brief Extract the DB name and key from an IOC document.
  *
  * @param iocDoc The JSON document representing the IOC, expected to contain "name" and "type" fields.
- * @return std::pair<std::string, std::string> A pair containing the DB name (determined by the IOC type) and the key (the IOC name).
+ * @return std::pair<std::string, std::string> A pair containing the DB name (determined by the IOC type) and the key
+ * (the IOC name).
  */
 inline std::pair<std::string, std::string> getDbAndKeyFromIOC(const json::Json& iocDoc)
 {
     std::string key = getKeyFromIOC(iocDoc);
     std::string typeStr = getTypeFromIOC(iocDoc);
     IOCType type = parseIOCType(typeStr);
-
-    // Determine DB name based on IOC type
-    std::string dbName;
-    switch (type)
-    {
-        case IOCType::CONNECTION:
-            dbName = "ioc-connections";
-            break;
-        case IOCType::URL_FULL:
-            dbName = "ioc-urls-full";
-            break;
-        case IOCType::URL_DOMAIN:
-            dbName = "ioc-urls-domain";
-            break;
-        case IOCType::HASH_MD5:
-            dbName = "ioc-hashes-md5";
-            break;
-        case IOCType::HASH_SHA1:
-            dbName = "ioc-hashes-sha1";
-            break;
-        case IOCType::HASH_SHA256:
-            dbName = "ioc-hashes-sha256";
-            break;
-        default:
-            throw std::runtime_error("Unknown IOC type: " + typeStr);
-    }
+    std::string dbName = std::string(dbNameFromType(type));
 
     return {dbName, key};
+}
 
+/**
+ * @brief Update a value in the KVDB, appending to an array if the key already exists.
+ *
+ * @param manager The KVDB manager instance to use for DB operations.
+ * @param dbName The name of the database to update.
+ * @param key The key to update in the database.
+ * @param newValue The new JSON value to add. If the key already exists, this value will be appended to the existing
+ * value as an array.
+ * @throws std::runtime_error if the DB doesn't exist or on RocksDB errors.
+ */
+inline void updateValueInDB(const std::shared_ptr<IKVDBManager>& manager,
+                            const std::string& dbName,
+                            const std::string& key,
+                            const json::Json& newValue)
+{
+    // Check if key exists in DB
+    auto existingValueOpt = manager->get(dbName, key);
+
+    if (!existingValueOpt.has_value())
+    {
+        manager->put(dbName, key, newValue.str());
+        return;
+    }
+
+    auto& candidateValue = existingValueOpt.value();
+    if (!candidateValue.isArray())
+    {
+        auto oldValue = candidateValue;
+        candidateValue.setArray();
+        candidateValue.appendJson(oldValue);
+    }
+    candidateValue.appendJson(newValue);
+    manager->put(dbName, key, candidateValue.str());
 }
 
 } // namespace kvdbioc::details
 
-#endif // _KVDBIOC_HELPERS_HPP
+#endif // KVDBIOC_HELPERS_HPP

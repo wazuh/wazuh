@@ -8,11 +8,7 @@
 #include <thread>
 #include <vector>
 
-#include <api/archiver/handlers.hpp>
-#include <api/cmcrud/handlers.hpp>
-#include <api/event/handlers.hpp>
 #include <api/handlers.hpp>
-#include <api/rawevtindexer/handlers.hpp>
 #include <archiver/archiver.hpp>
 #include <base/eventParser.hpp>
 #include <base/libwazuhshared.hpp>
@@ -36,6 +32,7 @@
 #include <geo/manager.hpp>
 #include <httpsrv/server.hpp>
 #include <kvdbioc/manager.hpp>
+#include <kvdbioc/helpers.hpp>
 #include <kvdbstore/ikvdbmanager.hpp>
 #include <kvdbstore/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
@@ -305,6 +302,8 @@ int main(int argc, char* argv[])
             auto kvdbPath = std::filesystem::path(confManager.get<std::string>(conf::key::KVDB_IOC_PATH));
             kvdbIOC = std::make_shared<kvdbioc::KVDBManager>(kvdbPath, store);
             LOG_INFO("KVDB IOC initialized.");
+            // Initialize required DBs for iocs
+            kvdbioc::details::initializeDBs(kvdbIOC);
         }
 
         // GEO
@@ -632,6 +631,10 @@ int main(int argc, char* argv[])
             api::cmcrud::handlers::registerHandlers(
                 cmCrudService, orchestrator, apiServer, apiResourcePayloadMaxBytes, apiResourceKvdbPayloadMaxBytes);
             LOG_DEBUG("Content Manager CRUD API registered.");
+
+            // IOC CRUD
+            api::ioccrud::handlers::registerHandlers(kvdbIOC, scheduler, store, apiServer);
+            LOG_DEBUG("IOC CRUD API registered.");
 
             // Finally start the API server
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));

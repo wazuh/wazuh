@@ -1,5 +1,5 @@
-#ifndef _API_TEST_BASE_HANDLER_TEST_HPP
-#define _API_TEST_BASE_HANDLER_TEST_HPP
+#ifndef API_TEST_BASE_HANDLER_TEST_HPP
+#define API_TEST_BASE_HANDLER_TEST_HPP
 
 #include <gtest/gtest.h>
 
@@ -71,4 +71,4 @@ void handlerTest(ReqGetter& reqGetter,
 
 } // namespace api::test
 
-#endif // _API_TEST_BASE_HANDLER_TEST_HPP
+#endif // API_TEST_BASE_HANDLER_TEST_HPP

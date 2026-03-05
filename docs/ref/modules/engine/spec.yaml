@@ -1385,6 +1385,173 @@ paths:
           $ref: "#/components/responses/InternalServerError_500"
 
   ################################
+  # IOC Management
+  ################################
+  /content/ioc/update:
+    post:
+      tags:
+        - Content
+      summary: Update IOCs from a file
+      description: |
+        Performs an asynchronous update of the Indicators of Compromise (IOCs) in the manager 
+        using the provided file path and hash.
+
+        The file must be in **nd-json** (newline-delimited JSON) format, where each line 
+        represents a single IOC JSON object containing at minimum:
+        - `name`: The IOC value (IP, domain, hash, etc.)
+        - `type`: The IOC type (e.g., "connection", "url_domain", "file_hash")
+
+        **Hash-based optimization**: The `hash` field (typically MD5) is used to skip the 
+        update if the file content hasn't changed since the last synchronization, improving 
+        efficiency and reducing unnecessary I/O operations.
+
+        **Behavior**:
+        - If the hash matches the previously stored hash, returns OK without performing sync.
+        - If the hash differs, schedules an asynchronous synchronization task.
+        - Only one synchronization can run at a time (enforced by internal semaphore).
+        - Updates are performed using a hot-swap mechanism to avoid service interruption.
+
+        **Error handling**:
+        - File path validation is performed before scheduling.
+        - An empty `hash` field results in a 400 Bad Request (`Field /hash cannot be empty`).
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateIoc_Request"
+            examples:
+              update_iocs:
+                summary: Update IOCs from file with hash
+                value:
+                  path: "/var/lib/wazuh-server/iocs/threat-intel.ndjson"
+                  hash: "5d41402abc4b2a76b9719d911017c592"
+      responses:
+        "200":
+          description: Success - Synchronization scheduled or skipped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                sync_scheduled:
+                  summary: Synchronization task scheduled successfully
+                  value:
+                    status: "OK"
+                    error: null
+                hash_match_no_sync:
+                  summary: Hash matches, synchronization skipped
+                  value:
+                    status: "OK"
+                    error: "IOC data is already up to date"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                empty_path:
+                  summary: Path field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Field /path cannot be empty"
+                empty_hash:
+                  summary: Hash field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Field /hash cannot be empty"
+                file_not_found:
+                  summary: File does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File not found: /invalid/path/file.json"
+                sync_in_progress:
+                  summary: Another synchronization is already running
+                  value:
+                    status: "ERROR"
+                    error: "IOC synchronization already in progress"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                store_unavailable:
+                  summary: Store service is not available
+                  value:
+                    status: "ERROR"
+                    error: "Store is not available"
+                scheduler_unavailable:
+                  summary: Scheduler service is not available
+                  value:
+                    status: "ERROR"
+                    error: "Scheduler is not available"
+
+  /content/ioc/state:
+    get:
+      tags:
+        - Content
+      summary: Get IOC synchronization state
+      description: |
+        Retrieves the current state of the IOC manager, including:
+        - **hash**: MD5 hash of the last successfully synchronized IOC file
+        - **updating**: Boolean indicating if a synchronization is currently in progress
+        - **lastError**: Error message from the last failed synchronization (empty if last sync succeeded)
+
+        This endpoint is useful for:
+        - Monitoring IOC synchronization status
+        - Checking if updates are being processed
+        - Diagnosing synchronization failures
+        - Verifying which IOC file version is currently active
+
+      responses:
+        "200":
+          description: Success - State retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetIocState_Response"
+              examples:
+                idle_state:
+                  summary: No sync in progress, last sync successful
+                  value:
+                    status: "OK"
+                    hash: "5d41402abc4b2a76b9719d911017c592"
+                    updating: false
+                    lastError: ""
+                syncing_state:
+                  summary: Synchronization currently in progress
+                  value:
+                    status: "OK"
+                    hash: "5d41402abc4b2a76b9719d911017c592"
+                    updating: true
+                    lastError: ""
+                error_state:
+                  summary: Last synchronization failed
+                  value:
+                    status: "OK"
+                    hash: "abc123def456"
+                    updating: false
+                    lastError: "Failed to open file: /path/to/iocs.ndjson"
+                initial_state:
+                  summary: No IOCs synchronized yet
+                  value:
+                    status: "OK"
+                    hash: ""
+                    updating: false
+                    lastError: ""
+                store_error:
+                  summary: Store is not available
+                  value:
+                    status: "ERROR"
+                    hash: ""
+                    updating: false
+                    lastError: "Store is not available"
+
+  ################################
   # Content Validate
   ################################
   /content/validate/resource:
@@ -1711,6 +1878,41 @@ components:
         full_policy:
           type: object
           description: "Full policy JSON payload"
+
+    #################################
+    # IOC Management
+    #################################
+    UpdateIoc_Request:
+      type: object
+      required: [path, hash]
+      properties:
+        path:
+          type: string
+          description: "Absolute path to the ndjson file containing IOCs to synchronize"
+          example: "/var/lib/wazuh-server/iocs/threat-intel.ndjson"
+        hash:
+          type: string
+          description: "MD5 hash of the IOC file. Required for change detection and skipping unnecessary syncs."
+          example: "5d41402abc4b2a76b9719d911017c592"
+
+    GetIocState_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            hash:
+              type: string
+              description: "MD5 hash of the current IOCs in the manager"
+              example: "5d41402abc4b2a76b9719d911017c592"
+            updating:
+              type: boolean
+              description: "Indicates if an IOC synchronization is currently in progress"
+              example: false
+            lastError:
+              type: string
+              description: "Error message from last failed synchronization. Empty if last sync succeeded."
+              example: ""
+
     #################################
     # Tester
     #################################

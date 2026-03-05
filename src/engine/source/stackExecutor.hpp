@@ -1,5 +1,5 @@
-#ifndef _CMD_DETAILS_STACK_EXECUTOR_HPP
-#define _CMD_DETAILS_STACK_EXECUTOR_HPP
+#ifndef CMD_DETAILS_STACK_EXECUTOR_HPP
+#define CMD_DETAILS_STACK_EXECUTOR_HPP
 
 #include <deque>
 #include <exception>
@@ -58,4 +58,4 @@ public:
 
 } // namespace cmd::details
 
-#endif // _CMD_DETAILS_STACK_EXECUTOR_HPP
+#endif // CMD_DETAILS_STACK_EXECUTOR_HPP

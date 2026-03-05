@@ -6,6 +6,7 @@ add_subdirectory(archiver)
 add_subdirectory(rawevtindexer)
 add_subdirectory(event)
 add_subdirectory(cmcrud)
+add_subdirectory(ioccrud)
 add_subdirectory(shared)
 
 add_library(api INTERFACE)
@@ -20,4 +21,5 @@ target_link_libraries(api INTERFACE
   api::archiver
   api::cmcrud
   api::rawevtindexer
+  api::ioccrud
 )

@@ -1,5 +1,5 @@
-#ifndef _API_ARCHIVER_HANDLERS_HPP
-#define _API_ARCHIVER_HANDLERS_HPP
+#ifndef API_ARCHIVER_HANDLERS_HPP
+#define API_ARCHIVER_HANDLERS_HPP
 
 #include <api/adapter/adapter.hpp>
 #include <archiver/iarchiver.hpp>
@@ -22,4 +22,4 @@ inline void registerHandlers(const std::shared_ptr<::archiver::IArchiver>& archi
 }
 } // namespace api::archiver::handlers
 
-#endif // _API_ARCHIVER_HANDLERS_HPP
+#endif // API_ARCHIVER_HANDLERS_HPP

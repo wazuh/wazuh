@@ -9,6 +9,7 @@ import api_communication.proto.tester_pb2 as tester
 import api_communication.proto.geo_pb2 as geo
 import api_communication.proto.archiver_pb2 as archiver
 import api_communication.proto.rawevtindexer_pb2 as rawevtindexer
+import api_communication.proto.ioc_pb2 as ioc
 
 
 def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
@@ -103,6 +104,13 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
         endpoint = '_internal/raweventindexer/disable'
     if isinstance(message, rawevtindexer.RawEvtIndexerStatus_Request):
         endpoint = '_internal/raweventindexer/status'
+
+    # IOC
+    if isinstance(message, ioc.UpdateIoc_Request):
+        endpoint = 'content/ioc/update'
+    if isinstance(message, ioc.GetIocState_Request):
+        endpoint = 'content/ioc/state'
+        method = 'get'
 
     # Unknown
     if endpoint == '':
