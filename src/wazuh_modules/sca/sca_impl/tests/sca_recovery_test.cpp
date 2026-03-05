@@ -251,6 +251,25 @@ TEST_F(SCARecoveryTest, QueryGetVersionCommand)
     EXPECT_EQ(jsonResponse["data"]["version"], 5);
 }
 
+// Test: get_version returns 0 when database has no persisted rows
+TEST_F(SCARecoveryTest, QueryGetVersionCommandEmptyDatabase)
+{
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
+                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        nlohmann::json data;
+        data["max_version"] = nullptr;
+        callback(SELECTED, data);
+    }));
+
+    std::string response = m_sca->query(R"({"command":"get_version"})");
+    nlohmann::json jsonResponse = nlohmann::json::parse(response);
+
+    EXPECT_EQ(jsonResponse["error"], 0);
+    EXPECT_EQ(jsonResponse["data"]["version"], 0);
+}
+
 // Test: check_integrity with empty checksum (error case)
 TEST_F(SCARecoveryTest, QueryCheckIntegrityEmptyChecksum)
 {

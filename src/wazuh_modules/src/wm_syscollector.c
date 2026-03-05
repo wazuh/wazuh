@@ -117,6 +117,67 @@ static bool is_shutdown_process_started()
     return ret_val;
 }
 
+static bool wm_sys_parse_get_version_response(const char* response, int* version)
+{
+    if (!response || !version)
+    {
+        return false;
+    }
+
+    bool success = false;
+    cJSON* root = cJSON_Parse(response);
+    if (!root)
+    {
+        mtdebug1(WM_SYS_LOGTAG, "Failed to parse Syscollector get_version response");
+        return false;
+    }
+
+    cJSON* error_item = cJSON_GetObjectItem(root, "error");
+    cJSON* data_item = cJSON_GetObjectItem(root, "data");
+    cJSON* version_item = data_item ? cJSON_GetObjectItem(data_item, "version") : NULL;
+
+    if (!cJSON_IsNumber(error_item) || (int)cJSON_GetNumberValue(error_item) != MQ_SUCCESS)
+    {
+        mtdebug1(WM_SYS_LOGTAG, "Syscollector get_version response returned an error");
+        goto end;
+    }
+
+    if (!cJSON_IsNumber(version_item))
+    {
+        mtdebug1(WM_SYS_LOGTAG, "Syscollector get_version response missing numeric data.version");
+        goto end;
+    }
+
+    *version = (int)cJSON_GetNumberValue(version_item);
+    success = true;
+
+end:
+    cJSON_Delete(root);
+    return success;
+}
+
+static bool wm_sys_get_module_version(int* version)
+{
+    if (!version || !syscollector_query_ptr)
+    {
+        return false;
+    }
+
+    char* output = NULL;
+    const size_t query_result = syscollector_query_ptr("{\"command\":\"get_version\"}", &output);
+
+    if (query_result == 0 || !output)
+    {
+        mtdebug1(WM_SYS_LOGTAG, "Syscollector get_version query failed");
+        free(output);
+        return false;
+    }
+
+    const bool parsed = wm_sys_parse_get_version_response(output, version);
+    free(output);
+    return parsed;
+}
+
 bool wm_sys_query_agentd(const char* command, char* output_buffer, size_t buffer_size)
 {
     if (!command || !output_buffer || buffer_size == 0)
@@ -813,10 +874,62 @@ void* wm_sync_module(__attribute__((unused)) void* args)
 {
 #endif
 
-    // Initial wait until syscollector is started
-    for (uint32_t i = 0; i < sync_interval && sync_module_running; i++)
+    bool use_legacy_initial_wait = true;
+    int current_version = -1;
+
+    if (wm_sys_get_module_version(&current_version))
     {
-        sleep(1);
+        if (current_version == 0)
+        {
+            use_legacy_initial_wait = false;
+            mtdebug1(WM_SYS_LOGTAG,
+                     "First-run inventory synchronization detected. Waiting for initial scan data before first sync.");
+
+            while (sync_module_running)
+            {
+                sleep(1);
+
+                if (!sync_module_running)
+                {
+                    break;
+                }
+
+                if (!wm_sys_get_module_version(&current_version))
+                {
+                    mtdebug1(WM_SYS_LOGTAG,
+                             "Unable to verify Syscollector version during first-run wait. Falling back to startup delay.");
+                    use_legacy_initial_wait = true;
+                    break;
+                }
+
+                if (current_version > 0)
+                {
+                    mtdebug1(WM_SYS_LOGTAG,
+                             "Initial Syscollector scan data detected. Triggering first synchronization without startup delay.");
+                    break;
+                }
+            }
+        }
+        else
+        {
+            mtdebug1(WM_SYS_LOGTAG,
+                     "Existing inventory state detected (version=%d). Keeping startup synchronization delay.",
+                     current_version);
+        }
+    }
+    else
+    {
+        mtdebug1(WM_SYS_LOGTAG,
+                 "Failed to detect Syscollector startup state. Falling back to startup synchronization delay.");
+    }
+
+    if (use_legacy_initial_wait)
+    {
+        // Initial wait until syscollector is started
+        for (uint32_t i = 0; i < sync_interval && sync_module_running; i++)
+        {
+            sleep(1);
+        }
     }
 
     while (sync_module_running)

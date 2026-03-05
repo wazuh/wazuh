@@ -112,6 +112,10 @@ sca_set_push_functions_func sca_set_push_functions_ptr = NULL;
 sca_set_sync_parameters_func sca_set_sync_parameters_ptr = NULL;
 sca_set_sync_limit_func sca_set_sync_limit_ptr = NULL;
 
+// Query function pointer
+typedef size_t (*sca_query_func)(const char* query, char** output);
+sca_query_func sca_query_ptr = NULL;
+
 #ifdef WIN32
 extern size_t agcom_dispatch(char * command, char ** output);
 #endif
@@ -258,16 +262,73 @@ static bool wm_sca_query_agentd_doclimits(uint64_t *sync_limit)
     return true;
 }
 
+static bool wm_sca_parse_get_version_response(const char* response, int* version)
+{
+    if (!response || !version)
+    {
+        return false;
+    }
+
+    bool success = false;
+    cJSON* root = cJSON_Parse(response);
+    if (!root)
+    {
+        mdebug1("Failed to parse SCA get_version response");
+        return false;
+    }
+
+    cJSON* error_item = cJSON_GetObjectItem(root, "error");
+    cJSON* data_item = cJSON_GetObjectItem(root, "data");
+    cJSON* version_item = data_item ? cJSON_GetObjectItem(data_item, "version") : NULL;
+
+    if (!cJSON_IsNumber(error_item) || (int)cJSON_GetNumberValue(error_item) != MQ_SUCCESS)
+    {
+        mdebug1("SCA get_version response returned an error");
+        goto end;
+    }
+
+    if (!cJSON_IsNumber(version_item))
+    {
+        mdebug1("SCA get_version response missing numeric data.version");
+        goto end;
+    }
+
+    *version = (int)cJSON_GetNumberValue(version_item);
+    success = true;
+
+end:
+    cJSON_Delete(root);
+    return success;
+}
+
+static bool wm_sca_get_module_version(int* version)
+{
+    if (!version || !sca_query_ptr)
+    {
+        return false;
+    }
+
+    char* output = NULL;
+    const size_t result = sca_query_ptr("{\"command\":\"get_version\"}", &output);
+
+    if (result == 0 || !output)
+    {
+        mdebug1("SCA get_version query failed");
+        free(output);
+        return false;
+    }
+
+    const bool parsed = wm_sca_parse_get_version_response(output, version);
+    free(output);
+    return parsed;
+}
+
 // Sync protocol function pointers
 sca_sync_module_func sca_sync_module_ptr = NULL;
 sca_persist_diff_func sca_persist_diff_ptr = NULL;
 sca_parse_response_func sca_parse_response_ptr = NULL;
 sca_notify_data_clean_func sca_notify_data_clean_ptr = NULL;
 sca_delete_database_func sca_delete_database_ptr = NULL;
-
-// Query function pointer
-typedef size_t (*sca_query_func)(const char* query, char** output);
-sca_query_func sca_query_ptr = NULL;
 
 // YAML to cJSON function pointer
 sca_set_yaml_to_cjson_func_func sca_set_yaml_to_cjson_func_ptr = NULL;
@@ -672,10 +733,56 @@ DWORD WINAPI wm_sca_sync_module(__attribute__((unused)) void * args) {
 #else
 void * wm_sca_sync_module(__attribute__((unused)) void * args) {
 #endif
-    // Initial wait until SCA is started
-    for (uint32_t i = 0; i < sca_sync_interval && sca_sync_module_running; i++)
+    bool use_legacy_initial_wait = true;
+    int current_version = -1;
+
+    if (wm_sca_get_module_version(&current_version))
     {
-        sleep(1);
+        if (current_version == 0)
+        {
+            use_legacy_initial_wait = false;
+            mdebug1("First-run SCA synchronization detected. Waiting for initial scan data before first sync.");
+
+            while (sca_sync_module_running)
+            {
+                sleep(1);
+
+                if (!sca_sync_module_running)
+                {
+                    break;
+                }
+
+                if (!wm_sca_get_module_version(&current_version))
+                {
+                    mdebug1("Unable to verify SCA version during first-run wait. Falling back to startup delay.");
+                    use_legacy_initial_wait = true;
+                    break;
+                }
+
+                if (current_version > 0)
+                {
+                    mdebug1("Initial SCA scan data detected. Triggering first synchronization without startup delay.");
+                    break;
+                }
+            }
+        }
+        else
+        {
+            mdebug1("Existing SCA state detected (version=%d). Keeping startup synchronization delay.", current_version);
+        }
+    }
+    else
+    {
+        mdebug1("Failed to detect SCA startup state. Falling back to startup synchronization delay.");
+    }
+
+    if (use_legacy_initial_wait)
+    {
+        // Initial wait until SCA is started
+        for (uint32_t i = 0; i < sca_sync_interval && sca_sync_module_running; i++)
+        {
+            sleep(1);
+        }
     }
 
     while (sca_sync_module_running)

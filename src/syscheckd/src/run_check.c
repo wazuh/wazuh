@@ -61,6 +61,7 @@ volatile int fim_sync_module_running = 0;
 // Flush on-demand synchronization variables (thread-safe with atomic operations)
 atomic_int_t fim_flush_in_progress = ATOMIC_INT_INITIALIZER(0);  // 0 = idle, 1 = flush active
 atomic_int_t fim_flush_result = ATOMIC_INT_INITIALIZER(0);       // 0 = success, -1 = error
+atomic_int_t fim_skip_initial_sync_wait = ATOMIC_INT_INITIALIZER(0); // 1 = skip only first wait cycle
 
 // Prototypes
 #ifdef WIN32
@@ -171,6 +172,69 @@ STATIC bool fim_has_data_in_database(void) {
 #endif
 
     return false;
+}
+
+/**
+ * @brief Configure startup wait behavior for the synchronization thread.
+ *
+ * @param has_existing_data true when the state DB already contains persisted data.
+ */
+STATIC void fim_set_initial_sync_wait_policy(bool has_existing_data) {
+    if (!syscheck.enable_synchronization) {
+        atomic_int_set(&fim_skip_initial_sync_wait, 0);
+        return;
+    }
+
+    if (has_existing_data) {
+        atomic_int_set(&fim_skip_initial_sync_wait, 0);
+        mdebug1("Existing FIM synchronization state detected. Keeping startup delay (%u seconds).", syscheck.sync_interval);
+    } else {
+        atomic_int_set(&fim_skip_initial_sync_wait, 1);
+        mdebug1("First-run FIM synchronization detected. First synchronization will skip startup delay.");
+    }
+}
+
+/**
+ * @brief Consume the one-shot "skip initial synchronization wait" flag.
+ *
+ * @return true if the first wait should be skipped, false otherwise.
+ */
+STATIC bool fim_consume_initial_sync_wait_skip(void) {
+    if (atomic_int_get(&fim_skip_initial_sync_wait)) {
+        atomic_int_set(&fim_skip_initial_sync_wait, 0);
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * @brief Decide whether the sync thread should wait for sync_interval before syncing.
+ *
+ * @param[out] flush_request_detected Set to true if flush was requested.
+ * @return true if the caller should perform the sync wait loop, false otherwise.
+ */
+STATIC bool fim_should_wait_before_sync(bool* flush_request_detected) {
+    if (!flush_request_detected) {
+        return false;
+    }
+
+    *flush_request_detected = false;
+
+    if (fim_consume_initial_sync_wait_skip()) {
+        mdebug1("Initial FIM synchronization wait skipped on first run.");
+        if (atomic_int_get(&fim_flush_in_progress)) {
+            *flush_request_detected = true;
+        }
+        return false;
+    }
+
+    if (atomic_int_get(&fim_flush_in_progress)) {
+        *flush_request_detected = true;
+        return false;
+    }
+
+    return true;
 }
 
 /**
@@ -620,6 +684,9 @@ void start_daemon()
     }
 #endif
 
+    // Decide startup synchronization delay behavior before baseline scan populates the DB.
+    fim_set_initial_sync_wait_policy(fim_has_data_in_database());
+
     // Create File integrity monitoring base-line
     minfo(FIM_FREQUENCY_TIME, syscheck.time);
     fim_scan();
@@ -900,9 +967,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
     while (fim_sync_module_running) {
         bool flush_request_detected = false;
 
-        if (atomic_int_get(&fim_flush_in_progress)) {
-            flush_request_detected = true;
-        } else {
+        if (fim_should_wait_before_sync(&flush_request_detected)) {
             // Wait for sync_interval, checking for pause and flush requests
             for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
                 // Check for pause request (atomic read, no mutex needed)
