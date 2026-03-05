@@ -23,7 +23,7 @@ checks:
     rationale: Test_1
     remediation: The testfile permissions should be '0222'. Use chmod 222 /testfile command to fix permissions
     compliance:
-      - cis: [1.8.1.5]
+      pci_dss: ["7.1"]
     condition: all
     rules:
       - c:stat -L /testfile -> r:Access:\s*\(0222/d-w--w--w-\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)
@@ -35,7 +35,7 @@ checks:
     rationale: Test_2
     remediation: The testfile permissions should be '644'. Use chmod 666 /testfile command to fix permissions
     compliance:
-      - cis: [1.8.1.5]
+      pci_dss: ["7.1"]
     condition: all
     rules:
       - c:stat -L /testfile -> r:Access:\s*\(0644/drw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)
