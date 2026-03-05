@@ -21,32 +21,8 @@ namespace router
 class EnvironmentBuilder
 {
 private:
-    std::weak_ptr<builder::IBuilder> m_builder;              ///< The builder used to construct the policy and filter.
+    std::weak_ptr<builder::IBuilder> m_builder;              ///< The builder used to construct the policy.
     std::shared_ptr<bk::IControllerMaker> m_controllerMaker; ///< The controller maker used to construct the controller.
-
-    /**
-     * @brief Get the Expression object for a given filter.
-     *
-     * @param filterName The name of the filter.
-     * @return base::Expression The constructed filter expression.
-     * @throws std::runtime_error if the filter cannot be built.
-     */
-    base::Expression getExpression(const base::Name& filterName, const cm::store::NamespaceId& namespaceId)
-    {
-        // TODO: Remove this check when the Builder can identify if it is a filter or not
-        if (filterName.parts().size() == 0 || filterName.parts()[0] != "filter")
-        {
-            throw std::runtime_error {"The asset name is empty or it is not a filter"};
-        }
-
-        auto builder = m_builder.lock();
-        if (builder == nullptr)
-        {
-            throw std::runtime_error {"The builder is not available"};
-        }
-
-        return builder->buildAsset(filterName, namespaceId);
-    }
 
 public:
     /**
@@ -118,14 +94,13 @@ public:
     }
 
     /**
-     * @brief Create an environment based on a policy and a filter.
+     * @brief Create an environment based on a policy.
      *
      * @param policyName The name of the policy.
-     * @param filterName The name of the filter.
      * @return Environment The created environment.
      * @throws std::runtime_error if failed to create the environment. // TODO CHange to base::Error
      */
-    std::unique_ptr<Environment> create(const cm::store::NamespaceId& namespaceId, const base::Name& filterName)
+    std::unique_ptr<Environment> create(const cm::store::NamespaceId& namespaceId)
     {
         std::shared_ptr<bk::IController> controller = nullptr;
         try
@@ -134,8 +109,7 @@ public:
             auto trace {false};
             auto sandbox {false};
             std::tie(controller, hash) = makeController(namespaceId, trace, sandbox);
-            auto expression = getExpression(filterName, namespaceId);
-            return std::make_unique<Environment>(std::move(expression), std::move(controller), std::move(hash));
+            return std::make_unique<Environment>(std::move(controller), std::move(hash));
         }
         catch (const std::runtime_error& e)
         {
@@ -143,10 +117,8 @@ public:
             {
                 controller->stop();
             }
-            throw std::runtime_error {fmt::format("Failed to create environment with policy '{}' and filter '{}': {}",
-                                                  namespaceId.toStr(),
-                                                  filterName,
-                                                  e.what())};
+            throw std::runtime_error {fmt::format(
+                "Failed to create environment with policy '{}': {}", namespaceId.toStr(), e.what())};
         }
     }
 };

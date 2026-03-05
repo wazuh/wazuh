@@ -1,3 +1,4 @@
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <bk/mockController.hpp>
@@ -6,58 +7,89 @@
 
 using namespace router;
 
-base::Expression getDummyTerm(bool result)
+class EnvironmentTestFixture : public ::testing::Test
 {
-    return base::Term<base::EngineOp>::create("dummy",
-                                              [result](const base::Event& event) -> base::result::Result<base::Event> {
-                                                  return result ? base::result::makeSuccess(event)
-                                                                : base::result::makeFailure(event);
-                                              });
+protected:
+    const std::string testHash {"abc123def456"};
+    const std::string emptyHash {""};
+
+    std::shared_ptr<bk::mocks::MockController> getMockController()
+    {
+        auto controller = std::make_shared<bk::mocks::MockController>();
+        return controller;
+    }
+};
+
+TEST_F(EnvironmentTestFixture, ConstructorThrowsOnInvalidController)
+{
+    EXPECT_THROW(Environment(nullptr, std::string(testHash)), std::runtime_error);
 }
 
-auto getMockController()
-{
-    auto controller = std::make_shared<bk::mocks::MockController>();
-    EXPECT_CALL(*controller, stop()).WillOnce(testing::Return());
-    return controller;
-}
-
-TEST(EnvironmentTest, ConstructorThrowsOnInvalidController)
-{
-    EXPECT_THROW(Environment(getDummyTerm(true), nullptr, std::string("-")), std::runtime_error);
-}
-
-TEST(EnvironmentTest, StopOnDestroy)
-{
-    Environment environment(base::Expression {}, getMockController(), std::string("-"));
-}
-
-TEST(EnvironmentTest, isAccepted)
-{
-    auto controllerTrue = getMockController();
-    auto controllerFalse = getMockController();
-    Environment environmentTrue(getDummyTerm(true), controllerTrue, std::string("-"));
-    Environment environmentFalse(getDummyTerm(false), controllerFalse, std::string("-"));
-}
-
-TEST(EnvironmentTest, Ingest)
+TEST_F(EnvironmentTestFixture, ConstructorSucceedsWithValidController)
 {
     auto controller = getMockController();
-    base::Event event {};
-    EXPECT_CALL(*controller, ingest(base::Event(event))).WillOnce(testing::Return());
+    EXPECT_NO_THROW(Environment(std::move(controller), std::string(testHash)));
+}
 
-    auto environment = Environment(getDummyTerm(true), controller, std::string("-"));
+TEST_F(EnvironmentTestFixture, StopOnDestroy)
+{
+    auto controller = getMockController();
+    EXPECT_CALL(*controller, stop()).Times(1);
+    {
+        Environment environment(std::move(controller), std::string(testHash));
+    }
+}
+
+TEST_F(EnvironmentTestFixture, HashStoredCorrectly)
+{
+    auto controller = getMockController();
+    Environment environment(std::move(controller), std::string(testHash));
+    EXPECT_EQ(environment.hash(), testHash);
+}
+
+TEST_F(EnvironmentTestFixture, Ingest)
+{
+    auto controller = getMockController();
+    base::Event event = std::make_shared<json::Json>(R"({"test": "data"})");
+    EXPECT_CALL(*controller, ingest(::testing::_)).Times(1);
+
+    Environment environment(std::move(controller), std::string(testHash));
     environment.ingest(std::move(event));
 }
 
-TEST(EnvironmentTest, IngestGet)
+TEST_F(EnvironmentTestFixture, IngestGet)
 {
     auto controller = getMockController();
     base::Event event = std::make_shared<json::Json>(R"({"test": "test"})");
     base::Event eventExpected = std::make_shared<json::Json>(R"({"test": "test"})");
-    EXPECT_CALL(*controller, ingestGet(base::Event(event))).WillOnce(testing::Return(event));
 
-    auto environment = Environment(getDummyTerm(true), controller, std::string("-"));
+    EXPECT_CALL(*controller, ingestGet(::testing::_)).WillOnce(::testing::Return(event));
+
+    Environment environment(std::move(controller), std::string(testHash));
     auto res = environment.ingestGet(std::move(event));
     EXPECT_EQ(*res, *eventExpected);
+}
+
+TEST_F(EnvironmentTestFixture, SetControllerThrowsOnNull)
+{
+    auto controller = getMockController();
+    Environment environment(std::move(controller), std::string(testHash));
+
+    EXPECT_THROW(environment.setController(nullptr), std::runtime_error);
+}
+
+TEST_F(EnvironmentTestFixture, MultipleIngestCalls)
+{
+    auto controller = getMockController();
+    EXPECT_CALL(*controller, ingest(::testing::_)).Times(3);
+
+    Environment environment(std::move(controller), std::string(testHash));
+
+    base::Event event1 = std::make_shared<json::Json>(R"({"id": "1"})");
+    base::Event event2 = std::make_shared<json::Json>(R"({"id": "2"})");
+    base::Event event3 = std::make_shared<json::Json>(R"({"id": "3"})");
+
+    environment.ingest(std::move(event1));
+    environment.ingest(std::move(event2));
+    environment.ingest(std::move(event3));
 }

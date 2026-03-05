@@ -34,7 +34,6 @@ eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry, const st
 {
     eRouter::Entry eEntry;
     eEntry.set_name(entry.name());
-    eEntry.set_filter(entry.filter().fullName());
     eEntry.set_namespaceid(entry.namespaceId().toStr());
     eEntry.set_priority(static_cast<uint32_t>(entry.priority()));
     if (entry.description().has_value())
@@ -95,18 +94,9 @@ adapter::RouteHandler routePost(const std::shared_ptr<::router::IRouterAPI>& rou
             return;
         }
 
-        auto filterName = tryGetProperty<ResponseType, base::Name>(
-            true, [&protoRoute]() { return base::Name(adapter::getRes(protoRoute).filter()); }, "filter", "name");
-        if (adapter::isError(filterName))
-        {
-            res = adapter::getErrorResp(filterName);
-            return;
-        }
-
         // Add the route
         ::router::prod::EntryPost entryPost(protoReq.route().name(),
                                             adapter::getRes(namespaceId),
-                                            adapter::getRes(filterName),
                                             protoReq.route().priority());
 
         if (protoReq.route().has_description() && !protoReq.route().description().empty())

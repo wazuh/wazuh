@@ -49,7 +49,6 @@ class EntryPost
 private:
     std::string m_name;                       ///< Name of the environment
     cm::store::NamespaceId m_namespace;          ///< Namespace of the environment
-    base::Name m_filter;                      ///< Filter of the environment
     std::size_t m_priority;                   ///< Priority of the environment
     std::optional<std::string> m_description; ///< Description of the environment
 
@@ -63,14 +62,12 @@ public:
      *
      * @param name Name of environment
      * @param namespace Namespace of the environment
-     * @param filter Filter of the environment
      * @param priority Priority of the environment
      */
-    EntryPost(std::string name, cm::store::NamespaceId namespaceId, base::Name filter, std::size_t priority)
+    EntryPost(std::string name, cm::store::NamespaceId namespaceId, std::size_t priority)
         : m_name {std::move(name)}
         , m_namespace {std::move(namespaceId)}
         , m_description {}
-        , m_filter {std::move(filter)}
         , m_priority {priority}
     {
     }
@@ -85,10 +82,6 @@ public:
         if (m_name.empty())
         {
             return base::Error {"Name cannot be empty"};
-        }
-        if (m_filter.parts().size() == 0)
-        {
-            return base::Error {"Filter name is empty"};
         }
         if (m_priority == 0)
         {
@@ -108,9 +101,6 @@ public:
 
     const std::optional<std::string>& description() const { return m_description; }
     void description(std::string_view description) { m_description = description; }
-
-    const base::Name& filter() const { return m_filter; }
-    void filter(base::Name filter) { m_filter = filter; }
 
     std::size_t priority() const { return m_priority; }
     void priority(std::size_t priority) { m_priority = priority; }

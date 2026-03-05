@@ -140,7 +140,7 @@ INSTANTIATE_TEST_SUITE_P(
                     "Invalid policy name: Invalid namespace ID: ");
             },
             [](auto&) {}),
-        // Invalid filter
+        // Invalid namespace ID
         HandlerT(
             []()
             {

@@ -45,7 +45,6 @@ private:
     std::optional<std::string> m_description;
     std::optional<int64_t> m_lifetime;
     std::optional<int64_t> m_lastUse;
-    std::optional<std::string> m_filter;
     std::optional<size_t> m_priority;
 
     static constexpr auto NAME_PATH = "/name";
@@ -53,7 +52,6 @@ private:
     static constexpr auto DESCRIPTION_PATH = "/description";
     static constexpr auto LIFETIME_PATH = "/lifetime";
     static constexpr auto LAST_USE_PATH = "/lastUse";
-    static constexpr auto FILTER_PATH = "/filter";
     static constexpr auto PRIORITY_PATH = "/priority";
 };
 

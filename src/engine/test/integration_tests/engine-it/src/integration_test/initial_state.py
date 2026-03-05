@@ -17,15 +17,13 @@ from api_communication.proto import engine_pb2 as api_engine
 
 
 # ===================================================================
-#  Constants shared with the tests (namespace / UUIDs / filter)
+#  Constants shared with the tests (namespace / UUIDs)
 # ===================================================================
 
 POLICY_NS = "testing"
 
 DECODER_TEST_NAME = "decoder/test-message/0"
 DECODER_OTHER_NAME = "decoder/other-test-message/0"
-FILTER_ALLOW_ALL_NAME = "filter/allow-all/0"
-FILTER_ALLOW_ALL_UUID = "b540db06-a761-4c02-8880-1d3e3b964063"
 
 # Valid v4 UUIDs (must match those used in steps.py)
 DECODER_TEST_UUID = "2faeea8b-672b-4b42-8f91-657d7810d636"
@@ -205,21 +203,8 @@ kvdbs: []
 """
 
 
-def build_allow_all_filter_yaml() -> str:
-    """
-    Minimal filter for router tests, same as before.
-    """
-    return f"""\
-name: {FILTER_ALLOW_ALL_NAME}
-id: {FILTER_ALLOW_ALL_UUID}
-enabled: true
-type: pre-filter
-check: exists($event.original)
-"""
-
-
 # ===================================================================
-#  CM initialization logic (namespace + decoders + integrations + filter)
+#  CM initialization logic (namespace + decoders + integrations)
 # ===================================================================
 
 def init_cm_resources(api_client: APIClient):
@@ -277,15 +262,7 @@ def init_cm_resources(api_client: APIClient):
         req.ymlContent = yml
         send_recv(api_client, req, api_engine.GenericStatus_Response())
 
-    # 4) Allow-all filter (for Router Routes API Management)
-    filter_yaml = build_allow_all_filter_yaml()
-    req = api_crud.resourcePost_Request()
-    req.space = POLICY_NS
-    req.type = "filter"
-    req.ymlContent = filter_yaml
-    send_recv(api_client, req, api_engine.GenericStatus_Response())
-
-    print(f"CM initialized in namespace '{POLICY_NS}' with decoders, integrations and filter.")
+    print(f"CM initialized in namespace '{POLICY_NS}' with decoders and integrations.")
 
 
 # ===================================================================

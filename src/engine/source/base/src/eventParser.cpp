@@ -18,79 +18,6 @@ namespace
 
 constexpr size_t LOCATION_OFFSET = 2; // Given the "q:" prefix.
 
-/**
- * @brief If `location` has the form "[$agentID] ($agentName) $registerIP->$module", extract
- *        agentID, agentName and register IP into `event` and rewrite `location` to just `$module`.
- *        Otherwise, leave `location` untouched.
- *
- * @param location    String potentially of the form "[ID] Name IP->Module". Will be modified in‐place to "Module"
- * if it matches.
- * @param event Shared pointer to a JSON object where agentID and agentName will be set if the format matches.
- * @return true if the location was successfully parsed and modified, false otherwise.
- */
-bool parseLegacyLocation(std::string& location, std::shared_ptr<json::Json>& event)
-{
-    // Minimum format is "[x] (y) z->m", i.e. at least 12 characters
-    if (location.size() < 12 || location.front() != '[')
-    {
-        return false;
-    }
-
-    const char* data = location.data();
-    size_t n = location.size();
-
-    // find closing ']' for agentID
-    size_t p1 = location.find(']');
-    if (p1 == std::string::npos)
-    {
-        return false;
-    }
-
-    // next must be " ("
-    if (p1 + 2 >= n || data[p1 + 1] != ' ' || data[p1 + 2] != '(')
-    {
-        return false;
-    }
-
-    // find closing ')' for agentName
-    size_t p2 = location.find(')', p1 + 3);
-    if (p2 == std::string::npos)
-    {
-        return false;
-    }
-
-    // next must be space, then registerIP, then "->"
-    if (p2 + 2 >= n || data[p2 + 1] != ' ')
-    {
-        return false;
-    }
-    size_t arrow = location.find("->", p2 + 2);
-    if (arrow == std::string::npos)
-    {
-        return false;
-    }
-
-    // extract substrings
-    std::string_view svID {data + 1, p1 - 1};
-    std::string_view svName {data + p1 + 3, p2 - (p1 + 3)};
-    std::string_view svModule {data + arrow + 2, n - (arrow + 2)};
-
-    if (svID.empty() || svName.empty() || svModule.empty())
-    {
-        return false;
-    }
-
-    // Set the agent ID, name, and register IP in the event.
-    event->setString(svID, EVENT_AGENT_ID);
-    event->setString(svName, EVENT_AGENT_NAME);
-
-    // Rewrite the location to just the module name.
-    location.assign(svModule);
-
-    // return true to indicate successful parsing and modification.
-    return true;
-}
-
 } // namespace
 
 Event parseLegacyEvent(std::string_view rawEvent, const json::Json& agentMetadata)
@@ -147,7 +74,15 @@ Event parseLegacyEvent(std::string_view rawEvent, const json::Json& agentMetadat
         }
     }
 
-    parseEvent->merge(true, agentMetadata);
+    try
+    {
+        parseEvent->merge(true, agentMetadata);
+    }
+    catch (const std::exception& ex)
+    {
+        throw std::runtime_error(fmt::format("Agent metadata merge failed: {}", ex.what()));
+    }
+
     parseEvent->setString(rawLocation, EVENT_LOCATION_ID);
 
     // Set the original event message.
@@ -168,10 +103,6 @@ Event parsePublicEvent(uint8_t queue, std::string& location, std::string_view me
     {
         throw std::runtime_error("Invalid format: location cannot be empty");
     }
-
-    // If the location is in the legacy agent format "[ID] (Name) IP->Module", parse it.
-    // This will also rewrite `location` to just `Module`.
-    parseLegacyLocation(location, parseEvent);
 
     try
     {

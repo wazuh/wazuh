@@ -283,11 +283,13 @@ public:
         bool indexDiscardedEvents = [&]() -> bool
         {
             auto indexDiscardedOpt = policyJson.getBool(jsonpolicy::PATH_KEY_INDEX_DISCARDED_EVENTS);
-            if (!indexDiscardedOpt.has_value())
-            {
-                return false;
-            }
-            return indexDiscardedOpt.value();
+            // TODO: Uncomment when this field is mandatory
+            // if (!indexDiscardedOpt.has_value())
+            // {
+            //     throw std::runtime_error(
+            //         "Policy JSON must have a boolean 'index_discarded_events' field");
+            // }
+            return indexDiscardedOpt.value_or(false);
         }();
 
         return {title,
