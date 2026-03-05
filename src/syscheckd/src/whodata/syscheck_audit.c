@@ -370,6 +370,15 @@ int audit_init(void) {
     // Print audit queue size
     minfo(FIM_AUDIT_QUEUE_SIZE, syscheck.queue_size);
 
+    // Check for conflicting audit rules
+    int auditd_check_fd = audit_open();
+    if (auditd_check_fd >= 0) {
+        audit_get_rule_list(auditd_check_fd);
+        audit_close(auditd_check_fd);
+    } else {
+        mdebug1("Unable to open audit socket for conflicting rule check. Continuing without validation.");
+    }
+
     // Perform Audit healthcheck
     if (syscheck.audit_healthcheck) {
         if(audit_health_check(audit_data.socket)) {

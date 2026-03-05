@@ -227,6 +227,78 @@ static void test_audit_print_reply(void **state) {
     assert_int_equal(audit_rules_list->currently_size, 1);
 }
 
+static void test_audit_print_reply_never_task_rule(void **state) {
+    struct audit_reply *reply = calloc(1, sizeof(struct audit_reply));
+
+    reply->type = AUDIT_LIST_RULES;
+    reply->ruledata = calloc(1, sizeof(struct audit_rule_data));
+    reply->ruledata->action = AUDIT_NEVER;
+    reply->ruledata->flags = AUDIT_FILTER_TASK;
+    reply->ruledata->field_count = 0;
+
+    expect_string(__wrap__mwarn, formatted_msg, "Audit rule 'never,task' detected. FIM whodata may not work. See documentation.");
+
+    int ret = audit_print_reply(reply);
+
+    assert_int_equal(ret, 1);
+
+    free(reply->ruledata);
+    free(reply);
+}
+
+static void test_audit_print_reply_never_task_rule_type_not_list(void **state) {
+    struct audit_reply *reply = calloc(1, sizeof(struct audit_reply));
+
+    // Set type to something other than AUDIT_LIST_RULES
+    reply->type = NLMSG_ERROR;
+    reply->error = calloc(1, sizeof(struct nlmsgerr));
+    reply->error->error = 0;
+
+    // Should not check for never,task rule when type != AUDIT_LIST_RULES
+    int ret = audit_print_reply(reply);
+
+    assert_int_equal(ret, 0);
+
+    free(reply->error);
+    free(reply);
+}
+
+static void test_audit_print_reply_never_without_task(void **state) {
+    struct audit_reply *reply = calloc(1, sizeof(struct audit_reply));
+
+    reply->type = AUDIT_LIST_RULES;
+    reply->ruledata = calloc(1, sizeof(struct audit_rule_data));
+    reply->ruledata->action = AUDIT_NEVER;
+    reply->ruledata->flags = AUDIT_FILTER_EXIT; // Not TASK filter
+    reply->ruledata->field_count = 0;
+
+    // Should NOT warn
+    int ret = audit_print_reply(reply);
+
+    assert_int_equal(ret, 1);
+
+    free(reply->ruledata);
+    free(reply);
+}
+
+static void test_audit_print_reply_task_without_never(void **state) {
+    struct audit_reply *reply = calloc(1, sizeof(struct audit_reply));
+
+    reply->type = AUDIT_LIST_RULES;
+    reply->ruledata = calloc(1, sizeof(struct audit_rule_data));
+    reply->ruledata->action = AUDIT_ALWAYS; // Not NEVER action
+    reply->ruledata->flags = AUDIT_FILTER_TASK;
+    reply->ruledata->field_count = 0;
+
+    // Should NOT warn
+    int ret = audit_print_reply(reply);
+
+    assert_int_equal(ret, 1);
+
+    free(reply->ruledata);
+    free(reply);
+}
+
 static void test_audit_clean_path(void **state) {
     char *path = "../test/file";
     char *cwd = "/home/folder";
@@ -582,6 +654,10 @@ int main(void) {
         cmocka_unit_test(test_audit_get_rule_list),
         cmocka_unit_test_setup_teardown(test_kernel_get_reply, test_setup_kernel_get_reply, test_teardown_kernel_get_reply),
         cmocka_unit_test_setup_teardown(test_audit_print_reply, test_setup_print_reply, test_teardown_print_reply),
+        cmocka_unit_test(test_audit_print_reply_never_task_rule),
+        cmocka_unit_test(test_audit_print_reply_never_task_rule_type_not_list),
+        cmocka_unit_test(test_audit_print_reply_never_without_task),
+        cmocka_unit_test(test_audit_print_reply_task_without_never),
         cmocka_unit_test_teardown(test_audit_clean_path, test_teardown_free_path),
         cmocka_unit_test_setup_teardown(test_audit_restart, test_setup_file, test_teardown_file),
         cmocka_unit_test(test_audit_restart_open_error),
