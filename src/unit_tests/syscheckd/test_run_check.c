@@ -45,6 +45,8 @@ void fim_send_msg(char mq, const char * location, const char * msg);
 bool fim_has_configured_directories(void);
 bool fim_has_configured_paths(void);
 bool fim_has_data_in_database(void);
+bool fim_has_completed_initial_scan(void);
+void fim_mark_initial_scan_completed(time_t scan_end_time);
 bool handle_all_paths_removed(void);
 void fim_set_initial_sync_wait_policy(bool has_existing_data);
 bool fim_consume_initial_sync_wait_skip(void);
@@ -1140,6 +1142,38 @@ static void expect_atomic_lock_unlock_calls(const int count) {
     ignore_function_calls(__wrap_pthread_mutex_unlock);
 }
 
+void test_fim_has_completed_initial_scan_false(void **state) {
+    (void)state;
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, "__fim_first_scan_done__");
+    will_return(__wrap_fim_db_get_last_sync_time, (int64_t)0);
+
+    assert_false(fim_has_completed_initial_scan());
+}
+
+void test_fim_has_completed_initial_scan_true(void **state) {
+    (void)state;
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, "__fim_first_scan_done__");
+    will_return(__wrap_fim_db_get_last_sync_time, (int64_t)1700000000);
+
+    assert_true(fim_has_completed_initial_scan());
+}
+
+void test_fim_mark_initial_scan_completed_updates_marker(void **state) {
+    (void)state;
+
+    expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, "__fim_first_scan_done__");
+    expect_value(__wrap_fim_db_update_last_sync_time_value, timestamp, (int64_t)1700000000);
+
+    fim_mark_initial_scan_completed((time_t)1700000000);
+}
+
+void test_fim_mark_initial_scan_completed_ignores_invalid_timestamp(void **state) {
+    (void)state;
+    fim_mark_initial_scan_completed(0);
+}
+
 void test_fim_set_initial_sync_wait_policy_first_run(void **state) {
     int original_enable_sync = syscheck.enable_synchronization;
 
@@ -1299,6 +1333,10 @@ int main(void) {
         cmocka_unit_test(test_fim_has_configured_paths_with_directories),
         cmocka_unit_test(test_fim_has_data_in_database_no_entries),
         cmocka_unit_test(test_fim_has_data_in_database_with_file_entries),
+        cmocka_unit_test(test_fim_has_completed_initial_scan_false),
+        cmocka_unit_test(test_fim_has_completed_initial_scan_true),
+        cmocka_unit_test(test_fim_mark_initial_scan_completed_updates_marker),
+        cmocka_unit_test(test_fim_mark_initial_scan_completed_ignores_invalid_timestamp),
         cmocka_unit_test(test_handle_all_paths_removed_no_data_in_db),
         cmocka_unit_test(test_handle_all_paths_removed_no_sync_handle),
         cmocka_unit_test(test_fim_set_initial_sync_wait_policy_first_run),

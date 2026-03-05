@@ -707,7 +707,6 @@ size_t syscom_getconfig(const char* section, char** output);
 // Flush on-demand synchronization variables (thread-safe with atomic operations)
 extern atomic_int_t fim_flush_in_progress;  // 0 = idle, 1 = flush active
 extern atomic_int_t fim_flush_result;       // 0 = success, -1 = error (valid only when in_progress=0)
-extern bool fim_has_persisted_state_before_init;  // true when the persistent FIM DB existed before startup
 
 /**
  * @brief Pauses FIM scanning

@@ -63,6 +63,8 @@ atomic_int_t fim_flush_in_progress = ATOMIC_INT_INITIALIZER(0);  // 0 = idle, 1 
 atomic_int_t fim_flush_result = ATOMIC_INT_INITIALIZER(0);       // 0 = success, -1 = error
 atomic_int_t fim_skip_initial_sync_wait = ATOMIC_INT_INITIALIZER(0); // 1 = skip only first wait cycle
 
+#define FIM_FIRST_SCAN_DONE_METADATA_KEY "__fim_first_scan_done__"
+
 // Prototypes
 #ifdef WIN32
 DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
@@ -172,6 +174,31 @@ STATIC bool fim_has_data_in_database(void) {
 #endif
 
     return false;
+}
+
+/**
+ * @brief Check if FIM has already completed its initial baseline scan.
+ *
+ * The state is persisted in table_metadata using a dedicated marker key.
+ *
+ * @return true if the initial scan marker exists, false otherwise.
+ */
+STATIC bool fim_has_completed_initial_scan(void) {
+    const int64_t marker = fim_db_get_last_sync_time(FIM_FIRST_SCAN_DONE_METADATA_KEY);
+    return marker > 0;
+}
+
+/**
+ * @brief Persist initial baseline scan completion marker.
+ *
+ * @param scan_end_time Scan completion timestamp.
+ */
+STATIC void fim_mark_initial_scan_completed(time_t scan_end_time) {
+    if (scan_end_time <= 0) {
+        return;
+    }
+
+    fim_db_update_last_sync_time_value(FIM_FIRST_SCAN_DONE_METADATA_KEY, (int64_t)scan_end_time);
 }
 
 /**
@@ -685,13 +712,18 @@ void start_daemon()
 #endif
 
     // Decide startup synchronization delay behavior before baseline scan populates the DB.
-    // Keep restart behavior unchanged by honoring persisted-state presence even if the current tables are empty.
-    const bool has_existing_state = fim_has_persisted_state_before_init || fim_has_data_in_database();
+    const bool has_completed_initial_scan = fim_has_completed_initial_scan();
+    const bool has_existing_state = has_completed_initial_scan || fim_has_data_in_database();
     fim_set_initial_sync_wait_policy(has_existing_state);
 
     // Create File integrity monitoring base-line
     minfo(FIM_FREQUENCY_TIME, syscheck.time);
-    fim_scan();
+    const time_t first_scan_end = fim_scan();
+
+    // Persist the marker on first successful startup scan (also covers upgrade path with existing data but no marker).
+    if (!has_completed_initial_scan) {
+        fim_mark_initial_scan_completed(first_scan_end);
+    }
 
 #ifndef WIN32
     // Launch Real-time thread
