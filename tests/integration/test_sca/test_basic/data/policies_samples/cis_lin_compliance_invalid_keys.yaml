@@ -1,6 +1,6 @@
 policy:
-  id: sca_compliance_invalid_keys
-  file: sca_compliance_invalid_keys.yaml
+  id: cis_lin_compliance_invalid_keys
+  file: cis_lin_compliance_invalid_keys.yaml
   name: Test Compliance Invalid Keys Policy
   description: Test policy to validate that invalid compliance keys are rejected with warnings
 

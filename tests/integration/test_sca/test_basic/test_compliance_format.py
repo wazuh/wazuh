@@ -21,9 +21,13 @@ daemons:
 
 os_platform:
     - linux
+    - windows
 
 os_version:
     - CentOS 9
+    - Windows 10
+    - Windows Server 2019
+    - Windows Server 2016
 
 references:
     - https://documentation.wazuh.com/current/user-manual/capabilities/sec-config-assessment/index.html
@@ -34,23 +38,28 @@ tags:
 import pytest
 import re
 import json
+import sys
 from pathlib import Path
 
+from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.utils import callbacks, configuration
 from wazuh_testing.tools.monitors import file_monitor
+from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.modulesd.sca import patterns
 from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
-pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
-local_internal_options = {MODULESD_DEBUG: '2'}
+local_internal_options = {AGENTD_WINDOWS_DEBUG if sys.platform == WINDOWS else MODULESD_DEBUG: '2'}
 
 # Configuration and cases data
 configurations_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_sca.yaml')
-cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_compliance_format.yaml')
+cases_path = Path(TEST_CASES_FOLDER_PATH,
+                  'cases_compliance_format_win.yaml' if sys.platform == WINDOWS else 'cases_compliance_format.yaml')
 
 # Test configurations
 configuration_parameters, configuration_metadata, case_ids = configuration.get_test_cases_data(cases_path)
@@ -60,7 +69,7 @@ configurations = configuration.load_configuration_template(configurations_path, 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
-SCA_DB_DIR = Path('/var/ossec/queue/sca/db')
+SCA_DB_DIR = Path(WAZUH_PATH, 'queue', 'sca', 'db')
 
 
 @pytest.fixture()
@@ -155,7 +164,7 @@ def test_sca_compliance_format(test_configuration, test_metadata, prepare_cis_po
 
     input_description:
         - The `cases_compliance_format.yaml` file provides the module configuration for this test.
-        - The sca_compliance_*.yaml files in policies_samples provide the SCA rules to check.
+        - The cis_{lin,win}_compliance_*.yaml files in policies_samples provide the SCA rules to check.
 
     expected_output:
         - r".*sca.*WARNING: Invalid compliance key '(\S+)' in check (\S+), ignoring"
@@ -169,14 +178,16 @@ def test_sca_compliance_format(test_configuration, test_metadata, prepare_cis_po
     # ------------------------------------------------------------------
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=30)
+    timeout = 60 if sys.platform == WINDOWS else 30
+
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=timeout)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
     log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT),
-                      timeout=30, accumulations=int(test_metadata['results']))
+                      timeout=timeout, accumulations=int(test_metadata['results']))
     assert log_monitor.callback_result is not None
 
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_CHECK), timeout=30)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_CHECK), timeout=timeout)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
     # ------------------------------------------------------------------
