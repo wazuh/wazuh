@@ -312,12 +312,8 @@ stages:
               cluster: !anything
               command: !anything
               global: !anything
-              localfile: !anything
               remote: !anything
-              rootcheck: !anything
-              sca: !anything
-              syscheck: !anything
-              syscollector: !anything
+              logging: !anything
               vulnerability-detection: !anything
               indexer: !anything
           failed_items: []
