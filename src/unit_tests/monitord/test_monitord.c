@@ -53,7 +53,6 @@ int setup_monitord(void **state) {
     mond.global.agents_disconnection_time = 0;
 
     mond.delete_old_agents = 0;
-    mond.a_queue = -1;
     mond.day_wait = 0;
     mond.compress = 0;
     mond.sign = 0;
@@ -81,7 +80,6 @@ int teardown_monitord(void **state) {
     mond.global.agents_disconnection_time = 0;
 
     mond.delete_old_agents = 0;
-    mond.a_queue = -1;
     mond.day_wait = 0;
     mond.compress = 0;
     mond.sign = 0;

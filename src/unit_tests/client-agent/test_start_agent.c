@@ -302,7 +302,7 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
     will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
     expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
-    expect_string(__wrap_send_msg, msg, "1:wazuh-agent:ossec: Agent started: 'agent0->any'.");
+    expect_string(__wrap_send_msg, msg, "1:wazuh-agent:wazuh: Agent started: [001] (agent0).");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
@@ -460,7 +460,7 @@ static void test_agent_handshake_to_server_error_getting_msg2(void **state) {
 
 /* agent_start_up_to_server */
 static void test_send_msg_on_startup(void **state) {
-    expect_string(__wrap_send_msg, msg, "1:wazuh-agent:ossec: Agent started: 'agent0->any'.");
+    expect_string(__wrap_send_msg, msg, "1:wazuh-agent:wazuh: Agent started: [001] (agent0).");
     send_msg_on_startup();
     return;
 }
