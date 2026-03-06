@@ -154,16 +154,6 @@ void __wrap_fim_db_update_last_sync_time(__attribute__((unused)) const char* tab
     function_called();
 }
 
-int64_t __wrap_fim_db_get_last_sync_time(const char* table_name) {
-    check_expected(table_name);
-    return mock_type(int64_t);
-}
-
-void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp) {
-    check_expected(table_name);
-    check_expected(timestamp);
-}
-
 int __wrap_fim_db_get_max_version_file() {
     return mock_type(int);
 }

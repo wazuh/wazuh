@@ -81,8 +81,6 @@ void __wrap_fim_db_close_and_delete_database();
 void __wrap_fim_db_clean_file_table();
 
 void __wrap_fim_db_update_last_sync_time(const char* table_name);
-int64_t __wrap_fim_db_get_last_sync_time(const char* table_name);
-void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp);
 
 int __wrap_fim_db_get_max_version_file();
 

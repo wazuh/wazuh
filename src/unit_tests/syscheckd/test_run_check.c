@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "../wrappers/common.h"
 #include "../wrappers/posix/stat_wrappers.h"
@@ -90,6 +91,17 @@ time_t __wrap_time(time_t *timer) {
 
 
 extern bool fim_shutdown_process_on();
+
+int64_t __wrap_fim_db_get_last_sync_time(const char* table_name) {
+    check_expected(table_name);
+    return mock_type(int64_t);
+}
+
+void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp) {
+    check_expected(table_name);
+    check_expected(timestamp);
+}
+
 /* Setup/Teardown */
 
 static int setup_group(void ** state) {
