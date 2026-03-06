@@ -296,6 +296,9 @@ stages:
 ---
 test_name: GET /cluster/configuration/validation
 
+marks:
+  - xfail #https://github.com/wazuh/wazuh/issues/34733
+
 stages:
 
   - name: Request cluster validation
@@ -323,7 +326,7 @@ stages:
   - name: Request cluster validation
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

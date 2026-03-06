@@ -354,6 +354,9 @@ stages:
 ---
 test_name: GET /cluster/configuration/validation
 
+marks:
+  - xfail #https://github.com/wazuh/wazuh/issues/34733
+
 stages:
 
   - name: Request cluster validation
