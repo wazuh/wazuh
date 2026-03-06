@@ -514,23 +514,7 @@ int w_init_shared_download()
 
     snprintf(yaml_file, OS_SIZE_1024, "%s/%s", SHAREDCFG_DIR, W_SHARED_YAML_FILE);
 
-    if (w_prepare_parsing() == 1) {
-        /* Check download module connection */
-        int i;
-
-        for (i = SOCK_ATTEMPTS; i > 0; --i) {
-            if (wurl_check_connection() == 0) {
-                break;
-            } else {
-                mdebug2("Download module not yet available. Remaining attempts: %d", i - 1);
-                sleep(1);
-            }
-        }
-
-        if (i == 0) {
-            merror("Cannot connect to the download module socket. External shared file download is not available.");
-        }
-    }
+    w_prepare_parsing();
 
     return 0;
 }
