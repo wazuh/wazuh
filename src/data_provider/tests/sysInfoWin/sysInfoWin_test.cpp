@@ -272,3 +272,84 @@ TEST_F(SysInfoWinTest, GetHistoryTest)
     EXPECT_EQ(hotfixSet.size(), static_cast<unsigned int>(1));
     EXPECT_EQ(*hotfixSet.begin(), "KB123456");
 }
+
+// Tests for parseProcessCommandLine() — the UTF-16 to UTF-8 conversion and
+// argument parsing logic used by the Windows process inventory.
+
+// Empty input returns empty fields.
+TEST_F(SysInfoWinTest, ParseCmdLineEmptyInput)
+{
+    const auto result = parseProcessCommandLine(L"");
+    EXPECT_TRUE(result.cmd.empty());
+    EXPECT_TRUE(result.argvs.empty());
+}
+
+// Simple executable path with no arguments.
+TEST_F(SysInfoWinTest, ParseCmdLineNoArguments)
+{
+    const auto result = parseProcessCommandLine(L"C:\\Windows\\notepad.exe");
+    EXPECT_EQ(result.cmd, "C:\\Windows\\notepad.exe");
+    EXPECT_TRUE(result.argvs.empty());
+}
+
+// Executable with a single argument.
+TEST_F(SysInfoWinTest, ParseCmdLineSingleArgument)
+{
+    const auto result = parseProcessCommandLine(L"app.exe --help");
+    EXPECT_EQ(result.cmd, "app.exe --help");
+    EXPECT_EQ(result.argvs, "--help");
+}
+
+// Executable with multiple arguments (svchost-style).
+TEST_F(SysInfoWinTest, ParseCmdLineMultipleArguments)
+{
+    const auto result = parseProcessCommandLine(
+                            L"C:\\Windows\\system32\\svchost.exe -k netsvcs -p");
+    EXPECT_EQ(result.cmd, "C:\\Windows\\system32\\svchost.exe -k netsvcs -p");
+    EXPECT_EQ(result.argvs, "-k netsvcs -p");
+}
+
+// Quoted executable path with spaces in the path.
+TEST_F(SysInfoWinTest, ParseCmdLineQuotedPathWithSpaces)
+{
+    const auto result = parseProcessCommandLine(
+                            L"\"C:\\Program Files\\My App\\app.exe\" --flag value");
+    EXPECT_EQ(result.cmd, "\"C:\\Program Files\\My App\\app.exe\" --flag value");
+    EXPECT_EQ(result.argvs, "--flag value");
+}
+
+// Quoted argument values are unquoted by CommandLineToArgvW.
+TEST_F(SysInfoWinTest, ParseCmdLineQuotedArguments)
+{
+    const auto result = parseProcessCommandLine(
+                            L"app.exe --name \"hello world\" --verbose");
+    EXPECT_EQ(result.cmd, "app.exe --name \"hello world\" --verbose");
+    EXPECT_EQ(result.argvs, "--name hello world --verbose");
+}
+
+// Unicode characters in the command line are properly converted to UTF-8.
+TEST_F(SysInfoWinTest, ParseCmdLineUnicodeCharacters)
+{
+    // L"app.exe café" — é is U+00E9
+    const auto result = parseProcessCommandLine(L"app.exe caf\u00E9");
+    EXPECT_EQ(result.cmd, "app.exe caf\xC3\xA9");
+    EXPECT_EQ(result.argvs, "caf\xC3\xA9");
+}
+
+// Command with many arguments preserves order and spacing.
+TEST_F(SysInfoWinTest, ParseCmdLineManyArguments)
+{
+    const auto result = parseProcessCommandLine(L"cmd.exe /c dir /s /b /a-d");
+    EXPECT_EQ(result.cmd, "cmd.exe /c dir /s /b /a-d");
+    EXPECT_EQ(result.argvs, "/c dir /s /b /a-d");
+}
+
+// Calling the function twice with the same input produces the same result.
+TEST_F(SysInfoWinTest, ParseCmdLineDeterministic)
+{
+    const std::wstring input = L"svchost.exe -k DcomLaunch -p";
+    const auto result1 = parseProcessCommandLine(input);
+    const auto result2 = parseProcessCommandLine(input);
+    EXPECT_EQ(result1.cmd, result2.cmd);
+    EXPECT_EQ(result1.argvs, result2.argvs);
+}
