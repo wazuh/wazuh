@@ -87,15 +87,10 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
 
         // Cleanup decoder temporary variables
         {
-            auto ifVar = [](const std::string& attr) -> bool
-            {
-                return !attr.empty() && attr[0] == '_';
-            };
-
             auto cleanupVars = base::Term<base::EngineOp>::create("CleanupDecoderVariables",
-                                                                  [ifVar](auto e)
+                                                                  [](auto e)
                                                                   {
-                                                                      e->eraseIfKey(ifVar);
+                                                                      e->eraseRootKeysByPrefix("_");
                                                                       return base::result::makeSuccess(e, "");
                                                                   });
             preEnrichmentOps.push_back(cleanupVars);
