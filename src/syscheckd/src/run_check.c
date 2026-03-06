@@ -265,6 +265,79 @@ STATIC bool fim_should_wait_before_sync(bool* flush_request_detected) {
 }
 
 /**
+ * @brief Execute one FIM synchronization cycle.
+ *
+ * This helper is shared by the synchronization loop call sites.
+ *
+ * @param table_count Number of table names in @p table_names.
+ * @param table_names Table names to check for integrity/recovery.
+ * @param log_wait_message Whether to log the post-sync wait message.
+ * @return true if sync completed successfully, false otherwise.
+ */
+STATIC bool fim_execute_sync_cycle(int table_count, char* table_names[], bool log_wait_message) {
+    bool sync_result = false;
+
+    // Take a snapshot of the current directories list to avoid holding the lock during integrity checks.
+    // This prevents deadlocks that occur when different code paths acquire locks in different orders.
+    w_rwlock_rdlock(&syscheck.directories_lock);
+    OSList *directories_snapshot = fim_copy_directory_list(syscheck.directories);
+    w_rwlock_unlock(&syscheck.directories_lock);
+
+    if (directories_snapshot == NULL) {
+        merror("Failed to create snapshot of directories list. Aborting synchronization cycle.");
+        if (log_wait_message) {
+            mdebug1("FIM synchronization aborted, waiting for %d seconds before next run.", syscheck.sync_interval);
+        }
+        return false;
+    }
+
+    // Lock FIM's scheduled and realtime scans during sync and recovery process
+    w_mutex_lock(&syscheck.fim_scan_mutex);
+    w_mutex_lock(&syscheck.fim_realtime_mutex);
+#ifdef WIN32
+    w_mutex_lock(&syscheck.fim_registry_scan_mutex);
+#endif
+    minfo("Starting FIM synchronization.");
+
+    sync_result = asp_sync_module(syscheck.sync_handle, MODE_DELTA);
+    if (sync_result) {
+        minfo("FIM synchronization finished successfully.");
+
+        for (int i = 0; i < table_count; i++) {
+            if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {
+                mdebug1("Starting integrity validation process for %s", table_names[i]);
+                bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i],
+                                                                                   syscheck.sync_handle);
+                if (full_sync_required) {
+                    fim_recovery_persist_table_and_resync(table_names[i],
+                                                          syscheck.sync_handle,
+                                                          directories_snapshot);
+                }
+                // Update the last sync time regardless of whether full sync was required.
+                // This ensures the integrity check doesn't run again until integrity_interval has elapsed.
+                fim_db_update_last_sync_time(table_names[i]);
+            }
+        }
+    } else {
+        mwarn("FIM synchronization failed.");
+    }
+
+    // Clean up the directories snapshot
+    OSList_Destroy(directories_snapshot);
+#ifdef WIN32
+    w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
+#endif
+    w_mutex_unlock(&syscheck.fim_realtime_mutex);
+    w_mutex_unlock(&syscheck.fim_scan_mutex);
+
+    if (log_wait_message) {
+        mdebug1("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
+    }
+
+    return sync_result;
+}
+
+/**
  * @brief Prepares indices array based on database entry counts
  *
  * @param indices Array to store indices (must have at least 3 elements)
@@ -1059,58 +1132,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 atomic_int_set(&fim_flush_in_progress, 0);
             }
         } else {
-            // Take a snapshot of the current directories list to avoid holding the lock during integrity checks.
-            // This prevents deadlocks that occur when different code paths acquire locks in different orders.
-            w_rwlock_rdlock(&syscheck.directories_lock);
-            OSList *directories_snapshot = fim_copy_directory_list(syscheck.directories);
-            w_rwlock_unlock(&syscheck.directories_lock);
-
-            if (directories_snapshot == NULL) {
-                merror("Failed to create snapshot of directories list. Aborting synchronization cycle.");
-                mdebug1("FIM synchronization aborted, waiting for %d seconds before next run.", syscheck.sync_interval);
-                continue;
-            }
-
-            // Lock FIM's scheduled and realtime scans during sync and recovery process
-            w_mutex_lock(&syscheck.fim_scan_mutex);
-            w_mutex_lock(&syscheck.fim_realtime_mutex);
-            #ifdef WIN32
-            w_mutex_lock(&syscheck.fim_registry_scan_mutex);
-            #endif
-            minfo("Starting FIM synchronization.");
-
-            bool sync_result = asp_sync_module(syscheck.sync_handle,
-                                               MODE_DELTA);
-            if (sync_result) {
-                minfo("FIM synchronization finished successfully.");
-
-                for (int i = 0; i < table_count; i++) {
-                    if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {
-                        mdebug1("Starting integrity validation process for %s", table_names[i]);
-                        bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i],
-                                                                                           syscheck.sync_handle);
-                        if (full_sync_required) {
-                            fim_recovery_persist_table_and_resync(table_names[i],
-                                                                  syscheck.sync_handle,
-                                                                  directories_snapshot);
-                        }
-                        // Update the last sync time regardless of whether full sync was required
-                        // This ensures the integrity check doesn't run again until integrity_interval has elapsed
-                        fim_db_update_last_sync_time(table_names[i]);
-                    }
-                }
-            } else {
-                mwarn("FIM synchronization failed.");
-            }
-
-            // Clean up the directories snapshot
-            OSList_Destroy(directories_snapshot);
-            #ifdef WIN32
-            w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
-            #endif
-            w_mutex_unlock(&syscheck.fim_realtime_mutex);
-            w_mutex_unlock(&syscheck.fim_scan_mutex);
-            mdebug1("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
+            fim_execute_sync_cycle(table_count, table_names, true);
         }
     }
 
