@@ -2,8 +2,27 @@
 # postrm script for Wazuh
 # Wazuh, Inc 2015
 set -e
+DPKG_LIST_FILE="/var/lib/dpkg/info/wazuh-manager.list"
+
 DIR="/var/wazuh-manager"
+if [ "$1" = "abort-upgrade" ] || [ "$1" = "failed-upgrade" ]; then
+    DIR=$(grep -m 1 -E '/bin/(wazuh-manager-control|wazuh-control)$' "${DPKG_LIST_FILE}" 2>/dev/null \
+        | sed -E 's#/bin/(wazuh-manager-control|wazuh-control)$##')
+
+    if [ -z "${DIR}" ] || [ ! -d "${DIR}" ]; then
+        exit 0
+    fi
+fi
+
 WAZUH_TMP_DIR="${DIR}/packages_files/manager_config_files"
+ROLLBACK_MARKER="${WAZUH_TMP_DIR}/rollback_prepared"
+
+# If preinst did not prepare rollback state, abort safely.
+if [ "$1" = "abort-upgrade" ] || [ "$1" = "failed-upgrade" ]; then
+    if [ ! -f "${ROLLBACK_MARKER}" ]; then
+        exit 0
+    fi
+fi
 
 case "$1" in
     remove|failed-upgrade|abort-install|abort-upgrade|disappear)
