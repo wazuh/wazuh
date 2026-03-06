@@ -9,14 +9,13 @@ def run(args):
     # Get the params
     api_socket: str = args['api_socket']
 
-    json_request = dict()
-    json_request['space'] = args['space']
+    req = crud.policyDelete_Request()
+    req.space = args['space']
 
     # Create the api request
     try:
         client = APIClient(api_socket)
-        error, response = client.jsend(
-            json_request, crud.policyDelete_Request(), engine.GenericStatus_Response())
+        error, response = client.send(req, engine.GenericStatus_Response())
 
         if error:
             sys.exit(f'Error deleting policy: {error}')

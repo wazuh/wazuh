@@ -997,7 +997,6 @@ installEngineStore()
 
     # Fallback store installation
     local STORE_PATH=${DEST_FULL_PATH}/store
-    local KVDB_PATH=${DEST_FULL_PATH}/kvdb
     local SCHEMA_PATH=${STORE_PATH}/schema
     local ENRICHMENT_PATH=${STORE_PATH}/enrichment
     local ENGINE_SCHEMA_PATH=${SCHEMA_PATH}/engine-schema/
@@ -1006,7 +1005,6 @@ installEngineStore()
     local ENGINE_ENRICHMENT_GEO=${ENRICHMENT_PATH}/geo
 
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${STORE_PATH}
-    mkdir -p "${KVDB_PATH}"
     mkdir -p "${ENGINE_SCHEMA_PATH}"
     mkdir -p "${ENGINE_LOGPAR_TYPE_PATH}"
     mkdir -p "${ENGINE_ALLOWED_FIELDS_PATH}"
@@ -1026,9 +1024,7 @@ installEngineStore()
     fi
 
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${STORE_PATH}
-    chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${KVDB_PATH}
     find ${STORE_PATH} -type d -exec chmod 770 {} \; -o -type f -exec chmod 660 {} \;
-    find ${KVDB_PATH} -type d -exec chmod 770 {} \; -o -type f -exec chmod 660 {} \;
 
     echo "Engine store installed successfully."
 

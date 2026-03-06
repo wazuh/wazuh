@@ -350,6 +350,7 @@ public:
      * @param query The query object (must be valid JSON).
      * @param sort The sort array (must be valid JSON array).
      * @param searchAfter Optional search_after array for pagination (must be valid JSON array).
+     * @param source Optional source filtering configuration (includes/excludes fields).
      * @return The hits object from the search response.
      * @throws IndexerConnectorException if the search fails.
      *
@@ -365,7 +366,8 @@ public:
                           std::size_t size,
                           const nlohmann::json& query,
                           const nlohmann::json& sort,
-                          const std::optional<nlohmann::json>& searchAfter = std::nullopt);
+                          const std::optional<nlohmann::json>& searchAfter = std::nullopt,
+                          const std::optional<nlohmann::json>& source = std::nullopt);
 
     /**
      * @brief Execute a search query on an index or alias.

@@ -23,5 +23,5 @@ def run(args):
 
 
 def configure(subparsers):
-    parser = subparsers.add_parser("logtest-cleanup", help="Cleanup logtest session + namespace")
+    parser = subparsers.add_parser("cleanup", help="Cleanup logtest session + namespace")
     parser.set_defaults(func=run)

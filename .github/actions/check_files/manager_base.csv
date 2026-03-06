@@ -33,7 +33,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/wazuh-manager/bin/wazuh-manager-monitord,root,root,750,file,-rwxr-x---,,
 /var/wazuh-manager/bin/wazuh-manager-remoted,root,root,750,file,-rwxr-x---,,
 /var/wazuh-manager/engine,root,root,755,directory,drwxr-xr-x,,
-/var/wazuh-manager/engine/kvdb,wazuh-manager,wazuh-manager,770,directory,drwxrwx---,,
 /var/wazuh-manager/engine/mmdb,root,wazuh-manager,770,directory,drwxrwx---,,
 /var/wazuh-manager/engine/mmdb/GeoLite2-ASN.mmdb,wazuh-manager,wazuh-manager,660,file,-rw-rw----,,
 /var/wazuh-manager/engine/mmdb/GeoLite2-City.mmdb,wazuh-manager,wazuh-manager,660,file,-rw-rw----,,

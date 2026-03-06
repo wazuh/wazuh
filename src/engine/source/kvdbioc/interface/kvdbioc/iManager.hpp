@@ -100,7 +100,7 @@ public:
      * Use case: Batch lookup for multiple IPs/domains in IOC database.
      */
     virtual std::vector<std::optional<json::Json>> multiGet(std::string_view dbName,
-                                                              const std::vector<std::string_view>& keys) const = 0;
+                                                            const std::vector<std::string_view>& keys) const = 0;
 
     /**
      * @brief Remove database and all its versions.
