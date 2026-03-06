@@ -62,11 +62,11 @@ class TestData:
         if self.helper_type == "map":
             normalize_list = [{"map": [{"helper": helper}]}]
         elif self.helper_type == "filter":
-            normalize_list = [{"map": [{"target_field": target_field_value}]}, {"check": [{"target_field": helper}], "map": [
+            normalize_list = [{"map": [{"_target_field": target_field_value}]}, {"check": [{"_target_field": helper}], "map": [
                 {"verification_field": "It is used to verify if the check passed correctly"}]}]
         else:
             normalize_list = [
-                {"map": [{"target_field": target_field_value}, {"target_field": helper}]}]
+                {"map": [{"_target_field": target_field_value}, {"_target_field": helper}]}]
         self.asset_definition = {
             "name": "decoder/test/0", "normalize": normalize_list}
 
@@ -98,18 +98,18 @@ class TestData:
         """
         helper = f"{self.parser.get_name()}({', '.join(str(v) for v in arguments)})"
         if self.helper_type == "map":
-            normalize_list = [{"map": [{"eventJson": "parse_json($event.original)"}, {
+            normalize_list = [{"map": [{"_eventJson": "parse_json($event.original)"}, {
                 "helper": helper}]}]
         elif self.helper_type == "filter":
             normalize_list = [
-                {"map": [{"eventJson": "parse_json($event.original)"}, {
-                    "target_field": target_field_value}]},
-                {"check": [{"target_field": helper}], "map": [
+                {"map": [{"_eventJson": "parse_json($event.original)"}, {
+                    "_target_field": target_field_value}]},
+                {"check": [{"_target_field": helper}], "map": [
                     {"verification_field": "It is used to verify if the check passed correctly"}]}
             ]
         else:
-            normalize_list = [{"map": [{"eventJson": "parse_json($event.original)"}, {"target_field": target_field_value}, {
-                "target_field": helper}]}]
+            normalize_list = [{"map": [{"_eventJson": "parse_json($event.original)"}, {"_target_field": target_field_value}, {
+                "_target_field": helper}]}]
         self.asset_definition = {
             "name": "decoder/test/0", "normalize": normalize_list}
 

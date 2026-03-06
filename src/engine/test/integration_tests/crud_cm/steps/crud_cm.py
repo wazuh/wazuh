@@ -143,7 +143,6 @@ normalize:
     - event.category: array_append(test)
     - event.kind: metric
     - event.type: array_append(info)
-    - wazuh.decoders: array_append(test-decoder)
     - test.value: to_int($_tmp_value.metric, 'truncate')
 
   - check: $_tmp_other.metric > 0
