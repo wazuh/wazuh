@@ -111,10 +111,6 @@ int wm_config() {
     if ((module = wm_database_read()))
         wm_add(module);
 
-    // Downloading module
-    if ((module = wm_download_read()))
-        wm_add(module);
-
 #endif
 
 #if defined (__linux__) || (__MACH__) || defined(FreeBSD) || defined(OpenBSD)

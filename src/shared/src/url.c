@@ -11,7 +11,6 @@
 
 #include "shared.h"
 #include "sha256_op.h"
-#include "os_net.h"
 
 #ifdef WAZUH_UNIT_TESTING
     #ifdef WIN32
@@ -179,97 +178,18 @@ int w_download_status(int status,const char *url,const char *dest) {
 
 // Request download
 int wurl_request(const char * url, const char * dest, const char *header, const char *data, const long timeout) {
-    const char * COMMAND = "download";
-    char response[64];
     char * _url;
-    char * srequest;
-    size_t zrequest;
-    ssize_t zrecv;
-    int sock;
-    int retval = -1;
-    char *parsed_dest;
-    char *parsed_header = NULL;
-    char *parsed_data = NULL;
 
     if (!url) {
         return -1;
     }
 
     // Escape whitespaces
-
     _url = wstr_replace(url, " ", "%20");
 
-    // Escape delimiter
+    int retval = wurl_get(_url, dest, header, data, timeout);
 
-    parsed_dest = wstr_replace(dest, "|", "\\|");
-    if (header) {
-        parsed_header = wstr_replace(header, "|", "\\|");
-    }
-    if (data) {
-        parsed_data = wstr_replace(data, "|", "\\|");
-    }
-
-    // Build request
-
-    zrequest = strlen(_url) + strlen(parsed_dest) + strlen(COMMAND) +
-               (parsed_header ? strlen(parsed_header) : 0) +
-               (parsed_data ? strlen(parsed_data) : 0) + sizeof(long) + 7;
-    os_calloc(1, zrequest, srequest);
-    snprintf(srequest, zrequest, "%s %s|%s|%s|%s|%ld|", COMMAND, _url, parsed_dest, parsed_header ? parsed_header : "", parsed_data ? parsed_data : "", timeout ? timeout : 0);
-    os_free(parsed_dest);
-    os_free(parsed_header);
-    os_free(parsed_data);
-
-    // Connect to downlod module
-
-    if (sock = OS_ConnectUnixDomain(WM_DOWNLOAD_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        mwarn("Couldn't connect to download module socket '%s'", WM_DOWNLOAD_SOCK);
-        goto end;
-    }
-
-    // Send request
-
-    if (send(sock, srequest, zrequest - 1, 0) != (ssize_t)(zrequest - 1)) {
-        merror("Couldn't send request to download module.");
-        goto end;
-    }
-
-    // Receive response
-
-    switch (zrecv = recv(sock, response, sizeof(response) - 1, 0), zrecv) {
-    case -1:
-        merror("Couldn't receive URL response from download module.");
-        goto end;
-
-    case 0:
-        merror("Couldn't receive URL response from download module (closed unexpectedly).");
-        goto end;
-
-    default:
-        response[zrecv] = '\0';
-
-        // Parse responses
-
-        if (!strcmp(response, "ok")) {
-            retval = 0;
-        } else if (!strcmp(response, "err connecting to url")) {
-            retval = OS_CONNERR;
-        } else if (!strcmp(response, "err writing file")) {
-            retval = OS_FILERR;
-        } else if (!strcmp(response, "err timeout")) {
-            retval = OS_TIMEOUT;
-        } else {
-            mdebug1("Couldn't download from '%s': %s", _url, response);
-        }
-    }
-
-end:
     free(_url);
-    free(srequest);
-
-    if (sock >= 0) {
-        close(sock);
-    }
 
     return retval;
 }
@@ -302,18 +222,6 @@ int wurl_request_gz(const char * url, const char * dest, const char * header, co
     }
 
     return retval;
-}
-
-/* Check download module availability */
-int wurl_check_connection() {
-    int sock = OS_ConnectUnixDomain(WM_DOWNLOAD_SOCK, SOCK_STREAM, OS_MAXSTR);
-
-    if (sock < 0) {
-        return -1;
-    } else {
-        close(sock);
-        return 0;
-    }
 }
 
 char * wurl_http_get(const char * url, size_t max_size, const long timeout) {
