@@ -1793,7 +1793,7 @@ build_shared_modules: $(WAZUHEXT_LIB)
 	cd ${RSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${RSYNC_TEST} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 
 #### Sysinfo ##
-build_sysinfo: $(WAZUHEXT_LIB) ${DB_LIB}
+build_sysinfo: $(WAZUHEXT_LIB)
 	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} .. && ${MAKE}
 
 #### Syscollector ##
