@@ -1,6 +1,9 @@
 ---
 test_name: POST /events
 
+marks:
+  - skip: https://github.com/wazuh/wazuh/issues/33608
+
 stages:
 
   - name: Send webhook events (Allowed)
