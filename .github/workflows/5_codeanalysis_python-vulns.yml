@@ -57,6 +57,14 @@ jobs:
           path: "src/external/cpython"
           fail-build: false
 
+      - name: Individualize SARIF fingerprints
+        run: |
+          INPUT_SARIF="${{ steps.scan.outputs.sarif }}"
+          
+          jq --arg branch "${{ matrix.ref }}" \
+            '.runs[].results[]?.partialFingerprints.primaryLocationLineHash |= . + "-" + $branch' \
+            "$INPUT_SARIF" > sarif_modified.json && mv sarif_modified.json "$INPUT_SARIF"
+
       - name: Upload scan results to GitHub
         uses: github/codeql-action/upload-sarif@v4
         with:
