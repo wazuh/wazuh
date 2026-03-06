@@ -9,6 +9,7 @@
 #include <api/adapter/helpers.hpp>
 #include <api/shared/constants.hpp>
 #include <api/tester/handlers.hpp>
+#include <base/dotPath.hpp>
 
 namespace api::tester::handlers
 {
@@ -406,9 +407,12 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
 }
 
 adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>& tester,
-                                    const base::eventParsers::PublicProtocolHandler& protocolHandler)
+                                    const base::eventParsers::PublicProtocolHandler& protocolHandler,
+                                    const std::shared_ptr<schemf::ISchema>& schema)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), protocolHandler](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
+            protocolHandler,
+            wSchema = std::weak_ptr<schemf::ISchema>(schema)](const auto& req, auto& res)
     {
         using RequestType = eTester::PublicRunPost_Request;
         using ResponseType = eTester::RunPost_Response;
@@ -448,6 +452,7 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
             return;
         }
 
+        //TODO: pending name change to metadata only
         if (!protoReq.has_agent_metadata())
         {
             res = adapter::userErrorResponse<ResponseType>("agent_metadata is required and must be a JSON object");
@@ -462,17 +467,83 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
             return;
         }
 
-        const auto& agentMetadataStr = std::get<std::string>(jsonOrErr);
+        const auto& metadataStr = std::get<std::string>(jsonOrErr);
 
-        json::Json agentMetadata;
+        json::Json metadata;
         try
         {
-            agentMetadata = json::Json(agentMetadataStr.c_str());
+            metadata = json::Json(metadataStr.c_str());
         }
         catch (const std::exception& e)
         {
             res = adapter::userErrorResponse<ResponseType>(
                 fmt::format("Error parsing agent_metadata JSON: {}", e.what()));
+            return;
+        }
+
+        // Validate metadata object
+        if (!metadata.isObject())
+        {
+            res = adapter::userErrorResponse<ResponseType>("agent_metadata must be a JSON object");
+            return;
+        }
+
+        // Ensure schema is available
+        auto schemaLocked = wSchema.lock();
+        if (!schemaLocked)
+        {
+            res = adapter::userErrorResponse<ResponseType>("Schema is not available");
+            return;
+        }
+
+        // Recursively validate that each leaf path in agent_metadata exists in the schema.
+        std::string badFieldMsg {};
+        std::function<bool(const json::Json&, const std::string&)> validateRec;
+        validateRec = [&](const json::Json& node, const std::string& jsonPtr) -> bool
+        {
+            if (node.isObject())
+            {
+                auto objOpt = node.getObject();
+                if (!objOpt)
+                {
+                    return true; // empty object
+                }
+                for (const auto& kv : objOpt.value())
+                {
+                    const auto& key = std::get<0>(kv);
+                    const auto& val = std::get<1>(kv);
+                    const std::string childPtr = jsonPtr + "/" + key;
+                    if (!validateRec(val, childPtr))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            // check schema in each leaf node
+            try
+            {
+                auto dp = DotPath::fromJsonPath(jsonPtr);
+                if (!schemaLocked->hasField(dp))
+                {
+                    badFieldMsg = fmt::format(
+                        "Unknown field in agent_metadata: {}. Only fields from the schema are allowed", dp.str());
+                    return false;
+                }
+            }
+            catch (const std::exception& e)
+            {
+                badFieldMsg = fmt::format("Error validating agent_metadata path '{}': {}", jsonPtr, e.what());
+                return false;
+            }
+
+            return true;
+        };
+
+        if (!validateRec(metadata, ""))
+        {
+            res = adapter::userErrorResponse<ResponseType>(badFieldMsg);
             return;
         }
 
@@ -489,7 +560,7 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         auto location = protoReq.location();
         try
         {
-            event = protocolHandler(queue, location, eventStr, agentMetadata);
+            event = protocolHandler(queue, location, eventStr, metadata);
         }
         catch (const std::exception& e)
         {
