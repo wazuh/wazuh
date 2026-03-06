@@ -604,6 +604,10 @@ TEST(ValidatorFieldMappingRules, UnknownFieldAllowedOnlyForUnderscoreRoot)
     EXPECT_TRUE(base::isError(invalidNested));
     EXPECT_NE(base::getError(invalidNested).message.find("host.domain._id"), std::string::npos);
 
+    auto invalidHostTmp = validator->validate(DotPath("host._tmp"), VT {});
+    EXPECT_TRUE(base::isError(invalidHostTmp));
+    EXPECT_NE(base::getError(invalidHostTmp).message.find("host._tmp"), std::string::npos);
+
     auto invalidCustom = validator->validate(DotPath("host123.doman"), VT {});
     EXPECT_TRUE(base::isError(invalidCustom));
     EXPECT_NE(base::getError(invalidCustom).message.find("host123.doman"), std::string::npos);
