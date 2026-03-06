@@ -200,20 +200,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_update_agent_data_time(diff);
             }
-        } else if (strcmp(query, "get-labels") == 0) {
-            w_inc_global_labels_get_labels();
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for get-labels.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                gettimeofday(&begin, 0);
-                result = wdb_parse_global_get_agent_labels(wdb, next, output);
-                gettimeofday(&end, 0);
-                timersub(&end, &begin, &diff);
-                w_inc_global_labels_get_labels_time(diff);
-            }
         } else if (strcmp(query, "update-keepalive") == 0) {
             w_inc_global_agent_update_keepalive();
             if (!next) {
@@ -1100,7 +1086,6 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
     cJSON *j_agent_ip = NULL;
     cJSON *j_connection_status = NULL;
     cJSON *j_sync_status = NULL;
-    cJSON *j_labels = NULL;
     cJSON *j_group_config_status = NULL;
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
@@ -1128,7 +1113,6 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
         j_agent_ip = cJSON_GetObjectItem(agent_data, "agent_ip");
         j_connection_status = cJSON_GetObjectItem(agent_data, "connection_status");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
-        j_labels = cJSON_GetObjectItem(agent_data, "labels");
         j_group_config_status = cJSON_GetObjectItem(agent_data, "group_config_status");
 
         if (cJSON_IsNumber(j_id)) {
@@ -1151,7 +1135,6 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
             char *agent_ip = cJSON_IsString(j_agent_ip) ? j_agent_ip->valuestring : NULL;
             char *connection_status = cJSON_IsString(j_connection_status) ? j_connection_status->valuestring : NULL;
             char *sync_status = cJSON_IsString(j_sync_status) ? j_sync_status->valuestring : "synced";
-            char *labels = cJSON_IsString(j_labels) ? j_labels->valuestring : NULL;
             char *group_config_status = cJSON_IsString(j_group_config_status) ? j_group_config_status->valuestring : NULL;
 
             char *validated_sync_status = wdb_global_validate_sync_status(wdb, id, sync_status);
@@ -1166,20 +1149,10 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
                 os_free(validated_sync_status);
                 return OS_INVALID;
             } else {
-                // We will only add the agent's labels if the agent was successfully added to the database.
-                // We dont check for NULL because if NULL, the current labels should be removed.
-                // The output string will be filled by the labels setter method.
-                char *labels_data = NULL;
-                os_calloc(OS_MAXSTR, sizeof(char), labels_data);
-                snprintf(labels_data, OS_MAXSTR, "%d", id);
-                wm_strcat(&labels_data, labels, ' ');
-
-                int result = wdb_parse_global_set_agent_labels(wdb, labels_data, output);
-
                 cJSON_Delete(agent_data);
                 os_free(validated_sync_status);
-                os_free(labels_data);
-                return result;
+                snprintf(output, OS_MAXSTR + 1, "ok");
+                return OS_SUCCESS;
             }
         } else {
             mdebug1("Global DB Invalid JSON data when updating agent version.");
@@ -1188,80 +1161,6 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
             return OS_INVALID;
         }
     }
-
-    return OS_SUCCESS;
-}
-
-int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output) {
-    int agent_id = 0;
-    cJSON *labels = NULL;
-    char *out = NULL;
-
-    agent_id = atoi(input);
-
-    if (labels = wdb_global_get_agent_labels(wdb, agent_id), !labels) {
-        mdebug1("Error getting agent labels from global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error getting agent labels from global.db.");
-        return OS_INVALID;
-    }
-
-    out = cJSON_PrintUnformatted(labels);
-    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-    os_free(out);
-    cJSON_Delete(labels);
-
-    return OS_SUCCESS;
-}
-
-int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output) {
-    char *id = NULL;
-    char *label = NULL;
-    char *value = NULL;
-    char *savedptr = NULL;
-    char id_delim[] = { ' ', '\0' };
-    char label_delim[] = { '\n', '\0' };
-
-    // The input could be in the next ways
-    // "agent_id key1:value1\nkey2:value2" --> In this, case strtok_r finds a space, so we remove the
-    //                                         old labels using the agent_id and then insert the new ones.
-    // "agent_id" --> In this, case strtok_r finds the NULL character and we just remove the old
-    //                labels using the agent_id. The next strtok_r will finalize the execution.
-    if (id = strtok_r(input, id_delim, &savedptr), !id) {
-        mdebug1("Invalid DB query syntax.");
-        mdebug2("DB query error near: %s", input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
-        return OS_INVALID;
-    }
-
-    int agent_id = atoi(id);
-
-    // Removing old labels from the labels table
-    if (OS_SUCCESS != wdb_global_del_agent_labels(wdb, agent_id)) {
-        mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
-        snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-
-    // Parsing the labes string "key1:value1\nkey2:value2"
-    for (label = strtok_r(NULL, label_delim, &savedptr); label; label = strtok_r(NULL, label_delim, &savedptr)) {
-        if (value = strstr(label, ":"), value) {
-            *value = '\0';
-            value++;
-        } else {
-            continue;
-        }
-
-        // Inserting new labels in the database
-        if (OS_SUCCESS != wdb_global_set_agent_label(wdb, agent_id, label, value)) {
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
-            snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
-            return OS_INVALID;
-        }
-
-        value = NULL;
-    }
-
-    snprintf(output, OS_MAXSTR + 1, "ok");
 
     return OS_SUCCESS;
 }
@@ -1829,11 +1728,6 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
     cJSON *root = NULL;
     cJSON *json_agent = NULL;
     cJSON *json_field = NULL;
-    cJSON *json_label = NULL;
-    cJSON *json_labels = NULL;
-    cJSON *json_key = NULL;
-    cJSON *json_value = NULL;
-    cJSON *json_id = NULL;
 
     /*
     * The cJSON_GetErrorPtr() method is not thread safe, using cJSON_ParseWithOpts() instead,
@@ -1856,45 +1750,6 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(root);
                 return OS_INVALID;
-            }
-            // Checking for labels
-            json_labels = cJSON_GetObjectItem(json_agent, "labels");
-            if (cJSON_IsArray(json_labels)) {
-                // The JSON has a label array
-                // Removing old labels from the labels table before inserting
-                json_field = cJSON_GetObjectItem(json_agent, "id");
-                agent_id = cJSON_IsNumber(json_field) ? json_field->valueint : OS_INVALID;
-
-                if (agent_id == OS_INVALID) {
-                    mdebug1("Global DB Cannot execute SQL query; incorrect agent id in labels array.");
-                    snprintf(output, OS_MAXSTR + 1, "err Cannot update labels due to invalid id.");
-                    cJSON_Delete(root);
-                    return OS_INVALID;
-                }
-
-                else if (OS_SUCCESS != wdb_global_del_agent_labels(wdb, agent_id)) {
-                    mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
-                    snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
-                    cJSON_Delete(root);
-                    return OS_INVALID;
-                }
-                // For every label in array, insert it in the database
-                cJSON_ArrayForEach(json_label, json_labels) {
-                    json_key = cJSON_GetObjectItem(json_label, "key");
-                    json_value = cJSON_GetObjectItem(json_label, "value");
-                    json_id = cJSON_GetObjectItem(json_label, "id");
-
-                    if (cJSON_IsString(json_key) && json_key->valuestring != NULL && cJSON_IsString(json_value) &&
-                        json_value->valuestring != NULL && cJSON_IsNumber(json_id)) {
-                        // Inserting labels in the database
-                        if (OS_SUCCESS != wdb_global_set_agent_label(wdb, json_id->valueint, json_key->valuestring, json_value->valuestring)) {
-                            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
-                            snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
-                            cJSON_Delete(root);
-                            return OS_INVALID;
-                        }
-                    }
-                }
             }
         }
     }

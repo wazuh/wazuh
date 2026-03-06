@@ -56,7 +56,6 @@ typedef struct agent_info_data
     char* manager_host;
     char* node_name;
     char* agent_ip;
-    char* labels;
     char* connection_status;
     char* sync_status;
     char* group_config_status;

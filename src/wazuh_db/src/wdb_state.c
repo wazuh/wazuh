@@ -413,18 +413,6 @@ void w_inc_global_belongs_get_group_agent_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
-void w_inc_global_labels_get_labels() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.global_breakdown.labels.get_labels_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_global_labels_get_labels_time(struct timeval time) {
-    w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.global_breakdown.labels.get_labels_time, &time, &wdb_state.queries_breakdown.global_breakdown.labels.get_labels_time);
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
 void w_inc_global_vacuum() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.global_breakdown.vacuum_queries++;
@@ -677,11 +665,6 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_global_tables_group, "insert-agent-group", wdb_state_cpy.queries_breakdown.global_breakdown.group.insert_agent_group_queries);
     cJSON_AddNumberToObject(_global_tables_group, "select-groups", wdb_state_cpy.queries_breakdown.global_breakdown.group.select_groups_queries);
 
-    cJSON *_global_tables_labels = cJSON_CreateObject();
-    cJSON_AddItemToObject(_global_tables, "labels", _global_tables_labels);
-
-    cJSON_AddNumberToObject(_global_tables_labels, "get-labels", wdb_state_cpy.queries_breakdown.global_breakdown.labels.get_labels_queries);
-
     cJSON_AddNumberToObject(_received_breakdown, "mitre", wdb_state_cpy.queries_breakdown.mitre_queries);
 
     cJSON *_mitre_breakdown = cJSON_CreateObject();
@@ -783,11 +766,6 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_global_tables_group_t, "insert-agent-group", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.group.insert_agent_group_time));
     cJSON_AddNumberToObject(_global_tables_group_t, "select-groups", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.group.select_groups_time));
 
-    cJSON *_global_tables_labels_t = cJSON_CreateObject();
-    cJSON_AddItemToObject(_global_tables_t, "labels", _global_tables_labels_t);
-
-    cJSON_AddNumberToObject(_global_tables_labels_t, "get-labels", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.labels.get_labels_time));
-
     cJSON_AddNumberToObject(_execution_breakdown, "mitre", timeval_to_milis(wdb_state_cpy.queries_breakdown.mitre_breakdown.sql_time));
 
     cJSON *_mitre_breakdown_t = cJSON_CreateObject();
@@ -862,7 +840,6 @@ STATIC uint64_t get_global_time(wdb_state_t *state){
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.group.find_group_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.belongs.select_group_belong_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.belongs.get_group_agent_time, &task_time);
-    timeradd(&task_time, &state->queries_breakdown.global_breakdown.labels.get_labels_time, &task_time);
 
     return timeval_to_milis(task_time);
 }

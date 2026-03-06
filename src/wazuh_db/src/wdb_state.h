@@ -82,11 +82,6 @@ typedef struct _global_group_t {
     struct timeval select_groups_time;
 } global_group_t;
 
-typedef struct _global_labels_t {
-    uint64_t get_labels_queries;
-    struct timeval get_labels_time;
-} global_labels_t;
-
 typedef struct _global_breakdown_t {
     uint64_t backup_queries;
     uint64_t sql_queries;
@@ -102,7 +97,6 @@ typedef struct _global_breakdown_t {
     global_agent_t agent;
     global_belongs_t belongs;
     global_group_t group;
-    global_labels_t labels;
 } global_breakdown_t;
 
 typedef struct _mitre_breakdown_t {
@@ -560,19 +554,6 @@ void w_inc_global_belongs_get_group_agent();
  * @param time Value to increment the counter.
  */
 void w_inc_global_belongs_get_group_agent_time(struct timeval time);
-
-/**
- * @brief Increment get-labels global labels queries counter
- *
- */
-void w_inc_global_labels_get_labels();
-
-/**
- * @brief Increment get-labels global labels time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_global_labels_get_labels_time(struct timeval time);
 
 /**
  * @brief Increment vacuum global queries counter
