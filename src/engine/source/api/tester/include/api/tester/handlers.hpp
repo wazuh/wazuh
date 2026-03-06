@@ -5,6 +5,7 @@
 #include <base/eventParser.hpp>
 #include <cmstore/icmstore.hpp>
 #include <router/iapi.hpp>
+#include <schemf/ischema.hpp>
 
 namespace api::tester::handlers
 {
@@ -21,14 +22,15 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& test
 adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& tester,
                               const base::eventParsers::ProtocolHandler& protocolHandler);
 adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>& tester,
-                                    const base::eventParsers::PublicProtocolHandler& protocolHandler);
+                                    const base::eventParsers::PublicProtocolHandler& protocolHandler,
+                                    const std::shared_ptr<schemf::ISchema>& schema);
 
 adapter::RouteHandler logtestDelete(const std::shared_ptr<::router::ITesterAPI>& tester,
                                     const std::shared_ptr<cm::store::ICMStore>& store);
 
-
 inline void registerHandlers(const std::shared_ptr<::router::ITesterAPI>& tester,
                              const std::shared_ptr<cm::store::ICMStore>& store,
+                             const std::shared_ptr<schemf::ISchema>& schema,
                              const std::shared_ptr<httpsrv::Server>& server)
 {
     server->addRoute(httpsrv::Method::POST, "/tester/session/post", sessionPost(tester));
@@ -41,10 +43,10 @@ inline void registerHandlers(const std::shared_ptr<::router::ITesterAPI>& tester
     // Add Legacy Event parser
     server->addRoute(httpsrv::Method::POST, "/tester/run/post", runPost(tester, base::eventParsers::parseLegacyEvent));
 
-    server->addRoute(httpsrv::Method::POST, "/logtest", publicRunPost(tester, base::eventParsers::parsePublicEvent));
+    server->addRoute(
+        httpsrv::Method::POST, "/logtest", publicRunPost(tester, base::eventParsers::parsePublicEvent, schema));
 
     server->addRoute(httpsrv::Method::DELETE, "/logtest", logtestDelete(tester, store));
-
 }
 
 } // namespace api::tester::handlers

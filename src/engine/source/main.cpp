@@ -657,7 +657,7 @@ int main(int argc, char* argv[])
             LOG_DEBUG("Router API registered.");
 
             // Tester
-            api::tester::handlers::registerHandlers(orchestrator, cmStore, apiServer);
+            api::tester::handlers::registerHandlers(orchestrator, cmStore, schema, apiServer);
             LOG_DEBUG("Tester API registered.");
 
             // Archiver
