@@ -91,15 +91,6 @@
                 analysisd -> state: decoded->modules->upgrade++
             end
         end
-    else Is syslog event
-        analysisd -> analysisd: Enqueue event in event queue
-        alt Queue full
-            analysisd -> state: dropped->syslog++
-        else
-            alt Is decoded
-                analysisd -> state: decoded->syslog++
-            end
-        end
     end
 
 @enduml

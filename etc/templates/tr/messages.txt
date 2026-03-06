@@ -71,11 +71,6 @@ defaultwhitelist="Etkin yanıt üretme için öntanımlı beyaz liste:"
 addwhite="Beyaz listeye başka IP adreslerini de eklemek ister misiniz?"
 ipswhite="IPler (boşlukla ayrılmış): "
 
-# Part 3.5/server/local
-syslog="Uzak syslog'un (514 udp) etkin kılınmasını ister misiniz?"
-nosyslog="Uzak syslog etkisiz kılındı"
-yessyslog="Uzak syslog etkin kılındı"
-
 # Part 3.4/3.5
 readlogs="Bu dosyaları incelemek için yapılandırma oluşturuluyor:"
 

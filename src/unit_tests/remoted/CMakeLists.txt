@@ -86,7 +86,6 @@ list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsAllowedID -Wl,--
 list(APPEND remoted_names "test_remote-config")
 list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,ReadConfig -Wl,--wrap,getDefine_Int -Wl,--wrap,get_node_name -Wl,--wrap,get_cluster_name -Wl,--wrap,w_query_agentd")
 
-list(APPEND remoted_names "test_syslogtcp")
 list(APPEND remoted_flags "-W -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_remote-state")

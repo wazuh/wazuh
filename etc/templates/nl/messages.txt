@@ -71,11 +71,6 @@ defaultwhitelist="Standaard witte lijst voor actief handelen:"
 addwhite="Wilt u meer IPs toevoegen aan de witte lijst?"
 ipswhite="IPs (spatie gescheiden): "
 
-# Part 3.5/server/local
-syslog="Wilt u externe systeem logging (syslog) inschakelen (poort 514 udp)?"
-nosyslog="Externe systeem logging uitgeschakeld"
-yessyslog="Externe systeem logging ingeschakeld"
-
 # Part 3.4/3.5
 readlogs="Systeem instellen om de volgende logbestanden te controleren:"
 

@@ -72,12 +72,6 @@ defaultwhitelist="Standard Ausnahmeliste (White-list) für active response:"
 addwhite="Möchten Sie weitere IPs zur White-list hinzufügen?"
 ipswhite="IPs (Durch Leerzeichen getrennt): "
 
-
-# Part 3.5/server/local
-syslog="Möchten Sie Nachrichten von einem remote syslog (514 udp) empfangen?"
-nosyslog="Remote syslog empfang ausgeschaltet"
-yessyslog="Remote syslog empfang eingeschaltet"
-
 # Part 3.4/3.5
 readlogs="Die folgenden Log-Files werden analysiert:"
 

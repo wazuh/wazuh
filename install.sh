@@ -404,32 +404,6 @@ ConfigureServer()
 
     AddWhite
 
-    if [ "X$INSTYPE" = "Xmanager" ]; then
-      # Configuring remote syslog
-      echo ""
-      $ECHO "  3.6- ${syslog} ($yes/$no) [$yes]: "
-
-      if [ "X${USER_ENABLE_SYSLOG}" = "X" ]; then
-        read ANSWER
-      else
-        ANSWER=${USER_ENABLE_SYSLOG}
-      fi
-
-      echo ""
-      case $ANSWER in
-        $nomatch)
-            echo "   --- ${nosyslog}."
-            ;;
-        *)
-            echo "   - ${yessyslog}."
-            RLOG="yes"
-            ;;
-      esac
-
-      # Configuring remote connections
-      SLOG="yes"
-    fi
-
     UseSSLCert
 
     # Setting up the auth daemon & logs

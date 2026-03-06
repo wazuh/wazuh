@@ -197,7 +197,6 @@ typedef struct {
 /* Handle secure connections */
 void HandleSecure()
 {
-    const int protocol = logr.proto[logr.position];
     int n_events = 0;
 
     agent_metadata_init();

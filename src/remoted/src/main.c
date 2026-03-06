@@ -155,11 +155,6 @@ int main(int argc, char **argv)
             break;
     }
 
-    if (logr.conn == NULL) {
-        /* Not configured */
-        merror_exit("Remoted connection is not configured.");
-    }
-
     /* Exit if test_config is set */
     if (test_config) {
         exit(0);
@@ -213,19 +208,7 @@ int main(int argc, char **argv)
     w_init_shared_download();
 
     /* Really start the program */
-    i = 0;
-    while (logr.conn[i] != 0) {
-        /* Fork for each connection handler */
-        if (fork() == 0) {
-            /* On the child */
-            mdebug1("Forking remoted: '%d'.", i);
-            logr.position = i;
-            HandleRemote(uid);
-        } else {
-            i++;
-            continue;
-        }
-    }
+    HandleRemote(uid);
 
     return (0);
 }

@@ -75,12 +75,6 @@ int RemotedConfig(const char* cfgfile, remoted* cfg);
 /* Handle Remote connections */
 void HandleRemote(int uid) __attribute__((noreturn));
 
-/* Handle Syslog */
-void HandleSyslog(void) __attribute__((noreturn));
-
-/* Handle Syslog TCP */
-void HandleSyslogTCP(void) __attribute__((noreturn));
-
 /* Handle Secure connections */
 void HandleSecure() __attribute__((noreturn));
 
