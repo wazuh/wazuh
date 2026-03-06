@@ -167,6 +167,8 @@ register_external_library(GTest::gmock_main    "${CMAKE_SOURCE_DIR}/external/goo
 set_target_properties(GTest_gtest_main  PROPERTIES INTERFACE_LINK_LIBRARIES "GTest_gtest")
 set_target_properties(GTest_gmock       PROPERTIES INTERFACE_LINK_LIBRARIES "GTest_gtest")
 set_target_properties(GTest_gmock_main  PROPERTIES INTERFACE_LINK_LIBRARIES "GTest_gmock;GTest_gtest")
+# Avoid running test binaries while building. Discover tests when ctest executes.
+set(CMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE PRE_TEST)
 include(GoogleTest)
 endif(ENGINE_BUILD_TEST)
 
