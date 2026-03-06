@@ -18,6 +18,8 @@
 
 #include "utilsWrapperWin.hpp"
 
+#include <shellapi.h>
+
 
 // Implement WMI functions
 HRESULT ComHelper::CreateWmiLocator(IWbemLocator*& pLoc)
@@ -179,6 +181,81 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
     pSvc->Release();
     pLoc->Release();
     pEnumerator->Release();
+}
+
+ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)
+{
+    ProcessCmdLine result;
+
+    if (fullCmdLineW.empty())
+    {
+        return result;
+    }
+
+    // Convert full command line from UTF-16 to UTF-8
+    const int utf8Size = WideCharToMultiByte(
+                             CP_UTF8, 0, fullCmdLineW.c_str(), static_cast<int>(fullCmdLineW.size()),
+                             nullptr, 0, nullptr, nullptr);
+
+    if (utf8Size > 0)
+    {
+        result.cmd.assign(static_cast<std::size_t>(utf8Size), '\0');
+        const int written = WideCharToMultiByte(
+                                CP_UTF8, 0, fullCmdLineW.c_str(), static_cast<int>(fullCmdLineW.size()),
+                                result.cmd.data(), utf8Size, nullptr, nullptr);
+
+        if (written > 0)
+        {
+            if (written < utf8Size)
+            {
+                result.cmd.resize(static_cast<std::size_t>(written));
+            }
+        }
+        else
+        {
+            result.cmd.clear();
+        }
+    }
+
+    // Parse arguments using CommandLineToArgvW for proper Windows command-line tokenization
+    int argc = 0;
+    const auto argv = CommandLineToArgvW(fullCmdLineW.c_str(), &argc);
+
+    if (argv && argc > 1)
+    {
+        for (int i = 1; i < argc; ++i)
+        {
+            const int argSize = WideCharToMultiByte(
+                                    CP_UTF8, 0, argv[i], -1, nullptr, 0, nullptr, nullptr);
+
+            if (argSize > 0)
+            {
+                std::string arg(argSize, '\0');
+                const int convertedSize = WideCharToMultiByte(
+                                              CP_UTF8, 0, argv[i], -1, arg.data(), argSize, nullptr, nullptr);
+
+                if (convertedSize > 0)
+                {
+                    arg.resize(static_cast<std::size_t>(convertedSize - 1));
+
+                    if (!result.argvs.empty())
+                    {
+                        result.argvs += " ";
+                    }
+
+                    result.argvs += arg;
+                }
+            }
+        }
+    }
+
+    if (argv)
+
+    {
+        LocalFree(argv);
+    }
+
+    return result;
 }
 
 void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
