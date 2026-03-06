@@ -1032,27 +1032,6 @@
     "email.x_mailer": {
       "type": "keyword"
     },
-    "enrichments.custom.anonymous": {
-      "type": "keyword"
-    },
-    "enrichments.custom.id": {
-      "type": "keyword"
-    },
-    "enrichments.custom.malware": {
-      "type": "keyword"
-    },
-    "enrichments.custom.malware_alias": {
-      "type": "keyword"
-    },
-    "enrichments.custom.malware_printable": {
-      "type": "keyword"
-    },
-    "enrichments.custom.tags": {
-      "type": "keyword"
-    },
-    "enrichments.custom.threat_type": {
-      "type": "keyword"
-    },
     "enrichments.indicator.confidence": {
       "type": "keyword"
     },
