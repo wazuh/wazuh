@@ -39,7 +39,6 @@ int ClientConf(const char *cfgfile);
 /* Parse read config into JSON format */
 cJSON *getClientConfig(void);
 cJSON *getBufferConfig(void);
-cJSON *getLabelsConfig(void);
 cJSON *getAgentInternalOptions(void);
 #ifndef WIN32
 cJSON *getAntiTamperingConfig(void);
@@ -177,8 +176,6 @@ bool package_uninstall_validation(const char *uninstall_auth_token, const char *
 /* Notify server */
 void run_notify(void);
 
-/* Format labels from config into string. Return 0 on success or -1 on error. */
-int format_labels(char *str, size_t size);
 
 // Thread to rotate internal log
 #ifdef WIN32

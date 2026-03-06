@@ -221,9 +221,6 @@ int parse_agent_update_msg (char *msg,
             if (!strncmp(line, agent_ip_label, strlen(agent_ip_label))) {
                 os_strdup(line + strlen(agent_ip_label), agent_data->agent_ip);
             }
-            else {
-                wm_strcat(&agent_data->labels, line, '\n');
-            }
             break;
         default:
             // uname - wazuh version / config sum
@@ -306,12 +303,6 @@ int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char
 
     // Extract agent uname
     cJSON *agent_uname = cJSON_GetObjectItem(agent, "uname");
-
-    // Extract agent labels
-    cJSON *labels = cJSON_GetObjectItem(agent, "labels");
-    if (labels && cJSON_IsString(labels)) {
-        os_strdup(labels->valuestring, agent_data->labels);
-    }
 
     // Allocate os_data structure
     os_calloc(1, sizeof(os_data), agent_data->osd);
