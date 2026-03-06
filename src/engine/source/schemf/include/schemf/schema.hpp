@@ -22,6 +22,13 @@ private:
     class Validator;
     std::experimental::propagate_const<std::unique_ptr<Validator>> m_validator;
 
+    /**
+     * @brief Get the Field object at the given dot path.
+     *
+     * @param name Dot-separated path to the field.
+     * @return Field The field at the given path.
+     * @throw std::runtime_error If the field does not exist.
+     */
     Field get(const DotPath& name) const;
 
     /**

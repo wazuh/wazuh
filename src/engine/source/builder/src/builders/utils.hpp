@@ -3,6 +3,7 @@
 
 #include "types.hpp"
 
+/** @brief Return a failure result, optionally including a trace message when tracing is enabled. */
 #define RETURN_FAILURE(runState, ret, traceMsg)                                                                        \
     if ((runState)->trace)                                                                                             \
     {                                                                                                                  \
@@ -13,6 +14,7 @@
         return base::result::makeFailure<decltype(ret)>(ret);                                                          \
     }
 
+/** @brief Return a success result, optionally including a trace message when tracing is enabled. */
 #define RETURN_SUCCESS(runState, ret, traceMsg)                                                                        \
     if ((runState)->trace)                                                                                             \
     {                                                                                                                  \
@@ -25,8 +27,16 @@
 
 namespace builder::builders::utils
 {
-auto constexpr MAX_OP_ARGS = 150; // TODO: Revert to 40 after CMSync optimization
+auto constexpr MAX_OP_ARGS = 150; ///< Maximum number of operation arguments.
 
+/**
+ * @brief Assert that the number of arguments matches the expected range.
+ *
+ * @param args Arguments vector.
+ * @param minSize Minimum number of arguments.
+ * @param maxSize Maximum number of arguments (0 means exact match with minSize).
+ * @throws std::runtime_error If the argument count is out of range.
+ */
 inline void assertSize(const std::vector<OpArg>& args, size_t minSize, size_t maxSize = 0)
 {
     if (maxSize == 0)
@@ -43,6 +53,16 @@ inline void assertSize(const std::vector<OpArg>& args, size_t minSize, size_t ma
     }
 }
 
+/**
+ * @brief Assert that the specified arguments are references.
+ *
+ * If no indices are given, all arguments must be references.
+ *
+ * @tparam Idx Index types.
+ * @param args Arguments vector.
+ * @param idx Indices of arguments to check (variadic).
+ * @throws std::runtime_error If any specified argument is not a reference.
+ */
 template<typename... Idx>
 inline void assertRef(const std::vector<OpArg>& args, Idx... idx)
 {
@@ -70,6 +90,16 @@ inline void assertRef(const std::vector<OpArg>& args, Idx... idx)
     }
 }
 
+/**
+ * @brief Assert that the specified arguments are values.
+ *
+ * If no indices are given, all arguments must be values.
+ *
+ * @tparam Idx Index types.
+ * @param args Arguments vector.
+ * @param idx Indices of arguments to check (variadic).
+ * @throws std::runtime_error If any specified argument is not a value.
+ */
 template<typename... Idx>
 inline void assertValue(const std::vector<OpArg>& args, Idx... idx)
 {

@@ -6,9 +6,12 @@
 namespace hlp
 {
 
-using Stop = std::vector<std::string>;
-using Options = std::vector<std::string>;
+using Stop = std::vector<std::string>;    ///< List of end-tokens that delimit a parser's input.
+using Options = std::vector<std::string>; ///< Extra arguments required by specific parsers.
 
+/**
+ * @brief Parameters passed to parser builder functions.
+ */
 struct Params
 {
     std::string name;        ///< The name of the parser to be used in error messages.
@@ -17,7 +20,7 @@ struct Params
     Options options;         ///< Extra arguments required for specific parsers (optional).
 };
 
-using ParserBuilder = std::function<parser::Parser(const Params&)>;
+using ParserBuilder = std::function<parser::Parser(const Params&)>; ///< Factory function that creates a Parser from Params.
 
 /**
  * @brief Initializes the Timezone Database (TZDB) with the given path.

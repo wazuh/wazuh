@@ -12,9 +12,9 @@
  */
 namespace hlp::syntax
 {
-using ResultT = std::string_view;
-using Result = abs::Result<ResultT>;
-using Parser = abs::Parser<ResultT>;
+using ResultT = std::string_view;         ///< Result value type for syntax parsers.
+using Result = abs::Result<ResultT>;      ///< Syntax parser result type.
+using Parser = abs::Parser<ResultT>;      ///< Syntax parser type.
 
 /**
  * @brief Given a syntax parser result and the original input, returns the parsed string.
@@ -33,8 +33,18 @@ inline std::string_view parsed(const Result& result, std::string_view original)
  * results.
  *
  */
+/**
+ * @brief Syntax-level parser combinators. These do not extract values or nest results.
+ */
 namespace combinators
 {
+/**
+ * @brief Sequence combinator: succeeds if both parsers succeed in order.
+ *
+ * @param lhs Left parser.
+ * @param rhs Right parser.
+ * @return Parser Combined parser.
+ */
 inline Parser operator&(const Parser& lhs, const Parser& rhs)
 {
     return [lhs, rhs](std::string_view input) -> Result
@@ -55,6 +65,13 @@ inline Parser operator&(const Parser& lhs, const Parser& rhs)
     };
 }
 
+/**
+ * @brief Choice combinator: succeeds if either parser succeeds.
+ *
+ * @param lhs Left parser.
+ * @param rhs Right parser.
+ * @return Parser Combined parser.
+ */
 inline Parser operator|(const Parser& lhs, const Parser& rhs)
 {
     return [lhs, rhs](std::string_view input) -> Result
@@ -75,6 +92,12 @@ inline Parser operator|(const Parser& lhs, const Parser& rhs)
     };
 }
 
+/**
+ * @brief Optional combinator: always succeeds.
+ *
+ * @param parser The parser to wrap.
+ * @return Parser A parser that always succeeds.
+ */
 inline Parser opt(const Parser& parser)
 {
     return [parser](std::string_view input) -> Result
@@ -89,6 +112,14 @@ inline Parser opt(const Parser& parser)
     };
 }
 
+/**
+ * @brief Repetition combinator: matches the parser between min and max times (0 = unbounded).
+ *
+ * @param parser The parser to repeat.
+ * @param min Minimum matches required (default: 0).
+ * @param max Maximum matches allowed (default: 0 = unlimited).
+ * @return Parser Combined parser.
+ */
 inline Parser times(const Parser& parser, size_t min = 0, size_t max = 0)
 {
     return [parser, min, max](std::string_view input) -> Result
@@ -117,16 +148,19 @@ inline Parser times(const Parser& parser, size_t min = 0, size_t max = 0)
     };
 }
 
+/** @brief Match zero or more times. */
 inline Parser many(const Parser& parser)
 {
     return times(parser);
 }
 
+/** @brief Match one or more times. */
 inline Parser many1(const Parser& parser)
 {
     return times(parser, 1);
 }
 
+/** @brief Match exactly count times. */
 inline Parser repeat(const Parser& parser, size_t count)
 {
     return times(parser, count, count);

@@ -7,6 +7,11 @@
 
 namespace hlp
 {
+/**
+ * @brief Register all built-in HLP parser builders with a Logpar instance.
+ *
+ * @param logpar The Logpar instance to register the parsers with.
+ */
 inline void registerParsers(std::shared_ptr<logpar::Logpar> logpar)
 {
     // Numeric

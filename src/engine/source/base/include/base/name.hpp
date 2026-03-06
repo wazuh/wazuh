@@ -37,6 +37,12 @@ public:
 private:
     std::vector<std::string> m_parts;
 
+    /**
+     * @brief Validate the number of parts and ensure none are empty.
+     *
+     * @param size Number of parts.
+     * @throws std::runtime_error If size is 0, exceeds MAX_PARTS, or any part is empty.
+     */
     void assertSize(size_t size) const
     {
         if (0 == size)
@@ -57,7 +63,18 @@ private:
         }
     }
 
+    /**
+     * @brief Copy parts from another Name.
+     *
+     * @param other The Name to copy from.
+     */
     void copy(const Name& other) { m_parts = other.m_parts; }
+
+    /**
+     * @brief Move parts from another Name.
+     *
+     * @param other The Name to move from.
+     */
     void copyMove(Name&& other) noexcept { m_parts = std::move(other.m_parts); }
 
 public:
@@ -65,10 +82,10 @@ public:
     ~Name() = default;
 
     /**
-     * @brief Construct a new Name object
+     * @brief Construct a new Name object from a vector of parts.
      *
-     * @tparam Parts Parameter pack of string types
-     * @param parts Parts of the name
+     * @param parts Parts of the name.
+     * @throws std::runtime_error If parts is empty, exceeds MAX_PARTS, or contains empty parts.
      */
     Name(const std::vector<std::string>& parts)
     {
@@ -77,10 +94,10 @@ public:
     }
 
     /**
-     * @brief Construct a new Name object
+     * @brief Construct a new Name object from a moved vector of parts.
      *
-     * @tparam Parts Parameter pack of string types
-     * @param parts Parts of the name
+     * @param parts Parts of the name (moved).
+     * @throws std::runtime_error If parts is empty, exceeds MAX_PARTS, or contains empty parts.
      */
     Name(std::vector<std::string>&& parts)
     {

@@ -15,19 +15,32 @@
 #include "observer.hpp"
 #include <functional>
 
+/**
+ * @brief Concrete observer that delegates updates to a callback function.
+ *
+ * @tparam T The type of data received on updates.
+ */
 template<typename T>
 class Subscriber final : public Observer<T>
 {
 private:
-    std::function<void(T&)> m_callback {};
+    std::function<void(T&)> m_callback {}; ///< Callback invoked on update.
 
 public:
+    /**
+     * @brief Construct a new Subscriber with the given callback.
+     *
+     * @param callback Function to call when update() is invoked.
+     */
     explicit Subscriber(const std::function<void(T)>& callback)
         : m_callback {callback}
     {
     }
     ~Subscriber() override = default;
 
+    /**
+     * @copydoc Observer::update
+     */
     void update(T data) override { m_callback(data); }
 };
 

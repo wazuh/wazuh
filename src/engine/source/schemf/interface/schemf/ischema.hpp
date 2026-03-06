@@ -31,8 +31,10 @@ public:
     /**
      * @brief Get the Json Type of a field.
      *
-     * @param name
-     * @return json::Json::Type
+     * @param name Dot-separated path to the field.
+     * @return json::Json::Type The JSON type of the field.
+     *
+     * @throw std::runtime_error If the field does not exist.
      */
     virtual json::Json::Type getJsonType(const DotPath& name) const = 0;
 

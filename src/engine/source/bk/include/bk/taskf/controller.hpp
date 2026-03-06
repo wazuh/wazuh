@@ -13,6 +13,12 @@
 namespace bk::taskf
 {
 
+/**
+ * @brief Taskflow-based backend controller implementation.
+ *
+ * Builds a taskflow DAG from a logical expression and processes
+ * events using the Taskflow executor.  Supports tracing individual expression nodes.
+ */
 class Controller final : public IController
 {
 private:
@@ -103,6 +109,9 @@ public:
     void unsubscribeAll() override;
 };
 
+/**
+ * @brief Factory for creating taskf::Controller instances.
+ */
 class ControllerMaker : public IControllerMaker
 {
 public:

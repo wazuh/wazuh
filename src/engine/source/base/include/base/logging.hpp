@@ -133,10 +133,11 @@ constexpr static auto levelToStr(Level level)
 }
 
 /**
- * @brief Get level from string representation
+ * @brief Get level from string representation.
  *
- * @param level String representation of the level
- * @return spdlog::level::level_enum
+ * @param level String representation of the level.
+ * @return Level The corresponding log level.
+ * @throws std::invalid_argument If the string does not match any known level.
  */
 constexpr static auto strToLevel(std::string_view level)
 {
@@ -221,11 +222,23 @@ void stop();
  */
 void testInit(Level lvl = Level::Warn);
 
+/**
+ * @brief Build a scoped lambda name from its parent scope and a label.
+ *
+ * @param parentScope Name of the enclosing function/scope.
+ * @param lambdaName Label for the lambda.
+ * @return std::string Combined name in the form "parentScope::<lambda>lambdaName".
+ */
 inline std::string getLambdaName(const char* parentScope, const std::string& lambdaName)
 {
     return std::string(parentScope) + LAMBDA_SEPARATOR + lambdaName;
 }
 
+/**
+ * @brief Register a full log function callback for the shared library logging bridge.
+ *
+ * @param callback The logging function conforming to the GLOBAL_LOG_FUNCTION signature.
+ */
 void initializeFullLogFunction(
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
@@ -243,6 +256,11 @@ extern "C"
 }
 #endif
 
+/**
+ * @brief Get the default logging tag string.
+ *
+ * @return constexpr const char* The default tag ("wazuh-manager-analysisd").
+ */
 constexpr inline const char* default_tag()
 {
     return "wazuh-manager-analysisd";
@@ -373,6 +391,12 @@ inline void log_bridge(logging::Level lvl,
     }
 }
 
+/**
+ * @brief Convert a CLI verbosity count to a logging level.
+ *
+ * @param v Verbosity count (0 = Info, 1 = Debug, 2+ = Trace).
+ * @return constexpr logging::Level The corresponding log level.
+ */
 constexpr logging::Level verbosityToLevel(int v)
 {
     if (v == 0)

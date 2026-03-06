@@ -11,8 +11,11 @@
 
 namespace bk::rx::detail
 {
-using Publisher = Subscriber;
+using Publisher = Subscriber; ///< Publisher is a Subscriber callback used to emit trace messages.
 
+/**
+ * @brief Thread-safe trace point for subscribing to expression evaluation results.
+ */
 class Tracer : public std::enable_shared_from_this<Tracer>
 {
 private:
@@ -65,7 +68,9 @@ public:
     }
 
     /**
-     * @copydoc bk::ITrace::publisher
+     * @brief Get a publisher function that broadcasts messages to all subscribers.
+     *
+     * @return Publisher A callback that forwards trace messages to all current subscribers.
      */
     Publisher publisher()
     {

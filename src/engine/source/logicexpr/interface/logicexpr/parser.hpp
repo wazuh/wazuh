@@ -22,34 +22,42 @@ namespace logicexpr::parser
 
 namespace
 {
-// Helper to ensure correct syntax of expression in infix notation
-// Inspired by
-// https://stackoverflow.com/questions/29634992/shunting-yard-validate-expression
+/**
+ * @brief Helper to validate syntax of a logical expression in infix notation.
+ *
+ * Uses a two-state machine: state 0 expects operand/unary operator/parenthesis,
+ * state 1 expects binary operator.
+ *
+ * @see https://stackoverflow.com/questions/29634992/shunting-yard-validate-expression
+ */
 struct syntaxChecker
 {
+    bool m_state; ///< Current state: false = expect operand, true = expect operator.
 
-    // Could be optimized by taking advantage of the fact that shunting-yard
-    // algorithm is already doing some comparisons, is as it is for modularity
-
-    // Two states:
-    // - 0: expect operand, unary operator or parenthesis
-    // - 1: expect binary operator
-    bool m_state;
-
+    /** @brief Check if an operand is expected. */
     bool expectedOperand() const { return m_state == false; }
 
+    /** @brief Switch to expecting an operand. */
     void expectOperand() { m_state = false; }
 
+    /** @brief Check if a binary operator is expected. */
     bool expectedOperator() const { return m_state == true; }
 
+    /** @brief Switch to expecting a binary operator. */
     void expectOperator() { m_state = true; }
 
+    /** @brief Construct a new syntaxChecker, initially expecting an operand. */
     syntaxChecker()
         : m_state {false}
     {
     }
 
-    // Check if token satisfies the current state, otherwise throw exception
+    /**
+     * @brief Validate the next token against the current state.
+     *
+     * @param token Token to validate.
+     * @throws std::runtime_error If the token is unexpected in the current state.
+     */
     void operator()(const Token& token)
     {
         // Got term
@@ -193,10 +201,9 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
 class Expression : public std::enable_shared_from_this<Expression>
 {
 public:
-    // Token of this node
-    Token m_token;
-    // Childs if any
-    std::shared_ptr<Expression> m_left, m_right;
+    Token m_token;                              ///< Token of this node.
+    std::shared_ptr<Expression> m_left;         ///< Left child expression (or sole child for unary operators).
+    std::shared_ptr<Expression> m_right;        ///< Right child expression (for binary operators).
 
     /**
      * @brief Get the Ptr object
@@ -305,7 +312,12 @@ public:
     }
 
 private:
-    // Made private so that only create() can be used to create an Expression
+    /**
+     * @brief Construct an Expression tree from a postfix token stack (recursive).
+     *
+     * @param postfix Stack of tokens in postfix notation.
+     * @throws std::logic_error If the stack is empty or contains invalid tokens.
+     */
     Expression(std::stack<Token>& postfix)
 
     {
@@ -333,7 +345,7 @@ private:
         }
     }
 
-    // Made private so that only create() can be used to create an Expression
+    /** @brief Construct an empty Expression. */
     Expression() = default;
 };
 
@@ -343,7 +355,7 @@ private:
  * @param rawExpression raw string expression in infix notation
  * @return std::shared_ptr<Expression> root of the expression tree
  *
- * @throw std::logic_exception if the expression is not valid
+ * @throw std::runtime_error if the expression is not valid.
  */
 template<typename TermParser>
 std::shared_ptr<Expression> parse(const std::string& rawExpression, TermParser&& termParser)

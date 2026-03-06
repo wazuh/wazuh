@@ -68,7 +68,9 @@ public:
     /**
      * @brief Get the formula's ptr, using Derived shared_from_this
      *
-     * @return std::shared_ptr<Derived>
+     * @tparam Derived The derived Formula type to cast to.
+     * @return std::shared_ptr<Derived> Shared pointer to the derived type.
+     * @throws std::runtime_error If the dynamic cast fails.
      */
     template<typename Derived>
     std::shared_ptr<Derived> getPtr()

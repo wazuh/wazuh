@@ -27,6 +27,13 @@ namespace json
 constexpr bool RECURSIVE {true};
 constexpr bool NOT_RECURSIVE {false};
 
+/**
+ * @brief JSON document wrapper around RapidJSON.
+ *
+ * Provides a high-level, type-safe API for creating, querying and manipulating
+ * JSON documents.  Internally uses a `rapidjson::Document` for storage.
+ * Paths are expressed as JSON Pointer strings (e.g. "/a/b/0").
+ */
 class Json
 {
 public:
@@ -41,6 +48,13 @@ public:
         Unknown
     };
 
+    /**
+     * @brief Stream insertion operator for Json::Type.
+     *
+     * @param os Output stream.
+     * @param type The Json type to print.
+     * @return std::ostream& The output stream.
+     */
     friend std::ostream& operator<<(std::ostream& os, Type type)
     {
         switch (type)
@@ -56,6 +70,12 @@ public:
         return os;
     }
 
+    /**
+     * @brief Convert a Json::Type to its string representation.
+     *
+     * @param type The Json type.
+     * @return constexpr const char* String name of the type.
+     */
     static constexpr auto typeToStr(Type type)
     {
         switch (type)
@@ -70,6 +90,13 @@ public:
         }
     }
 
+    /**
+     * @brief Convert a string to a Json::Type.
+     *
+     * @param str The type name string (e.g. "null", "object", "array", "string", "number", "boolean").
+     * @return constexpr Type The corresponding Json type.
+     * @throws std::runtime_error If the string does not match any known type.
+     */
     static constexpr Type strToType(const char* str)
     {
         if (strcmp(str, "null") == 0)
@@ -144,6 +171,13 @@ private:
         }
     }
 
+    /**
+     * @brief Merge a RapidJSON value into this document at the given path.
+     *
+     * @param isRecursive If true, merge recursively into nested objects.
+     * @param source The RapidJSON value to merge.
+     * @param path JSON pointer path to the target node.
+     */
     void merge(const bool isRecursive, const rapidjson::Value& source, std::string_view path);
 
 public:
@@ -192,8 +226,24 @@ public:
      */
     Json& operator=(const Json& other) = delete;
 
+    /**
+     * @brief Equality comparison operator.
+     *
+     * @param lhs Left-hand side Json.
+     * @param rhs Right-hand side Json.
+     * @return true if the underlying documents are equal.
+     * @return false otherwise.
+     */
     friend bool operator==(const Json& lhs, const Json& rhs) { return lhs.m_document == rhs.m_document; }
 
+    /**
+     * @brief Inequality comparison operator.
+     *
+     * @param lhs Left-hand side Json.
+     * @param rhs Right-hand side Json.
+     * @return true if the underlying documents are not equal.
+     * @return false otherwise.
+     */
     friend bool operator!=(const Json& lhs, const Json& rhs) { return !(lhs == rhs); }
 
     /************************************************************************************/
@@ -296,50 +346,38 @@ public:
     /************************************************************************************/
 
     /**
-     * @brief get the value of the string field.
-     * Overwrites previous value. If reference field is not found, sets base field to
-     * null.
+     * @brief Get the value of the string field at the given path.
      *
-     * @param basePointerPath The base pointer path to set.
-     *
-     * @return T The value of the field.
-     *
-     * @throws std::runtime_error If any pointer path is invalid.
+     * @param path JSON pointer path to the field (default: root).
+     * @return std::optional<std::string> The string value, or std::nullopt if not found or not a string.
+     * @throws std::runtime_error If the pointer path is invalid.
      */
     std::optional<std::string> getString(std::string_view path = "") const;
 
     /**
-     * @brief get the value of the int field.
-     * Overwrites previous value. If reference field is not found, sets base field to
-     * null.
+     * @brief Get the value of the int field at the given path.
      *
-     * @param basePointerPath The base pointer path to set.
-     *
-     * @return T The value of the field.
-     *
-     * @throws std::runtime_error If any pointer path is invalid.
+     * @param path JSON pointer path to the field (default: root).
+     * @return std::optional<int> The int value, or std::nullopt if not found or not an int.
+     * @throws std::runtime_error If the pointer path is invalid.
      */
     std::optional<int> getInt(std::string_view path = "") const;
 
     /**
-     * @brief get the value of the int64 field.
-     * Overwrites previous value. If reference field is not found, sets base field to
-     * null.
+     * @brief Get the value of the int64 field at the given path.
      *
-     * @param basePointerPath The base pointer path to set.
-     *
-     * @return T The value of the field.
-     *
-     * @throws std::runtime_error If any pointer path is invalid.
+     * @param path JSON pointer path to the field (default: root).
+     * @return std::optional<int64_t> The int64 value, or std::nullopt if not found or not an int64.
+     * @throws std::runtime_error If the pointer path is invalid.
      */
     std::optional<int64_t> getInt64(std::string_view path = "") const;
 
     /**
-     * @brief Get the Uint64 object field.
+     * @brief Get the value of the uint64 field at the given path.
      *
-     * @param basePointerPath The base pointer path to set.
-     * @return std::optional<uint32_t>
-     * @throws std::runtime_error If any pointer path is invalid.
+     * @param path JSON pointer path to the field (default: root).
+     * @return std::optional<uint64_t> The uint64 value, or std::nullopt if not found or not a uint64.
+     * @throws std::runtime_error If the pointer path is invalid.
      */
     std::optional<uint64_t> getUint64(std::string_view path = "") const;
 
@@ -353,69 +391,48 @@ public:
     std::optional<int64_t> getIntAsInt64(std::string_view path = "") const;
 
     /**
-     * @brief get the value of the float field.
-     * Overwrites previous value. If reference field is not found, sets base field to
-     * null.
+     * @brief Get the value of the float field at the given path.
      *
-     * @param basePointerPath The base pointer path to set.
-     *
-     * @return T The value of the field.
-     *
-     * @throws std::runtime_error If any pointer path is invalid.
+     * @param path JSON pointer path to the field (default: root).
+     * @return std::optional<float_t> The float value, or std::nullopt if not found or not a float.
+     * @throws std::runtime_error If the pointer path is invalid.
      */
     std::optional<float_t> getFloat(std::string_view path = "") const;
 
     /**
-     * @brief get the value of the double field.
-     * Overwrites previous value. If reference field is not found, sets base field to
-     * null.
+     * @brief Get the value of the double field at the given path.
      *
-     * @param basePointerPath The base pointer path to set.
-     *
-     * @return T The value of the field.
-     *
-     * @throws std::runtime_error If any pointer path is invalid.
+     * @param path JSON pointer path to the field (default: root).
+     * @return std::optional<double_t> The double value, or std::nullopt if not found or not a double.
+     * @throws std::runtime_error If the pointer path is invalid.
      */
     std::optional<double_t> getDouble(std::string_view path = "") const;
 
     /**
-     * @brief get the value of either a double or int field as a double.
-     * Overwrites previous value. If reference field is not found, sets base field to
-     * null.
+     * @brief Get the value of a number field (double or int) as a double.
      *
-     * @param basePointerPath The base pointer path to set.
-     *
-     * @return T The value of the field.
-     *
-     * @throws std::runtime_error If any pointer path is invalid.
-     *
-     * @todo Develop tests for this method
+     * @param path JSON pointer path to the field (default: root).
+     * @return std::optional<double> The numeric value as double, or std::nullopt if not found or not a number.
+     * @throws std::runtime_error If the pointer path is invalid.
+     * @todo Develop tests for this method.
      */
     std::optional<double> getNumberAsDouble(std::string_view path = "") const;
 
     /**
-     * @brief get the value of the bool field.
-     * Overwrites previous value. If reference field is not found, sets base field to
-     * null.
+     * @brief Get the value of the bool field at the given path.
      *
-     * @param basePointerPath The base pointer path to set.
-     *
-     * @return T The value of the field.
-     *
-     * @throws std::runtime_error If any pointer path is invalid.
+     * @param path JSON pointer path to the field (default: root).
+     * @return std::optional<bool> The boolean value, or std::nullopt if not found or not a bool.
+     * @throws std::runtime_error If the pointer path is invalid.
      */
     std::optional<bool> getBool(std::string_view path = "") const;
 
     /**
-     * @brief get the value of the array field.
-     * Overwrites previous value. If reference field is not found, sets base field to
-     * null.
+     * @brief Get the value of the array field at the given path.
      *
-     * @param basePointerPath The base pointer path to set.
-     *
-     * @return T The value of the field.
-     *
-     * @throws std::runtime_error If any pointer path is invalid.
+     * @param path JSON pointer path to the field (default: root).
+     * @return std::optional<std::vector<Json>> The array elements, or std::nullopt if not found or not an array.
+     * @throws std::runtime_error If the pointer path is invalid.
      */
     std::optional<std::vector<Json>> getArray(std::string_view path = "") const;
 
@@ -482,6 +499,13 @@ public:
      */
     std::optional<Json> getJson(std::string_view path = "") const;
 
+    /**
+     * @brief Stream insertion operator for Json.
+     *
+     * @param os Output stream.
+     * @param json The Json object to print.
+     * @return std::ostream& The output stream.
+     */
     friend std::ostream& operator<<(std::ostream& os, const Json& json);
 
     /************************************************************************************/
@@ -1137,6 +1161,13 @@ public:
         return true;
     }
 
+    /**
+     * @brief Create a Json object with a single key-value pair.
+     *
+     * @param key The key string.
+     * @param value The Json value associated with the key.
+     * @return Json A new Json object containing the key-value pair.
+     */
     static Json makeObjectJson(const std::string& key, const json::Json& value);
 };
 

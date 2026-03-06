@@ -145,19 +145,67 @@ unescapeString(std::string_view str, char escapeChar, const char escapedChar, co
 }
 
 // TODO Add scape string with char. Implement on test handler location.
-// TODO: Add doxygen documentation.
+
+/**
+ * @brief Convert a string to uppercase.
+ *
+ * @param str Input string.
+ * @return std::string The uppercase version of the input.
+ */
 std::string toUpperCase(std::string_view str);
 
+/**
+ * @brief Convert a string to lowercase.
+ *
+ * @param str Input string.
+ * @return std::string The lowercase version of the input.
+ */
 std::string toLowerCase(std::string_view str);
 
+/**
+ * @brief Replace the first occurrence of a substring.
+ *
+ * @param data String to modify in-place.
+ * @param toSearch Substring to search for.
+ * @param toReplace Replacement string.
+ * @return true if a replacement was made.
+ * @return false otherwise.
+ */
 bool replaceFirst(std::string& data, const std::string& toSearch, const std::string& toReplace);
 
+/**
+ * @brief Trim characters from the left side of a string.
+ *
+ * @param str Input string.
+ * @param args Characters to trim (default: space).
+ * @return std::string The left-trimmed string.
+ */
 std::string leftTrim(const std::string& str, const std::string& args = " ");
 
+/**
+ * @brief Trim characters from the right side of a string.
+ *
+ * @param str Input string.
+ * @param args Characters to trim (default: space).
+ * @return std::string The right-trimmed string.
+ */
 std::string rightTrim(const std::string& str, const std::string& args = " ");
 
+/**
+ * @brief Trim characters from both sides of a string.
+ *
+ * @param str Input string.
+ * @param args Characters to trim (default: space).
+ * @return std::string The trimmed string.
+ */
 std::string trim(const std::string& str, const std::string& args = " ");
 
+/**
+ * @brief Convert a string to sentence case (first letter uppercase, rest lowercase).
+ *
+ * @param str Input string.
+ * @return std::string The sentence-cased string.
+ */
 std::string toSentenceCase(const std::string& str);
 
 /**
@@ -169,7 +217,24 @@ std::string toSentenceCase(const std::string& str);
  */
 bool isNumber(const std::string& str);
 
+/**
+ * @brief Replace all occurrences of a substring.
+ *
+ * @param data String to modify in-place.
+ * @param toSearch Substring to search for.
+ * @param toReplace Replacement string.
+ * @return true if at least one replacement was made.
+ * @return false if no replacement was made or if toSearch is empty / equals toReplace / toReplace contains toSearch.
+ */
 bool replaceAll(std::string& data, const std::string_view toSearch, const std::string_view toReplace);
+
+/**
+ * @brief Check if a string contains any uppercase characters.
+ *
+ * @param str String to check.
+ * @return true if the string has at least one uppercase character.
+ * @return false otherwise.
+ */
 bool haveUpperCaseCharacters(const std::string& str);
 
 } // namespace base::utils::string

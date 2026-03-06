@@ -59,6 +59,12 @@ enum class ParserType
     P_TEXT
 };
 
+/**
+ * @brief Convert a ParserType to its string representation.
+ *
+ * @param type The parser type.
+ * @return constexpr const char* The string name, or "error_type" for unknown.
+ */
 constexpr auto parserTypeToStr(ParserType type)
 {
     switch (type)
@@ -95,6 +101,12 @@ constexpr auto parserTypeToStr(ParserType type)
     }
 }
 
+/**
+ * @brief Convert a string to a ParserType.
+ *
+ * @param str The parser type name.
+ * @return ParserType The corresponding parser type, or ERROR_TYPE if unknown.
+ */
 constexpr auto strToParserType(std::string_view str)
 {
     if (str == parserTypeToStr(ParserType::P_LONG))
@@ -158,30 +170,88 @@ constexpr auto strToParserType(std::string_view str)
 
 namespace logpar
 {
+/**
+ * @brief Syntax characters used by the logpar expression grammar.
+ */
 namespace syntax
 {
-constexpr auto EXPR_BEGIN = '<';
-constexpr auto EXPR_END = '>';
-constexpr auto EXPR_OPT = '?';
-constexpr auto EXPR_ESCAPE = '\\';
-constexpr auto EXPR_ARG_SEP = '/';
-constexpr auto EXPR_GROUP_BEGIN = '(';
-constexpr auto EXPR_GROUP_END = ')';
-constexpr auto EXPR_WILDCARD = '~';
-constexpr auto EXPR_FIELD_SEP = '.';
-constexpr auto EXPR_FIELD_EXTENDED_CHARS_FIRST = "_@#~";
-constexpr auto EXPR_FIELD_EXTENDED_CHARS = "_@#";
+constexpr auto EXPR_BEGIN = '<';                              ///< Start of a field expression.
+constexpr auto EXPR_END = '>';                                ///< End of a field expression.
+constexpr auto EXPR_OPT = '?';                                ///< Optional field marker.
+constexpr auto EXPR_ESCAPE = '\\';                            ///< Escape character.
+constexpr auto EXPR_ARG_SEP = '/';                            ///< Argument separator.
+constexpr auto EXPR_GROUP_BEGIN = '(';                        ///< Start of a group expression.
+constexpr auto EXPR_GROUP_END = ')';                          ///< End of a group expression.
+constexpr auto EXPR_WILDCARD = '~';                           ///< Wildcard character.
+constexpr auto EXPR_FIELD_SEP = '.';                          ///< Field name separator.
+constexpr auto EXPR_FIELD_EXTENDED_CHARS_FIRST = "_@#~";      ///< Extra chars allowed at start of a field name.
+constexpr auto EXPR_FIELD_EXTENDED_CHARS = "_@#";             ///< Extra chars allowed in a field name.
 }; // namespace syntax
 
+/**
+ * @brief Low-level parsec-based parsers for the logpar expression grammar.
+ */
 namespace parser
 {
 // Basic parsers
+
+/**
+ * @brief Parse a single character from the allowed set.
+ *
+ * @param chars Allowed characters.
+ * @return parsec::Parser<char> A parser that matches one character from the set.
+ */
 parsec::Parser<char> pChar(std::string chars);
+
+/**
+ * @brief Parse a single character NOT in the given set.
+ *
+ * @param chars Disallowed characters.
+ * @return parsec::Parser<char> A parser that matches one character not in the set.
+ */
 parsec::Parser<char> pNotChar(std::string chars);
+
+/**
+ * @brief Parse an escaped character.
+ *
+ * @param chars Characters that can be escaped.
+ * @param esc The escape character.
+ * @return parsec::Parser<char> A parser that matches an escaped character.
+ */
 parsec::Parser<char> pEscapedChar(std::string chars, char esc);
+
+/**
+ * @brief Parse a raw literal string (zero or more characters).
+ *
+ * @param reservedChars Characters that end the literal.
+ * @param esc Escape character.
+ * @return parsec::Parser<std::string> A parser for raw literal strings.
+ */
 parsec::Parser<std::string> pRawLiteral(std::string reservedChars, char esc);
+
+/**
+ * @brief Parse a non-empty raw literal string (one or more characters).
+ *
+ * @param reservedChars Characters that end the literal.
+ * @param esc Escape character.
+ * @return parsec::Parser<std::string> A parser for non-empty raw literal strings.
+ */
 parsec::Parser<std::string> pRawLiteral1(std::string reservedChars, char esc);
+
+/**
+ * @brief Parse a single alphanumeric character, optionally including extended characters.
+ *
+ * @param extended Additional allowed characters (default: "").
+ * @return parsec::Parser<char> A parser for alphanumeric characters.
+ */
 parsec::Parser<char> pCharAlphaNum(std::string extended = "");
+
+/**
+ * @brief Parse end-of-input. Succeeds only when the input is fully consumed.
+ *
+ * @tparam T The result type.
+ * @return parsec::Parser<T> A parser that succeeds at end-of-input.
+ */
 template<typename T>
 parsec::Parser<T> pEof()
 {
@@ -228,7 +298,11 @@ struct Field
         return name == other.name && args == other.args && optional == other.optional;
     }
 
-    // TODO: we should store this string instead of recreat it again?
+    /**
+     * @brief Convert the field expression back to its string representation.
+     *
+     * @return std::string The logpar field expression string.
+     */
     std::string toStr() const
     {
         return fmt::format("{}{}{}{}{}{}",
@@ -269,24 +343,26 @@ struct Group
  */
 using ParserInfo = std::variant<Literal, Field, Choice, Group>;
 
-// Specific literal parser
+/** @brief Parse a literal token. */
 parsec::Parser<Literal> pLiteral();
 
-// Specific field parsers
+/** @brief Parse parser arguments (slash-separated list). */
 parsec::Parser<parsec::Values<std::string>> pArgs();
+/** @brief Parse a field name. */
 parsec::Parser<FieldName> pFieldName();
+/** @brief Parse a complete field expression. */
 parsec::Parser<Field> pField();
 
-// Specific choice parser
+/** @brief Parse a choice expression (two optional fields). */
 parsec::Parser<Choice> pChoice();
 
-// Expression parser
+/** @brief Parse a sequence of logpar expressions. */
 parsec::Parser<parsec::Values<ParserInfo>> pExpr();
 
-// Specific group parser
+/** @brief Parse a grouped (optional) expression. */
 parsec::Parser<Group> pGroup();
 
-// Logpar parser
+/** @brief Parse a complete logpar expression string. */
 parsec::Parser<std::list<ParserInfo>> pLogpar();
 
 }; // namespace parser
@@ -310,12 +386,49 @@ private:
     std::unordered_map<std::string, ParserType> m_fieldParserOverrides;
 
     // build the parsers from the different parser info types
+
+    /**
+     * @brief Build a parser from a literal token.
+     *
+     * @param literal The literal info.
+     * @return Hlp The constructed parser.
+     */
     Hlp buildLiteralParser(const parser::Literal& literal) const;
+
+    /**
+     * @brief Build a parser from a field expression.
+     *
+     * @param field The field info.
+     * @param endTokens Optional end tokens that delimit the field value.
+     * @return Hlp The constructed parser.
+     */
     Hlp buildFieldParser(const parser::Field& field, const std::vector<std::string>& endTokens = {}) const;
+
+    /**
+     * @brief Build a parser from a choice expression.
+     *
+     * @param choice The choice info.
+     * @param endTokens Optional end tokens.
+     * @return Hlp The constructed parser.
+     */
     Hlp buildChoiceParser(const parser::Choice& choice, const std::vector<std::string>& endTokens = {}) const;
+
+    /**
+     * @brief Build a parser from a group (optional) expression.
+     *
+     * @param group The group info.
+     * @param recurLvl Current recursion level.
+     * @return Hlp The constructed parser.
+     */
     Hlp buildGroupOptParser(const parser::Group& group, size_t recurLvl) const;
 
-    // build the parsers while adding the target field to the json
+    /**
+     * @brief Build the combined parser from a list of parser infos.
+     *
+     * @param parserInfos List of parsed logpar tokens.
+     * @param recurLvl Current recursion level.
+     * @return Hlp The combined parser.
+     */
     Hlp buildParsers(const std::list<parser::ParserInfo>& parserInfos, size_t recurLvl) const;
 
     /**
