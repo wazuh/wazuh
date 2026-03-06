@@ -475,32 +475,8 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
             void *deleted = OSHash_Delete_ex(agent_data_hash, key->id);
             os_free(deleted);
 
-            /* Generate alert for shutdown */
-            char srcmsg[OS_SIZE_256];
-            char msg[OS_SIZE_1024];
-
-            memset(srcmsg, '\0', OS_SIZE_256);
-            memset(msg, '\0', OS_SIZE_1024);
-
-            snprintf(srcmsg, OS_SIZE_256, "[%s] (%s) %s", key->id, key->name, key->ip->ip);
-            snprintf(msg, OS_SIZE_1024, AG_STOP_MSG, key->name, key->ip->ip);
-
-            // TODO: Log the control message in wazuh-manager.log
-            /* Send stopped message */
-            /*if (SendMSG(logr.m_queue, msg, srcmsg, SECURE_MQ) < 0) {
-                merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-
-                Try to reconnect infinitely
-                TODO: commented out while separating manager and agent, someone should bind DEFAULTQUEUE
-                logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
-
-                minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
-
-                if (SendMSG(logr.m_queue, msg, srcmsg, SECURE_MQ) < 0) {
-                    Something went wrong sending a message after an immediate reconnection...
-                    merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-                }
-            }*/
+            /* Log agent shutdown event to ossec.log */
+            minfo(OS_AG_STOPPED, atoi(key->id), key->name);
         }
     } else {
         /* Clean msg and shared files (remove random string) */

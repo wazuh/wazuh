@@ -310,47 +310,6 @@ void test_check_logs_time_trigger_false(void **state) {
     assert_int_equal(result, 0);
 }
 
-/* Tests monitor_queue_connect */
-
-void test_monitor_queue_connect_fail(void **state) {
-    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
-    expect_value(__wrap_StartMQ, type, WRITE);
-    will_return(__wrap_StartMQ, -1);
-
-    monitor_queue_connect();
-
-    assert_int_equal(mond.a_queue, -1);
-}
-
-void test_monitor_queue_connect_success(void **state) {
-    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
-    expect_value(__wrap_StartMQ, type, WRITE);
-    will_return(__wrap_StartMQ, 1);
-    expect_string(__wrap_SendMSG, message, OS_MG_STARTED);
-    expect_string(__wrap_SendMSG, locmsg, ARGV0);
-    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
-    will_return(__wrap_SendMSG, 1);
-
-    monitor_queue_connect();
-
-    assert_int_equal(mond.a_queue, 1);
-}
-
-void test_monitor_queue_connect_msg_fail(void **state) {
-    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
-    expect_value(__wrap_StartMQ, type, WRITE);
-    will_return(__wrap_StartMQ, 1);
-    expect_string(__wrap_SendMSG, message, OS_MG_STARTED);
-    expect_string(__wrap_SendMSG, locmsg, ARGV0);
-    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
-    will_return(__wrap_SendMSG, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, QUEUE_SEND);
-
-    monitor_queue_connect();
-
-    assert_int_equal(mond.a_queue, -1);
-}
-
 /* Tests getMonitorInternalOptions */
 
 void test_getMonitorInternalOptions_success(void **state) {
@@ -489,10 +448,6 @@ int main()
         /* Tests check_logs_time_trigger */
         cmocka_unit_test_setup_teardown(test_check_logs_time_trigger_true, setup_monitord, teardown_monitord),
         cmocka_unit_test_setup_teardown(test_check_logs_time_trigger_false, setup_monitord, teardown_monitord),
-        /* Tests monitor_queue_connect */
-        cmocka_unit_test_setup_teardown(test_monitor_queue_connect_fail, setup_monitord, teardown_monitord),
-        cmocka_unit_test_setup_teardown(test_monitor_queue_connect_success, setup_monitord, teardown_monitord),
-        cmocka_unit_test_setup_teardown(test_monitor_queue_connect_msg_fail, setup_monitord, teardown_monitord),
         /* Tests getMonitorInternalOptions */
         cmocka_unit_test_setup_teardown(test_getMonitorInternalOptions_success, setup_monitord, teardown_monitord),
         /* Tests getMonitorGlobalOptions */

@@ -53,9 +53,6 @@ int main(int argc, char **argv)
     char * end;
     int debug_level = 0;
 
-    /* Initialize global variables */
-    mond.a_queue = 0;
-
     /* Set the name */
     OS_SetName(ARGV0);
 

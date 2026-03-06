@@ -40,11 +40,8 @@ void Monitord()
     /* /var/wazuh-manager/logs/wazuh-manager.json */
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 
-    /* Connect to the message queue or exit */
-    monitor_queue_connect();
-    if (mond.a_queue < 0) {
-        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
-    }
+    /* Log monitord startup message to ossec.log */
+    minfo(OS_MG_STARTED);
 
     // Start com request thread
     w_create_thread(moncom_main, NULL);
@@ -62,10 +59,6 @@ void Monitord()
     while (1) {
         monitor_step_time();
 
-        if (mond.a_queue < 0) {
-            /* Connecting to the message queue */
-            monitor_queue_connect();
-        }
         if(check_disconnection_trigger()){
             monitor_agents_disconnection();
         }
@@ -146,16 +139,6 @@ int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short d
     }
 
     return OS_SUCCESS;
-}
-
-void monitor_queue_connect() {
-    if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) > 0) {
-        /* Send startup message */
-        if (SendMSG(mond.a_queue, OS_MG_STARTED, ARGV0, LOCALFILE_MQ) < 0) {
-            mond.a_queue = -1;  // We keep trying to reconnect next time.
-            mdebug1(QUEUE_SEND);
-        }
-    }
 }
 
 void monitor_init_time_control() {

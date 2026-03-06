@@ -13,36 +13,19 @@
 #include "read-agents.h"
 #include "wazuhdb_queries_op.h"
 
-static int mon_send_agent_msg(char *agent, char *msg);
 int sock = -1;
 
-void monitor_send_deletion_msg(char *agent) {
-    char str[OS_SIZE_1024];
+void monitor_send_disconnection_msg(const char *agent_name, const char *agent_ip) {
+    int ag_id;
 
-    memset(str, '\0', OS_SIZE_1024);
-    snprintf(str, OS_SIZE_1024, OS_AG_REMOVED, agent);
-
-    if (SendMSG(mond.a_queue, str, ARGV0, LOCALFILE_MQ) < 0) {
-        mond.a_queue = -1;  // set an invalid fd so we can attempt to reconnect later on.
-        mdebug1("Could not generate removed agent alert for '%s'", agent);
-        mdebug1(QUEUE_SEND);
-    }
-}
-
-void monitor_send_disconnection_msg(char *agent) {
-    char str[OS_SIZE_1024];
-    int error;
-
-    memset(str, '\0', OS_SIZE_1024);
-    /* Send disconnected message */
-    snprintf(str, OS_SIZE_1024, AG_DISCON_MSG, agent);
-    if (error = mon_send_agent_msg(agent, str), error) {
-        if (error == 2) {
-            // Agent is no longer in the database
-            monitor_send_deletion_msg(agent);
-        } else {
-            mdebug1("Could not generate disconnected agent alert for '%s'", agent);
-        }
+    if (ag_id = wdb_find_agent(agent_name, agent_ip, NULL), ag_id > 0) {
+        /* Log agent disconnection event to ossec.log */
+        minfo(OS_AG_DISCON, ag_id, agent_name);
+    } else if (ag_id == -2) {
+        // Agent no longer exists in database
+        mdebug2("Agent '%s' (%s) is no longer in database, skipping disconnection alert", agent_name, agent_ip);
+    } else {
+        mdebug1("Could not generate disconnected agent alert for '%s' (%s)", agent_name, agent_ip);
     }
 }
 
@@ -99,12 +82,8 @@ void monitor_agents_alert(){
                     else if (j_agent_lastkeepalive->valueint < (time(0) -
                             (mond.global.agents_disconnection_time + mond.global.agents_disconnection_alert_time))) {
                         /* Generating the disconnection alert */
-                        char *agent_name_ip = NULL;
-                        os_strdup(j_agent_name->valuestring, agent_name_ip);
-                        wm_strcat(&agent_name_ip, j_agent_ip->valuestring, '-');
-                        monitor_send_disconnection_msg(agent_name_ip);
+                        monitor_send_disconnection_msg(j_agent_name->valuestring, j_agent_ip->valuestring);
                         OSHash_Delete(agents_to_alert_hash, agent_hash_node->key);
-                        os_free(agent_name_ip);
                     }
                 }
         } else {
@@ -144,7 +123,7 @@ void monitor_agents_deletion(){
                         os_strdup(j_agent_name->valuestring, agent_name_ip);
                         wm_strcat(&agent_name_ip, j_agent_ip->valuestring, '-');
                         if(!delete_old_agent(agent_name_ip)){
-                            monitor_send_deletion_msg(agent_name_ip);
+                            minfo(OS_AG_REMOVED, agents_array[i], j_agent_name->valuestring);
                         }
                         os_free(agent_name_ip);
                     }
@@ -214,42 +193,4 @@ int delete_old_agent(const char *agent) {
     }
 
     return val;
-}
-
-int mon_send_agent_msg(char *agent, char *msg) {
-    char header[OS_SIZE_256];
-    char ag_name[OS_SIZE_128];
-    int ag_id;
-    char *ag_ip = NULL;
-    char *found = agent;
-    size_t name_size;
-
-    while (found = strchr(found, '-'), found) {
-        ag_ip = ++found;
-    }
-
-    if (!ag_ip) {
-        return 1;
-    }
-
-    if (name_size = strlen(agent) - strlen(ag_ip), name_size > OS_SIZE_128) {
-        return 1;
-    }
-
-    snprintf(ag_name, name_size, "%s", agent);
-
-    if (ag_id = wdb_find_agent(ag_name, ag_ip, NULL), ag_id > 0) {
-
-        snprintf(header, OS_SIZE_256, "[%03d] (%s) %s", ag_id, ag_name, ag_ip);
-        if (SendMSG(mond.a_queue, msg, header, SECURE_MQ) < 0) {
-            mond.a_queue = -1;  // set an invalid fd so we can attempt to reconnect later on.
-            mdebug1(QUEUE_SEND);
-            return 1;
-        }
-        return 0;
-    } else if (ag_id == -2) {
-        return 2;
-    }
-
-    return 1;
 }

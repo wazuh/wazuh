@@ -90,45 +90,6 @@ int teardown_monitord(void **state) {
 
 // Tests
 
-/* Tests monitor_send_deletion_msg */
-
-void test_monitor_send_deletion_msg_success(void **state) {
-    char *agent = "Agent1-any";
-    char msg_to_send[OS_SIZE_1024];
-
-    snprintf(msg_to_send, OS_SIZE_1024, OS_AG_REMOVED, agent);
-    mond.a_queue = 1;
-
-    expect_string(__wrap_SendMSG, message, msg_to_send);
-    expect_string(__wrap_SendMSG, locmsg, ARGV0);
-    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
-    will_return(__wrap_SendMSG, 1);
-
-    monitor_send_deletion_msg(agent);
-
-    assert_int_equal(1, mond.a_queue);
-}
-
-void test_monitor_send_deletion_msg_fail(void **state) {
-    char *agent = "Agent1-any";
-    char msg_to_send[OS_SIZE_1024];
-
-    snprintf(msg_to_send, OS_SIZE_1024, OS_AG_REMOVED, agent);
-    mond.a_queue = 1;
-
-    expect_string(__wrap_SendMSG, message, msg_to_send);
-    expect_string(__wrap_SendMSG, locmsg, ARGV0);
-    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
-    will_return(__wrap_SendMSG, -1);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not generate removed agent alert for 'Agent1-any'");
-    expect_string(__wrap__mdebug1, formatted_msg, QUEUE_SEND);
-
-    monitor_send_deletion_msg(agent);
-
-    assert_int_equal(-1, mond.a_queue);
-}
-
 /* Tests monitor_send_disconnection_msg */
 
 void test_monitor_send_disconnection_msg_success(void **state) {
@@ -529,9 +490,6 @@ int main()
 {
     const struct CMUnitTest tests[] =
     {
-        /* Tests monitor_send_deletion_msg */
-        cmocka_unit_test_setup_teardown(test_monitor_send_deletion_msg_success, setup_monitord, teardown_monitord),
-        cmocka_unit_test_setup_teardown(test_monitor_send_deletion_msg_fail, setup_monitord, teardown_monitord),
         /* Tests monitor_send_disconnection_msg */
         cmocka_unit_test_setup_teardown(test_monitor_send_disconnection_msg_success, setup_monitord, teardown_monitord),
         cmocka_unit_test_setup_teardown(test_monitor_send_disconnection_msg_send_msg_fail, setup_monitord, teardown_monitord),
