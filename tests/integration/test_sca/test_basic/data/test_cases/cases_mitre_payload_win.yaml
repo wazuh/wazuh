@@ -1,0 +1,10 @@
+- name: '"CIS Windows with MITRE" policy'
+  description: Run a SCA scan with a policy containing MITRE ATT&CK data and verify the event payload contains the MITRE object with expected tactics and techniques.
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: 5
+    POLICY_FILE: cis_win_mitre.yaml
+  metadata:
+    policy_file: cis_win_mitre.yaml
+    mitre_tactics: ["TA0005"]
+    mitre_techniques: ["T1005"]

@@ -254,6 +254,7 @@ TEST_F(SCAEventHandlerTest, GetChecksForPolicy)
                         "reason",
                         "condition",
                         "compliance",
+                        "mitre",
                         "rules",
                         "version"
                     }
@@ -293,7 +294,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput1)
                         {"rationale", "Security best practices"},
                         {"status", "passed"},
                         {"condition", "all"},
-                        {"compliance", {"cis:1.1", "pci_dss:2.2"}},
+                        {"compliance", {{"pci_dss", {"7.1"}}, {"gdpr", {"32"}}}},
                         {"remediation", "Enable the firewall service"},
                         {"refs", "Ref1, Ref2"},
                         {"rules", {"Rule1", "Rule2"}}
@@ -355,7 +356,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput2)
                 {"rationale", "Security best practices"},
                 {"status", "passed"},
                 {"condition", "all"},
-                {"compliance", {"cis:1.1", "pci_dss:2.2"}},
+                {"compliance", {{"pci_dss", {"7.1"}}, {"gdpr", {"32"}}}},
                 {"remediation", "Enable the firewall service"},
                 {"refs", "Ref1, Ref2"},
                 {"rules", {"Rule1", "Rule2"}}
@@ -410,7 +411,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_WithVersion)
                 {"rationale", "Ensures version is properly tracked"},
                 {"status", "passed"},
                 {"condition", "all"},
-                {"compliance", {"cis:1.1"}},
+                {"compliance", {{"pci_dss", {"7.1"}}}},
                 {"remediation", "No remediation needed"},
                 {"refs", "Ref1, Ref2"},
                 {"rules", {"Rule1"}},
@@ -515,7 +516,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput1)
                     {   {"checksum", "abc123"},
                         {"id", "chk1"},
                         {"result", "passed"},
-                        {"compliance", {"cis:1.1", "cis_csc:13", "pci_dss:2.2", "tsc:CC6"}},
+                        {"compliance", {{"pci_dss", {"2.2"}}, {"tsc", {"CC6"}}}},
                         {"condition", "all"},
                         {"description", "Description of cramfs filesystem."},
                         {"rationale", "Disable unneeded filesystem types to reduce attack surface."},
@@ -584,7 +585,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput2)
             {   {"checksum", "abc123"},
                 {"id", "chk1"},
                 {"result", "failed"},
-                {"compliance", {"cis:1.2", "pci_dss:1.1"}},
+                {"compliance", {{"pci_dss", {"1.1"}}, {"gdpr", {"32"}}}},
                 {"condition", "any"},
                 {"description", "Short check description"},
                 {"rationale", "Minimize risk"},
@@ -713,7 +714,7 @@ TEST_F(SCAEventHandlerTest, NormalizeCheck)
 {
     nlohmann::json check = {{"id", "1234"},
         {"refs", "ref1, ref2"},
-        {"compliance", "cis:1.1.1, cis:1.1.2"},
+        {"compliance", R"({"pci_dss":["7.1","7.2"]})"},
         {"rules", "rule1, rule2"},
         {"policy_id", "my_policy"}
     };
@@ -727,8 +728,22 @@ TEST_F(SCAEventHandlerTest, NormalizeCheck)
     ASSERT_TRUE(check.contains("rules"));
 
     EXPECT_EQ(check["references"], nlohmann::json::array({"ref1", "ref2"}));
-    EXPECT_EQ(check["compliance"], nlohmann::json::array({"cis:1.1.1", "cis:1.1.2"}));
+    EXPECT_TRUE(check["compliance"].is_object());
+    EXPECT_EQ(check["compliance"]["pci_dss"], nlohmann::json({"7.1", "7.2"}));
     EXPECT_EQ(check["rules"], nlohmann::json::array({"rule1", "rule2"}));
+}
+
+TEST_F(SCAEventHandlerTest, NormalizeCheck_InvalidComplianceJson)
+{
+    nlohmann::json check = {{"id", "1234"},
+        {"compliance", "not valid json"},
+        {"rules", "rule1"}
+    };
+
+    handler->NormalizeCheck(check);
+
+    EXPECT_FALSE(check.contains("compliance"));
+    ASSERT_TRUE(check.contains("rules"));
 }
 
 TEST_F(SCAEventHandlerTest, NormalizePolicy)
@@ -1619,6 +1634,95 @@ TEST_F(SCAEventHandlerTest, ValidateAndHandleStatefulMessage_ValidationFailure)
         // Validator not initialized, should return true (skip validation)
         EXPECT_TRUE(result);
     }
+}
+
+TEST_F(SCAEventHandlerTest, ValidateAndHandleStatefulMessage_ValidComplianceAndMitre)
+{
+    auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
+
+    try
+    {
+        validatorFactory.initialize();
+    }
+    catch (const std::exception& e)
+    {
+        GTEST_SKIP() << "Schemas not available for validation test: " << e.what();
+    }
+
+    if (!validatorFactory.isInitialized() || !validatorFactory.getValidator("wazuh-states-sca"))
+    {
+        GTEST_SKIP() << "SCA schema validator not available";
+    }
+
+    nlohmann::json validEvent =
+    {
+        {
+            "check",
+            {   {"id", "check001"},
+                {"name", "Ensure SSH is configured"},
+                {"result", "passed"},
+                {"condition", "all"},
+                {"compliance", {{"pci_dss", {"7.1", "7.2"}}, {"nist_800_53", {"CM.6"}}}},
+                {"mitre", {{"tactic", {"TA0005"}}, {"technique", {"T1548"}}}},
+                {"rules", {"f:/etc/ssh/sshd_config -> r:PermitRootLogin no"}}
+            }
+        },
+        {"policy", {{"id", "unix_audit"}, {"name", "Unix Audit"}, {"file", "unix_audit.yml"}}},
+        {"state", {{"modified_at", "2025-01-01T00:00:00Z"}}},
+        {"checksum", {{"hash", {{"sha1", "abc123def456abc123def456abc123def456abc1"}}}}}
+    };
+
+    nlohmann::json checkData = {{"id", "check001"}, {"policy_id", "unix_audit"}};
+    std::vector<nlohmann::json> failedChecks;
+
+    bool result = handler->ValidateAndHandleStatefulMessage(validEvent, "test context", checkData, &failedChecks);
+
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(failedChecks.empty());
+}
+
+TEST_F(SCAEventHandlerTest, ValidateAndHandleStatefulMessage_MitreAttackInComplianceIsRejected)
+{
+    auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
+
+    try
+    {
+        validatorFactory.initialize();
+    }
+    catch (const std::exception& e)
+    {
+        GTEST_SKIP() << "Schemas not available for validation test: " << e.what();
+    }
+
+    if (!validatorFactory.isInitialized() || !validatorFactory.getValidator("wazuh-states-sca"))
+    {
+        GTEST_SKIP() << "SCA schema validator not available";
+    }
+
+    // Old format: mitre stored inside compliance as mitre_attack — not a valid key in new schema
+    nlohmann::json invalidEvent =
+    {
+        {
+            "check",
+            {   {"id", "check001"},
+                {"name", "Ensure SSH is configured"},
+                {"result", "passed"},
+                {"condition", "all"},
+                {"compliance", {{"mitre_attack", {{"tactic", {"TA0005"}}}}}}
+            }
+        },
+        {"policy", {{"id", "unix_audit"}, {"name", "Unix Audit"}, {"file", "unix_audit.yml"}}},
+        {"state", {{"modified_at", "2025-01-01T00:00:00Z"}}},
+        {"checksum", {{"hash", {{"sha1", "abc123def456abc123def456abc123def456abc1"}}}}}
+    };
+
+    nlohmann::json checkData = {{"id", "check001"}, {"policy_id", "unix_audit"}};
+    std::vector<nlohmann::json> failedChecks;
+
+    bool result = handler->ValidateAndHandleStatefulMessage(invalidEvent, "test context", checkData, &failedChecks);
+
+    EXPECT_FALSE(result);
+    EXPECT_FALSE(failedChecks.empty());
 }
 
 int main(int argc, char** argv)

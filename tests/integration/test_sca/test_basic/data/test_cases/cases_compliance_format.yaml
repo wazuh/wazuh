@@ -1,0 +1,75 @@
+- name: 'valid_keys'
+  description: SCA scan with valid compliance keys in new flat-object format
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: 3600
+    POLICY_FILE: cis_lin_compliance_valid_keys.yaml
+  metadata:
+    policy_file: cis_lin_compliance_valid_keys.yaml
+    results: 2
+    scenario: valid_keys
+    checks:
+      - id: '99001'
+        expected_compliance_keys:
+          - gdpr
+          - nist_800_53
+          - pci_dss
+        unexpected_compliance_keys: []
+        invalid_key_warnings: []
+      - id: '99002'
+        expected_compliance_keys:
+          - cmmc
+          - fedramp
+          - gdpr
+          - hipaa
+          - iso_27001
+          - nis2
+          - nist_800_171
+          - nist_800_53
+          - pci_dss
+          - tsc
+        unexpected_compliance_keys: []
+        invalid_key_warnings: []
+
+- name: 'invalid_keys'
+  description: SCA scan with mix of valid and invalid compliance keys
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: 3600
+    POLICY_FILE: cis_lin_compliance_invalid_keys.yaml
+  metadata:
+    policy_file: cis_lin_compliance_invalid_keys.yaml
+    results: 1
+    scenario: invalid_keys
+    checks:
+      - id: '99010'
+        expected_compliance_keys:
+          - iso_27001
+          - nist_800_53
+          - pci_dss
+        unexpected_compliance_keys:
+          - cis
+          - cis_csc_v8
+          - pci_dss_v3.2.1
+          - soc_2
+        invalid_key_warnings:
+          - cis
+          - cis_csc_v8
+          - pci_dss_v3.2.1
+          - soc_2
+
+- name: 'old_format'
+  description: SCA scan with old array-of-objects compliance format
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: 3600
+    POLICY_FILE: cis_lin_compliance_old_format.yaml
+  metadata:
+    policy_file: cis_lin_compliance_old_format.yaml
+    results: 1
+    scenario: old_format
+    checks:
+      - id: '99020'
+        expected_compliance_keys: []
+        unexpected_compliance_keys: []
+        invalid_key_warnings: []

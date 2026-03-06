@@ -340,4 +340,118 @@ TEST_F(PolicyParserTest, VariableReplacementInRules)
     EXPECT_GT(rules.size(), 0);
 }
 
+TEST_F(PolicyParserTest, ComplianceValidation_ValidKeysKeptInvalidKeysRemoved)
+{
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json
+    {
+        return nlohmann::json::parse(R"({
+            "policy": {
+                "id": "compliance_test_policy"
+            },
+            "checks": [
+                {
+                    "id": "check1",
+                    "title": "Compliance Check",
+                    "condition": "all",
+                    "rules": ["f: /etc/passwd exists"],
+                    "compliance": {
+                        "pci_dss": ["6.2", "11.3"],
+                        "gdpr": ["32"],
+                        "invalid_key": ["value"],
+                        "another_bad_key": ["value2"]
+                    }
+                }
+            ]
+        })");
+    };
+
+    PolicyParser parser("dummy.yaml", 30, false, mockYamlToJson);
+    nlohmann::json j;
+    const auto policyOpt = parser.ParsePolicy(j);
+
+    ASSERT_TRUE(policyOpt);
+    ASSERT_EQ(j["checks"].size(), 1);
+
+    const auto& compliance = j["checks"][0]["compliance"];
+    EXPECT_TRUE(compliance.is_object());
+    EXPECT_TRUE(compliance.contains("pci_dss"));
+    EXPECT_TRUE(compliance.contains("gdpr"));
+    EXPECT_FALSE(compliance.contains("invalid_key"));
+    EXPECT_FALSE(compliance.contains("another_bad_key"));
+    EXPECT_EQ(compliance["pci_dss"], nlohmann::json({"6.2", "11.3"}));
+    EXPECT_EQ(compliance["gdpr"], nlohmann::json({"32"}));
+}
+
+TEST_F(PolicyParserTest, ComplianceValidation_AllValidKeys)
+{
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json
+    {
+        return nlohmann::json::parse(R"({
+            "policy": {
+                "id": "all_valid_policy"
+            },
+            "checks": [
+                {
+                    "id": "check1",
+                    "title": "All Valid Keys",
+                    "condition": "all",
+                    "rules": ["f: /etc/passwd exists"],
+                    "compliance": {
+                        "cmmc": ["v1"],
+                        "fedramp": ["v2"],
+                        "gdpr": ["v3"],
+                        "hipaa": ["v4"],
+                        "iso_27001": ["v5"],
+                        "nis2": ["v6"],
+                        "nist_800_171": ["v7"],
+                        "nist_800_53": ["v8"],
+                        "pci_dss": ["v9"],
+                        "tsc": ["v10"]
+                    }
+                }
+            ]
+        })");
+    };
+
+    PolicyParser parser("dummy.yaml", 30, false, mockYamlToJson);
+    nlohmann::json j;
+    const auto policyOpt = parser.ParsePolicy(j);
+
+    ASSERT_TRUE(policyOpt);
+    ASSERT_EQ(j["checks"].size(), 1);
+
+    const auto& compliance = j["checks"][0]["compliance"];
+    EXPECT_TRUE(compliance.is_object());
+    EXPECT_EQ(compliance.size(), 10);
+}
+
+TEST_F(PolicyParserTest, ComplianceValidation_NonObjectComplianceRemoved)
+{
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json
+    {
+        return nlohmann::json::parse(R"({
+            "policy": {
+                "id": "array_compliance_policy"
+            },
+            "checks": [
+                {
+                    "id": "check1",
+                    "title": "Array Compliance",
+                    "condition": "all",
+                    "rules": ["f: /etc/passwd exists"],
+                    "compliance": [{"pci_dss_3.2.1": ["7.1"]}]
+                }
+            ]
+        })");
+    };
+
+    PolicyParser parser("dummy.yaml", 30, false, mockYamlToJson);
+    nlohmann::json j;
+    const auto policyOpt = parser.ParsePolicy(j);
+
+    ASSERT_TRUE(policyOpt);
+    ASSERT_EQ(j["checks"].size(), 1);
+    EXPECT_FALSE(j["checks"][0].contains("compliance"));
+}
+
 // NOLINTEND(bugprone-exception-escape)

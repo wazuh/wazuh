@@ -18,7 +18,7 @@ class SCAChecksumIntegrationTest : public ::testing::Test
                 {"remediation", "Fix any integration issues"},
                 {"refs", "https://integration.test"},
                 {"condition", "all"},
-                {"compliance", "TEST_STANDARD"},
+                {"compliance", R"({"pci_dss":["3.2.1"]})"},
                 {"rules", "file:/etc/test -> exists"}
             };
         }
@@ -40,7 +40,8 @@ class SCAChecksumTest : public ::testing::Test
                 {"remediation", "Steps to remediate the issue"},
                 {"refs", "https://example.com/ref1,https://example.com/ref2"},
                 {"condition", "all"},
-                {"compliance", "PCI_DSS_3.2.1"},
+                {"compliance", R"({"pci_dss":["3.2.1"]})"},
+                {"mitre", "{\"tactic\":[\"TA0005\"],\"technique\":[\"T1548\"]}"},
                 {"rules", "file:$SSH_CONFIG -> exists"}
             };
 
@@ -88,7 +89,8 @@ TEST_F(SCAChecksumTest, CalculateChecksumFromFields_ValidData_ReturnsNonEmptyStr
                                                   "Steps to remediate the issue",
                                                   "https://example.com/ref1,https://example.com/ref2",
                                                   "all",
-                                                  "PCI_DSS_3.2.1",
+                                                  R"({"pci_dss":["3.2.1"]})",
+                                                  "{\"tactic\":[\"TA0005\"],\"technique\":[\"T1548\"]}",
                                                   "file:$SSH_CONFIG -> exists",
                                                   "");
 
@@ -98,7 +100,7 @@ TEST_F(SCAChecksumTest, CalculateChecksumFromFields_ValidData_ReturnsNonEmptyStr
 
 TEST_F(SCAChecksumTest, CalculateChecksumFromFields_EmptyStrings_ReturnsNonEmptyString)
 {
-    std::string checksum = sca::calculateChecksum("", "", "", "", "", "", "", "", "", "", "");
+    std::string checksum = sca::calculateChecksum("", "", "", "", "", "", "", "", "", "", "", "");
 
     EXPECT_FALSE(checksum.empty());
     EXPECT_EQ(checksum.length(), 40);
@@ -125,6 +127,7 @@ TEST_F(SCAChecksumTest, ConsistentResults_JSONAndFieldsProduceSameChecksum)
                                                             sampleCheckData["refs"],
                                                             sampleCheckData["condition"],
                                                             sampleCheckData["compliance"],
+                                                            sampleCheckData["mitre"],
                                                             sampleCheckData["rules"],
                                                             sampleCheckData.value("regex_type", ""));
 
@@ -145,8 +148,8 @@ TEST_F(SCAChecksumTest, DifferentData_ProducesDifferentChecksums)
 TEST_F(SCAChecksumTest, SensitiveToFieldOrder_DifferentFieldOrderProducesDifferentChecksums)
 {
     // Test that changing field values affects the checksum
-    std::string checksum1 = sca::calculateChecksum("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "");
-    std::string checksum2 = sca::calculateChecksum("b", "a", "c", "d", "e", "f", "g", "h", "i", "j", "");
+    std::string checksum1 = sca::calculateChecksum("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "");
+    std::string checksum2 = sca::calculateChecksum("b", "a", "c", "d", "e", "f", "g", "h", "i", "j", "k", "");
 
     EXPECT_NE(checksum1, checksum2);
 }
@@ -187,7 +190,7 @@ TEST_F(SCAChecksumTest, SpecialCharacters_HandledCorrectly)
         {"remediation", "Remediation with unicode: αβγδε"},
         {"refs", "ref1;ref2,ref3|ref4"},
         {"condition", "any || all"},
-        {"compliance", "PCI_DSS_3.2.1 && NIST_800_53"},
+        {"compliance", R"({"pci_dss":["3.2.1"],"nist_800_53":["SC-13"]})"},
         {"rules", "command[bash] -> 'echo test' contains 'test'"}
     };
 
@@ -257,6 +260,7 @@ TEST_F(SCAChecksumIntegrationTest, ChecksumEquivalence_JSONAndFieldsMatch)
                                                        sampleCheck.value("refs", ""),
                                                        sampleCheck.value("condition", ""),
                                                        sampleCheck.value("compliance", ""),
+                                                       sampleCheck.value("mitre", ""),
                                                        sampleCheck.value("rules", ""),
                                                        sampleCheck.value("regex_type", ""));
 
