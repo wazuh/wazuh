@@ -68,7 +68,6 @@ typedef enum crypto_type {
 #include "wm_syscollector.h"
 #include "wm_command.h"
 #include "wm_aws.h"
-#include "wm_download.h"
 #include "wm_azure.h"
 #include "wm_docker.h"
 #include "wm_sca.h"

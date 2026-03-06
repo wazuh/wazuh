@@ -146,8 +146,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 // Database socket
 #define WDB_LOCAL_SOCK "queue/db/wdb"
 
-#define WM_DOWNLOAD_SOCK "queue/sockets/download"
-
 // Tasks socket
 #define WM_UPGRADE_SOCK "queue/tasks/upgrade"
 

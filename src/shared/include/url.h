@@ -64,7 +64,4 @@ int wurl_request_bz2(const char * url, const char * dest, const char * header, c
 int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);
 #endif
 
-/* Check download module availability */
-int wurl_check_connection();
-
 #endif /* CUSTOM_OUTPUT_SEARCH_H_ */
