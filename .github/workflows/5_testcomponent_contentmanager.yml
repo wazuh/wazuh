@@ -13,7 +13,7 @@ on:
 
 jobs:
   contentmanager-modules:
-    runs-on: ubuntu-22.04
+    runs-on: wz-linux-amd64
     steps:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
@@ -47,7 +47,7 @@ jobs:
   contentmanager-asan:
     strategy:
       matrix:
-        os: [ ubuntu-24.04, ubuntu-22.04 ]
+        os: [ wz-linux-amd64, wz-linux-amd64 ]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Cancel previous runs

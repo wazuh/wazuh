@@ -25,7 +25,7 @@ concurrency:
 jobs:
   inventory-sync-integration-tests:
     name: inventory-sync-integration-tests
-    runs-on: ubuntu-22.04
+    runs-on: wz-linux-amd64
 
     # Service containers to run alongside the job
     services:

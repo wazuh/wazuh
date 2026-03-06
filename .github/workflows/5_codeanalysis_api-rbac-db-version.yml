@@ -10,7 +10,7 @@ on:
 
 jobs:
   guard:
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
