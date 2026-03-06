@@ -947,7 +947,7 @@ JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
 ROCKSDB_LIB = $(EXTERNAL_ROCKSDB)build/librocksdb.so
 FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
 LZMA_LIB = $(EXTERNAL_LZMA)build/liblzma.a
-LUA_LIB = ${EXTERNAL_LUA}install/lib/liblua.a
+LUA_LIB = ${EXTERNAL_LUA}liblua.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
@@ -1302,27 +1302,7 @@ $(POPT_BUILD_DIR)Makefile:
 ### lua lib ###
 
 $(LUA_LIB):
-ifeq (${TARGET},winagent)
-	cd ${EXTERNAL_LUA} && make mingw CC=${MING_BASE}${CC} MYCFLAGS='-fPIC' && make local TO_BIN='lua.exe luac.exe'
-else
-ifeq (${uname_S},Darwin)
-	cd ${EXTERNAL_LUA} && make macosx MYCFLAGS='-fPIC' && make local
-else
-ifeq (${uname_S},SunOS)
-	cd ${EXTERNAL_LUA} && gmake solaris MYCFLAGS='-fPIC' && gmake local INSTALL='cp -p' INSTALL_EXEC='cp -p' INSTALL_DATA='cp -p'
-else
-ifeq ($(findstring BSD,${uname_S}), BSD)
-	cd ${EXTERNAL_LUA} && make bsd MYCFLAGS='-fPIC' && make local
-else
-ifeq (${uname_S},AIX)
-	cd ${EXTERNAL_LUA} && make aix MYCFLAGS='-fPIC' && make local
-else
-	cd ${EXTERNAL_LUA} && make posix MYCFLAGS='-fPIC' && make local
-endif
-endif
-endif
-endif
-endif
+	cd ${EXTERNAL_LUA} && ${MAKE} all MYCFLAGS='-fPIC -DLUA_USE_LINUX' MYLIBS='-lm -ldl'
 
 ### rpm lib ###
 
@@ -1368,7 +1348,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 4.10.4
+DEPS_VERSION = 4.10.4-test
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
