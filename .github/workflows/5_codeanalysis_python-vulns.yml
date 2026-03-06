@@ -1,9 +1,8 @@
-name: 5.X - 'Python vulnerability checks'
-
+name: 5.X - Python vulnerability checks
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 0'
+    - cron: '0 0 * * *'
 jobs:
   pick-branches:
     name: Get branches to analyze
