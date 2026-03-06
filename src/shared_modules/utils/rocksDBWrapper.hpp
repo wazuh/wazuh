@@ -75,7 +75,11 @@ namespace Utils
                                  const bool enableWal = true,
                                  const bool repairIfCorrupt = true,
                                  const bool useSharedBuffers = false,
-                                 const bool useCompression = false)
+                                 const bool useCompression = false,
+                                 int compressionLevel = 3,
+                                 int compressionParallelThreads = 1,
+                                 int background_jobs = 2,
+                                 int maxSubCompactions = 1)
             : m_enableWal {enableWal}
             , m_path {std::move(dbPath)}
         {
@@ -92,14 +96,16 @@ namespace Utils
                 m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
             }
 
-            rocksdb::Options options = RocksDBOptions::buildDBOptions(m_writeManager, m_readCache);
+            rocksdb::Options options =
+                RocksDBOptions::buildDBOptions(m_writeManager, m_readCache, background_jobs, maxSubCompactions);
             rocksdb::ColumnFamilyOptions columnFamilyOptions = RocksDBOptions::buildColumnFamilyOptions(m_readCache);
             rocksdb::ColumnFamilyOptions defaultColumnOptions = RocksDBOptions::buildColumnFamilyOptions(m_readCache);
 
             if (useCompression)
             {
                 defaultColumnOptions.bottommost_compression = rocksdb::kZSTD;
-                defaultColumnOptions.bottommost_compression_opts.level = 3;
+                defaultColumnOptions.bottommost_compression_opts.level = compressionLevel;
+                defaultColumnOptions.bottommost_compression_opts.parallel_threads = compressionParallelThreads;
                 defaultColumnOptions.bottommost_compression_opts.enabled = true;
             }
 

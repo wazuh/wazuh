@@ -70,7 +70,9 @@ namespace Utils
          * @return rocksdb::Options DB options.
          */
         static rocksdb::Options buildDBOptions(const std::shared_ptr<rocksdb::WriteBufferManager>& writeManager,
-                                               const std::shared_ptr<rocksdb::Cache>& readCache)
+                                               const std::shared_ptr<rocksdb::Cache>& readCache,
+                                               int background_jobs = 2,
+                                               int maxSubCompactions = 1)
         {
             if (writeManager == nullptr)
             {
@@ -101,7 +103,10 @@ namespace Utils
             options.write_buffer_size = ROCKSDB_WRITE_BUFFER_SIZE;
             // The maximum number of write buffers that are built up in memory.
             options.max_write_buffer_number = ROCKSDB_MAX_WRITE_BUFFER_NUMBER;
-
+            // The maximum number of background jobs to run. These jobs can be either flush or compaction jobs.
+            options.max_background_jobs = background_jobs;
+            // The maximum number of subcompactions to run in parallel for a single compaction job.
+            options.max_subcompactions = maxSubCompactions;
             // The size of the LRU cache used to prevent cold reads.
             options.table_factory.reset(NewBlockBasedTableFactory(buildTableOptions(readCache)));
             return options;

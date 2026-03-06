@@ -859,8 +859,24 @@ void IndexerConnector::preInitialization(
         throw std::runtime_error("Index name must be lowercase: " + m_indexName);
     }
 
-    m_db = std::make_unique<Utils::RocksDBWrapper>(
-        std::string(DATABASE_BASE_PATH) + "db/" + m_indexName, true, true, true, true);
+    auto rocksDBBackgroundJobs =
+        config.contains("rocksDBBackgroundJobs") ? config.at("rocksDBBackgroundJobs").get<int>() : 2;
+    auto rocksDBCompressionLevel =
+        config.contains("rocksDBCompressionLevel") ? config.at("rocksDBCompressionLevel").get<int>() : 3;
+    auto rocksDBCompressionParallelThreads = config.contains("rocksDBCompressionParallelThreads")
+                                                 ? config.at("rocksDBCompressionParallelThreads").get<int>()
+                                                 : 1;
+    auto rocksDBMaxSubCompactions =
+        config.contains("rocksDBMaxSubCompactions") ? config.at("rocksDBMaxSubCompactions").get<int>() : 1;
+    m_db = std::make_unique<Utils::RocksDBWrapper>(std::string(DATABASE_BASE_PATH) + "db/" + m_indexName,
+                                                   true,
+                                                   true,
+                                                   true,
+                                                   true,
+                                                   rocksDBCompressionLevel,
+                                                   rocksDBCompressionParallelThreads,
+                                                   rocksDBBackgroundJobs,
+                                                   rocksDBMaxSubCompactions);
 }
 
 IndexerConnector::IndexerConnector(
