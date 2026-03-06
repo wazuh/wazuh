@@ -58,7 +58,7 @@ jobs:
           fail-build: false
 
       - name: Upload scan results to GitHub
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           ref: refs/heads/${{ matrix.ref }}
           sha: ${{ matrix.sha }}
