@@ -71,11 +71,6 @@ defaultwhitelist="Domyślna biała lista dla aktywnej ochrony:"
 addwhite="Czy chcesz dodać więcej adresów IP do białej listy?"
 ipswhite="Adresy IP (część oddzielona): "
 
-# Część 3.5/server/local
-syslog="Czy chcesz uaktywnić zdalnego syslog'a (port 514 udp)?"
-nosyslog="Zdalny syslog wyłączony"
-yessyslog="Zdalny syslog włączony"
-
 # Część 3.4/3.5
 readlogs="Ustawianie konfiguracji do analizy następujących logów:"
 

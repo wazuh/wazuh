@@ -70,11 +70,6 @@ defaultwhitelist="Lista blanca para respuesta activa por omisión:"
 addwhite="Desea agregar más IPs a la lista blanca?"
 ipswhite="IPs (lista separada por espacios): "
 
-# Part 3.5/server/local
-syslog="¿Desea habilitar syslog remoto (puerto 514 udp)?"
-nosyslog="Syslog remoto deshabilitado"
-yessyslog="Syslog remoto habilitado"
-
 # Part 3.4/3.5
 readlogs="Estableciendo la configuración para analizar los siguientes registros:"
 

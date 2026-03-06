@@ -353,10 +353,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DEFAULT_SECURE 1514 /* Default encrypted */
 #endif
 
-#ifndef DEFAULT_SYSLOG
-#define DEFAULT_SYSLOG 514 /* Default syslog port - udp */
-#endif
-
 #ifndef O_CLOEXEC
 #define O_CLOEXEC 0
 #endif

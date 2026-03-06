@@ -72,12 +72,6 @@ defaultwhitelist="Lista de endereços que não serão bloqueados pela resposta a
 addwhite="Deseja adicionar mais algum endereço a essa lista?"
 ipswhite="Endereços de IP (separados por espaço): "
 
-
-# Parte 3.5/servidor/local
-syslog="Deseja habilitar o syslog remoto (514 udp)?"
-nosyslog="Syslog desabilitado"
-yessyslog="Syslog habilitado"
-
 # Parte 3.4/3.5
 readlogs="Ajustando a configuração para analisar os seguintes logs:"
 

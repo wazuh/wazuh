@@ -74,11 +74,6 @@ defaultwhitelist="Default white list for the active response:"
 addwhite="Do you want to add more IPs to the white list?"
 ipswhite="IPs (space separated): "
 
-# Part 3.5/server/local
-syslog="Do you want to enable remote syslog (port 514 udp)?"
-nosyslog="Remote syslog disabled"
-yessyslog="Remote syslog enabled"
-
 # Part 3.4/3.5
 readlogs="Setting the configuration to analyze the following logs:"
 
