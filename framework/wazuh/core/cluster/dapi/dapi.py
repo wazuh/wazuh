@@ -14,6 +14,7 @@ from collections import defaultdict
 from concurrent.futures import process, ProcessPoolExecutor
 from copy import copy, deepcopy
 from functools import reduce, partial
+from importlib import import_module
 from operator import or_
 from typing import Callable, Dict, Tuple, List
 
@@ -32,10 +33,79 @@ from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.pyDaemonModule import spawn_process_pool_worker, API_AUTHENTICATION_PROCESS
 from wazuh.core.wazuh_socket import wazuh_sendsync
+from wazuh.rbac.orm import AuthenticationManager, UserRolesManager
+from wazuh.rbac.preprocessor import optimize_resources
 
 
 authentication_funcs = {'check_token', 'check_user_master', 'get_permissions', 'get_security_conf'}
 events_funcs = {'send_event_to_analysisd'}
+SECURITY_CONFIG_PATH = os.path.join(common.SECURITY_PATH, 'security.yaml')
+ALLOWED_DAPI_CALLABLE_PACKAGES = frozenset(c_common.ALLOWED_CALLABLES_PACKAGES)
+
+def _resolve_callable_target(module_path: str, func_name: str, qualname: str) -> Callable:
+    """Resolve encoded callable target (module function or class static method)."""
+    relative_mod = module_path.removeprefix(f"{module_path.split('.')[0]}")
+    module = import_module(relative_mod, package=module_path.split('.')[0])
+
+    qualname_parts = qualname.split('.') if qualname else [func_name]
+    classname = qualname_parts[0] if len(qualname_parts) > 1 else None
+
+    if classname is None:
+        return getattr(module, func_name)
+
+    return getattr(getattr(module, classname), func_name)
+
+
+def _resolve_allowed_dapi_callable(encoded_callable: Dict) -> Callable:
+    """Decode a DAPI callable only if it belongs to allowed packages and public symbols."""
+    if '__wazuh__' in encoded_callable:
+        raise exception.WazuhInternalError(1000,
+                                           extra_message='Decoding bound callables from DAPI payload is not allowed',
+                                           cmd_error=True)
+
+    module_path = encoded_callable.get('__module__')
+    func_name = encoded_callable.get('__name__')
+    qualname = encoded_callable.get('__qualname__')
+
+    if not module_path or not func_name or not qualname:
+        raise exception.WazuhInternalError(1000,
+                                           extra_message='Invalid callable format in DAPI payload',
+                                           cmd_error=True)
+
+    package_name = module_path.split('.')[0]
+    if package_name not in ALLOWED_DAPI_CALLABLE_PACKAGES:
+        raise exception.WazuhInternalError(1000,
+                                           extra_message=(
+                                               f"Decoding callable from module '{module_path}' is not allowed"
+                                           ),
+                                           cmd_error=True)
+
+    if func_name.startswith('_'):
+        raise exception.WazuhInternalError(1000,
+                                           extra_message=(
+                                               f"Callable '{module_path}.{func_name}' is not allowed in DAPI payload"
+                                           ),
+                                           cmd_error=True)
+
+    resolved = _resolve_callable_target(module_path=module_path, func_name=func_name, qualname=qualname)
+    if not callable(resolved):
+        raise exception.WazuhInternalError(1000,
+                                           extra_message=f"Decoded object '{module_path}.{func_name}' is not callable",
+                                           cmd_error=True)
+
+    if resolved.__module__.split('.')[0] not in ALLOWED_DAPI_CALLABLE_PACKAGES:
+        raise exception.WazuhInternalError(1000,
+                                           extra_message=f"Decoded callable '{module_path}.{func_name}' is not allowed",
+                                           cmd_error=True)
+
+    return resolved
+
+
+def _dapi_object_hook(dct: Dict):
+    """Decode JSON objects for DAPI requests using a strict callable decoder."""
+    if '__callable__' in dct:
+        return _resolve_allowed_dapi_callable(dct['__callable__'])
+    return c_common.as_wazuh_object(dct)
 
 node_info = wazuh.core.cluster.cluster.get_node()
 pools = common.mp_pools.get()
@@ -56,7 +126,7 @@ class DistributedAPI:
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
                  broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
                  rbac_permissions: Dict = None, nodes: list = None, api_timeout: int = None,
-                 remove_denied_nodes: bool = False):
+                 remove_denied_nodes: bool = False, is_cluster_request: bool = False):
         """Class constructor.
 
         Parameters
@@ -95,6 +165,8 @@ class DistributedAPI:
             Timeout set in source API for the request
         remove_denied_nodes : bool
             Whether to remove denied (RBAC) nodes from response's failed items or not.
+        is_cluster_request : bool
+            Whether the request was received from a cluster transport channel.
         """
         self.logger = logger
         self.f = f
@@ -108,8 +180,9 @@ class DistributedAPI:
         self.from_cluster = from_cluster
         self.is_async = is_async
         self.broadcasting = broadcasting
-        self.rbac_permissions = rbac_permissions if rbac_permissions is not None else {'rbac_mode': 'black'}
+        self.is_cluster_request = is_cluster_request
         self.current_user = current_user
+        self.rbac_permissions = self._get_effective_rbac_permissions(rbac_permissions)
         self.origin_module = 'API'
         self.nodes = nodes if nodes is not None else list()
         if not basic_services:
@@ -122,6 +195,38 @@ class DistributedAPI:
         self.api_request_timeout = max(api_timeout, aconf.api_conf['intervals']['request_timeout']) \
             if api_timeout else aconf.api_conf['intervals']['request_timeout']
         self.remove_denied_nodes = remove_denied_nodes
+
+    def _get_effective_rbac_permissions(self, request_rbac_permissions: Dict = None) -> Dict:
+        """Get RBAC permissions to be used during function execution.
+
+        Cluster requests never trust `rbac_permissions` from payload and are recalculated server-side.
+        """
+        if not self.is_cluster_request:
+            return request_rbac_permissions if request_rbac_permissions is not None else {'rbac_mode': 'black'}
+
+        if not self.current_user:
+            if self.f.__name__ in authentication_funcs | events_funcs:
+                return request_rbac_permissions if request_rbac_permissions is not None else {'rbac_mode': 'black'}
+
+            raise exception.WazuhPermissionError(4000,
+                                                extra_message='Missing authenticated user for cluster DAPI request',
+                                                ids={'unknown'})
+
+        with AuthenticationManager() as auth_manager:
+            user_info = auth_manager.get_user(username=self.current_user)
+            if not user_info:
+                raise exception.WazuhPermissionError(4000,
+                                                    extra_message='User not found for cluster DAPI request',
+                                                    ids={self.current_user})
+
+        with UserRolesManager() as user_roles_manager:
+            user_roles = tuple(role.id for role in user_roles_manager.get_all_roles_from_user(user_id=user_info['id']))
+
+        effective_permissions = optimize_resources(user_roles)
+        security_conf = aconf.read_yaml_config(config_file=SECURITY_CONFIG_PATH,
+                                               default_conf=aconf.default_security_configuration)
+        effective_permissions['rbac_mode'] = security_conf['rbac_mode']
+        return effective_permissions
 
     def debug_log(self, message):
         """Use debug or debug2 depending on the log type.
@@ -702,12 +807,13 @@ class APIRequestQueue(WazuhRequestQueue):
                 continue
 
             try:
-                request = json.loads(request, object_hook=c_common.as_wazuh_object)
+                request = json.loads(request, object_hook=_dapi_object_hook)
                 self.logger.info("Receiving request: {} from {}".format(
                     request['f'].__name__, names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
                 result = await DistributedAPI(**request,
                                               logger=self.logger,
-                                              node=node).distribute_function()
+                                              node=node,
+                                              is_cluster_request=True).distribute_function()
                 task_id = await node.send_string(json.dumps(result, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
                 self.logger.error(f"Error in distributed API: {e}", exc_info=True)

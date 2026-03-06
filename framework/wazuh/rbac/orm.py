@@ -1060,7 +1060,7 @@ class RolesManager(RBACManager):
             Dictionary with the information of the role or a SecurityError code.
         """
         try:
-            role = self.session.scalars(select(Roles).filter_by(name=name).limit(1)).first()
+            role = self.session.query(Roles).filter_by(name=name).first()
             if not role:
                 return SecurityError.ROLE_NOT_EXIST
             return role.to_dict(self.session)
@@ -1081,7 +1081,7 @@ class RolesManager(RBACManager):
             Dictionary with the information of the role or a SecurityError code.
         """
         try:
-            role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
+            role = self.session.query(Roles).filter_by(id=role_id).first()
             if not role:
                 return SecurityError.ROLE_NOT_EXIST
             return role.to_dict(self.session)
@@ -1097,7 +1097,7 @@ class RolesManager(RBACManager):
             List of Roles objects or a SecurityError code.
         """
         try:
-            roles = self.session.scalars(select(Roles)).all()
+            roles = self.session.query(Roles).all()
             return roles
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
