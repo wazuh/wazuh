@@ -10,7 +10,6 @@
     request_body: >
       <wazuh_config>
         <remote>
-          <connection>secure</connection>
           <port>1514</port>
         </remote>
         <global>
@@ -46,7 +45,6 @@
 
       <wazuh_config>
         <remote>
-          <connection>secure</connection>
           <port>1514</port>
         </remote>
       </wazuh_config>
@@ -63,7 +61,6 @@
     request_body: >
       <wazuh_config>
         <remote>
-          <connection>secure</connection>
           <port>1514</port>
         </remote>
       </wazuh_config>

@@ -448,11 +448,8 @@ WriteManager()
     cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    # Remote connection secure
-    if [ "X$SLOG" = "Xyes" ]; then
-      cat ${REMOTE_SEC_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
+    cat ${REMOTE_SEC_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG

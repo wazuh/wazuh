@@ -1,12 +1,6 @@
 - sections:
     - section: remote
       elements:
-        - connection:
-            value: 'syslog'
-        - allowed-ips:
-            value: ALLOWED-IPS
-        - denied-ips:
-            value: DENIED-IPS
         - ipv6:
             value: IPV6
         - port:

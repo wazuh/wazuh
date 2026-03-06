@@ -58,7 +58,6 @@
 #define ATEXIT_ERROR    "(1144): Unable to set exit function"
 
 /* COMMON ERRORS */
-#define CONN_ERROR      "(1201): No remote connection configured."
 #define CONFIG_ERROR    "(1202): Configuration error at '%s'."
 #define USER_ERROR      "(1203): Invalid user '%s' or group '%s' given: %s (%d)"
 #define CONNTYPE_ERROR  "(1204): Invalid connection type: '%s'."
@@ -100,7 +99,6 @@
 #define INVALID_DAY     "(1241): Invalid day format: '%s'."
 #define ACCEPT_ERROR    "(1242): Couldn't accept TCP connections: %s (%d)"
 #define RECV_ERROR      "(1243): Couldn't receive message from peer: %s (%d)"
-#define DUP_SECURE      "(1244): Can't add more than one secure connection."
 #define SEND_DISCON     "(1245): Sending message to disconnected agent '%s'."
 #define SHARED_ERROR    "(1246): Unable to send file '%s' to agent ID '%s'."
 #define TCP_NOT_SUPPORT "(1247): TCP not supported for this operating system."
@@ -516,8 +514,6 @@
 #define PRIVSEP_MSG "Chrooted to directory: %s, using user: %s"
 #define MSG_SOCKET_SIZE "(unix_domain) Maximum send buffer set to: '%d'."
 
-#define NO_SYSLOG       "(1501): IP or network must be present in syslog" \
-                        " access list (allowed-ips). Syslog server disabled."
 #define CONN_TO     "Connected to '%s' (%s queue)"
 #define WAZUH_HOMEDIR "Wazuh home directory: %s"
 

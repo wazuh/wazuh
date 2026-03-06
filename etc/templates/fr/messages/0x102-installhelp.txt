@@ -3,8 +3,7 @@
 
     - Si vous choisissez 'serveur', vous pourrez analyser tous
       les logs, créer des alertes par email et leurs réponses,
-      et aussi recevoir les logs depuis les machines syslog
-      distantes et depuis les systèmes utilisant les 'agents'
+      et aussi recevoir les logs depuis les systèmes utilisant les 'agents'
       (le tranfert étant codé et envoyé jusqu'au server).
 
     - Si vous choisissez 'agent'(client), vous pourrez lire les

@@ -55,8 +55,6 @@ if [ "$1" = "conf" ] && [ "$#" -ge "4" ]; then
   ACTIVERESPONSE="yes"
   AUTHD="yes"
   SSL_CERT="yes"
-  RLOG="no" # syslog
-  SLOG="yes" # remote
 
   if [ -r "$NEWCONFIG" ]; then
       rm "$NEWCONFIG"

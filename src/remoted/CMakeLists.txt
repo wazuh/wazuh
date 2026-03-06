@@ -60,6 +60,13 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 # Collect source files
 file(GLOB REMOTED_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
 
+# Updating CMakeLists to force it updating the list of non-compiling files
+list(REMOVE_ITEM REMOTED_SRC
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/syslog.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/syslogtcp.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/test_syslogtcp.c"
+)
+
 # Build static library (without main.c) for unit tests
 list(REMOVE_ITEM REMOTED_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
 add_library(remoted_lib STATIC ${REMOTED_SRC})

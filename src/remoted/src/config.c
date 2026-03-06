@@ -86,10 +86,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 
     modules |= CREMOTE;
 
-    cfg->port = NULL;
-    cfg->conn = NULL;
-    cfg->allowips = NULL;
-    cfg->denyips = NULL;
+    cfg->port = 0;
     cfg->queue_size = 131072;
     cfg->allow_higher_versions = REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
     cfg->connection_overtake_time = 60;
@@ -157,64 +154,47 @@ cJSON *getRemoteConfig(void) {
 
     cJSON *root = cJSON_CreateObject();
     cJSON *rem = cJSON_CreateArray();
-    unsigned int i,j;
+    unsigned int j;
     char port[255] = {0};
     char queue_size[255] = {0};
 
-    if(logr.conn) {
-        for(i=0;logr.conn[i];i++){
-            cJSON *conn = cJSON_CreateObject();
-            if (logr.conn[i] == SYSLOG_CONN) cJSON_AddStringToObject(conn,"connection","syslog");
-            else if (logr.conn[i] == SECURE_CONN) cJSON_AddStringToObject(conn,"connection","secure");
-            if (logr.ipv6 && logr.ipv6[i]) cJSON_AddStringToObject(conn,"ipv6","yes"); else cJSON_AddStringToObject(conn,"ipv6","no");
-            if (logr.lip && logr.lip[i]) cJSON_AddStringToObject(conn,"local_ip",logr.lip[i]);
+    cJSON *conn = cJSON_CreateObject();
+    cJSON_AddStringToObject(conn,"connection","secure");
+    if (logr.ipv6) cJSON_AddStringToObject(conn,"ipv6","yes"); else cJSON_AddStringToObject(conn,"ipv6","no");
 
-            if (logr.proto) {
-                cJSON * proto_array = cJSON_CreateArray();
+    if (logr.lip) cJSON_AddStringToObject(conn,"local_ip",logr.lip);
 
-                /* If TCP is enabled */
-                if (logr.proto[i] & REMOTED_NET_PROTOCOL_TCP) {
-                    cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_NET_PROTOCOL_TCP_STR));
-                }
-                /* If UDP is enabled */
-                if (logr.proto[i] & REMOTED_NET_PROTOCOL_UDP) {
-                    cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_NET_PROTOCOL_UDP_STR));
-                }
-                cJSON_AddItemToObject(conn, "protocol", proto_array);
-            }
+    if (logr.proto) {
+        cJSON * proto_array = cJSON_CreateArray();
 
-            if (logr.port && logr.port[i]){
-                sprintf(port,"%d",logr.port[i]);
-                cJSON_AddStringToObject(conn,"port",port);
-            }
-            if (logr.queue_size && (logr.conn[i] == SECURE_CONN)) {
-                sprintf(queue_size,"%ld",logr.queue_size);
-                cJSON_AddStringToObject(conn,"queue_size", queue_size);
-
-                cJSON * agents = cJSON_CreateObject();
-                cJSON_AddStringToObject(agents, "allow_higher_versions", logr.allow_higher_versions ? "yes" : "no");
-                cJSON_AddItemToObject(conn, "agents", agents);
-            }
-            if (logr.allowips && (int)i!=logr.position) {
-                cJSON *list = cJSON_CreateArray();
-                for(j=0;logr.allowips[j];j++){
-                    cJSON_AddItemToArray(list,cJSON_CreateString(logr.allowips[j]->ip));
-                }
-                cJSON_AddItemToObject(conn,"allowed-ips",list);
-            }
-            if (logr.denyips && (int)i!=logr.position) {
-                cJSON *list = cJSON_CreateArray();
-                for(j=0;logr.denyips[j];j++){
-                    cJSON_AddItemToArray(list,cJSON_CreateString(logr.denyips[j]->ip));
-                }
-                cJSON_AddItemToObject(conn,"denied-ips",list);
-            }
-
-            cJSON_AddNumberToObject(conn, "connection_overtake_time", logr.connection_overtake_time);
-
-            cJSON_AddItemToArray(rem,conn);
+        /* If TCP is enabled */
+        if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
+            cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_NET_PROTOCOL_TCP_STR));
         }
+        /* If UDP is enabled */
+        if (logr.proto & REMOTED_NET_PROTOCOL_UDP) {
+            cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_NET_PROTOCOL_UDP_STR));
+        }
+        cJSON_AddItemToObject(conn, "protocol", proto_array);
     }
+
+    if (logr.port){
+        sprintf(port,"%d",logr.port);
+        cJSON_AddStringToObject(conn,"port",port);
+    }
+
+    if (logr.queue_size) {
+        sprintf(queue_size,"%ld",logr.queue_size);
+        cJSON_AddStringToObject(conn,"queue_size", queue_size);
+
+        cJSON * agents = cJSON_CreateObject();
+        cJSON_AddStringToObject(agents, "allow_higher_versions", logr.allow_higher_versions ? "yes" : "no");
+        cJSON_AddItemToObject(conn, "agents", agents);
+    }
+
+    cJSON_AddNumberToObject(conn, "connection_overtake_time", logr.connection_overtake_time);
+
+    cJSON_AddItemToArray(rem,conn);
 
     cJSON_AddItemToObject(root,"remote",rem);
 

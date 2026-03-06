@@ -27,24 +27,7 @@ char* cluster_name;
 /* Handle remote connections */
 void HandleRemote(int uid)
 {
-    const int position = logr.position;
     char * str_protocol = NULL;
-
-    /* If syslog connection and allowips is not defined, exit */
-    if (logr.conn[position] == SYSLOG_CONN) {
-        if (logr.allowips == NULL) {
-            minfo(NO_SYSLOG);
-            exit(0);
-        } else {
-            os_ip **tmp_ips;
-
-            tmp_ips = logr.allowips;
-            while (*tmp_ips) {
-                minfo("Remote syslog allowed from: '%s'", (*tmp_ips)->ip);
-                tmp_ips++;
-            }
-        }
-    }
 
     // Set resource limit for file descriptors
 
@@ -57,14 +40,14 @@ void HandleRemote(int uid)
     }
 
     /* If TCP is enabled then bind the TCP socket */
-    if (logr.proto[position] & REMOTED_NET_PROTOCOL_TCP) {
+    if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
 
-        logr.tcp_sock = OS_Bindporttcp(logr.port[position], logr.lip[position], logr.ipv6[position]);
+        logr.tcp_sock = OS_Bindporttcp(logr.port, logr.lip, logr.ipv6);
 
         if (logr.tcp_sock < 0) {
-            merror_exit(BIND_ERROR, logr.port[position], errno, strerror(errno));
+            merror_exit(BIND_ERROR, logr.port, errno, strerror(errno));
         }
-        else if (logr.conn[position] == SECURE_CONN) {
+        else {
 
             if (OS_SetKeepalive(logr.tcp_sock) < 0) {
                 merror("OS_SetKeepalive failed with error '%s'", strerror(errno));
@@ -78,12 +61,12 @@ void HandleRemote(int uid)
         }
     }
     /* If UDP is enabled then bind the UDP socket */
-    if (logr.proto[position] & REMOTED_NET_PROTOCOL_UDP) {
+    if (logr.proto & REMOTED_NET_PROTOCOL_UDP) {
         /* Using UDP. Fast, unreliable... perfect */
-        logr.udp_sock = OS_Bindportudp(logr.port[position], logr.lip[position], logr.ipv6[position]);
+        logr.udp_sock = OS_Bindportudp(logr.port, logr.lip, logr.ipv6);
 
         if (logr.udp_sock < 0) {
-            merror_exit(BIND_ERROR, logr.port[position], errno, strerror(errno));
+            merror_exit(BIND_ERROR, logr.port, errno, strerror(errno));
         }
     }
 
@@ -100,11 +83,11 @@ void HandleRemote(int uid)
 
     /* Start up message */
     // If TCP is enabled
-    if (logr.proto[position] & REMOTED_NET_PROTOCOL_TCP) {
+    if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
         wm_strcat(&str_protocol, REMOTED_NET_PROTOCOL_TCP_STR, WM_STRCAT_NO_SEPARATOR);
     }
     // If UDP is enabled
-    if (logr.proto[position] & REMOTED_NET_PROTOCOL_UDP) {
+    if (logr.proto & REMOTED_NET_PROTOCOL_UDP) {
         wm_strcat(&str_protocol, REMOTED_NET_PROTOCOL_UDP_STR, (str_protocol == NULL) ? WM_STRCAT_NO_SEPARATOR : ',');
     }
 
@@ -115,19 +98,10 @@ void HandleRemote(int uid)
 
     minfo(STARTUP_MSG " Listening on port %d/%s (%s).",
         (int)getpid(),
-        logr.port[position],
+        logr.port,
         str_protocol,
-        logr.conn[position] == SECURE_CONN ? "secure" : "syslog");
+        "secure");
     os_free(str_protocol);
 
-    /* If secure connection, deal with it */
-    if (logr.conn[position] == SECURE_CONN) {
-        HandleSecure();
-    }
-    else if (logr.proto[position] == REMOTED_NET_PROTOCOL_TCP) {
-        HandleSyslogTCP();
-    }
-    else { /* If not, deal with syslog */
-        HandleSyslog();
-    }
+    HandleSecure();
 }

@@ -746,8 +746,7 @@ stages:
         data:
           affected_items:
             - remote:
-              - connection: !anystr
-                ipv6: !anystr
+              - ipv6: !anystr
                 port: !anystr
                 protocol: !anylist
                 queue_size: !anystr
@@ -1698,7 +1697,7 @@ stages:
       method: GET
       params:
         section: "remote"
-        field: "connection"
+        field: "port"
     response:
       status_code: 200
       json:
@@ -1706,7 +1705,7 @@ stages:
         data:
           affected_items:
             - remote:
-                - connection: 'secure'
+                - port: '1514'
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0

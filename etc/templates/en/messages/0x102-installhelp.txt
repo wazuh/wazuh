@@ -3,9 +3,8 @@
 
     - If you choose 'manager', you will be able to analyze all
       the logs, create e-mail notifications and responses,
-      and also receive logs from remote syslog machines and
-      from systems running the 'agents' (from where traffic
-      is sent encrypted to the manager).
+      and also receive logs from systems running the 'agents'
+      (from where traffic is sent encrypted to the manager).
 
     - If you choose 'agent'(client), you will be able to read
       local files (from syslog, snort, apache, etc) and forward

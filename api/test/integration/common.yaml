@@ -131,7 +131,6 @@ variables:
       </logging>
 
       <remote>
-        <connection>secure</connection>
         <port>1514</port>
         <protocol>tcp</protocol>
       </remote>
@@ -160,7 +159,6 @@ variables:
       </logging>
 
       <remote>
-        <connection>secure</connection>
         <port>1514</port>
         <protocol>tcp</protocol>
       </remote>
@@ -201,7 +199,6 @@ variables:
       </logging>
 
       <remote>
-        <connection>secure</connection>
         <port>1514</port>
         <protocol>tcp</protocol>
       </remote>
@@ -225,7 +222,6 @@ variables:
       </logging>
 
       <remote>
-        <connection>secure</connection>
         <port>1514</port>
         <protocol>tcp</protocol>
       </remote>

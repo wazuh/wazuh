@@ -68,11 +68,6 @@ defaultwhitelist="White list di default per la risposta attiva:"
 addwhite="Vuoi aggiungere altri indirizzi IP alla white list?"
 ipswhite="Indirizzi IP (separati da uno spazio): "
 
-# Part 3.5/server/local
-syslog="Vuoi attivare il syslog remoto (porta 514 udp)?"
-nosyslog="Syslog remoto disattivato"
-yessyslog="Syslog remoto attivato"
-
 # Part 3.4/3.5
 readlogs="Imposto la configurazione per l'analisi dei seguenti logs:"
 

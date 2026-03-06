@@ -69,11 +69,6 @@ defaultwhitelist="Default bele liste za aktivnu reakciju:"
 addwhite="Da li želiš da dodaš još IP-jeva beloj listi?"
 ipswhite="IP-jevi (odvojen prostor): "
 
-# Part 3.5/server/local
-syslog="Da li želiš da osposobiš udaljeni syslog (port 514 udp)?"
-nosyslog="Udaljeni syslog onesposobljen"
-yessyslog="Udaljeni syslog osposobljen"
-
 # Part 3.4/3.5
 readlogs="Postavlja konfiguraciju da analizira sledeće logove:"
 
