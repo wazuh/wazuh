@@ -64,14 +64,14 @@ class RuntimeCases:
                                                 if val["value"] not in self.forbidden[id]:
                                                     input[f"{val['name']}"] = val['value']
                                                     all_arguments.append(
-                                                        f"$eventJson.{val['name']}")
+                                                        f"$_eventJson.{val['name']}")
                                         elif val not in self.forbidden[id]:
                                             all_arguments.append(val)
                                     else:
                                         if argument.is_reference(val):
                                             input[f"{val['name']}"] = val['value']
                                             all_arguments.append(
-                                                f"$eventJson.{val['name']}")
+                                                f"$_eventJson.{val['name']}")
                                         else:
                                             all_arguments.append(val)
                                 else:
@@ -89,7 +89,7 @@ class RuntimeCases:
                                     if argument.is_reference(val):
                                         input[f"{val['name']}"] = val['value']
                                         all_arguments.append(
-                                            f"$eventJson.{val['name']}")
+                                            f"$_eventJson.{val['name']}")
                                     else:
                                         all_arguments.append(val)
 
@@ -171,14 +171,14 @@ class RuntimeCases:
                                                 if val["value"] not in self.forbidden[id]:
                                                     input[f"{val['name']}"] = val['value']
                                                     all_arguments.append(
-                                                        f"$eventJson.{val['name']}")
+                                                        f"$_eventJson.{val['name']}")
                                         elif val not in self.forbidden[id]:
                                             all_arguments.append(val)
                                     else:
                                         if argument.is_reference(val):
                                             input[f"{val['name']}"] = val['value']
                                             all_arguments.append(
-                                                f"$eventJson.{val['name']}")
+                                                f"$_eventJson.{val['name']}")
                                         else:
                                             all_arguments.append(val)
                                 else:
@@ -212,7 +212,7 @@ class RuntimeCases:
                                     if argument.is_reference(val):
                                         input[f"{val['name']}"] = val['value']
                                         all_arguments.append(
-                                            f"$eventJson.{val['name']}")
+                                            f"$_eventJson.{val['name']}")
                                     else:
                                         all_arguments.append(val)
 
@@ -290,12 +290,12 @@ class RuntimeCases:
                             if val["value"] not in self.forbidden[id]:
                                 input[f"{val['name']}"] = val['value']
                                 all_arguments.append(
-                                    f"$eventJson.{val['name']}")
+                                    f"$_eventJson.{val['name']}")
                         elif id in self.forbidden and val not in self.forbidden[id]:
                             all_arguments.append(val)
                         elif argument.is_reference(val):
                             input[f"{val['name']}"] = val['value']
-                            all_arguments.append(f"$eventJson.{val['name']}")
+                            all_arguments.append(f"$_eventJson.{val['name']}")
                         else:
                             all_arguments.append(val)
 
@@ -349,14 +349,14 @@ class RuntimeCases:
                                 if val["value"] not in self.forbidden[id]:
                                     input[f"{val['name']}"] = val['value']
                                     all_arguments.append(
-                                        f"$eventJson.{val['name']}")
+                                        f"$_eventJson.{val['name']}")
                             elif val not in self.forbidden[id]:
                                 all_arguments.append(val)
                         else:
                             if argument.is_reference(val):
                                 input[f"{val['name']}"] = val['value']
                                 all_arguments.append(
-                                    f"$eventJson.{val['name']}")
+                                    f"$_eventJson.{val['name']}")
                             else:
                                 all_arguments.append(val)
                     else:
@@ -369,7 +369,7 @@ class RuntimeCases:
                         val = argument.get()
                         if argument.is_reference(val):
                             input[f"{val['name']}"] = val['value']
-                            all_arguments.append(f"$eventJson.{val['name']}")
+                            all_arguments.append(f"$_eventJson.{val['name']}")
                             restrictions_applied_as_reference = True
                         else:
                             all_arguments.append(val)
@@ -417,14 +417,14 @@ class RuntimeCases:
                                     if val["value"] not in self.forbidden[id]:
                                         input[f"{val['name']}"] = val['value']
                                         all_arguments.append(
-                                            f"$eventJson.{val['name']}")
+                                            f"$_eventJson.{val['name']}")
                             elif val not in self.forbidden[id]:
                                 all_arguments.append(val)
                         else:
                             if argument.is_reference(val):
                                 input[f"{val['name']}"] = val['value']
                                 all_arguments.append(
-                                    f"$eventJson.{val['name']}")
+                                    f"$_eventJson.{val['name']}")
                             else:
                                 all_arguments.append(val)
                     else:
@@ -434,7 +434,7 @@ class RuntimeCases:
                         val = argument.get()
                         if argument.is_reference(val):
                             input[f"{val['name']}"] = val['value']
-                            all_arguments.append(f"$eventJson.{val['name']}")
+                            all_arguments.append(f"$_eventJson.{val['name']}")
                         else:
                             all_arguments.append(val)
 
@@ -496,14 +496,14 @@ class RuntimeCases:
                                                 if val["value"] not in self.forbidden[id]:
                                                     input[f"{val['name']}"] = val['value']
                                                     all_arguments.append(
-                                                        f"$eventJson.{val['name']}")
+                                                        f"$_eventJson.{val['name']}")
                                         elif val not in self.forbidden[id]:
                                             all_arguments.append(val)
                                     else:
                                         if argument.is_reference(val):
                                             input[f"{val['name']}"] = val['value']
                                             all_arguments.append(
-                                                f"$eventJson.{val['name']}")
+                                                f"$_eventJson.{val['name']}")
                                         else:
                                             all_arguments.append(val)
                                 else:
@@ -514,7 +514,7 @@ class RuntimeCases:
                                     if argument.is_reference(val):
                                         input[f"{val['name']}"] = val['value']
                                         all_arguments.append(
-                                            f"$eventJson.{val['name']}")
+                                            f"$_eventJson.{val['name']}")
                                     else:
                                         all_arguments.append(val)
 
@@ -564,14 +564,14 @@ class RuntimeCases:
                                     if val["value"] not in self.forbidden[id]:
                                         input[f"{val['name']}"] = val['value']
                                         all_arguments.append(
-                                            f"$eventJson.{val['name']}")
+                                            f"$_eventJson.{val['name']}")
                             elif val not in self.forbidden[id]:
                                 all_arguments.append(val)
                         else:
                             if argument.is_reference(val):
                                 input[f"{val['name']}"] = val['value']
                                 all_arguments.append(
-                                    f"$eventJson.{val['name']}")
+                                    f"$_eventJson.{val['name']}")
                             else:
                                 all_arguments.append(val)
                     else:
@@ -581,7 +581,7 @@ class RuntimeCases:
                         val = argument.get()
                         if argument.is_reference(val):
                             input[f"{val['name']}"] = val['value']
-                            all_arguments.append(f"$eventJson.{val['name']}")
+                            all_arguments.append(f"$_eventJson.{val['name']}")
                         else:
                             all_arguments.append(val)
 
@@ -644,14 +644,14 @@ class RuntimeCases:
                                                 if val["value"] not in self.forbidden[id]:
                                                     input[f"{val['name']}"] = val['value']
                                                     all_arguments.append(
-                                                        f"$eventJson.{val['name']}")
+                                                        f"$_eventJson.{val['name']}")
                                         elif val not in self.forbidden[id]:
                                             all_arguments.append(val)
                                     else:
                                         if argument.is_reference(val):
                                             input[f"{val['name']}"] = val['value']
                                             all_arguments.append(
-                                                f"$eventJson.{val['name']}")
+                                                f"$_eventJson.{val['name']}")
                                         else:
                                             all_arguments.append(val)
                                 else:
@@ -662,7 +662,7 @@ class RuntimeCases:
                                     if argument.is_reference(val):
                                         input[f"{val['name']}"] = val['value']
                                         all_arguments.append(
-                                            f"$eventJson.{val['name']}")
+                                            f"$_eventJson.{val['name']}")
                                     else:
                                         all_arguments.append(val)
 
@@ -760,7 +760,7 @@ class RuntimeCases:
 
                         if argument.is_reference(val):
                             input[f"{val['name']}"] = val['value']
-                            all_arguments.append(f"$eventJson.{val['name']}")
+                            all_arguments.append(f"$_eventJson.{val['name']}")
                         elif source == "value":
                             all_arguments.append(val)
 
@@ -794,7 +794,7 @@ class RuntimeCases:
                         if argument.is_reference(val):
                             if val['value'] != None:
                                 input[f"{val['name']}"] = val['value']
-                            all_arguments.append(f"$eventJson.{val['name']}")
+                            all_arguments.append(f"$_eventJson.{val['name']}")
                         else:
                             all_arguments.append(val)
 

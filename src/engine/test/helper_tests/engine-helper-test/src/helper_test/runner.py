@@ -708,7 +708,7 @@ def execute_single_run_test(api_client: APIClient, run_test: dict, result_evalua
         elif result_evaluator.helper_type == "filter":
             result_evaluator.tester_run_filter(api_client, "verification_field")
         elif result_evaluator.helper_type == "transformation":
-            result_evaluator.tester_run_transform(api_client, "target_field")
+            result_evaluator.tester_run_transform(api_client, "_target_field")
         else:
             raise Exception(
                 f"Helper type '{result_evaluator.helper_type}' is not valid"
@@ -740,7 +740,7 @@ def execute_multiple_run_tests(api_client: APIClient, run_test: dict, result_eva
         elif result_evaluator.helper_type == "filter":
             result_evaluator.tester_run_filter(api_client, "verification_field")
         elif result_evaluator.helper_type == "transformation":
-            result_evaluator.tester_run_transform(api_client, "target_field")
+            result_evaluator.tester_run_transform(api_client, "_target_field")
         else:
             raise Exception(
                 f"Helper type '{result_evaluator.helper_type}' is not valid"
