@@ -2834,6 +2834,44 @@ TEST_F(SyscollectorImpTest, queryCommandGetVersion)
     }
 }
 
+TEST_F(SyscollectorImpTest, queryCommandGetVersionEmptyDatabase)
+{
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+
+    // No scan is executed in this test, so no data should be collected.
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, networks()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, users()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, services()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    std::string response = Syscollector::instance().query(R"({"command":"get_version"})");
+    auto responseJson = nlohmann::json::parse(response);
+
+    EXPECT_TRUE(responseJson.contains("error"));
+    EXPECT_TRUE(responseJson.contains("data"));
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_TRUE(responseJson["data"].contains("version"));
+    EXPECT_EQ(responseJson["data"]["version"].get<int>(), 0);
+
+    Syscollector::instance().destroy();
+}
+
 TEST_F(SyscollectorImpTest, queryCommandSetVersion)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};

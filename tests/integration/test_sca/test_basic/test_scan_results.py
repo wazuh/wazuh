@@ -35,18 +35,21 @@ tags:
     - sca
 '''
 import sys
+import os
 import pytest
 import re
 import json
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.utils import callbacks, configuration
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.modules.modulesd.sca import patterns
 from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
 from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.utils import services
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
@@ -64,6 +67,11 @@ configurations = configuration.load_configuration_template(configurations_path, 
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
+
+SCA_DB_FILES = (
+    Path(WAZUH_PATH, 'queue', 'sca', 'db', 'sca.db'),
+    Path(WAZUH_PATH, 'queue', 'sca', 'db', 'sca_sync.db')
+)
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
@@ -159,3 +167,38 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
     # Wait for the SCA scan checks to end for the specific policy
     log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_CHECK), timeout=30)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
+
+
+@pytest.mark.parametrize('test_configuration, test_metadata', [(configurations[0], configuration_metadata[0])], ids=['sca_first_sync_startup'])
+def test_sca_first_sync_startup_behavior(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
+                                         set_wazuh_configuration, configure_local_internal_options, daemons_handler):
+    '''
+    description: Validate SCA startup synchronization behavior for fresh installation and restart scenarios.
+    '''
+    # Force fresh-install state by removing SCA local/sync databases.
+    services.control_service('stop')
+    services.wait_expected_daemon_status(running_condition=False, timeout=180)
+    for db_file in SCA_DB_FILES:
+        if os.path.exists(db_file):
+            os.remove(db_file)
+    services.control_service('start')
+
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=60 if sys.platform == WINDOWS else 20)
+    assert log_monitor.callback_result, "SCA should start after cleaning databases"
+
+    log_monitor.start(callback=callbacks.generate_callback(r'.*First-run SCA synchronization detected.*'), timeout=30)
+    assert log_monitor.callback_result, "Fresh install path should be detected for SCA"
+
+    log_monitor.start(callback=callbacks.generate_callback(r'.*Initial SCA scan data detected.*without startup delay.*'), timeout=180)
+    assert log_monitor.callback_result, "SCA should trigger first synchronization without startup delay"
+
+    # Restart without deleting DBs to validate legacy startup-delay path.
+    services.control_service('stop')
+    services.wait_expected_daemon_status(running_condition=False, timeout=180)
+    services.control_service('start')
+
+    restart_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    restart_monitor.start(callback=callbacks.generate_callback(r'.*Existing SCA state detected.*Keeping startup synchronization delay.*'),
+                          timeout=60 if sys.platform == WINDOWS else 30)
+    assert restart_monitor.callback_result, "SCA restart path should keep startup delay"

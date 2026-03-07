@@ -161,6 +161,14 @@ def test_full_capacity_create_delete(test_configuration, test_metadata, set_wazu
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     fim_mode = test_metadata.get('fim_mode')
 
+    # Wait for the first FIM synchronization cycle to complete (succeed or fail) so that the
+    # sync thread releases fim_scan_mutex and fim_realtime_mutex. Without this, the sync
+    # handshake with the manager blocks all event processing for its entire duration.
+    wazuh_log_monitor.start(
+        timeout=250,
+        callback=generate_callback(r'.*FIM synchronization (finished|failed).*')
+    )
+
     # Create and delete at full capacity.
     file.write_file(Path(folder_to_monitor, f'test66.log'))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))

@@ -37,10 +37,12 @@ references:
     - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/wodle-syscollector.html
 '''
 import sys
+import os
 from pathlib import Path
 
 import pytest
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.utils import services
 from wazuh_testing.tools.monitors import file_monitor
@@ -60,6 +62,12 @@ if sys.platform == WINDOWS:
     local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
 else:
     local_internal_options = {MODULESD_DEBUG: '2'}
+
+SYSCOLLECTOR_DB_FILES = (
+    Path(WAZUH_PATH, 'queue', 'syscollector', 'db', 'local.db'),
+    Path(WAZUH_PATH, 'queue', 'syscollector', 'db', 'syscollector_sync.db'),
+    Path(WAZUH_PATH, 'queue', 'syscollector', 'db', 'syscollector_vd_sync.db')
+)
 
 # T1 Parameters: Check that Syscollector is disabled.
 t1_3_5_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_syscollector.yaml')
@@ -613,3 +621,43 @@ def test_syscollector_collectors_disabled(test_configuration, test_metadata, set
     # Check general scan has finished
     log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCAN_FINISHED), timeout=30)
     assert log_monitor.callback_result, "General scan should finish"
+
+
+@pytest.mark.parametrize('test_configuration, test_metadata', [(t5_configurations[0], t5_config_metadata[0])], ids=['first_sync_startup_behavior'])
+def test_syscollector_first_sync_startup_behavior(test_configuration, test_metadata, set_wazuh_configuration,
+                                                  configure_local_internal_options, truncate_monitored_files,
+                                                  daemons_handler):
+    '''
+    description: Validate startup synchronization behavior for fresh installation and restart scenarios.
+
+    assertions:
+        - Fresh installation path waits for first scan data and then synchronizes without startup delay.
+        - Restart path keeps the legacy startup synchronization delay behavior.
+    '''
+    # Force fresh-install state: stop daemons and remove Syscollector local/sync databases.
+    services.control_service('stop')
+    services.wait_expected_daemon_status(running_condition=False, timeout=180)
+    for db_file in SYSCOLLECTOR_DB_FILES:
+        if os.path.exists(db_file):
+            os.remove(db_file)
+
+    services.control_service('start')
+
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_MODULE_STARTING), timeout=60 if sys.platform == WINDOWS else 20)
+    assert log_monitor.callback_result, "Syscollector should start after cleaning databases"
+
+    log_monitor.start(callback=callbacks.generate_callback(r'.*First-run inventory synchronization detected.*'), timeout=30)
+    assert log_monitor.callback_result, "Fresh install path should be detected"
+
+    log_monitor.start(callback=callbacks.generate_callback(r'.*Initial Syscollector scan data detected.*without startup delay.*'), timeout=180)
+    assert log_monitor.callback_result, "First synchronization should run without startup delay after data is available"
+
+    # Restart without deleting DBs to validate legacy startup-delay path.
+    services.control_service('stop')
+    services.wait_expected_daemon_status(running_condition=False, timeout=180)
+    services.control_service('start')
+
+    restart_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    restart_monitor.start(callback=callbacks.generate_callback(r'.*Existing inventory state detected.*Keeping startup synchronization delay.*'), timeout=60 if sys.platform == WINDOWS else 30)
+    assert restart_monitor.callback_result, "Restart path should keep startup delay"

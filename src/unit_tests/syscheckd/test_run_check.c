@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "../wrappers/common.h"
 #include "../wrappers/posix/stat_wrappers.h"
@@ -45,7 +46,14 @@ void fim_send_msg(char mq, const char * location, const char * msg);
 bool fim_has_configured_directories(void);
 bool fim_has_configured_paths(void);
 bool fim_has_data_in_database(void);
+bool fim_has_completed_initial_scan(void);
+void fim_mark_initial_scan_completed(time_t scan_end_time);
 bool handle_all_paths_removed(void);
+void fim_set_initial_sync_wait_policy(bool has_existing_data);
+bool fim_consume_initial_sync_wait_skip(void);
+bool fim_should_wait_before_sync(bool *flush_request_detected);
+extern atomic_int_t fim_skip_initial_sync_wait;
+extern atomic_int_t fim_flush_in_progress;
 #ifdef WIN32
 bool fim_has_configured_registries(void);
 DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
@@ -83,6 +91,17 @@ time_t __wrap_time(time_t *timer) {
 
 
 extern bool fim_shutdown_process_on();
+
+int64_t __wrap_fim_db_get_last_sync_time(const char* table_name) {
+    check_expected(table_name);
+    return mock_type(int64_t);
+}
+
+void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp) {
+    check_expected(table_name);
+    check_expected(timestamp);
+}
+
 /* Setup/Teardown */
 
 static int setup_group(void ** state) {
@@ -1129,6 +1148,179 @@ void test_handle_all_paths_removed_no_sync_handle(void **state) {
     syscheck.sync_handle = original_handle;
 }
 
+static void expect_atomic_lock_unlock_calls(const int count) {
+    (void)count;
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+}
+
+void test_fim_has_completed_initial_scan_false(void **state) {
+    (void)state;
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, "__fim_first_scan_done__");
+    will_return(__wrap_fim_db_get_last_sync_time, (int64_t)0);
+
+    assert_false(fim_has_completed_initial_scan());
+}
+
+void test_fim_has_completed_initial_scan_true(void **state) {
+    (void)state;
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, "__fim_first_scan_done__");
+    will_return(__wrap_fim_db_get_last_sync_time, (int64_t)1700000000);
+
+    assert_true(fim_has_completed_initial_scan());
+}
+
+void test_fim_mark_initial_scan_completed_updates_marker(void **state) {
+    (void)state;
+
+    expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, "__fim_first_scan_done__");
+    expect_value(__wrap_fim_db_update_last_sync_time_value, timestamp, (int64_t)1700000000);
+
+    fim_mark_initial_scan_completed((time_t)1700000000);
+}
+
+void test_fim_mark_initial_scan_completed_ignores_invalid_timestamp(void **state) {
+    (void)state;
+    fim_mark_initial_scan_completed(0);
+}
+
+void test_fim_set_initial_sync_wait_policy_first_run(void **state) {
+    int original_enable_sync = syscheck.enable_synchronization;
+
+    syscheck.enable_synchronization = 1;
+    expect_atomic_lock_unlock_calls(1);
+    atomic_int_set(&fim_skip_initial_sync_wait, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "First-run FIM synchronization detected. First synchronization will skip startup delay.");
+
+    expect_atomic_lock_unlock_calls(1);
+    fim_set_initial_sync_wait_policy(false);
+
+    expect_atomic_lock_unlock_calls(1);
+    assert_int_equal(atomic_int_get(&fim_skip_initial_sync_wait), 1);
+
+    syscheck.enable_synchronization = original_enable_sync;
+}
+
+void test_fim_set_initial_sync_wait_policy_existing_data(void **state) {
+    int original_enable_sync = syscheck.enable_synchronization;
+    uint32_t original_sync_interval = syscheck.sync_interval;
+
+    syscheck.enable_synchronization = 1;
+    syscheck.sync_interval = 300;
+    expect_atomic_lock_unlock_calls(1);
+    atomic_int_set(&fim_skip_initial_sync_wait, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Existing FIM synchronization state detected. Keeping startup delay (300 seconds).");
+
+    expect_atomic_lock_unlock_calls(1);
+    fim_set_initial_sync_wait_policy(true);
+
+    expect_atomic_lock_unlock_calls(1);
+    assert_int_equal(atomic_int_get(&fim_skip_initial_sync_wait), 0);
+
+    syscheck.enable_synchronization = original_enable_sync;
+    syscheck.sync_interval = original_sync_interval;
+}
+
+void test_fim_set_initial_sync_wait_policy_sync_disabled(void **state) {
+    int original_enable_sync = syscheck.enable_synchronization;
+
+    syscheck.enable_synchronization = 0;
+    expect_atomic_lock_unlock_calls(1);
+    atomic_int_set(&fim_skip_initial_sync_wait, 1);
+
+    expect_atomic_lock_unlock_calls(1);
+    fim_set_initial_sync_wait_policy(false);
+
+    expect_atomic_lock_unlock_calls(1);
+    assert_int_equal(atomic_int_get(&fim_skip_initial_sync_wait), 0);
+
+    syscheck.enable_synchronization = original_enable_sync;
+}
+
+void test_fim_consume_initial_sync_wait_skip_one_shot(void **state) {
+    expect_atomic_lock_unlock_calls(1);
+    atomic_int_set(&fim_skip_initial_sync_wait, 1);
+
+    expect_atomic_lock_unlock_calls(2);
+    assert_true(fim_consume_initial_sync_wait_skip());
+    expect_atomic_lock_unlock_calls(1);
+    assert_int_equal(atomic_int_get(&fim_skip_initial_sync_wait), 0);
+    expect_atomic_lock_unlock_calls(1);
+    assert_false(fim_consume_initial_sync_wait_skip());
+}
+
+void test_fim_should_wait_before_sync_no_skip_no_flush(void **state) {
+    bool flush_request_detected = true;
+
+    expect_atomic_lock_unlock_calls(1);
+    atomic_int_set(&fim_skip_initial_sync_wait, 0);
+    expect_atomic_lock_unlock_calls(1);
+    atomic_int_set(&fim_flush_in_progress, 0);
+
+    expect_atomic_lock_unlock_calls(2);
+    assert_true(fim_should_wait_before_sync(&flush_request_detected));
+    assert_false(flush_request_detected);
+}
+
+void test_fim_should_wait_before_sync_flush_requested(void **state) {
+    bool flush_request_detected = false;
+
+    expect_atomic_lock_unlock_calls(1);
+    atomic_int_set(&fim_skip_initial_sync_wait, 0);
+    expect_atomic_lock_unlock_calls(1);
+    atomic_int_set(&fim_flush_in_progress, 1);
+
+    expect_atomic_lock_unlock_calls(2);
+    assert_false(fim_should_wait_before_sync(&flush_request_detected));
+    assert_true(flush_request_detected);
+
+    expect_atomic_lock_unlock_calls(1);
+    atomic_int_set(&fim_flush_in_progress, 0);
+}
+
+void test_fim_should_wait_before_sync_skip_first_run_no_flush(void **state) {
+    bool flush_request_detected = false;
+
+    expect_atomic_lock_unlock_calls(1);
+    atomic_int_set(&fim_skip_initial_sync_wait, 1);
+    expect_atomic_lock_unlock_calls(1);
+    atomic_int_set(&fim_flush_in_progress, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Initial FIM synchronization wait skipped on first run.");
+
+    expect_atomic_lock_unlock_calls(3);
+    assert_false(fim_should_wait_before_sync(&flush_request_detected));
+    assert_false(flush_request_detected);
+    expect_atomic_lock_unlock_calls(1);
+    assert_int_equal(atomic_int_get(&fim_skip_initial_sync_wait), 0);
+}
+
+void test_fim_should_wait_before_sync_skip_first_run_with_flush(void **state) {
+    bool flush_request_detected = false;
+
+    expect_atomic_lock_unlock_calls(1);
+    atomic_int_set(&fim_skip_initial_sync_wait, 1);
+    expect_atomic_lock_unlock_calls(1);
+    atomic_int_set(&fim_flush_in_progress, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Initial FIM synchronization wait skipped on first run.");
+
+    expect_atomic_lock_unlock_calls(3);
+    assert_false(fim_should_wait_before_sync(&flush_request_detected));
+    assert_true(flush_request_detected);
+    expect_atomic_lock_unlock_calls(1);
+    assert_int_equal(atomic_int_get(&fim_skip_initial_sync_wait), 0);
+
+    expect_atomic_lock_unlock_calls(1);
+    atomic_int_set(&fim_flush_in_progress, 0);
+}
+
 /* ---------------------------------- End DataClean Tests ---------------------------------- */
 
 int main(void) {
@@ -1153,8 +1345,20 @@ int main(void) {
         cmocka_unit_test(test_fim_has_configured_paths_with_directories),
         cmocka_unit_test(test_fim_has_data_in_database_no_entries),
         cmocka_unit_test(test_fim_has_data_in_database_with_file_entries),
+        cmocka_unit_test(test_fim_has_completed_initial_scan_false),
+        cmocka_unit_test(test_fim_has_completed_initial_scan_true),
+        cmocka_unit_test(test_fim_mark_initial_scan_completed_updates_marker),
+        cmocka_unit_test(test_fim_mark_initial_scan_completed_ignores_invalid_timestamp),
         cmocka_unit_test(test_handle_all_paths_removed_no_data_in_db),
         cmocka_unit_test(test_handle_all_paths_removed_no_sync_handle),
+        cmocka_unit_test(test_fim_set_initial_sync_wait_policy_first_run),
+        cmocka_unit_test(test_fim_set_initial_sync_wait_policy_existing_data),
+        cmocka_unit_test(test_fim_set_initial_sync_wait_policy_sync_disabled),
+        cmocka_unit_test(test_fim_consume_initial_sync_wait_skip_one_shot),
+        cmocka_unit_test(test_fim_should_wait_before_sync_no_skip_no_flush),
+        cmocka_unit_test(test_fim_should_wait_before_sync_flush_requested),
+        cmocka_unit_test(test_fim_should_wait_before_sync_skip_first_run_no_flush),
+        cmocka_unit_test(test_fim_should_wait_before_sync_skip_first_run_with_flush),
 #ifndef TEST_WINAGENT
         cmocka_unit_test(test_fim_run_realtime_first_error),
         cmocka_unit_test(test_fim_run_realtime_first_timeout),

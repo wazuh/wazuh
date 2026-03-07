@@ -166,6 +166,14 @@ def test_max_eps(test_configuration, test_metadata, configure_local_internal_opt
     wazuh_log_monitor.start(callback=generate_callback(regex))
     assert wazuh_log_monitor.callback_result
 
+    # Wait for the first FIM synchronization cycle to complete (succeed or fail) so that the
+    # sync thread releases fim_scan_mutex and fim_realtime_mutex. Without this, the sync
+    # handshake with the manager blocks all event processing for its entire duration.
+    wazuh_log_monitor.start(
+        timeout=250,
+        callback=generate_callback(r'.*FIM synchronization (finished|failed).*')
+    )
+
     file_names = []
     for i in range(int(max_eps) * 4):
         file_name = f'file{i}_to_max_eps_{max_eps}_{fim_mode}_mode{time.time()}_.txt'
