@@ -71,6 +71,7 @@ INSTANTIATE_TEST_SUITE_P(
                   [](const auto& store, const auto& reader, const auto& schemf)
                   {
                       auto policy = dataType::Policy("test-policy",
+                                                     true,
                                                      "550e8400-e29b-41d4-a716-446655440003",
                                                      {"550e8400-e29b-41d4-a716-446655440001"},
                                                      {},
@@ -119,6 +120,7 @@ INSTANTIATE_TEST_SUITE_P(
                   [](const auto& store, const auto& reader, const auto& schemf)
                   {
                       auto policy = dataType::Policy("test-policy-disabled",
+                                                     true,
                                                      "550e8400-e29b-41d4-a716-446655440003",
                                                      {"550e8400-e29b-41d4-a716-446655440001",  // disabled
                                                       "550e8400-e29b-41d4-a716-446655440005"}, // enabled
@@ -169,6 +171,7 @@ INSTANTIATE_TEST_SUITE_P(
                   {
                       auto policy = dataType::Policy(
                           "test-policy-multi",
+                          true,
                           "550e8400-e29b-41d4-a716-446655440003",
                           {"550e8400-e29b-41d4-a716-446655440001", "550e8400-e29b-41d4-a716-446655440005"},
                           {},
@@ -331,8 +334,12 @@ protected:
         ON_CALL(*mockStore, readDoc(base::Name("enrichment/geo/0")))
             .WillByDefault(testing::Return(base::RespOrError<store::Doc>(geoConfig)));
 
-        m_builder = std::make_shared<Builder>(
-            m_mocks->m_spStore, m_mocks->m_spSchemf, m_mocks->m_spDefBuilder, emptyAllowedFields, builderDeps, mockStore);
+        m_builder = std::make_shared<Builder>(m_mocks->m_spStore,
+                                              m_mocks->m_spSchemf,
+                                              m_mocks->m_spDefBuilder,
+                                              emptyAllowedFields,
+                                              builderDeps,
+                                              mockStore);
     }
 };
 
@@ -343,6 +350,7 @@ TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
 
     // Create a simple policy with one integration
     auto policy = dataType::Policy("test-policy",                            // title
+                                   true,                                     // enabled
                                    "550e8400-e29b-41d4-a716-446655440003",   // root decoder
                                    {"550e8400-e29b-41d4-a716-446655440001"}, // integrations (valid UUIDv4)
                                    {},                                       // filters
@@ -431,6 +439,7 @@ TEST_F(BuildPolicyTest, BuildPolicyWithDisabledIntegration)
     NamespaceId namespaceId("policy_test_0");
 
     auto policy = dataType::Policy("test-policy-disabled",
+                                   true,                                     // enabled
                                    "550e8400-e29b-41d4-a716-446655440003",   // root decoder
                                    {"550e8400-e29b-41d4-a716-446655440001",  // disabled integration
                                     "550e8400-e29b-41d4-a716-446655440005"}, // enabled integration
@@ -536,8 +545,12 @@ protected:
         EXPECT_CALL(*mockStore, readDoc(base::Name("enrichment/geo/0")))
             .WillRepeatedly(testing::Return(base::RespOrError<store::Doc>(geoConfig)));
 
-        m_builder = std::make_shared<Builder>(
-            m_mocks->m_spStore, m_mocks->m_spSchemf, m_mocks->m_spDefBuilder, emptyAllowedFields, builderDeps, mockStore);
+        m_builder = std::make_shared<Builder>(m_mocks->m_spStore,
+                                              m_mocks->m_spSchemf,
+                                              m_mocks->m_spDefBuilder,
+                                              emptyAllowedFields,
+                                              builderDeps,
+                                              mockStore);
     }
 };
 
@@ -703,8 +716,12 @@ protected:
         EXPECT_CALL(*mockStore, readDoc(testing::_))
             .WillRepeatedly(testing::Return(base::RespOrError<store::Doc>(geoConfig)));
 
-        m_builder = std::make_shared<Builder>(
-            m_mocks->m_spStore, m_mocks->m_spSchemf, m_mocks->m_spDefBuilder, emptyAllowedFields, builderDeps, mockStore);
+        m_builder = std::make_shared<Builder>(m_mocks->m_spStore,
+                                              m_mocks->m_spSchemf,
+                                              m_mocks->m_spDefBuilder,
+                                              emptyAllowedFields,
+                                              builderDeps,
+                                              mockStore);
     }
 };
 
@@ -715,6 +732,7 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithMultipleIntegrations)
 
     // Create a policy with two integrations
     auto policy = dataType::Policy("test-policy-multi",
+                                   true, // enabled
                                    "550e8400-e29b-41d4-a716-446655440003",
                                    {"550e8400-e29b-41d4-a716-446655440001", "550e8400-e29b-41d4-a716-446655440005"},
                                    {},
@@ -804,6 +822,7 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithKVDB)
     NamespaceId namespaceId("policy_kvdb_0");
 
     auto policy = dataType::Policy("test-policy-kvdb",
+                                   true, // enabled
                                    "550e8400-e29b-41d4-a716-446655440003",
                                    {"550e8400-e29b-41d4-a716-446655440001"},
                                    {},
@@ -883,6 +902,7 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithOutputs)
     NamespaceId namespaceId("policy_output_0");
 
     auto policy = dataType::Policy("test-policy-outputs",
+                                   true, // enabled
                                    "550e8400-e29b-41d4-a716-446655440003",
                                    {"550e8400-e29b-41d4-a716-446655440001"},
                                    {},

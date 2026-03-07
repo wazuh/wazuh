@@ -51,6 +51,7 @@ constexpr std::string_view PATH_KEY_ENRICHMENTS = "/enrichments";
 constexpr std::string_view PATH_KEY_INDEX_UNCLASSIFIED_EVENTS = "/index_unclassified_events";
 constexpr std::string_view PATH_KEY_OUTPUTS = "/outputs";
 constexpr std::string_view PATH_KEY_TITLE = "/title";
+constexpr std::string_view PATH_KEY_ENABLED = "/enabled";
 constexpr std::string_view PATH_KEY_ORIGIN_SPACE = "/origin_space";
 constexpr std::string_view PATH_KEY_HASH = "/hash";
 constexpr std::string_view PATH_KEY_INDEX_DISCARDED_EVENTS = "/index_discarded_events";
@@ -71,6 +72,7 @@ class Policy
 {
 private:
     std::string m_title;                     ///< Title of the policy
+    bool m_enabled;                          ///< Flag indicating whether the policy is enabled
     std::string m_rootDecoder;               ///< Root decoder UUID
     std::string m_originSpace;               ///< Origin space name (Optional)
     std::vector<std::string> m_integrations; ///< Integrations UUIDs included in the policy
@@ -87,6 +89,7 @@ public:
     Policy() = delete;
 
     Policy(std::string_view policyTitle,
+           bool enabled,
            std::string_view rootDecoder,
            std::vector<std::string> integrationsUUIDs,
            std::vector<std::string> filters,
@@ -97,6 +100,7 @@ public:
            bool indexUnclassifiedEvents = false,
            bool indexDiscardedEvents = false)
         : m_title(policyTitle)
+        , m_enabled(enabled)
         , m_rootDecoder(rootDecoder)
         , m_integrations(std::move(integrationsUUIDs))
         , m_filters(std::move(filters))
@@ -131,6 +135,17 @@ public:
             return titleOpt.value();
         }();
 
+        // Get enabled
+        bool enabled = [&]() -> bool
+        {
+            auto enabledOpt = policyJson.getBool(jsonpolicy::PATH_KEY_ENABLED);
+            if (!enabledOpt.has_value())
+            {
+                throw std::runtime_error("Policy JSON must have a boolean 'enabled' field");
+            }
+            return enabledOpt.value();
+        }();
+
         // Get root decoder
         auto rootDecoder = [&]()
         {
@@ -152,10 +167,6 @@ public:
             }
 
             std::size_t integrationCount = policyJson.size(jsonpolicy::PATH_KEY_INTEGRATIONS);
-            if (integrationCount == 0)
-            {
-                throw std::runtime_error("Policy JSON must have at least one integration");
-            }
             integrations.reserve(integrationCount);
 
             for (std::size_t i = 0; i < integrationCount; ++i)
@@ -293,6 +304,7 @@ public:
         }();
 
         return {title,
+                enabled,
                 rootDecoder,
                 std::move(integrations),
                 std::move(filters),
@@ -309,6 +321,7 @@ public:
         json::Json policyJson;
 
         policyJson.setString(m_title, jsonpolicy::PATH_KEY_TITLE);
+        policyJson.setBool(m_enabled, jsonpolicy::PATH_KEY_ENABLED);
         policyJson.setString(m_rootDecoder, jsonpolicy::PATH_KEY_ROOT_PARENT);
         policyJson.setString(m_originSpace, jsonpolicy::PATH_KEY_ORIGIN_SPACE);
         policyJson.setString(m_hash, jsonpolicy::PATH_KEY_HASH);
@@ -347,6 +360,7 @@ public:
     // Setters
     //  Getters
     const std::string& getTitle() const { return m_title; }
+    bool isEnabled() const { return m_enabled; }
     const std::vector<std::string>& getFiltersUUIDs() const { return m_filters; }
     const std::vector<std::string>& getEnrichments() const { return m_enrichments; }
     const std::vector<std::string>& getOutputsUUIDs() const { return m_outputs; }
