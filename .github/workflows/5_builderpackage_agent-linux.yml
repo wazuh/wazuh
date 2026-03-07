@@ -52,7 +52,7 @@ jobs:
   # ===================== DEB JOBS =====================
   build-deb:
     if: github.event_name == 'pull_request' || inputs.system == 'deb'
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 30
     name: Build DEB ${{ matrix.arch }} package
     strategy:
@@ -138,7 +138,7 @@ jobs:
 
   test-deb:
     needs: build-deb
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 30
     name: Test DEB ${{ matrix.arch }} package
     strategy:
@@ -259,7 +259,7 @@ jobs:
   upload-deb-to-s3:
     needs: [build-deb, test-deb]
     if: success()
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 15
     name: Upload DEB ${{ matrix.arch }} to S3
     strategy:
@@ -322,7 +322,7 @@ jobs:
   # ===================== RPM JOBS =====================
   build-rpm:
     if: github.event_name == 'pull_request' || inputs.system == 'rpm'
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 30
     name: Build RPM ${{ matrix.arch }} package
     strategy:
@@ -415,7 +415,7 @@ jobs:
 
   test-rpm:
     needs: build-rpm
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 30
     name: Test RPM ${{ matrix.arch }} package
     strategy:
@@ -544,7 +544,7 @@ jobs:
   upload-rpm-to-s3:
     needs: [build-rpm, test-rpm]
     if: success()
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 15
     name: Upload RPM ${{ matrix.arch }} to S3
     strategy:

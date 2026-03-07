@@ -33,7 +33,7 @@ on:
 
 jobs:
   build-windows-i686:
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 60
     name: Build Windows agent binaries
     outputs:
@@ -291,7 +291,7 @@ jobs:
   upload-windows-i686-to-s3:
     needs: [package-windows-i686, test-windows-i686]
     if: success()
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 15
     name: Upload MSI to S3
 
