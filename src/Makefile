@@ -513,16 +513,10 @@ INDEXER_TEMPLATES_SERVER_STREAMS :=
 
 # WCS flat files
 WCS_FLAT_DIR := external/wcs-flat-files
-WCS_FLAT_STATELESS_PATH := ecs/stateless
+WCS_FLAT_STATELESS_PATH := wcs/stateless/main/docs
 
-# TODO: can I avoid the list and just bring everything in that dir?
-WCS_FLAT_YAML_FILES := \
-	access-management-ecs-flat.yml \
-	applications-ecs-flat.yml \
-	network-activity-ecs-flat.yml \
-	other-ecs-flat.yml \
-	security-ecs-flat.yml \
-	system-activity-ecs-flat.yml
+# Single consolidated WCS flat file
+WCS_FLAT_YAML_FILES := wcs_flat.yml
 
 # Create WCS flat file paths
 WCS_FLAT_FILES := $(WCS_FLAT_YAML_FILES:%=$(WCS_FLAT_DIR)/%)
@@ -652,12 +646,11 @@ $(INDEXER_PLUGINS_DIR)/%.json: | $(INDEXER_PLUGINS_DIR)
 $(WCS_FLAT_DIR):
 	mkdir -p $(WCS_FLAT_DIR)
 
-# Rule for WCS flat YAML files
-$(WCS_FLAT_DIR)/%-ecs-flat.yml: | $(WCS_FLAT_DIR)
+# Rule for WCS flat consolidated YAML file
+$(WCS_FLAT_DIR)/wcs_flat.yml: | $(WCS_FLAT_DIR)
 	@success=0; \
-	subdir=$(patsubst %-ecs-flat.yml,%,$(@F)); \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
-		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(WCS_FLAT_STATELESS_PATH)/$$subdir/docs/ecs_flat.yml"; \
+		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(WCS_FLAT_STATELESS_PATH)/$(notdir $@)"; \
 		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
 		if $(CURL) $@ $(CACERT_OPT) -f "$$url" 2>/dev/null; then \
 			success=1; \

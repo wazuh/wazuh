@@ -2243,48 +2243,6 @@
             "string"
           ]
         },
-        "enrichments.custom.anonymous": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nIndicates whether the indicator was reported anonymously by the submitter.",
-          "type": [
-            "string"
-          ]
-        },
-        "enrichments.custom.id": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nUnique identifier of the indicator.",
-          "type": [
-            "string"
-          ]
-        },
-        "enrichments.custom.malware": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nMalware family or identifier associated with the indicator.",
-          "type": [
-            "string"
-          ]
-        },
-        "enrichments.custom.malware_alias": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nAlternative or secondary name used to refer to the same malware family.",
-          "type": [
-            "string"
-          ]
-        },
-        "enrichments.custom.malware_printable": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nHuman-readable or normalized malware name intended for display purposes.",
-          "type": [
-            "string"
-          ]
-        },
-        "enrichments.custom.tags": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nList of tags associated with the indicator used to classify or group related threats or campaigns.",
-          "type": [
-            "string"
-          ]
-        },
-        "enrichments.custom.threat_type": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nHigh-level classification of the threat associated with the indicator.",
-          "type": [
-            "string"
-          ]
-        },
         "enrichments.indicator.confidence": {
           "description": "Module: ecs\nIndexerType: keyword\n\nIndicator confidence rating.",
           "type": [
