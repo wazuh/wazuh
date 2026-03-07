@@ -37,6 +37,7 @@
 
 // Global flag to stop sync module
 static volatile int sca_sync_module_running = 0;
+static bool sca_wait_for_initial_scan_data = false;
 
 // SCA message queue variables
 static int g_shutting_down = 0;
@@ -323,6 +324,29 @@ static bool wm_sca_get_module_version(int* version)
     return parsed;
 }
 
+static void wm_sca_configure_startup_sync_policy(void)
+{
+    int current_version = -1;
+    sca_wait_for_initial_scan_data = false;
+
+    if (wm_sca_get_module_version(&current_version))
+    {
+        if (current_version == 0)
+        {
+            sca_wait_for_initial_scan_data = true;
+            mdebug1("First-run SCA synchronization detected. Waiting for initial scan data before first sync.");
+        }
+        else
+        {
+            mdebug1("Existing SCA state detected (version=%d). Keeping startup synchronization delay.", current_version);
+        }
+    }
+    else
+    {
+        mdebug1("Failed to detect SCA startup state. Falling back to startup synchronization delay.");
+    }
+}
+
 // Sync protocol function pointers
 sca_sync_module_func sca_sync_module_ptr = NULL;
 sca_persist_diff_func sca_persist_diff_ptr = NULL;
@@ -585,6 +609,12 @@ static int wm_sca_start(wm_sca_t *sca) {
         g_max_eps = sca->max_eps;
     }
 
+    // Determine startup sync behavior before scan_on_start can populate the DB.
+    if (sca_enable_synchronization)
+    {
+        wm_sca_configure_startup_sync_policy();
+    }
+
     // Initialize sync protocol if enabled
     if (sca_enable_synchronization && sca_sync_module_ptr) {
         sca_sync_module_running = 1;
@@ -733,47 +763,33 @@ DWORD WINAPI wm_sca_sync_module(__attribute__((unused)) void * args) {
 #else
 void * wm_sca_sync_module(__attribute__((unused)) void * args) {
 #endif
-    bool use_legacy_initial_wait = true;
+    bool use_legacy_initial_wait = !sca_wait_for_initial_scan_data;
     int current_version = -1;
 
-    if (wm_sca_get_module_version(&current_version))
+    if (sca_wait_for_initial_scan_data)
     {
-        if (current_version == 0)
+        while (sca_sync_module_running)
         {
-            use_legacy_initial_wait = false;
-            mdebug1("First-run SCA synchronization detected. Waiting for initial scan data before first sync.");
+            sleep(1);
 
-            while (sca_sync_module_running)
+            if (!sca_sync_module_running)
             {
-                sleep(1);
+                break;
+            }
 
-                if (!sca_sync_module_running)
-                {
-                    break;
-                }
+            if (!wm_sca_get_module_version(&current_version))
+            {
+                mdebug1("Unable to verify SCA version during first-run wait. Falling back to startup delay.");
+                use_legacy_initial_wait = true;
+                break;
+            }
 
-                if (!wm_sca_get_module_version(&current_version))
-                {
-                    mdebug1("Unable to verify SCA version during first-run wait. Falling back to startup delay.");
-                    use_legacy_initial_wait = true;
-                    break;
-                }
-
-                if (current_version > 0)
-                {
-                    mdebug1("Initial SCA scan data detected. Triggering first synchronization without startup delay.");
-                    break;
-                }
+            if (current_version > 0)
+            {
+                mdebug1("Initial SCA scan data detected. Triggering first synchronization without startup delay.");
+                break;
             }
         }
-        else
-        {
-            mdebug1("Existing SCA state detected (version=%d). Keeping startup synchronization delay.", current_version);
-        }
-    }
-    else
-    {
-        mdebug1("Failed to detect SCA startup state. Falling back to startup synchronization delay.");
     }
 
     if (use_legacy_initial_wait)

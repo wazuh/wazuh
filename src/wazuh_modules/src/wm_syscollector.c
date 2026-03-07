@@ -35,6 +35,7 @@ extern size_t agcom_dispatch(char* command, char** output);
 
 // Global flag to stop sync module
 static volatile int sync_module_running = 0;
+static bool sync_wait_for_initial_scan_data = false;
 
 #ifdef WIN32
 static DWORD WINAPI wm_sys_main(void* arg);         // Module main function. It won't return
@@ -176,6 +177,33 @@ static bool wm_sys_get_module_version(int* version)
     const bool parsed = wm_sys_parse_get_version_response(output, version);
     free(output);
     return parsed;
+}
+
+static void wm_sys_configure_startup_sync_policy(void)
+{
+    int current_version = -1;
+    sync_wait_for_initial_scan_data = false;
+
+    if (wm_sys_get_module_version(&current_version))
+    {
+        if (current_version == 0)
+        {
+            sync_wait_for_initial_scan_data = true;
+            mtdebug1(WM_SYS_LOGTAG,
+                     "First-run inventory synchronization detected. Waiting for initial scan data before first sync.");
+        }
+        else
+        {
+            mtdebug1(WM_SYS_LOGTAG,
+                     "Existing inventory state detected (version=%d). Keeping startup synchronization delay.",
+                     current_version);
+        }
+    }
+    else
+    {
+        mtdebug1(WM_SYS_LOGTAG,
+                 "Failed to detect Syscollector startup state. Falling back to startup synchronization delay.");
+    }
 }
 
 bool wm_sys_query_agentd(const char* command, char* output_buffer, size_t buffer_size)
@@ -628,6 +656,12 @@ void* wm_sys_main(wm_sys_t* sys)
             mtdebug1(WM_SYS_LOGTAG, "Agentd query function setter not available.");
         }
 
+        // Determine startup sync behavior before scan_on_start can populate the DB.
+        if (enable_synchronization)
+        {
+            wm_sys_configure_startup_sync_policy();
+        }
+
         // Initialize sync protocol AFTER init (so logger is available)
         if (enable_synchronization && syscollector_init_sync_ptr && syscollector_sync_module_ptr)
         {
@@ -873,54 +907,35 @@ DWORD WINAPI wm_sync_module(__attribute__((unused)) void* args)
 void* wm_sync_module(__attribute__((unused)) void* args)
 {
 #endif
-
-    bool use_legacy_initial_wait = true;
+    bool use_legacy_initial_wait = !sync_wait_for_initial_scan_data;
     int current_version = -1;
 
-    if (wm_sys_get_module_version(&current_version))
+    if (sync_wait_for_initial_scan_data)
     {
-        if (current_version == 0)
+        while (sync_module_running)
         {
-            use_legacy_initial_wait = false;
-            mtdebug1(WM_SYS_LOGTAG,
-                     "First-run inventory synchronization detected. Waiting for initial scan data before first sync.");
+            sleep(1);
 
-            while (sync_module_running)
+            if (!sync_module_running)
             {
-                sleep(1);
+                break;
+            }
 
-                if (!sync_module_running)
-                {
-                    break;
-                }
+            if (!wm_sys_get_module_version(&current_version))
+            {
+                mtdebug1(WM_SYS_LOGTAG,
+                         "Unable to verify Syscollector version during first-run wait. Falling back to startup delay.");
+                use_legacy_initial_wait = true;
+                break;
+            }
 
-                if (!wm_sys_get_module_version(&current_version))
-                {
-                    mtdebug1(WM_SYS_LOGTAG,
-                             "Unable to verify Syscollector version during first-run wait. Falling back to startup delay.");
-                    use_legacy_initial_wait = true;
-                    break;
-                }
-
-                if (current_version > 0)
-                {
-                    mtdebug1(WM_SYS_LOGTAG,
-                             "Initial Syscollector scan data detected. Triggering first synchronization without startup delay.");
-                    break;
-                }
+            if (current_version > 0)
+            {
+                mtdebug1(WM_SYS_LOGTAG,
+                         "Initial Syscollector scan data detected. Triggering first synchronization without startup delay.");
+                break;
             }
         }
-        else
-        {
-            mtdebug1(WM_SYS_LOGTAG,
-                     "Existing inventory state detected (version=%d). Keeping startup synchronization delay.",
-                     current_version);
-        }
-    }
-    else
-    {
-        mtdebug1(WM_SYS_LOGTAG,
-                 "Failed to detect Syscollector startup state. Falling back to startup synchronization delay.");
     }
 
     if (use_legacy_initial_wait)
