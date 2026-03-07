@@ -357,12 +357,6 @@ void test_realtime_start_failure_hash(void **state) {
     expect_string(__wrap__merror, formatted_msg,
         "(1102): Could not acquire memory due to [(12)-(Cannot allocate memory)].");
 
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     ret = realtime_start();
 
     errno = 0;
@@ -384,12 +378,6 @@ void test_realtime_start_failure_inotify(void **state) {
     will_return(__wrap_inotify_init, -1);
 
     expect_string(__wrap__merror, formatted_msg, FIM_ERROR_INOTIFY_INITIALIZE);
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     ret = realtime_start();
 
