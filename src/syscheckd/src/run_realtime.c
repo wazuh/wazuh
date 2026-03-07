@@ -40,6 +40,7 @@ int realtime_start() {
     syscheck.realtime->dirtb = OSHash_Create();
     if (syscheck.realtime->dirtb == NULL) {
         merror(MEM_ERROR, errno, strerror(errno));
+        os_free(syscheck.realtime);
         return -1;
     }
 
@@ -48,6 +49,8 @@ int realtime_start() {
     syscheck.realtime->fd = inotify_init();
     if (syscheck.realtime->fd < 0) {
         merror(FIM_ERROR_INOTIFY_INITIALIZE);
+        OSHash_Free(syscheck.realtime->dirtb);
+        os_free(syscheck.realtime);
         return -1;
     }
 
@@ -545,6 +548,7 @@ int realtime_start() {
     syscheck.realtime->dirtb = OSHash_Create();
     if (syscheck.realtime->dirtb == NULL) {
         merror(MEM_ERROR, errno, strerror(errno));
+        os_free(syscheck.realtime);
         return(-1);
     }
     OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free_win32rtfim_data);
