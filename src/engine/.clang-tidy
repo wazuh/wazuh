@@ -91,6 +91,10 @@ CheckOptions:
   - { key: readability-identifier-naming.TypeAliasCase, value: CamelCase }
   - { key: readability-identifier-naming.TypedefCase, value: CamelCase }
   - { key: readability-identifier-naming.GlobalVariableCase, value: UPPER_CASE }
+  - { key: readability-identifier-naming.GlobalConstantCase, value: UPPER_CASE }
+  - { key: readability-identifier-naming.ConstexprVariableCase, value: UPPER_CASE }
+  - { key: readability-identifier-naming.ConstexprMemberCase, value: UPPER_CASE }
+  - { key: readability-identifier-naming.ConstexprMemberPrefix, value: '' }
   - key: performance-unnecessary-copy-initialization.ExcludedContainerTypes
     value: ''
   - key: modernize-replace-auto-ptr.IncludeStyle
