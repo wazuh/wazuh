@@ -141,6 +141,8 @@ static int setup_realtime_start(void **state) {
     if(hash == NULL)
         return -1;
 
+    hash->table = calloc(1, sizeof(OSHashNode *));
+
     *state = hash;
 
     state[1] = syscheck.realtime;
@@ -152,10 +154,13 @@ static int setup_realtime_start(void **state) {
 static int teardown_realtime_start(void **state) {
     OSHash *hash = *state;
 
-    free(hash);
-
     if (syscheck.realtime) {
         free(syscheck.realtime);
+    }
+
+    if (hash) {
+        free(hash->table);
+        free(hash);
     }
 
     syscheck.realtime = state[1];
@@ -382,6 +387,8 @@ void test_realtime_start_failure_inotify(void **state) {
     ret = realtime_start();
 
     assert_int_equal(ret, -1);
+    /* OSHash_Free already freed the hash passed via mock */
+    *state = NULL;
 }
 
 void test_realtime_adddir_realtime_start_failure(void **state) {
