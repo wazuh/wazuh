@@ -459,7 +459,7 @@ std::pair<std::string, bool> WIndexerConnector::getPolicyHashAndEnabled(std::str
     nlohmann::json query = getQueryFilter(space);
 
     // Prepare source filter to only retrieve space.hash.sha256
-    nlohmann::json source = {{"includes", {"space.hash.sha256", "document.enabled"}},
+    nlohmann::json source = {{"includes", {"space.hash.sha256", "document.enabled", "document.integrations"}},
                              {"excludes", nlohmann::json::array()}};
 
     // Execute search query
@@ -507,7 +507,19 @@ std::pair<std::string, bool> WIndexerConnector::getPolicyHashAndEnabled(std::str
         throw IndexerConnectorException("document.enabled field not found or invalid for space: " + std::string(space));
     }
 
-    return {source_data["space"]["hash"]["sha256"].get<std::string>(), source_data["document"]["enabled"].get<bool>()};
+    // Validate that the document.integrations exist and is an array
+    if (!source_data.contains("document") || !source_data["document"].contains("integrations")
+        || !source_data["document"]["integrations"].is_array())
+    {
+        throw IndexerConnectorException("document.integrations field not found or invalid for space: " + std::string(space));
+    }
+
+    // If the document hasn't integrations or it's empty, we consider the policy as disabled, avoiding the need of sync
+    // between enabled field and integrations content
+    const bool hasIntegrations = !source_data["document"]["integrations"].empty();
+    const bool enabled = source_data["document"]["enabled"].get<bool>();
+
+    return {source_data["space"]["hash"]["sha256"].get<std::string>(), enabled && hasIntegrations};
 }
 
 bool WIndexerConnector::existsPolicy(std::string_view space)
