@@ -66,6 +66,7 @@ enabled: true
 // Policy example (YAML version of the JSON payload)
 static constexpr const char* kPolicyYAML = R"(
 type: "policy"
+enabled: true
 title: "Development 0.0.1"
 hash: "cmcrud-unit-test-hash"
 default_parent: "decoder/integration/0"

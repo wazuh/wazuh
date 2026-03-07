@@ -32,6 +32,7 @@ using cm::store::ResourceType;
 
 static constexpr const char* kPolicyYAML = R"(
 type: "policy"
+enabled: true
 title: "Development 0.0.1"
 hash: "cmcrud-component-test-hash"
 default_parent: "decoder/integration/0"
