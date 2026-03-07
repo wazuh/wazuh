@@ -857,57 +857,71 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
             m_syncState.phase = SyncPhase::WaitingEndAck;
         }
 
-        bool sendEnd = true;
-
         // Configurable delay to wait for last messages to arrive before sending End
         std::this_thread::sleep_for(m_syncEndDelay);
         m_logger(LOG_DEBUG, "Delayed " + std::to_string(m_syncEndDelay.count()) + " seconds before sending End message.");
 
-        for (unsigned int attempt = 0; attempt <= m_retries; ++attempt)
+        unsigned int attempt = 0;
+        bool resendEnd = true;
+
+        while (attempt <= m_retries)
         {
-            if (sendEnd && !sendFlatBufferMessageAsString(messageVector))
+            if (resendEnd && !sendFlatBufferMessageAsString(messageVector))
             {
                 m_logger(LOG_WARNING, "Failed to send End message.");
+                attempt++;
                 continue;
             }
 
-            if (!receiveEndAck(m_timeout))
+            // Track whether End was actually sent this iteration.
+            // Only a timeout after sending End consumes a retry; timeouts after
+            // Processing or ReqRet retransmission do not.
+            const bool sentEnd = resendEnd;
+            resendEnd = true;
+
+            std::unique_lock<std::mutex> lock(m_syncState.mtx);
+            const bool gotResponse = m_syncState.cv.wait_for(lock, m_timeout, [&]
             {
-                m_logger(LOG_WARNING, "Timeout waiting for EndAck or ReqRet. Retrying...");
+                return m_syncState.endAckReceived || m_syncState.syncFailed
+                || m_syncState.reqRetReceived || m_syncState.processingAckReceived
+                || shouldStop();
+            });
+
+            if (!gotResponse || shouldStop())
+            {
+                if (sentEnd)
+                {
+                    m_logger(LOG_DEBUG, "Timeout waiting for EndAck or ReqRet. Retrying...");
+                    attempt++;
+                }
+
                 continue;
             }
 
+            if (m_syncState.syncFailed)
             {
-                std::lock_guard<std::mutex> lock(m_syncState.mtx);
-
-                if (m_syncState.syncFailed)
+                // Don't log error for checksum mismatch - it's an expected condition
+                if (m_syncState.lastSyncResult != SyncResult::CHECKSUM_ERROR)
                 {
-                    // Don't log error for checksum mismatch - it's an expected condition
-                    if (m_syncState.lastSyncResult != SyncResult::CHECKSUM_ERROR)
-                    {
-                        m_logger(LOG_ERROR, "Synchronization failed: Manager reported an error status.");
-                    }
-
-                    return false;
+                    m_logger(LOG_ERROR, "Synchronization failed: Manager reported an error status.");
                 }
+
+                return false;
             }
 
-            bool wasReqRet = false;
-            std::vector<std::pair<uint64_t, uint64_t>> ranges;
+            if (m_syncState.endAckReceived)
             {
-                std::lock_guard<std::mutex> lock(m_syncState.mtx);
-                wasReqRet = m_syncState.reqRetReceived;
-
-                if (wasReqRet)
-                {
-                    ranges = std::move(m_syncState.reqRetRanges);
-                    m_syncState.reqRetRanges.clear();
-                    m_syncState.reqRetReceived = false;
-                }
+                m_logger(LOG_DEBUG, "EndAck received.");
+                return true;
             }
 
-            if (wasReqRet)
+            if (m_syncState.reqRetReceived)
             {
+                auto ranges = std::move(m_syncState.reqRetRanges);
+                m_syncState.reqRetRanges.clear();
+                m_syncState.reqRetReceived = false;
+                lock.unlock();
+
                 if (ranges.empty())
                 {
                     m_logger(LOG_ERROR, "Received ReqRet with empty ranges. Aborting current sync attempt.");
@@ -928,18 +942,19 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
                     return false;
                 }
 
-                sendEnd = false;
+                // Manager auto-enqueues when all gaps are filled and sends EndAck{Ok}
+                // without needing us to resend End. Wait again in the next iteration.
+                resendEnd = false;
                 continue;
             }
 
+            if (m_syncState.processingAckReceived)
             {
-                std::lock_guard<std::mutex> lock(m_syncState.mtx);
-
-                if (m_syncState.endAckReceived)
-                {
-                    m_logger(LOG_DEBUG, "EndAck received.");
-                    return true;
-                }
+                m_syncState.processingAckReceived = false;
+                // Manager confirmed it is processing. Wait again without resending End.
+                // attempt is NOT incremented.
+                resendEnd = false;
+                continue;
             }
         }
 
@@ -953,15 +968,6 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
     }
 
     return false;
-}
-
-bool AgentSyncProtocol::receiveEndAck(std::chrono::seconds timeout)
-{
-    std::unique_lock<std::mutex> lock(m_syncState.mtx);
-    return m_syncState.cv.wait_for(lock, timeout, [&]
-    {
-        return m_syncState.endAckReceived || m_syncState.reqRetReceived || m_syncState.syncFailed || shouldStop();
-    });
 }
 
 bool AgentSyncProtocol::sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData)
@@ -1057,6 +1063,14 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                         }
 
                         m_syncState.syncFailed = true;
+                        m_syncState.cv.notify_all();
+                        break;
+                    }
+
+                    if (endAck->status() == Wazuh::SyncSchema::Status::Processing)
+                    {
+                        m_logger(LOG_DEBUG, "Manager is processing session '" + std::to_string(incomingSession) + "'. Waiting...");
+                        m_syncState.processingAckReceived = true;
                         m_syncState.cv.notify_all();
                         break;
                     }

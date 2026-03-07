@@ -403,6 +403,8 @@ public:
         if (m_endEnqueued)
         {
             logDebug2(LOGGER_DEFAULT_TAG, "End already enqueued for session %llu", m_context->sessionId);
+            responseDispatcher.sendEndAck(
+                Wazuh::SyncSchema::Status_Processing, m_context->agentId, m_context->sessionId, m_context->moduleName);
             return;
         }
 
@@ -411,6 +413,8 @@ public:
             logDebug2(LOGGER_DEFAULT_TAG, "All sequences received for session %llu", m_context->sessionId);
             m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
             m_endEnqueued = true;
+            responseDispatcher.sendEndAck(
+                Wazuh::SyncSchema::Status_Processing, m_context->agentId, m_context->sessionId, m_context->moduleName);
         }
         else
         {
