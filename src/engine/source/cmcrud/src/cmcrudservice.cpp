@@ -191,7 +191,7 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
             json::Json parsed;
             try
             {
-                parsed = json::Json {jsonDocument.data()};
+                parsed = json::Json {jsonDocument};
             }
             catch (const std::exception& e)
             {

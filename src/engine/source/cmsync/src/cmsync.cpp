@@ -16,6 +16,7 @@ namespace
 
 const base::Name STORE_NAME_CMSYNC {"cmsync/status/0"};          ///< Name of the internal store document
 const cm::store::NamespaceId DUMMY_NAMESPACE_ID {"dummy_ns_id"}; ///< Dummy namespace ID
+constexpr std::string_view COMPONENT_NAME = "CMSync";            ///< Component name for logging
 
 /**
  * @brief Generate a route name for the given origin space
@@ -171,7 +172,7 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
         return;
     }
 
-    LOG_INFO("[CM::Sync] First setup detected, initializing default sync spaces");
+    LOG_INFO("[CMSync] First setup detected, initializing default sync spaces");
 
     addSpaceToSync("standard");
     addSpaceToSync("custom");
@@ -185,8 +186,8 @@ bool CMSync::existSpaceInRemote(std::string_view space)
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
 
     return base::utils::executeWithRetry([&indexerPtr, space]() { return indexerPtr->existsPolicy(space); },
-                                         fmt::format("exist '{}' space in wazuh-indexer", space),
-                                         "CMSync",
+                                         fmt::format("Check '{}' space in wazuh-indexer", space),
+                                         fmt::format("{}::exist()", COMPONENT_NAME),
                                          m_attemps,
                                          m_waitSeconds);
 }
@@ -199,8 +200,8 @@ void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::Na
     // Download policy from wazuh-indexer
     auto policyResource =
         base::utils::executeWithRetry([&indexerPtr, originSpace]() { return indexerPtr->getPolicy(originSpace); },
-                                      fmt::format("downloadNamespace('{}')", originSpace),
-                                      "CMSync",
+                                      fmt::format("Download '{}' space from wazuh-indexer", originSpace),
+                                      fmt::format("{}::downloadNamespace()", COMPONENT_NAME),
                                       m_attemps,
                                       m_waitSeconds);
 
@@ -235,10 +236,12 @@ std::pair<std::string, bool> CMSync::getPolicyHashAndEnabledFromRemote(std::stri
 {
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "Indexer Connector");
 
-    return base::utils::executeWithRetry([&indexerPtr, space]() { return indexerPtr->getPolicyHashAndEnabled(space); },
-                            fmt::format("getPolicyHashAndEnabledFromRemote('{}')", space),
-                            m_attemps,
-                            m_waitSeconds);
+    return base::utils::executeWithRetry(
+        [&indexerPtr, space]() { return indexerPtr->getPolicyHashAndEnabled(space); },
+        fmt::format("Get policy hash and enabled status for '{}' space from wazuh-indexer", space),
+        fmt::format("{}::getInfoFromRemote()", COMPONENT_NAME),
+        m_attemps,
+        m_waitSeconds);
 }
 
 cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view originSpace)
@@ -330,8 +333,7 @@ void CMSync::syncNamespaceInRoute(const SyncedNamespace& nsState, const cm::stor
     };
 
     // Create a new route for the namespace
-    router::prod::EntryPost newEntry {
-        nsState.getRouteName(), newNamespaceId, getAvailablePriority()};
+    router::prod::EntryPost newEntry {nsState.getRouteName(), newNamespaceId, getAvailablePriority()};
 
     if (auto err = routerPtr->postEntry(newEntry); base::isError(err))
     {
@@ -358,7 +360,7 @@ void CMSync::addSpaceToSync(std::string_view space)
     // SET Dummy namespace id
     m_namespacesState.back().setNamespaceId(DUMMY_NAMESPACE_ID);
 
-    LOG_INFO("[CM::Sync] Added space '{}' to the sync list", space);
+    LOG_INFO("[CMSync] Added space '{}' to the sync list", space);
 
     dumpStateToStore();
 }
@@ -377,7 +379,7 @@ void CMSync::removeSpaceFromSync(std::string_view space)
 
     m_namespacesState.erase(it, m_namespacesState.end());
 
-    LOG_INFO("[CM::Sync] Removed space '{}' from the sync list", space);
+    LOG_INFO("[CMSync] Removed space '{}' from the sync list", space);
 
     dumpStateToStore();
 }
@@ -431,7 +433,7 @@ void CMSync::dumpStateToStore()
 void CMSync::synchronize()
 {
 
-    LOG_DEBUG("[CM::Sync] Checking for namespace updates to synchronize");
+    LOG_DEBUG("[CMSync] Checking for namespace updates to synchronize");
 
     const auto cmcrudPtr = base::utils::lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
     const auto routerPtr = base::utils::lockWeakPtr(m_router, "RouterAPI");
@@ -441,11 +443,11 @@ void CMSync::synchronize()
     {
         try
         {
-            LOG_DEBUG("[CM::Sync] Synchronizing namespace for space '{}'", nsState.getOriginSpace());
+            LOG_DEBUG("[CMSync] Synchronizing namespace for space '{}'", nsState.getOriginSpace());
 
             if (!existSpaceInRemote(nsState.getOriginSpace()))
             {
-                LOG_WARNING("[CM::Sync] Space '{}' does not exist in remote indexer, skipping synchronization",
+                LOG_WARNING("[CMSync] Space '{}' does not exist in remote indexer, skipping synchronization",
                             nsState.getOriginSpace());
                 continue;
             }
@@ -488,7 +490,7 @@ void CMSync::synchronize()
                 if (routeConfig.has_value())
                 {
                     const auto& [_ignore, nsId, routeHash] = *routeConfig;
-                    LOG_INFO("[CM::Sync] Policy for space '{}' is disabled in indexer, removing route and namespace",
+                    LOG_INFO("[CMSync] Policy for space '{}' is disabled in indexer, removing route and namespace",
                              nsState.getOriginSpace());
                     try
                     {
@@ -496,7 +498,7 @@ void CMSync::synchronize()
                     }
                     catch (const std::exception& e)
                     {
-                        LOG_WARNING("[CM::Sync] Failed to delete route '{}' for space '{}': {}",
+                        LOG_WARNING("[CMSync] Failed to delete route '{}' for space '{}': {}",
                                     nsState.getRouteName(),
                                     nsState.getOriginSpace(),
                                     e.what());
@@ -507,7 +509,7 @@ void CMSync::synchronize()
                     }
                     catch (const std::exception& e)
                     {
-                        LOG_WARNING("[CM::Sync] Failed to delete namespace '{}' for space '{}': {}",
+                        LOG_WARNING("[CMSync] Failed to delete namespace '{}' for space '{}': {}",
                                     nsId.toStr(),
                                     nsState.getOriginSpace(),
                                     e.what());
@@ -515,7 +517,7 @@ void CMSync::synchronize()
                 }
                 else
                 {
-                    LOG_DEBUG("[CM::Sync] Policy for space '{}' is disabled in indexer and no route exists, skipping",
+                    LOG_DEBUG("[CMSync] Policy for space '{}' is disabled in indexer and no route exists, skipping",
                               nsState.getOriginSpace());
                 }
                 continue;
@@ -527,14 +529,14 @@ void CMSync::synchronize()
                 const auto& [enabledRoute, nsId, routeHash] = *routeConfig;
                 if (enabledRoute && routeHash == remoteHash)
                 {
-                    LOG_DEBUG("[CM::Sync] No changes detected for space '{}', skipping synchronization",
+                    LOG_DEBUG("[CMSync] No changes detected for space '{}', skipping synchronization",
                               nsState.getOriginSpace());
                     continue; // Case 4: No changes, skip synchronization
                 }
             }
 
             // Cases 3 and 4: Changes detected, perform synchronization
-            LOG_INFO("[CM::Sync] Changes detected for space '{}', updating...", nsState.getOriginSpace());
+            LOG_INFO("[CMSync] Changes detected for space '{}', updating...", nsState.getOriginSpace());
 
             // Download and enrich the namespace
             const auto newNsId = downloadAndEnrichNamespace(nsState.getOriginSpace());
@@ -558,7 +560,7 @@ void CMSync::synchronize()
                                 newNsId.toStr(),
                                 ex.what());
                 }
-                LOG_ERROR("[CM::Sync] Failed to sync namespace in route for space '{}': {}",
+                LOG_ERROR("[CMSync] Failed to sync namespace in route for space '{}': {}",
                           nsState.getOriginSpace(),
                           e.what());
                 continue;
@@ -573,7 +575,7 @@ void CMSync::synchronize()
             }
             catch (const std::exception& e)
             {
-                LOG_WARNING("[CM::Sync] Failed to dump sync state to store after synchronization: {}", e.what());
+                LOG_WARNING("[CMSync] Failed to dump sync state to store after synchronization: {}", e.what());
             }
 
             // Delete old namespace if it exists and is different from the new one
@@ -586,23 +588,23 @@ void CMSync::synchronize()
                 }
                 catch (const std::exception& e)
                 {
-                    LOG_WARNING("[CM::Sync] Failed to delete old namespace '{}' for space '{}': {}",
+                    LOG_WARNING("[CMSync] Failed to delete old namespace '{}' for space '{}': {}",
                                 oldNsId.toStr(),
                                 nsState.getOriginSpace(),
                                 e.what());
                 }
             }
 
-            LOG_INFO("[CM::Sync] Successfully synchronized space '{}'", nsState.getOriginSpace());
+            LOG_INFO("[CMSync] Successfully synchronized space '{}'", nsState.getOriginSpace());
         }
         catch (const std::exception& e)
         {
             LOG_WARNING(
-                "[CM::Sync] Failed to synchronize namespace for space '{}': {}", nsState.getOriginSpace(), e.what());
+                "[CMSync] Failed to synchronize namespace for space '{}': {}", nsState.getOriginSpace(), e.what());
         }
     }
 
-    LOG_DEBUG("[CM::Sync] Finished synchronization of spaces");
+    LOG_DEBUG("[CMSync] Finished synchronization of spaces");
 }
 
 } // namespace cm::sync
