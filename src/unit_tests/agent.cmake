@@ -36,7 +36,7 @@ else()
         -lpthread -lcmocka -ldl -fprofile-arcs -ftest-coverage)
 endif()
 
-if(NOT ${uname} STREQUAL "Darwin")
+if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
   add_subdirectory(client-agent)
   add_subdirectory(logcollector)
   add_subdirectory(os_execd)

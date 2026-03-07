@@ -7,11 +7,11 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 list(APPEND monitord_tests_names "test_monitord")
 list(APPEND monitord_tests_flags "-Wl,--wrap,time\
-                                  -Wl,--wrap,StartMQ -Wl,--wrap,SendMSG -Wl,--wrap,getDefine_Int -Wl,--wrap,ReadConfig\
+                                  -Wl,--wrap,getDefine_Int -Wl,--wrap,ReadConfig\
                                   ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND monitord_tests_names "test_monitor_actions")
-list(APPEND monitord_tests_flags "-Wl,--wrap,SendMSG -Wl,--wrap,wdb_find_agent\
+list(APPEND monitord_tests_flags "-Wl,--wrap,wdb_find_agent\
                                   -Wl,--wrap,wdb_disconnect_agents -Wl,--wrap,time -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,auth_connect\
                                   -Wl,--wrap,get_agent_id_from_name -Wl,--wrap,auth_remove_agent -Wl,--wrap,wdb_get_agents_by_connection_status\
                                   -Wl,--wrap,w_rotate_log -Wl,--wrap,stat -Wl,--wrap,w_query_agentd ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")

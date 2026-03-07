@@ -23,8 +23,6 @@
 typedef struct _monitor_config monitor_config;
 
 #define MAX_DAY_WAIT 600
-#define MONITORD_MSG_HEADER "1:" ARGV0 ":"
-#define AG_DISCON_MSG MONITORD_MSG_HEADER OS_AG_DISCON
 #define CHECK_LOGS_SIZE TRUE
 
 /* Prototypes */
@@ -98,24 +96,14 @@ int check_logs_time_trigger();
 
 /* Messages prototypes */
 /**
- * @brief Tries to connect to the messages queue, prints an error on failure
+ * @brief Logs agent disconnection event to ossec.log
  *
+ * @param agent_name Agent name
+ * @param agent_ip Agent IP address
+ *
+ * Logs OS_AG_DISCON or OS_AG_REMOVED if the agent is no longer in the database
  */
-void monitor_queue_connect();
-
-/**
- * @brief Sends the OS_AG_REMOVED message, prints and error on failure
- *
- */
-void monitor_send_deletion_msg(char *agent);
-
-/**
- * @brief Sends the AG_DISCON_MSG message and calls mon_send_agent_msg()
- *
- * It also sends the OS_AG_REMOVED message if the agent wasn't found
- *
- */
-void monitor_send_disconnection_msg(char *agent);
+void monitor_send_disconnection_msg(const char *agent_name, const char *agent_ip);
 
 /* Actions prototypes */
 /**
@@ -172,7 +160,6 @@ typedef struct _monitor_config {
     unsigned int monitor_agents:1;
     unsigned int rotate_log:1;
     unsigned int delete_old_agents;
-    int a_queue;
     int keep_log_days;
     unsigned long size_rotate;
     int daily_rotations;
