@@ -419,70 +419,51 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
 
         try
         {
-            // Import into temp namespace
-            service->importNamespace(tmpNsId, fullPolicyStr, ORGIN_SPACE_TESTING, /*force=*/true);
+            // Import into temp namespace. The import itself validates the policy structure.
+            const cm::store::dataType::Policy pol =
+                service->importNamespace(tmpNsId, fullPolicyStr, ORGIN_SPACE_TESTING, /*force=*/true);
             tmpNamespaceCreated = true;
 
-            // Create a tester entry to validate tester-loading path.
-            const int lifetime = 0;
-            ::router::test::EntryPost entryPost(tmpSessionName, tmpNsId, lifetime);
-            entryPost.description("wazuh-indexer auto created session");
+            const bool isEnabled = pol.isEnabled();
+            const bool hasIntegrations = !pol.getIntegrationsUUIDs().empty();
 
-            // Post temp entry
+            if (!hasIntegrations)
             {
-                auto err = testerLocked->postTestEntry(entryPost);
-                if (base::isError(err))
+                // ----------------------------------------------------------------
+                // Case 1: Policy has NO integrations.
+                // The import was enough to validate. No tester entry is posted.
+                // ----------------------------------------------------------------
+
+                if (loadInTester)
                 {
-                    bestEffortCleanup(/*cleanupTmpSession=*/tmpSessionCreated,
-                                      /*cleanupTmpNamespace=*/true);
-                    res = adapter::userErrorResponse<ResponseType>(base::getError(err).message);
-                    return;
-                }
-                tmpSessionCreated = true;
-            }
-
-            if (loadInTester)
-            {
-                std::optional<std::string> oldNsToDelete;
-
-                // If SESSION_NAME exists, delete it first (it references old namespace).
-                auto entry = testerLocked->getTestEntry(finalSessionName);
-                if (!base::isError(entry))
-                {
-                    oldNsToDelete = base::getResponse(entry).namespaceId().toStr();
-
-                    // Strict: if we can't delete the old session, abort.
-                    if (auto serr = cleanupSession(finalSessionName, /*shouldRun=*/true))
+                    // Delete the existing test session and its namespace (if any).
+                    auto entry = testerLocked->getTestEntry(finalSessionName);
+                    if (!base::isError(entry))
                     {
-                        bestEffortCleanup(/*cleanupTmpSession=*/tmpSessionCreated,
-                                          /*cleanupTmpNamespace=*/true);
-                        res = adapter::userErrorResponse<ResponseType>(serr->message);
-                        return;
+                        const std::string oldNsName = base::getResponse(entry).namespaceId().toStr();
+
+                        if (auto serr = cleanupSession(finalSessionName, /*shouldRun=*/true))
+                        {
+                            (void)cleanupNamespace(tmpNsName, /*shouldRun=*/true);
+                            res = adapter::userErrorResponse<ResponseType>(serr->message);
+                            return;
+                        }
+
+                        if (auto nerr = cleanupNamespace(oldNsName, /*shouldRun=*/true))
+                        {
+                            (void)cleanupNamespace(tmpNsName, /*shouldRun=*/true);
+                            res = adapter::userErrorResponse<ResponseType>(nerr->message);
+                            return;
+                        }
                     }
                 }
+                // loadInTester=false: do not touch the existing test session at all.
 
-                // Promote temp session to SESSION_NAME (now points to tmpNsName).
-                auto rerr = testerLocked->renameTestEntry(tmpSessionName, finalSessionName);
-                if (base::isError(rerr))
+                // Always delete the temp namespace (strict).
+                if (auto nerr = cleanupNamespace(tmpNsName, /*shouldRun=*/true))
                 {
-                    bestEffortCleanup(/*cleanupTmpSession=*/tmpSessionCreated,
-                                      /*cleanupTmpNamespace=*/true);
-                    res = adapter::userErrorResponse<ResponseType>(base::getError(rerr).message);
+                    res = adapter::userErrorResponse<ResponseType>(nerr->message);
                     return;
-                }
-
-                // After rename, temp session no longer exists.
-                tmpSessionCreated = false;
-
-                // Now it's safe to delete the old namespace (if any).
-                if (oldNsToDelete)
-                {
-                    // Strict: if we can't delete old namespace, abort.
-                    if (auto nerr = cleanupNamespace(*oldNsToDelete, /*shouldRun=*/true))
-                    {
-                        res = adapter::userErrorResponse<ResponseType>(nerr->message);
-                        return;
-                    }
                 }
 
                 ResponseType eResponse;
@@ -491,18 +472,140 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
                 return;
             }
 
-            // Not testing: cleanup must succeed, otherwise do NOT return OK.
-            if (auto serr = cleanupSession(tmpSessionName, /*shouldRun=*/tmpSessionCreated))
+            // ----------------------------------------------------------------
+            // Case 2: Policy HAS integrations.
+            // Post a tester entry to validate the policy can be instantiated.
+            // ----------------------------------------------------------------
+            const int lifetime = 0;
+            ::router::test::EntryPost entryPost(tmpSessionName, tmpNsId, lifetime);
+            entryPost.description("wazuh-indexer auto created session");
+
             {
-                (void)cleanupNamespace(tmpNsName, /*shouldRun=*/true); // best-effort follow-up
-                res = adapter::userErrorResponse<ResponseType>(serr->message);
+                auto err = testerLocked->postTestEntry(entryPost);
+                if (base::isError(err))
+                {
+                    bestEffortCleanup(/*cleanupTmpSession=*/false, /*cleanupTmpNamespace=*/true);
+                    res = adapter::userErrorResponse<ResponseType>(base::getError(err).message);
+                    return;
+                }
+                tmpSessionCreated = true;
+            }
+
+            if (!loadInTester)
+            {
+                // Do not touch the existing test session. Clean up temp session and namespace only.
+                if (auto serr = cleanupSession(tmpSessionName, /*shouldRun=*/true))
+                {
+                    (void)cleanupNamespace(tmpNsName, /*shouldRun=*/true);
+                    res = adapter::userErrorResponse<ResponseType>(serr->message);
+                    return;
+                }
+                tmpSessionCreated = false;
+
+                if (auto nerr = cleanupNamespace(tmpNsName, /*shouldRun=*/true))
+                {
+                    res = adapter::userErrorResponse<ResponseType>(nerr->message);
+                    return;
+                }
+
+                ResponseType eResponse;
+                eResponse.set_status(eEngine::ReturnStatus::OK);
+                res = adapter::userResponse(eResponse);
                 return;
             }
 
-            if (auto nerr = cleanupNamespace(tmpNsName, /*shouldRun=*/true))
+            // loadInTester=true: behavior depends on the enabled flag.
+            if (isEnabled)
             {
-                res = adapter::userErrorResponse<ResponseType>(nerr->message);
-                return;
+                // Promote the temp session to SESSION_NAME, replacing the old one.
+                std::optional<std::string> oldNsToDelete;
+
+                auto entry = testerLocked->getTestEntry(finalSessionName);
+                if (!base::isError(entry))
+                {
+                    oldNsToDelete = base::getResponse(entry).namespaceId().toStr();
+
+                    if (auto serr = cleanupSession(finalSessionName, /*shouldRun=*/true))
+                    {
+                        bestEffortCleanup(/*cleanupTmpSession=*/true, /*cleanupTmpNamespace=*/true);
+                        res = adapter::userErrorResponse<ResponseType>(serr->message);
+                        return;
+                    }
+                }
+
+                auto rerr = testerLocked->renameTestEntry(tmpSessionName, finalSessionName);
+                if (base::isError(rerr))
+                {
+                    bestEffortCleanup(/*cleanupTmpSession=*/true, /*cleanupTmpNamespace=*/true);
+                    res = adapter::userErrorResponse<ResponseType>(base::getError(rerr).message);
+                    return;
+                }
+                tmpSessionCreated = false;
+
+                if (oldNsToDelete)
+                {
+                    if (auto nerr = cleanupNamespace(*oldNsToDelete, /*shouldRun=*/true))
+                    {
+                        res = adapter::userErrorResponse<ResponseType>(nerr->message);
+                        return;
+                    }
+                }
+            }
+            else
+            {
+                // Policy is disabled: delete the new temp session+namespace AND the old test session+namespace.
+                std::optional<std::string> oldNsToDelete;
+
+                auto entry = testerLocked->getTestEntry(finalSessionName);
+                if (!base::isError(entry))
+                {
+                    oldNsToDelete = base::getResponse(entry).namespaceId().toStr();
+                }
+
+                // Delete new temp session (strict).
+                if (auto serr = cleanupSession(tmpSessionName, /*shouldRun=*/true))
+                {
+                    (void)cleanupNamespace(tmpNsName, /*shouldRun=*/true);
+                    if (oldNsToDelete)
+                    {
+                        (void)cleanupNamespace(*oldNsToDelete, /*shouldRun=*/true);
+                    }
+                    res = adapter::userErrorResponse<ResponseType>(serr->message);
+                    return;
+                }
+                tmpSessionCreated = false;
+
+                // Delete new temp namespace (strict).
+                if (auto nerr = cleanupNamespace(tmpNsName, /*shouldRun=*/true))
+                {
+                    if (oldNsToDelete)
+                    {
+                        (void)cleanupNamespace(*oldNsToDelete, /*shouldRun=*/true);
+                    }
+                    res = adapter::userErrorResponse<ResponseType>(nerr->message);
+                    return;
+                }
+
+                // Delete old test session (strict).
+                if (auto serr = cleanupSession(finalSessionName, /*shouldRun=*/oldNsToDelete.has_value()))
+                {
+                    if (oldNsToDelete)
+                    {
+                        (void)cleanupNamespace(*oldNsToDelete, /*shouldRun=*/true);
+                    }
+                    res = adapter::userErrorResponse<ResponseType>(serr->message);
+                    return;
+                }
+
+                // Delete old test namespace (strict).
+                if (oldNsToDelete)
+                {
+                    if (auto nerr = cleanupNamespace(*oldNsToDelete, /*shouldRun=*/true))
+                    {
+                        res = adapter::userErrorResponse<ResponseType>(nerr->message);
+                        return;
+                    }
+                }
             }
 
             ResponseType eResponse;

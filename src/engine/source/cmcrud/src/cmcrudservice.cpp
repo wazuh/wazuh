@@ -153,7 +153,7 @@ void CrudService::deleteNamespace(const cm::store::NamespaceId& nsId)
     }
 }
 
-void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
+cm::store::dataType::Policy CrudService::importNamespace(const cm::store::NamespaceId& nsId,
                                   std::string_view jsonDocument,
                                   std::string_view origin,
                                   bool force)
@@ -360,6 +360,8 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
         }
         throw std::runtime_error(fmt::format("Failed to import namespace '{}': {}", nsId.toStr(), e.what()));
     }
+
+    return store->getNS(nsId)->getPolicy();
 }
 
 void CrudService::importNamespace(const cm::store::NamespaceId& nsId,

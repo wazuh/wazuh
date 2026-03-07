@@ -98,10 +98,11 @@ public:
      * @param jsonDocument JSON string with policy + resources. must end in \0
      * @param origin Origin space name for the imported namespace.
      * @param force If true, skip all validations.
+     * @return The imported policy of the namespace.
      * @throws std::runtime_error on errors.
      * TODO: Change jsonDocument from string_view to json::Json
      */
-    virtual void importNamespace(const cm::store::NamespaceId& nsId,
+    virtual cm::store::dataType::Policy importNamespace(const cm::store::NamespaceId& nsId,
                                  std::string_view jsonDocument,
                                  std::string_view origin,
                                  bool force) = 0;

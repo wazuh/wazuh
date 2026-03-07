@@ -31,7 +31,7 @@ public:
     void createNamespace(const cm::store::NamespaceId& nsId) override;
     bool existsNamespace(const cm::store::NamespaceId& nsId) const override;
     void deleteNamespace(const cm::store::NamespaceId& nsId) override;
-    void importNamespace(const cm::store::NamespaceId& nsId,
+    cm::store::dataType::Policy importNamespace(const cm::store::NamespaceId& nsId,
                          std::string_view jsonDocument,
                          std::string_view origin,
                          bool force) override;
