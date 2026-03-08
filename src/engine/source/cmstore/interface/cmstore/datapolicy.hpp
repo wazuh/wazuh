@@ -150,9 +150,9 @@ public:
         auto rootDecoder = [&]()
         {
             auto rootDecoderOpt = policyJson.getString(jsonpolicy::PATH_KEY_ROOT_PARENT);
-            if (!rootDecoderOpt.has_value() || rootDecoderOpt->empty())
+            if (!rootDecoderOpt.has_value())
             {
-                throw std::runtime_error("Policy JSON must have a 'root_decoder' UUID");
+                throw std::runtime_error("Policy JSON must have a 'root_decoder' field");
             }
             return rootDecoderOpt.value();
         }();

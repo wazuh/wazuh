@@ -476,6 +476,7 @@ def create_policy(api_client: APIClient):
     """
     policy_yaml = f"""\
 type: policy
+enabled: true
 title: Helpers Testing Policy
 hash: "helpers-test-hash"
 default_parent: {HELPERS_DECODER_UUID}

@@ -257,6 +257,7 @@ def build_valid_policy_yaml() -> str:
     """
     return """\
 title: bar
+enabled: true
 hash: "crud-cm-test-hash"
 root_decoder: "00000000-0000-0000-0000-000000000001"
 integrations:
@@ -270,17 +271,19 @@ def build_policy_yaml_missing_integrations() -> str:
     """
     return """\
 title: bar
+enabled: true
 hash: "crud-cm-test-hash"
 root_decoder: "00000000-0000-0000-0000-000000000001"
 """
 
 
-def build_policy_yaml_with_empty_integrations() -> str:
+def build_policy_yaml_with_unexists_root_decoder() -> str:
     """
     Policy YAML with an empty 'integrations' array.
     """
     return """\
 title: bar
+enabled: true
 hash: "crud-cm-test-hash"
 root_decoder: "00000000-0000-0000-0000-000000000001"
 integrations: []
@@ -304,6 +307,7 @@ def build_full_valid_policy_yaml(default_parent: str,
     """
     return f"""\
 type: policy
+enabled: true
 title: Development 0.0.1
 hash: "crud-cm-test-hash"
 default_parent: {default_parent}
@@ -627,9 +631,9 @@ def step_impl(context, space):
     context.pol_error_msg, context.pol_response = request_policy_upsert(space, yml)
 
 
-@when('I send a request to upsert a policy in namespace "{space}" with YAML having an empty integrations array')
+@when('I send a request to upsert a policy in namespace "{space}" with YAML having an invalid root decoder')
 def step_impl(context, space):
-    yml = build_policy_yaml_with_empty_integrations()
+    yml = build_policy_yaml_with_unexists_root_decoder()
     context.pol_error_msg, context.pol_response = request_policy_upsert(space, yml)
 
 

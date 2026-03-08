@@ -95,6 +95,7 @@ def build_policy_yaml(default_parent: str, root_decoder: str, integration_uuids)
     integrations_block = "\n".join(f'  - "{u}"' for u in integration_uuids)
     return f"""\
 type: policy
+enabled: true
 title: Development 0.0.1
 hash: "tester-test-hash"
 index_unclassified_events: true
@@ -278,6 +279,7 @@ def step_impl(context):
     full_policy = {
         "policy": {
             "title": "test",
+            "enabled": True,
             "root_decoder": LOGTEST_DECODER_UUID,
             "integrations": [LOGTEST_INTEG_UUID],
             "filters": [],

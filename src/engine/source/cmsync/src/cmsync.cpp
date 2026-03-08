@@ -439,6 +439,18 @@ void CMSync::synchronize()
     const auto routerPtr = base::utils::lockWeakPtr(m_router, "RouterAPI");
     std::unique_lock lock(m_mutex); // Lock the sync process, only 1 at a time
 
+    const auto dumpAndLogFn = [&]()
+    {
+        try
+        {
+            dumpStateToStore();
+        }
+        catch (const std::exception& e)
+        {
+            LOG_WARNING("[CMSync] Failed to dump sync state to store: {}", e.what());
+        }
+    };
+
     for (auto& nsState : m_namespacesState)
     {
         try
@@ -506,6 +518,8 @@ void CMSync::synchronize()
                     try
                     {
                         cmcrudPtr->deleteNamespace(nsId);
+                        nsState.setNamespaceId(DUMMY_NAMESPACE_ID); // Set dummy namespace id until next synchronization
+                        dumpAndLogFn();
                     }
                     catch (const std::exception& e)
                     {
@@ -569,14 +583,7 @@ void CMSync::synchronize()
             // Update and dump the sync state
             auto oldNsId = nsState.getNamespaceId();
             nsState.setNamespaceId(newNsId);
-            try
-            {
-                dumpStateToStore();
-            }
-            catch (const std::exception& e)
-            {
-                LOG_WARNING("[CMSync] Failed to dump sync state to store after synchronization: {}", e.what());
-            }
+            dumpAndLogFn();
 
             // Delete old namespace if it exists and is different from the new one
             if (oldNsId != DUMMY_NAMESPACE_ID && oldNsId != newNsId)
