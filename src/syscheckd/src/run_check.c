@@ -16,6 +16,7 @@
 #ifdef __linux__
 #include <sched.h>
 #endif
+#include <time.h>
 
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
@@ -61,6 +62,8 @@ volatile int fim_sync_module_running = 0;
 // Flush on-demand synchronization variables (thread-safe with atomic operations)
 atomic_int_t fim_flush_in_progress = ATOMIC_INT_INITIALIZER(0);  // 0 = idle, 1 = flush active
 atomic_int_t fim_flush_result = ATOMIC_INT_INITIALIZER(0);       // 0 = success, -1 = error
+
+#define FIM_FIRST_SYNC_COMPLETED_METADATA_KEY "first_sync_completed"
 
 // Prototypes
 #ifdef WIN32
@@ -888,6 +891,8 @@ DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args) {
 #else
 void * fim_run_integrity(__attribute__((unused)) void * args) {
 #endif
+    bool first_sync_completed = fim_db_get_last_sync_time(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY) > 0;
+    bool skip_initial_wait = !first_sync_completed;
 
 #ifdef WIN32
     int table_count = 3;
@@ -897,11 +902,19 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
     char* table_names[1] = {FIMDB_FILE_TABLE_NAME};
 #endif
 
+    if (first_sync_completed) {
+        mdebug1("FIM first synchronization already completed. Keeping startup synchronization delay.");
+    } else {
+        mdebug1("FIM first synchronization has not completed yet. Triggering synchronization without startup delay.");
+    }
+
     while (fim_sync_module_running) {
         bool flush_request_detected = false;
 
         if (atomic_int_get(&fim_flush_in_progress)) {
             flush_request_detected = true;
+        } else if (skip_initial_wait) {
+            skip_initial_wait = false;
         } else {
             // Wait for sync_interval, checking for pause and flush requests
             for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
@@ -959,6 +972,11 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 atomic_int_set(&fim_flush_result, result);
                 atomic_int_set(&fim_flush_in_progress, 0);
             }
+
+            if (sync_result && !first_sync_completed) {
+                fim_db_update_last_sync_time_value(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY, (int64_t)time(NULL));
+                first_sync_completed = true;
+            }
         } else {
             // Take a snapshot of the current directories list to avoid holding the lock during integrity checks.
             // This prevents deadlocks that occur when different code paths acquire locks in different orders.
@@ -984,6 +1002,11 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                                                MODE_DELTA);
             if (sync_result) {
                 minfo("FIM synchronization finished successfully.");
+
+                if (!first_sync_completed) {
+                    fim_db_update_last_sync_time_value(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY, (int64_t)time(NULL));
+                    first_sync_completed = true;
+                }
 
                 for (int i = 0; i < table_count; i++) {
                     if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {
