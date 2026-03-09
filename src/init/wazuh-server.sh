@@ -649,6 +649,7 @@ restart)
     restart_service
     ;;
 reload)
+    DAEMONS=$(echo $DAEMONS | sed 's/wazuh-manager-remoted//')
     if is_systemd; then
         SYSTEMD_VERSION=$(systemctl --version | awk 'NR==1 {print $2}')
         if [ "$SYSTEMD_VERSION" -le 237 ]; then

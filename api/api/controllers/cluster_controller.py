@@ -777,6 +777,68 @@ async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionR
     return json_response(result, pretty=pretty, status_code=202)
 
 
+async def put_reload(pretty: bool = False, nodes_list: str = '*') -> ConnexionResponse:
+    """Reloads configuration in all nodes in the cluster or a list of them.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    nodes_list : str
+        List of node IDs.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {'node_list': nodes_list}
+
+    nodes = raise_if_exc(await get_system_nodes())
+    # Remove the master from the list to reload all workers without issuing the command locally yet.
+    # The master node is always the first item in the list.
+    master_node = nodes.pop(0)
+
+    if nodes_list == [master_node]:
+        dapi = DistributedAPI(
+            f=manager.reload,
+            request_type='local_master',
+            logger=logger,
+            rbac_permissions=request.context['token_info']['rbac_policies'],
+        )
+        result = raise_if_exc(await dapi.distribute_function())
+
+        return json_response(result, pretty=pretty, status_code=202)
+
+    dapi = DistributedAPI(f=manager.reload,
+                        f_kwargs=remove_nones_to_dict(f_kwargs),
+                        request_type='distributed_master',
+                        is_async=False,
+                        logger=logger,
+                        broadcasting=nodes_list == '*',
+                        rbac_permissions=request.context['token_info']['rbac_policies'],
+                        wait_for_complete=True,
+                        nodes=nodes
+                        )
+    result = raise_if_exc(await dapi.distribute_function())
+
+    if nodes_list == '*' or master_node in nodes_list:
+        dapi_master = DistributedAPI(
+            f=manager.reload,
+            request_type='local_master',
+            logger=logger,
+            rbac_permissions=request.context['token_info']['rbac_policies'],
+        )
+        master_result = raise_if_exc(await dapi_master.distribute_function())
+        if master_result.total_affected_items > 0:
+            result.affected_items.insert(0, master_node)
+            result.total_affected_items += 1
+        if master_result.total_failed_items > 0:
+            result.add_failed_items_from(master_result)
+
+    return json_response(result, pretty=pretty, status_code=202)
+
+
 async def get_conf_validation(pretty: bool = False, wait_for_complete: bool = False,
                               nodes_list: str = '*') -> ConnexionResponse:
     """Check whether the Wazuh configuration in a list of cluster nodes is correct or not.
