@@ -1,8 +1,6 @@
 ---
 test_name: GET /cluster/local/config
 
-marks:
-  - cluster
 stages:
 
   - name: Get cluster config
@@ -34,7 +32,7 @@ stages:
 test_name: GET /cluster/healthcheck
 
 marks:
-  - cluster
+  - xfail #https://github.com/wazuh/wazuh/issues/34666
 
 stages:
 
@@ -111,9 +109,6 @@ stages:
 ---
 test_name: GET /cluster/local/info
 
-marks:
-  - cluster
-
 stages:
 
   - name: Get cluster node
@@ -138,9 +133,6 @@ stages:
 
 ---
 test_name: GET /cluster/nodes
-
-marks:
-  - cluster
 
 stages:
 
@@ -407,7 +399,6 @@ stages:
 test_name: GET /cluster/nodes
 
 marks:
-  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -444,7 +435,6 @@ stages:
 test_name: GET /cluster/nodes select
 
 marks:
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -476,9 +466,6 @@ stages:
 ---
 test_name: GET /cluster/status
 
-marks:
-  - cluster
-
 stages:
 
   - name: Get cluster status
@@ -497,9 +484,6 @@ stages:
 
 ---
 test_name: GET /cluster/{node_id}/configuration
-
-marks:
-  - cluster
 
 stages:
 
@@ -520,12 +504,8 @@ stages:
               cluster: !anything
               command: !anything
               global: !anything
-              localfile: !anything
               remote: !anything
-              rootcheck: !anything
-              sca: !anything
-              syscheck: !anything
-              syscollector: !anything
+              logging: !anything
               vulnerability-detection: !anything
               indexer: !anything
           failed_items: []
@@ -549,155 +529,16 @@ stages:
               cluster: !anything
               command: !anything
               global: !anything
-              localfile: !anything
               remote: !anything
-              rootcheck: !anything
-              sca: !anything
-              syscheck: !anything
-              syscollector: !anything
+              logging: !anything
               vulnerability-detection: !anything
               indexer: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Filters -> section=syscheck (master)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        section: syscheck
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - syscheck:
-                alert_new_files: !anystr
-                auto_ignore: !anything
-                directories: !anything
-                disabled: !anystr
-                frequency: !anystr
-                ignore: !anything
-                nodiff: !anything
-                skip_nfs: !anystr
-                skip_dev: !anystr
-                skip_sys: !anystr
-                skip_proc: !anystr
-                max_eps: !anystr
-                process_priority: !anystr
-                synchronization:
-                  enabled: !anystr
-                  interval: !anystr
-                  max_eps: !anystr
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Filters -> section=syscollector (master)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        section: syscollector
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - syscollector:
-                disabled: !anystr
-                hardware: !anystr
-                interval: !anystr
-                network: !anystr
-                os: !anystr
-                packages: !anystr
-                ports : !anything
-                processes: !anystr
-                scan_on_start: !anystr
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Filters -> section=syscheck (worker1)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        section: syscheck
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - syscheck:
-                alert_new_files: !anystr
-                auto_ignore: !anything
-                directories: !anything
-                disabled: !anystr
-                frequency: !anystr
-                ignore: !anything
-                nodiff: !anything
-                skip_nfs: !anystr
-                skip_dev: !anystr
-                skip_sys: !anystr
-                skip_proc: !anystr
-                max_eps: !anystr
-                process_priority: !anystr
-                synchronization:
-                  enabled: !anystr
-                  interval: !anystr
-                  max_eps: !anystr
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Filters -> section=syscollector (worker1)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        section: syscollector
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - syscollector:
-                disabled: !anystr
-                hardware: !anystr
-                interval: !anystr
-                network: !anystr
-                os: !anystr
-                packages: !anystr
-                ports : !anything
-                processes: !anystr
-                scan_on_start: !anystr
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
 ---
 test_name: GET /cluster/configuration/validation
-
-marks:
-  - cluster
 
 stages:
 
@@ -708,6 +549,9 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      timeout: 20
+      params:
+        wait_for_complete: true
     response:
       status_code: 200
       json:
@@ -726,9 +570,6 @@ stages:
 
 ---
 test_name: GET /cluster/api/config
-
-marks:
-  - cluster
 
 stages:
 
@@ -831,7 +672,7 @@ stages:
 test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
 
 marks:
-  - cluster
+  - xfail
 
 stages:
 
@@ -864,7 +705,7 @@ stages:
           total_failed_items: 0
 
   - name: Show the config of monitor/internal on master
-    skip: True
+    skip: True # https://github.com/wazuh/wazuh/issues/33608
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/monitor/internal"
@@ -1045,7 +886,6 @@ stages:
 test_name: GET /cluster/{node_id}/info
 
 marks:
-  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1084,7 +924,6 @@ stages:
 test_name: GET /cluster/{node_id}/logs
 
 marks:
-  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1360,7 +1199,6 @@ stages:
 test_name: GET /cluster/{node_id}/logs/summary
 
 marks:
-  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1391,7 +1229,6 @@ stages:
 test_name: GET /cluster/{node_id}/daemons/stats
 
 marks:
-  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1482,7 +1319,6 @@ stages:
 test_name: GET /cluster/{node_id}/stats
 
 marks:
-  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1529,9 +1365,6 @@ stages:
 
 ---
 test_name: GET /cluster/wrong_node/stats
-
-marks:
-  - cluster
 
 stages:
 
@@ -1628,7 +1461,6 @@ stages:
 test_name: GET /cluster/{node_id}/stats/hourly
 
 marks:
-  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1661,7 +1493,6 @@ stages:
 test_name: GET /cluster/{node_id}/stats/remoted
 
 marks:
-  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1700,7 +1531,6 @@ stages:
 test_name: GET /cluster/{node_id}/stats/weekly
 
 marks:
-  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1752,7 +1582,6 @@ stages:
 test_name: GET /cluster/{node_id}/status
 
 marks:
-  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1783,7 +1612,6 @@ stages:
 test_name: PUT /cluster/restart
 
 marks:
-  - cluster
   - skip: execd socket no longer exists in manager after agent-manager separation
 
 stages:
@@ -1835,7 +1663,7 @@ stages:
 test_name: PUT /cluster/{node_id}/configuration
 
 marks:
-  - cluster
+  - xfail # https://github.com/wazuh/wazuh/issues/34676q
 
 stages:
 

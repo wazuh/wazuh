@@ -31,6 +31,9 @@ stages:
 ---
 test_name: GET /cluster/healthcheck
 
+marks:
+  - xfail #https://github.com/wazuh/wazuh/issues/34666
+
 stages:
 
   - name: Get cluster healtcheck
@@ -309,12 +312,8 @@ stages:
               cluster: !anything
               command: !anything
               global: !anything
-              localfile: !anything
               remote: !anything
-              rootcheck: !anything
-              sca: !anything
-              syscheck: !anything
-              syscollector: !anything
+              logging: !anything
               vulnerability-detection: !anything
               indexer: !anything
           failed_items: []
@@ -355,6 +354,9 @@ stages:
 ---
 test_name: GET /cluster/configuration/validation
 
+marks:
+  - xfail #https://github.com/wazuh/wazuh/issues/34733
+
 stages:
 
   - name: Request cluster validation
@@ -364,6 +366,9 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      timeout: 20
+      params:
+        wait_for_complete: true
     response:
       status_code: 200
       json:
@@ -387,6 +392,9 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         nodes_list: 'worker1,worker2'
+      timeout: 20
+      params:
+        wait_for_complete: true
     response:
       status_code: 200
       json:

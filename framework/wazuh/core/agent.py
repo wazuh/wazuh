@@ -94,6 +94,34 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                               distinct=distinct, rbac_negate=rbac_negate)
         self.remove_extra_fields = remove_extra_fields
 
+    def run(self) -> dict:
+        """Execute the query and format the result.
+
+        Returns
+        -------
+        dict
+            Query result.
+        """
+        result = super().run()
+        if 'version' in self.fields:
+            self._normalize_retrieved_versions(result)
+
+        return result
+    
+    def _normalize_retrieved_versions(self, query_results: dict):
+        """Normalize the agents' versions retrieved from the database.
+
+        Parameters
+        ----------
+        query_results : dict
+            Query results.
+        
+        """
+    
+        for item in query_results['items']:
+            if 'version' in item:
+                item['version'] = str(WazuhVersion(item['version'], treat_as_empty=[None, 'N/A']))
+
     def _filter_date(self, date_filter: dict, filter_db_name: str):
         """Add date filter to the Wazuh query."""
         WazuhDBQuery._filter_date(self, date_filter, filter_db_name)
@@ -1171,7 +1199,7 @@ class Agent:
         self.load_info_from_db()
         if self.version is None:
             raise WazuhInternalError(1015)
-        agent_version = WazuhVersion(self.version.split(" ")[1])
+        agent_version = WazuhVersion(self.version)
         required_version = WazuhVersion(AGENT_COMPONENT_STATS_REQUIRED_VERSION.get(component))
         if agent_version < required_version:
             raise WazuhInternalError(1735, extra_message="Minimum required version is " + str(required_version))

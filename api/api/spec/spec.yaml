@@ -4380,7 +4380,7 @@ components:
       description: "Filter by OS version"
       schema:
         type: string
-        format: alphanumeric
+        format: alphanumeric_symbols
     older_than:
       in: query
       name: older_than
@@ -4741,7 +4741,7 @@ paths:
                       name: ac7cb188d538
                       status: active
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      version: Wazuh v4.3.0
+                      version: v4.3.0
                       node_name: worker2
                       group_config_status: 'synced'
                       status_code: 0
@@ -4766,7 +4766,7 @@ paths:
                       name: 91642a418627
                       status: active
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      version: Wazuh v4.3.0
+                      version: v4.3.0
                       node_name: worker2
                       group_config_status: 'synced'
                       status_code: 0
@@ -4791,7 +4791,7 @@ paths:
                       name: a442e15bc84e
                       status: active
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      version: Wazuh v4.3.0
+                      version: v4.3.0
                       node_name: worker1
                       group_config_status: 'not synced'
                       status_code: 0
@@ -6046,7 +6046,7 @@ paths:
                       name: ac7cb188d538
                       status: active
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      version: Wazuh v3.0.0
+                      version: v3.0.0
                       node_name: worker2
                       group_config_status: "synced"
                       status_code: 0
@@ -6071,7 +6071,7 @@ paths:
                       name: 91642a418627
                       status: active
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      version: Wazuh v3.0.0
+                      version: v3.0.0
                       node_name: worker2
                       group_config_status: "synced"
                       status_code: 0
@@ -6604,7 +6604,7 @@ paths:
                       dateAdd: 2021-05-27T09:14:19Z
                       registerIP: any
                       lastKeepAlive: 2021-05-27T09:23:59Z
-                      version: Wazuh v4.3.0
+                      version: v4.3.0
                       status_code: 0
                     - os:
                         arch: x86_64
@@ -6630,7 +6630,7 @@ paths:
                       dateAdd: 2021-05-27T09:14:19Z
                       registerIP: any
                       lastKeepAlive: 2021-05-27T09:23:52Z
-                      version: Wazuh v4.3.0
+                      version: v4.3.0
                       status_code: 0
                     - os:
                         arch: x86_64
@@ -6656,7 +6656,7 @@ paths:
                       dateAdd: 2021-05-27T09:14:19Z
                       registerIP: any
                       lastKeepAlive: 2021-05-27T09:23:52Z
-                      version: Wazuh v4.3.0
+                      version: v4.3.0
                       status_code: 0
                   total_affected_items: 3
                   total_failed_items: 0
@@ -11268,7 +11268,7 @@ paths:
                     pending: 0
                     total: 6
                   agent_version:
-                    - version: "Wazuh v4.3.0"
+                    - version: "v4.3.0"
                       count: 6
                   last_registered_agent:
                     - os:
@@ -11294,7 +11294,7 @@ paths:
                       manager: "wazuh-worker1"
                       id: "004"
                       mergedSum: "9a016508cea1e997ab8569f5cfab30f5"
-                      version: "Wazuh v4.3.0"
+                      version: "v4.3.0"
                       status_code: 0
                       group_config_status: active
                 error: 0

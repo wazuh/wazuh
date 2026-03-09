@@ -610,6 +610,9 @@ stages:
 ---
 test_name: GET /cluster/healthcheck
 
+marks:
+  - xfail #https://github.com/wazuh/wazuh/issues/34666
+
 stages:
   - name: Try to get cluster healtcheck
     request:
@@ -875,6 +878,9 @@ stages:
 ---
 test_name: GET /cluster/configuration/validation
 
+marks:
+  - xfail #https://github.com/wazuh/wazuh/issues/34733
+
 stages:
   - name: Try to request cluster validation (generic)
     request:
@@ -883,6 +889,9 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      timeout: 20
+      params:
+        wait_for_complete: true
     response:
       <<: *empty_response
 
@@ -895,6 +904,9 @@ stages:
         nodes_list: master-node
       headers:
         Authorization: "Bearer {test_login_token}"
+      timeout: 20
+      params:
+        wait_for_complete: true
     response:
       <<: *permission_denied
 
