@@ -343,6 +343,27 @@ if(${TARGET} STREQUAL "winagent")
   endforeach()
 endif()
 
+# check_rc_sys.c tests (rootcheck ENOENT fix - issue #32653)
+if(NOT ${TARGET} STREQUAL "winagent")
+  set(CHECK_RC_SYS_FLAGS "-Wl,--wrap,lstat \
+                           -Wl,--wrap,notify_rk \
+                           -Wl,--wrap,wopendir \
+                           -Wl,--wrap,wfopen \
+                           -Wl,--wrap,readdir \
+                           -Wl,--wrap,closedir \
+                           -Wl,--wrap,check_ignore \
+                           -Wl,--wrap,skipFS \
+                           -Wl,--wrap,IsNFS \
+                           ${DEBUG_OP_WRAPPERS}")
+
+  add_executable(test_check_rc_sys test_check_rc_sys.c)
+  target_include_directories(test_check_rc_sys PRIVATE ${SRC_FOLDER}/rootcheck)
+  target_link_libraries(test_check_rc_sys SYSCHECK_O ${TEST_DEPS})
+  target_link_libraries(test_check_rc_sys "${CHECK_RC_SYS_FLAGS}")
+  target_link_libraries(test_check_rc_sys ${TEST_DEPS})
+  add_test(NAME test_check_rc_sys COMMAND test_check_rc_sys)
+endif()
+
 # create_db.c tests
 add_executable(test_create_db test_create_db.c)
 
