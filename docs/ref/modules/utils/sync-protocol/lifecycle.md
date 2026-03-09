@@ -154,12 +154,12 @@ table Pair {
 
 ### 7. EndAck Message
 
-Confirms successful session completion.
+Acknowledges an `End` message. May be sent multiple times for the same session with different statuses.
 
 **Direction**: Manager → Agent
 
 **Content**:
-- Status (Success/Failed)
+- Status (see below)
 - Session ID
 
 **FlatBuffer Schema**:
@@ -170,7 +170,14 @@ table EndAck {
 }
 ```
 
-**State Transition**: `WaitingEndAck` → `Idle`
+**Status Values**:
+- `Ok`: Session completed successfully; agent deletes the synced data from the persistent queue.
+- `Error`: Session failed (e.g. checksum mismatch); agent does not delete data.
+- `Processing`: Manager received the `End` message but the session is still being processed (e.g. queued for indexing). The agent must wait again **without** resending `End` and **without** consuming a retry attempt.
+
+**State Transitions**:
+- `WaitingEndAck` → `Idle` on `Ok` or `Error`
+- `WaitingEndAck` → `WaitingEndAck` on `Processing` (reset wait, no retry consumed)
 
 ### 8. ChecksumModule Message
 
@@ -356,6 +363,29 @@ Agent                                   Manager
   |                                        |
 ```
 
+### Synchronization with EndAck(Processing)
+
+When the manager receives `End` and immediately enqueues the session for indexing, it sends `EndAck(Processing)` to keep the agent waiting. The agent must not resend `End` and must not count this as a failed attempt.
+
+```
+Agent                                   Manager
+  |                                        |
+  |-------------- Start ---------------->  |
+  |                                        |
+  |<------------ StartAck ---------------- |
+  |                                        |
+  |----------- DataValue[0..N] ----------> |
+  |                                        |
+  |--------------- End ------------------> |
+  |                                        |
+  |<------- EndAck(Processing) ----------- |  (session queued, not yet indexed)
+  |   (wait again, no retry consumed,      |
+  |    End NOT resent)                     |
+  |                                        |
+  |<------------- EndAck(Ok) ------------- |  (indexing complete)
+  |                                        |
+```
+
 ### Synchronization with Retransmission
 
 ```
@@ -396,7 +426,8 @@ stateDiagram-v2
     DataTransfer --> DataTransfer: Send DataValue/DataClean
     DataTransfer --> WaitingEndAck: Send End
 
-    WaitingEndAck --> Idle: Receive EndAck
+    WaitingEndAck --> Idle: Receive EndAck(Ok/Error)
+    WaitingEndAck --> WaitingEndAck: Receive EndAck(Processing)
     WaitingEndAck --> DataTransfer: Receive ReqRet
     WaitingEndAck --> Idle: Timeout/Error
 ```
@@ -419,7 +450,10 @@ Each phase has specific timeout behaviors:
 
 3. **WaitingEndAck**
    - Default timeout: 30 seconds
-   - On timeout: Retry sending End message
+   - On `EndAck(Ok/Error)`: Session completes or fails immediately
+   - On `EndAck(Processing)`: Manager is still processing; agent resets the wait timer and continues waiting **without** resending `End` and **without** consuming a retry
+   - On `ReqRet`: Agent retransmits missing sequences; retrying does **not** consume a retry
+   - On timeout after sending `End`: Retry sending End message, consuming one retry
    - Max retries: Configurable (default 3)
    - After max retries: Abort synchronization
 
