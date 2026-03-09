@@ -292,6 +292,7 @@ set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,sleep -Wl,--wrap,SendMSGPredicated -Wl,--wr
                           -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                           -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                           -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
+                          -Wl,--wrap,fim_db_get_last_sync_time -Wl,--wrap,fim_db_update_last_sync_time_value \
                           -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                           -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 

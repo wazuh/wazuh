@@ -22,6 +22,7 @@
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"
+#include "../wrappers/wazuh/shared_modules/agent_sync_protocol_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_realtime_wrappers.h"
@@ -40,6 +41,15 @@ void set_whodata_mode_changes();
 
 /* External 'static' functions prototypes */
 void fim_send_msg(char mq, const char * location, const char * msg);
+extern volatile int fim_sync_module_running;
+#ifdef WIN32
+DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args);
+DWORD WINAPI __real_fim_run_integrity(__attribute__((unused)) void * args);
+#else
+void * fim_run_integrity(__attribute__((unused)) void * args);
+void * __real_fim_run_integrity(__attribute__((unused)) void * args);
+#endif
+bool __wrap_fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval);
 
 /* DataClean helper function prototypes */
 bool fim_has_configured_directories(void);
@@ -68,6 +78,40 @@ void fim_realtime_delete_watches(const directory_t *configuration);
 extern time_t last_time;
 extern unsigned int files_read;
 
+static bool stop_fim_integrity_on_sync = false;
+static bool stop_fim_integrity_on_sleep = false;
+static bool request_pause_after_sync = false;
+
+#define TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY "first_sync_completed"
+
+void __wrap_asp_sync_module_hook(void) {
+    if (stop_fim_integrity_on_sync) {
+        fim_sync_module_running = 0;
+    }
+
+    if (request_pause_after_sync) {
+        syscheck.fim_pause_requested.data = 1;
+        request_pause_after_sync = false;
+    }
+}
+
+void __wrap_sleep_hook(__attribute__((unused)) unsigned int seconds) {
+    if (stop_fim_integrity_on_sleep) {
+        syscheck.fim_pause_requested.data = 0;
+        fim_sync_module_running = 0;
+    }
+}
+
+int64_t __wrap_fim_db_get_last_sync_time(const char* table_name) {
+    check_expected(table_name);
+    return mock_type(int64_t);
+}
+
+void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp) {
+    check_expected(table_name);
+    check_expected(timestamp);
+}
+
 /* redefinitons/wrapping */
 
 #ifdef TEST_WINAGENT
@@ -86,6 +130,15 @@ extern bool fim_shutdown_process_on();
 /* Setup/Teardown */
 
 static int setup_group(void ** state) {
+    stop_fim_integrity_on_sync = false;
+    stop_fim_integrity_on_sleep = false;
+    request_pause_after_sync = false;
+    fim_sync_module_running = 0;
+    fim_flush_in_progress.data = 0;
+    fim_flush_result.data = 0;
+    syscheck.fim_pause_requested = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+    syscheck.fim_pausing_is_allowed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+
 #ifdef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -220,6 +273,15 @@ static int teardown_tmp_file(void **state) {
 #endif
 
 static int teardown_group(void **state) {
+    stop_fim_integrity_on_sync = false;
+    stop_fim_integrity_on_sleep = false;
+    request_pause_after_sync = false;
+    fim_sync_module_running = 0;
+    fim_flush_in_progress.data = 0;
+    fim_flush_result.data = 0;
+    syscheck.fim_pause_requested.data = 0;
+    syscheck.fim_pausing_is_allowed.data = 0;
+
 #ifdef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -308,6 +370,54 @@ static int teardown_dbsync_msg(void **state) {
     char *ret_msg = *state;
     free(ret_msg);
     return 0;
+}
+
+static void expect_fim_startup_log(bool first_sync_completed) {
+    expect_string(__wrap__mdebug1,
+                  formatted_msg,
+                  first_sync_completed
+                      ? "FIM first synchronization already completed. Keeping startup synchronization delay."
+                      : "FIM first synchronization has not completed yet. Triggering synchronization without startup delay.");
+}
+
+static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, uint32_t sync_interval, bool persist_first_sync_marker) {
+    expect_string(__wrap__minfo, formatted_msg, "Starting FIM synchronization.");
+
+    expect_value(__wrap_asp_sync_module, handle, handle);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
+    will_return(__wrap_asp_sync_module, true);
+
+    expect_string(__wrap__minfo, formatted_msg, "FIM synchronization finished successfully.");
+
+    if (persist_first_sync_marker) {
+        will_return(__wrap_time, 123456);
+        expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+        expect_any(__wrap_fim_db_update_last_sync_time_value, timestamp);
+    }
+
+    expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
+    will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
+    expect_string(__wrap__mdebug1,
+                  formatted_msg,
+                  sync_interval == 1
+                      ? "FIM synchronization finished, waiting for 1 seconds before next run."
+                      : "FIM synchronization finished, waiting for 0 seconds before next run.");
+}
+
+static void expect_fim_flush_sync_body(AgentSyncProtocolHandle* handle, bool persist_first_sync_marker) {
+    expect_string(__wrap__minfo, formatted_msg, "Starting FIM synchronization requested by agent-info.");
+
+    expect_value(__wrap_asp_sync_module, handle, handle);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
+    will_return(__wrap_asp_sync_module, true);
+
+    expect_string(__wrap__minfo, formatted_msg, "FIM synchronization requested by agent-info finished.");
+
+    if (persist_first_sync_marker) {
+        will_return(__wrap_time, 123456);
+        expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+        expect_any(__wrap_fim_db_update_last_sync_time_value, timestamp);
+    }
 }
 /* tests */
 
@@ -1035,6 +1145,130 @@ void test_check_max_fps_sleep(void **state) {
     check_max_fps();
 }
 
+void test_fim_run_integrity_skips_initial_wait_for_pending_first_sync(void **state) {
+    AgentSyncProtocolHandle* original_handle = syscheck.sync_handle;
+    uint32_t original_sync_interval = syscheck.sync_interval;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+
+    (void)state;
+
+    syscheck.sync_handle = handle;
+    syscheck.sync_interval = 1;
+    fim_sync_module_running = 1;
+    stop_fim_integrity_on_sync = true;
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 0);
+    expect_fim_startup_log(false);
+    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, true);
+
+    __real_fim_run_integrity(NULL);
+
+    stop_fim_integrity_on_sync = false;
+    syscheck.sync_handle = original_handle;
+    syscheck.sync_interval = original_sync_interval;
+}
+
+void test_fim_run_integrity_keeps_initial_wait_after_first_sync(void **state) {
+    AgentSyncProtocolHandle* original_handle = syscheck.sync_handle;
+    uint32_t original_sync_interval = syscheck.sync_interval;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+
+    (void)state;
+
+    syscheck.sync_handle = handle;
+    syscheck.sync_interval = 1;
+    fim_sync_module_running = 1;
+    stop_fim_integrity_on_sync = true;
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 123456);
+    expect_fim_startup_log(true);
+
+    expect_value(__wrap_sleep, seconds, 1);
+
+    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, false);
+
+    __real_fim_run_integrity(NULL);
+
+    stop_fim_integrity_on_sync = false;
+    syscheck.sync_handle = original_handle;
+    syscheck.sync_interval = original_sync_interval;
+}
+
+void test_fim_run_integrity_pause_still_waits_after_skip_is_consumed(void **state) {
+    AgentSyncProtocolHandle* original_handle = syscheck.sync_handle;
+    uint32_t original_sync_interval = syscheck.sync_interval;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+
+    (void)state;
+
+    syscheck.sync_handle = handle;
+    syscheck.sync_interval = 1;
+    fim_sync_module_running = 1;
+    stop_fim_integrity_on_sleep = true;
+    request_pause_after_sync = true;
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 0);
+    expect_fim_startup_log(false);
+    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, true);
+    expect_value(__wrap_sleep, seconds, 1);
+
+    __real_fim_run_integrity(NULL);
+
+    assert_int_equal(syscheck.fim_pausing_is_allowed.data, 1);
+
+    stop_fim_integrity_on_sleep = false;
+    request_pause_after_sync = false;
+    syscheck.sync_handle = original_handle;
+    syscheck.sync_interval = original_sync_interval;
+    syscheck.fim_pause_requested.data = 0;
+    syscheck.fim_pausing_is_allowed.data = 0;
+}
+
+void test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_completion(void **state) {
+    AgentSyncProtocolHandle* original_handle = syscheck.sync_handle;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+
+    (void)state;
+
+    syscheck.sync_handle = handle;
+    fim_sync_module_running = 1;
+    stop_fim_integrity_on_sync = true;
+    syscheck.fim_pause_requested.data = 1;
+    fim_flush_in_progress.data = 1;
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 0);
+    expect_fim_startup_log(false);
+    expect_fim_flush_sync_body(handle, false);
+    will_return(__wrap_time, 123456);
+    expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    expect_any(__wrap_fim_db_update_last_sync_time_value, timestamp);
+
+    __real_fim_run_integrity(NULL);
+
+    assert_int_equal(fim_flush_in_progress.data, 0);
+    assert_int_equal(fim_flush_result.data, 0);
+    assert_int_equal(syscheck.fim_pausing_is_allowed.data, 1);
+
+    stop_fim_integrity_on_sync = false;
+    syscheck.sync_handle = original_handle;
+    syscheck.fim_pause_requested.data = 0;
+    syscheck.fim_pausing_is_allowed.data = 0;
+    fim_flush_in_progress.data = 0;
+    fim_flush_result.data = 0;
+}
+
 /* ---------------------------------- DataClean Tests ---------------------------------- */
 
 void test_fim_has_configured_directories_null_list(void **state) {
@@ -1147,6 +1381,10 @@ int main(void) {
         cmocka_unit_test(test_log_realtime_status),
         cmocka_unit_test_setup_teardown(test_check_max_fps_no_sleep, setup_max_fps, teardown_max_fps),
         cmocka_unit_test_setup_teardown(test_check_max_fps_sleep, setup_max_fps, teardown_max_fps),
+        cmocka_unit_test(test_fim_run_integrity_skips_initial_wait_for_pending_first_sync),
+        cmocka_unit_test(test_fim_run_integrity_keeps_initial_wait_after_first_sync),
+        cmocka_unit_test(test_fim_run_integrity_pause_still_waits_after_skip_is_consumed),
+        cmocka_unit_test(test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_completion),
         /* DataClean tests */
         cmocka_unit_test(test_fim_has_configured_directories_null_list),
         cmocka_unit_test(test_fim_has_configured_directories_with_directories),
