@@ -33,7 +33,7 @@ namespace base::utils
  */
 template<typename Func>
 decltype(auto) executeWithRetry(Func&& operation,
-                                std::string_view componentOperationName,
+                                const std::string& componentOperationName,
                                 std::string_view message,
                                 std::size_t maxAttempts,
                                 std::size_t waitSeconds)
@@ -46,10 +46,10 @@ decltype(auto) executeWithRetry(Func&& operation,
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING_L(componentOperationName.data(),
+            LOG_WARNING_L(componentOperationName.c_str(),
                           "[{}] {} - Attempt {}/{}: {}",
-                          message,
                           componentOperationName,
+                          message,
                           attempt,
                           maxAttempts,
                           e.what());

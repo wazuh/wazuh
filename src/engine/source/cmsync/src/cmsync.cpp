@@ -54,11 +54,9 @@ private:
     std::string m_originSpace;     ///< Origin space in the indexer
     std::string m_routeName;       ///< Route name in the router
     cm::store::NamespaceId m_nsId; ///< Destination namespace ID in the local store
-    bool m_enabled;                ///< Indicates if the policy is enabled
 
     static constexpr std::string_view JPATH_ORIGIN = "/origin_space";       ///< JSON path for origin space
     static constexpr std::string_view JPATH_NAMESPACE_ID = "/namespace_id"; ///< JSON path for namespace ID
-    static constexpr std::string_view JPATH_ENABLED = "/enabled";           ///< JSON path for enabled status
 
     /**
      * @brief Generate a route name for the given origin space
@@ -82,7 +80,6 @@ public:
         : m_originSpace(originSpace)
         , m_routeName(generateRouteName(originSpace))
         , m_nsId(DUMMY_NAMESPACE_ID)
-        , m_enabled(false)
     {
     }
 
@@ -91,13 +88,11 @@ public:
      *
      * @param originSpace Origin space name
      * @param nsId Destination namespace ID in the local store
-     * @param enabled Indicates if the policy is enabled
      */
-    SyncedNamespace(std::string_view originSpace, cm::store::NamespaceId nsId, bool enabled)
+    SyncedNamespace(std::string_view originSpace, cm::store::NamespaceId nsId)
         : m_originSpace(originSpace)
         , m_routeName(generateRouteName(originSpace))
         , m_nsId(std::move(nsId))
-        , m_enabled(enabled)
     {
     }
 
@@ -105,7 +100,6 @@ public:
     const std::string& getOriginSpace() const { return m_originSpace; }
     const cm::store::NamespaceId& getNamespaceId() const { return m_nsId; }
     const std::string& getRouteName() const { return m_routeName; }
-    bool isEnabled() const { return m_enabled; }
     void setNamespaceId(const cm::store::NamespaceId& nsId) { m_nsId = nsId; }
 
     /**
@@ -117,7 +111,6 @@ public:
     {
         json::Json j {};
         j.setString(m_originSpace, JPATH_ORIGIN);
-        j.setBool(m_enabled, JPATH_ENABLED);
         j.setString(m_nsId.toStr(), JPATH_NAMESPACE_ID);
         return j;
     }
@@ -143,13 +136,7 @@ public:
             throw std::runtime_error("NsSyncState::fromJson: Missing namespace_id field");
         }
 
-        auto optEnabled = j.getBool(JPATH_ENABLED);
-        if (!optEnabled.has_value())
-        {
-            throw std::runtime_error("NsSyncState::fromJson: Missing enabled field");
-        }
-
-        return {*optOrigin, cm::store::NamespaceId(*optNsId), *optEnabled};
+        return {*optOrigin, cm::store::NamespaceId(*optNsId)};
     }
 };
 
@@ -186,8 +173,8 @@ bool CMSync::existSpaceInRemote(std::string_view space)
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
 
     return base::utils::executeWithRetry([&indexerPtr, space]() { return indexerPtr->existsPolicy(space); },
-                                         fmt::format("Check '{}' space in wazuh-indexer", space),
                                          fmt::format("{}::exist()", COMPONENT_NAME),
+                                         fmt::format("Check '{}' space in wazuh-indexer", space),
                                          m_attemps,
                                          m_waitSeconds);
 }
@@ -200,8 +187,8 @@ void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::Na
     // Download policy from wazuh-indexer
     auto policyResource =
         base::utils::executeWithRetry([&indexerPtr, originSpace]() { return indexerPtr->getPolicy(originSpace); },
-                                      fmt::format("Download '{}' space from wazuh-indexer", originSpace),
                                       fmt::format("{}::downloadNamespace()", COMPONENT_NAME),
+                                      fmt::format("Download '{}' space from wazuh-indexer", originSpace),
                                       m_attemps,
                                       m_waitSeconds);
 
@@ -238,8 +225,8 @@ std::pair<std::string, bool> CMSync::getPolicyHashAndEnabledFromRemote(std::stri
 
     return base::utils::executeWithRetry(
         [&indexerPtr, space]() { return indexerPtr->getPolicyHashAndEnabled(space); },
-        fmt::format("Get policy hash and enabled status for '{}' space from wazuh-indexer", space),
         fmt::format("{}::getInfoFromRemote()", COMPONENT_NAME),
+        fmt::format("Get policy hash and enabled status for '{}' space from wazuh-indexer", space),
         m_attemps,
         m_waitSeconds);
 }

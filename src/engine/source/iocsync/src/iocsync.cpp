@@ -168,8 +168,8 @@ bool IocSync::existIocDataInRemote()
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
 
     return base::utils::executeWithRetry([&indexerPtr]() { return indexerPtr->existsIocDataIndex(); },
-                                         "Check if IOC data index exists in remote indexer",
                                          fmt::format("{}::existIocDataInRemote()", COMPONENT_NAME),
+                                         "Check if IOC data index exists in remote indexer",
                                          m_attempts,
                                          m_waitSeconds);
 }
@@ -179,8 +179,8 @@ std::unordered_map<std::string, std::string> IocSync::getRemoteHashesFromRemote(
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "Indexer Connector");
 
     return base::utils::executeWithRetry([&indexerPtr]() { return indexerPtr->getIocTypeHashes(); },
-                                         "Get IOC type hashes from remote indexer",
                                          fmt::format("{}::getRemoteHashesFromRemote()", COMPONENT_NAME),
+                                         "Get IOC type hashes from remote indexer",
                                          m_attempts,
                                          m_waitSeconds);
 }

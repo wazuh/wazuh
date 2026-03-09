@@ -139,7 +139,7 @@ Feature: Resource management via cmcrud resource handlers
     Then the policy request should fail
     And the policy error message should be "Failed to upsert policy in namespace 'analytics': Policy JSON must have an 'integrations' array"
 
-  Scenario: Fail to upsert a policy with a invalid root id decoder.
+  Scenario: Fail to upsert a policy with an invalid root decoder id
     When I send a request to upsert a policy in namespace "analytics" with YAML having an invalid root decoder
     Then the policy request should fail
     And the policy error message should be "Failed to upsert policy in namespace 'analytics': Resource with UUID '00000000-0000-0000-0000-000000000001' does not exist"
