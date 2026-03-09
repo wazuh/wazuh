@@ -209,7 +209,6 @@ build_standalone() {
     cp ${WAZUH_PATH}/src/external/rocksdb/build/librocksdb.so.8 ${TEMP_DIR}/bin/lib
     cp ${WAZUH_PATH}/src/build/lib/libwazuhext.so ${TEMP_DIR}/bin/lib
     cp ${WAZUH_PATH}/src/build/lib/libindexer_connector.so ${TEMP_DIR}/bin/lib
-    cp ${WAZUH_PATH}/src/build/lib/libcontent_manager.so ${TEMP_DIR}/bin/lib
     cp ${WAZUH_PATH}/gcc-libs/libstdc++.so.6* ${TEMP_DIR}/bin/lib/
     cp ${WAZUH_PATH}/src/build/engine/wazuh-engine ${TEMP_DIR}/bin/
     chmod +x ${TEMP_DIR}/bin/wazuh-engine

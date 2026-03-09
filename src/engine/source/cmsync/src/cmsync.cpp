@@ -257,10 +257,8 @@ cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view origi
 
         // [OUTPUTS]: Add local outputs for the current namespace
 
-        // [FILTERS]: Necesary filter for the route to work
-        // TODO: Remove this after refactor the router to not
-        // require a filter
-        cmcrudPtr->upsertResource(newNs, cm::store::ResourceType::FILTER, createAllowAllFilter().str());
+        // [FILTERS]: Add default filter for the current namespace
+
     }
     catch (const std::exception& e)
     {
@@ -491,16 +489,13 @@ void CMSync::synchronize()
                     const auto& [_ignore, nsId, routeHash] = *routeConfig;
                     LOG_INFO("[CMSync] Policy for space '{}' is disabled in indexer, removing route and namespace",
                              nsState.getOriginSpace());
-                    try
-                    {
-                        routerPtr->deleteEntry(nsState.getRouteName());
-                    }
-                    catch (const std::exception& e)
+
+                    if (auto err = routerPtr->deleteEntry(nsState.getRouteName()); base::isError(err))
                     {
                         LOG_WARNING("[CMSync] Failed to delete route '{}' for space '{}': {}",
                                     nsState.getRouteName(),
                                     nsState.getOriginSpace(),
-                                    e.what());
+                                    err->message);
                     }
                     try
                     {
