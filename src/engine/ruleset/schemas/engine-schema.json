@@ -24,169 +24,34 @@
     "agent.version": {
       "type": "keyword"
     },
-    "check.compliance.cmmc.category": {
+    "check.compliance.cmmc": {
       "type": "keyword"
     },
-    "check.compliance.cmmc.name": {
+    "check.compliance.fedramp": {
       "type": "keyword"
     },
-    "check.compliance.cmmc.publisher": {
+    "check.compliance.gdpr": {
       "type": "keyword"
     },
-    "check.compliance.cmmc.requirements": {
+    "check.compliance.hipaa": {
       "type": "keyword"
     },
-    "check.compliance.cmmc.version": {
+    "check.compliance.iso_27001": {
       "type": "keyword"
     },
-    "check.compliance.fedramp.category": {
+    "check.compliance.nis2": {
       "type": "keyword"
     },
-    "check.compliance.fedramp.name": {
+    "check.compliance.nist_800_171": {
       "type": "keyword"
     },
-    "check.compliance.fedramp.publisher": {
+    "check.compliance.nist_800_53": {
       "type": "keyword"
     },
-    "check.compliance.fedramp.requirements": {
+    "check.compliance.pci_dss": {
       "type": "keyword"
     },
-    "check.compliance.fedramp.version": {
-      "type": "keyword"
-    },
-    "check.compliance.gdpr.category": {
-      "type": "keyword"
-    },
-    "check.compliance.gdpr.name": {
-      "type": "keyword"
-    },
-    "check.compliance.gdpr.publisher": {
-      "type": "keyword"
-    },
-    "check.compliance.gdpr.requirements": {
-      "type": "keyword"
-    },
-    "check.compliance.gdpr.version": {
-      "type": "keyword"
-    },
-    "check.compliance.hipaa.category": {
-      "type": "keyword"
-    },
-    "check.compliance.hipaa.name": {
-      "type": "keyword"
-    },
-    "check.compliance.hipaa.publisher": {
-      "type": "keyword"
-    },
-    "check.compliance.hipaa.requirements": {
-      "type": "keyword"
-    },
-    "check.compliance.hipaa.version": {
-      "type": "keyword"
-    },
-    "check.compliance.iso_27001.category": {
-      "type": "keyword"
-    },
-    "check.compliance.iso_27001.name": {
-      "type": "keyword"
-    },
-    "check.compliance.iso_27001.publisher": {
-      "type": "keyword"
-    },
-    "check.compliance.iso_27001.requirements": {
-      "type": "keyword"
-    },
-    "check.compliance.iso_27001.version": {
-      "type": "keyword"
-    },
-    "check.compliance.mitre_attack.category": {
-      "type": "keyword"
-    },
-    "check.compliance.mitre_attack.name": {
-      "type": "keyword"
-    },
-    "check.compliance.mitre_attack.publisher": {
-      "type": "keyword"
-    },
-    "check.compliance.mitre_attack.requirements": {
-      "type": "keyword"
-    },
-    "check.compliance.mitre_attack.version": {
-      "type": "keyword"
-    },
-    "check.compliance.nis2.category": {
-      "type": "keyword"
-    },
-    "check.compliance.nis2.name": {
-      "type": "keyword"
-    },
-    "check.compliance.nis2.publisher": {
-      "type": "keyword"
-    },
-    "check.compliance.nis2.requirements": {
-      "type": "keyword"
-    },
-    "check.compliance.nis2.version": {
-      "type": "keyword"
-    },
-    "check.compliance.nist_800_171.category": {
-      "type": "keyword"
-    },
-    "check.compliance.nist_800_171.name": {
-      "type": "keyword"
-    },
-    "check.compliance.nist_800_171.publisher": {
-      "type": "keyword"
-    },
-    "check.compliance.nist_800_171.requirements": {
-      "type": "keyword"
-    },
-    "check.compliance.nist_800_171.version": {
-      "type": "keyword"
-    },
-    "check.compliance.nist_800_53.category": {
-      "type": "keyword"
-    },
-    "check.compliance.nist_800_53.name": {
-      "type": "keyword"
-    },
-    "check.compliance.nist_800_53.publisher": {
-      "type": "keyword"
-    },
-    "check.compliance.nist_800_53.requirements": {
-      "type": "keyword"
-    },
-    "check.compliance.nist_800_53.version": {
-      "type": "keyword"
-    },
-    "check.compliance.pci_dss.category": {
-      "type": "keyword"
-    },
-    "check.compliance.pci_dss.name": {
-      "type": "keyword"
-    },
-    "check.compliance.pci_dss.publisher": {
-      "type": "keyword"
-    },
-    "check.compliance.pci_dss.requirements": {
-      "type": "keyword"
-    },
-    "check.compliance.pci_dss.version": {
-      "type": "keyword"
-    },
-    "check.compliance.tsc.category": {
-      "type": "keyword"
-    },
-    "check.compliance.tsc.name": {
-      "type": "keyword"
-    },
-    "check.compliance.tsc.publisher": {
-      "type": "keyword"
-    },
-    "check.compliance.tsc.requirements": {
-      "type": "keyword"
-    },
-    "check.compliance.tsc.version": {
+    "check.compliance.tsc": {
       "type": "keyword"
     },
     "check.condition": {
@@ -196,6 +61,15 @@
       "type": "keyword"
     },
     "check.id": {
+      "type": "keyword"
+    },
+    "check.mitre.subtechnique": {
+      "type": "keyword"
+    },
+    "check.mitre.tactic": {
+      "type": "keyword"
+    },
+    "check.mitre.technique": {
       "type": "keyword"
     },
     "check.name": {
@@ -423,169 +297,34 @@
     "cloud.target.service.name": {
       "type": "keyword"
     },
-    "compliance.cmmc.category": {
+    "compliance.cmmc": {
       "type": "keyword"
     },
-    "compliance.cmmc.name": {
+    "compliance.fedramp": {
       "type": "keyword"
     },
-    "compliance.cmmc.publisher": {
+    "compliance.gdpr": {
       "type": "keyword"
     },
-    "compliance.cmmc.requirements": {
+    "compliance.hipaa": {
       "type": "keyword"
     },
-    "compliance.cmmc.version": {
+    "compliance.iso_27001": {
       "type": "keyword"
     },
-    "compliance.fedramp.category": {
+    "compliance.nis2": {
       "type": "keyword"
     },
-    "compliance.fedramp.name": {
+    "compliance.nist_800_171": {
       "type": "keyword"
     },
-    "compliance.fedramp.publisher": {
+    "compliance.nist_800_53": {
       "type": "keyword"
     },
-    "compliance.fedramp.requirements": {
+    "compliance.pci_dss": {
       "type": "keyword"
     },
-    "compliance.fedramp.version": {
-      "type": "keyword"
-    },
-    "compliance.gdpr.category": {
-      "type": "keyword"
-    },
-    "compliance.gdpr.name": {
-      "type": "keyword"
-    },
-    "compliance.gdpr.publisher": {
-      "type": "keyword"
-    },
-    "compliance.gdpr.requirements": {
-      "type": "keyword"
-    },
-    "compliance.gdpr.version": {
-      "type": "keyword"
-    },
-    "compliance.hipaa.category": {
-      "type": "keyword"
-    },
-    "compliance.hipaa.name": {
-      "type": "keyword"
-    },
-    "compliance.hipaa.publisher": {
-      "type": "keyword"
-    },
-    "compliance.hipaa.requirements": {
-      "type": "keyword"
-    },
-    "compliance.hipaa.version": {
-      "type": "keyword"
-    },
-    "compliance.iso_27001.category": {
-      "type": "keyword"
-    },
-    "compliance.iso_27001.name": {
-      "type": "keyword"
-    },
-    "compliance.iso_27001.publisher": {
-      "type": "keyword"
-    },
-    "compliance.iso_27001.requirements": {
-      "type": "keyword"
-    },
-    "compliance.iso_27001.version": {
-      "type": "keyword"
-    },
-    "compliance.mitre_attack.category": {
-      "type": "keyword"
-    },
-    "compliance.mitre_attack.name": {
-      "type": "keyword"
-    },
-    "compliance.mitre_attack.publisher": {
-      "type": "keyword"
-    },
-    "compliance.mitre_attack.requirements": {
-      "type": "keyword"
-    },
-    "compliance.mitre_attack.version": {
-      "type": "keyword"
-    },
-    "compliance.nis2.category": {
-      "type": "keyword"
-    },
-    "compliance.nis2.name": {
-      "type": "keyword"
-    },
-    "compliance.nis2.publisher": {
-      "type": "keyword"
-    },
-    "compliance.nis2.requirements": {
-      "type": "keyword"
-    },
-    "compliance.nis2.version": {
-      "type": "keyword"
-    },
-    "compliance.nist_800_171.category": {
-      "type": "keyword"
-    },
-    "compliance.nist_800_171.name": {
-      "type": "keyword"
-    },
-    "compliance.nist_800_171.publisher": {
-      "type": "keyword"
-    },
-    "compliance.nist_800_171.requirements": {
-      "type": "keyword"
-    },
-    "compliance.nist_800_171.version": {
-      "type": "keyword"
-    },
-    "compliance.nist_800_53.category": {
-      "type": "keyword"
-    },
-    "compliance.nist_800_53.name": {
-      "type": "keyword"
-    },
-    "compliance.nist_800_53.publisher": {
-      "type": "keyword"
-    },
-    "compliance.nist_800_53.requirements": {
-      "type": "keyword"
-    },
-    "compliance.nist_800_53.version": {
-      "type": "keyword"
-    },
-    "compliance.pci_dss.category": {
-      "type": "keyword"
-    },
-    "compliance.pci_dss.name": {
-      "type": "keyword"
-    },
-    "compliance.pci_dss.publisher": {
-      "type": "keyword"
-    },
-    "compliance.pci_dss.requirements": {
-      "type": "keyword"
-    },
-    "compliance.pci_dss.version": {
-      "type": "keyword"
-    },
-    "compliance.tsc.category": {
-      "type": "keyword"
-    },
-    "compliance.tsc.name": {
-      "type": "keyword"
-    },
-    "compliance.tsc.publisher": {
-      "type": "keyword"
-    },
-    "compliance.tsc.requirements": {
-      "type": "keyword"
-    },
-    "compliance.tsc.version": {
+    "compliance.tsc": {
       "type": "keyword"
     },
     "container.cpu.usage": {
@@ -1923,6 +1662,9 @@
     "interface.type": {
       "type": "keyword"
     },
+    "labels": {
+      "type": "object"
+    },
     "log.file.path": {
       "type": "keyword"
     },
@@ -1978,6 +1720,15 @@
       "type": "keyword"
     },
     "message": {
+      "type": "keyword"
+    },
+    "mitre.subtechnique": {
+      "type": "keyword"
+    },
+    "mitre.tactic": {
+      "type": "keyword"
+    },
+    "mitre.technique": {
       "type": "keyword"
     },
     "network.application": {
@@ -3853,6 +3604,9 @@
       "type": "keyword"
     },
     "span.id": {
+      "type": "keyword"
+    },
+    "tags": {
       "type": "keyword"
     },
     "threat.enrichments": {

@@ -144,332 +144,62 @@
             "string"
           ]
         },
-        "check.compliance.cmmc.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
+        "check.compliance.cmmc": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nCMMC requirements.",
           "type": [
             "string"
           ]
         },
-        "check.compliance.cmmc.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
+        "check.compliance.fedramp": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nFedRAMP requirements.",
           "type": [
             "string"
           ]
         },
-        "check.compliance.cmmc.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
+        "check.compliance.gdpr": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nGDPR requirements.",
           "type": [
             "string"
           ]
         },
-        "check.compliance.cmmc.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
+        "check.compliance.hipaa": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nHIPAA requirements.",
           "type": [
             "string"
           ]
         },
-        "check.compliance.cmmc.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
+        "check.compliance.iso_27001": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nISO 27001 requirements.",
           "type": [
             "string"
           ]
         },
-        "check.compliance.fedramp.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
+        "check.compliance.nis2": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nNIS2 requirements.",
           "type": [
             "string"
           ]
         },
-        "check.compliance.fedramp.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
+        "check.compliance.nist_800_171": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nNIST 800-171 requirements.",
           "type": [
             "string"
           ]
         },
-        "check.compliance.fedramp.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
+        "check.compliance.nist_800_53": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nNIST 800-53 requirements.",
           "type": [
             "string"
           ]
         },
-        "check.compliance.fedramp.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
+        "check.compliance.pci_dss": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nPCI DSS requirements.",
           "type": [
             "string"
           ]
         },
-        "check.compliance.fedramp.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.gdpr.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.gdpr.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.gdpr.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.gdpr.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.gdpr.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.hipaa.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.hipaa.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.hipaa.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.hipaa.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.hipaa.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.iso_27001.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.iso_27001.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.iso_27001.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.iso_27001.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.iso_27001.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.mitre_attack.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.mitre_attack.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.mitre_attack.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.mitre_attack.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.mitre_attack.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.nis2.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.nis2.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.nis2.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.nis2.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.nis2.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.nist_800_171.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.nist_800_171.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.nist_800_171.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.nist_800_171.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.nist_800_171.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.nist_800_53.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.nist_800_53.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.nist_800_53.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.nist_800_53.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.nist_800_53.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.pci_dss.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.pci_dss.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.pci_dss.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.pci_dss.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.pci_dss.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.tsc.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.tsc.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.tsc.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.tsc.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "check.compliance.tsc.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
+        "check.compliance.tsc": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nTSC requirements.",
           "type": [
             "string"
           ]
@@ -488,6 +218,24 @@
         },
         "check.id": {
           "description": "Module: ecs\nIndexerType: keyword\n\nThe ID of the SCA policy check.",
+          "type": [
+            "string"
+          ]
+        },
+        "check.mitre.subtechnique": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nMITRE ATT&CK subtechniques.",
+          "type": [
+            "string"
+          ]
+        },
+        "check.mitre.tactic": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nMITRE ATT&CK tactics.",
+          "type": [
+            "string"
+          ]
+        },
+        "check.mitre.technique": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nMITRE ATT&CK techniques.",
           "type": [
             "string"
           ]
@@ -952,332 +700,62 @@
             "string"
           ]
         },
-        "compliance.cmmc.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
+        "compliance.cmmc": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nCMMC requirements.",
           "type": [
             "string"
           ]
         },
-        "compliance.cmmc.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
+        "compliance.fedramp": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nFedRAMP requirements.",
           "type": [
             "string"
           ]
         },
-        "compliance.cmmc.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
+        "compliance.gdpr": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nGDPR requirements.",
           "type": [
             "string"
           ]
         },
-        "compliance.cmmc.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
+        "compliance.hipaa": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nHIPAA requirements.",
           "type": [
             "string"
           ]
         },
-        "compliance.cmmc.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
+        "compliance.iso_27001": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nISO 27001 requirements.",
           "type": [
             "string"
           ]
         },
-        "compliance.fedramp.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
+        "compliance.nis2": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nNIS2 requirements.",
           "type": [
             "string"
           ]
         },
-        "compliance.fedramp.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
+        "compliance.nist_800_171": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nNIST 800-171 requirements.",
           "type": [
             "string"
           ]
         },
-        "compliance.fedramp.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
+        "compliance.nist_800_53": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nNIST 800-53 requirements.",
           "type": [
             "string"
           ]
         },
-        "compliance.fedramp.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
+        "compliance.pci_dss": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nPCI DSS requirements.",
           "type": [
             "string"
           ]
         },
-        "compliance.fedramp.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.gdpr.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.gdpr.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.gdpr.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.gdpr.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.gdpr.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.hipaa.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.hipaa.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.hipaa.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.hipaa.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.hipaa.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.iso_27001.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.iso_27001.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.iso_27001.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.iso_27001.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.iso_27001.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.mitre_attack.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.mitre_attack.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.mitre_attack.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.mitre_attack.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.mitre_attack.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.nis2.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.nis2.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.nis2.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.nis2.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.nis2.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.nist_800_171.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.nist_800_171.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.nist_800_171.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.nist_800_171.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.nist_800_171.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.nist_800_53.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.nist_800_53.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.nist_800_53.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.nist_800_53.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.nist_800_53.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.pci_dss.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.pci_dss.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.pci_dss.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.pci_dss.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.pci_dss.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.tsc.category": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework category (payment-security, data-protection, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.tsc.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework name (PCI DSS, GDPR, NIST 800-53, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.tsc.publisher": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nOrganization that published the framework.",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.tsc.requirements": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nRequirement identifier (11.5, Article 32, AC-3, etc.).",
-          "type": [
-            "string"
-          ]
-        },
-        "compliance.tsc.version": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nFramework version (4.0, 2018, 5.1, etc.).",
+        "compliance.tsc": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nTSC requirements.",
           "type": [
             "string"
           ]
@@ -4236,6 +3714,14 @@
             "string"
           ]
         },
+        "labels": {
+          "description": "Module: ecs\nIndexerType: object\n\nCustom key/value pairs.\nCan be used to add meta information to events. Should not contain nested objects. All values are stored as keyword.\nExample: `docker` and `k8s` labels.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "object",
+            "string"
+          ]
+        },
         "log.file.path": {
           "description": "Module: ecs\nIndexerType: keyword\n\nFull path to the log file this event came from, including the file name. It should include the drive letter, when appropriate.\nIf the event wasn't read from a log file, do not populate this field.",
           "type": [
@@ -4361,6 +3847,24 @@
         },
         "message": {
           "description": "Module: ecs\nIndexerType: keyword\n\nFor log events the message field contains the log message, optimized for viewing in a log viewer.\nFor structured logs without an original message field, other fields can be concatenated to form a human-readable summary of the event.\nIf multiple messages exist, they can be combined into one message.",
+          "type": [
+            "string"
+          ]
+        },
+        "mitre.subtechnique": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nMITRE ATT&CK subtechniques.",
+          "type": [
+            "string"
+          ]
+        },
+        "mitre.tactic": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nMITRE ATT&CK tactics.",
+          "type": [
+            "string"
+          ]
+        },
+        "mitre.technique": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nMITRE ATT&CK techniques.",
           "type": [
             "string"
           ]
@@ -8509,6 +8013,12 @@
         },
         "span.id": {
           "description": "Module: ecs\nIndexerType: keyword\n\nUnique identifier of the span within the scope of its trace.\nA span represents an operation within a transaction, such as a request to another service, or a database query.",
+          "type": [
+            "string"
+          ]
+        },
+        "tags": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nList of keywords used to tag each event.",
           "type": [
             "string"
           ]

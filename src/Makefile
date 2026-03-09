@@ -513,7 +513,7 @@ INDEXER_TEMPLATES_SERVER_STREAMS :=
 
 # WCS flat files
 WCS_FLAT_DIR := external/wcs-flat-files
-WCS_FLAT_STATELESS_PATH := wcs/stateless/main/docs
+WCS_FLAT_STATELESS_PATH := wcs/stateless/events/main/docs
 
 # Single consolidated WCS flat file
 WCS_FLAT_YAML_FILES := wcs_flat.yml
@@ -522,9 +522,10 @@ WCS_FLAT_YAML_FILES := wcs_flat.yml
 WCS_FLAT_FILES := $(WCS_FLAT_YAML_FILES:%=$(WCS_FLAT_DIR)/%)
 
 # Select templates based on TARGET
-ifeq (${TARGET}, agent)
+ifneq (,$(filter agent winagent, ${TARGET}))
 INDEXER_TEMPLATES_STATES := $(INDEXER_TEMPLATES_BASE)
 INDEXER_TEMPLATES_STREAMS :=
+WCS_FLAT_FILES :=
 else
 INDEXER_TEMPLATES_STATES := $(INDEXER_TEMPLATES_BASE) $(INDEXER_TEMPLATES_SERVER_STATES)
 INDEXER_TEMPLATES_STREAMS := $(INDEXER_TEMPLATES_SERVER_STREAMS)

@@ -279,6 +279,7 @@ INSTANTIATE_TEST_SUITE_P(Asset,
                                     "policy_test_0",
                                     json::Json(R"({
                    "name": "filter/test/0",
+                   "type": "pre-filter",
                    "check": [{"wazuh.protocol.queue": 49}]
                })"),
                                     std::vector<std::string> {"wazuh.protocol.queue"},
@@ -651,6 +652,7 @@ TEST_F(BuildAssetTest, BuildFilterSuccessfully)
 
     auto filter = json::Json(R"({
         "name": "filter/test/0",
+        "type": "pre-filter",
         "check": [{
             "wazuh.protocol.queue": 49
         }]
