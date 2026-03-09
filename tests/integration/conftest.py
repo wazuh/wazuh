@@ -23,7 +23,10 @@ from wazuh_testing.constants.paths.logs import (
     WAZUH_API_LOG_FILE_PATH,
     WAZUH_API_JSON_LOG_FILE_PATH,
 )
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, SHARED_CONFIGURATIONS_PATH
+from wazuh_testing.constants.paths.configurations import (
+    WAZUH_CLIENT_KEYS_PATH,
+    SHARED_CONFIGURATIONS_PATH,
+)
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import socket_controller
 from wazuh_testing.tools.monitors import queue_monitor
@@ -37,7 +40,7 @@ from wazuh_testing.utils.manage_agents import remove_agents
 import wazuh_testing.utils.configuration as wazuh_configuration
 from wazuh_testing.utils.services import control_service
 
-WAZUH_MERGED_MG_PATH = os.path.join(SHARED_CONFIGURATIONS_PATH, 'merged.mg')
+WAZUH_MERGED_MG_PATH = os.path.join(SHARED_CONFIGURATIONS_PATH, "merged.mg")
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -86,9 +89,7 @@ def pytest_collection_modifyitems(
     selected_tests = []
     deselected_tests = []
     _host_types = set(["server", "agent"])
-    _platforms = set(
-        [platforms.LINUX, platforms.WINDOWS, platforms.MACOS, platforms.SOLARIS]
-    )
+    _platforms = set([platforms.LINUX, platforms.WINDOWS, platforms.MACOS])
 
     for item in items:
         supported_platforms = _platforms.intersection(
@@ -134,13 +135,15 @@ def pytest_html_results_summary(prefix, summary, postfix):
         summary: The summary table element
         postfix: Content to be added after the summary table
     """
-    commit_sha = os.getenv('GITHUB_SHA', os.getenv('GIT_COMMIT', 'unknown'))
-    branch_name = os.getenv('GITHUB_REF_NAME', os.getenv('GIT_BRANCH', 'unknown'))
+    commit_sha = os.getenv("GITHUB_SHA", os.getenv("GIT_COMMIT", "unknown"))
+    branch_name = os.getenv("GITHUB_REF_NAME", os.getenv("GIT_BRANCH", "unknown"))
 
-    prefix.extend([
-        html.p(html.strong("Branch: "), branch_name),
-        html.p(html.strong("Commit SHA: "), commit_sha)
-    ])
+    prefix.extend(
+        [
+            html.p(html.strong("Branch: "), branch_name),
+            html.p(html.strong("Commit SHA: "), commit_sha),
+        ]
+    )
 
 
 # - - - - - - - - - - - - - - - - - - - - - - -End of Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
@@ -698,13 +701,14 @@ def ensure_merged_mg() -> None:
     a new merged.mg from the manager (or simulator).
     """
     os.makedirs(os.path.dirname(WAZUH_MERGED_MG_PATH), exist_ok=True)
-    with open(WAZUH_MERGED_MG_PATH, 'wb') as f:
+    with open(WAZUH_MERGED_MG_PATH, "wb") as f:
         f.write(RemotedSimulator.DEFAULT_MERGED_MG_CONTENT)
     if sys.platform != platforms.WINDOWS:
         import grp
+
         os.chmod(WAZUH_MERGED_MG_PATH, 0o660)
         try:
-            wazuh_gid = grp.getgrnam('wazuh').gr_gid
+            wazuh_gid = grp.getgrnam("wazuh").gr_gid
             os.chown(WAZUH_MERGED_MG_PATH, -1, wazuh_gid)
         except (KeyError, PermissionError):
             pass
