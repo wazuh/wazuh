@@ -80,7 +80,7 @@ class BuildtimeCases:
 
             if val != None:
                 if argument.is_reference(val):
-                    all_arguments.append(f"$eventJson.{val['name']}")
+                    all_arguments.append(f"$_eventJson.{val['name']}")
                 else:
                     all_arguments.append(val)
 
@@ -125,7 +125,7 @@ class BuildtimeCases:
                         self.types[j], self.subsets[j], new_sources[j], [])
                     arg = argument.get()
                     if argument.is_reference(arg):
-                        all_arguments.append(f"$eventJson.{arg['name']}")
+                        all_arguments.append(f"$_eventJson.{arg['name']}")
                     else:
                         all_arguments.append(json.dumps(arg))
 
@@ -179,7 +179,7 @@ class BuildtimeCases:
                         [])
                     arg = argument.get()
                     if argument.is_reference(arg):
-                        all_arguments.append(f"$eventJson.{arg['name']}")
+                        all_arguments.append(f"$_eventJson.{arg['name']}")
                     else:
                         all_arguments.append(json.dumps(arg))
 

@@ -86,6 +86,7 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
         }
 
         // Cleanup decoder temporary variables
+        if (policyData.shouldCleanupDecoderVariables())
         {
             auto cleanupVars = base::Term<base::EngineOp>::create("CleanupDecoderVariables",
                                                                   [](auto e)
