@@ -131,8 +131,7 @@ private:
             "/changes?from_offset=" + std::to_string(fromOffset) + "&to_offset=" + std::to_string(toOffset);
 
         // Empty on download success routine.
-        const auto onSuccess {[]([[maybe_unused]] const std::string& data) {
-        }};
+        const auto onSuccess {[]([[maybe_unused]] const std::string& data) {}};
 
         logDebug2(WM_CONTENTUPDATER, "Downloading offsets from: '%s'", (m_url + queryParameters).c_str());
 
