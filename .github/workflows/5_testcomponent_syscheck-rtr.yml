@@ -19,8 +19,8 @@ jobs:
           matrix:
               module: [syscheckd]
               target: [agent, winagent]
-    # We don't use ubuntu-latest because the install_build_deps action adds a fixed repository for Wine
-    runs-on: ubuntu-24.04
+    # We don't use wz-linux-amd64 because the install_build_deps action adds a fixed repository for Wine
+    runs-on: wz-linux-amd64
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
