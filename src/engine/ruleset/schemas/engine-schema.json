@@ -834,6 +834,9 @@
     "event.dataset": {
       "type": "keyword"
     },
+    "event.doc_id": {
+      "type": "keyword"
+    },
     "event.duration": {
       "type": "long"
     },
@@ -844,6 +847,9 @@
       "type": "keyword"
     },
     "event.id": {
+      "type": "keyword"
+    },
+    "event.index": {
       "type": "keyword"
     },
     "event.ingested": {

@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <functional>
-#include <string>
 #include <stdexcept>
+#include <string>
 
 #include <api/adapter/baseHandler_test.hpp>
 #include <api/tester/handlers.hpp>
@@ -10,6 +10,7 @@
 #include <cmstore/mockcmstore.hpp>
 #include <eMessages/tester.pb.h>
 #include <router/mockTester.hpp>
+#include <schemf/emptySchema.hpp>
 
 using namespace api::adapter;
 using namespace api::test;
@@ -34,11 +35,42 @@ httplib::Response makeOkResponse()
     return userResponse<eEngine::GenericStatus_Response>(protoRes);
 }
 
+httplib::Response makeRunPostSuccessResponse(const std::string& jsonBody = R"({})")
+{
+    eEngine::tester::RunPost_Response protoRes;
+    protoRes.set_status(eEngine::ReturnStatus::OK);
+
+    auto structOrErr = eMessage::eMessageFromJson<google::protobuf::Struct>(jsonBody);
+    if (std::holds_alternative<base::Error>(structOrErr))
+    {
+        throw std::logic_error("Failed to build expected success response payload");
+    }
+
+    *protoRes.mutable_result()->mutable_output() = std::get<google::protobuf::Struct>(structOrErr);
+    return userResponse<eEngine::tester::RunPost_Response>(protoRes);
+}
+
+::router::test::Output makeOutput(const std::string& jsonBody = R"({})")
+{
+    ::router::test::Output output;
+    output.event() = std::make_shared<json::Json>(jsonBody.c_str());
+    return output;
+}
+
 struct LogtestDeleteCase
 {
     std::string name;
     std::function<void(MockTesterAPI&, cm::store::MockICMstore&)> mocker;
     std::function<httplib::Response()> expectedResponse;
+};
+
+struct LogtestPostCase
+{
+    std::string name;
+    std::function<eEngine::tester::PublicRunPost_Request()> makeReq;
+    std::function<void(MockTesterAPI&)> mocker;
+    std::function<httplib::Response()> expectedResponse;
+    std::function<std::shared_ptr<schemf::ISchema>()> makeSchema;
 };
 } // namespace
 
@@ -309,6 +341,186 @@ INSTANTIATE_TEST_SUITE_P(
             [](auto&) {})));
 
 // TODO: add separate tests for routeGet tableGet and runPost (need more than one mock)
+
+class LogtestPostTest : public ::testing::TestWithParam<LogtestPostCase>
+{
+};
+
+TEST_P(LogtestPostTest, Handler)
+{
+    auto tester = std::make_shared<MockTesterAPI>();
+    const auto& testCase = GetParam();
+    testCase.mocker(*tester);
+
+    std::shared_ptr<schemf::ISchema> schema = testCase.makeSchema();
+
+    auto handler = publicRunPost(tester, base::eventParsers::parsePublicEvent, schema);
+
+    auto protoReq = testCase.makeReq();
+    auto req = createRequest<eEngine::tester::PublicRunPost_Request>(protoReq);
+
+    httplib::Response res;
+    handler(req, res);
+
+    auto expected = testCase.expectedResponse();
+    EXPECT_EQ(res.status, expected.status);
+    EXPECT_EQ(res.body, expected.body);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Api,
+    LogtestPostTest,
+    ::testing::Values(
+        // Success case with valid metadata and NONE trace level
+        LogtestPostCase {
+            "Success",
+            []()
+            {
+                eEngine::tester::PublicRunPost_Request protoReq;
+                protoReq.set_queue(1);
+                protoReq.set_location("/var/log/test");
+                protoReq.set_event("some event");
+                protoReq.set_trace_level("NONE");
+
+                google::protobuf::Struct meta;
+                (*meta.mutable_fields())["wazuh"].set_string_value("AgentName");
+                *protoReq.mutable_metadata() = meta;
+                return protoReq;
+            },
+            [](auto& tester)
+            {
+                EXPECT_CALL(tester, ingestTest(testing::_, testing::_))
+                    .WillOnce(
+                        [](auto&&, auto&&)
+                        {
+                            std::promise<base::RespOrError<::router::test::Output>> p;
+                            p.set_value(makeOutput(R"({"status":"ok"})"));
+                            return p.get_future();
+                        });
+            },
+            []() { return makeRunPostSuccessResponse(R"({"status":"ok"})"); },
+            // Schema: validation OK, fields exist
+            []() { return schemf::mocks::EmptySchema::create(true, true); },
+        },
+        // Fail case with invalid metadata
+        LogtestPostCase {
+            "Failed metadata",
+            []()
+            {
+                eEngine::tester::PublicRunPost_Request protoReq;
+                protoReq.set_queue(1);
+                protoReq.set_location("/var/log/test");
+                protoReq.set_event("some event");
+                protoReq.set_trace_level("NONE");
+
+                google::protobuf::Struct meta;
+                (*meta.mutable_fields())["notwazuh.agent"].set_string_value("RandomField");
+                *protoReq.mutable_metadata() = meta;
+                return protoReq;
+            },
+            [](auto& tester)
+            {
+                EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0);
+            },
+            []() {
+                return userErrorResponse<eEngine::tester::RunPost_Response>(
+                    "Metadata should contain 'wazuh' as root");
+            },
+            // Schema: validation not-OK, fields doesn't exist
+            []() { return schemf::mocks::EmptySchema::create(false, false); },
+        },
+        LogtestPostCase {
+            "QueueZero",
+            []()
+            {
+                eEngine::tester::PublicRunPost_Request protoReq;
+                protoReq.set_queue(0);
+                protoReq.set_location("/var/log/test");
+                protoReq.set_event("some event");
+                protoReq.set_trace_level("NONE");
+
+                google::protobuf::Struct meta;
+                (*meta.mutable_fields())["foo"].set_string_value("bar");
+                *protoReq.mutable_metadata() = meta;
+
+                return protoReq;
+            },
+            [](auto& tester)
+            {
+                // Handler should fail before calling ingestTest
+                EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0);
+            },
+            []() {
+                return userErrorResponse<eEngine::tester::RunPost_Response>(
+                    "queue is required and must be non-zero (1..255)");
+            },
+            // Schema: validation OK, fields exist
+            []() { return schemf::mocks::EmptySchema::create(true, true); },
+        },
+        LogtestPostCase {
+            "QueueTooHigh",
+            []()
+            {
+                eEngine::tester::PublicRunPost_Request protoReq;
+                protoReq.set_queue(300);
+                protoReq.set_location("/var/log/test");
+                protoReq.set_event("some event");
+                protoReq.set_trace_level("NONE");
+
+                google::protobuf::Struct meta;
+                (*meta.mutable_fields())["foo"].set_string_value("bar");
+                *protoReq.mutable_metadata() = meta;
+
+                return protoReq;
+            },
+            [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
+            []()
+            { return userErrorResponse<eEngine::tester::RunPost_Response>("Invalid queue: 300 (must be 1..255)"); },
+            // Schema: validation OK, fields exist
+            []() { return schemf::mocks::EmptySchema::create(true, true); },
+        },
+        LogtestPostCase {
+            "MissingMetadata",
+            []()
+            {
+                eEngine::tester::PublicRunPost_Request protoReq;
+                protoReq.set_queue(1);
+                protoReq.set_location("/var/log/test");
+                protoReq.set_event("some event");
+                protoReq.set_trace_level("NONE");
+                // No metadata set
+                return protoReq;
+            },
+            [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
+            []() {
+                return userErrorResponse<eEngine::tester::RunPost_Response>(
+                    "metadata is required and must be a JSON object");
+            },
+            // Schema: validation OK, but no fields since metadata is missing
+            []() { return schemf::mocks::EmptySchema::create(true, false); },
+        },
+        LogtestPostCase {
+            "EmptyEvent",
+            []()
+            {
+                eEngine::tester::PublicRunPost_Request protoReq;
+                protoReq.set_queue(1);
+                protoReq.set_location("/var/log/test");
+                protoReq.set_event("   ");
+                protoReq.set_trace_level("NONE");
+
+                google::protobuf::Struct meta;
+                (*meta.mutable_fields())["wazuh"].set_string_value("bar");
+                *protoReq.mutable_metadata() = meta;
+
+                return protoReq;
+            },
+            [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
+            []()
+            { return userErrorResponse<eEngine::tester::RunPost_Response>("event is required and cannot be empty"); },
+            // Metadata is present and fields exist but schema-level validation fails.
+            []() { return schemf::mocks::EmptySchema::create(false, true); },
+        }));
 
 class LogtestDeleteTest : public ::testing::TestWithParam<LogtestDeleteCase>
 {

@@ -1,9 +1,8 @@
-// TODO: Deprecated, remove once all tests are updated
-
-#ifndef _SCHEMF_MOCKS_EMPTY_SCHEMA_HPP
-#define _SCHEMF_MOCKS_EMPTY_SCHEMA_HPP
+#ifndef SCHEMF_MOCKS_EMPTY_SCHEMA_HPP
+#define SCHEMF_MOCKS_EMPTY_SCHEMA_HPP
 
 #include <memory>
+#include <optional>
 #include <stdexcept>
 
 #include <schemf/ivalidator.hpp>
@@ -17,11 +16,17 @@ public:
     EmptySchema() = default;
     ~EmptySchema() = default;
 
-    Type getType(const DotPath& name) const override { throw std::runtime_error("Not implemented"); }
+    // Configure whether validate() should succeed (true) or fail (false)
+    bool m_validationResult {true};
 
-    bool hasField(const DotPath& name) const override { return false; }
+    // Configure what hasField() should return
+    bool m_hasFieldResult {false};
 
-    json::Json::Type getJsonType(const DotPath& name) const override { throw std::runtime_error("Not implemented"); }
+    explicit EmptySchema(bool validationResult, bool hasFieldResult)
+        : m_validationResult(validationResult)
+        , m_hasFieldResult(hasFieldResult)
+    {
+    }
 
     base::RespOrError<TargetFieldKind> validateTargetField(const DotPath& name) const override
     {
@@ -57,4 +62,4 @@ public:
 
 } // namespace schemf::mocks
 
-#endif // _SCHEMF_MOCKS_EMPTY_SCHEMA_HPP
+#endif // SCHEMF_MOCKS_EMPTY_SCHEMA_HPP

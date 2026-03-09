@@ -1847,6 +1847,12 @@
             "string"
           ]
         },
+        "event.doc_id": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nDocument ID of the matched alert that triggered the active response.",
+          "type": [
+            "string"
+          ]
+        },
         "event.duration": {
           "description": "Module: ecs\nIndexerType: long\n\nDuration of the event in nanoseconds.\nIf `event.start` and `event.end` are known this value should be the difference between the end and start time.",
           "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
@@ -1869,6 +1875,12 @@
         },
         "event.id": {
           "description": "Module: ecs\nIndexerType: keyword\n\nUnique ID to describe the event.",
+          "type": [
+            "string"
+          ]
+        },
+        "event.index": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nSource index of the matched alert that triggered the active response.",
           "type": [
             "string"
           ]
