@@ -281,8 +281,7 @@ LoggingConfig getStandaloneLoggingConfig()
 
         auto verbosity = base::process::getEnvOrDefault("WAZUH_STANDALONE_LOG_LEVEL", "info");
         cfg.level = strToLevel(verbosity);
-        cfg.filePath =
-            base::process::getEnvOrDefault("WAZUH_STANDALONE_LOG_FILE_PATH", "/var/log/wazuh-indexer/wazuh-engine.log");
+        cfg.filePath = base::process::getEnvOrDefault("WAZUH_STANDALONE_LOG_FILE_PATH", "");
         cfg.truncate = false; // Don't truncate on restart
 
         // Rotation configuration (replicates Log4j2 policies)

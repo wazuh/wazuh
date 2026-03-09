@@ -14,6 +14,7 @@
 #include <base/name.hpp>
 #include <base/utils/generator.hpp>
 #include <base/utils/metaHelpers.hpp>
+#include <base/utils/stringUtils.hpp>
 #include <iockvdb/helpers.hpp>
 
 #include <iocsync/iocsync.hpp>
@@ -190,8 +191,10 @@ void IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string&
             IOC_SYNC_BATCH_SIZE,
             [&stored, &kvdbiocPtr, &dbName](const std::string& key, const std::string& value)
             {
+                // Normalize key to lowercase for case-insensitive matching
+                const auto normalizedKey = base::utils::string::toLowerCase(key);
                 json::Json valueJson {value.c_str()};
-                ioc::kvdb::details::updateValueInDB(kvdbiocPtr, dbName, key, valueJson);
+                ioc::kvdb::details::updateValueInDB(kvdbiocPtr, dbName, normalizedKey, valueJson);
                 stored++;
             });
 

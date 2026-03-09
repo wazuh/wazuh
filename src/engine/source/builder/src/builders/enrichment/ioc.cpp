@@ -54,8 +54,14 @@ std::string getTopLevelParentPath(std::string_view jsonPointerPath)
 
 std::optional<std::string> readFieldAsString(base::Event event, std::string_view path)
 {
-    // Try to read as string first
+    // Try to read as string first, can be a string or an array of strings
+    // In the latter case, we take the first element
     auto stringValue = event->getString(path);
+    if (!stringValue.has_value())
+    {
+        stringValue = event->getString(std::string(path) + "/0");
+    }
+
     if (stringValue.has_value())
     {
         return stringValue;
@@ -106,7 +112,8 @@ std::optional<std::string> buildLookupKey(base::Event event, const IocMappingCon
 
     if (parts.size() == 1)
     {
-        return parts.front();
+        // Normalize to lowercase for case-insensitive matching
+        return base::utils::string::toLowerCase(parts.front());
     }
 
     std::string lookupKey;
@@ -119,7 +126,8 @@ std::optional<std::string> buildLookupKey(base::Event event, const IocMappingCon
         }
     }
 
-    return lookupKey;
+    // Normalize to lowercase for case-insensitive matching
+    return base::utils::string::toLowerCase(lookupKey);
 }
 
 std::vector<IocMappingConfig> loadIocMappingConfigs(const json::Json& config, std::string_view iocType)

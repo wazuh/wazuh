@@ -47,7 +47,15 @@ export WAZUH_SERVER_API_MAX_RESOURCE_KVDB_PAYLOAD_SIZE="100000"
 # │ </DefaultRolloverStrategy>                               │                                                 │
 # └──────────────────────────────────────────────────────────┴─────────────────────────────────────────────────┘
 
-export WAZUH_STANDALONE_LOG_FILE_PATH="${LOG_PATH}/wazuh-engine.log"
+# Auto-detect log file path based on environment
+if [ -d "/var/log/wazuh-indexer" ]; then
+    # Production environment: wazuh-indexer installed
+    export WAZUH_STANDALONE_LOG_FILE_PATH="/var/log/wazuh-indexer/wazuh-engine.log"
+else
+    # Development/CI environment: use local logs directory
+    export WAZUH_STANDALONE_LOG_FILE_PATH="${LOG_PATH}/wazuh-engine.log"
+fi
+
 export WAZUH_STANDALONE_LOG_ROTATION_ENABLED="true"
 export WAZUH_STANDALONE_LOG_MAX_FILE_SIZE="134217728"        # 128 MB
 export WAZUH_STANDALONE_LOG_ROTATION_HOUR="0"                # midnight
