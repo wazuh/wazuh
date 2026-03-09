@@ -3,11 +3,11 @@ Copyright (C) 2015-2024, Wazuh Inc.
 Created by Wazuh, Inc. <info@wazuh.com>.
 This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
+
 import os
 import subprocess
 import pytest
 import sys
-from typing import List
 
 from py.xml import html
 from wazuh_testing import session_parameters
@@ -16,8 +16,13 @@ from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.constants.daemons import WAZUH_MANAGER, API_DAEMONS_REQUIREMENTS
 from wazuh_testing.constants.paths import ROOT_PREFIX
 from wazuh_testing.constants.paths.api import RBAC_DATABASE_PATH
-from wazuh_testing.constants.paths.logs import ACTIVE_RESPONSE_LOG_PATH, WAZUH_LOG_PATH, ALERTS_JSON_PATH, \
-                                               WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
+from wazuh_testing.constants.paths.logs import (
+    ACTIVE_RESPONSE_LOG_PATH,
+    WAZUH_LOG_PATH,
+    ALERTS_JSON_PATH,
+    WAZUH_API_LOG_FILE_PATH,
+    WAZUH_API_JSON_LOG_FILE_PATH,
+)
 from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, SHARED_CONFIGURATIONS_PATH
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import socket_controller
@@ -57,7 +62,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         metavar="minimum_level",
         default=-1,
         type=int,
-        help="only run tests with a tier level greater or equal than 'minimum_level'"
+        help="only run tests with a tier level greater or equal than 'minimum_level'",
     )
     parser.addoption(
         "--tier-maximum",
@@ -65,11 +70,13 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         metavar="maximum_level",
         default=sys.maxsize,
         type=int,
-        help="only run tests with a tier level less or equal than 'minimum_level'"
+        help="only run tests with a tier level less or equal than 'minimum_level'",
     )
 
 
-def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item]) -> None:
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
     """Deselect tests that do not match with the specified environment or tier.
 
     Args:
@@ -79,27 +86,28 @@ def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item
     selected_tests = []
     deselected_tests = []
     _host_types = set(["server", "agent"])
-    _platforms = set([platforms.LINUX,
-                      platforms.WINDOWS,
-                      platforms.MACOS])
+    _platforms = set(
+        [platforms.LINUX, platforms.WINDOWS, platforms.MACOS, platforms.SOLARIS]
+    )
 
     for item in items:
         supported_platforms = _platforms.intersection(
-            mark.name for mark in item.iter_markers())
+            mark.name for mark in item.iter_markers()
+        )
         plat = sys.platform
 
         selected = True
         if supported_platforms and plat not in supported_platforms:
             selected = False
 
-        host_type = 'agent' if 'agent' in services.get_service() else 'server'
+        host_type = "agent" if "agent" in services.get_service() else "server"
         supported_types = _host_types.intersection(
-            mark.name for mark in item.iter_markers())
+            mark.name for mark in item.iter_markers()
+        )
         if supported_types and host_type not in supported_types:
             selected = False
         # Consider only first mark
-        levels = [mark.kwargs['level']
-                  for mark in item.iter_markers(name="tier")]
+        levels = [mark.kwargs["level"] for mark in item.iter_markers(name="tier")]
         if levels and len(levels) > 0:
             tiers = item.config.getoption("--tier")
             if tiers is not None and levels[0] not in tiers:
@@ -138,7 +146,7 @@ def pytest_html_results_summary(prefix, summary, postfix):
 # - - - - - - - - - - - - - - - - - - - - - - -End of Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def load_wazuh_basic_configuration():
     """Load a new basic configuration to the manager"""
     # Load wazuh configuration file with all disabled settings
@@ -179,7 +187,9 @@ def set_wazuh_configuration(test_configuration: dict) -> None:
     backup_config = configuration.get_wazuh_conf()
 
     # Configuration for testing
-    test_config = configuration.set_section_wazuh_conf(test_configuration.get('sections'))
+    test_config = configuration.set_section_wazuh_conf(
+        test_configuration.get("sections")
+    )
 
     # Set new configuration
     configuration.write_wazuh_conf(test_config)
@@ -209,21 +219,27 @@ def configure_local_internal_options_function(request):
         local_internal_options = request.param
     except AttributeError:
         try:
-            local_internal_options = getattr(request.module, 'local_internal_options')
+            local_internal_options = getattr(request.module, "local_internal_options")
         except AttributeError:
-            logger.debug('local_internal_options is not set')
-            raise AttributeError('Error when using the fixture "configure_local_internal_options_module", no '
-                                 'parameter has been passed explicitly, nor is the variable local_internal_options '
-                                 'found in the module.') from AttributeError
+            logger.debug("local_internal_options is not set")
+            raise AttributeError(
+                'Error when using the fixture "configure_local_internal_options_module", no '
+                "parameter has been passed explicitly, nor is the variable local_internal_options "
+                "found in the module."
+            ) from AttributeError
 
-    backup_local_internal_options = wazuh_configuration.get_local_internal_options_dict()
+    backup_local_internal_options = (
+        wazuh_configuration.get_local_internal_options_dict()
+    )
 
     logger.debug(f"Set local_internal_option to {str(local_internal_options)}")
     wazuh_configuration.set_local_internal_options_dict(local_internal_options)
 
     yield
 
-    logger.debug(f"Restore local_internal_option to {str(backup_local_internal_options)}")
+    logger.debug(
+        f"Restore local_internal_option to {str(backup_local_internal_options)}"
+    )
     wazuh_configuration.set_local_internal_options_dict(backup_local_internal_options)
 
 
@@ -231,8 +247,8 @@ def configure_local_internal_options_function(request):
 def restart_wazuh_function(request):
     """Restart before starting a test, and stop it after finishing.
 
-       Args:
-            request (fixture): Provide information on the executing test function.
+    Args:
+         request (fixture): Provide information on the executing test function.
     """
     # If there is a list of required daemons defined in the test module, restart daemons, else restart all daemons.
     try:
@@ -242,25 +258,25 @@ def restart_wazuh_function(request):
 
     if len(daemons) == 0:
         logger.debug(f"Restarting all daemon")
-        control_service('restart')
+        control_service("restart")
     else:
         for daemon in daemons:
             logger.debug(f"Restarting {daemon}")
             # Restart daemon instead of starting due to legacy used fixture in the test suite.
-            control_service('restart', daemon=daemon)
+            control_service("restart", daemon=daemon)
 
     yield
 
     # Stop all daemons by default (daemons = None)
     if len(daemons) == 0:
         logger.debug(f"Stopping all daemons")
-        control_service('stop')
+        control_service("stop")
     else:
         # Stop a list daemons in order (as Wazuh does)
         daemons.reverse()
         for daemon in daemons:
             logger.debug(f"Stopping {daemon}")
-            control_service('stop', daemon=daemon)
+            control_service("stop", daemon=daemon)
 
 
 @pytest.fixture()
@@ -272,15 +288,15 @@ def file_monitoring(request):
     Args:
         request (fixture): Provide information on the executing test function.
     """
-    if hasattr(request.module, 'file_to_monitor'):
-        file_to_monitor = getattr(request.module, 'file_to_monitor')
+    if hasattr(request.module, "file_to_monitor"):
+        file_to_monitor = getattr(request.module, "file_to_monitor")
     else:
         file_to_monitor = WAZUH_LOG_PATH
 
     logger.debug(f"Initializing file to monitor to {file_to_monitor}")
 
     file_monitor = FileMonitor(file_to_monitor)
-    setattr(request.module, 'log_monitor', file_monitor)
+    setattr(request.module, "log_monitor", file_monitor)
 
     yield
 
@@ -291,8 +307,13 @@ def file_monitoring(request):
 def truncate_monitored_files_implementation() -> None:
     """Truncate all the log files and json alerts files before and after the test execution"""
     if services.get_service() == WAZUH_MANAGER:
-        log_files = [WAZUH_LOG_PATH, ALERTS_JSON_PATH, WAZUH_API_LOG_FILE_PATH,
-                     WAZUH_API_JSON_LOG_FILE_PATH, WAZUH_CLIENT_KEYS_PATH]
+        log_files = [
+            WAZUH_LOG_PATH,
+            ALERTS_JSON_PATH,
+            WAZUH_API_LOG_FILE_PATH,
+            WAZUH_API_JSON_LOG_FILE_PATH,
+            WAZUH_CLIENT_KEYS_PATH,
+        ]
     else:
         log_files = [WAZUH_LOG_PATH]
 
@@ -313,7 +334,7 @@ def truncate_monitored_files() -> None:
     yield from truncate_monitored_files_implementation()
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def truncate_monitored_files_module() -> None:
     """Wrapper of `truncate_monitored_files_implementation` which contains the general implementation."""
     yield from truncate_monitored_files_implementation()
@@ -338,33 +359,33 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
     ignore_errors = False
     all_daemons = False
 
-    if config := getattr(request.module, 'daemons_handler_configuration', None):
-        if 'daemons' in config:
-            daemons = config['daemons']
+    if config := getattr(request.module, "daemons_handler_configuration", None):
+        if "daemons" in config:
+            daemons = config["daemons"]
             if not daemons or len(daemons) == 0 or type(daemons) not in [list, tuple]:
-                logger.error('Daemons list/tuple is not set')
+                logger.error("Daemons list/tuple is not set")
                 raise ValueError
 
-        if 'all_daemons' in config:
+        if "all_daemons" in config:
             logger.debug(f"Wazuh control set to {config['all_daemons']}")
-            all_daemons = config['all_daemons']
+            all_daemons = config["all_daemons"]
 
-        if 'ignore_errors' in config:
+        if "ignore_errors" in config:
             logger.debug(f"Ignore error set to {config['ignore_errors']}")
-            ignore_errors = config['ignore_errors']
+            ignore_errors = config["ignore_errors"]
     else:
         logger.debug("Wazuh control set to 'all_daemons'")
         all_daemons = True
 
     try:
         if all_daemons:
-            logger.debug('Restarting wazuh using wazuh-control')
-            services.control_service('restart')
+            logger.debug("Restarting wazuh using wazuh-control")
+            services.control_service("restart")
         else:
             for daemon in daemons:
                 logger.debug(f"Restarting {daemon}")
                 # Restart daemon instead of starting due to legacy used fixture in the test suite.
-                services.control_service('restart', daemon=daemon)
+                services.control_service("restart", daemon=daemon)
 
     except ValueError as value_error:
         logger.error(f"{str(value_error)}")
@@ -378,13 +399,14 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
     yield
 
     if all_daemons:
-        logger.debug('Stopping wazuh using wazuh-control')
-        services.control_service('stop')
+        logger.debug("Stopping wazuh using wazuh-control")
+        services.control_service("stop")
     else:
-        if daemons == API_DAEMONS_REQUIREMENTS: daemons.reverse()  # Stop in reverse, otherwise the next start will fail
+        if daemons == API_DAEMONS_REQUIREMENTS:
+            daemons.reverse()  # Stop in reverse, otherwise the next start will fail
         for daemon in daemons:
             logger.debug(f"Stopping {daemon}")
-            services.control_service('stop', daemon=daemon)
+            services.control_service("stop", daemon=daemon)
 
 
 @pytest.fixture()
@@ -397,7 +419,7 @@ def daemons_handler(request: pytest.FixtureRequest) -> None:
     yield from daemons_handler_implementation(request)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def daemons_handler_module(request: pytest.FixtureRequest) -> None:
     """Wrapper of `daemons_handler_implementation` which contains the general implementation.
 
@@ -407,7 +429,7 @@ def daemons_handler_module(request: pytest.FixtureRequest) -> None:
     yield from daemons_handler_implementation(request)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def restart_wazuh_daemon_after_finishing_module(daemon: str = None) -> None:
     """Restart a Wazuh daemons and clears the wazuh log after the test module finishes execution.
     Args:
@@ -418,7 +440,9 @@ def restart_wazuh_daemon_after_finishing_module(daemon: str = None) -> None:
     services.control_service("restart", daemon=daemon)
 
 
-def configure_local_internal_options_handler(request: pytest.FixtureRequest, test_metadata) -> None:
+def configure_local_internal_options_handler(
+    request: pytest.FixtureRequest, test_metadata
+) -> None:
     """Configure the local internal options file.
 
     Takes the `local_internal_options` variable from the request.
@@ -433,17 +457,19 @@ def configure_local_internal_options_handler(request: pytest.FixtureRequest, tes
         local_internal_options = request.param
     except AttributeError:
         try:
-            local_internal_options = getattr(request.module, 'local_internal_options')
+            local_internal_options = getattr(request.module, "local_internal_options")
         except AttributeError:
-            raise AttributeError('Error when using the fixture "configure_local_internal_options", no '
-                                 'parameter has been passed explicitly, nor is the variable local_internal_options '
-                                 'found in the module.') from AttributeError
+            raise AttributeError(
+                'Error when using the fixture "configure_local_internal_options", no '
+                "parameter has been passed explicitly, nor is the variable local_internal_options "
+                "found in the module."
+            ) from AttributeError
 
     backup_local_internal_options = configuration.get_local_internal_options_dict()
 
-    if test_metadata and 'local_internal_options' in test_metadata:
-        for key in test_metadata['local_internal_options']:
-            local_internal_options[key] = test_metadata['local_internal_options'][key]
+    if test_metadata and "local_internal_options" in test_metadata:
+        for key in test_metadata["local_internal_options"]:
+            local_internal_options[key] = test_metadata["local_internal_options"][key]
 
     configuration.set_local_internal_options_dict(local_internal_options)
 
@@ -453,7 +479,9 @@ def configure_local_internal_options_handler(request: pytest.FixtureRequest, tes
 
 
 @pytest.fixture()
-def configure_local_internal_options(request: pytest.FixtureRequest, test_metadata) -> None:
+def configure_local_internal_options(
+    request: pytest.FixtureRequest, test_metadata
+) -> None:
     """Configure the local internal options file.
 
     Takes the `local_internal_options` variable from the request.
@@ -467,8 +495,10 @@ def configure_local_internal_options(request: pytest.FixtureRequest, test_metada
     yield from configure_local_internal_options_handler(request, test_metadata)
 
 
-@pytest.fixture(scope='module')
-def configure_local_internal_options_module(request: pytest.FixtureRequest, test_metadata) -> None:
+@pytest.fixture(scope="module")
+def configure_local_internal_options_module(
+    request: pytest.FixtureRequest, test_metadata
+) -> None:
     """Wrapper of `configure_local_internal_options_handler` which contains the general implementation.
 
     Args:
@@ -478,16 +508,18 @@ def configure_local_internal_options_module(request: pytest.FixtureRequest, test
     yield from configure_local_internal_options_handler(request, test_metadata)
 
 
-def configure_sockets_environment_implementation(request: pytest.FixtureRequest) -> None:
+def configure_sockets_environment_implementation(
+    request: pytest.FixtureRequest,
+) -> None:
     """Configure environment for sockets and MITM.
 
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
     """
-    monitored_sockets_params = getattr(request.module, 'monitored_sockets_params')
+    monitored_sockets_params = getattr(request.module, "monitored_sockets_params")
 
     # Stop wazuh-service and ensure all daemons are stopped
-    services.control_service('stop')
+    services.control_service("stop")
     services.wait_expected_daemon_status(running_condition=False)
 
     monitored_sockets = list()
@@ -496,38 +528,44 @@ def configure_sockets_environment_implementation(request: pytest.FixtureRequest)
     # Start selected daemons and monitored sockets MITM
     for daemon, mitm, daemon_first in monitored_sockets_params:
         not daemon_first and mitm is not None and mitm.start()
-        services.control_service('start', daemon=daemon, debug_mode=True)
+        services.control_service("start", daemon=daemon, debug_mode=True)
         services.wait_expected_daemon_status(
             running_condition=True,
             target_daemon=daemon,
-            extra_sockets=[mitm.listener_socket_address] if mitm is not None and mitm.family == 'AF_UNIX' else []
+            extra_sockets=[mitm.listener_socket_address]
+            if mitm is not None and mitm.family == "AF_UNIX"
+            else [],
         )
         daemon_first and mitm is not None and mitm.start()
         if mitm is not None:
-            monitored_sockets.append(queue_monitor.QueueMonitor(monitored_object=mitm.queue))
+            monitored_sockets.append(
+                queue_monitor.QueueMonitor(monitored_object=mitm.queue)
+            )
             mitm_list.append(mitm)
 
-    setattr(request.module, 'monitored_sockets', monitored_sockets)
+    setattr(request.module, "monitored_sockets", monitored_sockets)
 
     yield
 
     # Stop daemons and monitored sockets MITM
     for daemon, mitm, _ in monitored_sockets_params:
         mitm is not None and mitm.shutdown()
-        services.control_service('stop', daemon=daemon)
+        services.control_service("stop", daemon=daemon)
         services.wait_expected_daemon_status(
             running_condition=False,
             target_daemon=daemon,
-            extra_sockets=[mitm.listener_socket_address] if mitm is not None and mitm.family == 'AF_UNIX' else []
+            extra_sockets=[mitm.listener_socket_address]
+            if mitm is not None and mitm.family == "AF_UNIX"
+            else [],
         )
 
     # Delete all db
     database.delete_dbs()
 
-    services.control_service('start')
+    services.control_service("start")
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def configure_sockets_environment_module(request: pytest.FixtureRequest) -> None:
     """Wrapper of `configure_sockets_environment_implementation` which contains the general implementation.
 
@@ -556,15 +594,18 @@ def connect_to_sockets_implementation(request: pytest.FixtureRequest) -> None:
     Returns:
         receiver_sockets (list): List of SocketControllers.
     """
-    receiver_sockets_params = getattr(request.module, 'receiver_sockets_params')
+    receiver_sockets_params = getattr(request.module, "receiver_sockets_params")
 
     # Create the SocketControllers
     receiver_sockets = list()
     for address, family, protocol in receiver_sockets_params:
-        receiver_sockets.append(socket_controller.SocketController(address=address, family=family,
-                                                                   connection_protocol=protocol))
+        receiver_sockets.append(
+            socket_controller.SocketController(
+                address=address, family=family, connection_protocol=protocol
+            )
+        )
 
-    setattr(request.module, 'receiver_sockets', receiver_sockets)
+    setattr(request.module, "receiver_sockets", receiver_sockets)
 
     yield receiver_sockets
 
@@ -591,7 +632,7 @@ def connect_to_sockets(request: pytest.FixtureRequest) -> None:
     yield from connect_to_sockets_implementation(request)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def connect_to_sockets_module(request: pytest.FixtureRequest) -> None:
     """Wrapper of `connect_to_sockets_implementation` which contains the general implementation.
 
@@ -601,10 +642,10 @@ def connect_to_sockets_module(request: pytest.FixtureRequest) -> None:
     yield from connect_to_sockets_implementation(request)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def mock_agent_module():
     """Fixture to create a mocked agent in wazuh databases"""
-    agent_id = mocking.create_mocked_agent(name='mocked_agent')
+    agent_id = mocking.create_mocked_agent(name="mocked_agent")
 
     yield agent_id
 
@@ -620,7 +661,9 @@ def mock_agent_with_custom_system(agent_system: str) -> int:
         int: Agent ID of the mocked agent
     """
     if agent_system not in mocking.SYSTEM_DATA:
-        raise ValueError(f"{agent_system} is not supported as mocked system for an agent")
+        raise ValueError(
+            f"{agent_system} is not supported as mocked system for an agent"
+        )
 
     agent_id = mocking.create_mocked_agent(**mocking.SYSTEM_DATA[agent_system])
 
@@ -637,7 +680,9 @@ def mock_agent_packages(mock_agent_with_custom_system) -> list:
     Returns:
         list: List of package names added to the mocked agent
     """
-    package_names = mocking.insert_mocked_packages(agent_id=mock_agent_with_custom_system)
+    package_names = mocking.insert_mocked_packages(
+        agent_id=mock_agent_with_custom_system
+    )
 
     yield package_names
 
@@ -743,14 +788,14 @@ def prepare_test_files(request: pytest.FixtureRequest) -> None:
 @pytest.fixture
 def simulate_agent():
     """Simulate an agent and remove it using the API."""
-    agent = create_agents(1, 'localhost')[0]
+    agent = create_agents(1, "localhost")[0]
     _, injector = connect(agent)
 
     yield agent
 
     # Stop and delete simulated agent
     injector.stop_receive()
-    remove_agents(agent.id, 'api')
+    remove_agents(agent.id, "api")
 
 
 @pytest.fixture
@@ -786,8 +831,8 @@ def autostart_simulators(request: pytest.FixtureRequest) -> None:
     This is required so all wazuh-agent instances are being tested with the wazuh-manager connection
     being mocked.
     """
-    create_authd = 'authd_simulator' not in request.fixturenames
-    create_remoted = 'remoted_simulator' not in request.fixturenames
+    create_authd = "authd_simulator" not in request.fixturenames
+    create_remoted = "remoted_simulator" not in request.fixturenames
 
     if services.get_service() is not WAZUH_MANAGER:
         authd = AuthdSimulator() if create_authd else None
@@ -807,11 +852,11 @@ def autostart_simulators(request: pytest.FixtureRequest) -> None:
 def simulate_agents(test_metadata):
 
     agents_amount = test_metadata.get("agents_number", 1)
-    agents = create_agents(agents_amount , 'localhost')
+    agents = create_agents(agents_amount, "localhost")
 
     yield agents
 
     # Delete simulated agents
-    control_service('start')
-    remove_agents([a.id for a in agents], 'manage_agents')
-    control_service('stop')
+    control_service("start")
+    remove_agents([a.id for a in agents], "manage_agents")
+    control_service("stop")

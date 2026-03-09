@@ -2,10 +2,13 @@ name: 4.X - Code Linter - ClangFormat
 
 on:
   workflow_dispatch:
+  pull_request:
+    # Pull request events
+    types: [synchronize, opened, reopened, ready_for_review]
 
 jobs:
   style:
-    runs-on: ubuntu-24.04
+    runs-on: wz-linux-amd64
 
     steps:
       - name: Cancel previous runs
