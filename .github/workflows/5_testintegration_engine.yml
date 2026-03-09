@@ -18,7 +18,7 @@ env:
 jobs:
   build:
     name: Build Server
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     steps:
       - uses: actions/checkout@v3
 
@@ -60,7 +60,7 @@ jobs:
 
     # Only runs if the PR status is different to Draft
     if: ${{ !github.event.pull_request.draft }}
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     needs: build
     timeout-minutes: 60
     env:
@@ -128,7 +128,7 @@ jobs:
 
     # Only runs if the PR status is different to Draft
     if: ${{ !github.event.pull_request.draft }}
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     needs: build
     timeout-minutes: 60
     env:

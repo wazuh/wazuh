@@ -33,7 +33,8 @@ runs:
         python3 -m pip install requests packaging
       else
         echo "Using global Python"
-        python3 -m pip install --break-system-packages requests packaging
+        python3 -m pip install --break-system-packages requests packaging 2>/dev/null \
+          || python3 -m pip install requests packaging
       fi
       script_path=$(find . -name "get_last_stable_version.py")
       version=$($script_path \
