@@ -61,6 +61,18 @@ private:
      */
     void downloadAndPopulateDB(std::string_view iocType, const std::string& dbName);
 
+    /**
+     * @brief Synchronize a single IOC type
+     *
+     * @param dbState State of the IOC database to synchronize
+     * @param remoteTypeHashes Map of remote type hashes
+     * @param kvdbiocPtr KVDB IOC manager shared pointer
+     * @return true if state was changed (sync was successful), false otherwise
+     */
+    bool syncIOCType(SyncedIOCDatabase& dbState,
+                     const std::unordered_map<std::string, std::string>& remoteTypeHashes,
+                     const std::shared_ptr<kvdbioc::IKVDBManager>& kvdbiocPtr);
+
     void addIOCTypeToSync(std::string_view iocType);      ///< Add an IOC type to the sync list
     void removeIOCTypeFromSync(std::string_view iocType); ///< Remove an IOC type from the sync list
 
