@@ -452,18 +452,17 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
             return;
         }
 
-        //TODO: pending name change to metadata only
-        if (!protoReq.has_agent_metadata())
+        if (!protoReq.has_metadata())
         {
-            res = adapter::userErrorResponse<ResponseType>("agent_metadata is required and must be a JSON object");
+            res = adapter::userErrorResponse<ResponseType>("metadata is required and must be a JSON object");
             return;
         }
 
-        auto jsonOrErr = eMessage::eMessageToJson(protoReq.agent_metadata(), /*printPrimitiveFields=*/true);
+        auto jsonOrErr = eMessage::eMessageToJson(protoReq.metadata(), /*printPrimitiveFields=*/true);
         if (std::holds_alternative<base::Error>(jsonOrErr))
         {
             res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Error converting agent_metadata to JSON: {}", std::get<base::Error>(jsonOrErr).message));
+                fmt::format("Error converting metadata to JSON: {}", std::get<base::Error>(jsonOrErr).message));
             return;
         }
 
@@ -477,14 +476,21 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         catch (const std::exception& e)
         {
             res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Error parsing agent_metadata JSON: {}", e.what()));
+                fmt::format("Error parsing metadata JSON: {}", e.what()));
             return;
         }
 
         // Validate metadata object
-        if (!metadata.isObject())
+        if (!metadata.isObject() || metadata.getJson().value().isEmpty())
         {
-            res = adapter::userErrorResponse<ResponseType>("agent_metadata must be a JSON object");
+            res = adapter::userErrorResponse<ResponseType>("Metadata must be a non-empty JSON object");
+            return;
+        }
+
+        auto wazuhMetadataObject = metadata.getJson("/wazuh");
+        if (!wazuhMetadataObject || wazuhMetadataObject.value().isEmpty())
+        {
+            res = adapter::userErrorResponse<ResponseType>("Metadata should contain 'wazuh' as root");
             return;
         }
 
@@ -496,7 +502,7 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
             return;
         }
 
-        // Recursively validate that each leaf path in agent_metadata exists in the schema.
+        // Recursively validate that each leaf path in metadata exists in the schema.
         std::string badFieldMsg {};
         std::function<bool(const json::Json&, const std::string&)> validateRec;
         validateRec = [&](const json::Json& node, const std::string& jsonPtr) -> bool
@@ -528,20 +534,20 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
                 if (!schemaLocked->hasField(dp))
                 {
                     badFieldMsg = fmt::format(
-                        "Unknown field in agent_metadata: {}. Only fields from the schema are allowed", dp.str());
+                        "Unknown field in metadata: {}. Only fields from the schema are allowed", dp.str());
                     return false;
                 }
             }
             catch (const std::exception& e)
             {
-                badFieldMsg = fmt::format("Error validating agent_metadata path '{}': {}", jsonPtr, e.what());
+                badFieldMsg = fmt::format("Error validating metadata path '{}': {}", jsonPtr, e.what());
                 return false;
             }
 
             return true;
         };
 
-        if (!validateRec(metadata, ""))
+        if (!validateRec(wazuhMetadataObject.value(), ""))
         {
             res = adapter::userErrorResponse<ResponseType>(badFieldMsg);
             return;

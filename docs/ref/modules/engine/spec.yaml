@@ -269,7 +269,8 @@ paths:
         - If `location` matches the legacy agent format (`"[ID] (Name) IP->Module"`), it is parsed and may
           rewrite the final stored location to just the module.
         - If not legacy, host metadata is merged into the event before setting location/message.
-        - `agent_metadata` is **required** and must be a **JSON object** (not a JSON-encoded string).
+        - `metadata` is **required** and must be a **JSON object** (not a JSON-encoded string, number, or array).
+          If `metadata` is missing, not an object, or contains invalid nested fields, the request is rejected with a clear error message.
           It is automatically merged with the event. It can be an empty JSON object (`{}`).
 
       requestBody:
@@ -284,7 +285,7 @@ paths:
                 value:
                   queue: 1
                   location: "/var/log/auth.log"
-                  agent_metadata: {}
+                  metadata: {}
                   event: "Dec 19 12:00:00 host sshd[123]: Failed password for root from 10.0.0.1 port 12345 ssh2"
                   trace_level: "NONE"
 
@@ -293,42 +294,42 @@ paths:
                 value:
                   queue: 1
                   location: "[001] (my-agent) 192.168.1.10->syslog"
-                  agent_metadata: {}
+                  metadata: {}
                   event: "<34>Dec 19 12:00:00 my-agent myapp: something happened"
                   trace_level: "ALL"
 
-              agent_metadata_object_ok:
-                summary: agent_metadata as object (merged at root)
+              metadata_object_ok:
+                summary: metadata as object (merged at root)
                 value:
                   queue: 1
                   location: "syscheck"
-                  agent_metadata:
+                  metadata:
                     name: "nahuel"
                   event: "File /etc/passwd modified"
                   trace_level: "ALL"
 
-              agent_metadata_nested_event_ok:
-                summary: agent_metadata can provide nested fields (merged into event)
+              metadata_nested_event_ok:
+                summary: metadata can provide nested fields (merged into event)
                 value:
                   queue: 1
                   location: "syscheck"
-                  agent_metadata:
+                  metadata:
                     event:
                       kind: "test"
                   event: "File /etc/passwd modified"
                   trace_level: "ALL"
 
-              agent_metadata_as_string_invalid:
-                summary: INVALID - agent_metadata is a JSON-encoded string (Struct expects an object)
+              metadata_as_string_invalid:
+                summary: INVALID - metadata is a JSON-encoded string (Struct expects an object)
                 value:
                   queue: 1
                   location: "syscheck"
-                  agent_metadata: "{\"name\": \"nahuel\"}"
+                  metadata: "{\"name\": \"nahuel\"}"
                   event: "File /etc/passwd modified"
                   trace_level: "ALL"
 
-              missing_agent_metadata_invalid:
-                summary: INVALID - missing required agent_metadata
+              missing_metadata_invalid:
+                summary: INVALID - missing required metadata
                 value:
                   queue: 1
                   location: "syscheck"
@@ -343,8 +344,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/TesterRunPost_Response"
               examples:
-                ok_with_agent_metadata_root_merge:
-                  summary: OK - agent_metadata merged into output root
+                ok_with_metadata_root_merge:
+                  summary: OK - metadata merged into output root
                   value:
                     status: "OK"
                     result:
@@ -355,8 +356,8 @@ paths:
                           traces:
                             - "@timestamp: get_date -> Success"
 
-                ok_with_agent_metadata_event_merge:
-                  summary: OK - agent_metadata.event merged into event object
+                ok_with_metadata_event_merge:
+                  summary: OK - metadata.event merged into event object
                   value:
                     status: "OK"
                     result:
@@ -398,17 +399,24 @@ paths:
                     status: "ERROR"
                     error: "Error parsing event: <details>"
 
-                agent_metadata_required:
-                  summary: agent_metadata is required
-                  value:
-                    status: "ERROR"
-                    error: "agent_metadata is required and must be a JSON object"
 
-                agent_metadata_wrong_type_struct:
-                  summary: agent_metadata must be an object (Struct); a string is invalid
+                metadata_required:
+                  summary: metadata is required
                   value:
                     status: "ERROR"
-                    error: "Failed to parse protobuff json request: INVALID_ARGUMENT:(agent_metadata): invalid value \"{\\\"name\\\": \\\"nahuel\\\"}\" for type type.googleapis.com/google.protobuf.Struct"
+                    error: "metadata is required and must be a JSON object"
+
+                metadata_wrong_type_struct:
+                  summary: metadata must be an object (Struct); a string, number, or array is invalid
+                  value:
+                    status: "ERROR"
+                    error: "metadata is required and must be a JSON object"
+
+                metadata_invalid_nested:
+                  summary: metadata contains invalid nested field (e.g., event is not an object)
+                  value:
+                    status: "ERROR"
+                    error: "Invalid metadata: field 'event' must be an object"
 
         "500":
           $ref: "#/components/responses/InternalServerError_500"

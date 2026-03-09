@@ -172,7 +172,7 @@ message PublicRunPost_Request
     string location = 2;
 
     // Metadata about the agent sending the event.
-    google.protobuf.Struct agent_metadata = 3;
+    google.protobuf.Struct metadata = 3;
 
     // Raw event payload to test.
     string event = 4;

@@ -19,18 +19,18 @@ class LogtestDelete_Request(_message.Message):
     def __init__(self) -> None: ...
 
 class PublicRunPost_Request(_message.Message):
-    __slots__ = ["agent_metadata", "event", "location", "queue", "trace_level"]
-    AGENT_METADATA_FIELD_NUMBER: _ClassVar[int]
+    __slots__ = ["event", "location", "metadata", "queue", "trace_level"]
     EVENT_FIELD_NUMBER: _ClassVar[int]
     LOCATION_FIELD_NUMBER: _ClassVar[int]
+    METADATA_FIELD_NUMBER: _ClassVar[int]
     QUEUE_FIELD_NUMBER: _ClassVar[int]
     TRACE_LEVEL_FIELD_NUMBER: _ClassVar[int]
-    agent_metadata: _struct_pb2.Struct
     event: str
     location: str
+    metadata: _struct_pb2.Struct
     queue: int
     trace_level: str
-    def __init__(self, queue: _Optional[int] = ..., location: _Optional[str] = ..., agent_metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., event: _Optional[str] = ..., trace_level: _Optional[str] = ...) -> None: ...
+    def __init__(self, queue: _Optional[int] = ..., location: _Optional[str] = ..., metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., event: _Optional[str] = ..., trace_level: _Optional[str] = ...) -> None: ...
 
 class Result(_message.Message):
     __slots__ = ["asset_traces", "output"]
