@@ -459,10 +459,6 @@ int is_file(char *file_name)
     if (dp) {
         closedir(dp);
         ret = 1;
-#ifndef WIN32
-    } else if (errno == ENOTDIR) {
-        ret = 1;
-#endif
     }
 
     /* Trying other calls */
