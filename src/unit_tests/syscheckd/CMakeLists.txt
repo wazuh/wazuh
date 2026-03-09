@@ -296,11 +296,14 @@ set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,sleep -Wl,--wrap,SendMSGPredicated -Wl,--wr
                           -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                           -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
+set(RUN_CHECK_BASE_FLAGS_WINAGENT "${RUN_CHECK_BASE_FLAGS}")
+string(REPLACE "-Wl,--wrap=fim_run_integrity " "" RUN_CHECK_BASE_FLAGS_WINAGENT "${RUN_CHECK_BASE_FLAGS_WINAGENT}")
+
 list(APPEND syscheckd_tests_names "run_check")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep -Wl,--wrap,time")
 elseif(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start \
+  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS_WINAGENT} -Wl,--wrap=realtime_start \
                                      -Wl,--wrap,WaitForSingleObjectEx -Wl,--wrap,pthread_rwlock_rdlock \
                                      -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_wrlock \
                                      -Wl,--wrap,fim_sync_push_msg -Wl,--wrap=fim_db_get_count_registry_data \
@@ -310,7 +313,7 @@ elseif(${TARGET} STREQUAL "winagent")
 
   # Create event channel tests for run_check
   list(APPEND syscheckd_event_tests_names "test_run_check_event")
-  list(APPEND syscheckd_event_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start,--wrap=run_whodata_scan \
+  list(APPEND syscheckd_event_tests_flags "${RUN_CHECK_BASE_FLAGS_WINAGENT} -Wl,--wrap=realtime_start,--wrap=run_whodata_scan \
                                                                    -Wl,--wrap=audit_restore -Wl,--wrap=QueryDosDeviceA \
                                                                    -Wl,--wrap,pthread_rwlock_rdlock \
                                                                    -Wl,--wrap,pthread_rwlock_unlock \

@@ -84,6 +84,14 @@ static bool request_pause_after_sync = false;
 
 #define TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY "first_sync_completed"
 
+static void call_real_fim_run_integrity(void) {
+#ifdef TEST_WINAGENT
+    fim_run_integrity(NULL);
+#else
+    __real_fim_run_integrity(NULL);
+#endif
+}
+
 void __wrap_asp_sync_module_hook(void) {
     if (stop_fim_integrity_on_sync) {
         fim_sync_module_running = 0;
@@ -1164,7 +1172,7 @@ void test_fim_run_integrity_skips_initial_wait_for_pending_first_sync(void **sta
     expect_fim_startup_log(false);
     expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, true);
 
-    __real_fim_run_integrity(NULL);
+    call_real_fim_run_integrity();
 
     stop_fim_integrity_on_sync = false;
     syscheck.sync_handle = original_handle;
@@ -1193,7 +1201,7 @@ void test_fim_run_integrity_keeps_initial_wait_after_first_sync(void **state) {
 
     expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, false);
 
-    __real_fim_run_integrity(NULL);
+    call_real_fim_run_integrity();
 
     stop_fim_integrity_on_sync = false;
     syscheck.sync_handle = original_handle;
@@ -1221,7 +1229,7 @@ void test_fim_run_integrity_pause_still_waits_after_skip_is_consumed(void **stat
     expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, true);
     expect_value(__wrap_sleep, seconds, 1);
 
-    __real_fim_run_integrity(NULL);
+    call_real_fim_run_integrity();
 
     assert_int_equal(syscheck.fim_pausing_is_allowed.data, 1);
 
@@ -1255,7 +1263,7 @@ void test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_complet
     expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
     expect_any(__wrap_fim_db_update_last_sync_time_value, timestamp);
 
-    __real_fim_run_integrity(NULL);
+    call_real_fim_run_integrity();
 
     assert_int_equal(fim_flush_in_progress.data, 0);
     assert_int_equal(fim_flush_result.data, 0);
