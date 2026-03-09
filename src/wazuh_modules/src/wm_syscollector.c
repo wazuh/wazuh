@@ -369,11 +369,11 @@ static wm_syscollector_startup_action_t wm_sys_get_startup_action(bool* first_sy
             *first_sync_completed = true;
         }
 
-        mtdebug1(WM_SYS_LOGTAG, "Inventory first synchronization already completed. Keeping startup synchronization delay.");
+        mtdebug1(WM_SYS_LOGTAG, "Inventory first synchronization already completed in a previous run. Keeping startup synchronization delay.");
         return SYSCOLLECTOR_STARTUP_ACTION_WAIT;
     }
 
-    mtdebug1(WM_SYS_LOGTAG, "Inventory first synchronization has not completed yet. Waiting for initial scan data before first sync.");
+    mtdebug1(WM_SYS_LOGTAG, "Inventory initial scan data is not ready yet. First synchronization will wait for scan data.");
 
     while (sync_module_running && !is_shutdown_process_started())
     {
@@ -387,7 +387,7 @@ static wm_syscollector_startup_action_t wm_sys_get_startup_action(bool* first_sy
 
         if (version > 0)
         {
-            mtdebug1(WM_SYS_LOGTAG, "Initial Syscollector scan data detected. Triggering first synchronization without startup delay.");
+            mtdebug1(WM_SYS_LOGTAG, "Initial Inventory scan data is ready. Triggering first synchronization without startup delay.");
             return SYSCOLLECTOR_STARTUP_ACTION_IMMEDIATE;
         }
 

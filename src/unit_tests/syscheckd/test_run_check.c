@@ -376,8 +376,8 @@ static void expect_fim_startup_log(bool first_sync_completed) {
     expect_string(__wrap__mdebug1,
                   formatted_msg,
                   first_sync_completed
-                      ? "FIM first synchronization already completed. Keeping startup synchronization delay."
-                      : "FIM first synchronization has not completed yet. Triggering synchronization without startup delay.");
+                      ? "FIM first synchronization already completed in a previous run. Keeping startup synchronization delay."
+                      : "Initial FIM scan data is ready. Triggering first synchronization without startup delay.");
 }
 
 static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, uint32_t sync_interval, bool persist_first_sync_marker) {

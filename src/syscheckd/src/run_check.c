@@ -903,9 +903,9 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 #endif
 
     if (first_sync_completed) {
-        mdebug1("FIM first synchronization already completed. Keeping startup synchronization delay.");
+        mdebug1("FIM first synchronization already completed in a previous run. Keeping startup synchronization delay.");
     } else {
-        mdebug1("FIM first synchronization has not completed yet. Triggering synchronization without startup delay.");
+        mdebug1("Initial FIM scan data is ready. Triggering first synchronization without startup delay.");
     }
 
     while (fim_sync_module_running) {
