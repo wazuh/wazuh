@@ -141,7 +141,8 @@ TEST_F(SCARecoveryTest, QueryCheckIntegrityFirstCheck)
 
     // Mock getLastIntegrityCheckTime to return 0 (first check)
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return());  // No metadata, returns 0
+    .Times(2)
+    .WillRepeatedly(::testing::Return());  // No metadata, returns 0
 
     // Mock updateLastIntegrityCheckTime
     EXPECT_CALL(*m_mockDBSync, handle())
@@ -249,6 +250,38 @@ TEST_F(SCARecoveryTest, QueryGetVersionCommand)
 
     EXPECT_EQ(jsonResponse["error"], 0);
     EXPECT_EQ(jsonResponse["data"]["version"], 5);
+}
+
+TEST_F(SCARecoveryTest, QueryGetFirstSyncCompletedDefaultsToFalse)
+{
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillOnce(::testing::Return());
+
+    std::string response = m_sca->query(R"({"command":"get_first_sync_completed"})");
+
+    nlohmann::json jsonResponse = nlohmann::json::parse(response);
+
+    EXPECT_EQ(jsonResponse["error"], 0);
+    EXPECT_EQ(jsonResponse["data"]["first_sync_completed"], 0);
+}
+
+TEST_F(SCARecoveryTest, QueryGetFirstSyncCompletedReturnsTrueWhenMetadataExists)
+{
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
+                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        nlohmann::json data;
+        data["value"] = 123456;
+        callback(SELECTED, data);
+    }));
+
+    std::string response = m_sca->query(R"({"command":"get_first_sync_completed"})");
+
+    nlohmann::json jsonResponse = nlohmann::json::parse(response);
+
+    EXPECT_EQ(jsonResponse["error"], 0);
+    EXPECT_EQ(jsonResponse["data"]["first_sync_completed"], 1);
 }
 
 // Test: check_integrity with empty checksum (error case)

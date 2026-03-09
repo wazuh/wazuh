@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <map>
 #include <thread>
 
 #include "agent_sync_protocol.hpp"
@@ -59,6 +60,9 @@ constexpr auto METADATA_SQL_STATEMENT
     key TEXT PRIMARY KEY,
     value INTEGER);)"
 };
+
+constexpr auto SCA_LAST_INTEGRITY_CHECK_METADATA_KEY {"last_integrity_check"};
+constexpr auto SCA_FIRST_SYNC_COMPLETED_METADATA_KEY {"first_sync_completed"};
 
 SecurityConfigurationAssessment::SecurityConfigurationAssessment(std::string dbPath,
                                                                  std::shared_ptr<IDBSync> dbSync,
@@ -422,6 +426,16 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
 
     bool result = m_spSyncProtocol->synchronizeModule(mode);
 
+    if (result)
+    {
+        int64_t firstSyncCompleted = 0;
+
+        if (!getMetadataValue(SCA_FIRST_SYNC_COMPLETED_METADATA_KEY, firstSyncCompleted) || firstSyncCompleted == 0)
+        {
+            updateMetadataValue(SCA_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
+        }
+    }
+
     {
         std::lock_guard<std::mutex> lock(m_pauseMutex);
         // Mark sync as complete and wake waiters under the same mutex.
@@ -743,6 +757,26 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
                 response["data"]["module"] = "sca";
             }
         }
+        else if (command == "get_first_sync_completed")
+        {
+            int64_t firstSyncCompleted = 0;
+
+            if (getMetadataValue(SCA_FIRST_SYNC_COMPLETED_METADATA_KEY, firstSyncCompleted))
+            {
+                response["error"] = 0;
+                response["message"] = "SCA first sync completion retrieved successfully";
+                response["data"]["action"] = "get_first_sync_completed";
+                response["data"]["module"] = "sca";
+                response["data"]["first_sync_completed"] = firstSyncCompleted > 0 ? 1 : 0;
+            }
+            else
+            {
+                response["error"] = 2;
+                response["message"] = "SCA failed getting first sync completion";
+                response["data"]["action"] = "get_first_sync_completed";
+                response["data"]["module"] = "sca";
+            }
+        }
         else if (command == "set_version")
         {
             // Extract version from parameters
@@ -1054,64 +1088,76 @@ bool SecurityConfigurationAssessment::performRecovery()
     }
 }
 
-int64_t SecurityConfigurationAssessment::getLastIntegrityCheckTime()
+bool SecurityConfigurationAssessment::getMetadataValue(const std::string& key, int64_t& value)
 {
     if (!m_dBSync)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot get last integrity check time");
-        return 0;
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot get metadata value");
+        return false;
     }
 
     try
     {
-        int64_t timestamp = 0;
+        value = 0;
 
         auto selectQuery = SelectQuery::builder()
                            .table("sca_metadata")
                            .columnList({"value"})
-                           .rowFilter("WHERE key = 'last_integrity_check'")
+                           .rowFilter("WHERE key = '" + key + "'")
                            .build();
 
-        const auto callback = [&timestamp](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        const auto callback = [&value](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
         {
             if (returnTypeCallback == SELECTED && resultData.contains("value"))
             {
                 if (resultData["value"].is_number())
                 {
-                    timestamp = resultData["value"].get<int64_t>();
+                    value = resultData["value"].get<int64_t>();
                 }
             }
         };
 
         m_dBSync->selectRows(selectQuery.query(), callback);
-        return timestamp;
+        return true;
     }
     catch (const std::exception& err)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, "Error getting last integrity check time: " + std::string(err.what()));
-        return 0;
+        LoggingHelper::getInstance().log(LOG_ERROR, "Error getting metadata value: " + std::string(err.what()));
+        return false;
     }
 }
 
-void SecurityConfigurationAssessment::updateLastIntegrityCheckTime(int64_t timestamp)
+bool SecurityConfigurationAssessment::updateMetadataValue(const std::string& key, int64_t value)
 {
     if (!m_dBSync)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot update last integrity check time");
-        return;
+        LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot update metadata value");
+        return false;
     }
 
     try
     {
-        // Prepare metadata record
-        nlohmann::json metadata;
-        metadata["key"] = "last_integrity_check";
-        metadata["value"] = timestamp;
+        std::map<std::string, int64_t> metadataValues;
 
-        // Use DBSync transaction to update/insert
+        auto selectQuery = SelectQuery::builder()
+                           .table("sca_metadata")
+                           .columnList({"key", "value"})
+                           .build();
+
+        const auto selectCallback = [&metadataValues](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        {
+            if (returnTypeCallback == SELECTED && resultData.contains("key") && resultData.contains("value") &&
+                    resultData["key"].is_string() && resultData["value"].is_number())
+            {
+                metadataValues[resultData["key"].get<std::string>()] = resultData["value"].get<int64_t>();
+            }
+        };
+
+        m_dBSync->selectRows(selectQuery.query(), selectCallback);
+        metadataValues[key] = value;
+
         const auto txnCallback = [](ReturnTypeCallback, const nlohmann::json&)
         {
-            // No action needed for transaction callback
         };
 
         DBSyncTxn txn {m_dBSync->handle(), nlohmann::json {"sca_metadata"}, 0, DBSYNC_QUEUE_SIZE, txnCallback};
@@ -1120,21 +1166,40 @@ void SecurityConfigurationAssessment::updateLastIntegrityCheckTime(int64_t times
         {
             nlohmann::json input;
             input["table"] = "sca_metadata";
-            input["data"] = nlohmann::json::array({metadata});
+            input["data"] = nlohmann::json::array();
+
+            for (const auto& [metadataKey, metadataValue] : metadataValues)
+            {
+                input["data"].push_back({{"key", metadataKey}, {"value", metadataValue}});
+            }
 
             txn.syncTxnRow(input);
             txn.getDeletedRows(txnCallback);
+            return true;
+        }
 
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Updated last integrity check time to " + std::to_string(timestamp));
-        }
-        else
-        {
-            LoggingHelper::getInstance().log(LOG_ERROR, "Failed to create DBSync transaction for updating last integrity check time");
-        }
+        LoggingHelper::getInstance().log(LOG_ERROR, "Failed to create DBSync transaction for updating metadata value");
+        return false;
     }
     catch (const std::exception& err)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, "Error updating last integrity check time: " + std::string(err.what()));
+        LoggingHelper::getInstance().log(LOG_ERROR, "Error updating metadata value: " + std::string(err.what()));
+        return false;
+    }
+}
+
+int64_t SecurityConfigurationAssessment::getLastIntegrityCheckTime()
+{
+    int64_t timestamp = 0;
+    getMetadataValue(SCA_LAST_INTEGRITY_CHECK_METADATA_KEY, timestamp);
+    return timestamp;
+}
+
+void SecurityConfigurationAssessment::updateLastIntegrityCheckTime(int64_t timestamp)
+{
+    if (updateMetadataValue(SCA_LAST_INTEGRITY_CHECK_METADATA_KEY, timestamp))
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Updated last integrity check time to " + std::to_string(timestamp));
     }
 }
 
