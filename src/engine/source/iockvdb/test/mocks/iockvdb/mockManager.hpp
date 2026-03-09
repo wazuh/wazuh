@@ -1,10 +1,10 @@
-#ifndef _KVDBIOC_MOCK_MANAGER_HPP
-#define _KVDBIOC_MOCK_MANAGER_HPP
+#ifndef IOCKVDB_MOCK_MANAGER_HPP
+#define IOCKVDB_MOCK_MANAGER_HPP
 
 #include <gmock/gmock.h>
-#include <kvdbioc/iManager.hpp>
+#include <iockvdb/iManager.hpp>
 
-namespace kvdbioc
+namespace ioc::kvdb
 {
 
 class MockKVDBManager : public IKVDBManager
@@ -28,6 +28,6 @@ public:
     MOCK_METHOD(void, remove, (std::string_view name), (override));
 };
 
-} // namespace kvdbioc
+} // namespace ioc::kvdb
 
-#endif // _KVDBIOC_MOCK_MANAGER_HPP
+#endif // IOCKVDB_MOCK_MANAGER_HPP

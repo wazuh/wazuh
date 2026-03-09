@@ -14,7 +14,7 @@
 #include <base/name.hpp>
 #include <base/utils/generator.hpp>
 #include <base/utils/metaHelpers.hpp>
-#include <kvdbioc/helpers.hpp>
+#include <iockvdb/helpers.hpp>
 
 #include <iocsync/iocsync.hpp>
 
@@ -25,7 +25,7 @@ const base::Name STORE_NAME_IOCSYNC {"iocsync/status/0"}; ///< Name of the inter
 constexpr std::size_t IOC_SYNC_BATCH_SIZE {1000};         ///< Documents per search page for IOC sync
 constexpr std::string_view COMPONENT_NAME = "IOCSync";    ///< Component name for logging
 
-void ensureTargetDbExists(const std::shared_ptr<kvdbioc::IKVDBManager>& kvdbiocPtr, std::string_view targetDBName)
+void ensureTargetDbExists(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocPtr, std::string_view targetDBName)
 {
     // Check if handle exists and has a valid instance
     if (kvdbiocPtr->exists(targetDBName))
@@ -121,7 +121,7 @@ public:
 };
 
 IocSync::IocSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
-                 const std::shared_ptr<kvdbioc::IKVDBManager>& kvdbiocManagerPtr,
+                 const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocManagerPtr,
                  const std::shared_ptr<::store::IStore>& storePtr)
     : m_indexerPtr(indexerPtr)
     , m_kvdbiocManagerPtr(kvdbiocManagerPtr)
@@ -140,7 +140,7 @@ IocSync::IocSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexer
     LOG_INFO("[IOC::Sync] First setup detected, initializing default IOC types to sync");
 
     // Add default IOC types to sync from indexer connector policy
-    for (const auto& iocType : kvdbioc::details::getSupportedIocTypes())
+    for (const auto& iocType : ioc::kvdb::details::getSupportedIocTypes())
     {
         addIOCTypeToSync(iocType);
     }
@@ -191,7 +191,7 @@ void IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string&
             [&stored, &kvdbiocPtr, &dbName](const std::string& key, const std::string& value)
             {
                 json::Json valueJson {value.c_str()};
-                kvdbioc::details::updateValueInDB(kvdbiocPtr, dbName, key, valueJson);
+                ioc::kvdb::details::updateValueInDB(kvdbiocPtr, dbName, key, valueJson);
                 stored++;
             });
 
@@ -315,7 +315,7 @@ void IocSync::saveStateToStore()
 
 bool IocSync::syncIOCType(SyncedIOCDatabase& dbState,
                           const std::unordered_map<std::string, std::string>& remoteTypeHashes,
-                          const std::shared_ptr<kvdbioc::IKVDBManager>& kvdbiocPtr)
+                          const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocPtr)
 {
     try
     {
@@ -330,7 +330,7 @@ bool IocSync::syncIOCType(SyncedIOCDatabase& dbState,
         }
 
         const auto& remoteHash = remoteHashIt->second;
-        const auto targetDBName = kvdbioc::details::getDbNameFromType(dbState.getIocType());
+        const auto targetDBName = ioc::kvdb::details::getDbNameFromType(dbState.getIocType());
         const bool existDb = kvdbiocPtr->exists(targetDBName);
 
         // Check if sync is needed

@@ -1,5 +1,5 @@
-#ifndef _KVDBIOC_MANAGER_HPP
-#define _KVDBIOC_MANAGER_HPP
+#ifndef IOCKVDB_MANAGER_HPP
+#define IOCKVDB_MANAGER_HPP
 
 #include <atomic>
 #include <condition_variable>
@@ -15,14 +15,14 @@
 
 #include <rocksdb/db.h>
 
-#include <kvdbioc/iManager.hpp>
+#include <iockvdb/iManager.hpp>
 
 namespace store
 {
 class IStore;
 }
 
-namespace kvdbioc
+namespace ioc::kvdb
 {
 class DbHandle;
 class DbInstance;
@@ -128,6 +128,6 @@ private:
     std::deque<RetiredInstance> m_retiredQueue;
 };
 
-} // namespace kvdbioc
+} // namespace ioc::kvdb
 
-#endif // _KVDBIOC_MANAGER_HPP
+#endif // IOCKVDB_MANAGER_HPP

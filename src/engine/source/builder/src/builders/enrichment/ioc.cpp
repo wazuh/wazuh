@@ -10,8 +10,8 @@
 #include <base/json.hpp>
 #include <base/utils/stringUtils.hpp>
 
-#include <kvdbioc/helpers.hpp>
-#include <kvdbioc/iManager.hpp>
+#include <iockvdb/helpers.hpp>
+#include <iockvdb/iManager.hpp>
 
 #include "enrichment.hpp"
 
@@ -131,7 +131,7 @@ std::vector<IocMappingConfig> loadIocMappingConfigs(const json::Json& config, st
     }
 
     // Get IOC type info using helpers
-    const auto typeInfo = kvdbioc::details::findIOCTypeInfo(iocType);
+    const auto typeInfo = ioc::kvdb::details::findIOCTypeInfo(iocType);
     if (!typeInfo.has_value())
     {
         throw std::runtime_error(fmt::format("Unknown IOC type '{}'", iocType));
@@ -174,7 +174,7 @@ std::vector<IocMappingConfig> loadIocMappingConfigs(const json::Json& config, st
     };
 
     // Handle connection type: sources are objects with ip_field and port_field
-    if (iocTypeEnum == kvdbioc::details::IOCType::CONNECTION)
+    if (iocTypeEnum == ioc::kvdb::details::IOCType::CONNECTION)
     {
         const auto sourcesOpt = config.getArray("/connection/sources");
         if (!sourcesOpt.has_value())
@@ -309,7 +309,7 @@ json::Json buildEnrichmentMatch(const json::Json& iocValue, const std::string& m
     return result;
 }
 
-base::Expression getEachIocEnrichTerm(const std::shared_ptr<kvdbioc::IKVDBManager>& kvdbIocManager,
+base::Expression getEachIocEnrichTerm(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbIocManager,
                                       const IocMappingConfig& config,
                                       bool trace)
 {
@@ -345,7 +345,7 @@ base::Expression getEachIocEnrichTerm(const std::shared_ptr<kvdbioc::IKVDBManage
 }
 
 std::pair<base::Expression, std::string>
-iocEnrichmentBuilder(const std::shared_ptr<kvdbioc::IKVDBManager>& kvdbIocManager,
+iocEnrichmentBuilder(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbIocManager,
                      const std::vector<IocMappingConfig>& mappingConfigs,
                      std::string traceableName,
                      bool trace)
@@ -369,7 +369,7 @@ iocEnrichmentBuilder(const std::shared_ptr<kvdbioc::IKVDBManager>& kvdbIocManage
 
 } // namespace
 
-EnrichmentBuilder getIocEnrichmentBuilder(const std::shared_ptr<kvdbioc::IKVDBManager>& kvdbIocManager,
+EnrichmentBuilder getIocEnrichmentBuilder(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbIocManager,
                                           const json::Json& configDoc,
                                           std::string_view iocType)
 {

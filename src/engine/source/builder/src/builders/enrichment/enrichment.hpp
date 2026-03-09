@@ -5,7 +5,7 @@
 
 #include <cmstore/datapolicy.hpp>
 #include <geo/imanager.hpp>
-#include <kvdbioc/iManager.hpp>
+#include <iockvdb/iManager.hpp>
 
 #include "builders/types.hpp"
 
@@ -69,7 +69,7 @@ EnrichmentBuilder getGeoEnrichmentBuilder(const std::shared_ptr<geo::IManager>& 
  * @param iocType IOC DB type (e.g. ipv4-addr, file, url, domain-name).
  * @return EnrichmentBuilder
  */
-EnrichmentBuilder getIocEnrichmentBuilder(const std::shared_ptr<kvdbioc::IKVDBManager>& kvdbIocManager,
+EnrichmentBuilder getIocEnrichmentBuilder(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbIocManager,
                                           const json::Json& configDoc,
                                           std::string_view iocType);
 

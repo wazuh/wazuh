@@ -1,11 +1,11 @@
-#ifndef _KVDBIOC_TYPES_HPP
-#define _KVDBIOC_TYPES_HPP
+#ifndef IOCKVDB_TYPES_HPP
+#define IOCKVDB_TYPES_HPP
 
 #include <cstddef>
 #include <string>
 #include <vector>
 
-namespace kvdbioc
+namespace ioc::kvdb
 {
 /**
  * @brief DB State Machine (Simplified)
@@ -61,6 +61,6 @@ inline const char* toString(ErrorCode code)
     }
 }
 
-} // namespace kvdbioc
+} // namespace ioc::kvdb
 
-#endif // _KVDBIOC_TYPES_HPP
+#endif // IOCKVDB_TYPES_HPP

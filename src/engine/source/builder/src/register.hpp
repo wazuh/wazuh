@@ -36,7 +36,7 @@
 
 // Enrichment builders
 #include "builders/enrichment/enrichment.hpp"
-#include "kvdbioc/helpers.hpp"
+#include "iockvdb/helpers.hpp"
 
 namespace builder::detail
 {
@@ -447,9 +447,9 @@ void registerEnrichmentBuilders(const std::shared_ptr<Registry>& registry,
         "geo",
         builders::enrichment::getGeoEnrichmentBuilder(deps.geoManager, getConfFn(STORE_GEO_CONFIG_DOC_NAME, "geo")));
 
-    // IOC enrichment builders - dynamically registered from kvdbioc::details::IOC_TYPE_TABLE
+    // IOC enrichment builders - dynamically registered from ioc::kvdb::details::IOC_TYPE_TABLE
     const auto iocConfig = getConfFn(STORE_IOC_CONFIG_DOC_NAME, "ioc");
-    for (const auto& iocTypeInfo : kvdbioc::details::IOC_TYPE_TABLE)
+    for (const auto& iocTypeInfo : ioc::kvdb::details::IOC_TYPE_TABLE)
     {
         registry->template add<builders::EnrichmentBuilder>(
             std::string(iocTypeInfo.typeKey),

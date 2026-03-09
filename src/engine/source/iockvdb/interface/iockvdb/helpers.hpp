@@ -1,5 +1,5 @@
-#ifndef KVDBIOC_HELPERS_HPP
-#define KVDBIOC_HELPERS_HPP
+#ifndef IOCKVDB_HELPERS_HPP
+#define IOCKVDB_HELPERS_HPP
 
 #include <array>
 #include <optional>
@@ -11,9 +11,9 @@
 
 #include <base/json.hpp>
 
-#include <kvdbioc/iManager.hpp>
+#include <iockvdb/iManager.hpp>
 
-namespace kvdbioc::details
+namespace ioc::kvdb::details
 {
 
 inline constexpr std::string_view IOC_NAME_KEY = "/name"; ///< Path to the IOC name field, used as the key in KVDB
@@ -217,6 +217,6 @@ inline std::string_view getDbNameFromType(std::string_view typeStr)
     return info->dbName;
 }
 
-} // namespace kvdbioc::details
+} // namespace ioc::kvdb::details
 
-#endif // KVDBIOC_HELPERS_HPP
+#endif // IOCKVDB_HELPERS_HPP

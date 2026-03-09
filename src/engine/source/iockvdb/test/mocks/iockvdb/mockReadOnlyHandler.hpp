@@ -1,10 +1,10 @@
-#ifndef _KVDBIOC_MOCK_READONLY_HANDLER_HPP
-#define _KVDBIOC_MOCK_READONLY_HANDLER_HPP
+#ifndef IOCKVDB_MOCK_READONLY_HANDLER_HPP
+#define IOCKVDB_MOCK_READONLY_HANDLER_HPP
 
 #include <gmock/gmock.h>
-#include <kvdbioc/iReadOnlyHandler.hpp>
+#include <iockvdb/iReadOnlyHandler.hpp>
 
-namespace kvdbioc
+namespace ioc::kvdb
 {
 
 class MockReadOnlyKVDBHandler : public IReadOnlyKVDBHandler
@@ -22,6 +22,6 @@ public:
     MOCK_METHOD(bool, hasInstance, (), (const, noexcept, override));
 };
 
-} // namespace kvdbioc
+} // namespace ioc::kvdb
 
-#endif // _KVDBIOC_MOCK_READONLY_HANDLER_HPP
+#endif // IOCKVDB_MOCK_READONLY_HANDLER_HPP

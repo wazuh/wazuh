@@ -13,7 +13,7 @@ target_include_directories(api_ioccrud
 target_link_libraries(api_ioccrud
     PUBLIC
     api::adapter
-    kvdbioc::ikvdb
+    iockvdb::ikvdb
     scheduler::ischeduler
     store::istore
 )
@@ -36,7 +36,7 @@ if(ENGINE_BUILD_TEST)
         api::ioccrud
         GTest::gtest_main
         api::adapter::test
-        kvdbioc::mocks
+        iockvdb::mocks
         scheduler::mocks
         store::mocks
     )

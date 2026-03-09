@@ -73,7 +73,7 @@ target_link_libraries(builder
     schemf::ischema
     base
     kvdbstore::ikvdb
-	kvdbioc::ikvdb
+	iockvdb::ikvdb
 	store::istore
     geo::igeo
     streamlogger::istreamlogger

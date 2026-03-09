@@ -25,7 +25,7 @@ target_link_libraries(iocsync_iocsync
     PRIVATE
     wIndexerConnector::iwIndexerConnector
     store::istore
-    kvdbioc::ikvdb
+    iockvdb::ikvdb
 )
 add_library(iocsync::iocsync ALIAS iocsync_iocsync)
 

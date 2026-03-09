@@ -1,5 +1,5 @@
-#ifndef _KVDBIOC_DBHANDLE_HPP
-#define _KVDBIOC_DBHANDLE_HPP
+#ifndef IOCKVDB_DBHANDLE_HPP
+#define IOCKVDB_DBHANDLE_HPP
 
 #include <atomic>
 #include <filesystem>
@@ -11,10 +11,10 @@
 
 #include <rocksdb/db.h>
 
-#include <kvdbioc/iReadOnlyHandler.hpp>
-#include <kvdbioc/types.hpp>
+#include <iockvdb/iReadOnlyHandler.hpp>
+#include <iockvdb/types.hpp>
 
-namespace kvdbioc
+namespace ioc::kvdb
 {
 class DbInstance;
 
@@ -155,6 +155,6 @@ private:
     std::mutex m_structuralMutex;
 };
 
-} // namespace kvdbioc
+} // namespace ioc::kvdb
 
-#endif // _KVDBIOC_DBHANDLE_HPP
+#endif // IOCKVDB_DBHANDLE_HPP

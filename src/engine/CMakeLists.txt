@@ -279,7 +279,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/parsec)
 add_subdirectory(${ENGINE_SOURCE_DIR}/hlp)
 add_subdirectory(${ENGINE_SOURCE_DIR}/logpar)
 add_subdirectory(${ENGINE_SOURCE_DIR}/kvdbstore)
-add_subdirectory(${ENGINE_SOURCE_DIR}/kvdbioc)
+add_subdirectory(${ENGINE_SOURCE_DIR}/iockvdb)
 add_subdirectory(${ENGINE_SOURCE_DIR}/iocsync)
 add_subdirectory(${ENGINE_SOURCE_DIR}/logicexpr)
 add_subdirectory(${ENGINE_SOURCE_DIR}/yml)
@@ -312,7 +312,7 @@ target_link_libraries(wazuh-engine
     store::fileDriver
     api
     kvdbstore::kvdb
-    kvdbioc::kvdb
+    iockvdb::kvdb
     iocsync::iocsync
     eMessages
     geo
