@@ -310,7 +310,8 @@ static bool wm_sys_parse_query_int(const char* output, const char* field, int* v
     cJSON* data = cJSON_GetObjectItemCaseSensitive(root, "data");
     cJSON* field_item = data ? cJSON_GetObjectItemCaseSensitive(data, field) : NULL;
 
-    if (cJSON_IsNumber(error) && error->valueint == MQ_SUCCESS && cJSON_IsNumber(field_item))
+    if (error && field_item && cJSON_IsNumber(error) && error->valueint == MQ_SUCCESS &&
+        cJSON_IsNumber(field_item))
     {
         *value = field_item->valueint;
         result = true;
