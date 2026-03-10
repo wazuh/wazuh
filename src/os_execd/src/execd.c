@@ -228,45 +228,55 @@ void ExecdRun(char *exec_msg, int *childcount)
         return;
     }
 
-    /* Get application name */
-    cJSON *json_command = cJSON_GetObjectItem(json_root, "command");
-    if (json_command && (json_command->type == cJSON_String)) {
-        name = json_command->valuestring;
-    } else {
+    /* Get executable name and AR metadata from parameters */
+    cJSON *json_parameters_pre = cJSON_GetObjectItem(json_root, "parameters");
+    if (!cJSON_IsObject(json_parameters_pre)) {
         merror(EXEC_INV_CMD, exec_msg);
         cJSON_Delete(json_root);
         return;
     }
 
-#ifndef WIN32
-    if (!strcmp(name, "restart-wazuh")) {
-        char *cmd_api[MAX_ARGS] = {0};
-
-        cJSON_Delete(json_root);
-
-        os_strdup("active-response/bin/restart.sh", cmd_api[0]);
-
-        os_strdup("agent", cmd_api[1]);
-
-        ExecCmd(cmd_api);
-        return;
-    }
-#endif
-
-    /* Get command to execute */
-    cmd[0] = GetCommandbyName(name, &timeout_value);
-    if (!cmd[0]) {
-        ReadExecConfig();
-        cmd[0] = GetCommandbyName(name, &timeout_value);
-        if (!cmd[0]) {
-            merror(EXEC_INV_NAME, name);
-            cJSON_Delete(json_root);
-            return;
-        }
-    }
-    if (cmd[0][0] == '\0') {
+    cJSON *json_exec_name = cJSON_GetObjectItem(json_parameters_pre, "executable_name");
+    if (!cJSON_IsString(json_exec_name) || json_exec_name->valuestring[0] == '\0') {
+        merror(EXEC_INV_CMD, exec_msg);
         cJSON_Delete(json_root);
         return;
+    }
+    name = json_exec_name->valuestring;
+
+    /* Directory traversal protection */
+    if (w_ref_parent_folder(name)) {
+        merror("Active response command '%s' vulnerable to directory traversal attack. Ignoring.", name);
+        cJSON_Delete(json_root);
+        return;
+    }
+
+    /* Build full command path */
+    static char cmd_path[OS_FLSIZE];
+    if (snprintf(cmd_path, sizeof(cmd_path), "%s/%s", AR_BINDIR, name) >= (int)sizeof(cmd_path)) {
+        merror("Active response command path too long for '%s'. Ignoring.", name);
+        cJSON_Delete(json_root);
+        return;
+    }
+    cmd[0] = cmd_path;
+
+    /* Verify executable exists */
+    FILE *exec_fp = wfopen(cmd[0], "r");
+    if (!exec_fp) {
+        merror(EXEC_INV_NAME, name);
+        cJSON_Delete(json_root);
+        return;
+    }
+    fclose(exec_fp);
+
+    /* Determine timeout from AR type metadata */
+    cJSON *json_ar_type = cJSON_GetObjectItem(json_parameters_pre, "type");
+    cJSON *json_stateful_timeout = cJSON_GetObjectItem(json_parameters_pre, "stateful_timeout");
+
+    if (cJSON_IsString(json_ar_type) && strcmp(json_ar_type->valuestring, "stateful") == 0) {
+        timeout_value = cJSON_IsNumber(json_stateful_timeout) ? (int)json_stateful_timeout->valuedouble : 0;
+    } else {
+        timeout_value = 0;
     }
 
     /* Command parameters */
