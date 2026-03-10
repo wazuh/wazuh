@@ -121,29 +121,61 @@ namespace streamlog
 class ChannelHandler; // Forward declaration of ChannelHandler
 
 /**
- * @brief Configuration structure for the streamlog logger.
+ * @brief Configuration for a single log channel's rotation and compression policy.
  *
- * Contains parameters for log file management, including base path, file naming pattern,
- * optional maximum file size, optional maximum file age, and buffer size.
+ * A `RotationConfig` is passed to `LogManager::registerLog()` (or `updateConfig()`) and
+ * fully describes **where** log files are written, **how** they are named, and **when**
+ * they are rotated and optionally compressed.
+ *
+ * ### Validation & Normalisation
+ * `ChannelHandler::validateAndNormalizeConfig()` is called automatically during channel
+ * creation. It enforces the following rules:
+ * - `basePath` must be an existing, writable, absolute directory.
+ * - `pattern` must contain at least one time placeholder unless `maxSize > 0`.
+ * - If `maxSize > 0` and the pattern lacks `${counter}`, it is inserted before the last dot.
+ * - `bufferSize` of 0 is promoted to the default (1 Mi events).
+ * - `maxSize` below 1 MiB is clamped to 1 MiB.
+ * - `compressionLevel` must be in [1, 9] when `shouldCompress` is `true`.
+ *
+ * @see LogManager::registerLog
+ * @see ChannelHandler::validateAndNormalizeConfig
+ * @ingroup StreamlogModule
  */
 struct RotationConfig
 {
-    std::filesystem::path basePath; ///< The base directory path where log files will be stored, should be an absolute
-                                    ///< path and must exist and be writable.
-    std::string pattern;            ///< The pattern used for naming log files, which can include placeholders.
-    size_t maxSize; ///< Optional maximum size (in bytes) for a log file before rotation, 0 means no size limit.
-    size_t bufferSize = 1 << 20; ///<  The size (in events) of the buffer used for logging operations.
-    bool shouldCompress {true};  ///< If true, the rotated log files will be compressed using gzip.
-    size_t compressionLevel {5}; ///< Compression level for gzip (1-9), where 1 is fastest and 9 is best compression.
+    std::filesystem::path basePath; ///< Absolute directory where log files are written. Must exist and be writable.
+    std::string pattern;            ///< File-name pattern with placeholders (see namespace docs for the full list).
+    size_t maxSize;              ///< Maximum file size in bytes before size-based rotation. `0` disables size rotation.
+    size_t bufferSize = 1 << 20; ///< Queue capacity in events (default 1 Mi). `0` is promoted to the default.
+    bool shouldCompress {true};  ///< Compress rotated files with gzip when `true`.
+    size_t compressionLevel {5}; ///< Gzip compression level: 1 (fastest) – 9 (best). Only used when `shouldCompress`.
 };
 
 /**
- * @brief Manages multiple log channels with rotation and asynchronous writes.
+ * @brief Manages multiple named log channels with rotation and asynchronous writes.
  *
- * The `LogManager` class provides methods to register log channels, update their configurations,
- * retrieve writer functors for logging, and manage log file rotation.
- * It handles the asynchronous writing of log entries to files, ensuring thread safety and
- * efficient I/O operations.
+ * `LogManager` is the concrete implementation of `ILogManager`. It owns a set of
+ * `ChannelHandler` instances (one per registered channel), each backed by a
+ * dedicated worker thread for zero-contention writes.
+ *
+ * ### Ownership Model
+ * - `LogManager` **owns** `ChannelHandler`s via `shared_ptr`.
+ * - `ChannelWriter`s hold a `weak_ptr` back to their handler to avoid preventing
+ *   handler destruction.
+ * - Writer creation increments an `ActiveWriters` counter; destruction decrements it.
+ *   When the count reaches zero the worker thread is joined.
+ *
+ * ### Thread Safety
+ * All public methods are protected by a `shared_mutex`:
+ * - Read operations (`hasChannel`, `getConfig`, `getWriter`, `getActiveWritersCount`)
+ *   take a shared (read) lock.
+ * - Write operations (`registerLog`, `updateConfig`, `destroyChannel`, `cleanup`)
+ *   take a unique (write) lock.
+ *
+ * @see RotationConfig
+ * @see WriterEvent
+ * @see ChannelHandler
+ * @ingroup StreamlogModule
  */
 class LogManager : public ILogManager
 {
@@ -162,13 +194,18 @@ public:
         , m_store(store) {};
 
     /**
-     * @brief Registers a new log channel with the specified name and rotation configuration.
+     * @brief Register a new named log channel.
      *
-     * @param name The name of the log channel.
-     * @param cfg The rotation configuration for the log channel.
-     * @param ext The file extension for the lastest link file.
-     * @throws std::runtime_error if the log channel cannot be registered due to an existing channel with the same name,
-     *         invalid configuration, or if the base path does not exist or is not writable.
+     * Creates a `ChannelHandler`, validates and normalises `cfg`, opens the initial output
+     * file, and creates the hard-link shortcut `<basePath>/<name>.<ext>`. The worker
+     * thread is **not** started until the first `getWriter()` call.
+     *
+     * @param name Unique channel name (alphanumeric, dashes, underscores; max 255 chars).
+     * @param cfg  Rotation and compression configuration.
+     * @param ext  File extension for the "latest" hard-link (e.g. `"json"`, `"log"`).
+     *
+     * @throws std::runtime_error If `name` is already registered, `cfg` is invalid,
+     *         the base path does not exist, or the initial file cannot be opened.
      */
     void registerLog(const std::string& name, const RotationConfig& cfg, std::string_view ext);
 
@@ -185,24 +222,30 @@ public:
     }
 
     /**
-     * @brief Updates the configuration of an existing log channel.
+     * @brief Replace the configuration of an existing log channel.
      *
-     * @param name The name of the log channel to update.
-     * @param cfg The new rotation configuration for the log channel.
-     * @param ext The file extension for the lastest link file.
-     * @throws std::runtime_error if the log channel does not exist or if the new configuration is invalid.
-     * @warning if the channel is currently in use by a writer, the update not take effect until all writers are
-     * destroyed.
+     * The channel is destroyed and re-created with the new configuration. This is only
+     * allowed when there are **no active writers**; otherwise an exception is thrown.
+     *
+     * @param name Existing channel name.
+     * @param cfg  New rotation and compression configuration.
+     * @param ext  File extension for the "latest" hard-link.
+     *
+     * @throws std::runtime_error If the channel does not exist, has active writers, or
+     *         the new configuration is invalid.
      */
     void updateConfig(const std::string& name, const RotationConfig& cfg, std::string_view ext);
 
     /**
-     * @brief Retrieves a writer functor for the specified log channel.
+     * @brief Obtain a writer handle for asynchronous log writing.
      *
-     * @param name The name of the log channel for which to retrieve the writer.
-     * @return A function that takes a string (the log entry) and writes it to
-     * the log channel asynchronously.
-     * @throws std::runtime_error if the log channel does not exist.
+     * The first call for a channel starts its worker thread. The returned handle
+     * is reference-counted; when the last copy is destroyed the active-writer
+     * counter is decremented and the worker thread may be joined.
+     *
+     * @param name A previously registered channel name.
+     * @return Shared pointer to a `WriterEvent` bound to the channel.
+     * @throws std::runtime_error If the channel does not exist or is in error state.
      */
     [[nodiscard]] std::shared_ptr<WriterEvent> getWriter(const std::string& name) override;
 
@@ -225,10 +268,12 @@ public:
     std::size_t getActiveWritersCount(const std::string& name) const;
 
     /**
-     * @brief Destroys the specified log channel, releasing its resources.
+     * @brief Destroy a channel, stopping its worker thread and releasing resources.
      *
-     * @param name The name of the log channel to destroy.
-     * @throws std::runtime_error if the log channel does not exist or if in use. (Somebody has a writer for it)
+     * The channel must have **zero** active writers; otherwise the call throws.
+     *
+     * @param name Channel to destroy.
+     * @throws std::runtime_error If the channel does not exist or has active writers.
      */
     void destroyChannel(const std::string& name);
 
