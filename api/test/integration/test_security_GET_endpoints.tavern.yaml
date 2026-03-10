@@ -1670,12 +1670,6 @@ stages:
               effect: allow
             related_endpoints:
               - GET /mitre/groups
-              - GET /mitre/metadata
-              - GET /mitre/mitigations
-              - GET /mitre/references
-              - GET /mitre/software
-              - GET /mitre/tactics
-              - GET /mitre/techniques
 
 ---
 test_name: GET /security/resources
