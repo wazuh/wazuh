@@ -12,12 +12,9 @@
 #ifndef _FACTORY_CONTENT_UPDATER_HPP
 #define _FACTORY_CONTENT_UPDATER_HPP
 
-#include "factoryCleaner.hpp"
-#include "factoryDecompressor.hpp"
-#include "factoryDownloader.hpp"
-#include "factoryVersionUpdater.hpp"
-#include "pubSubPublisher.hpp"
+#include "IndexerDownloader.hpp"
 #include "sharedDefs.hpp"
+#include "updateIndexerCursor.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <memory>
@@ -25,41 +22,42 @@
 /**
  * @class FactoryContentUpdater
  *
- * @brief Creates all the corresponding instances for the orchestration in charge of processing certain contents at
- * runtime.
+ * @brief Creates the orchestration chain for fetching CVE data from the Wazuh Indexer
+ *        and persisting it to the local RocksDB feed database.
  *
+ * Pipeline:
+ *   IndexerDownloader  →  UpdateIndexerCursor
+ *
+ * IndexerDownloader fetches CVE documents from the Indexer (initial full load via PIT
+ * or incremental update via @timestamp range) and delivers them directly to the
+ * fileProcessingCallback without writing intermediate files to disk.
+ *
+ * UpdateIndexerCursor persists the @timestamp cursor returned by the downloader so
+ * that subsequent scheduler cycles perform incremental fetches only.
  */
 class FactoryContentUpdater final
 {
 public:
     /**
-     * @brief Creates the corresponding instances for the orchestration in charge of processing certain contents based
-     * on the config values.
+     * @brief Creates the Indexer-sourced content update pipeline.
      *
-     * @param config Configurations.
+     * @param config Full updater config JSON (must contain an "indexer" sub-object
+     *               with at least an "index" field).
      * @return std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>>
+     *         Head of the pipeline chain (IndexerDownloader).
      */
-    static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(nlohmann::json& config)
+    static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(
+        nlohmann::json& config)
     {
         logDebug1(WM_CONTENTUPDATER, "FactoryContentUpdater - Starting process");
 
-        auto factoryDownloader {FactoryDownloader::create(config)};
-        auto factoryDecompressor {FactoryDecompressor::create(config)};
-        auto factoryPublisher {std::make_shared<PubSubPublisher>()};
-        auto factoryVersionUpdater {FactoryVersionUpdater::create(config)};
-        auto factoryCleaner {FactoryCleaner::create(config)};
+        auto indexerDownloader = std::make_shared<IndexerDownloader>(config);
+        auto cursorUpdater     = std::make_shared<UpdateIndexerCursor>();
 
-        // Set the first step of the updater chain.
-        auto const& updaterChain {factoryDownloader};
+        indexerDownloader->setNext(cursorUpdater);
 
-        // If there is new content to process, create the updater chain.
-        updaterChain->setNext(factoryDecompressor)
-            ->setNext(factoryPublisher)
-            ->setNext(factoryVersionUpdater)
-            ->setNext(factoryCleaner);
-
-        return updaterChain;
+        return indexerDownloader;
     }
 };
 
-#endif //_FACTORY_CONTENT_UPDATER_HPP
+#endif // _FACTORY_CONTENT_UPDATER_HPP

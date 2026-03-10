@@ -1,0 +1,282 @@
+/*
+ * Wazuh content manager
+ * Copyright (C) 2015, Wazuh Inc.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#ifndef _INDEXER_DOWNLOADER_HPP
+#define _INDEXER_DOWNLOADER_HPP
+
+#include "componentsHelper.hpp"
+#include "indexerConnector.hpp"
+#include "sharedDefs.hpp"
+#include "updaterContext.hpp"
+#include "utils/chainOfResponsability.hpp"
+#include <memory>
+#include <string>
+#include <tuple>
+
+/**
+ * @class IndexerDownloader
+ *
+ * @brief Downloads CVE data from the Wazuh Indexer and feeds it directly to the
+ *        fileProcessingCallback without writing intermediate files to disk.
+ *
+ * Replaces CtiOffsetDownloader and CtiSnapshotDownloader.
+ *
+ * Behaviour:
+ *  - Initial load  (stored cursor is empty / "0"):
+ *      Uses executeSearchQueryWithPagination with match_all sorted by offset.
+ *      PIT (IndexerConnectorAsync) is not used because both connector types compete for
+ *      an exclusive RocksDB lock on queue/indexer/, and the facade already holds one via
+ *      its IndexerConnectorSync instance. search_after with a stable sort (offset, _id)
+ *      is equivalent for this feed because the index is only updated in scheduled batches.
+ *  - Incremental update (stored cursor is an integer offset):
+ *      Uses an offset range query via IndexerConnectorSync::executeSearchQueryWithPagination.
+ *      Fetches all documents whose offset field is greater than the stored value.
+ *
+ * For each page the downloader constructs a message of type "indexer" and invokes
+ * fileProcessingCallback synchronously. The highest offset seen is stored in
+ * context.data["cursor"] so that UpdateIndexerCursor can persist it to RocksDB.
+ *
+ * Configuration expected under configData["indexer"]:
+ * {
+ *   "index":    ".cti-cves",     // Indexer CVE index name
+ *   "pageSize": 1000,            // Documents per page (optional, default 1000)
+ *   <standard IndexerConnector SSL/auth config>
+ * }
+ */
+class IndexerDownloader final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
+{
+private:
+    nlohmann::json m_config;
+
+    /**
+     * @brief Returns the last cursor persisted in RocksDB, or empty string on first run.
+     */
+    std::string getStoredCursor(const UpdaterContext& context) const
+    {
+        if (!context.spUpdaterBaseContext->spRocksDB)
+        {
+            return "";
+        }
+        try
+        {
+            const auto value =
+                context.spUpdaterBaseContext->spRocksDB
+                    ->getLastKeyValue(Components::Columns::CURRENT_OFFSET)
+                    .second.ToString();
+            // ExecutionContext writes "0" on the very first run — treat it as no cursor.
+            return (value == "0") ? "" : value;
+        }
+        catch (const std::runtime_error&)
+        {
+            return "";
+        }
+    }
+
+    /**
+     * @brief Sends one page of Indexer hits to the fileProcessingCallback.
+     *
+     * @param context  Updater context (contains the callback).
+     * @param hits     Array of Indexer hit objects from a search response.
+     * @param cursor   String representation of the highest offset seen in this page.
+     */
+    void processPage(UpdaterContext& context,
+                     const nlohmann::json& hits,
+                     const std::string& cursor) const
+    {
+        nlohmann::json message;
+        message["type"]   = "indexer";
+        message["cursor"] = cursor;
+        message["data"]   = nlohmann::json::array();
+
+        for (const auto& hit : hits)
+        {
+            const auto& source = hit.value("_source", hit);
+
+            // Map Indexer document fields to the format expected by EventDecoder:
+            //   source.document.cveMetadata.cveId → resource  (e.g. "CVE-2025-1234")
+            //   source.document                   → payload   (CVE5 JSON, parsed by FlatBuffers using cve5_SCHEMA)
+            //   source.offset                     → offset    (stored in the CVE description FlatBuffer)
+            //   state PUBLISHED → "create", REJECTED → "delete"
+            const auto state = source.value("/document/cveMetadata/state"_json_pointer, std::string {});
+            const auto type  = (state == "REJECTED") ? "delete" : "create";
+
+            nlohmann::json resource;
+            resource["resource"] = source.value("/document/cveMetadata/cveId"_json_pointer, std::string {});
+            resource["type"]     = type;
+            resource["payload"]  = source.value("document", nlohmann::json::object());
+            resource["offset"]   = source.value("offset", 0);
+
+            message["data"].push_back(std::move(resource));
+        }
+
+        const auto result = context.spUpdaterBaseContext->fileProcessingCallback(message.dump());
+        if (!std::get<2>(result))
+        {
+            throw std::runtime_error("IndexerDownloader: fileProcessingCallback returned failure");
+        }
+    }
+
+    /**
+     * @brief Full initial load using executeSearchQueryWithPagination with match_all
+     *        sorted by offset (IndexerConnectorSync).
+     *
+     * NOTE: PIT (IndexerConnectorAsync) cannot be used here due to an exclusive RocksDB
+     * lock conflict on queue/indexer/ with the IndexerConnectorSync instance held by the
+     * facade. search_after pagination with a stable sort (offset, _id) is equivalent for
+     * this feed because the index is only updated in scheduled batches, not continuously.
+     * Resolving this to use PIT would require the connector layer to support shared access
+     * or separate RocksDB paths for sync and async connectors.
+     */
+    void initialLoad(UpdaterContext& context) const
+    {
+        logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Starting initial full load");
+
+        const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
+        const size_t pageSize = m_config.at("indexer").value("pageSize", 1000u);
+
+        IndexerConnectorSync syncConnector(m_config.at("indexer"));
+
+        nlohmann::json query;
+        query["query"]["match_all"] = nlohmann::json::object();
+        query["sort"]               = nlohmann::json::array({"offset", "_id"});
+        query["size"]               = pageSize;
+
+        std::string lastCursor;
+        size_t totalProcessed = 0;
+
+        syncConnector.executeSearchQueryWithPagination(
+            indexName,
+            query,
+            [&](const nlohmann::json& response)
+            {
+                if (!response.contains("hits") || !response.at("hits").contains("hits"))
+                {
+                    return;
+                }
+                const auto& hits = response.at("hits").at("hits");
+                if (hits.empty())
+                {
+                    return;
+                }
+
+                const auto& lastHit = hits.back();
+                if (lastHit.contains("_source") && lastHit.at("_source").contains("offset"))
+                {
+                    lastCursor = std::to_string(lastHit.at("_source").at("offset").get<uint64_t>());
+                }
+
+                processPage(context, hits, lastCursor);
+                totalProcessed += hits.size();
+
+                logDebug2(WM_CONTENTUPDATER,
+                          "IndexerDownloader: Initial load — %zu documents processed so far",
+                          totalProcessed);
+            });
+
+        context.data["cursor"] = lastCursor;
+        logInfo(WM_CONTENTUPDATER,
+                "IndexerDownloader: Initial load complete — %zu documents, cursor: '%s'",
+                totalProcessed,
+                lastCursor.c_str());
+    }
+
+    /**
+     * @brief Incremental update using offset range query (IndexerConnectorSync).
+     *
+     * @param lastCursor String representation of the last persisted integer offset.
+     */
+    void incrementalUpdate(UpdaterContext& context, const std::string& lastCursor) const
+    {
+        logInfo(WM_CONTENTUPDATER,
+                "IndexerDownloader: Starting incremental update from offset %s",
+                lastCursor.c_str());
+
+        const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
+        const size_t pageSize = m_config.at("indexer").value("pageSize", 1000u);
+
+        IndexerConnectorSync syncConnector(m_config.at("indexer"));
+
+        nlohmann::json query;
+        query["query"]["range"]["offset"]["gt"] = std::stoull(lastCursor);
+        query["sort"]                           = nlohmann::json::array({"offset", "_id"});
+        query["size"]                           = pageSize;
+
+        std::string newCursor  = lastCursor;
+        size_t totalProcessed  = 0;
+
+        syncConnector.executeSearchQueryWithPagination(
+            indexName,
+            query,
+            [&](const nlohmann::json& response)
+            {
+                if (!response.contains("hits") || !response.at("hits").contains("hits"))
+                {
+                    return;
+                }
+                const auto& hits = response.at("hits").at("hits");
+                if (hits.empty())
+                {
+                    return;
+                }
+
+                const auto& lastHit = hits.back();
+                if (lastHit.contains("_source") && lastHit.at("_source").contains("offset"))
+                {
+                    newCursor = std::to_string(lastHit.at("_source").at("offset").get<uint64_t>());
+                }
+
+                processPage(context, hits, newCursor);
+                totalProcessed += hits.size();
+            });
+
+        context.data["cursor"] = newCursor;
+        logInfo(WM_CONTENTUPDATER,
+                "IndexerDownloader: Incremental update complete — %zu documents, new cursor: '%s'",
+                totalProcessed,
+                newCursor.c_str());
+    }
+
+public:
+    /**
+     * @brief Construct a new IndexerDownloader.
+     *
+     * @param config Full updater config JSON (must contain an "indexer" sub-object).
+     */
+    explicit IndexerDownloader(const nlohmann::json& config)
+        : m_config(config)
+    {
+    }
+
+    /**
+     * @brief Execute the download step.
+     *
+     * Reads the stored cursor to decide between initial load and incremental update,
+     * then delegates to the appropriate fetch strategy.
+     */
+    std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
+    {
+        logDebug1(WM_CONTENTUPDATER, "IndexerDownloader - Starting process");
+
+        const auto lastCursor = getStoredCursor(*context);
+
+        if (lastCursor.empty())
+        {
+            initialLoad(*context);
+        }
+        else
+        {
+            incrementalUpdate(*context, lastCursor);
+        }
+
+        return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
+    }
+};
+
+#endif // _INDEXER_DOWNLOADER_HPP
