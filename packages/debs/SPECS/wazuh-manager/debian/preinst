@@ -176,8 +176,8 @@ EOF
             cp -p ${DIR}/etc/client.keys ${WAZUH_TMP_DIR}/client.keys
         fi
 
-        if [ -f ${DIR}/etc/local_internal_options.conf ]; then
-            cp -p ${DIR}/etc/local_internal_options.conf ${WAZUH_TMP_DIR}/local_internal_options.conf
+        if [ -f ${DIR}/etc/wazuh-manager-internal-options.conf ]; then
+            cp -p ${DIR}/etc/wazuh-manager-internal-options.conf ${WAZUH_TMP_DIR}/wazuh-manager-internal-options.conf
         fi
 
         if [ -f ${DIR}/etc/wazuh-manager.conf ]; then

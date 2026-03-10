@@ -36,22 +36,22 @@ int LogCollectorConfig(const char *cfgfile)
     log_config.globs = NULL;
     log_config.socket_list = NULL;
     log_config.agent_cfg = 0;
-    accept_remote = getDefine_Int("logcollector", "remote_commands", 0, 1);
+    accept_remote = getDefine_Int_default("logcollector", "remote_commands", 0, 1, 0);
     log_config.accept_remote = accept_remote;
 
     /* Get loop timeout */
-    loop_timeout = getDefine_Int("logcollector", "loop_timeout", 1, 120);
-    open_file_attempts = getDefine_Int("logcollector", "open_attempts", 0, 998);
-    vcheck_files = getDefine_Int("logcollector", "vcheck_files", 0, 1024);
-    maximum_lines = getDefine_Int("logcollector", "max_lines", 0, 1000000);
-    maximum_files = getDefine_Int("logcollector", "max_files", 1, 100000);
-    sock_fail_time = getDefine_Int("logcollector", "sock_fail_time", 1, 3600);
-    sample_log_length = getDefine_Int("logcollector", "sample_log_length", 1, 4096);
-    force_reload = getDefine_Int("logcollector", "force_reload", 0, 1);
-    reload_interval = getDefine_Int("logcollector", "reload_interval", 1, 86400);
-    reload_delay = getDefine_Int("logcollector", "reload_delay", 0, 30000);
-    free_excluded_files_interval = getDefine_Int("logcollector", "exclude_files_interval", 1, 172800);
-    state_interval = getDefine_Int("logcollector", "state_interval", 0, 3600);
+    loop_timeout = getDefine_Int_default("logcollector", "loop_timeout", 1, 120, 2);
+    open_file_attempts = getDefine_Int_default("logcollector", "open_attempts", 0, 998, 0);
+    vcheck_files = getDefine_Int_default("logcollector", "vcheck_files", 0, 1024, 64);
+    maximum_lines = getDefine_Int_default("logcollector", "max_lines", 0, 1000000, 10000);
+    maximum_files = getDefine_Int_default("logcollector", "max_files", 1, 100000, 1000);
+    sock_fail_time = getDefine_Int_default("logcollector", "sock_fail_time", 1, 3600, 300);
+    sample_log_length = getDefine_Int_default("logcollector", "sample_log_length", 1, 4096, 64);
+    force_reload = getDefine_Int_default("logcollector", "force_reload", 0, 1, 0);
+    reload_interval = getDefine_Int_default("logcollector", "reload_interval", 1, 86400, 64);
+    reload_delay = getDefine_Int_default("logcollector", "reload_delay", 0, 30000, 1000);
+    free_excluded_files_interval = getDefine_Int_default("logcollector", "exclude_files_interval", 1, 172800, 86400);
+    state_interval = getDefine_Int_default("logcollector", "state_interval", 0, 3600, 60);
 
     /* Current and total files counter */
     total_files = 0;
@@ -62,7 +62,7 @@ int LogCollectorConfig(const char *cfgfile)
     }
 
 #ifndef WIN32
-    nofile = getDefine_Int("logcollector", "rlimit_nofile", 1024, 1048576);
+    nofile = getDefine_Int_default("logcollector", "rlimit_nofile", 1024, 1048576, 1100);
 #endif
 
     if (maximum_lines > 0 && maximum_lines < 100) {

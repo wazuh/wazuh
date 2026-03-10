@@ -55,7 +55,7 @@ void * wm_command_main(wm_command_t * command) {
         pthread_exit(0);
     }
 
-    if (command->agent_cfg && !getDefine_Int("wazuh_command", "remote_commands", 0, 1)) {
+    if (command->agent_cfg && !getDefine_Int_default("wazuh_command", "remote_commands", 0, 1, 0)) {
         mtwarn(WM_COMMAND_LOGTAG, "Remote commands are disabled. Ignoring '%s'.", command->tag);
         pthread_exit(0);
     }

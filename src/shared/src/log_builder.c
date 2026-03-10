@@ -61,7 +61,7 @@ log_builder_t * log_builder_init(bool update) {
     os_calloc(1, sizeof(log_builder_t), builder);
 
     {
-        g_ip_update_interval = getDefine_Int("logcollector","ip_update_interval", 0, 3600);
+        g_ip_update_interval = getDefine_Int_default("logcollector","ip_update_interval", 0, 3600, 60);
         rwlock_init(&builder->rwlock);
     }
 

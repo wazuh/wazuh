@@ -129,7 +129,7 @@ int main(int argc, char **argv)
 
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = getDefine_Int("monitord", "debug", 0, 2);
+        debug_level = getDefine_Int_default("monitord", "debug", 0, 2, 0);
         while (debug_level != 0) {
             nowDebug();
             debug_level--;
