@@ -9,49 +9,6 @@
 # - GET /security/resources
 
 ---
-test_name: PUT /active-response
-
-stages:
-  - name: Try to run an Active Response command (generic)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/json
-      json:
-        command: "restart-ossec0"
-        arguments: [ "-", "null", "(from_the_server)", "(no_rule_id)" ]
-    response: &empty_response
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: []
-          failed_items: []
-          total_affected_items: 0
-          total_failed_items: 0
-
-  - name: Try to run an Active Response command (specific)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/json
-      json:
-        command: "restart-ossec0"
-        arguments: [ "-", "null", "(from_the_server)", "(no_rule_id)" ]
-      params:
-        agents_list: '001'
-    response: &permission_denied
-      status_code: 403
-      json:
-        error: 4000
-
----
 test_name: DELETE /agents
 
 stages:
