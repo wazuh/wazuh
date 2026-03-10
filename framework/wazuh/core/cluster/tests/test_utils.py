@@ -338,6 +338,8 @@ def test_get_cluster_items():
                 "sync_disconnected_agent_groups_batch_size": 100,
                 "sync_disconnected_agent_groups_min_offline": 600,
                 "sync_disconnected_agent_cluster_name_delay": 300,
+                "metrics_frequency": 600,
+                "metrics_bulk_size": 100,
             },
             "communication": {
                 "timeout_cluster_request": 20,
