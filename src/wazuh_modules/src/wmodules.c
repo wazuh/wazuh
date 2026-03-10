@@ -113,7 +113,7 @@ int wm_config() {
 
 #endif
 
-#if defined (__linux__) || (__MACH__) || defined(FreeBSD) || defined(OpenBSD)
+#if !defined(CLIENT) && (defined(__linux__) || defined(__MACH__) || defined(FreeBSD) || defined(OpenBSD))
     wmodule * control_module;
     control_module = wm_control_read();
     wm_add(control_module);

@@ -18,6 +18,7 @@
 #include "shared.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/client-agent/notify_wrappers.h"
+#include "../wrappers/wazuh/shared/agent_op_wrappers.h"
 
 extern int g_ip_update_interval;
 int log_builder_update_host_ip(log_builder_t * builder);
@@ -56,9 +57,7 @@ void test_log_builder_update(void **state)
     time_mock_value = 1000;
     will_return(wrap_get_agent_ip_legacy_win32, strdup(return_ip));
 #elif defined __linux__ || defined __MACH__ || defined sun || defined FreeBSD || defined OpenBSD
-    will_return(__wrap_control_check_connection, 16);
-    will_return(__wrap_send, 7);
-    will_return(__wrap_recv, 0);
+    will_return(__wrap_getPrimaryIP, NULL);
 #endif
 
     int r = log_builder_update_host_ip(builder);
