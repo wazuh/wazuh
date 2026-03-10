@@ -220,7 +220,7 @@ add_library(sysinfo SHARED
     ${SRC_FOLDER}/${RESOURCE_OBJ})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  target_link_libraries(sysinfo psapi iphlpapi ws2_32 wbemuuid uuid wuguid ole32 oleaut32 groups users services browser_extensions)
+  target_link_libraries(sysinfo psapi iphlpapi ws2_32 wbemuuid uuid wuguid ole32 oleaut32 ntdll shell32 groups users services browser_extensions)
   set_target_properties(sysinfo PROPERTIES
       PREFIX ""
       SUFFIX ".dll"
