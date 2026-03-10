@@ -224,7 +224,13 @@ public:
             createRocksDB(*context);
         }
 
-        createOutputFolder(*context);
+        // Output folders (downloads/ and contents/) are only needed for file-based downloaders.
+        // The Indexer-sourced path streams data directly without intermediate files.
+        if (context->configData.value("contentSource", "") != "indexer")
+        {
+            createOutputFolder(*context);
+        }
+
         setHttpUserAgent(*context);
 
         return AbstractHandler<std::shared_ptr<UpdaterBaseContext>>::handleRequest(std::move(context));
