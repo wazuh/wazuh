@@ -24,19 +24,52 @@ namespace streamlog
 constexpr const char* STORE_STREAMLOG_BASE_NAME = "streamlog/"; ///< Document base name for storing last state
 using FastQueueType = fastqueue::StdQueue<std::string>;         ///< Type alias for the fast queue used in channels
 
+/**
+ * @brief State machine for a channel's lifecycle.
+ *
+ * | State            | Description |
+ * |------------------|-------------|
+ * | `Running`        | Normal operation – messages are accepted and written. |
+ * | `StopRequested`  | Graceful shutdown in progress; worker thread is draining and exiting. |
+ * | `ErrorClosed`    | An I/O error occurred; all subsequent writes are silently dropped. |
+ *
+ * Transitions are performed via `std::atomic` with relaxed ordering (sufficient because
+ * the only consequence of a stale read is one extra write attempt).
+ *
+ * @ingroup StreamlogModule
+ */
 enum class ChannelState : int
 {
-    Running = 0,
-    StopRequested = 1,
-    ErrorClosed = 2
+    Running = 0,       ///< Channel is active and accepting messages.
+    StopRequested = 1, ///< Worker thread was asked to stop (last writer destroyed).
+    ErrorClosed = 2    ///< An irrecoverable I/O error closed the channel.
 };
 
 // Forward declaration
 class ChannelHandler;
 
-/***********************************************************************************************************************
- * @brief Concrete implementation of WriterEvent for log channels
- **********************************************************************************************************************/
+/**
+ * @brief Concrete `WriterEvent` implementation for log channels.
+ *
+ * A `ChannelWriter` is the user-facing write handle. It pushes messages into the
+ * channel's `FastQueueType` (a lock-free queue), where the `ChannelHandler` worker
+ * thread picks them up for file I/O.
+ *
+ * ### Ownership & Lifetime
+ * - Holds a `shared_ptr` to the queue and the atomic channel state so that writes
+ *   remain valid even if the `ChannelHandler` is being destroyed concurrently.
+ * - Holds a `weak_ptr` to the owning `ChannelHandler` solely for the destructor
+ *   callback (`onWriterDestroyed()`).
+ * - Non-copyable and non-movable to guarantee a 1 1 mapping between writer objects
+ *   and the active-writer reference count.
+ *
+ * ### Thread Safety
+ * `operator()` is safe to call from any thread. The queue provides its own internal
+ * synchronisation.
+ *
+ * @see ChannelHandler::createWriter
+ * @ingroup StreamlogModule
+ */
 class ChannelWriter : public WriterEvent
 {
 private:
@@ -79,10 +112,34 @@ public:
     }
 };
 
-/***********************************************************************************************************************
- * @brief High-performance internal implementation that manages the async processing
- * Each channel gets its own dedicated worker thread for maximum throughput
- **********************************************************************************************************************/
+/**
+ * @brief Internal engine that manages one log channel's asynchronous I/O pipeline.
+ *
+ * Each `ChannelHandler` owns:
+ * - A **rotation configuration** (`RotationConfig`) – immutable after construction.
+ * - A **lock-free queue** (`FastQueueType`) – shared with all its `ChannelWriter`s.
+ * - A **worker thread** – started on the first `createWriter()` call, joined when
+ *   the last writer is destroyed.
+ * - State for **file rotation**: current output file, hard-link to "latest", file
+ *   size counter, rotation counter, and last-rotation timestamps.
+ * - Optional **store persistence** to survive restarts (tracks the current file path
+ *   so a pending compression can be resumed).
+ *
+ * ### Worker Thread Loop
+ * 1. `waitPop` from the queue (1 s timeout).
+ * 2. Check `needsRotation()` – if yes, `rotateFile()` and schedule compression.
+ * 3. `writeMessage()` – append + newline + flush.
+ * 4. Repeat until `ChannelState != Running`.
+ *
+ * ### Factory Pattern
+ * The constructor is private. Use the static `create()` method which returns a
+ * `shared_ptr` (required because `ChannelWriter` stores a `weak_ptr` back via
+ * `enable_shared_from_this`).
+ *
+ * @see ChannelWriter
+ * @see LogManager
+ * @ingroup StreamlogModule
+ */
 class ChannelHandler : public std::enable_shared_from_this<ChannelHandler>
 {
 public:

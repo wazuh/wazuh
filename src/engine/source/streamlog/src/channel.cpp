@@ -102,7 +102,7 @@ ChannelHandler::RotationRequirement ChannelHandler::needsRotation(const size_t m
 
         if (nowHour != lastHour)
         {
-            auto candidatePath = std::filesystem::path(replacePlaceholders(now));
+            auto candidatePath = m_config.basePath / replacePlaceholders(now);
             return (m_stateData.currentFile != candidatePath) ? RotationRequirement::Time : RotationRequirement::No;
         }
     }
@@ -143,7 +143,7 @@ void ChannelHandler::rotateFile(RotationRequirement rotationType)
         {
             case RotationRequirement::Size: return m_stateData.counter + 1; // Increment counter for size-based rotation
             case RotationRequirement::Time: return 0;                       // Reset counter for time-based rotation
-            default: std::logic_error("Invalid rotation type for counter update"); return 0; // Fallback
+            default: throw std::logic_error("Invalid rotation type for counter update");
         }
     }();
 
@@ -172,6 +172,13 @@ void ChannelHandler::rotateFile(RotationRequirement rotationType)
         return;
     }
     m_stateData.lastRotation = now;
+
+    // if the resolved path is identical to the current file, no actual rotation is needed
+    if (previousFile == m_stateData.currentFile && rotationType == RotationRequirement::Time)
+    {
+        LOG_DEBUG("Channel '{}' time boundary crossed but file path unchanged, skipping rotation", m_channelName);
+        return;
+    }
 
     // Rotate the file by closing the current output file and opening a new one
     try
@@ -204,7 +211,10 @@ void ChannelHandler::rotateFile(RotationRequirement rotationType)
                         m_channelName);
         }
     }
-    LOG_INFO("Rotated the channel '{}' to new file: {}", m_channelName, m_stateData.currentFile.string());
+    if (previousFile != m_stateData.currentFile)
+    {
+        LOG_INFO("Rotated the channel '{}' to new file: {}", m_channelName, m_stateData.currentFile.string());
+    }
 }
 
 /**
