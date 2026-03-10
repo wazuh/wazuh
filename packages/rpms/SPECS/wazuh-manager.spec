@@ -538,8 +538,8 @@ rm -fr %{buildroot}
 %attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.cert
 %attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.key
 %attr(660, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/client.keys
-%attr(640, root, wazuh-manager) %{_localstatedir}/etc/internal_options*
-%attr(640, root, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/local_internal_options.conf
+%attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager-internal-options.conf
+%attr(640, root, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/wazuh-manager-internal-options.conf
 %attr(640, root, root) %{_localstatedir}/etc/localtime
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc/shared
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default

@@ -550,10 +550,10 @@ wmodule* wm_database_read() {
     wm_database data;
     wmodule *module = NULL;
 
-    data.sync_agents = getDefine_Int("wazuh_database", "sync_agents", 0, 1);
-    data.real_time = getDefine_Int("wazuh_database", "real_time", 0, 1);
-    data.interval = getDefine_Int("wazuh_database", "interval", 0, 86400);
-    data.max_queued_events = getDefine_Int("wazuh_database", "max_queued_events", 0, INT_MAX);
+    data.sync_agents = getDefine_Int_default("wazuh_database", "sync_agents", 0, 1, 1);
+    data.real_time = getDefine_Int_default("wazuh_database", "real_time", 0, 1, 1);
+    data.interval = getDefine_Int_default("wazuh_database", "interval", 0, 86400, 60);
+    data.max_queued_events = getDefine_Int_default("wazuh_database", "max_queued_events", 0, INT_MAX, 0);
 
     if (data.sync_agents) {
         os_calloc(1, sizeof(wmodule), module);

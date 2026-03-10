@@ -1794,7 +1794,7 @@ void free_msg_queue(w_msg_queue_t *msg) {
 
 void w_msg_hash_queues_init(){
 
-    OUTPUT_QUEUE_SIZE = getDefine_Int("logcollector", "queue_size", OUTPUT_MIN_QUEUE_SIZE, 220000);
+    OUTPUT_QUEUE_SIZE = getDefine_Int_default("logcollector", "queue_size", OUTPUT_MIN_QUEUE_SIZE, 220000, 1024);
     msg_queues_table = OSHash_Create();
 
     if(!msg_queues_table){
@@ -2300,7 +2300,7 @@ void w_create_input_threads(){
 
     int i;
 
-    N_INPUT_THREADS = getDefine_Int("logcollector", "input_threads", N_MIN_INPUT_THREADS, 128);
+    N_INPUT_THREADS = getDefine_Int_default("logcollector", "input_threads", N_MIN_INPUT_THREADS, 128, 4);
 
 #ifdef WIN32
     w_mutex_init(&win_el_mutex, &win_el_mutex_attr);

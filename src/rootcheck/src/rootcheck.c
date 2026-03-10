@@ -164,7 +164,7 @@ int rootcheck_init(int test_config)
         return (1);
     }
 
-    rootcheck.tsleep = getDefine_Int("rootcheck", "sleep", 0, 1000);
+    rootcheck.tsleep = getDefine_Int_default("rootcheck", "sleep", 0, 1000, 50);
 
     /* If testing config, exit here */
     if (test_config) {

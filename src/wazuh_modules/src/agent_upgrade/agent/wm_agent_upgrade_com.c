@@ -331,7 +331,7 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
     int status = 0;
     char *out;
 
-    int req_timeout = getDefine_Int("execd", "request_timeout", 1, 3600);
+    int req_timeout = getDefine_Int_default("execd", "request_timeout", 1, 3600, 60);
 
     // Unsign
     if (!package_obj || (package_obj->type != cJSON_String) || _unsign(package_obj->valuestring, compressed) < 0) {

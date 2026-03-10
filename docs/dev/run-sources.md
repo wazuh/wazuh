@@ -28,8 +28,6 @@ Alternatively, configure environment variables as described in `etc/preloaded-va
 USER_LANGUAGE="en" \
 USER_INSTALL_TYPE="manager" \
 USER_DIR="/var/wazuh-manager" \
-USER_ENABLE_SYSCHECK="y" \
-USER_ENABLE_ROOTCHECK="y" \
 USER_WHITE_LIST="n" \
 USER_ENABLE_SYSLOG="y" \
 USER_ENABLE_AUTHD="y" \
@@ -71,8 +69,6 @@ USER_LANGUAGE="en" \
 USER_INSTALL_TYPE="agent" \
 USER_DIR="/var/ossec" \
 USER_AGENT_MANAGER_IP="10.0.0.2" \
-USER_ENABLE_SYSCHECK="y" \
-USER_ENABLE_ROOTCHECK="y" \
 USER_ENABLE_ACTIVE_RESPONSE="y" \
 USER_CA_STORE="n" \
 USER_UPDATE="y" \

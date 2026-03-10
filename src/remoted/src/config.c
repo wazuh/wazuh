@@ -62,27 +62,27 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 
     /* Read module limits from internal_options.conf */
     /* FIM limits */
-    manager_module_limits.fim.file = getDefine_Int("fim", "file_limit", 0, INT_MAX);
-    manager_module_limits.fim.registry_key = getDefine_Int("fim", "registry_key_limit", 0, INT_MAX);
-    manager_module_limits.fim.registry_value = getDefine_Int("fim", "registry_value_limit", 0, INT_MAX);
+    manager_module_limits.fim.file = getDefine_Int_default("fim", "file_limit", 0, INT_MAX, 0);
+    manager_module_limits.fim.registry_key = getDefine_Int_default("fim", "registry_key_limit", 0, INT_MAX, 0);
+    manager_module_limits.fim.registry_value = getDefine_Int_default("fim", "registry_value_limit", 0, INT_MAX, 0);
 
     /* Syscollector limits */
-    manager_module_limits.syscollector.hotfixes = getDefine_Int("syscollector", "hotfixes_limit", 0, INT_MAX);
-    manager_module_limits.syscollector.packages = getDefine_Int("syscollector", "packages_limit", 0, INT_MAX);
-    manager_module_limits.syscollector.processes = getDefine_Int("syscollector", "processes_limit", 0, INT_MAX);
-    manager_module_limits.syscollector.ports = getDefine_Int("syscollector", "ports_limit", 0, INT_MAX);
-    manager_module_limits.syscollector.network_iface = getDefine_Int("syscollector", "network_iface_limit", 0, INT_MAX);
-    manager_module_limits.syscollector.network_protocol = getDefine_Int("syscollector", "network_protocol_limit", 0, INT_MAX);
-    manager_module_limits.syscollector.network_address = getDefine_Int("syscollector", "network_address_limit", 0, INT_MAX);
-    manager_module_limits.syscollector.hardware = getDefine_Int("syscollector", "hardware_limit", 0, INT_MAX);
-    manager_module_limits.syscollector.os_info = getDefine_Int("syscollector", "os_info_limit", 0, INT_MAX);
-    manager_module_limits.syscollector.users = getDefine_Int("syscollector", "users_limit", 0, INT_MAX);
-    manager_module_limits.syscollector.groups = getDefine_Int("syscollector", "groups_limit", 0, INT_MAX);
-    manager_module_limits.syscollector.services = getDefine_Int("syscollector", "services_limit", 0, INT_MAX);
-    manager_module_limits.syscollector.browser_extensions = getDefine_Int("syscollector", "browser_extensions_limit", 0, INT_MAX);
+    manager_module_limits.syscollector.hotfixes = getDefine_Int_default("syscollector", "hotfixes_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector.packages = getDefine_Int_default("syscollector", "packages_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector.processes = getDefine_Int_default("syscollector", "processes_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector.ports = getDefine_Int_default("syscollector", "ports_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector.network_iface = getDefine_Int_default("syscollector", "network_iface_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector.network_protocol = getDefine_Int_default("syscollector", "network_protocol_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector.network_address = getDefine_Int_default("syscollector", "network_address_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector.hardware = getDefine_Int_default("syscollector", "hardware_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector.os_info = getDefine_Int_default("syscollector", "os_info_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector.users = getDefine_Int_default("syscollector", "users_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector.groups = getDefine_Int_default("syscollector", "groups_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector.services = getDefine_Int_default("syscollector", "services_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector.browser_extensions = getDefine_Int_default("syscollector", "browser_extensions_limit", 0, INT_MAX, 0);
 
     /* SCA limits */
-    manager_module_limits.sca.checks = getDefine_Int("sca", "checks_limit", 0, INT_MAX);
+    manager_module_limits.sca.checks = getDefine_Int_default("sca", "checks_limit", 0, INT_MAX, 0);
 
     modules |= CREMOTE;
 
@@ -95,37 +95,37 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->connection_overtake_time = 60;
 
     // Initialize all internal options
-    receive_chunk = (unsigned)getDefine_Int("remoted", "receive_chunk", 1024, 16384);
-    send_chunk = (unsigned)getDefine_Int("remoted", "send_chunk", 512, 16384);
-    buffer_relax = getDefine_Int("remoted", "buffer_relax", 0, 2);
-    send_buffer_size = (unsigned)getDefine_Int("remoted", "send_buffer_size", 65536, 1048576);
-    send_timeout_to_retry = getDefine_Int("remoted", "send_timeout_to_retry", 1, 60);
-    recv_timeout = getDefine_Int("remoted", "recv_timeout", 1, 60);
-    tcp_keepidle = getDefine_Int("remoted", "tcp_keepidle", 1, 7200);
-    tcp_keepintvl = getDefine_Int("remoted", "tcp_keepintvl", 1, 100);
-    tcp_keepcnt = getDefine_Int("remoted", "tcp_keepcnt", 1, 50);
-    worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
-    merge_shared = getDefine_Int("remoted", "merge_shared", 0, 1);
-    pass_empty_keyfile = getDefine_Int("remoted", "pass_empty_keyfile", 0, 1);
-    ctrl_msg_queue_size = (size_t)getDefine_Int("remoted", "control_msg_queue_size", 4096, 0x1 << 20);
-    keyupdate_interval = getDefine_Int("remoted", "keyupdate_interval", 1, 3600);
-    router_forwarding_disabled = getDefine_Int("remoted", "router_forwarding_disabled", 0, 1);
-    state_interval = getDefine_Int("remoted", "state_interval", 0, 86400);
-    nofile = getDefine_Int("remoted", "rlimit_nofile", 1024, 1048576);
-    sender_pool = getDefine_Int("remoted", "sender_pool", 1, 64);
-    request_pool = getDefine_Int("remoted", "request_pool", 1, 4096);
-    request_timeout = getDefine_Int("remoted", "request_timeout", 1, 600);
-    response_timeout = getDefine_Int("remoted", "response_timeout", 1, 3600);
-    rto_sec = getDefine_Int("remoted", "request_rto_sec", 0, 60);
-    rto_msec = getDefine_Int("remoted", "request_rto_msec", 0, 999);
-    max_attempts = getDefine_Int("remoted", "max_attempts", 1, 16);
-    guess_agent_group = getDefine_Int("remoted", "guess_agent_group", 0, 1);
-    shared_reload_interval = getDefine_Int("remoted", "shared_reload", 1, 18000);
-    disk_storage = getDefine_Int("remoted", "disk_storage", 0, 1);
-    _s_verify_counter = getDefine_Int("remoted", "verify_msg_id", 0, 1);
-    batch_events_capacity = (size_t)getDefine_Int("remoted", "batch_events_capacity", 0, 0x1<<20);
-    batch_events_per_agent_capacity = (size_t)getDefine_Int("remoted", "batch_events_per_agent_capacity", 0, 0x1<<20);
-    enrich_cache_expire_time = getDefine_Int("remoted", "enrich_cache_expire_time", 60, 86400);
+    receive_chunk = (unsigned)getDefine_Int_default("remoted", "receive_chunk", 1024, 16384, 4096);
+    send_chunk = (unsigned)getDefine_Int_default("remoted", "send_chunk", 512, 16384, 4096);
+    buffer_relax = getDefine_Int_default("remoted", "buffer_relax", 0, 2, 1);
+    send_buffer_size = (unsigned)getDefine_Int_default("remoted", "send_buffer_size", 65536, 1048576, 131072);
+    send_timeout_to_retry = getDefine_Int_default("remoted", "send_timeout_to_retry", 1, 60, 1);
+    recv_timeout = getDefine_Int_default("remoted", "recv_timeout", 1, 60, 1);
+    tcp_keepidle = getDefine_Int_default("remoted", "tcp_keepidle", 1, 7200, 30);
+    tcp_keepintvl = getDefine_Int_default("remoted", "tcp_keepintvl", 1, 100, 10);
+    tcp_keepcnt = getDefine_Int_default("remoted", "tcp_keepcnt", 1, 50, 3);
+    worker_pool = getDefine_Int_default("remoted", "worker_pool", 1, 16, 4);
+    merge_shared = getDefine_Int_default("remoted", "merge_shared", 0, 1, 1);
+    pass_empty_keyfile = getDefine_Int_default("remoted", "pass_empty_keyfile", 0, 1, 1);
+    ctrl_msg_queue_size = (size_t)getDefine_Int_default("remoted", "control_msg_queue_size", 4096, 0x1 << 20, 16384);
+    keyupdate_interval = getDefine_Int_default("remoted", "keyupdate_interval", 1, 3600, 10);
+    router_forwarding_disabled = getDefine_Int_default("remoted", "router_forwarding_disabled", 0, 1, 0);
+    state_interval = getDefine_Int_default("remoted", "state_interval", 0, 86400, 5);
+    nofile = getDefine_Int_default("remoted", "rlimit_nofile", 1024, 1048576, 458752);
+    sender_pool = getDefine_Int_default("remoted", "sender_pool", 1, 64, 8);
+    request_pool = getDefine_Int_default("remoted", "request_pool", 1, 4096, 1024);
+    request_timeout = getDefine_Int_default("remoted", "request_timeout", 1, 600, 10);
+    response_timeout = getDefine_Int_default("remoted", "response_timeout", 1, 3600, 60);
+    rto_sec = getDefine_Int_default("remoted", "request_rto_sec", 0, 60, 1);
+    rto_msec = getDefine_Int_default("remoted", "request_rto_msec", 0, 999, 0);
+    max_attempts = getDefine_Int_default("remoted", "max_attempts", 1, 16, 4);
+    guess_agent_group = getDefine_Int_default("remoted", "guess_agent_group", 0, 1, 0);
+    shared_reload_interval = getDefine_Int_default("remoted", "shared_reload", 1, 18000, 10);
+    disk_storage = getDefine_Int_default("remoted", "disk_storage", 0, 1, 0);
+    _s_verify_counter = getDefine_Int_default("remoted", "verify_msg_id", 0, 1, 0);
+    batch_events_capacity = (size_t)getDefine_Int_default("remoted", "batch_events_capacity", 0, 0x1<<20, 131072);
+    batch_events_per_agent_capacity = (size_t)getDefine_Int_default("remoted", "batch_events_per_agent_capacity", 0, 0x1<<20, 131072);
+    enrich_cache_expire_time = getDefine_Int_default("remoted", "enrich_cache_expire_time", 60, 86400, 300);
 
     /* Setting default values for global parameters */
     cfg->global.agents_disconnection_time = 900;

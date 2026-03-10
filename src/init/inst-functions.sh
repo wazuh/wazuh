@@ -908,13 +908,16 @@ InstallCommon()
          ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/TIMEZONE ${INSTALLDIR}/etc/
     fi
 
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
     if [ "X${INSTYPE}" = "Xagent" ]; then
+        ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
         ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} wazuh_modules/syscollector/norm_config.json ${INSTALLDIR}/queue/syscollector
-    fi
-
-    if [ ! -f ${INSTALLDIR}/etc/local_internal_options.conf ]; then
-        ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/local_internal_options.conf ${INSTALLDIR}/etc/local_internal_options.conf
+        if [ ! -f ${INSTALLDIR}/etc/local_internal_options.conf ]; then
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/local_internal_options.conf ${INSTALLDIR}/etc/local_internal_options.conf
+        fi
+    else
+        if [ ! -f ${INSTALLDIR}/etc/wazuh-manager-internal-options.conf ]; then
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/wazuh-manager-internal-options.conf ${INSTALLDIR}/etc/wazuh-manager-internal-options.conf
+        fi
     fi
 
     if [ ! -f ${INSTALLDIR}/etc/client.keys ]; then

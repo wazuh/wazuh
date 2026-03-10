@@ -270,7 +270,7 @@ wmodule * wm_download_read() {
 
     os_calloc(1, sizeof(wmodule), module);
     os_malloc(sizeof(wm_download_t), data);
-    data->enabled = getDefine_Int("wazuh_download", "enabled", 0, 1);
+    data->enabled = getDefine_Int_default("wazuh_download", "enabled", 0, 1, 1);
     module->context = &WM_DOWNLOAD_CONTEXT;
     module->data = data;
     module->tag = strdup(module->context->name);

@@ -286,7 +286,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     const char *xml_agent_overwrite = "overwrite";
     const char *xml_agent_profile = "profile";
 
-    if ((modules & CAGENT_CONFIG) && !getDefine_Int("agent", "remote_conf", 0, 1)) {
+    if ((modules & CAGENT_CONFIG) && !getDefine_Int_default("agent", "remote_conf", 0, 1, 1)) {
       return 0;
     }
 

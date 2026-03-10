@@ -142,20 +142,20 @@ void OS_StartCounter(keystore *keys)
 
     /* Get counter values */
     if (_s_recv_flush == 0) {
-        _s_recv_flush = (unsigned int) getDefine_Int("remoted",
+        _s_recv_flush = (unsigned int) getDefine_Int_default("remoted",
                         "recv_counter_flush",
-                        10, 999999);
+                        10, 999999, 128);
     }
 
     /* Average printout values */
     if (_s_comp_print == 0) {
-        _s_comp_print = (unsigned int) getDefine_Int("remoted",
+        _s_comp_print = (unsigned int) getDefine_Int_default("remoted",
                         "comp_average_printout",
-                        10, 999999);
+                        10, 999999, 19999);
     }
 
 
-    _s_verify_counter = getDefine_Int("remoted", "verify_msg_id" , 0, 1);
+    _s_verify_counter = getDefine_Int_default("remoted", "verify_msg_id" , 0, 1, 0);
 }
 
 /* Remove the ID counter */
