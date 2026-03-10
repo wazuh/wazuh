@@ -51,16 +51,6 @@ default_policies:
           - group:id:*
         effect: allow
 
-  agents_commands:
-    description: Allow sending commands to agents.
-    policies:
-      agents:
-        actions:
-          - active-response:command
-        resources:
-          - agent:id:*
-        effect: allow
-
   security_all:
     description: Provide full access to all security related functionalities.
     policies:

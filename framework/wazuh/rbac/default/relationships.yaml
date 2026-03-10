@@ -14,7 +14,6 @@ relationships:
     administrator:
       policy_ids:
         - agents_all
-        - agents_commands
         - security_all
         - cluster_all
         - rootcheck_run

@@ -77,7 +77,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/wazuh-manager/framework/wazuh,root,wazuh-manager,750,directory,drwxr-x---,,
 /var/wazuh-manager/framework/wazuh/__init__.py,root,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/framework/wazuh/__main__.py,root,wazuh-manager,640,file,-rw-r-----,,
-/var/wazuh-manager/framework/wazuh/active_response.py,root,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/framework/wazuh/agent.py,root,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/framework/wazuh/cluster.py,root,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/framework/wazuh/core,root,wazuh-manager,750,directory,drwxr-x---,,
