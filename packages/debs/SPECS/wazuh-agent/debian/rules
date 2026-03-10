@@ -46,7 +46,6 @@ override_dh_install:
 	make -j$(JOBS) -C src/ TARGET=agent USE_SELINUX=yes DEBUG=$(DEBUG_ENABLED)
 
 	USER_LANGUAGE="en" \
-	USER_NO_STOP="y" \
 	USER_INSTALL_TYPE="agent" \
 	USER_DIR="$(INSTALLATION_DIR)" \
 	USER_DELETE_DIR="y" \

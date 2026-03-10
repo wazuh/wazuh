@@ -209,11 +209,6 @@ case "$1" in
         fi
     fi
 
-    # Ensure that the 'Indexer' is configured
-    CONFIG_INDEXER_TEMPLATE="${SCRIPTS_DIR}/etc/templates/config/generic/wodle-indexer.manager.template"
-    . ${SCRIPTS_DIR}/src/init/update-indexer.sh
-    updateIndexerTemplate "${DIR}/etc/wazuh-manager.conf" $CONFIG_INDEXER_TEMPLATE
-
     # Restoring file permissions
     ${SCRIPTS_DIR}/restore-permissions.sh > /dev/null 2>&1 || true
 
