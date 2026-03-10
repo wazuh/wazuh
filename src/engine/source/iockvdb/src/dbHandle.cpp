@@ -2,10 +2,10 @@
 
 #include <fmt/format.h>
 
-#include <kvdbioc/dbHandle.hpp>
-#include <kvdbioc/dbInstance.hpp>
+#include <iockvdb/dbHandle.hpp>
+#include <iockvdb/dbInstance.hpp>
 
-namespace kvdbioc
+namespace ioc::kvdb
 {
 
 std::optional<json::Json> DbHandle::get(std::string_view key) const
@@ -59,4 +59,4 @@ void DbHandle::putValue(std::string_view key, std::string_view value)
     inst->put(key, value);
 }
 
-} // namespace kvdbioc
+} // namespace ioc::kvdb

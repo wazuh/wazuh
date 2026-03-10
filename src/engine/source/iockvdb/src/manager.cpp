@@ -13,9 +13,9 @@
 #include <base/name.hpp>
 #include <store/istore.hpp>
 
-#include <kvdbioc/dbHandle.hpp>
-#include <kvdbioc/dbInstance.hpp>
-#include <kvdbioc/manager.hpp>
+#include <iockvdb/dbHandle.hpp>
+#include <iockvdb/dbInstance.hpp>
+#include <iockvdb/manager.hpp>
 
 namespace
 {
@@ -100,7 +100,7 @@ public:
 
 } // anonymous namespace
 
-namespace kvdbioc
+namespace ioc::kvdb
 {
 
 KVDBManager::KVDBManager(std::filesystem::path rootDir, std::shared_ptr<store::IStore> storePtr)
@@ -703,4 +703,4 @@ void KVDBManager::saveStateToStore()
     }
 }
 
-} // namespace kvdbioc
+} // namespace ioc::kvdb

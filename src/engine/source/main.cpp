@@ -32,8 +32,8 @@
 #include <geo/manager.hpp>
 #include <httpsrv/server.hpp>
 #include <iocsync/iocsync.hpp>
-#include <kvdbioc/manager.hpp>
-#include <kvdbioc/helpers.hpp>
+#include <iockvdb/manager.hpp>
+#include <iockvdb/helpers.hpp>
 #include <kvdbstore/ikvdbmanager.hpp>
 #include <kvdbstore/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
@@ -221,7 +221,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<router::Orchestrator> orchestrator;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;
-    std::shared_ptr<kvdbioc::IKVDBManager> kvdbIOC;
+    std::shared_ptr<ioc::kvdb::IKVDBManager> IOCkvdb;
     std::shared_ptr<geo::Manager> geoManager;
     std::shared_ptr<schemf::Schema> schema;
     std::shared_ptr<scheduler::Scheduler> scheduler;
@@ -302,10 +302,10 @@ int main(int argc, char* argv[])
         // KVDB IOC
         {
             auto kvdbPath = std::filesystem::path(confManager.get<std::string>(conf::key::KVDB_IOC_PATH));
-            kvdbIOC = std::make_shared<kvdbioc::KVDBManager>(kvdbPath, store);
+            IOCkvdb = std::make_shared<ioc::kvdb::KVDBManager>(kvdbPath, store);
             LOG_INFO("KVDB IOC initialized.");
             // Initialize required DBs for iocs
-            kvdbioc::details::initializeDBs(kvdbIOC);
+            ioc::kvdb::details::initializeDBs(IOCkvdb);
         }
 
         // GEO
@@ -454,6 +454,7 @@ int main(int argc, char* argv[])
             builderDeps.logparDebugLvl = 0;
             builderDeps.logpar = logpar;
             builderDeps.kvdbManager = kvdbManager;
+            builderDeps.kvdbIocManager = IOCkvdb;
             builderDeps.geoManager = geoManager;
             builderDeps.logManager = streamLogger;
             builderDeps.iConnector = indexerConnector;
@@ -543,7 +544,7 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             // Create IOC Sync Service
-            iocSyncService = std::make_shared<ioc::sync::IocSync>(indexerConnector, kvdbIOC, store);
+            iocSyncService = std::make_shared<ioc::sync::IocSync>(indexerConnector, IOCkvdb, store);
             LOG_INFO("IOC Sync Service initialized.");
 
             // Add IOC sync to scheduler
@@ -662,7 +663,7 @@ int main(int argc, char* argv[])
             LOG_DEBUG("Content Manager CRUD API registered.");
 
             // IOC CRUD
-            api::ioccrud::handlers::registerHandlers(kvdbIOC, scheduler, store, apiServer);
+            api::ioccrud::handlers::registerHandlers(IOCkvdb, scheduler, store, apiServer);
             LOG_DEBUG("IOC CRUD API registered.");
 
             // Finally start the API server

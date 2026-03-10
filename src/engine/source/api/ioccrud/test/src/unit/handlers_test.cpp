@@ -12,7 +12,7 @@
 #include <api/ioccrud/handlers.hpp>
 #include <eMessages/engine.pb.h>
 #include <eMessages/ioc.pb.h>
-#include <kvdbioc/mockManager.hpp>
+#include <iockvdb/mockManager.hpp>
 #include <scheduler/mockScheduler.hpp>
 #include <store/mockStore.hpp>
 
@@ -58,7 +58,7 @@ protected:
     {
         // Reset static flag before each test
         // Note: This accesses a private global, may need friend declaration or alternative approach
-        m_kvdbManager = std::make_shared<kvdbioc::MockKVDBManager>();
+        m_kvdbManager = std::make_shared<ioc::kvdb::MockKVDBManager>();
         m_scheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
         m_store = std::make_shared<store::mocks::MockStore>();
         // Ensure the semaphore is not locked before tests
@@ -80,7 +80,7 @@ protected:
         return api::adapter::createRequest(protoReq);
     }
 
-    std::shared_ptr<kvdbioc::MockKVDBManager> m_kvdbManager;
+    std::shared_ptr<ioc::kvdb::MockKVDBManager> m_kvdbManager;
     std::shared_ptr<scheduler::mocks::MockIScheduler> m_scheduler;
     std::shared_ptr<store::mocks::MockStore> m_store;
 };
@@ -604,7 +604,7 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_KVDBNotAvailable_StoresError)
             });
 
     // Call with null weak_ptr (will expire immediately)
-    std::weak_ptr<::kvdbioc::IKVDBManager> nullWeak;
+    std::weak_ptr<::ioc::kvdb::IKVDBManager> nullWeak;
     detail::performIOCSync(nullWeak, m_store, tempFile.path(), testHash);
 }
 

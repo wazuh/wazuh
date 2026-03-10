@@ -1,10 +1,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <kvdbioc/mockManager.hpp>
-#include <kvdbioc/mockReadOnlyHandler.hpp>
+#include <iockvdb/mockManager.hpp>
+#include <iockvdb/mockReadOnlyHandler.hpp>
 
-using namespace kvdbioc;
+using namespace ioc::kvdb;
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::NiceMock;

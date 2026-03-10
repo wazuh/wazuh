@@ -1,5 +1,5 @@
-#ifndef _KVDBIOC_DBINSTANCE_HPP
-#define _KVDBIOC_DBINSTANCE_HPP
+#ifndef IOCKVDB_DBINSTANCE_HPP
+#define IOCKVDB_DBINSTANCE_HPP
 
 #include <filesystem>
 #include <memory>
@@ -14,7 +14,7 @@
 #include <base/logging.hpp>
 #include <fmt/format.h>
 
-namespace kvdbioc
+namespace ioc::kvdb
 {
 
 class DbInstance
@@ -118,6 +118,6 @@ private:
     bool m_shouldDeleteOnDestroy; // Only true for retired instances
 };
 
-} // namespace kvdbioc
+} // namespace ioc::kvdb
 
-#endif // _KVDBIOC_DBINSTANCE_HPP
+#endif // IOCKVDB_DBINSTANCE_HPP

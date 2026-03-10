@@ -1,5 +1,5 @@
-#ifndef _KVDBIOC_IMANAGER_HPP
-#define _KVDBIOC_IMANAGER_HPP
+#ifndef IOCKVDB_IMANAGER_HPP
+#define IOCKVDB_IMANAGER_HPP
 
 #include <memory>
 #include <string_view>
@@ -7,10 +7,10 @@
 
 #include <base/error.hpp>
 
-#include <kvdbioc/iReadOnlyHandler.hpp>
-#include <kvdbioc/types.hpp>
+#include <iockvdb/iReadOnlyHandler.hpp>
+#include <iockvdb/types.hpp>
 
-namespace kvdbioc
+namespace ioc::kvdb
 {
 /**
  * KVDB Manager Interface
@@ -112,6 +112,6 @@ public:
      */
     virtual void remove(std::string_view dbName) = 0;
 };
-} // namespace kvdbioc
+} // namespace ioc::kvdb
 
-#endif // _KVDBIOC_IMANAGER_HPP
+#endif // IOCKVDB_IMANAGER_HPP

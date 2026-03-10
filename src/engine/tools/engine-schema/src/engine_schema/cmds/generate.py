@@ -52,6 +52,49 @@ def load_exclude_geo_file(path_str: str | None) -> Set[str]:
 
     return {x.strip() for x in data if x.strip()}
 
+def load_exclude_ioc_file(path_str: str | None) -> dict:
+    """
+    Load IOC enrichment config from a JSON file.
+
+    The file must:
+      - exist
+      - be a regular file
+      - contain a JSON object with the following structure:
+        {
+          "global": {
+            "exclude_trees": [ "field.tree1", "field.tree2" ]
+          },
+          "types": {
+            "type1": {
+              "exclude_trees": [ "field.tree3", "field.tree4" ]
+            },
+            "type2": {
+              "exclude_trees": [ "field.tree5" ]
+            }
+          }
+        }
+    """
+    if path_str is None:
+        return {}
+
+    path = Path(path_str)
+
+    if not path.exists():
+        raise ValueError(f"--ioc-enrichment-cfg file does not exist: {path}")
+    if not path.is_file():
+        raise ValueError(f"--ioc-enrichment-cfg path is not a file: {path}")
+
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        raise ValueError(f"Failed to read --ioc-enrichment-cfg JSON file '{path}': {e}")
+
+    if not isinstance(data, dict):
+        raise ValueError(f"--ioc-enrichment-cfg JSON file '{path}' must contain a JSON object")
+
+    return data
+
 def run(args, resource_handler: rs.ResourceHandler):
     """Execute the generate sub-command, callback function."""
 
@@ -60,9 +103,10 @@ def run(args, resource_handler: rs.ResourceHandler):
     types_output = args['types_output']
     decoder_template = args['decoder_template']
     exclude_geo = load_exclude_geo_file(args['exclude_geo'])
+    ioc_enrichment_cfg = load_exclude_ioc_file(args['ioc_enrichment_cfg'])
 
-    decoder_fields_schema, jmappings, jlogpar, jengine, geo_enrichment_map = generate(
-        wcs_path, resource_handler, exclude_geo)
+    decoder_fields_schema, jmappings, jlogpar, jengine, geo_enrichment_map, ioc_enrichment_map = generate(
+        wcs_path, resource_handler, exclude_geo, ioc_enrichment_cfg)
 
     # Save generated files
     print(f'Saving files to "{output_dir}"...')
@@ -76,6 +120,9 @@ def run(args, resource_handler: rs.ResourceHandler):
         output_dir, 'engine-schema', jengine, rs.Format.JSON)
     resource_handler.save_file(
         output_dir, 'enrichment-geo', geo_enrichment_map, rs.Format.JSON
+    )
+    resource_handler.save_file(
+        output_dir, 'enrichment-ioc', ioc_enrichment_map, rs.Format.JSON
     )
 
     if types_output is not None:
@@ -103,6 +150,10 @@ def configure(subparsers):
 
     parser_generate.add_argument('--exclude-geo', type=str, default=None,
                                  help='Path to a JSON file containing a list of ECS IP fields to exclude from Geo/ASN enrichment.'
+    )
+
+    parser_generate.add_argument('--ioc-enrichment-cfg', type=str, default=None,
+                                 help='Path to a JSON file that contains the criteria for selecting ECS ​​fields to exclude from IOC enrichment.'
     )
 
     parser_generate.set_defaults(func=run)

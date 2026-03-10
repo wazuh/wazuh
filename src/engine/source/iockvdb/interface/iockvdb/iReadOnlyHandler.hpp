@@ -1,5 +1,5 @@
-#ifndef _KVDBIOC_IREADONLY_HANDLER_HPP
-#define _KVDBIOC_IREADONLY_HANDLER_HPP
+#ifndef IOCKVDB_IREADONLY_HANDLER_HPP
+#define IOCKVDB_IREADONLY_HANDLER_HPP
 
 #include <memory>
 #include <string_view>
@@ -8,9 +8,9 @@
 #include <base/error.hpp>
 #include <base/json.hpp>
 
-#include <kvdbioc/types.hpp>
+#include <iockvdb/types.hpp>
 
-namespace kvdbioc
+namespace ioc::kvdb
 {
 /**
  * Read-only KVDB handler interface.
@@ -52,6 +52,6 @@ public:
      */
     virtual bool hasInstance() const noexcept = 0;
 };
-} // namespace kvdbioc
+} // namespace ioc::kvdb
 
-#endif // _KVDBIOC_IREADONLY_HANDLER_HPP
+#endif // IOCKVDB_IREADONLY_HANDLER_HPP

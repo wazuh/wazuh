@@ -1,4 +1,4 @@
-#include <kvdbioc/dbInstance.hpp>
+#include <iockvdb/dbInstance.hpp>
 
 #include <stdexcept>
 
@@ -7,7 +7,7 @@
 #include <base/json.hpp>
 #include <fmt/format.h>
 
-namespace kvdbioc
+namespace ioc::kvdb
 {
 
 std::optional<json::Json> DbInstance::get(std::string_view key) const

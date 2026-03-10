@@ -1,0 +1,106 @@
+{
+  "connection": {
+    "sources": [
+      {
+        "ip_field": "client.ip",
+        "port_field": "client.port"
+      },
+      {
+        "ip_field": "client.nat.ip",
+        "port_field": "client.nat.port"
+      },
+      {
+        "ip_field": "destination.ip",
+        "port_field": "destination.port"
+      },
+      {
+        "ip_field": "destination.nat.ip",
+        "port_field": "destination.nat.port"
+      },
+      {
+        "ip_field": "server.ip",
+        "port_field": "server.port"
+      },
+      {
+        "ip_field": "server.nat.ip",
+        "port_field": "server.nat.port"
+      },
+      {
+        "ip_field": "source.ip",
+        "port_field": "source.port"
+      },
+      {
+        "ip_field": "source.nat.ip",
+        "port_field": "source.nat.port"
+      }
+    ]
+  },
+  "hash_md5": {
+    "sources": [
+      "dll.hash.md5",
+      "email.attachments.file.hash.md5",
+      "file.hash.md5",
+      "process.hash.md5",
+      "process.parent.hash.md5",
+      "tls.client.hash.md5",
+      "tls.server.hash.md5"
+    ]
+  },
+  "hash_sha1": {
+    "sources": [
+      "dll.hash.sha1",
+      "email.attachments.file.hash.sha1",
+      "file.hash.sha1",
+      "process.hash.sha1",
+      "process.parent.hash.sha1",
+      "tls.client.hash.sha1",
+      "tls.server.hash.sha1"
+    ]
+  },
+  "hash_sha256": {
+    "sources": [
+      "dll.hash.sha256",
+      "email.attachments.file.hash.sha256",
+      "file.hash.sha256",
+      "process.hash.sha256",
+      "process.parent.hash.sha256",
+      "tls.client.hash.sha256",
+      "tls.server.hash.sha256"
+    ]
+  },
+  "url_domain": {
+    "sources": [
+      "client.domain",
+      "client.registered_domain",
+      "client.subdomain",
+      "client.top_level_domain",
+      "destination.domain",
+      "destination.registered_domain",
+      "destination.subdomain",
+      "destination.top_level_domain",
+      "dns.question.registered_domain",
+      "dns.question.subdomain",
+      "dns.question.top_level_domain",
+      "host.hostname",
+      "host.name",
+      "server.domain",
+      "server.registered_domain",
+      "server.subdomain",
+      "server.top_level_domain",
+      "source.domain",
+      "source.registered_domain",
+      "source.subdomain",
+      "source.top_level_domain",
+      "url.domain",
+      "url.registered_domain",
+      "url.subdomain",
+      "url.top_level_domain"
+    ]
+  },
+  "url_full": {
+    "sources": [
+      "url.full",
+      "url.original"
+    ]
+  }
+}

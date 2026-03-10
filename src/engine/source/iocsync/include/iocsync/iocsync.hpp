@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <kvdbioc/iManager.hpp>
+#include <iockvdb/iManager.hpp>
 #include <store/istore.hpp>
 #include <wiconnector/iwindexerconnector.hpp>
 
@@ -24,7 +24,7 @@ class IocSync : public IIocSync
 
 private:
     std::weak_ptr<wiconnector::IWIndexerConnector> m_indexerPtr; ///< Indexer connector resource
-    std::weak_ptr<kvdbioc::IKVDBManager> m_kvdbiocManagerPtr;    ///< KVDB IOC manager
+    std::weak_ptr<ioc::kvdb::IKVDBManager> m_kvdbiocManagerPtr;    ///< KVDB IOC manager
     std::weak_ptr<::store::IStore> m_store;                      ///< Internal config store
 
     std::size_t m_attempts;    ///< Number of attempts to connect or retry operations before failing
@@ -61,6 +61,18 @@ private:
      */
     void downloadAndPopulateDB(std::string_view iocType, const std::string& dbName);
 
+    /**
+     * @brief Synchronize a single IOC type
+     *
+     * @param dbState State of the IOC database to synchronize
+     * @param remoteTypeHashes Map of remote type hashes
+     * @param kvdbiocPtr KVDB IOC manager shared pointer
+     * @return true if state was changed (sync was successful), false otherwise
+     */
+    bool syncIOCType(SyncedIOCDatabase& dbState,
+                     const std::unordered_map<std::string, std::string>& remoteTypeHashes,
+                     const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocPtr);
+
     void addIOCTypeToSync(std::string_view iocType);      ///< Add an IOC type to the sync list
     void removeIOCTypeFromSync(std::string_view iocType); ///< Remove an IOC type from the sync list
 
@@ -70,7 +82,7 @@ private:
 public:
     IocSync() = delete;
     IocSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
-            const std::shared_ptr<kvdbioc::IKVDBManager>& kvdbiocManagerPtr,
+            const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocManagerPtr,
             const std::shared_ptr<::store::IStore>& storePtr);
     ~IocSync() override;
 

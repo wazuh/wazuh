@@ -9,7 +9,7 @@
 
 #include <gtest/gtest.h>
 
-#include <kvdbioc/manager.hpp>
+#include <iockvdb/manager.hpp>
 #include <store/mockStore.hpp>
 
 namespace fs = std::filesystem;
@@ -48,7 +48,7 @@ protected:
 // Test readers during hot-swap: threads reading → swap happens → threads see new data
 TEST_F(KVDBComponentTest, ConcurrentReadsDuringHotSwap)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     // Create production DB with initial data
     EXPECT_NO_THROW(manager.add("production"));
@@ -114,7 +114,7 @@ TEST_F(KVDBComponentTest, ConcurrentReadsDuringHotSwap)
 // Test concurrent operations on multiple databases
 TEST_F(KVDBComponentTest, MultiDatabaseConcurrentOperations)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     const int numDBs = 5;
     const int numReadersPerDB = 3;
@@ -176,7 +176,7 @@ TEST_F(KVDBComponentTest, MultiDatabaseConcurrentOperations)
 // Test rapid database creation and deletion
 TEST_F(KVDBComponentTest, RapidCreateDeleteCycle)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     const int numCycles = 10;
 
@@ -206,7 +206,7 @@ TEST_F(KVDBComponentTest, RapidCreateDeleteCycle)
 // Test massive parallel put operations
 TEST_F(KVDBComponentTest, MassiveParallelPuts)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("staging"));
 
@@ -258,7 +258,7 @@ TEST_F(KVDBComponentTest, MassiveParallelPuts)
 // Test removal works correctly
 TEST_F(KVDBComponentTest, RemovalTest)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("staging"));
     EXPECT_NO_THROW(manager.put("staging", "key1", R"({"version":1})"));
@@ -281,7 +281,7 @@ TEST_F(KVDBComponentTest, RemovalTest)
 // Test concurrent get operations
 TEST_F(KVDBComponentTest, ConcurrentGetOperations)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("staging"));
     for (int i = 0; i < 50; ++i)
@@ -329,7 +329,7 @@ TEST_F(KVDBComponentTest, ConcurrentGetOperations)
 // Test error handling under concurrency
 TEST_F(KVDBComponentTest, ConcurrentErrorHandling)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("staging"));
     EXPECT_NO_THROW(manager.put("staging", "existing", R"({"data":"value"})"));
@@ -377,7 +377,7 @@ TEST_F(KVDBComponentTest, ConcurrentErrorHandling)
 // Test concurrent reads with multiget
 TEST_F(KVDBComponentTest, ConcurrentMultigetOperations)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("staging"));
     for (int i = 0; i < 50; ++i)
@@ -427,7 +427,7 @@ TEST_F(KVDBComponentTest, ConcurrentMultigetOperations)
 // Test concurrent multiget operations
 TEST_F(KVDBComponentTest, ConcurrentMultigetBatch)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("staging"));
     EXPECT_NO_THROW(manager.put("staging", "config:timeout", R"({"value":30})"));
@@ -471,7 +471,7 @@ TEST_F(KVDBComponentTest, ConcurrentMultigetBatch)
 // Test thread-safe concurrent access
 TEST_F(KVDBComponentTest, ThreadSafeConcurrentAccess)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("staging"));
     EXPECT_NO_THROW(manager.put("staging", "item:1", R"({"value":"data"})"));
@@ -515,7 +515,7 @@ TEST_F(KVDBComponentTest, ThreadSafeConcurrentAccess)
 // Test hot-swap from staging to production (different DBs)
 TEST_F(KVDBComponentTest, HotSwapBetweenDifferentDatabases)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     // Create initial production
     EXPECT_NO_THROW(manager.add("initial"));
@@ -594,7 +594,7 @@ TEST_F(KVDBComponentTest, HotSwapBetweenDifferentDatabases)
 // Test reading from staging BEFORE hot-swap (DB is immediately queryable)
 TEST_F(KVDBComponentTest, ReadFromStagingBeforeHotSwap)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("staging"));
     EXPECT_NO_THROW(manager.put("staging", "key1", R"({"value":"data1"})"));
@@ -661,7 +661,7 @@ TEST_F(KVDBComponentTest, ReadFromStagingBeforeHotSwap)
 // Test multiple consecutive hot-swaps
 TEST_F(KVDBComponentTest, MultipleConsecutiveHotSwaps)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("initial"));
     EXPECT_NO_THROW(manager.put("initial", "counter", R"({"value":1})"));
@@ -718,7 +718,7 @@ TEST_F(KVDBComponentTest, MultipleConsecutiveHotSwaps)
 // Test hot-swap with empty database
 TEST_F(KVDBComponentTest, HotSwapWithEmptyDatabase)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("initial"));
     EXPECT_NO_THROW(manager.put("initial", "key1", R"({"data":"value"})"));
@@ -772,7 +772,7 @@ TEST_F(KVDBComponentTest, HotSwapWithEmptyDatabase)
 // Test multiget with mixed existing and non-existing keys
 TEST_F(KVDBComponentTest, MultigetWithMixedKeys)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("staging"));
     EXPECT_NO_THROW(manager.put("staging", "exists1", R"({"value":1})"));
@@ -798,7 +798,7 @@ TEST_F(KVDBComponentTest, MultigetWithMixedKeys)
 // Note: After hotSwap(source, target), source loses its instance (moved to target)
 TEST_F(KVDBComponentTest, ReadersOnSourceDuringHotSwap)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("source"));
     EXPECT_NO_THROW(manager.put("source", "data", R"({"value":"source-data"})"));
@@ -861,7 +861,7 @@ TEST_F(KVDBComponentTest, ReadersOnSourceDuringHotSwap)
 // Test attempting to remove DB while it has active operations
 TEST_F(KVDBComponentTest, CannotRemoveDatabaseDuringOperations)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("staging"));
     EXPECT_NO_THROW(manager.put("staging", "key", R"({"value":"data"})"));
@@ -908,7 +908,7 @@ TEST_F(KVDBComponentTest, CannotRemoveDatabaseDuringOperations)
 // Test hot-swap while another DB is being written
 TEST_F(KVDBComponentTest, HotSwapWhileAnotherDBIsBeingWritten)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("staging1"));
     EXPECT_NO_THROW(manager.put("staging1", "key", R"({"value":1})"));
@@ -956,7 +956,7 @@ TEST_F(KVDBComponentTest, HotSwapWhileAnotherDBIsBeingWritten)
 // Test rapid hot-swaps between staging and production
 TEST_F(KVDBComponentTest, RapidHotSwapsBetweenTwoDatabases)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("staging"));
     EXPECT_NO_THROW(manager.put("staging", "version", R"({"number":1})"));
@@ -981,7 +981,7 @@ TEST_F(KVDBComponentTest, RapidHotSwapsBetweenTwoDatabases)
 // Test multiget performance with large key sets
 TEST_F(KVDBComponentTest, MultigetWithLargeKeySet)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("staging"));
     const int numKeys = 100;
@@ -1020,7 +1020,7 @@ TEST_F(KVDBComponentTest, MultigetWithLargeKeySet)
 // Test hot-swap chain: A -> B, B -> C
 TEST_F(KVDBComponentTest, HotSwapChain)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     // Create A
     EXPECT_NO_THROW(manager.add("dbA"));
@@ -1055,7 +1055,7 @@ TEST_F(KVDBComponentTest, HotSwapChain)
 // Test concurrent hot-swaps on different databases
 TEST_F(KVDBComponentTest, ConcurrentHotSwapsOnDifferentDatabases)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     const int numDBs = 5;
 
@@ -1112,7 +1112,7 @@ TEST_F(KVDBComponentTest, ConcurrentHotSwapsOnDifferentDatabases)
 // Test multiget on non-existent database
 TEST_F(KVDBComponentTest, MultigetOnNonExistentDatabase)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     std::vector<std::string_view> keys = {"key1", "key2"};
 
@@ -1123,7 +1123,7 @@ TEST_F(KVDBComponentTest, MultigetOnNonExistentDatabase)
 // Test that source DB becomes unusable after hot-swap
 TEST_F(KVDBComponentTest, SourceDatabaseAfterHotSwap)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     EXPECT_NO_THROW(manager.add("source"));
     EXPECT_NO_THROW(manager.put("source", "key", R"({"value":"original"})"));
@@ -1180,7 +1180,7 @@ TEST_F(KVDBComponentTest, SourceDatabaseAfterHotSwap)
 // Test stress: rapid operations on same database
 TEST_F(KVDBComponentTest, StressTestRapidOperations)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     const int numIterations = 50;
 
@@ -1239,7 +1239,7 @@ TEST_F(KVDBComponentTest, PersistenceAfterAdd)
     ON_CALL(*mockStore, existsDoc(::testing::_)).WillByDefault(::testing::Return(false));
 
     {
-        kvdbioc::KVDBManager manager(testDir, mockStore);
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
         EXPECT_NO_THROW(manager.add("testdb"));
         EXPECT_NO_THROW(manager.put("testdb", "key1", R"({"value":"data"})"));
     }
@@ -1273,7 +1273,7 @@ TEST_F(KVDBComponentTest, PersistenceLoadStateOnRestart)
     ON_CALL(*mockStore, existsDoc(::testing::_)).WillByDefault(::testing::Return(false));
 
     {
-        kvdbioc::KVDBManager manager(testDir, mockStore);
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
         EXPECT_NO_THROW(manager.add("persistent-db"));
         EXPECT_NO_THROW(manager.put("persistent-db", "key1", R"({"value":"original"})"));
 
@@ -1290,7 +1290,7 @@ TEST_F(KVDBComponentTest, PersistenceLoadStateOnRestart)
     EXPECT_CALL(*mockStore, readDoc(::testing::_)).WillOnce(::testing::Return(*savedState));
 
     {
-        kvdbioc::KVDBManager manager(testDir, mockStore);
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
 
         // Should be able to read data from restored DB
         auto result = manager.get("persistent-db", "key1");
@@ -1322,7 +1322,7 @@ TEST_F(KVDBComponentTest, PersistenceAfterHotSwap)
     ON_CALL(*mockStore, existsDoc(::testing::_)).WillByDefault(::testing::Return(false));
 
     {
-        kvdbioc::KVDBManager manager(testDir, mockStore);
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
 
         // Create staging and target
         EXPECT_NO_THROW(manager.add("staging"));
@@ -1361,7 +1361,7 @@ TEST_F(KVDBComponentTest, PersistenceAfterRemove)
     ON_CALL(*mockStore, existsDoc(::testing::_)).WillByDefault(::testing::Return(false));
 
     {
-        kvdbioc::KVDBManager manager(testDir, mockStore);
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
 
         // Create two DBs
         EXPECT_NO_THROW(manager.add("db1"));
@@ -1400,7 +1400,7 @@ TEST_F(KVDBComponentTest, PersistenceHandlesMissingFiles)
 
     // Manager should start without crashing
     EXPECT_NO_THROW({
-        kvdbioc::KVDBManager manager(testDir, mockStore);
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
 
         // The DB handle exists but has no instance
         // Trying to read should fail
@@ -1424,7 +1424,7 @@ TEST_F(KVDBComponentTest, PersistenceMultipleRestarts)
     {
         ON_CALL(*mockStore, existsDoc(::testing::_)).WillByDefault(::testing::Return(false));
 
-        kvdbioc::KVDBManager manager(testDir, mockStore);
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
         EXPECT_NO_THROW(manager.add("cycle-db"));
         EXPECT_NO_THROW(manager.put("cycle-db", "counter", R"({"value":1})"));
     }
@@ -1436,7 +1436,7 @@ TEST_F(KVDBComponentTest, PersistenceMultipleRestarts)
         EXPECT_CALL(*mockStore, existsDoc(::testing::_)).WillOnce(::testing::Return(true));
         EXPECT_CALL(*mockStore, readDoc(::testing::_)).WillOnce(::testing::Return(*persistedState));
 
-        kvdbioc::KVDBManager manager(testDir, mockStore);
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
         auto result = manager.get("cycle-db", "counter");
         EXPECT_TRUE(result.has_value());
         EXPECT_EQ(result->getInt("/value").value(), 1);
@@ -1449,7 +1449,7 @@ TEST_F(KVDBComponentTest, PersistenceMultipleRestarts)
         EXPECT_CALL(*mockStore, existsDoc(::testing::_)).WillOnce(::testing::Return(true));
         EXPECT_CALL(*mockStore, readDoc(::testing::_)).WillOnce(::testing::Return(*persistedState));
 
-        kvdbioc::KVDBManager manager(testDir, mockStore);
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
         auto result = manager.get("cycle-db", "counter");
         EXPECT_TRUE(result.has_value());
         EXPECT_EQ(result->getInt("/value").value(), 2);
@@ -1459,7 +1459,7 @@ TEST_F(KVDBComponentTest, PersistenceMultipleRestarts)
 // Test add() rollback on failure - handle removed from registry if operation fails
 TEST_F(KVDBComponentTest, AddRollbackOnFailure)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     // Strategy: Create a regular FILE where manager expects a DIRECTORY
     // This will cause create_directories() to fail reliably
@@ -1505,7 +1505,7 @@ TEST_F(KVDBComponentTest, AddRollbackOnFailure)
 // Test add() rollback when RocksDB open fails
 TEST_F(KVDBComponentTest, AddRollbackOnRocksDBOpenFailure)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     // Strategy: Create a regular FILE where manager expects to create DB directory
     // This will cause create_directories() to fail when trying to create instance subdirectory
@@ -1547,7 +1547,7 @@ TEST_F(KVDBComponentTest, AddRollbackOnRocksDBOpenFailure)
 // Test concurrent add() attempts don't leave duplicate handles
 TEST_F(KVDBComponentTest, AddRollbackConcurrentAttempts)
 {
-    kvdbioc::KVDBManager manager(testDir, store);
+    ioc::kvdb::KVDBManager manager(testDir, store);
 
     std::atomic<int> successCount {0};
     std::atomic<int> failureCount {0};

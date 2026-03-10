@@ -1,0 +1,155 @@
+{
+  "global": {
+    "exclude_trees": [
+      "threat.indicator",
+      "threat.enrichments"
+    ]
+  },
+  "types": {
+    "connection": {
+      "enabled": true,
+      "include": {
+        "sibling_pair_rule": {
+          "ip_field_names": [
+            "ip"
+          ],
+          "port_field_names": [
+            "port"
+          ]
+        }
+      },
+      "exclude": {
+        "exclude_trees": []
+      }
+    },
+    "url_full": {
+      "enabled": true,
+      "include": {
+        "explicit_fields": [
+          "url.full",
+          "url.original"
+        ]
+      },
+      "exclude": {
+        "exclude_trees": []
+      }
+    },
+    "url_domain": {
+      "enabled": true,
+      "include": {
+        "by_field_contains": [
+          "domain",
+          "registered_domain",
+          "subdomain"
+        ],
+        "explicit_fields": [
+          "host.name",
+          "host.hostname"
+        ],
+        "by_description_exact": {
+          "enabled": true,
+          "values": [
+            "Name of the directory the user is a member of.",
+            "Name of the directory the group is a member of."
+          ]
+        }
+      },
+      "exclude": {
+        "exclude_trees": []
+      }
+    },
+    "hash": {
+      "enabled": true,
+      "algorithms": {
+        "md5": {
+          "enabled": true,
+          "include": {
+            "by_field_contains": [
+              "hash.md5"
+            ]
+          },
+          "exclude": {
+            "exclude_trees": []
+          }
+        },
+        "sha1": {
+          "enabled": true,
+          "include": {
+            "by_field_contains": [
+              "hash.sha1"
+            ]
+          },
+          "exclude": {
+            "exclude_trees": []
+          }
+        },
+        "sha256": {
+          "enabled": true,
+          "include": {
+            "by_field_contains": [
+              "hash.sha256"
+            ]
+          },
+          "exclude": {
+            "exclude_trees": []
+          }
+        },
+        "sha384": {
+          "enabled": false,
+          "include": {
+            "by_field_contains": [
+              "hash.sha384"
+            ]
+          },
+          "exclude": {
+            "exclude_trees": []
+          }
+        },
+        "sha512": {
+          "enabled": false,
+          "include": {
+            "by_field_contains": [
+              "hash.sha512"
+            ]
+          },
+          "exclude": {
+            "exclude_trees": []
+          }
+        },
+        "tlsh": {
+          "enabled": false,
+          "include": {
+            "by_field_contains": [
+              "hash.tlsh"
+            ]
+          },
+          "exclude": {
+            "exclude_trees": []
+          }
+        },
+        "ssdeep": {
+          "enabled": false,
+          "include": {
+            "by_field_contains": [
+              "hash.ssdeep"
+            ]
+          },
+          "exclude": {
+            "exclude_trees": []
+          }
+        },
+        "cdhash": {
+          "enabled": false,
+          "include": {
+            "by_field_contains": [
+              "hash.cdhash"
+            ]
+          },
+          "exclude": {
+            "exclude_trees": []
+          }
+        }
+      }
+    }
+  }
+}

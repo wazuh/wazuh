@@ -14,7 +14,7 @@
 #include <base/utils/generator.hpp>
 #include <eMessages/engine.pb.h>
 #include <eMessages/ioc.pb.h>
-#include <kvdbioc/helpers.hpp>
+#include <iockvdb/helpers.hpp>
 
 namespace api::ioccrud::handlers
 {
@@ -83,7 +83,7 @@ void updateIOCStatus(const std::shared_ptr<store::IStore>& storeRef,
  * @param filePath Path to the ndjson file containing IOCs
  * @param fileHash Hash of the file being synchronized
  */
-void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManager,
+void performIOCSync(const std::weak_ptr<::ioc::kvdb::IKVDBManager>& weakKvdbManager,
                     const std::weak_ptr<store::IStore>& weakStore,
                     const std::string& filePath,
                     const std::string& fileHash)
@@ -130,7 +130,7 @@ void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManage
         const std::string tmpSuffix = "_" + base::utils::generators::randomHexString(4);
 
         // Initialize all temporary databases at once
-        kvdbioc::details::initializeDBs(kvdbManager, tmpSuffix);
+        ioc::kvdb::details::initializeDBs(kvdbManager, tmpSuffix);
 
         // Process file line by line
         std::string line;
@@ -152,13 +152,13 @@ void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManage
             {
                 // Extract DB name and key from IOC document
                 json::Json iocDoc(line);
-                auto [dbName, key] = kvdbioc::details::getDbAndKeyFromIOC(iocDoc);
+                auto [dbName, key] = ioc::kvdb::details::getDbAndKeyFromIOC(iocDoc);
 
                 // Create temporary DB name
                 std::string tmpDbName = dbName + tmpSuffix;
 
                 // Update value in DB
-                kvdbioc::details::updateValueInDB(kvdbManager, tmpDbName, key, iocDoc);
+                ioc::kvdb::details::updateValueInDB(kvdbManager, tmpDbName, key, iocDoc);
 
                 ++processedLines;
             }
@@ -191,7 +191,7 @@ void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManage
 
         // Perform hot-swap for ALL temporary databases to production
         size_t dbsUpdated = 0;
-        for (const auto& entry : kvdbioc::details::IOC_TYPE_TABLE)
+        for (const auto& entry : ioc::kvdb::details::IOC_TYPE_TABLE)
         {
             std::string tmpDbName = std::string(entry.dbName) + tmpSuffix;
             std::string originalDbName = std::string(entry.dbName);
@@ -238,11 +238,11 @@ void performIOCSync(const std::weak_ptr<::kvdbioc::IKVDBManager>& weakKvdbManage
 
 } // namespace detail
 
-adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kvdbManager,
+adapter::RouteHandler syncIoc(const std::shared_ptr<::ioc::kvdb::IKVDBManager>& kvdbManager,
                               const std::shared_ptr<scheduler::IScheduler>& scheduler,
                               const std::shared_ptr<store::IStore>& store)
 {
-    return [weakKvdbManager = std::weak_ptr<::kvdbioc::IKVDBManager>(kvdbManager),
+    return [weakKvdbManager = std::weak_ptr<::ioc::kvdb::IKVDBManager>(kvdbManager),
             weakScheduler = std::weak_ptr<scheduler::IScheduler>(scheduler),
             weakStore = std::weak_ptr<store::IStore>(store)](const httplib::Request& req, httplib::Response& res)
     {
@@ -251,7 +251,7 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::kvdbioc::IKVDBManager>& kv
 
         // Get handler and parse request
         auto result =
-            adapter::getReqAndHandler<RequestType, ResponseType, ::kvdbioc::IKVDBManager>(req, weakKvdbManager);
+            adapter::getReqAndHandler<RequestType, ResponseType, ::ioc::kvdb::IKVDBManager>(req, weakKvdbManager);
         if (adapter::isError(result))
         {
             res = adapter::getErrorResp(result);
