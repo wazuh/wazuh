@@ -155,7 +155,8 @@ list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,
                                 -Wl,--wrap,fclose -Wl,--wrap,fprintf -Wl,--wrap,wfopen -Wl,--wrap,_merror \
                                 -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fopen -Wl,--wrap,fread \
                                 -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,popen \
-                                -Wl,--wrap,OS_SendSecureTCPCluster -Wl,--wrap,OS_RecvSecureClusterTCP ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,OS_SendSecureTCPCluster -Wl,--wrap,OS_RecvSecureClusterTCP \
+                                -Wl,--wrap,sysinfo_networks -Wl,--wrap,sysinfo_free_result ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_enrollment_op")
@@ -211,7 +212,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int -Wl,--wrap,syscom_dispa
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                 -Wl,--wrap=fim_db_teardown")
 else()
-list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int,--wrap,control_check_connection,--wrap,send,--wrap,recv,--wrap,close \
+list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int,--wrap,getPrimaryIP \
                                 -Wl,--wrap,getpid,--wrap,fcntl")
 endif()
 

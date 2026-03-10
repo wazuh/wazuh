@@ -72,7 +72,9 @@ typedef enum crypto_type {
 #include "wm_azure.h"
 #include "wm_docker.h"
 #include "wm_sca.h"
+#ifndef CLIENT
 #include "wm_control.h"
+#endif
 #include "wm_gcp.h"
 #include "wm_task_general.h"
 #include "wm_agent_upgrade.h"

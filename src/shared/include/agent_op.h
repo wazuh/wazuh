@@ -133,9 +133,9 @@ char * get_agent_id_from_name(const char *agent_name);
 **/
 cJSON* w_force_options_to_json(authd_force_options_t *force_options);
 
-/* Check control module availability */
+/* Get the primary IP address of the host */
 #if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
-int control_check_connection();
+char *getPrimaryIP();
 #endif
 
 #endif /* AGENT_OP_H */
