@@ -51,6 +51,8 @@ class Indexer:
         The list of configured ports.
     max_version_components : MaxVersionIndex
         Component to manage index versioning.
+    metrics : MetricsIndex
+        Component to handle metrics snapshot bulk indexing.
 
     Raises
     ------

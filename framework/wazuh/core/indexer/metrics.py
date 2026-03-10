@@ -49,14 +49,14 @@ class MetricsIndex:
         append operations. ``raise_on_error=False`` ensures individual
         document failures do not crash the cluster task.
         """
-        actions = [
+        actions = (
             {
                 "_op_type": "create",
                 "_index": index,
                 "_source": doc,
             }
             for doc in docs
-        ]
+        )
         await async_bulk(
             self._client,
             actions,
