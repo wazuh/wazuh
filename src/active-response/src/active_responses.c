@@ -17,12 +17,6 @@
  */
 static char* build_json_keys_message(const char *ar_name, char **keys);
 
-/**
- * Get srcip from win eventdata
- * @param data Input
- * @return cJSON * with the ipAddress or NULL on fail
- * */
-static cJSON* get_srcip_from_win_eventdata(const cJSON *data);
 
 
 void write_debug_file(const char *ar_name, const char *msg) {
@@ -226,34 +220,29 @@ const cJSON* get_alert_from_json(const cJSON *input) {
 const char* get_srcip_from_json(const cJSON *input) {
     cJSON *parameters_json = NULL;
     cJSON *alert_json = NULL;
-    cJSON *data_json = NULL;
+    cJSON *source_json = NULL;
     cJSON *srcip_json = NULL;
 
-    // Detect parameters
+    // Extract parameters object
     parameters_json = cJSON_GetObjectItem(input, "parameters");
     if (!cJSON_IsObject(parameters_json)) {
         return NULL;
     }
 
-    // Detect alert
+    // Extract alert object from parameters
     alert_json = cJSON_GetObjectItem(parameters_json, "alert");
     if (!cJSON_IsObject(alert_json)) {
         return NULL;
     }
 
-    // Detect data
-    data_json = cJSON_GetObjectItem(alert_json, "data");
-    if (!cJSON_IsObject(data_json)) {
+    // Extract source IP from WCS path: alert.source.ip
+    // This follows the ECS (Elastic Common Schema) standard for network source fields
+    source_json = cJSON_GetObjectItem(alert_json, "source");
+    if (!cJSON_IsObject(source_json)) {
         return NULL;
     }
 
-    // Detect srcip from win.eventdata
-    srcip_json = get_srcip_from_win_eventdata(data_json);
-    if (cJSON_IsString(srcip_json)) {
-        return srcip_json->valuestring;
-    }
-    // Detect srcip from data
-    srcip_json = cJSON_GetObjectItem(data_json, "srcip");
+    srcip_json = cJSON_GetObjectItem(source_json, "ip");
     if (cJSON_IsString(srcip_json)) {
         return srcip_json->valuestring;
     }
@@ -261,64 +250,33 @@ const char* get_srcip_from_json(const cJSON *input) {
     return NULL;
 }
 
-static cJSON* get_srcip_from_win_eventdata(const cJSON *data) {
-    cJSON *win_json = NULL;
-    cJSON *eventdata_json = NULL;
-    cJSON *ipAddress_json = NULL;
-
-    // Detect win
-    win_json = cJSON_GetObjectItem(data, "win");
-    if (!cJSON_IsObject(win_json)) {
-        return NULL;
-    }
-
-    // Detect eventdata
-    eventdata_json = cJSON_GetObjectItem(win_json, "eventdata");
-    if (!cJSON_IsObject(eventdata_json)) {
-        return NULL;
-    }
-
-    // Detect ipAddress
-    ipAddress_json = cJSON_GetObjectItem(eventdata_json, "ipAddress");
-    if (cJSON_IsString(ipAddress_json)) {
-        return ipAddress_json;
-    }
-
-    // Detect destinationIp
-    ipAddress_json = cJSON_GetObjectItem(eventdata_json, "destinationIp");
-    if (cJSON_IsString(ipAddress_json)) {
-        return ipAddress_json;
-    }
-
-    return NULL;
-}
 
 const char* get_username_from_json(const cJSON *input) {
     cJSON *parameters_json = NULL;
     cJSON *alert_json = NULL;
-    cJSON *data_json = NULL;
+    cJSON *user_json = NULL;
     cJSON *username_json = NULL;
 
-    // Detect parameters
+    // Extract parameters object
     parameters_json = cJSON_GetObjectItem(input, "parameters");
     if (!cJSON_IsObject(parameters_json)) {
         return NULL;
     }
 
-    // Detect alert
+    // Extract alert object from parameters
     alert_json = cJSON_GetObjectItem(parameters_json, "alert");
     if (!cJSON_IsObject(alert_json)) {
         return NULL;
     }
 
-    // Detect data
-    data_json = cJSON_GetObjectItem(alert_json, "data");
-    if (!cJSON_IsObject(data_json)) {
+    // Extract username from WCS path: alert.user.name
+    // This follows the ECS (Elastic Common Schema) standard for user fields
+    user_json = cJSON_GetObjectItem(alert_json, "user");
+    if (!cJSON_IsObject(user_json)) {
         return NULL;
     }
 
-    // Detect username
-    username_json = cJSON_GetObjectItem(data_json, "dstuser");
+    username_json = cJSON_GetObjectItem(user_json, "name");
     if (cJSON_IsString(username_json)) {
         return username_json->valuestring;
     }

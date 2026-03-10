@@ -77,14 +77,14 @@ const char* get_command_from_json(const cJSON *input);
 const cJSON* get_alert_from_json(const cJSON *input);
 
 /**
- * Get srcip from input
+ * Get source IP from input (WCS-compliant: alert.source.ip)
  * @param input Input
- * @return char * with the srcip or NULL on fail
+ * @return char * with the source IP or NULL on fail
  * */
 const char* get_srcip_from_json(const cJSON *input);
 
 /**
- * Get username from input
+ * Get username from input (WCS-compliant: alert.user.name)
  * @param input Input
  * @return char * with the username or NULL on fail
  * */
