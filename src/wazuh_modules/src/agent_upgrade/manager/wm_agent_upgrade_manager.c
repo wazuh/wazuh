@@ -254,7 +254,6 @@ STATIC void wm_agent_upgrade_router_callback(const char* message) {
         mtdebug1(WM_AGENT_UPGRADE_LOGTAG, "Sending router-triggered upgrade message: '%s'", message);
 
         OS_SendSecureTCP(sock, strlen(message), message);
-        os_free(message);
         close(sock);
     }
 }

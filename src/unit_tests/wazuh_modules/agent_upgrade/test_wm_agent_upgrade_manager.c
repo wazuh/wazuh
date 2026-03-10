@@ -947,6 +947,8 @@ void test_wm_agent_upgrade_router_callback_success(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     wm_agent_upgrade_router_callback(input_message);
+
+    os_free(input_message);
 }
 
 void test_wm_agent_upgrade_router_callback_null_message(void **state)
