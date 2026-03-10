@@ -33,7 +33,6 @@ from api.validator import (
     _iso8601_date_time,
     _numbers_or_all,
     check_component_configuration_pair,
-    _active_response_command,
     _wpk_path,
 )
 from wazuh import WazuhError
@@ -80,8 +79,6 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data
         ("5-35", _ranges),
         # paths
         ("/var/wazuh-manager/etc/internal_options", _paths),
-        ("scripts/active_response", _active_response_command),
-        ("!scripts/active_response", _active_response_command),
         ("correct.wpk", _wpk_path),
         # version
         ("v4.4.0", _wazuh_version),
@@ -132,8 +129,6 @@ def test_validation_check_exp_ok(exp, regex_name):
         ("param1,param2,param3", _query_param),
         # paths
         ("/var/wazuh-manager/etc/internal_options$", _paths),
-        ("!scripts/active_response()", _active_response_command),
-        ("scripts\\active_response$", _active_response_command),
         ("incorrect.txt", _wpk_path),
         (".wpk", _wpk_path),
         # version
