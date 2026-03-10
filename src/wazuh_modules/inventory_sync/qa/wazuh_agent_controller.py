@@ -441,14 +441,14 @@ class WazuhAgent:
                     print(f"   Processed as FlatBuffers binary: {len(processed_result[1])} bytes")
                 print(f"   Protocol: {protocol}")
                 print(f"   Destination: {self.manager_address}:{port}")
-                
+
                 if expect_response:
-                    response = self._receive_response(self.persistent_socket, timeout)
+                    response = self._receive_final_response(self.persistent_socket, timeout)
                 return response
             except Exception as e:
                 print(f"⚠️  Error in persistent connection, creating new one: {e}")
                 self.close_persistent_connection()
-        
+
         # Connect and send (if not using persistent or persistent failed)
         if protocol.upper() == "TCP":
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -456,10 +456,10 @@ class WazuhAgent:
                 sock.connect((self.manager_address, port))
                 length = struct.pack('<I', len(encrypted_event))
                 sock.send(length + encrypted_event)
-                
+
                 if expect_response:
-                    response = self._receive_response(sock, timeout)
-                    
+                    response = self._receive_final_response(sock, timeout)
+
             finally:
                 sock.close()
         elif protocol.upper() == "UDP":
@@ -468,7 +468,7 @@ class WazuhAgent:
             sock.close()
         else:
             raise ValueError(f"Unsupported protocol: {protocol}")
-            
+
         print(f"✅ Payload sent successfully:")
         print(f"   Agent: {self.name} (ID: {self.id})")
         print(f"   Original payload: {payload}")
@@ -476,26 +476,52 @@ class WazuhAgent:
             print(f"   Processed as FlatBuffers binary: {len(processed_result[1])} bytes")
         print(f"   Protocol: {protocol}")
         print(f"   Destination: {self.manager_address}:{port}")
-        
+
+        return response
+
+    # Status value for EndAck{Processing} in the inventorySync FlatBuffers schema.
+    _PROCESSING_STATUS = 4
+
+    def _is_processing_endack(self, response):
+        """Return True if response is an EndAck with Processing status."""
+        if not response or response.get('type') != 'flatbuffer':
+            return False
+        data = response.get('data', {})
+        return (isinstance(data, dict)
+                and data.get('type') == 'end_ack'
+                and data.get('status') == self._PROCESSING_STATUS)
+
+    def _receive_final_response(self, sock, timeout=10.0):
+        """Receive a response, transparently skipping EndAck{Processing} intermediates.
+
+        The manager may send EndAck{Processing} to signal that the session has
+        been enqueued but is not yet fully indexed.  The test framework should
+        wait for the subsequent final EndAck{Ok/Error} rather than treating the
+        intermediate as the result.
+        """
+        response = self._receive_response(sock, timeout)
+        while self._is_processing_endack(response):
+            print(f"📥 EndAck(Processing) received — waiting for final EndAck...")
+            response = self._receive_response(sock, timeout)
         return response
 
     def _receive_response(self, sock, timeout=10.0):
         """Receive and decode response from the manager."""
         import struct
         import zlib
-        
+
         try:
             # Set socket timeout for response
             sock.settimeout(timeout)
-            
+
             # Receive response length (first 4 bytes)
             length_data = sock.recv(4)
             if not length_data:
                 return None
-                
+
             response_length = struct.unpack('<I', length_data)[0]
             print(f"📥 Expecting response of {response_length} bytes")
-            
+
             # Receive the actual response
             response_data = b''
             while len(response_data) < response_length:
@@ -503,13 +529,13 @@ class WazuhAgent:
                 if not chunk:
                     break
                 response_data += chunk
-            
+
             if len(response_data) != response_length:
                 print(f"⚠️  Incomplete response: got {len(response_data)}, expected {response_length}")
                 return None
-            
+
             print(f"📥 Received response: {len(response_data)} bytes")
-            
+
             # Check if it's an AES encrypted response
             if response_data.startswith(b"#AES:"):
                 # Remove the #AES: prefix and decrypt
