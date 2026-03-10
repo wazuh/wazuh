@@ -868,7 +868,6 @@ public:
                                           std::function<void(const nlohmann::json&)> onResponse)
     {
         nlohmann::json currentQuery = query;
-        std::string searchAfter;
         while (true)
         {
             nlohmann::json searchResult = executeSearchQuery(index, currentQuery);
@@ -892,29 +891,6 @@ public:
             }
 
             const auto& hits = *itInner;
-            const auto& lastHit = hits.back();
-            const auto itSort = lastHit.find("sort");
-
-            if (itSort != lastHit.end() && itSort->is_array() && !itSort->empty())
-            {
-                const auto& first_sort_item = itSort->front();
-                if (first_sort_item.is_string())
-                {
-                    searchAfter = first_sort_item.get<std::string>();
-                }
-                else
-                {
-                    logDebug2(IC_NAME, "Pagination loop finished: 'sort' field's first element is not a string.");
-                    break;
-                }
-            }
-            else
-            {
-                logDebug2(IC_NAME,
-                          "Pagination loop finished: Last hit has no 'sort' field, it is not an array, or it is "
-                          "empty.");
-                break;
-            }
 
             // If we got less results than requested, this is the last page
             if (currentQuery.contains("size") && hits.size() < currentQuery["size"].template get<size_t>())
@@ -923,10 +899,23 @@ public:
                 break;
             }
 
-            // Update query for next page
-            auto& sa = currentQuery["search_after"];
-            sa = nlohmann::json::array();
-            sa.push_back(searchAfter);
+            // Advance the search_after cursor using the full sort array of the last hit.
+            // Using the complete array (rather than just the first element) correctly handles
+            // both single-field string sorts (e.g. ["_id"]) and multi-field or non-string
+            // sorts (e.g. [integer_offset, "_id"]).
+            const auto& lastHit = hits.back();
+            const auto itSort = lastHit.find("sort");
+            if (itSort != lastHit.end() && itSort->is_array() && !itSort->empty())
+            {
+                currentQuery["search_after"] = *itSort;
+            }
+            else
+            {
+                logDebug2(IC_NAME,
+                          "Pagination loop finished: Last hit has no 'sort' field, it is not an array, or it is "
+                          "empty.");
+                break;
+            }
         }
     }
 
