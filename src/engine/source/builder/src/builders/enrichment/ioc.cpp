@@ -21,7 +21,6 @@ namespace builder::builders::enrichment
 namespace
 {
 
-const std::string IOC_ENRICHMENT_TRACEABLE_NAMES {"enrichment/Ioc"};
 constexpr std::string_view IOC_ENRICHMENT_TARGET_PATH {"/threat/enrichments"};
 
 constexpr auto FMT_IOC_MATCH_TRACE = "IOC({}) -> Success: IOC match found for field '{}' with key '{}'";
@@ -63,7 +62,7 @@ std::optional<std::string> readFieldAsString(base::Event event, std::string_view
     }
 
     // If not a string, try to read as int64 and convert
-    auto intValue = event->getInt64(path);
+    auto intValue = event->getIntAsInt64(path);
     if (intValue.has_value())
     {
         return std::to_string(*intValue);
@@ -223,92 +222,6 @@ std::vector<IocMappingConfig> loadIocMappingConfigs(const json::Json& config, st
     return processSimpleStringSources(sourcesPath);
 }
 
-std::optional<std::string> getStringByPath(const json::Json& j, std::string_view path)
-{
-    auto value = j.getString(path);
-    if (value.has_value())
-    {
-        return value;
-    }
-
-    return std::nullopt;
-}
-
-void setIndicatorStringIfPresent(const json::Json& source,
-                                 json::Json& target,
-                                 std::string_view targetPath,
-                                 std::string_view sourcePath)
-{
-    if (const auto value = getStringByPath(source, sourcePath); value.has_value())
-    {
-        target.setString(*value, targetPath);
-    }
-}
-
-void setIndicatorIntIfPresent(const json::Json& source,
-                              json::Json& target,
-                              std::string_view targetPath,
-                              std::string_view sourcePath)
-{
-    if (const auto value = source.getInt64(sourcePath); value.has_value())
-    {
-        target.setInt64(*value, targetPath);
-    }
-}
-
-void setIndicatorArrayIfPresent(const json::Json& source,
-                                json::Json& target,
-                                std::string_view targetPath,
-                                std::string_view sourcePath)
-{
-    if (const auto values = source.getArray(sourcePath); values.has_value())
-    {
-        target.setArray(targetPath);
-        for (const auto& value : *values)
-        {
-            target.appendJson(value, targetPath);
-        }
-    }
-}
-
-json::Json buildEnrichmentMatch(const json::Json& iocValue, const std::string& matchedField)
-{
-    json::Json result;
-    result.setObject();
-    result.setObject("/indicator");
-
-    setIndicatorStringIfPresent(iocValue, result, "/indicator/id", "/id");
-    setIndicatorStringIfPresent(iocValue, result, "/indicator/name", "/name");
-    setIndicatorStringIfPresent(iocValue, result, "/indicator/type", "/type");
-
-    // software is a nested object
-    setIndicatorStringIfPresent(iocValue, result, "/indicator/software/type", "/software/type");
-    setIndicatorStringIfPresent(iocValue, result, "/indicator/software/name", "/software/name");
-    setIndicatorArrayIfPresent(iocValue, result, "/indicator/software/alias", "/software/alias");
-
-    setIndicatorIntIfPresent(iocValue, result, "/indicator/confidence", "/confidence");
-    setIndicatorStringIfPresent(iocValue, result, "/indicator/first_seen", "/first_seen");
-
-    if (iocValue.isNull("/last_seen"))
-    {
-        result.setNull("/indicator/last_seen");
-    }
-    else
-    {
-        setIndicatorStringIfPresent(iocValue, result, "/indicator/last_seen", "/last_seen");
-    }
-
-    // feed is a nested object
-    setIndicatorStringIfPresent(iocValue, result, "/indicator/feed/name", "/feed/name");
-    setIndicatorArrayIfPresent(iocValue, result, "/indicator/tags", "/tags");
-    setIndicatorStringIfPresent(iocValue, result, "/indicator/provider", "/provider");
-
-    result.setObject("/matched");
-    result.setString(matchedField, "/matched/field");
-
-    return result;
-}
-
 base::Expression getEachIocEnrichTerm(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbIocManager,
                                       const IocMappingConfig& config,
                                       bool trace)
@@ -333,7 +246,18 @@ base::Expression getEachIocEnrichTerm(const std::shared_ptr<ioc::kvdb::IKVDBMana
             return base::result::makeFailure<decltype(event)>(event, traceMsg);
         }
 
-        event->appendJson(buildEnrichmentMatch(*iocValue, config.sourceFields), IOC_ENRICHMENT_TARGET_PATH);
+        // Build enrichment match
+        auto enrichmentMatch = [&iocValue, &config]()
+        {
+            json::Json result;
+            result.setObject();
+            result.set("/indicator", *iocValue);
+            result.setObject("/matched");
+            result.setString(config.sourceFields, "/matched/field");
+            return result;
+        }();
+
+        event->appendJson(enrichmentMatch, IOC_ENRICHMENT_TARGET_PATH);
 
         const auto traceMsg =
             trace ? fmt::format(FMT_IOC_MATCH_TRACE, config.iocType, config.sourceFields, lookupKey) : std::string {};
