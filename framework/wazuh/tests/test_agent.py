@@ -70,8 +70,8 @@ def send_msg_to_wdb(msg, raw=False):
     ),
     (
             ['version'],
-            [{'version': 'v5.0.0', 'count': 1}, {'version': 'v3.8.2', 'count': 2},
-             {'version': 'v3.6.2', 'count': 1}, {'version': 'N/A', 'count': 2},
+            [{'version': 'v5.0.0', 'count': 1}, {'version': 'v4.0.0', 'count': 1},
+             {'version': 'v3.8.2', 'count': 1}, {'version': 'v3.6.2', 'count': 1}, {'version': 'N/A', 'count': 2},
              ]
     ),
     (
@@ -90,7 +90,7 @@ def send_msg_to_wdb(msg, raw=False):
             [{'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '24.04.3 LTS'}},
              {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '18.08.1 LTS'}},
              {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.06.1 LTS'}},
-             {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.04.1 LTS'}},       
+             {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.04.1 LTS'}},
              {'count': 2, 'os': {'name': 'N/A', 'platform': 'N/A', 'version': 'N/A'}}]
     ),
 ])
