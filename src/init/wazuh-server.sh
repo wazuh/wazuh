@@ -650,6 +650,7 @@ restart)
     ;;
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-manager-remoted//')
+    SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
     if is_systemd; then
         SYSTEMD_VERSION=$(systemctl --version | awk 'NR==1 {print $2}')
         if [ "$SYSTEMD_VERSION" -le 237 ]; then
