@@ -263,6 +263,7 @@ TEST_F(AgentSessionTest, HandleEnd_GapSetEmpty)
 
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
     EXPECT_CALL(mockResponseDispatcher, sendEndMissingSeq(_, _, _, _)).Times(0);
+    EXPECT_CALL(mockResponseDispatcher, sendEndAck(Wazuh::SyncSchema::Status_Processing, _, _, _)).Times(1);
 
     session.handleEnd(mockResponseDispatcher);
 }
@@ -439,6 +440,7 @@ TEST_F(AgentSessionTest, HandleDataClean_WithEnd)
 
     // Expect the indexer queue to be pushed when all sequences received
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
+    EXPECT_CALL(mockResponseDispatcher, sendEndAck(Wazuh::SyncSchema::Status_Processing, _, _, _)).Times(1);
     ASSERT_NO_THROW({ session.handleEnd(mockResponseDispatcher); });
 }
 
@@ -574,6 +576,7 @@ TEST_F(AgentSessionTest, HandleDataContext_WithEnd)
 
     // Expect the indexer queue to be pushed when all sequences received
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
+    EXPECT_CALL(mockResponseDispatcher, sendEndAck(Wazuh::SyncSchema::Status_Processing, _, _, _)).Times(1);
     ASSERT_NO_THROW({ session.handleEnd(mockResponseDispatcher); });
 }
 

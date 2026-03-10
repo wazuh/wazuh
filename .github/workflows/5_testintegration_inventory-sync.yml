@@ -84,6 +84,7 @@ jobs:
 
             # Check if the specific check exists for this PR
             CHECK_EXISTS=$(gh api repos/wazuh/wazuh/commits/${{ github.event.pull_request.head.sha }}/check-runs \
+              --paginate \
               --jq ".check_runs[] | select(.name == \"$CHECK_NAME\") | .name" | head -1)
 
             if [ -n "$CHECK_EXISTS" ] && [ "$CHECK_EXISTS" != "null" ]; then
@@ -121,6 +122,7 @@ jobs:
 
             # Check the status of the specific check
             CHECK_STATUS=$(gh api repos/wazuh/wazuh/commits/${{ github.event.pull_request.head.sha }}/check-runs \
+              --paginate \
               --jq ".check_runs[] | select(.name == \"$CHECK_NAME\") | .conclusion" | head -1)
 
             if [ "$CHECK_STATUS" = "success" ]; then
@@ -189,7 +191,7 @@ jobs:
           echo "[+] Found package build run: $RUN_ID"
 
           # Get the list of artifacts from this run and find the amd64 deb package
-          ARTIFACT_NAME=$(gh api repos/wazuh/wazuh/actions/runs/$RUN_ID/artifacts --jq '.artifacts[] | select(.name | contains("amd64") and contains("wazuh-manager") and endswith(".deb")) | .name' | head -1)
+          ARTIFACT_NAME=$(gh api repos/wazuh/wazuh/actions/runs/$RUN_ID/artifacts --jq '.artifacts[] | select(.name | test("wazuh-manager_.*amd64.*\\.deb$")) | .name' | head -1)
 
           if [ -z "$ARTIFACT_NAME" ]; then
             echo "[-] No amd64 deb wazuh-manager artifact found in run $RUN_ID"

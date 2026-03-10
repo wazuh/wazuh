@@ -53,3 +53,17 @@ FlatBuffer schemas are defined in `.fbs` files located in `src/shared_modules/ut
 - Additional schemas for other modules as needed
 
 These schemas are compiled into C++ headers during the build process.
+
+### `inventorySync.fbs` — Status Enum
+
+The `Status` enum is used in acknowledgment messages (`StartAck`, `EndAck`) to convey the outcome of a protocol phase:
+
+| Value | Meaning |
+|-------|---------|
+| `Ok` | Operation completed successfully |
+| `Error` | Operation failed (e.g. manager-side error) |
+| `Offline` | Agent is offline |
+| `ChecksumMismatch` | Integrity check detected a mismatch; full sync required |
+| `Processing` | Manager acknowledged receipt of `End` but is still processing the session; the agent must wait without resending `End` |
+
+The `Processing` status is sent by the manager as an intermediate `EndAck` when the session is queued for indexing but not yet complete. This prevents the agent from interpreting the absence of a final `EndAck` as a timeout and retransmitting `End`, which would otherwise cause duplicate first-scan events.

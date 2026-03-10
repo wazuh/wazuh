@@ -90,6 +90,58 @@ sequenceDiagram
     ASP-->>Module: Return true (success)
 ```
 
+### Synchronization with EndAck(Processing)
+
+When the manager receives `End` and immediately enqueues the session for indexing, it responds with `EndAck(Processing)` as an intermediate acknowledgment. The agent continues waiting without resending `End` and without consuming a retry attempt.
+
+```mermaid
+sequenceDiagram
+    participant Module as Internal Module
+    participant ASP as Agent Sync Protocol
+    participant Queue as Persistent Queue
+    participant MQ as Message Queue
+    participant AD as Wazuh agentd
+    participant Manager as Wazuh Manager
+
+    Module->>ASP: synchronizeModule(DELTA, timeout, retries, maxEps)
+    ASP->>Queue: Get pending differences
+    Queue-->>ASP: Return data array
+
+    Note over ASP,Manager: Session Establishment Phase
+    ASP->>MQ: Send Start
+    MQ->>AD: Forward Start
+    AD->>Manager: Forward Start
+    Manager->>AD: Send StartAck(session_id)
+    AD->>ASP: Forward StartAck
+
+    Note over ASP,Manager: Data Transfer Phase
+    loop For each difference
+        ASP->>MQ: Send Data[seq_num]
+        MQ->>AD: Forward Data
+        AD->>Manager: Forward Data
+        Manager->>Manager: Process & store
+    end
+
+    Note over ASP,Manager: Session Completion Phase
+    ASP->>MQ: Send End(session_id)
+    MQ->>AD: Forward End
+    AD->>Manager: Forward End
+
+    Note over Manager: All sequences received.<br/>Enqueue session for indexing.<br/>Send Processing ack immediately.
+    Manager->>AD: Send EndAck(Processing)
+    AD->>ASP: Forward EndAck(Processing)
+
+    Note over ASP: processingAckReceived = true<br/>Reset wait timer.<br/>Do NOT resend End.<br/>Do NOT increment retry counter.
+
+    Note over Manager: Indexing complete.
+    Manager->>AD: Send EndAck(Ok)
+    AD->>ASP: Forward EndAck(Ok)
+
+    ASP->>Queue: Delete synced data
+    Queue-->>ASP: Success
+    ASP-->>Module: Return true (success)
+```
+
 ### Synchronization with Retransmission Request
 
 ```mermaid
