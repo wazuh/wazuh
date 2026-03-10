@@ -385,10 +385,6 @@ ConfigureServer()
         SetupLogs "3.9"
         UseUpdateCheck
         WriteManager
-    else
-        ConfigureBoot "3.6"
-        SetupLogs "3.7"
-        WriteLocal
     fi
 }
 
@@ -413,8 +409,6 @@ setEnv()
 
     if [ "X$INSTYPE" = "Xagent" ]; then
         CEXTRA="$CEXTRA -DCLIENT"
-    elif [ "X$INSTYPE" = "Xlocal" ]; then
-        CEXTRA="$CEXTRA -DLOCAL"
     fi
 }
 
@@ -613,7 +607,7 @@ setDefaultConfigByInstallType()
     setDefaultIfEmpty USER_ENABLE_ACTIVE_RESPONSE "y"
     setDefaultIfEmpty USER_CA_STORE "n"
 
-    if [ "X${INSTYPE}" = "Xmanager" ] || [ "X${INSTYPE}" = "Xlocal" ]; then
+    if [ "X${INSTYPE}" = "Xmanager" ]; then
         setDefaultIfEmpty USER_WHITE_LIST "n"
         setDefaultIfEmpty USER_AUTO_START "y"
         setDefaultIfEmpty USER_ENABLE_SYSLOG "y"
@@ -900,7 +894,6 @@ main()
     . ./src/init/update.sh
 
     # Select install type.
-    HYBID=""
     serverm=$(echo "${server}" | cut -b 1)
     agentm=$(echo "${agent}" | cut -b 1)
 
@@ -919,15 +912,8 @@ main()
         a|agent)
             INSTYPE="agent"
             ;;
-        hybrid|h)
-            INSTYPE="manager"
-            HYBID="go"
-            ;;
-        local|l)
-            INSTYPE="local"
-            ;;
         *)
-            echo "ERROR: invalid USER_INSTALL_TYPE value '${USER_INSTALL_TYPE}'. Use 'manager', 'agent', 'local' or 'hybrid'."
+            echo "ERROR: invalid USER_INSTALL_TYPE value '${USER_INSTALL_TYPE}'. Use 'manager' or 'agent'."
             exit 1;
             ;;
     esac
@@ -983,8 +969,6 @@ main()
             ConfigureServer
         elif [ "X$INSTYPE" = "Xagent" ]; then
             ConfigureClient
-        elif [ "X$INSTYPE" = "Xlocal" ]; then
-            ConfigureServer
         else
             catError "0x4-installtype"
         fi
@@ -1071,41 +1055,6 @@ fi
 
 # Run main installer flow.
 main
-
-
-if [ "x$HYBID" = "xgo" ]; then
-    echo "   --------------------------------------------"
-    echo "   Finishing Hybrid setup (agent configuration)"
-    echo "   --------------------------------------------"
-    echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo "USER_DIR=\"$INSTALLDIR/ossec-agent\"" >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_ENABLE_SCA="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_CREATE_SSL_CERT="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_ENABLE_ACTIVE_RESPONSE="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_CLEANINSTALL="y"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_DELETE_DIR="y"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-
-   cd src && ${MAKEBIN} clean && cd ..
-   ./install.sh
-   rm etc/preloaded-vars.conf
-fi
 
 exit 0
 
