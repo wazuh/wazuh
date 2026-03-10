@@ -20,6 +20,7 @@
 #define WaitForSingleObjectEx wrap_WaitForSingleObjectEx
 
 VOID wrap_Sleep(DWORD dwMilliseconds);
+void wrap_Sleep_hook(DWORD dwMilliseconds);
 
 HANDLE wrap_CreateEvent(LPSECURITY_ATTRIBUTES lpEventAttributes,
                         WINBOOL bManualReset,

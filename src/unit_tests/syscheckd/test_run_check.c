@@ -110,6 +110,15 @@ void __wrap_sleep_hook(__attribute__((unused)) unsigned int seconds) {
     }
 }
 
+#ifdef TEST_WINAGENT
+void wrap_Sleep_hook(__attribute__((unused)) DWORD dwMilliseconds) {
+    if (stop_fim_integrity_on_sleep) {
+        syscheck.fim_pause_requested.data = 0;
+        fim_sync_module_running = 0;
+    }
+}
+#endif
+
 int64_t __wrap_fim_db_get_last_sync_time(const char* table_name) {
     check_expected(table_name);
     return mock_type(int64_t);
@@ -126,12 +135,11 @@ void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t t
 int __wrap_audit_restore(void) {
     return mock();
 }
-#else
+#endif
+
 time_t __wrap_time(time_t *timer) {
     return mock_type(time_t);
 }
-
-#endif
 
 
 extern bool fim_shutdown_process_on();
@@ -398,11 +406,20 @@ static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, 
     expect_string(__wrap__minfo, formatted_msg, "FIM synchronization finished successfully.");
 
     if (persist_first_sync_marker) {
+#ifndef TEST_WINAGENT
         will_return(__wrap_time, 123456);
+#endif
         expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
         expect_any(__wrap_fim_db_update_last_sync_time_value, timestamp);
     }
 
+#ifdef TEST_WINAGENT
+    /* On Windows, fim_run_integrity checks 3 tables: file, registry key, and registry value */
+    expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
+    will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
+    expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
+    will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
+#endif
     expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
     will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
     expect_string(__wrap__mdebug1,
@@ -422,7 +439,9 @@ static void expect_fim_flush_sync_body(AgentSyncProtocolHandle* handle, bool per
     expect_string(__wrap__minfo, formatted_msg, "FIM synchronization requested by agent-info finished.");
 
     if (persist_first_sync_marker) {
+#ifndef TEST_WINAGENT
         will_return(__wrap_time, 123456);
+#endif
         expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
         expect_any(__wrap_fim_db_update_last_sync_time_value, timestamp);
     }
@@ -1166,6 +1185,11 @@ void test_fim_run_integrity_skips_initial_wait_for_pending_first_sync(void **sta
     stop_fim_integrity_on_sync = true;
     ignore_function_calls(__wrap_pthread_mutex_lock);
     ignore_function_calls(__wrap_pthread_mutex_unlock);
+#ifdef TEST_WINAGENT
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+#endif
 
     expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
     will_return(__wrap_fim_db_get_last_sync_time, 0);
@@ -1192,12 +1216,21 @@ void test_fim_run_integrity_keeps_initial_wait_after_first_sync(void **state) {
     stop_fim_integrity_on_sync = true;
     ignore_function_calls(__wrap_pthread_mutex_lock);
     ignore_function_calls(__wrap_pthread_mutex_unlock);
+#ifdef TEST_WINAGENT
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+#endif
 
     expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
     will_return(__wrap_fim_db_get_last_sync_time, 123456);
     expect_fim_startup_log(true);
 
+#ifdef TEST_WINAGENT
+    expect_value(wrap_Sleep, dwMilliseconds, 1000);
+#else
     expect_value(__wrap_sleep, seconds, 1);
+#endif
 
     expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, false);
 
@@ -1222,12 +1255,21 @@ void test_fim_run_integrity_pause_still_waits_after_skip_is_consumed(void **stat
     request_pause_after_sync = true;
     ignore_function_calls(__wrap_pthread_mutex_lock);
     ignore_function_calls(__wrap_pthread_mutex_unlock);
+#ifdef TEST_WINAGENT
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+#endif
 
     expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
     will_return(__wrap_fim_db_get_last_sync_time, 0);
     expect_fim_startup_log(false);
     expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, true);
+#ifdef TEST_WINAGENT
+    expect_value(wrap_Sleep, dwMilliseconds, 1000);
+#else
     expect_value(__wrap_sleep, seconds, 1);
+#endif
 
     call_real_fim_run_integrity();
 
@@ -1259,7 +1301,9 @@ void test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_complet
     will_return(__wrap_fim_db_get_last_sync_time, 0);
     expect_fim_startup_log(false);
     expect_fim_flush_sync_body(handle, false);
+#ifndef TEST_WINAGENT
     will_return(__wrap_time, 123456);
+#endif
     expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
     expect_any(__wrap_fim_db_update_last_sync_time_value, timestamp);
 
