@@ -32,7 +32,12 @@
  *      }]
  * }
  *
- * @param alert Alert to extract info
+ * Note: This function now uses WCS (Wazuh Common Schema) field paths:
+ * - alert.log.file.path (instead of alert.location)
+ * - alert.message (instead of alert.full_log)
+ * - alert.event.id (instead of alert.id)
+ *
+ * @param alert Alert to extract info (WCS-compliant format)
  * @return JSON object
  * */
 static cJSON *format_output(const cJSON *alert);
@@ -162,18 +167,18 @@ static cJSON *format_output(const cJSON *alert) {
     fields_list = cJSON_CreateArray();
     item_objects = cJSON_CreateObject();
 
-    // Detect agent
+    // Extract agent information (already ECS-compliant: alert.agent.id, alert.agent.name)
     agent_json = cJSON_GetObjectItem(alert, "agent");
-    if (agent_json && (agent_json->type == cJSON_Object)) {
+    if (cJSON_IsObject(agent_json)) {
         cJSON *agent_id_json = NULL;
         cJSON *agent_name_json = NULL;
 
         item_agent = cJSON_CreateObject();
 
-        // Detect Agent ID
+        // Extract agent ID
         agent_id_json = cJSON_GetObjectItem(agent_json, "id");
 
-        // Detect Agent name
+        // Extract agent name
         agent_name_json = cJSON_GetObjectItem(agent_json, "name");
 
         memset(temp_line, '\0', OS_MAXSTR);
@@ -187,34 +192,41 @@ static cJSON *format_output(const cJSON *alert) {
         cJSON_AddItemToArray(fields_list, item_agent);
     }
 
-    // Detect location
-    location_json = cJSON_GetObjectItem(alert, "location");
+    // Extract log file location from WCS path: alert.log.file.path
+    // Replaces legacy alert.location field
+    cJSON *log_json = cJSON_GetObjectItem(alert, "log");
+    if (cJSON_IsObject(log_json)) {
+        cJSON *file_json = cJSON_GetObjectItem(log_json, "file");
+        if (cJSON_IsObject(file_json)) {
+            location_json = cJSON_GetObjectItem(file_json, "path");
+        }
+    }
     item_location = cJSON_CreateObject();
     cJSON_AddStringToObject(item_location, "title", "Location");
     cJSON_AddStringToObject(item_location, "value", location_json != NULL ? location_json->valuestring : "N/A");
     cJSON_AddItemToArray(fields_list, item_location);
 
-    // Detect Rule
+    // Extract rule information (already ECS-compliant: alert.rule.id, alert.rule.description)
     rule_json = cJSON_GetObjectItem(alert, "rule");
-    if (rule_json && (rule_json->type == cJSON_Object)) {
+    if (cJSON_IsObject(rule_json)) {
         cJSON *rule_id_json = NULL;
         cJSON *rule_level_json = NULL;
         char str_level[10];
 
-        // Detect Rule ID
+        // Extract rule ID
         rule_id_json = cJSON_GetObjectItem(rule_json, "id");
 
-        // Detect Rule Level
+        // Extract rule level (Wazuh-specific field, 0-15 scale)
         memset(str_level, '\0', 10);
         rule_level_json = cJSON_GetObjectItem(rule_json, "level");
-        if (rule_level_json && (rule_level_json->type == cJSON_Number)) {
+        if (cJSON_IsNumber(rule_level_json)) {
             snprintf(str_level, 9, "%d", rule_level_json->valueint);
             level = rule_level_json->valueint;
         } else {
             snprintf(str_level, 9, "N/A");
         }
 
-        // Detect Rule Description
+        // Extract rule description
         rule_description_json = cJSON_GetObjectItem(rule_json, "description");
 
         memset(temp_line, '\0', OS_MAXSTR);
@@ -240,13 +252,18 @@ static cJSON *format_output(const cJSON *alert) {
     cJSON_AddStringToObject(item_objects, "pretext", "WAZUH Alert");
     cJSON_AddStringToObject(item_objects, "title", rule_description_json != NULL ? rule_description_json->valuestring : "N/A");
 
-    // Detect full log
-    full_log_json = cJSON_GetObjectItem(alert, "full_log");
+    // Extract full log message from WCS path: alert.message
+    // Replaces legacy alert.full_log field
+    full_log_json = cJSON_GetObjectItem(alert, "message");
     cJSON_AddStringToObject(item_objects, "text", full_log_json != NULL ? full_log_json->valuestring : "");
 
     cJSON_AddItemToObject(item_objects, "fields", fields_list);
 
-    alert_id_json = cJSON_GetObjectItem(alert, "id");
+    // Extract event ID from WCS path: alert.event.id
+    cJSON *event_json = cJSON_GetObjectItem(alert, "event");
+    if (cJSON_IsObject(event_json)) {
+        alert_id_json = cJSON_GetObjectItem(event_json, "id");
+    }
     cJSON_AddStringToObject(item_objects, "ts", alert_id_json != NULL ? alert_id_json->valuestring : "");
 
     cJSON_AddItemToArray(root_list, item_objects);
