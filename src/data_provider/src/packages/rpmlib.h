@@ -82,6 +82,11 @@ class RpmLib final : public IRpmLibWrapper
             return ::rpmtsInitIterator(ts, rpmtag, keypointer, keylen);
         }
 
+        rpmVSFlags rpmtsSetVSFlags(rpmts ts, rpmVSFlags vsflags) override
+        {
+            return ::rpmtsSetVSFlags(ts, vsflags);
+        }
+
         Header rpmdbNextIterator(rpmdbMatchIterator mi) override
         {
             return ::rpmdbNextIterator(mi);

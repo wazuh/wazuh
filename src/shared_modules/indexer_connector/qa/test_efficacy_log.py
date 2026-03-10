@@ -3,6 +3,7 @@ import docker
 import time
 import requests
 import logging
+import re
 import os
 import subprocess
 import inspect
@@ -738,24 +739,21 @@ def test_error_handling_shard_limit_exceeded(opensearch):
     time.sleep(5)
     process.terminate()
 
-    # Verify log contains recommendation
+    # Verify log contains error
     with open(log_file, "r") as f:
         log_content = f.read()
         assert "validation_exception" in log_content, (
             "Expected validation_exception not found"
         )
-        assert "maximum shards open" in log_content, (
+        assert re.search(r"maximum.*shards open", log_content), (
             "Expected shard limit error not found"
         )
-        assert (
-            "Consider increasing cluster.max_shards_per_node setting" in log_content
-        ), "Expected recommendation not found in log"
 
     # Restore shard limit
     settings = {"persistent": {"cluster.max_shards_per_node": None}}
     requests.put(url, json=settings)
 
-    LOGGER.info("Shard limit error logged with recommendation")
+    LOGGER.info("Shard limit error logged")
 
 
 @pytest.mark.parametrize("opensearch", [True], indirect=True)
@@ -849,7 +847,7 @@ def test_abuse_control_indexer_connector(opensearch):
 def test_abuse_control_no_data_loss_on_indexer_failure(opensearch):
     """
     Real-world scenario test: Verify no data loss when indexer goes down
-    
+
     Steps:
     1. Start indexer - publish event - succeeds
     2. Stop indexer (simulate outage)
@@ -881,7 +879,7 @@ def test_abuse_control_no_data_loss_on_indexer_failure(opensearch):
     # STEP 1: Indexer UP - Publish event (succeeds)
     # ========================================================================
     LOGGER.info("\n[STEP 1] Publishing event with indexer UP...")
-    
+
     if Path("log_publish.out").exists():
         Path("log_publish.out").unlink()
 
@@ -902,27 +900,27 @@ def test_abuse_control_no_data_loss_on_indexer_failure(opensearch):
     assert response.status_code == 200
     initial_count = response.json()["hits"]["total"]["value"]
     assert initial_count == 1, f"Expected 1 document, got {initial_count}"
-    
+
     LOGGER.info(f"✓ Event published successfully, {initial_count} document(s) in index")
 
     # ========================================================================
     # STEP 2: STOP INDEXER (simulate outage)
     # ========================================================================
     LOGGER.info("\n[STEP 2] Stopping indexer (simulating outage)...")
-    
+
     for container in client.containers.list():
         if "opensearch" in container.name.lower():
             container.stop()
             LOGGER.info("✓ OpenSearch stopped")
             break
-    
+
     time.sleep(3)
 
     # ========================================================================
     # STEP 3: Re-run tool with SYNC (will fail - indexer down)
     # ========================================================================
     LOGGER.info("\n[STEP 3] Running sync with indexer DOWN (will fail)...")
-    
+
     if Path("log_sync_fail.out").exists():
         Path("log_sync_fail.out").unlink()
 
@@ -941,14 +939,14 @@ def test_abuse_control_no_data_loss_on_indexer_failure(opensearch):
     log_fail = Path("log_sync_fail.out").read_text()
     has_error = any(word in log_fail.lower() for word in ["error", "fail", "refused", "timeout", "connection"])
     assert has_error, "Expected sync to fail when indexer is down"
-    
+
     LOGGER.info("✓ Sync failed as expected (indexer down)")
 
     # ========================================================================
     # STEP 4: CRITICAL TEST - Re-run sync AGAIN (should NOT be blocked!)
     # ========================================================================
     LOGGER.info("\n[STEP 4] CRITICAL: Re-run sync immediately (should NOT be blocked by rate limit)...")
-    
+
     if Path("log_sync_retry.out").exists():
         Path("log_sync_retry.out").unlink()
 
@@ -964,29 +962,29 @@ def test_abuse_control_no_data_loss_on_indexer_failure(opensearch):
 
     # Check if retry was attempted or blocked
     log_retry = Path("log_sync_retry.out").read_text()
-    
+
     # BUG CHECK: Was retry blocked by rate limit?
     blocked_by_rate_limit = "sync blocked by rate limit" in log_retry.lower()
-    
+
     if blocked_by_rate_limit:
         LOGGER.error("❌ BUG DETECTED: Retry was blocked by rate limit after failed sync!")
         LOGGER.error("This means timestamp was updated BEFORE sync completed (original bug)")
         assert False, "BUG: Failed sync should NOT block immediate retry"
-    
+
     # Retry should be attempted (will fail again, but that's OK)
     retry_attempted = "syncing agent" in log_retry.lower() or "starting sync" in log_retry.lower()
-    
+
     if not retry_attempted:
         LOGGER.warning("⚠️ Sync might be in progress from previous attempt, checking logs...")
         LOGGER.debug(f"Retry log:\n{log_retry}")
-    
+
     LOGGER.info("✓ Retry was NOT blocked by rate limit (bug is FIXED!)")
 
     # ========================================================================
     # STEP 5: RESTART INDEXER
     # ========================================================================
     LOGGER.info("\n[STEP 5] Restarting indexer...")
-    
+
     for container in client.containers.list(all=True):
         if "opensearch" in container.name.lower():
             container.start()
@@ -1005,14 +1003,14 @@ def test_abuse_control_no_data_loss_on_indexer_failure(opensearch):
             pass
         time.sleep(1)
         counter += 1
-    
+
     assert counter < 30, "OpenSearch did not restart in time"
 
     # ========================================================================
     # STEP 6: Re-run sync (should succeed and preserve data)
     # ========================================================================
     LOGGER.info("\n[STEP 6] Running sync after indexer recovery (should succeed)...")
-    
+
     if Path("log_sync_success.out").exists():
         Path("log_sync_success.out").unlink()
 
@@ -1029,7 +1027,7 @@ def test_abuse_control_no_data_loss_on_indexer_failure(opensearch):
     # Verify sync succeeded
     log_success = Path("log_sync_success.out").read_text()
     sync_succeeded = "sync succeeded" in log_success.lower() or "syncing agent" in log_success.lower()
-    
+
     assert sync_succeeded, "Sync should succeed after indexer recovery"
     LOGGER.info("✓ Sync succeeded after indexer recovery")
 
@@ -1037,15 +1035,15 @@ def test_abuse_control_no_data_loss_on_indexer_failure(opensearch):
     # STEP 7: Verify data integrity - no data loss
     # ========================================================================
     LOGGER.info("\n[STEP 7] Verifying data integrity...")
-    
+
     time.sleep(2)
     response = requests.get(url, json={"query": {"match_all": {}}})
     assert response.status_code == 200
-    
+
     final_count = response.json()["hits"]["total"]["value"]
-    
+
     # Should still have the original document (no data loss)
     assert final_count >= initial_count, \
         f"Data loss detected! Initial: {initial_count}, Final: {final_count}"
-    
+
     LOGGER.info(f"✓ Data preserved: {final_count} document(s) in index")

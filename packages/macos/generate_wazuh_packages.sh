@@ -279,11 +279,37 @@ function install_deps() {
         fi
     fi
 
+    # Disable automatic cleanup to avoid Homebrew post-installation errors
+    export HOMEBREW_NO_INSTALL_CLEANUP=1
+    export HOMEBREW_NO_ENV_HINTS=1
+
+    # Clean Homebrew cache to avoid corrupted formula files
+    echo "Cleaning Homebrew cache..."
+    rm -rf "$(brew --cache)" 2>/dev/null || true
+
+    # Update Homebrew to ensure clean state
+    echo "Updating Homebrew..."
+    brew update 2>/dev/null || echo "Warning: brew update had issues, continuing..."
+
     echo "Installing build dependencies for $(uname -m) architecture."
+    set +e
     if [ "$(uname -m)" = "arm64" ]; then
         brew install binutils autoconf automake libtool cmake
+        brew_exit_code=$?
     else
         brew install cmake
+        brew_exit_code=$?
+    fi
+    set -e
+
+    # Verify critical dependencies were installed regardless of brew exit code
+    if ! command -v cmake &> /dev/null; then
+        echo "Error: cmake was not installed correctly."
+        exit 1
+    fi
+
+    if [ $brew_exit_code -ne 0 ]; then
+        echo "Warning: brew install reported exit code $brew_exit_code, but dependencies appear to be installed."
     fi
 
     echo "Checking required gcc version (11)."

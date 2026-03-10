@@ -36,6 +36,7 @@ class IRpmLibWrapper
         virtual uint64_t rpmtdGetNumber(rpmtd td) = 0;
         virtual int rpmtsRun(rpmts ts, rpmps okProbs, rpmprobFilterFlags ignoreSet) = 0;
         virtual rpmdbMatchIterator rpmtsInitIterator(const rpmts ts, rpmDbiTagVal rpmtag, const void* keypointer, size_t keylen) = 0;
+        virtual rpmVSFlags rpmtsSetVSFlags(rpmts ts, rpmVSFlags vsflags) = 0;
         virtual Header rpmdbNextIterator(rpmdbMatchIterator mi) = 0;
         virtual rpmdbMatchIterator rpmdbFreeIterator(rpmdbMatchIterator mi) = 0;
         virtual rpmfi rpmfiNew(rpmts ts, Header h, rpmTagVal tag, rpmfiFlags flags) = 0;

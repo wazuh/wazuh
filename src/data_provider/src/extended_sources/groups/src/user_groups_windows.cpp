@@ -16,10 +16,22 @@
 #include "windows_api_wrapper.hpp"
 #include "encodingWindowsHelper.h"
 
-thread_local std::unordered_map<std::string, std::vector<std::string>> UserGroupsProvider::s_userGroupsCache;
-thread_local std::chrono::steady_clock::time_point UserGroupsProvider::s_cacheTimestamp;
-thread_local bool UserGroupsProvider::s_cacheValid = false;
-thread_local std::size_t UserGroupsProvider::s_apiCallCount = 0;
+namespace
+{
+    struct UserGroupsCacheState final
+    {
+        std::unordered_map<std::string, std::vector<std::string>> userGroupsCache;
+        std::chrono::steady_clock::time_point cacheTimestamp{};
+        bool cacheValid = false;
+        std::size_t apiCallCount = 0;
+    };
+
+    UserGroupsCacheState& getCacheState()
+    {
+        thread_local auto* state = new UserGroupsCacheState();
+        return *state;
+    }
+}
 
 UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IWindowsApiWrapper> winapiWrapper,
                                        std::shared_ptr<IUsersHelper> usersHelper,
@@ -207,20 +219,21 @@ std::vector<Group> UserGroupsProvider::getLocalGroups()
 std::vector<std::string> UserGroupsProvider::getLocalGroupNamesForUser(const std::string& username)
 {
     // Check cache first - avoid repeated API calls for the same user
-    auto it = s_userGroupsCache.find(username);
+    auto& cache = getCacheState();
+    auto it = cache.userGroupsCache.find(username);
 
-    if (it != s_userGroupsCache.end())
+    if (it != cache.userGroupsCache.end())
     {
         return it->second;
     }
 
     // Rate limiting: pause every BATCH_SIZE API calls
-    if (s_apiCallCount > 0 && s_apiCallCount % BATCH_SIZE == 0)
+    if (cache.apiCallCount > 0 && cache.apiCallCount % BATCH_SIZE == 0)
     {
         std::this_thread::sleep_for(BATCH_DELAY);
     }
 
-    ++s_apiCallCount;
+    ++cache.apiCallCount;
 
     std::wstring wUsername = Utils::EncodingWindowsHelper::stringToWStringUTF8(username);
     DWORD groupInfoLevel = 0;
@@ -248,7 +261,7 @@ std::vector<std::string> UserGroupsProvider::getLocalGroupNamesForUser(const std
     }
 
     // Cache the result for this scan
-    s_userGroupsCache[username] = groupNames;
+    cache.userGroupsCache[username] = groupNames;
 
     return groupNames;
 }
@@ -257,24 +270,28 @@ void UserGroupsProvider::validateCache()
 {
     auto now = std::chrono::steady_clock::now();
 
-    if (s_cacheValid && (now - s_cacheTimestamp) >= s_cacheTimeout)
+    auto& cache = getCacheState();
+
+    if (cache.cacheValid && (now - cache.cacheTimestamp) >= s_cacheTimeout)
     {
         // Cache expired, clear it
-        s_userGroupsCache.clear();
-        s_cacheValid = false;
-        s_apiCallCount = 0;
+        cache.userGroupsCache.clear();
+        cache.cacheValid = false;
+        cache.apiCallCount = 0;
     }
 }
 
 void UserGroupsProvider::updateCacheTimestamp()
 {
-    s_cacheTimestamp = std::chrono::steady_clock::now();
-    s_cacheValid = true;
+    auto& cache = getCacheState();
+    cache.cacheTimestamp = std::chrono::steady_clock::now();
+    cache.cacheValid = true;
 }
 
 void UserGroupsProvider::resetCache()
 {
-    s_userGroupsCache.clear();
-    s_cacheValid = false;
-    s_apiCallCount = 0;
+    auto& cache = getCacheState();
+    cache.userGroupsCache.clear();
+    cache.cacheValid = false;
+    cache.apiCallCount = 0;
 }

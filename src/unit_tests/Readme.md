@@ -18,7 +18,7 @@
 Additional dependencies can be installed on Ubuntu by running the following commands.
 ```
 sudo apt-get update -y
-sudo apt-get install -y gcc-mingw-w64 nsis make python gcc g++ cmake libc6-dev curl policycoreutils automake autoconf libtool libssl-dev lcov
+sudo apt-get install -y gcc-mingw-w64 nsis make python3 gcc g++ cmake libc6-dev curl policycoreutils automake autoconf libtool libssl-dev lcov
 ```
 
 To install the additional dependencies on macOS run the following commands.

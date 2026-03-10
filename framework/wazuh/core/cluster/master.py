@@ -20,7 +20,7 @@ from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import server, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
-from wazuh.core.cluster.utils import context_tag, log_subprocess_execution
+from wazuh.core.cluster.utils import context_tag, log_subprocess_execution, safe_join
 from wazuh.core.common import DECIMALS_DATE_FORMAT
 from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
@@ -880,7 +880,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         try:
             with utils.Timeout(timeout):
                 for file_path, data in files_metadata.items():
-                    full_path = os.path.join(common.WAZUH_PATH, file_path)
+                    full_path = safe_join(common.WAZUH_PATH, file_path)
                     item_key = data['cluster_item_key']
 
                     # Only valid client.keys is the local one (master).
@@ -894,9 +894,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                         ):
                             try:
                                 # Destination path.
-                                full_unmerged_name = os.path.join(common.WAZUH_PATH, unmerged_file_path)
+                                full_unmerged_name = safe_join(common.WAZUH_PATH, unmerged_file_path)
                                 # Path where to create the file before moving it to the destination path.
-                                tmp_unmerged_path = os.path.join(common.WAZUH_PATH, 'queue', 'cluster', worker_name,
+                                tmp_unmerged_path = safe_join(common.WAZUH_PATH, 'queue', 'cluster', worker_name,
                                                                  os.path.basename(unmerged_file_path))
 
                                 # Format the file_data specified inside the merged file.
@@ -930,7 +930,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     # If the file is not 'merged' type, move it directly to the destination path.
                     else:
                         try:
-                            zip_path = os.path.join(decompressed_files_path, file_path)
+                            zip_path = safe_join(decompressed_files_path, file_path)
                             utils.safe_move(zip_path, full_path, ownership=(common.wazuh_uid(), common.wazuh_gid()),
                                             permissions=cluster_items['files'][item_key]['permissions'])
                         except TimeoutError as e:

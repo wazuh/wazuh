@@ -830,6 +830,153 @@ void test_wdb_upsert_dbsync_packages_null_pk_field (void **state) {
     cJSON_Delete(delta);
 }
 
+void test_wdb_upsert_dbsync_big_fields_number (void **state) {
+    // In a real scenario the number of fields won't be this big. There's no table containing over 1000 fields.
+    struct column_list TEST_FIELDS[OS_SIZE_1024];
+    for (int i = 0; i < OS_SIZE_1024; ++i) {
+        char field_name[32];
+        snprintf(field_name, sizeof(field_name), "f_%d", i + 1);
+        TEST_FIELDS[i].value.type = FIELD_INTEGER;
+        TEST_FIELDS[i].value.index = i + 1;
+        TEST_FIELDS[i].value.is_aux_field = false;
+        if (i == 0) {
+            TEST_FIELDS[i].value.is_pk = true;
+        } else {
+            TEST_FIELDS[i].value.is_pk = false;
+        }
+        TEST_FIELDS[i].value.source_name = NULL;
+        TEST_FIELDS[i].value.target_name = strdup(field_name);
+        TEST_FIELDS[i].value.default_value.integer = 0;
+        TEST_FIELDS[i].value.convert_empty_string_as_null = true;
+        TEST_FIELDS[i].next = (i < OS_SIZE_1024 - 1) ? &TEST_FIELDS[i + 1] : NULL;
+    }
+
+    struct kv const TEST_TABLE = {"table_origin_name", "table_target_name", false, TEST_FIELDS};
+
+    char data[OS_SIZE_20480] = "{";
+    for (int i = 0; i < OS_SIZE_1024; i++) {
+        char field_entry[64];
+        snprintf(field_entry, sizeof(field_entry) - 1, "\"f_%d\":%d", i + 1, i + 1000);
+        strcat(data, field_entry);
+        if (i < OS_SIZE_1024 - 1) {
+            strcat(data, ",");
+        }
+    }
+    strcat(data, "}");
+
+    cJSON * delta = cJSON_Parse(data);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Exceeding maximum query size of 2048 bytes adding values placeholders.");
+    assert_false(wdb_upsert_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
+
+    cJSON_Delete(delta);
+    for (int i = 0; i < OS_SIZE_1024; i++) {
+        free((void *)TEST_FIELDS[i].value.target_name);
+    }
+}
+
+void test_wdb_upsert_dbsync_query_size_exceeded_on_conflict_clause (void **state) {
+    // In a real scenario the number of fields won't be this big.
+    const int fields_number = 1000; // Adjusted to trigger the size limit on conflict clause
+    struct column_list TEST_FIELDS[fields_number];
+    for (int i = 0; i < fields_number; ++i) {
+        char field_name[32];
+        snprintf(field_name, sizeof(field_name), "f_%d", i + 1);
+        TEST_FIELDS[i].value.type = FIELD_INTEGER;
+        TEST_FIELDS[i].value.index = i + 1;
+        TEST_FIELDS[i].value.is_aux_field = false;
+        if (i == 0) {
+            TEST_FIELDS[i].value.is_pk = true;
+        } else {
+            TEST_FIELDS[i].value.is_pk = false;
+        }
+        TEST_FIELDS[i].value.source_name = NULL;
+        TEST_FIELDS[i].value.target_name = strdup(field_name);
+        TEST_FIELDS[i].value.default_value.integer = 0;
+        TEST_FIELDS[i].value.convert_empty_string_as_null = true;
+        TEST_FIELDS[i].next = (i < fields_number - 1) ? &TEST_FIELDS[i + 1] : NULL;
+    }
+
+    struct kv const TEST_TABLE = {"table_origin_name", "table_target_name", false, TEST_FIELDS};
+
+    char data[OS_SIZE_20480] = "{";
+    for (int i = 0; i < fields_number; i++) {
+        char field_entry[64];
+        snprintf(field_entry, sizeof(field_entry) - 1, "\"f_%d\":%d", i + 1, i + 1000);
+        strcat(data, field_entry);
+        if (i < fields_number - 1) {
+            strcat(data, ",");
+        }
+    }
+    strcat(data, "}");
+
+    cJSON * delta = cJSON_Parse(data);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Exceeding maximum query size of 2048 bytes adding conflict clause.");
+    assert_false(wdb_upsert_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
+
+    cJSON_Delete(delta);
+    for (int i = 0; i < fields_number; i++) {
+        free((void *)TEST_FIELDS[i].value.target_name);
+    }
+}
+
+void test_wdb_upsert_dbsync_big_field_name_first_condition (void **state) {
+    // This is a hardcoded value, it won't be this big in real scenarios.
+    char long_field_name[2049];
+    memset(long_field_name, 'A', 2048);
+    long_field_name[2048] = '\0';
+
+    struct column_list const TEST_FIELDS[] = {
+        // PKs
+        {.value = {FIELD_INTEGER, 1, false, true, NULL, "test_1", {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
+        // Regular fields
+        {.value = {FIELD_INTEGER_LONG, 2, false, false, NULL, long_field_name, {.integer_long = 0}, true}, .next = &TEST_FIELDS[2]},
+        {.value = {FIELD_REAL, 3, false, false, NULL, "test_2", {.real = 0.0}, true}, .next = NULL},
+    };
+
+    struct kv const TEST_TABLE = {"table_origin_name", "table_target_name", false, TEST_FIELDS};
+
+    char data[OS_SIZE_2048 + OS_SIZE_256] = {0};
+    snprintf(data, OS_SIZE_2048 + OS_SIZE_256 - 1,
+             "{\"test_1\":4321,\"%s\":9223372036854775807,\"test_2\":12345.6789}",
+             long_field_name);
+
+    cJSON * delta = cJSON_Parse(data);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Exceeding maximum query size of 2048 bytes adding first field."),
+    assert_false(wdb_upsert_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
+    cJSON_Delete(delta);
+}
+
+void test_wdb_upsert_dbsync_big_subsequent_field_name (void **state) {
+    // This is a hardcoded value, it won't be this big in real scenarios.
+    char long_field_name[2049];
+    memset(long_field_name, 'A', 2048);
+    long_field_name[2048] = '\0';
+
+    struct column_list const TEST_FIELDS[] = {
+        // PKs
+        {.value = {FIELD_INTEGER, 1, false, true, NULL, "test_1", {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
+        // Regular fields
+        {.value = {FIELD_INTEGER_LONG, 2, false, false, NULL, "test_2", {.integer_long = 0}, true}, .next = &TEST_FIELDS[2]},
+        {.value = {FIELD_REAL, 3, false, false, NULL, long_field_name, {.real = 0.0}, true}, .next = NULL},
+    };
+
+    struct kv const TEST_TABLE = {"table_origin_name", "table_target_name", false, TEST_FIELDS};
+
+    char data[OS_SIZE_2048 + OS_SIZE_256] = {0};
+    snprintf(data, OS_SIZE_2048 + OS_SIZE_256 - 1,
+             "{\"test_1\":4321,\"test_2\":\"value_2\",\"%s\":9223372036854775807}",
+             long_field_name);
+
+    cJSON * delta = cJSON_Parse(data);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Exceeding maximum query size of 2048 bytes adding subsequent fields.");
+    assert_false(wdb_upsert_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
+    cJSON_Delete(delta);
+}
+
 //
 // wdb_delete_dbsync
 //
@@ -989,6 +1136,58 @@ void test_wdb_delete_dbsync_packages_null_pk_field (void **state) {
     cJSON_Delete(delta);
 }
 
+void test_wdb_delete_dbsync_big_first_pk_field_name(void **state) {
+    // 2048 characters long pk field name. This is a hardcoded value and it won't be that long in real cases.
+    char long_pk[2049];
+    memset(long_pk, 'A', 2048);
+    long_pk[2048] = '\0';
+
+    struct column_list const TEST_FIELDS[] = {
+        // PKs.
+        {.value = {FIELD_INTEGER, 1, false, true, NULL, long_pk, {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
+        {.value = {FIELD_TEXT, 2, false, true, NULL, "test_2", {.text = ""}, false}, .next = &TEST_FIELDS[2] },
+        // Regular field.
+        {.value = {FIELD_INTEGER, 3, false, false, NULL, "test_3", {.integer = 0}, true}, .next = NULL},
+    };
+
+    struct kv const TEST_TABLE = {"packages", "sys_programs", false, TEST_FIELDS};
+
+    char data[OS_SIZE_2048 + OS_SIZE_256] = {0};
+    snprintf(data, OS_SIZE_2048 + OS_SIZE_256 - 1, "{\"%s\":4321,\"test_2\":null,\"test_3\":1234}", long_pk);
+
+    cJSON * delta = cJSON_Parse(data);
+    expect_string(__wrap__merror, formatted_msg, "Exceeding maximum query size of 2048 bytes adding first pk.");
+
+    assert_false(wdb_delete_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
+    cJSON_Delete(delta);
+}
+
+void test_wdb_delete_dbsync_big_second_pk_field_name(void **state) {
+    // 2048 characters long pk field name. This is a hardcoded value and it won't be that long in real cases.
+    char long_pk[2049];
+    memset(long_pk, 'A', 2048);
+    long_pk[2048] = '\0';
+
+    struct column_list const TEST_FIELDS[] = {
+        // PKs.
+        {.value = {FIELD_INTEGER, 1, false, true, NULL, "test_1", {.integer = 0}, true}, .next = &TEST_FIELDS[1]},
+        { .value = { FIELD_TEXT, 2, false, true, NULL, long_pk, {.text = ""}, false}, .next = &TEST_FIELDS[2] },
+        // Regular field.
+        {.value = {FIELD_INTEGER, 3, false, false, NULL, "test_3", {.integer = 0}, true}, .next = NULL},
+    };
+
+    struct kv const TEST_TABLE = {"packages", "sys_programs", false, TEST_FIELDS};
+
+    char data[OS_SIZE_256 + OS_SIZE_2048] = {0};
+    snprintf(data, OS_SIZE_256 + OS_SIZE_2048 - 1, "{\"test_1\":4321,\"%s\":null,\"test_3\":1234}", long_pk);
+
+    cJSON * delta = cJSON_Parse(data);
+    expect_string(__wrap__merror, formatted_msg, "Exceeding maximum query size of 2048 bytes adding subsequent pks.");
+
+    assert_false(wdb_delete_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
+    cJSON_Delete(delta);
+}
+
 /* wdb_dbsync_get_field_default */
 
 void test_wdb_dbsync_get_field_default_null(void ** state) { assert_null(wdb_dbsync_get_field_default(NULL)); }
@@ -1122,6 +1321,13 @@ int main() {
         cmocka_unit_test(test_wdb_delete_dbsync_stmt_nok),
         cmocka_unit_test(test_wdb_delete_dbsync_packages_not_present_pk_field),
         cmocka_unit_test(test_wdb_delete_dbsync_packages_null_pk_field),
+        /* Event data validation */
+        cmocka_unit_test(test_wdb_upsert_dbsync_big_fields_number),
+        cmocka_unit_test(test_wdb_upsert_dbsync_query_size_exceeded_on_conflict_clause),
+        cmocka_unit_test(test_wdb_upsert_dbsync_big_field_name_first_condition),
+        cmocka_unit_test(test_wdb_upsert_dbsync_big_subsequent_field_name),
+        cmocka_unit_test(test_wdb_delete_dbsync_big_first_pk_field_name),
+        cmocka_unit_test(test_wdb_delete_dbsync_big_second_pk_field_name),
         };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

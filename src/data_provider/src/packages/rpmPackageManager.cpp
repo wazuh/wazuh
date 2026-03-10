@@ -131,6 +131,9 @@ RpmPackageManager::Iterator::Iterator(std::shared_ptr<IRpmLibWrapper>& rpmlib)
         throw std::runtime_error("rpmtsOpenDB failed");
     }
 
+    // Disable signature verification to avoid errors on systems where RPM is compiled without OpenPGP support
+    rpmlib->rpmtsSetVSFlags(m_transactionSet, RPMVSF_MASK_NOSIGNATURES);
+
     if (rpmlib->rpmtsRun(m_transactionSet, nullptr, 0))
     {
         m_rpmlib->rpmtsCloseDB(m_transactionSet);

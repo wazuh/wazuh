@@ -1,7 +1,8 @@
 anyio==4.1.0
 asgiref==3.7.2
+asyncinotify==4.3.2
 attrs==23.1.0
-azure-core==1.30.2
+azure-core==1.38.0
 azure-storage-blob==12.20.0
 boto3==1.34.135
 botocore==1.34.135
@@ -58,7 +59,7 @@ packaging==25.0
 pathable==0.4.3
 pathlib==1.0.1
 proto-plus==1.26.0
-protobuf==5.29.5
+protobuf==5.29.6
 psutil==5.9.0
 pyarrow==14.0.1
 pyasn1==0.4.8
@@ -68,7 +69,7 @@ PyJWT==2.10.1
 pyparsing==2.4.7
 python-dateutil==2.8.1
 python-json-logger==2.0.2
-python-multipart==0.0.20
+python-multipart==0.0.22
 pytz==2020.1
 PyYAML==5.4.1
 referencing==0.31.1
@@ -85,10 +86,10 @@ starlette==0.49.1
 tabulate==0.8.9
 typing-extensions==4.12.2
 typing-inspect==0.7.1
-urllib3==2.6.2
+urllib3==2.6.3
 uvicorn==0.31.0
 uvloop==0.17.0
 websocket-client==0.57.0
-Werkzeug==3.1.4
+Werkzeug==3.1.5
 xmltodict==0.12.0
 yarl==1.7.0

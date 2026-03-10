@@ -1,16 +1,110 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.14.3]
+## [v4.14.4]
+
+### Manager
+
+#### Fixed
+
+- Fixed heap-based null WRITE Buffer Underflows. ([34658](https://github.com/wazuh/wazuh/pull/34658))
+
+### Agent
+
+#### Fixed
+
+- Fixed MS Graph default rules not triggering properly. ([#34240](https://github.com/wazuh/wazuh/pull/34240))
+- Unified date formats in Active Response logs to ensure consistent timestamp formatting. ([#34473](https://github.com/wazuh/wazuh/pull/34473))
+- Updated Docker integration rules to improve detection coverage and compatibility. ([#34376](https://github.com/wazuh/wazuh/pull/34376))
+- Fixed heap-based NULL write buffer underflow in `GetAlertData`. ([#34501](https://github.com/wazuh/wazuh/pull/34501))
+- Retained MSI installer log after Windows agent upgrade to improve troubleshooting visibility. ([#34517](https://github.com/wazuh/wazuh/pull/34517))
+- Fixed incorrect Windows 11 edition detection after upgrading the agent to version 4.14.3. ([#34530](https://github.com/wazuh/wazuh/pull/34530))
+- Fixed macOS agent crash during syscollector reload caused by invalid `pthread_cond_destroy()` usage. ([#34274](https://github.com/wazuh/wazuh/pull/34274))
+- Fixed Windows OS edition detection. ([34540](https://github.com/wazuh/wazuh/pull/34540))
+
+#### Changed
+
+- Changed msi_output extension from txt to log. ([34541](https://github.com/wazuh/wazuh/pull/34541))
+- Changed to unsigned char in print_hex_string. ([34602](https://github.com/wazuh/wazuh/pull/34602))
+- Changed sync primitive disposal to stop and soften teardown failures. ([34552](https://github.com/wazuh/wazuh/pull/34552))
+
+### RESTful API
+
+#### Fixed
+
+- Fixed timestamps in the `/agents/upgrade_result` endpoint to return accurate UTC time. ([#34176](https://github.com/wazuh/wazuh/pull/34176))
+- Improved cluster file synchronization path handling by adding safe path joins. ([#34464](https://github.com/wazuh/wazuh/pull/34464))
+- Fixed API login race condition- ([34459](https://github.com/wazuh/wazuh/pull/34459))
+
+### Other
+
+#### Changed
+
+- Updated the `azure-core` dependency to 1.38.0 and the `Werkzeug` dependency to 3.1.5. ([#34154](https://github.com/wazuh/wazuh/pull/34154))
+- Updated the `protobuf` dependency to 5.29.6 and the `python-multipart` dependency to 0.0.22. ([#34403](https://github.com/wazuh/wazuh/pull/34403))
+
+## [v4.14.3] - 2025-02-11
 
 ### Manager
 
 #### Fixed
 
 - Scaped document ID when necessary before sending document to indexer. ([#33464](https://github.com/wazuh/wazuh/pull/33464))
+- Extended timestamp conversion helpers to support additional input formats and normalize ISO8601 strings. ([#33551](https://github.com/wazuh/wazuh/pull/33551))
+- Restricted cluster file transfer write paths. ([#33705](https://github.com/wazuh/wazuh/pull/33705))
+- Hardened cluster deserialization by restricting callable decoding to Wazuh modules and improving error handling. ([#33910](https://github.com/wazuh/wazuh/pull/33910))
+- Added query size checks for syscollector delta sync SQL generation to prevent buffer overflows. ([#33803](https://github.com/wazuh/wazuh/pull/33803))
+- Replaced unsafe `sprintf` calls in the SCA decoder to prevent buffer overflows. ([#33756](https://github.com/wazuh/wazuh/pull/33756))
+- Fixed a memory leak in the CIS-CAT decoder when database operations fail. ([#33739](https://github.com/wazuh/wazuh/pull/33739))
+- Fixed ruleset hot reload on workers by awaiting `send_reload_ruleset_msg`. ([#34184](https://github.com/wazuh/wazuh/pull/34184))
 
+### Agent
 
-## [v4.14.2]
+#### Added
+
+- Added hostname and architecture metadata to Windows keep-alive messages. ([#33831](https://github.com/wazuh/wazuh/pull/33831))
+
+#### Fixed
+
+- Fixed UTF-16 casting when updating `report_changes`. ([#33495](https://github.com/wazuh/wazuh/pull/33495))
+- Improved Active Response key handling in wazuh-execd. ([#33665](https://github.com/wazuh/wazuh/pull/33665))
+- Added bounds checking to Logcollector `max-size` configuration serialization. ([#33704](https://github.com/wazuh/wazuh/pull/33704))
+- Hardened Logcollector multiline backup handling to use full-buffer copies. ([#33926](https://github.com/wazuh/wazuh/pull/33926))
+- Fixed label formatting edge cases in keep-alive notify messages. ([#33708](https://github.com/wazuh/wazuh/pull/33708))
+- Fixed a false positive in vulnerability detection for Oracle Linux 8. ([#33583](https://github.com/wazuh/wazuh/pull/33583))
+- Extended Windows network path restrictions to block extended-length UNC paths. ([#34115](https://github.com/wazuh/wazuh/pull/34115))
+- Fixed crash in network path detection on Windows. ([#34162](https://github.com/wazuh/wazuh/pull/34162))
+- Fixed Agent reload failure on Linux systems with systemd version 219 or lower. ([#34064](https://github.com/wazuh/wazuh/pull/34064))
+
+### RESTful API
+
+#### Changed
+
+- Improved authentication performance by caching generated keypairs and clearing the cache when key files change. ([#33702](https://github.com/wazuh/wazuh/pull/33702))
+
+#### Fixed
+
+- Improved configuration upload validation by parsing and comparing Wazuh XML configurations more reliably. ([#33683](https://github.com/wazuh/wazuh/pull/33683))
+- Fixed protected settings checks when multiple `<ossec_config>` blocks are present. ([#33807](https://github.com/wazuh/wazuh/pull/33807))
+
+### Ruleset
+
+#### Added
+
+- Added a CIS SCA policy for macOS 26 Tahoe. ([#33492](https://github.com/wazuh/wazuh/pull/33492))
+
+#### Fixed
+
+- Fixed SCA policy execution on Windows Server 2019 by using the correct PowerShell path. ([#34141](https://github.com/wazuh/wazuh/pull/34141))
+
+### Other
+
+#### Changed
+
+- Updated the `werkzeug` dependency to 3.1.4. ([#33569](https://github.com/wazuh/wazuh/pull/33569))
+- Updated the `urllib3` dependency to 2.6.3. ([#33927](https://github.com/wazuh/wazuh/pull/33927))
+
+## [v4.14.2] - 2025-01-15
 
 ### Manager
 
@@ -402,6 +496,8 @@ All notable changes to this project will be documented in this file.
 - Fixed an enrollment failure on Solaris 10 caused by unsupported socket timeout. ([#29161](https://github.com/wazuh/wazuh/pull/29161))
 - Fixed a memory issue in the `wazuh-agentd` argument parser. ([#29214](https://github.com/wazuh/wazuh/pull/29214))
 - Fixed WPK package upgrades for DEB when upgrading from version 4.3.11 or earlier. ([#28928](https://github.com/wazuh/wazuh/pull/28928))
+- Fixed Windows FIM Registry scan crash on non-null-terminated values. ([#34353](https://github.com/wazuh/wazuh/pull/34353))
+- Fixed Windows Agent startup race condition. ([#34353](https://github.com/wazuh/wazuh/pull/34353))
 
 ### Ruleset
 

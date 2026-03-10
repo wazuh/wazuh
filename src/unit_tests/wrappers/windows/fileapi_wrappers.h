@@ -18,6 +18,7 @@
 #define FindVolumeClose wrap_FindVolumeClose
 #define QueryDosDeviceW wrap_QueryDosDeviceW
 #define FindNextVolumeW wrap_FindNextVolumeW
+#define QueryDosDeviceA wrap_QueryDosDeviceA
 #undef  CreateFile
 #define CreateFile      wrap_CreateFile
 #undef  GetFileTime
@@ -52,6 +53,10 @@ WINBOOL wrap_FindVolumeClose(HANDLE hFindVolume);
 
 DWORD wrap_QueryDosDeviceW(LPCWSTR lpDeviceName,
                            LPWSTR lpTargetPath,
+                           DWORD ucchMax);
+
+DWORD wrap_QueryDosDeviceA(LPCSTR lpDeviceName,
+                           LPSTR lpTargetPath,
                            DWORD ucchMax);
 
 WINBOOL wrap_FindNextVolumeW(HANDLE hFindVolume,

@@ -81,7 +81,7 @@ void parse_uname_string (char *uname,
                 }
             }
         } else {
-            *(str_tmp + strlen(str_tmp) - 1) = '\0';
+            mwarn("Windows uname missing closing ']' in version field: '%s'", str_tmp);
         }
 
         // Get os_major
@@ -116,14 +116,16 @@ void parse_uname_string (char *uname,
                 *str_tmp = '\0';
                 str_tmp += 2;
                 os_strdup(str_tmp, osd->os_version);
-                *(osd->os_version + strlen(osd->os_version) - 1) = '\0';
+                    size_t ver_len = strlen(osd->os_version);
+                    if (ver_len > 0 && osd->os_version[ver_len - 1] == ']') osd->os_version[ver_len - 1] = '\0';
 
                 // os_major.os_minor (os_codename)
                 if (str_tmp = strstr(osd->os_version, " ("), str_tmp) {
                     *str_tmp = '\0';
                     str_tmp += 2;
                     os_strdup(str_tmp, osd->os_codename);
-                    *(osd->os_codename + strlen(osd->os_codename) - 1) = '\0';
+                        size_t cod_len = strlen(osd->os_codename);
+                        if (cod_len > 0 && osd->os_codename[cod_len - 1] == ')') osd->os_codename[cod_len - 1] = '\0';
                 }
 
                 // Get os_major
@@ -138,10 +140,16 @@ void parse_uname_string (char *uname,
                     match_size = match[1].rm_eo - match[1].rm_so;
                     os_malloc(match_size +1, osd->os_minor);
                     snprintf(osd->os_minor, match_size + 1, "%.*s", match_size, osd->os_version + match[1].rm_so);
+                } else if (w_regexec("^[0-9]+-[Ss][Pp]([0-9]+)\\.*", osd->os_version, 2, match)) {
+                    // SUSE: 15-SP7, 15-SPxx
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    os_malloc(match_size + 1, osd->os_minor);
+                    snprintf(osd->os_minor, match_size + 1, "%.*s", match_size, osd->os_version + match[1].rm_so);
                 }
 
             } else {
-                *(osd->os_name + strlen(osd->os_name) - 1) = '\0';
+                size_t name_len = strlen(osd->os_name);
+                if (name_len > 0 && osd->os_name[name_len - 1] == ']') osd->os_name[name_len - 1] = '\0';
             }
 
             // os_name|os_platform

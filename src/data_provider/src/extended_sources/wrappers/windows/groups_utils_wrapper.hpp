@@ -31,10 +31,6 @@ class GroupsHelper : public IGroupsHelper
         static constexpr std::uint32_t BATCH_SIZE = 100;
         static constexpr std::chrono::milliseconds BATCH_DELAY{250};
 
-        /// @brief Static cache for processLocalGroups results (thread-local)
-        static thread_local std::vector<Group> s_cachedGroups;
-        static thread_local std::chrono::steady_clock::time_point s_cacheTimestamp;
-        static thread_local bool s_cacheValid;
         static constexpr std::chrono::seconds s_cacheTimeout{60}; // Cache válido por 60 segundos
 
         /// @brief Validates cache and clears it if expired (> 60 seconds old).

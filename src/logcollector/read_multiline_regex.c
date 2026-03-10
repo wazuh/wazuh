@@ -489,21 +489,17 @@ STATIC void multiline_ctxt_backup(char * buffer, int readed_lines, w_multiline_c
 
     size_t current_bsize = strlen(buffer);
 
-    if (*ctxt && (strlen((*ctxt)->buffer) == current_bsize)) {
-        return;
-    }
-
-    if (*ctxt) {
-        size_t old_size = strlen((*ctxt)->buffer);
-        os_realloc((*ctxt)->buffer, sizeof(char) * (current_bsize + 1), (*ctxt)->buffer);
-        strcpy((*ctxt)->buffer + old_size, buffer + old_size);
-
-    } else {
+    if (!*ctxt) {
         os_calloc(1, sizeof(w_multiline_ctxt_t), *ctxt);
         os_calloc(current_bsize + 1, sizeof(char), (*ctxt)->buffer);
-        strcpy((*ctxt)->buffer, buffer);
+    } else if (strlen((*ctxt)->buffer) == current_bsize) {
+        /* Size unchanged, nothing to do */
+        return;
+    } else {
+        os_realloc((*ctxt)->buffer, sizeof(char) * (current_bsize + 1), (*ctxt)->buffer);
     }
 
+    strcpy((*ctxt)->buffer, buffer);
     (*ctxt)->lines_count = readed_lines;
     (*ctxt)->timestamp = time(NULL);
 }

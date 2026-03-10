@@ -25,6 +25,7 @@
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/string_op_wrappers.h"
 #include "../wrappers/wazuh/shared/utf8_winapi_wrapper_wrappers.h"
 #include "../wrappers/externals/zlib/zlib_wrappers.h"
 #ifdef WIN32
@@ -1026,6 +1027,8 @@ void test_get_UTC_modification_time_fail_get_handle(void **state) {
     char buffer[OS_SIZE_128];
     char *path = "C:\\a\\path";
 
+    SetLastError(2);
+
     expect_string(__wrap_utf8_CreateFile, utf8_path, path);
     will_return(__wrap_utf8_CreateFile, INVALID_HANDLE_VALUE);
 
@@ -1047,6 +1050,8 @@ void test_get_UTC_modification_time_fail_get_filetime(void **state) {
 
     expect_string(__wrap_utf8_CreateFile, utf8_path, path);
     will_return(__wrap_utf8_CreateFile, (HANDLE)1234);
+
+    SetLastError(2);
 
     expect_value(wrap_GetFileTime, hFile, (HANDLE)1234);
     will_return(wrap_GetFileTime, &modification_date);
@@ -1206,6 +1211,24 @@ void test_is_network_path_local(void **state) {
     assert_int_equal(ret, 0);
 }
 
+void test_is_network_path_extended_length_unc(void **state) {
+    char *path = "\\\\?\\UNC\\server\\share";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 1);
+}
+
+void test_is_network_path_device(void **state) {
+    char *path = "\\\\.\\device";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 1);
+}
+
+void test_is_network_path_extended_length_local(void **state) {
+    char *path = "\\\\?\\C:\\file.txt";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 1);
+}
+
 void test_wfopen_local_path(void **state) {
     errno = 0;
     char *path = "C:\\file.txt";
@@ -1278,9 +1301,12 @@ void test_wCreateFile_network_path(void **state) {
 
 void test_wCreateProcessW_local_path(void **state) {
     errno = 0;
-    char *path = "C:\\file.txt";
+    wchar_t path[] = L"C:\\file.txt";
 
-    expect_string(wrap_CreateProcessW, lpCommandLine, path);
+    expect_value(__wrap_convert_windows_string, string, path);
+    will_return(__wrap_convert_windows_string, strdup("C:\\file.txt"));
+
+    expect_value(wrap_CreateProcessW, lpCommandLine, path);
     will_return(wrap_CreateProcessW, TRUE);
 
     bool ret = wCreateProcessW(NULL, path, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
@@ -1290,13 +1316,28 @@ void test_wCreateProcessW_local_path(void **state) {
 
 void test_wCreateProcessW_network_path(void **state) {
     errno = 0;
-    char *path = "Z:\\file.txt";
+    wchar_t path[] = L"Z:\\file.txt";
+
+    expect_value(__wrap_convert_windows_string, string, path);
+    will_return(__wrap_convert_windows_string, strdup("Z:\\file.txt"));
 
     expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
 
     bool ret = wCreateProcessW(NULL, path, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
     assert_false(ret);
     assert_int_equal(errno, EACCES);
+}
+
+void test_wCreateProcessW_conversion_failure(void **state) {
+    errno = 0;
+    wchar_t path[] = L"C:\\file.txt";
+
+    expect_value(__wrap_convert_windows_string, string, path);
+    will_return(__wrap_convert_windows_string, NULL);
+
+    bool ret = wCreateProcessW(NULL, path, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+    assert_false(ret);
+    assert_int_equal(errno, EINVAL);
 }
 
 void test_wopendir_local_path(void **state) {
@@ -1813,6 +1854,9 @@ int main(void) {
         cmocka_unit_test(test_is_network_path_unc),
         cmocka_unit_test(test_is_network_path_network),
         cmocka_unit_test(test_is_network_path_local),
+        cmocka_unit_test(test_is_network_path_extended_length_unc),
+        cmocka_unit_test(test_is_network_path_device),
+        cmocka_unit_test(test_is_network_path_extended_length_local),
         cmocka_unit_test(test_wfopen_local_path),
         cmocka_unit_test(test_wfopen_network_path),
         cmocka_unit_test(test_waccess_local_path),
@@ -1821,6 +1865,7 @@ int main(void) {
         cmocka_unit_test(test_wCreateFile_network_path),
         cmocka_unit_test(test_wCreateProcessW_local_path),
         cmocka_unit_test(test_wCreateProcessW_network_path),
+        cmocka_unit_test(test_wCreateProcessW_conversion_failure),
         cmocka_unit_test(test_wopendir_local_path),
         cmocka_unit_test(test_wopendir_network_path),
         cmocka_unit_test(test_w_stat_local_path),

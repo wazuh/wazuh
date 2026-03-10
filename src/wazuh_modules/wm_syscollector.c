@@ -154,10 +154,6 @@ void* wm_sys_main(wm_sys_t *sys) {
 
     sys->flags.running = true;
 
-    w_cond_init(&sys_stop_condition, NULL);
-    w_mutex_init(&sys_stop_mutex, NULL);
-    w_mutex_init(&sys_reconnect_mutex, NULL);
-
     if (!sys->flags.enabled) {
         mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting...");
         pthread_exit(NULL);
@@ -276,16 +272,13 @@ void* wm_sys_main(wm_sys_t *sys) {
 
     mtinfo(WM_SYS_LOGTAG, "Module finished.");
     w_mutex_lock(&sys_stop_mutex);
+    need_shutdown_wait = false;
     w_cond_signal(&sys_stop_condition);
     w_mutex_unlock(&sys_stop_mutex);
     return 0;
 }
 
 void wm_sys_destroy(wm_sys_t *data) {
-    w_cond_destroy(&sys_stop_condition);
-    w_mutex_destroy(&sys_stop_mutex);
-    w_mutex_destroy(&sys_reconnect_mutex);
-
     free(data);
 }
 
@@ -304,10 +297,14 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t *data) {
         syscollector_stop_ptr();
     }
     w_mutex_lock(&sys_stop_mutex);
-    if (need_shutdown_wait) {
+    while (need_shutdown_wait) {
         w_cond_wait(&sys_stop_condition, &sys_stop_mutex);
     }
     w_mutex_unlock(&sys_stop_mutex);
+
+    w_cond_destroy(&sys_stop_condition);
+    w_mutex_destroy(&sys_stop_mutex);
+    w_mutex_destroy(&sys_reconnect_mutex);
 }
 
 cJSON *wm_sys_dump(const wm_sys_t *sys) {
