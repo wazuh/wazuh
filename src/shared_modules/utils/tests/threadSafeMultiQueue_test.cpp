@@ -88,7 +88,10 @@ TEST_F(ThreadSafeMultiQueueTest, Cancel)
     Utils::
         TSafeMultiQueue<rocksdb::Slice, rocksdb::PinnableSlice, RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
             queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test"));
-    std::thread t1 {[&]() { queue.front(); }};
+    std::thread t1 {[&]()
+                    {
+                        queue.front();
+                    }};
 
     queue.cancel();
     t1.join();

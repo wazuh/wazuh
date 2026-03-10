@@ -158,7 +158,10 @@ int main()
         // Client -> Vulnerability detector
         ContentRegister registerer {topic_name,
                                     CONFIG_PARAMETERS,
-                                    [](const std::string& msg) -> FileProcessingResult { return {0, "", false}; }};
+                                    [](const std::string& msg) -> FileProcessingResult
+                                    {
+                                        return {0, "", false};
+                                    }};
 
         std::this_thread::sleep_for(std::chrono::seconds(5));
 
