@@ -171,8 +171,8 @@ private:
     {
         // Stream flow handling
         std::shared_ptr<FastQueueType> queue; ///< Thread-safe queue for log messages.
-        std::ofstream outputFile; ///< Output file stream for writing log messages.
-        std::thread workerThread; ///< Thread that processes log messages asynchronously.
+        std::ofstream outputFile;             ///< Output file stream for writing log messages.
+        std::thread workerThread;             ///< Thread that processes log messages asynchronously.
         std::shared_ptr<std::atomic<ChannelState>> channelState {
             std::make_shared<std::atomic<ChannelState>>(ChannelState::Running)};
 

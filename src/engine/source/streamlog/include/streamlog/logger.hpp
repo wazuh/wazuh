@@ -145,7 +145,7 @@ struct RotationConfig
 {
     std::filesystem::path basePath; ///< Absolute directory where log files are written. Must exist and be writable.
     std::string pattern;            ///< File-name pattern with placeholders (see namespace docs for the full list).
-    size_t maxSize; ///< Maximum file size in bytes before size-based rotation. `0` disables size rotation.
+    size_t maxSize;              ///< Maximum file size in bytes before size-based rotation. `0` disables size rotation.
     size_t bufferSize = 1 << 20; ///< Queue capacity in events (default 1 Mi). `0` is promoted to the default.
     bool shouldCompress {true};  ///< Compress rotated files with gzip when `true`.
     size_t compressionLevel {5}; ///< Gzip compression level: 1 (fastest) – 9 (best). Only used when `shouldCompress`.

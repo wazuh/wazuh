@@ -174,7 +174,7 @@ void ChannelHandler::rotateFile(RotationRequirement rotationType)
     m_stateData.lastRotation = now;
 
     // if the resolved path is identical to the current file, no actual rotation is needed
-    if (previousFile == m_stateData.currentFile && rotationType == RotationRequirement::Time)
+    if (previousFile == m_stateData.currentFile)
     {
         LOG_DEBUG("Channel '{}' time boundary crossed but file path unchanged, skipping rotation", m_channelName);
         return;
