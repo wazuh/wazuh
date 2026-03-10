@@ -65,12 +65,13 @@ INSTANTIATE_TEST_SUITE_P(
         // Root decoder does not exist
         ValidatePol("policy_test_0",
                     dataType::Policy("test-policy",
+                                     true,                                   // enabled
                                      "550e8400-e29b-41d4-a716-446655440003", // root decoder UUID
                                      {"550e8400-e29b-41d4-a716-446655440001"},
                                      {},
                                      {},
                                      {}),
-                   
+
                     FAILURE(FailureExpected::Behaviour {
                         [](const auto& store, const auto& reader)
                         {
@@ -82,8 +83,13 @@ INSTANTIATE_TEST_SUITE_P(
                         }})),
         // Root decoder exists but integration UUID is invalid
         ValidatePol("policy_test_0",
-                    dataType::Policy("test-policy", "550e8400-e29b-41d4-a716-446655440003",
-                                     {"550e8400-e29b-41d4-a716-446655440001"}, {}, {}, {}),
+                    dataType::Policy("test-policy",
+                                     true,
+                                     "550e8400-e29b-41d4-a716-446655440003",
+                                     {"550e8400-e29b-41d4-a716-446655440001"},
+                                     {},
+                                     {},
+                                     {}),
                     FAILURE(FailureExpected::Behaviour {
                         [](const auto& store, const auto& reader)
                         {
@@ -100,8 +106,13 @@ INSTANTIATE_TEST_SUITE_P(
                         }})),
         // Valid policy with root decoder and integration
         ValidatePol("policy_test_0",
-                    dataType::Policy("test-policy", "550e8400-e29b-41d4-a716-446655440003",
-                                     {"550e8400-e29b-41d4-a716-446655440001"}, {}, {}, {}),
+                    dataType::Policy("test-policy",
+                                     true,
+                                     "550e8400-e29b-41d4-a716-446655440003",
+                                     {"550e8400-e29b-41d4-a716-446655440001"},
+                                     {},
+                                     {},
+                                     {}),
                     SUCCESS(SuccessExpected::Behaviour {
                         [](const auto& store, const auto& reader)
                         {

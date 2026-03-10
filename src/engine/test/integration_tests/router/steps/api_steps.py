@@ -69,6 +69,7 @@ def build_policy_yaml(default_parent: str, root_decoder: str, integration_uuids)
     integrations_block = "\n".join(f'  - "{u}"' for u in integration_uuids)
     return f"""\
 type: policy
+enabled: true
 title: Development 0.0.1
 hash: "router-test-hash"
 default_parent: {default_parent}

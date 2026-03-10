@@ -23,6 +23,7 @@ namespace
 
 const base::Name STORE_NAME_IOCSYNC {"iocsync/status/0"}; ///< Name of the internal store document
 constexpr std::size_t IOC_SYNC_BATCH_SIZE {1000};         ///< Documents per search page for IOC sync
+constexpr std::string_view COMPONENT_NAME = "IOCSync";    ///< Component name for logging
 
 void ensureTargetDbExists(const std::shared_ptr<kvdbioc::IKVDBManager>& kvdbiocPtr, std::string_view targetDBName)
 {
@@ -167,8 +168,8 @@ bool IocSync::existIocDataInRemote()
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
 
     return base::utils::executeWithRetry([&indexerPtr]() { return indexerPtr->existsIocDataIndex(); },
-                                         "exist IOC data index in wazuh-indexer",
-                                         "IocSync",
+                                         fmt::format("{}::existIocDataInRemote()", COMPONENT_NAME),
+                                         "Check if IOC data index exists in remote indexer",
                                          m_attempts,
                                          m_waitSeconds);
 }
@@ -178,8 +179,8 @@ std::unordered_map<std::string, std::string> IocSync::getRemoteHashesFromRemote(
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "Indexer Connector");
 
     return base::utils::executeWithRetry([&indexerPtr]() { return indexerPtr->getIocTypeHashes(); },
-                                         "getRemoteHashesFromRemote",
-                                         "IocSync",
+                                         fmt::format("{}::getRemoteHashesFromRemote()", COMPONENT_NAME),
+                                         "Get IOC type hashes from remote indexer",
                                          m_attempts,
                                          m_waitSeconds);
 }

@@ -52,13 +52,13 @@ private:
     void downloadNamespace(std::string_view originSpace, const cm::store::NamespaceId& dstNamespace);
 
     /**
-     * @brief Get remote policy hash for a space
+     * @brief Get remote policy hash and enabled status from the indexer
      *
      * @param space Space name in the indexer
-     * @return std::string SHA-256 hash of the policy
+     * @return A pair containing the policy hash as a string and a boolean indicating if the policy is enabled
      * @throws std::runtime_error on errors.
      */
-    std::string getPolicyHashFromRemote(std::string_view space);
+    std::pair<std::string, bool> getPolicyHashAndEnabledFromRemote(std::string_view space);
 
     /**
      * @brief Downloads a namespace from the indexer and enriches it with local assets

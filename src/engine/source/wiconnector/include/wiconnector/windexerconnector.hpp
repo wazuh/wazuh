@@ -98,7 +98,7 @@ public:
     /**
      * @copydoc IWIndexerConnector::getPolicyHash
      */
-    std::string getPolicyHash(std::string_view space) override;
+    std::pair<std::string, bool> getPolicyHashAndEnabled(std::string_view space) override;
 
     /**
      * @copydoc IWIndexerConnector::existsPolicy

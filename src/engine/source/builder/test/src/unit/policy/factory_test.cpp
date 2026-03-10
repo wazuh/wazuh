@@ -825,6 +825,7 @@ INSTANTIATE_TEST_SUITE_P(
         // Test: KVDB availability map is correctly built
         BuildAssetsT(
             dataType::Policy("test_policy",
+                             true, // enabled
                              "550e8400-e29b-41d4-a716-446655440003",
                              {"550e8400-e29b-41d4-a716-446655440001"},
                              {},
@@ -862,6 +863,7 @@ INSTANTIATE_TEST_SUITE_P(
         // Test: Duplicate KVDB names throw error
         BuildAssetsT(
             dataType::Policy("test_policy",
+                             true, // enabled
                              "550e8400-e29b-41d4-a716-446655440003",
                              {"550e8400-e29b-41d4-a716-446655440002"},
                              {},
@@ -898,6 +900,7 @@ INSTANTIATE_TEST_SUITE_P(
                 }})),
         // Test: Disabled integration skips KVDB processing
         BuildAssetsT(dataType::Policy("test_policy",
+                                      true, // enabled
                                       "550e8400-e29b-41d4-a716-446655440003",
                                       {"550e8400-e29b-41d4-a716-446655440003"},
                                       {},
@@ -926,6 +929,7 @@ INSTANTIATE_TEST_SUITE_P(
                          }})),
         // Test: KVDB loading error throws with message
         BuildAssetsT(dataType::Policy("test_policy",
+                                      true, // enabled
                                       "550e8400-e29b-41d4-a716-446655440005",
                                       {"550e8400-e29b-41d4-a716-446655440004"},
                                       {},
@@ -1692,6 +1696,7 @@ INSTANTIATE_TEST_SUITE_P(
         // 1) Decoders order: decoders in the order defined in the integration
         BuildAssetsT(
             cm::store::dataType::Policy("test_policy",
+                                        true,                                     // enabled
                                         "550e8400-e29b-41d4-a716-446655440199",   // root decoder UUID
                                         {"550e8400-e29b-41d4-a716-446655440101"}, // integration UUID
                                         {},
@@ -1741,6 +1746,7 @@ INSTANTIATE_TEST_SUITE_P(
 
         // 2) Order BETWEEN integrations: first assets seen in integ1, then integ2
         BuildAssetsT(cm::store::dataType::Policy("test_policy",
+                                                 true, // enabled
                                                  "550e8400-e29b-41d4-a716-446655440299",
                                                  {"550e8400-e29b-41d4-a716-446655440111",
                                                   "550e8400-e29b-41d4-a716-446655440112"},
@@ -1794,6 +1800,7 @@ INSTANTIATE_TEST_SUITE_P(
 
         // 3) Disabled decoder is skipped and does not “break” the relative order of the others
         BuildAssetsT(cm::store::dataType::Policy("test_policy",
+                                                 true, // enabled
                                                  "550e8400-e29b-41d4-a716-446655440399",
                                                  {"550e8400-e29b-41d4-a716-446655440121"},
                                                  {},

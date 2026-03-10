@@ -13,7 +13,7 @@ public:
     MOCK_METHOD(bool, existsNamespace, (const cm::store::NamespaceId& nsId), (const, override));
     MOCK_METHOD(void, deleteNamespace, (const cm::store::NamespaceId& nsId), (override));
     MOCK_METHOD(
-        void,
+        cm::store::dataType::Policy,
         importNamespace,
         (const cm::store::NamespaceId& nsId, std::string_view jsonDocument, std::string_view origin, bool force),
         (override));

@@ -20,10 +20,12 @@ namespace base::utils
 /**
  * @brief Execute an operation with retry logic
  *
+ * This function attempts to execute the provided operation and retries it if an exception is thrown. It logs each
+ * attempt and waits for a specified duration between retries.
  * @tparam Func Callable type that performs the operation
  * @param operation The operation to execute
- * @param operationName Name of the operation for logging purposes
- * @param componentName Name of the component for logging purposes
+ * @param componentOperationName Name of the component operation for logging purposes
+ * @param message Description of the operation for logging purposes
  * @param maxAttempts Maximum number of retry attempts
  * @param waitSeconds Seconds to wait between retries
  * @return decltype(auto) Result of the operation
@@ -31,8 +33,8 @@ namespace base::utils
  */
 template<typename Func>
 decltype(auto) executeWithRetry(Func&& operation,
-                                std::string_view operationName,
-                                std::string_view componentName,
+                                const std::string& componentOperationName,
+                                std::string_view message,
                                 std::size_t maxAttempts,
                                 std::size_t waitSeconds)
 {
@@ -44,10 +46,10 @@ decltype(auto) executeWithRetry(Func&& operation,
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING_L(operationName.data(),
-                          "[{}::{}] Attempt {}/{}: {}",
-                          componentName,
-                          operationName,
+            LOG_WARNING_L(componentOperationName.c_str(),
+                          "[{}] {} - Attempt {}/{}: {}",
+                          componentOperationName,
+                          message,
                           attempt,
                           maxAttempts,
                           e.what());
@@ -58,12 +60,12 @@ decltype(auto) executeWithRetry(Func&& operation,
             else
             {
                 throw std::runtime_error(fmt::format(
-                    "{}::{} failed after {} attempts: {}", componentName, operationName, maxAttempts, e.what()));
+                    "{}::{} failed after {} attempts: {}", message, componentOperationName, maxAttempts, e.what()));
             }
         }
     }
 
-    throw std::runtime_error(fmt::format("Unreachable code in {}::{}", componentName, operationName));
+    throw std::runtime_error(fmt::format("Unreachable code in {}::{}", message, componentOperationName));
 }
 
 /**
