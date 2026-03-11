@@ -830,7 +830,11 @@ INSTANTIATE_TEST_SUITE_P(
                              {"550e8400-e29b-41d4-a716-446655440001"},
                              {},
                              {},
-                             {}),
+                             {},
+                             "UNDEFINED",
+                             "",
+                             false,
+                             false),
             SUCCESS(SuccessExpected::Behaviour {
                 [](const auto& reader, const auto& buildCtx)
                 {
@@ -868,7 +872,11 @@ INSTANTIATE_TEST_SUITE_P(
                              {"550e8400-e29b-41d4-a716-446655440002"},
                              {},
                              {},
-                             {}),
+                             {},
+                             "UNDEFINED",
+                             "",
+                             false,
+                             false),
             FAILURE(FailureExpected::Behaviour {
                 [](const auto& reader, const auto& buildCtx)
                 {
@@ -905,7 +913,11 @@ INSTANTIATE_TEST_SUITE_P(
                                       {"550e8400-e29b-41d4-a716-446655440003"},
                                       {},
                                       {},
-                                      {}),
+                                      {},
+                                      "UNDEFINED",
+                                      "",
+                                      false,
+                                      false),
                      SUCCESS(SuccessExpected::Behaviour {
                          [](const auto& reader, const auto& buildCtx)
                          {
@@ -934,7 +946,11 @@ INSTANTIATE_TEST_SUITE_P(
                                       {"550e8400-e29b-41d4-a716-446655440004"},
                                       {},
                                       {},
-                                      {}),
+                                      {},
+                                      "UNDEFINED",
+                                      "",
+                                      false,
+                                      false),
                      FAILURE(FailureExpected::Behaviour {
                          [](const auto& reader, const auto& buildCtx)
                          {
@@ -1701,7 +1717,11 @@ INSTANTIATE_TEST_SUITE_P(
                                         {"550e8400-e29b-41d4-a716-446655440101"}, // integration UUID
                                         {},
                                         {},
-                                        {}),
+                                        {},
+                                        "UNDEFINED",
+                                        "",
+                                        false,
+                                        false),
             SUCCESS(SuccessExpected::Behaviour {
                 [](const auto& reader, const auto&)
                 {
@@ -1752,7 +1772,11 @@ INSTANTIATE_TEST_SUITE_P(
                                                   "550e8400-e29b-41d4-a716-446655440112"},
                                                  {},
                                                  {},
-                                                 {}),
+                                                 {},
+                                                 "UNDEFINED",
+                                                 "",
+                                                 false,
+                                                 false),
                      SUCCESS(SuccessExpected::Behaviour {
                          [](const auto& reader, const auto&)
                          {
@@ -1805,7 +1829,11 @@ INSTANTIATE_TEST_SUITE_P(
                                                  {"550e8400-e29b-41d4-a716-446655440121"},
                                                  {},
                                                  {},
-                                                 {}),
+                                                 {},
+                                                 "UNDEFINED",
+                                                 "",
+                                                 false,
+                                                 false),
                      SUCCESS(SuccessExpected::Behaviour {
                          [](const auto& reader, const auto&)
                          {

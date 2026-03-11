@@ -72,6 +72,10 @@ type: policy
 enabled: true
 title: Development 0.0.1
 hash: "router-test-hash"
+enrichments: []
+filters: []
+index_unclassified_events: false
+index_discarded_events: false
 default_parent: {default_parent}
 root_decoder: {root_decoder}
 integrations:

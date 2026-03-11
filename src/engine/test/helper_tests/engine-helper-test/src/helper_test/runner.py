@@ -479,6 +479,10 @@ type: policy
 enabled: true
 title: Helpers Testing Policy
 hash: "helpers-test-hash"
+enrichments: []
+filters: []
+index_unclassified_events: false
+index_discarded_events: false
 default_parent: {HELPERS_DECODER_UUID}
 root_decoder: {HELPERS_DECODER_UUID}
 integrations:

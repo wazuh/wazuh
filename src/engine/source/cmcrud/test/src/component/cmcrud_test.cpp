@@ -43,6 +43,10 @@ integrations:
   - "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
   - "f61133f5-90b9-49ed-b1d5-0b88cb04355e"
   - "369c3128-9715-4a30-9ff9-22fcac87688b"
+filters: []
+enrichments: []
+index_unclassified_events: false
+index_discarded_events: false
 )";
 
 static constexpr const char* kIntegrationYAML = R"(

@@ -76,7 +76,11 @@ INSTANTIATE_TEST_SUITE_P(
                                                      {"550e8400-e29b-41d4-a716-446655440001"},
                                                      {},
                                                      {},
-                                                     {});
+                                                     {},
+                                                     "UNDEFINED",
+                                                     "",
+                                                     false,
+                                                     false);
                       auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
                                                                "test-integration",
                                                                true,
@@ -126,7 +130,11 @@ INSTANTIATE_TEST_SUITE_P(
                                                       "550e8400-e29b-41d4-a716-446655440005"}, // enabled
                                                      {},
                                                      {},
-                                                     {});
+                                                     {},
+                                                     "UNDEFINED",
+                                                     "",
+                                                     false,
+                                                     false);
                       auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
                                                                "disabled-integration",
                                                                false,
@@ -176,7 +184,11 @@ INSTANTIATE_TEST_SUITE_P(
                           {"550e8400-e29b-41d4-a716-446655440001", "550e8400-e29b-41d4-a716-446655440005"},
                           {},
                           {},
-                          {});
+                          {},
+                          "UNDEFINED",
+                          "",
+                          false,
+                          false);
                       auto integration1 =
                           dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
                                                 "integration-one",
@@ -367,7 +379,11 @@ TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
                                    {"550e8400-e29b-41d4-a716-446655440001"}, // integrations (valid UUIDv4)
                                    {},                                       // filters
                                    {},                                       // enrichments
-                                   {}                                        // outputs
+                                   {},                                       // outputs
+                                   "UNDEFINED",                             // originSpace
+                                   "",                                       // hash
+                                   false,                                    // indexUnclassifiedEvents
+                                   false                                     // indexDiscardedEvents
     );
 
     // Create a simple integration
@@ -457,7 +473,11 @@ TEST_F(BuildPolicyTest, BuildPolicyWithDisabledIntegration)
                                     "550e8400-e29b-41d4-a716-446655440005"}, // enabled integration
                                    {},
                                    {},
-                                   {});
+                                   {},
+                                   "UNDEFINED",
+                                   "",
+                                   false,
+                                   false);
 
     // Create a disabled integration
     auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
@@ -771,7 +791,11 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithMultipleIntegrations)
                                    {"550e8400-e29b-41d4-a716-446655440001", "550e8400-e29b-41d4-a716-446655440005"},
                                    {},
                                    {},
-                                   {});
+                                   {},
+                                   "UNDEFINED",
+                                   "",
+                                   false,
+                                   false);
 
     // First integration
     auto integration1 = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
@@ -861,7 +885,11 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithKVDB)
                                    {"550e8400-e29b-41d4-a716-446655440001"},
                                    {},
                                    {},
-                                   {});
+                                   {},
+                                   "UNDEFINED",
+                                   "",
+                                   false,
+                                   false);
 
     // Integration with KVDB
     auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
@@ -941,7 +969,11 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithOutputs)
                                    {"550e8400-e29b-41d4-a716-446655440001"},
                                    {},
                                    {},
-                                   {});
+                                   {},
+                                   "UNDEFINED",
+                                   "",
+                                   false,
+                                   false);
 
     // Integration with outputs
     auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",

@@ -262,6 +262,10 @@ hash: "crud-cm-test-hash"
 root_decoder: "00000000-0000-0000-0000-000000000001"
 integrations:
   - "dummy-integration-uuid"
+enrichments: []
+filters: []
+index_unclassified_events: false
+index_discarded_events: false
 """
 
 
@@ -274,6 +278,10 @@ title: bar
 enabled: true
 hash: "crud-cm-test-hash"
 root_decoder: "00000000-0000-0000-0000-000000000001"
+enrichments: []
+filters: []
+index_unclassified_events: false
+index_discarded_events: false
 """
 
 
@@ -287,6 +295,10 @@ enabled: true
 hash: "crud-cm-test-hash"
 root_decoder: "00000000-0000-0000-0000-000000000001"
 integrations: []
+enrichments: []
+filters: []
+index_unclassified_events: false
+index_discarded_events: false
 """
 
 
@@ -314,6 +326,10 @@ default_parent: {default_parent}
 root_decoder: {root_decoder}
 integrations:
   - "{integration_uuid}"
+enrichments: []
+filters: []
+index_unclassified_events: false
+index_discarded_events: false
 """
 
 
@@ -338,6 +354,10 @@ def build_integration_yaml_for_policy(name: str,
 id: {integ_uuid}
 title: {name}
 enabled: true
+enrichments: []
+filters: []
+index_unclassified_events: false
+index_discarded_events: false
 category: other
 default_parent: {default_parent}
 decoders:
