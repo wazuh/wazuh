@@ -5,10 +5,10 @@
 #include <base/logging.hpp>
 #include <base/name.hpp>
 #include <base/utils/metaHelpers.hpp>
-#include <remoteconf/remoteconfmanager.hpp>
+#include <confremote/confremotemanager.hpp>
 #include <store/istore.hpp>
 
-namespace remoteconf
+namespace confremote
 {
 
 namespace
@@ -16,7 +16,7 @@ namespace
 const base::Name REMOTE_CONF_CACHE_DOC {"remote-config/engine-cnf/0"};
 }
 
-RemoteConfManager::RemoteConfManager(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerConnector,
+ConfRemoteManager::ConfRemoteManager(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerConnector,
                                      const std::shared_ptr<store::IStore>& store)
     : m_indexerConnector(indexerConnector)
     , m_store(store)
@@ -29,7 +29,7 @@ RemoteConfManager::RemoteConfManager(const std::shared_ptr<wiconnector::IWIndexe
     }
 }
 
-void RemoteConfManager::synchronize()
+void ConfRemoteManager::synchronize()
 {
     json::Json remoteSettings;
 
@@ -38,7 +38,7 @@ void RemoteConfManager::synchronize()
         auto connector = base::utils::lockWeakPtr(m_indexerConnector, "IndexerConnector");
         remoteSettings = base::utils::executeWithRetry([&connector]() { return connector->getEngineRemoteConfig(); },
                                                        "synchronize",
-                                                       "RemoteConfManager",
+                                                       "ConfRemoteManager",
                                                        m_attempts,
                                                        m_waitSeconds);
     }
@@ -105,7 +105,7 @@ void RemoteConfManager::synchronize()
     }
 }
 
-json::Json RemoteConfManager::addTrigger(std::string_view key,
+json::Json ConfRemoteManager::addTrigger(std::string_view key,
                                          std::function<bool(const json::Json&)> onConfigChange,
                                          const json::Json& defaultValue)
 {
@@ -117,7 +117,7 @@ json::Json RemoteConfManager::addTrigger(std::string_view key,
     return setting.lastConfig.has_value() ? setting.lastConfig.value() : defaultValue;
 }
 
-void RemoteConfManager::loadSettingsFromStore()
+void ConfRemoteManager::loadSettingsFromStore()
 {
     const auto docResp = m_store.lock()->readDoc(REMOTE_CONF_CACHE_DOC);
     if (base::isError(docResp))
@@ -144,7 +144,7 @@ void RemoteConfManager::loadSettingsFromStore()
     }
 }
 
-void RemoteConfManager::saveSettingsToStore() const
+void ConfRemoteManager::saveSettingsToStore() const
 {
     json::Json persisted;
     persisted.setObject();
@@ -166,4 +166,4 @@ void RemoteConfManager::saveSettingsToStore() const
     }
 }
 
-} // namespace remoteconf
+} // namespace confremote

@@ -294,10 +294,10 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/fastqueue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wiconnector)
-add_subdirectory(${ENGINE_SOURCE_DIR}/remoteconf)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmstore)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmcrud)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmsync)
+add_subdirectory(${ENGINE_SOURCE_DIR}/confremote)
 add_subdirectory(${ENGINE_SOURCE_DIR}/rawevtindexer)
 
 target_link_libraries(wazuh-engine
@@ -330,7 +330,7 @@ target_link_libraries(wazuh-engine
     cmcrud::cmcrud
     cmsync::cmsync
     rawevtindexer::rawevtindexer
-    remoteconf::remoteconf
+    confremote::confremote
 )
 
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries

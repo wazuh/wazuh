@@ -5,7 +5,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <remoteconf/remoteconfmanager.hpp>
+#include <confremote/confremotemanager.hpp>
 #include <store/mockStore.hpp>
 #include <wiconnector/mockswindexerconnector.hpp>
 
@@ -53,18 +53,18 @@ std::shared_ptr<StrictMock<store::mocks::MockStore>> makeCachedStore(std::string
 
 } // namespace
 
-TEST(RemoteConfManagerUnitTest, CanConstructWithStoreAndNullConnector)
+TEST(ConfRemoteManagerUnitTest, CanConstructWithStoreAndNullConnector)
 {
     auto store = makeEmptyStore();
     std::shared_ptr<wiconnector::IWIndexerConnector> connector;
-    EXPECT_NO_THROW((remoteconf::RemoteConfManager {connector, store}));
+    EXPECT_NO_THROW((confremote::ConfRemoteManager {connector, store}));
 }
 
-TEST(RemoteConfManagerUnitTest, AddTriggerReturnsDefaultWhenStoreIsEmpty)
+TEST(ConfRemoteManagerUnitTest, AddTriggerReturnsDefaultWhenStoreIsEmpty)
 {
     auto store = makeEmptyStore();
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
-    remoteconf::RemoteConfManager manager(connector, store);
+    confremote::ConfRemoteManager manager(connector, store);
 
     const json::Json defaultVal("false");
     const auto result = manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) { return true; }, defaultVal);
@@ -72,11 +72,11 @@ TEST(RemoteConfManagerUnitTest, AddTriggerReturnsDefaultWhenStoreIsEmpty)
     EXPECT_EQ(result, defaultVal);
 }
 
-TEST(RemoteConfManagerUnitTest, AddTriggerReturnsPersistedValueWhenStoreHasCache)
+TEST(ConfRemoteManagerUnitTest, AddTriggerReturnsPersistedValueWhenStoreHasCache)
 {
     auto store = makeCachedStore(REMOTE_INDEX_RAW_EVENTS, json::Json("true"));
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
-    remoteconf::RemoteConfManager manager(connector, store);
+    confremote::ConfRemoteManager manager(connector, store);
 
     const auto result =
         manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) { return true; }, json::Json("false"));
@@ -84,7 +84,7 @@ TEST(RemoteConfManagerUnitTest, AddTriggerReturnsPersistedValueWhenStoreHasCache
     EXPECT_EQ(result, json::Json("true"));
 }
 
-TEST(RemoteConfManagerUnitTest, SynchronizeSkipsCallbackWhenValueDoesNotChange)
+TEST(ConfRemoteManagerUnitTest, SynchronizeSkipsCallbackWhenValueDoesNotChange)
 {
     // lastConfig loaded from store = false; remote also returns false -> no callback, no persist
     auto store = makeCachedStore(REMOTE_INDEX_RAW_EVENTS, json::Json(R"(false)"));
@@ -92,7 +92,7 @@ TEST(RemoteConfManagerUnitTest, SynchronizeSkipsCallbackWhenValueDoesNotChange)
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
     EXPECT_CALL(*connector, getEngineRemoteConfig()).WillOnce(Return(remoteWith(false)));
 
-    remoteconf::RemoteConfManager manager(connector, store);
+    confremote::ConfRemoteManager manager(connector, store);
 
     int calls = 0;
     manager.addTrigger(
@@ -109,7 +109,7 @@ TEST(RemoteConfManagerUnitTest, SynchronizeSkipsCallbackWhenValueDoesNotChange)
     EXPECT_EQ(calls, 0);
 }
 
-TEST(RemoteConfManagerUnitTest, SynchronizeNotifiesWhenValueChanges)
+TEST(ConfRemoteManagerUnitTest, SynchronizeNotifiesWhenValueChanges)
 {
     // lastConfig = false from store; remote returns true -> callback called, value persisted
     auto store = makeCachedStore(REMOTE_INDEX_RAW_EVENTS, json::Json(R"(false)"));
@@ -118,7 +118,7 @@ TEST(RemoteConfManagerUnitTest, SynchronizeNotifiesWhenValueChanges)
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
     EXPECT_CALL(*connector, getEngineRemoteConfig()).WillOnce(Return(remoteWith(true)));
 
-    remoteconf::RemoteConfManager manager(connector, store);
+    confremote::ConfRemoteManager manager(connector, store);
 
     bool captured = false;
     manager.addTrigger(
@@ -136,7 +136,7 @@ TEST(RemoteConfManagerUnitTest, SynchronizeNotifiesWhenValueChanges)
     EXPECT_TRUE(captured);
 }
 
-TEST(RemoteConfManagerUnitTest, RejectedCallbackDoesNotCommitValue)
+TEST(ConfRemoteManagerUnitTest, RejectedCallbackDoesNotCommitValue)
 {
     auto store = makeEmptyStore();
     // No upsertDoc expected: callback rejects -> no state change
@@ -144,7 +144,7 @@ TEST(RemoteConfManagerUnitTest, RejectedCallbackDoesNotCommitValue)
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
     EXPECT_CALL(*connector, getEngineRemoteConfig()).WillOnce(Return(remoteWith(true)));
 
-    remoteconf::RemoteConfManager manager(connector, store);
+    confremote::ConfRemoteManager manager(connector, store);
 
     int calls = 0;
     manager.addTrigger(
@@ -161,7 +161,7 @@ TEST(RemoteConfManagerUnitTest, RejectedCallbackDoesNotCommitValue)
     EXPECT_EQ(calls, 1);
 }
 
-TEST(RemoteConfManagerUnitTest, SynchronizeCallbackRejectsWrongTypeAndPreservesCurrentState)
+TEST(ConfRemoteManagerUnitTest, SynchronizeCallbackRejectsWrongTypeAndPreservesCurrentState)
 {
     auto store = makeEmptyStore();
     EXPECT_CALL(*store, upsertDoc(_, _)).WillOnce(Return(store::mocks::storeOk())); // first sync only
@@ -173,7 +173,7 @@ TEST(RemoteConfManagerUnitTest, SynchronizeCallbackRejectsWrongTypeAndPreservesC
         EXPECT_CALL(*connector, getEngineRemoteConfig()).WillOnce(Return(remoteWithStringValue()));
     }
 
-    remoteconf::RemoteConfManager manager(connector, store);
+    confremote::ConfRemoteManager manager(connector, store);
 
     std::vector<bool> accepted;
     manager.addTrigger(
@@ -194,7 +194,7 @@ TEST(RemoteConfManagerUnitTest, SynchronizeCallbackRejectsWrongTypeAndPreservesC
     EXPECT_FALSE(accepted[1]);
 }
 
-TEST(RemoteConfManagerUnitTest, SynchronizeWithFetchFailureKeepsCurrentState)
+TEST(ConfRemoteManagerUnitTest, SynchronizeWithFetchFailureKeepsCurrentState)
 {
     auto store = makeEmptyStore();
     // No upsertDoc expected: fetch fails -> no change
@@ -202,7 +202,7 @@ TEST(RemoteConfManagerUnitTest, SynchronizeWithFetchFailureKeepsCurrentState)
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
     EXPECT_CALL(*connector, getEngineRemoteConfig()).WillRepeatedly(Throw(std::runtime_error("network down")));
 
-    remoteconf::RemoteConfManager manager(connector, store);
+    confremote::ConfRemoteManager manager(connector, store);
 
     int calls = 0;
     manager.addTrigger(
@@ -218,7 +218,7 @@ TEST(RemoteConfManagerUnitTest, SynchronizeWithFetchFailureKeepsCurrentState)
     EXPECT_EQ(calls, 0);
 }
 
-TEST(RemoteConfManagerUnitTest, SynchronizeIgnoresUnregisteredKeys)
+TEST(ConfRemoteManagerUnitTest, SynchronizeIgnoresUnregisteredKeys)
 {
     auto store = makeEmptyStore();
     // No upsertDoc expected: key not registered -> nothing applied
@@ -226,13 +226,13 @@ TEST(RemoteConfManagerUnitTest, SynchronizeIgnoresUnregisteredKeys)
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
     EXPECT_CALL(*connector, getEngineRemoteConfig()).WillOnce(Return(remoteWith(true)));
 
-    remoteconf::RemoteConfManager manager(connector, store);
+    confremote::ConfRemoteManager manager(connector, store);
     // No addTrigger call
 
     EXPECT_NO_THROW(manager.synchronize());
 }
 
-TEST(RemoteConfManagerUnitTest, SynchronizeIgnoresCachedKeysWithoutRegisteredCallback)
+TEST(ConfRemoteManagerUnitTest, SynchronizeIgnoresCachedKeysWithoutRegisteredCallback)
 {
     // Store has persisted data from a previous session but no addTrigger is registered
     auto store = makeCachedStore(REMOTE_INDEX_RAW_EVENTS, json::Json("true"));
@@ -241,22 +241,22 @@ TEST(RemoteConfManagerUnitTest, SynchronizeIgnoresCachedKeysWithoutRegisteredCal
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
     EXPECT_CALL(*connector, getEngineRemoteConfig()).WillOnce(Return(remoteWith(true)));
 
-    remoteconf::RemoteConfManager manager(connector, store);
+    confremote::ConfRemoteManager manager(connector, store);
     // No addTrigger call — key loaded from store but no callback registered
 
     EXPECT_NO_THROW(manager.synchronize());
 }
 
-TEST(RemoteConfManagerUnitTest, SynchronizeWithNullConnectorDoesNotThrow)
+TEST(ConfRemoteManagerUnitTest, SynchronizeWithNullConnectorDoesNotThrow)
 {
     auto store = makeEmptyStore();
     std::shared_ptr<wiconnector::IWIndexerConnector> connector;
-    remoteconf::RemoteConfManager manager(connector, store);
+    confremote::ConfRemoteManager manager(connector, store);
 
     EXPECT_NO_THROW(manager.synchronize());
 }
 
-TEST(RemoteConfManagerUnitTest, SynchronizeRemovedKeyKeepsCurrentState)
+TEST(ConfRemoteManagerUnitTest, SynchronizeRemovedKeyKeepsCurrentState)
 {
     auto store = makeEmptyStore();
     EXPECT_CALL(*store, upsertDoc(_, _)).WillOnce(Return(store::mocks::storeOk()));
@@ -268,7 +268,7 @@ TEST(RemoteConfManagerUnitTest, SynchronizeRemovedKeyKeepsCurrentState)
         EXPECT_CALL(*connector, getEngineRemoteConfig()).WillOnce(Return(emptyRemote()));
     }
 
-    remoteconf::RemoteConfManager manager(connector, store);
+    confremote::ConfRemoteManager manager(connector, store);
 
     std::vector<bool> values;
     manager.addTrigger(
@@ -289,7 +289,7 @@ TEST(RemoteConfManagerUnitTest, SynchronizeRemovedKeyKeepsCurrentState)
     EXPECT_TRUE(values[0]);
 }
 
-TEST(RemoteConfManagerUnitTest, AddTriggerAfterFirstSynchronizeIsAppliedOnNextSynchronize)
+TEST(ConfRemoteManagerUnitTest, AddTriggerAfterFirstSynchronizeIsAppliedOnNextSynchronize)
 {
     auto store = makeEmptyStore();
     EXPECT_CALL(*store, upsertDoc(_, _)).WillOnce(Return(store::mocks::storeOk()));
@@ -301,7 +301,7 @@ TEST(RemoteConfManagerUnitTest, AddTriggerAfterFirstSynchronizeIsAppliedOnNextSy
         EXPECT_CALL(*connector, getEngineRemoteConfig()).WillOnce(Return(remoteWith(true)));
     }
 
-    remoteconf::RemoteConfManager manager(connector, store);
+    confremote::ConfRemoteManager manager(connector, store);
     manager.synchronize(); // trigger not yet registered -> key ignored
 
     int calls = 0;

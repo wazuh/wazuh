@@ -6,7 +6,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <remoteconf/remoteconfmanager.hpp>
+#include <confremote/confremotemanager.hpp>
 #include <store/mockStore.hpp>
 #include <wiconnector/mockswindexerconnector.hpp>
 
@@ -21,7 +21,7 @@ constexpr std::string_view REMOTE_INDEX_RAW_EVENTS = "index_raw_events";
 
 } // namespace
 
-TEST(RemoteConfRefreshComponentTest, SynchronizePropagatesChangedValue)
+TEST(ConfRemoteRefreshComponentTest, SynchronizePropagatesChangedValue)
 {
     auto store = std::make_shared<StrictMock<store::mocks::MockStore>>();
     EXPECT_CALL(*store, existsDoc(_)).WillOnce(Return(false));
@@ -34,7 +34,7 @@ TEST(RemoteConfRefreshComponentTest, SynchronizePropagatesChangedValue)
         EXPECT_CALL(*connector, getEngineRemoteConfig()).WillOnce(Return(json::Json(R"({"index_raw_events":true})")));
     }
 
-    remoteconf::RemoteConfManager manager(connector, store);
+    confremote::ConfRemoteManager manager(connector, store);
 
     std::vector<bool> received;
     manager.addTrigger(
@@ -59,7 +59,7 @@ TEST(RemoteConfRefreshComponentTest, SynchronizePropagatesChangedValue)
     EXPECT_TRUE(received[1]);
 }
 
-TEST(RemoteConfRefreshComponentTest, PersistedValueIsReturnedByAddTriggerOnRecreation)
+TEST(ConfRemoteRefreshComponentTest, PersistedValueIsReturnedByAddTriggerOnRecreation)
 {
     // First manager: synchronize applies a value, which is persisted via upsertDoc
     std::optional<json::Json> capturedDoc;
@@ -78,7 +78,7 @@ TEST(RemoteConfRefreshComponentTest, PersistedValueIsReturnedByAddTriggerOnRecre
     EXPECT_CALL(*connector, getEngineRemoteConfig()).WillOnce(Return(json::Json(R"({"index_raw_events":true})")));
 
     {
-        remoteconf::RemoteConfManager manager(connector, store1);
+        confremote::ConfRemoteManager manager(connector, store1);
         manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) { return true; }, json::Json("false"));
         manager.synchronize();
     }
@@ -91,7 +91,7 @@ TEST(RemoteConfRefreshComponentTest, PersistedValueIsReturnedByAddTriggerOnRecre
     EXPECT_CALL(*store2, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(capturedDoc.value())));
 
     std::shared_ptr<wiconnector::IWIndexerConnector> nullConnector;
-    remoteconf::RemoteConfManager manager2(nullConnector, store2);
+    confremote::ConfRemoteManager manager2(nullConnector, store2);
 
     const auto result =
         manager2.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) { return true; }, json::Json("false"));

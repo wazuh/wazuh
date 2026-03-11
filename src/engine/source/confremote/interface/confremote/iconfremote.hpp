@@ -1,18 +1,18 @@
-#ifndef REMOTECONF_IREMOTECONF_HPP
-#define REMOTECONF_IREMOTECONF_HPP
+#ifndef CONFREMOTE_ICONFREMOTE_HPP
+#define CONFREMOTE_ICONFREMOTE_HPP
 
 #include <functional>
 #include <string_view>
 
 #include <base/json.hpp>
 
-namespace remoteconf
+namespace confremote
 {
 
-class IRemoteConf
+class IConfRemote
 {
 public:
-    virtual ~IRemoteConf() = default;
+    virtual ~IConfRemote() = default;
 
     /**
      * @brief Synchronizes runtime settings from wazuh-indexer.
@@ -37,6 +37,6 @@ public:
                                   const json::Json& defaultValue) = 0;
 };
 
-} // namespace remoteconf
+} // namespace confremote
 
-#endif // REMOTECONF_IREMOTECONF_HPP
+#endif // CONFREMOTE_ICONFREMOTE_HPP

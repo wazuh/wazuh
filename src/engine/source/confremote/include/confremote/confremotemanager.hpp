@@ -1,5 +1,5 @@
-#ifndef REMOTECONF_REMOTECONFMANAGER_HPP
-#define REMOTECONF_REMOTECONFMANAGER_HPP
+#ifndef CONFREMOTE_CONFREMOTEMANAGER_HPP
+#define CONFREMOTE_CONFREMOTEMANAGER_HPP
 
 #include <functional>
 #include <memory>
@@ -10,11 +10,11 @@
 #include <unordered_map>
 
 #include <base/json.hpp>
-#include <remoteconf/iremoteconf.hpp>
+#include <confremote/iconfremote.hpp>
 #include <store/istore.hpp>
 #include <wiconnector/iwindexerconnector.hpp>
 
-namespace remoteconf
+namespace confremote
 {
 
 /**
@@ -25,7 +25,7 @@ namespace remoteconf
  * current settings from wazuh-indexer, applies accepted changes through the
  * registered callbacks, and persists successful updates to store.
  */
-class RemoteConfManager final : public IRemoteConf
+class ConfRemoteManager final : public IConfRemote
 {
 public:
     /**
@@ -34,7 +34,7 @@ public:
      * Loads the last persisted runtime settings from store, registers per-key
      * callbacks, and synchronizes updated values from wazuh-indexer.
      */
-    explicit RemoteConfManager(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerConnector,
+    explicit ConfRemoteManager(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerConnector,
                                const std::shared_ptr<store::IStore>& store);
 
     /**
@@ -78,6 +78,6 @@ private:
     std::size_t m_waitSeconds;
 };
 
-} // namespace remoteconf
+} // namespace confremote
 
-#endif // REMOTECONF_REMOTECONFMANAGER_HPP
+#endif // CONFREMOTE_CONFREMOTEMANAGER_HPP

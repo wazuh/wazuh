@@ -39,7 +39,7 @@
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
 #include <rawevtindexer/raweventindexer.hpp>
-#include <remoteconf/remoteconfmanager.hpp>
+#include <confremote/confremotemanager.hpp>
 #include <router/orchestrator.hpp>
 #include <scheduler/scheduler.hpp>
 #include <schemf/schema.hpp>
@@ -231,7 +231,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
     std::shared_ptr<raweventindexer::RawEventIndexer> rawEventIndexer;
-    std::shared_ptr<remoteconf::RemoteConfManager> remoteConf;
+    std::shared_ptr<confremote::ConfRemoteManager> remoteConf;
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
     std::shared_ptr<cm::store::CMStore> cmStore;
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
@@ -610,7 +610,7 @@ int main(int argc, char* argv[])
 
         // Remote runtime settings sync
         {
-            remoteConf = std::make_shared<remoteconf::RemoteConfManager>(indexerConnector, store);
+            remoteConf = std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store);
 
             const auto remoteConfSyncInterval = confManager.get<std::size_t>(conf::key::REMOTE_CONF_SYNC_INTERVAL);
             scheduler->scheduleTask("remote-conf-sync",
