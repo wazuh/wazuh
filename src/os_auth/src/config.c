@@ -16,9 +16,6 @@
 // Read configuration
 int authd_read_config(const char *path) {
     config.port = DEFAULT_PORT;
-    config.key_request.compatibility_flag = 0;
-    config.key_request.exec_path = NULL;
-    config.key_request.socket = NULL;
     config.allow_higher_versions = AUTHD_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
 
     mdebug2("Reading configuration '%s'", path);
@@ -50,7 +47,6 @@ cJSON *getAuthdConfig(void) {
 
     cJSON *root = cJSON_CreateObject();
     cJSON *auth = cJSON_CreateObject();
-    cJSON *key_request = cJSON_CreateObject();
     cJSON *force = cJSON_CreateObject();
     cJSON *disconnected_time = cJSON_CreateObject();
 
@@ -67,13 +63,6 @@ cJSON *getAuthdConfig(void) {
     if (config.agent_ca) cJSON_AddStringToObject(auth,"ssl_agent_ca",config.agent_ca);
     if (config.manager_cert) cJSON_AddStringToObject(auth,"ssl_manager_cert",config.manager_cert);
     if (config.manager_key) cJSON_AddStringToObject(auth,"ssl_manager_key",config.manager_key);
-    if (config.key_request.enabled) cJSON_AddStringToObject(key_request, "enabled", "yes"); else cJSON_AddStringToObject(key_request, "enabled", "no");
-    if (config.key_request.exec_path) cJSON_AddStringToObject(key_request, "exec_path", config.key_request.exec_path);
-    if (config.key_request.socket) cJSON_AddStringToObject(key_request, "socket", config.key_request.socket);
-    if (config.key_request.timeout) cJSON_AddNumberToObject(key_request, "timeout", config.key_request.timeout);
-    if (config.key_request.threads) cJSON_AddNumberToObject(key_request, "threads", config.key_request.threads);
-    if (config.key_request.queue_size) cJSON_AddNumberToObject(key_request, "queue_size", config.key_request.queue_size);
-    cJSON_AddItemToObject(auth, "key_request", key_request);
 
     if (config.force_options.enabled) cJSON_AddStringToObject(force, "enabled", "yes"); else cJSON_AddStringToObject(force, "enabled", "no");
     if (config.force_options.key_mismatch) cJSON_AddStringToObject(force, "key_mismatch", "yes"); else cJSON_AddStringToObject(force, "key_mismatch", "no");

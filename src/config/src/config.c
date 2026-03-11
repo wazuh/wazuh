@@ -48,9 +48,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #ifndef WIN32
     const char *anti_tampering = "anti_tampering";              /* Agent anti tampering Config */
     const char *osauthd = "auth";                               /* Authd Config */
-#ifndef CLIENT
-    const char *key_polling = "agent-key-polling";              /* Deprecated Agent Key Polling module */
-#endif
 #endif
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
     const char *github = "github";                      /* GitHub Module */
@@ -128,14 +125,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
                 goto fail;
             }
-#ifndef CLIENT
-            else if ((node[i]->attributes[0] && !strcmp(node[i]->attributes[0], "name")) &&
-                     (node[i]->values[0] && !strcmp(node[i]->values[0], key_polling))) {
-                if ((modules & CAUTHD) && (authd_read_key_request(chld_node, d1) < 0)) {
-                    goto fail;
-                }
-            }
-#endif
         } else if (strcmp(node[i]->element, ossca) == 0) {
             if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1) < 0)) {
                 goto fail;

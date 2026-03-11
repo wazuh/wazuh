@@ -119,9 +119,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 // Authd local socket
 #define AUTH_LOCAL_SOCK "queue/sockets/auth"
 
-// Key request socket
-#define KEY_REQUEST_SOCK "queue/sockets/krequest"
-
 // Local requests socket
 #define COM_LOCAL_SOCK     "queue/sockets/com"
 #define AG_LOCAL_SOCK      "queue/sockets/agent"
