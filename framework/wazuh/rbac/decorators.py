@@ -9,6 +9,7 @@ from functools import wraps
 
 from wazuh.core.agent import get_agents_info, get_groups, expand_group
 from wazuh.core.common import rbac, broadcast, cluster_nodes
+from wazuh.core.decorators import dapi_allower
 from wazuh.core.exception import WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.utils import expand_rules, expand_lists, expand_decoders
@@ -427,21 +428,6 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
             result.remove_failed_items(post_proc_kwargs['exclude_codes'])
 
     return result
-
-def dapi_allower(func: callable):
-    """Decorator to allow execution of a function through the distributed Wazuh API.
-
-    Parameters
-    ----------
-    func : callable
-        Function to be decorated.
-    """
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        return func(*args, **kwargs)
-
-    wrapper.__wazuh_exposed__ = True
-    return wrapper
 
 
 @dapi_allower

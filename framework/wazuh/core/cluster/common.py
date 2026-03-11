@@ -1854,9 +1854,11 @@ def as_wazuh_object(dct: Dict):
                 # Check the underlying function for methods
                 underlying_func = getattr(func, '__func__', func)
                 if not getattr(underlying_func, '__wazuh_exposed__', False):
-                    raise exception.WazuhInternalError(1000,
-                                                       extra_message=f"Method '{funcname}' is not exposed with @expose_resources decorator",
-                                                       cmd_error=True)
+                    raise exception.WazuhInternalError(
+                        1000,
+                        extra_message=f"Method '{funcname}' is not exposed with @dapi_allower decorator",
+                        cmd_error=True
+                    )
                 return func
             else:
                 # Encoded function or static method.
@@ -1866,9 +1868,11 @@ def as_wazuh_object(dct: Dict):
 
                 package_name = module_path.split('.')[0]
                 if package_name not in ALLOWED_CALLABLES_PACKAGES:
-                    raise exception.WazuhInternalError(1000,
-                                                       extra_message=f"Decoding callable from module '{module_path}' is not allowed",
-                                                       cmd_error=True)
+                    raise exception.WazuhInternalError(
+                        1000,
+                        extra_message=f"Decoding callable from module '{module_path}' is not allowed",
+                        cmd_error=True
+                    )
 
                 relative_mod = module_path.removeprefix(package_name)
                 module = import_module(relative_mod, package=package_name)
@@ -1883,12 +1887,14 @@ def as_wazuh_object(dct: Dict):
                 # For methods, check the underlying function via __func__
                 underlying_func = getattr(func, '__func__', func)
                 if not getattr(underlying_func, '__wazuh_exposed__', False):
-                    raise exception.WazuhInternalError(1000,
-                                                       extra_message=f"Function '{funcname}' from module '{module_path}' is not exposed with @expose_resources decorator",
-                                                       cmd_error=True)
+                    raise exception.WazuhInternalError(
+                        1000,
+                        extra_message=f"Function '{funcname}' from module '{module_path}' is not exposed with @dapi_allower decorator",
+                        cmd_error=True
+                    )
 
                 return func
-        
+
         elif '__wazuh_exception__' in dct:
             wazuh_exception = dct['__wazuh_exception__']
             return getattr(exception, wazuh_exception['__class__']).from_dict(wazuh_exception['__object__'])
