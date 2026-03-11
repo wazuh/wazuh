@@ -23,7 +23,7 @@ integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
 
 def _expand_resource(resource: str) -> set:
     """Expand a specified resource depending on its type.
-    
+
     Parameters
     ----------
     resource : str
@@ -76,7 +76,7 @@ def _expand_resource(resource: str) -> set:
     else:
         if resource_type == 'agent:group':
             return expand_group(value)
-    
+
         # We return the value casted to set
         return {value}
 
@@ -428,7 +428,23 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
 
     return result
 
+def dapi_allower(func: callable):
+    """Decorator to allow execution of a function through the distributed Wazuh API.
 
+    Parameters
+    ----------
+    func : callable
+        Function to be decorated.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+
+    wrapper.__wazuh_exposed__ = True
+    return wrapper
+
+
+@dapi_allower
 def expose_resources(actions: list = None, resources: list = None, post_proc_func: callable = list_handler,
                      post_proc_kwargs: dict = None):
     """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
@@ -504,8 +520,6 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                 return post_proc_func(result, original=original_kwargs, allowed=allow, target=target_params,
                                       add_denied=add_denied, **post_proc_kwargs)
 
-        # Mark the wrapper as explicitly exposed for cluster deserialization validation
-        wrapper.__wazuh_exposed__ = True
         return wrapper
 
     return decorator
@@ -606,7 +620,7 @@ def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
                 # Never break the endpoint if masking fails for any reason
                 pass
             return result
-        
+
         return wrapper
-    
+
     return decorator

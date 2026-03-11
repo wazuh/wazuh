@@ -26,6 +26,7 @@ from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, create_wazuh_s
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.core.wdb_http import get_wdb_http_client
 from wazuh.rbac.utils import resource_cache
+from wazuh.rbac.decorators import dapi_allower
 
 
 detect_wrong_lines = re.compile(r'(.+ .+ (?:any|\d+\.\d+\.\d+\.\d+) \w+)')
@@ -871,6 +872,7 @@ class Agent:
             return 'null'
 
     @staticmethod
+    @dapi_allower
     def get_agents_overview(offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None, search: str = None,
                             select: set = None, filters: dict = None, q: str = "", count: bool = True,
                             get_data: bool = True) -> dict:
