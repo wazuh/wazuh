@@ -56,6 +56,8 @@ def RBAC_bypasser(**kwargs_decorator):
         def wrapper(*args, **kwargs):
             return f(*args, **kwargs)
 
+        # Mark the wrapper as explicitly exposed for cluster deserialization validation
+        wrapper.__wazuh_exposed__ = True
         return wrapper
 
     return decorator
