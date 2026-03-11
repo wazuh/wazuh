@@ -456,7 +456,7 @@ TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
                                    {},                                       // filters
                                    {},                                       // enrichments
                                    {},                                       // outputs
-                                   "UNDEFINED",                             // originSpace
+                                   "UNDEFINED",                              // originSpace
                                    "",                                       // hash
                                    false,                                    // indexUnclassifiedEvents
                                    false                                     // indexDiscardedEvents
@@ -1120,11 +1120,16 @@ TEST_F(BuildPolicyAdvancedTest, ParentTemporaryVariableIsAvailableInChildDecoder
     NamespaceId namespaceId("policy_decoder_temp_parent_child");
 
     auto policy = dataType::Policy("test-policy-temp-parent-child",
+                                   true,
                                    "550e8400-e29b-41d4-a716-446655440010",
                                    {"550e8400-e29b-41d4-a716-446655440001"},
                                    {},
                                    {},
-                                   {});
+                                   {},
+                                   "UNDEFINED",
+                                   "",
+                                   false,
+                                   false);
 
     auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
                                              "integration-with-parent-child-temp",
@@ -1207,11 +1212,16 @@ TEST_F(BuildPolicyAdvancedTest, DecoderTemporaryVariableIsRemovedAtPipelineEnd)
     NamespaceId namespaceId("policy_decoder_temp_cleanup_end");
 
     auto policy = dataType::Policy("test-policy-temp-cleanup",
+                                   true,
                                    "550e8400-e29b-41d4-a716-446655440020",
                                    {"550e8400-e29b-41d4-a716-446655440001"},
                                    {},
                                    {},
-                                   {});
+                                   {},
+                                   "UNDEFINED",
+                                   "",
+                                   false,
+                                   false);
 
     auto integration =
         dataType::Integration("550e8400-e29b-41d4-a716-446655440001",

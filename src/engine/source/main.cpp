@@ -349,7 +349,8 @@ int main(int argc, char* argv[])
                                                      logparFieldOverrides.fullName(),
                                                      base::getError(res).message));
             }
-            logpar = std::make_shared<hlp::logpar::Logpar>(base::getResponse<store::Doc>(res), schema);
+            logpar = std::make_shared<hlp::logpar::Logpar>(base::getResponse<store::Doc>(res),
+                                                           std::static_pointer_cast<schemf::IValidator>(schema));
             hlp::registerParsers(logpar);
             LOG_INFO("HLP initialized.");
         }

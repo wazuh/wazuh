@@ -80,15 +80,15 @@ TEST_P(LogparParseExprTest, Parses)
 
 INSTANTIATE_TEST_SUITE_P(Parses,
                          LogparParseExprTest,
-                         ::testing::Values(ParseExprT("(?literal<text>:)<~custom/long><~>", true),
+                         ::testing::Values(ParseExprT("(?literal<text>:)<_custom/long><~>", true),
                                            ParseExprT("literal", true),
                                            ParseExprT("<~>", true),
                                            ParseExprT("<~>?<~>", false),
-                                           ParseExprT("<~custom/long>?<~>", true),
+                                           ParseExprT("<_custom/long>?<~>", true),
                                            ParseExprT("(?literal)", true),
                                            ParseExprT("(?literal) (?literal) (?literal)", true),
-                                           ParseExprT("[date] <~host> <text>(?|<~opt/text>|):<~>", true),
-                                           ParseExprT("literal<text>:<~custom/long><~", false),
+                                           ParseExprT("[date] <_host> <text>(?|<_opt/text>|):<~>", true),
+                                           ParseExprT("literal<text>:<_custom/long><~", false),
                                            ParseExprT("", false),
                                            ParseExprT("?()", false),
                                            ParseExprT("lit<~>(?<~>:)|", false),
@@ -96,11 +96,11 @@ INSTANTIATE_TEST_SUITE_P(Parses,
                                            ParseExprT("lit(?(?lit)lit)", false), // Must build if limit >= 2
                                            ParseExprT("<~opt>?lit", false),
                                            ParseExprT("lit(?lit", false),
-                                           ParseExprT("literal<text><~custom/long><~>", false),
-                                           ParseExprT("literal<text>:<~custom/long/error_arg><~>", false),
+                                           ParseExprT("literal<text><_custom/long><~>", false),
+                                           ParseExprT("literal<text>:<_custom/long/error_arg><~>", false),
                                            ParseExprT("literal<array>", true),
-                                           ParseExprT("literal<text>:<~custom/error>", false),
-                                           ParseExprT("literal<text>:<~custom/error>", false)));
+                                           ParseExprT("literal<text>:<_custom/error>", false),
+                                           ParseExprT("literal<text>:<_custom/error>", false)));
 
 using BuildParseT = std::tuple<bool, std::string, std::string, json::Json>;
 class LogparBuildParseTest
@@ -139,29 +139,29 @@ INSTANTIATE_TEST_SUITE_P(
         BuildParseT(false, "literal", "lieral", {}),
         BuildParseT(true, "<text>", "some text", logpar_test::J(R"({"text":"some text"})")),
         BuildParseT(true, "<text>end", "some textend", logpar_test::J(R"({"text":"some text"})")),
-        BuildParseT(true, "lit<text>:<~a/long>", "literal:1", logpar_test::J(R"({"text":"eral","~a":1})")),
-        BuildParseT(true, "lit<text>:<~a/long><~>", "literal:1ignored", logpar_test::J(R"({"text":"eral","~a":1})")),
+        BuildParseT(true, "lit<text>:<_a/long>", "literal:1", logpar_test::J(R"({"text":"eral","_a":1})")),
+        BuildParseT(true, "lit<text>:<_a/long><~>", "literal:1ignored", logpar_test::J(R"({"text":"eral","_a":1})")),
         BuildParseT(true,
-                    "lit<text>:<~a/long><~>:(?<~opt/text>)",
+                    "lit<text>:<_a/long><~>:(?<_opt/text>)",
                     "literal:1ignored:",
-                    logpar_test::J(R"({"text":"eral","~a":1})")),
+                    logpar_test::J(R"({"text":"eral","_a":1})")),
         BuildParseT(true,
-                    "lit<text>:<~a/long><~>:(?<~opt/text>)",
+                    "lit<text>:<_a/long><~>:(?<_opt/text>)",
                     "literal:1ignored:optional",
-                    logpar_test::J(R"({"text":"eral","~a":1,"~opt":"optional"})")),
+                    logpar_test::J(R"({"text":"eral","_a":1,"_opt":"optional"})")),
         BuildParseT(true, "<long>?<~/literal/->", "15", logpar_test::J(R"({"long":15})")),
         BuildParseT(true, "<long>?<~/literal/->", "-", {}),
         BuildParseT(true,
-                    "[date] <~host> <text>(?|<~opt/text>|):<~>",
+                    "[date] <_host> <text>(?|<_opt/text>|):<~>",
                     "[date] host text:left over",
-                    logpar_test::J(R"({"~host":"host","text":"text"})")),
-        BuildParseT(false, "[date] <~host> <text>(?|<~opt/text>|):<~>", "[date] host text|left over", {}),
+                    logpar_test::J(R"({"_host":"host","text":"text"})")),
+        BuildParseT(false, "[date] <_host> <text>(?|<_opt/text>|):<~>", "[date] host text|left over", {}),
         BuildParseT(true,
-                    "[date] <~host> <text>(?|<~opt/text>|):<~>",
+                    "[date] <_host> <text>(?|<_opt/text>|):<~>",
                     "[date] host text|opt|:left over",
-                    logpar_test::J(R"({"~host":"host","text":"text","~opt":"opt"})")),
-        BuildParseT(false, "[date] <~host> <text>(?|<~opt/text>|):<~>", "[date] host text|opt|:", {}),
-        BuildParseT(false, "[date] <~host> <text>(?|<~opt/text>|):<~>", "[date] host text|opt|left over", {})));
+                    logpar_test::J(R"({"_host":"host","text":"text","_opt":"opt"})")),
+        BuildParseT(false, "[date] <_host> <text>(?|<_opt/text>|):<~>", "[date] host text|opt|:", {}),
+        BuildParseT(false, "[date] <_host> <text>(?|<_opt/text>|):<~>", "[date] host text|opt|left over", {})));
 
 using FieldParserT = std::tuple<bool, std::string, std::string, bool, std::list<std::string>, bool, size_t>;
 class LogparFieldParserTest : public ::testing::TestWithParam<FieldParserT>
@@ -465,8 +465,7 @@ namespace schematypetest
 
 using TypeParseT = std::tuple<std::string, schemf::Type, hlp::ParserType, std::string, std::string, json::Json>;
 
-class LogparAdditionalTypesTest
-    : public ::testing::TestWithParam<TypeParseT>
+class LogparAdditionalTypesTest : public ::testing::TestWithParam<TypeParseT>
 {
 protected:
     std::shared_ptr<MockSchema> schema;
@@ -526,73 +525,68 @@ TEST_P(LogparAdditionalTypesTest, ParsesNewTypes)
     auto error = hlp::parser::run(parser, inputText, event);
 
     ASSERT_FALSE(error) << "Parser failed: " << error.value().message;
-    ASSERT_EQ(event, expectedJson)
-        << fmt::format("Field: {}, Type: {}, Parser: {}\nExpected: {}\nGot: {}",
-                       fieldName,
-                       schemf::typeToStr(schemaType),
-                       hlp::parserTypeToStr(parserType),
-                       expectedJson.str(),
-                       event.str());
+    ASSERT_EQ(event, expectedJson) << fmt::format("Field: {}, Type: {}, Parser: {}\nExpected: {}\nGot: {}",
+                                                  fieldName,
+                                                  schemf::typeToStr(schemaType),
+                                                  hlp::parserTypeToStr(parserType),
+                                                  expectedJson.str(),
+                                                  event.str());
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    AdditionalSchemaTypes,
-    LogparAdditionalTypesTest,
-    ::testing::Values(
-        // UNSIGNED_LONG type - should use P_UNSIGNED_LONG parser
-        TypeParseT("unsigned_long_field",
-                      schemf::Type::UNSIGNED_LONG,
-                      hlp::ParserType::P_UNSIGNED_LONG,
-                      "<unsigned_long_field>",
-                      "12345",
-                      logpar_test::J(R"({"unsigned_long_field":12345})")),
-        // TOKEN_COUNT type - should use P_UNSIGNED_LONG parser
-        TypeParseT("token_count_field",
-                      schemf::Type::TOKEN_COUNT,
-                      hlp::ParserType::P_UNSIGNED_LONG,
-                      "<token_count_field>",
-                      "42",
-                      logpar_test::J(R"({"token_count_field":42})")),
-        // COMPLETION type - should use P_TEXT parser
-        TypeParseT("completion_field",
-                      schemf::Type::COMPLETION,
-                      hlp::ParserType::P_TEXT,
-                      "<completion_field>",
-                      "completion text",
-                      logpar_test::J(R"({"completion_field":"completion text"})")),
-        // SEARCH_AS_YOU_TYPE type - should use P_TEXT parser
-        TypeParseT("search_as_you_type_field",
-                      schemf::Type::SEARCH_AS_YOU_TYPE,
-                      hlp::ParserType::P_TEXT,
-                      "<search_as_you_type_field>",
-                      "search text",
-                      logpar_test::J(R"({"search_as_you_type_field":"search text"})")),
-        // SEMANTIC type - should use P_TEXT parser
-        TypeParseT("semantic_field",
-                      schemf::Type::SEMANTIC,
-                      hlp::ParserType::P_TEXT,
-                      "<semantic_field>",
-                      "semantic value",
-                      logpar_test::J(R"({"semantic_field":"semantic value"})")),
-        // MATCH_ONLY_TEXT type - should use P_TEXT parser
-        TypeParseT("match_only_text_field",
-                      schemf::Type::MATCH_ONLY_TEXT,
-                      hlp::ParserType::P_TEXT,
-                      "<match_only_text_field>",
-                      "match only text",
-                      logpar_test::J(R"({"match_only_text_field":"match only text"})")),
-        // CONSTANT_KEYWORD type - should use P_TEXT parser
-        TypeParseT("constant_keyword_field",
-                      schemf::Type::CONSTANT_KEYWORD,
-                      hlp::ParserType::P_TEXT,
-                      "<constant_keyword_field>",
-                      "constant",
-                      logpar_test::J(R"({"constant_keyword_field":"constant"})"))),
-    [](const testing::TestParamInfo<LogparAdditionalTypesTest::ParamType>& info)
-    {
-        return std::get<0>(info.param);
-    });
-
+INSTANTIATE_TEST_SUITE_P(AdditionalSchemaTypes,
+                         LogparAdditionalTypesTest,
+                         ::testing::Values(
+                             // UNSIGNED_LONG type - should use P_UNSIGNED_LONG parser
+                             TypeParseT("unsigned_long_field",
+                                        schemf::Type::UNSIGNED_LONG,
+                                        hlp::ParserType::P_UNSIGNED_LONG,
+                                        "<unsigned_long_field>",
+                                        "12345",
+                                        logpar_test::J(R"({"unsigned_long_field":12345})")),
+                             // TOKEN_COUNT type - should use P_UNSIGNED_LONG parser
+                             TypeParseT("token_count_field",
+                                        schemf::Type::TOKEN_COUNT,
+                                        hlp::ParserType::P_UNSIGNED_LONG,
+                                        "<token_count_field>",
+                                        "42",
+                                        logpar_test::J(R"({"token_count_field":42})")),
+                             // COMPLETION type - should use P_TEXT parser
+                             TypeParseT("completion_field",
+                                        schemf::Type::COMPLETION,
+                                        hlp::ParserType::P_TEXT,
+                                        "<completion_field>",
+                                        "completion text",
+                                        logpar_test::J(R"({"completion_field":"completion text"})")),
+                             // SEARCH_AS_YOU_TYPE type - should use P_TEXT parser
+                             TypeParseT("search_as_you_type_field",
+                                        schemf::Type::SEARCH_AS_YOU_TYPE,
+                                        hlp::ParserType::P_TEXT,
+                                        "<search_as_you_type_field>",
+                                        "search text",
+                                        logpar_test::J(R"({"search_as_you_type_field":"search text"})")),
+                             // SEMANTIC type - should use P_TEXT parser
+                             TypeParseT("semantic_field",
+                                        schemf::Type::SEMANTIC,
+                                        hlp::ParserType::P_TEXT,
+                                        "<semantic_field>",
+                                        "semantic value",
+                                        logpar_test::J(R"({"semantic_field":"semantic value"})")),
+                             // MATCH_ONLY_TEXT type - should use P_TEXT parser
+                             TypeParseT("match_only_text_field",
+                                        schemf::Type::MATCH_ONLY_TEXT,
+                                        hlp::ParserType::P_TEXT,
+                                        "<match_only_text_field>",
+                                        "match only text",
+                                        logpar_test::J(R"({"match_only_text_field":"match only text"})")),
+                             // CONSTANT_KEYWORD type - should use P_TEXT parser
+                             TypeParseT("constant_keyword_field",
+                                        schemf::Type::CONSTANT_KEYWORD,
+                                        hlp::ParserType::P_TEXT,
+                                        "<constant_keyword_field>",
+                                        "constant",
+                                        logpar_test::J(R"({"constant_keyword_field":"constant"})"))),
+                         [](const testing::TestParamInfo<LogparAdditionalTypesTest::ParamType>& info)
+                         { return std::get<0>(info.param); });
 
 class LogparIncompatibleTypeTest : public ::testing::Test
 {
@@ -610,20 +604,19 @@ TEST_F(LogparIncompatibleTypeTest, IncompatibleTypesMapToErrorType)
     config.setObject("/fields");
 
     // These types should all map to ERROR_TYPE in logpar
-    const std::vector<schemf::Type> incompatibleTypes = {
-        schemf::Type::JOIN,
-        schemf::Type::KNN_VECTOR,
-        schemf::Type::SPARSE_VECTOR,
-        schemf::Type::RANK_FEATURES,
-        schemf::Type::PERCOLATOR,
-        schemf::Type::STAR_TREE,
-        schemf::Type::DERIVED,
-        schemf::Type::INTEGER_RANGE,
-        schemf::Type::LONG_RANGE,
-        schemf::Type::FLOAT_RANGE,
-        schemf::Type::DOUBLE_RANGE,
-        schemf::Type::DATE_RANGE,
-        schemf::Type::IP_RANGE};
+    const std::vector<schemf::Type> incompatibleTypes = {schemf::Type::JOIN,
+                                                         schemf::Type::KNN_VECTOR,
+                                                         schemf::Type::SPARSE_VECTOR,
+                                                         schemf::Type::RANK_FEATURES,
+                                                         schemf::Type::PERCOLATOR,
+                                                         schemf::Type::STAR_TREE,
+                                                         schemf::Type::DERIVED,
+                                                         schemf::Type::INTEGER_RANGE,
+                                                         schemf::Type::LONG_RANGE,
+                                                         schemf::Type::FLOAT_RANGE,
+                                                         schemf::Type::DOUBLE_RANGE,
+                                                         schemf::Type::DATE_RANGE,
+                                                         schemf::Type::IP_RANGE};
 
     for (auto incompatibleType : incompatibleTypes)
     {
@@ -642,4 +635,3 @@ TEST_F(LogparIncompatibleTypeTest, IncompatibleTypesMapToErrorType)
 }
 
 } // namespace schematypetest
-

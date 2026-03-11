@@ -301,12 +301,12 @@ base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& n
     return ValidationResult();
 }
 
-base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& name, const ValidationToken& token) const
+base::RespOrError<TargetFieldKind> Schema::Validator::validateTargetField(const DotPath& name) const
 {
     // Root target (.) is allowed (e.g. merge operations into event root)
     if (name.isRoot())
     {
-        return ValidationResult();
+        return TargetFieldKind::TEMPORARY;
     }
 
     // If not a schema field, allow only temporary fields rooted at '_'
@@ -314,11 +314,27 @@ base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& n
     {
         if (isTemporaryField(name))
         {
-            return ValidationResult();
+            return TargetFieldKind::TEMPORARY;
         }
 
         return base::Error {fmt::format(
             "Field '{}' is not defined in WCS schema and is not a temporary field (root must start with '_')", name)};
+    }
+
+    return TargetFieldKind::SCHEMA;
+}
+
+base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& name, const ValidationToken& token) const
+{
+    auto fieldKind = validateTargetField(name);
+    if (base::isError(fieldKind))
+    {
+        return base::getError(fieldKind);
+    }
+
+    if (base::getResponse(fieldKind) == TargetFieldKind::TEMPORARY)
+    {
+        return ValidationResult();
     }
 
     // If no token, runtime validation only
@@ -346,4 +362,5 @@ base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& n
     // Base token do not perform build validation aside from array missmatch, return success with runtime validator
     return ValidationResult(asArray(entry.validator));
 }
+
 } // namespace schemf

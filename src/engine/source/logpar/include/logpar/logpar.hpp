@@ -11,7 +11,7 @@
 #include <base/json.hpp>
 #include <hlp/hlp.hpp>
 #include <parsec/parsec.hpp>
-#include <schemf/ischema.hpp>
+#include <schemf/ivalidator.hpp>
 
 namespace hlp
 {
@@ -380,7 +380,7 @@ private:
 
     size_t m_maxGroupRecursion;
     size_t m_debugLvl;
-    std::weak_ptr<schemf::ISchema> m_schema;
+    std::weak_ptr<schemf::IValidator> m_schema;
     std::unordered_map<schemf::Type, ParserType> m_typeParsers;
     std::unordered_map<ParserType, ParserBuilder> m_parserBuilders;
     std::unordered_map<std::string, ParserType> m_fieldParserOverrides;
@@ -434,10 +434,10 @@ private:
     /**
      * @brief Get the Schema object
      *
-     * @return std::shared_ptr<schemf::ISchema>
+     * @return std::shared_ptr<schemf::IValidator>
      * @throws std::runtime_error if the schema is not available
      */
-    inline std::shared_ptr<schemf::ISchema> getSchema() const
+    inline std::shared_ptr<schemf::IValidator> getSchema() const
     {
         auto schema = m_schema.lock();
         if (!schema)
@@ -495,7 +495,7 @@ public:
      * @throws std::runtime_error if errors occur while initializing
      */
     Logpar(const json::Json& fieldParserOverrides,
-           const std::shared_ptr<schemf::ISchema>& schema,
+           const std::shared_ptr<schemf::IValidator>& schema,
            size_t maxGroupRecursion = 1,
            size_t debugLvl = 0);
 
