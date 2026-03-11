@@ -24,7 +24,7 @@ constexpr std::string_view REMOTE_INDEX_RAW_EVENTS = "index_raw_events";
 TEST(RemoteConfRefreshComponentTest, SynchronizePropagatesChangedValue)
 {
     auto store = std::make_shared<StrictMock<store::mocks::MockStore>>();
-    EXPECT_CALL(*store, readDoc(_)).WillOnce(Return(store::mocks::storeReadError<store::Doc>()));
+    EXPECT_CALL(*store, existsDoc(_)).WillOnce(Return(false));
     EXPECT_CALL(*store, upsertDoc(_, _)).Times(2).WillRepeatedly(Return(store::mocks::storeOk()));
 
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
@@ -65,7 +65,7 @@ TEST(RemoteConfRefreshComponentTest, PersistedValueIsReturnedByAddTriggerOnRecre
     std::optional<json::Json> capturedDoc;
 
     auto store1 = std::make_shared<StrictMock<store::mocks::MockStore>>();
-    EXPECT_CALL(*store1, readDoc(_)).WillOnce(Return(store::mocks::storeReadError<store::Doc>()));
+    EXPECT_CALL(*store1, existsDoc(_)).WillOnce(Return(false));
     EXPECT_CALL(*store1, upsertDoc(_, _))
         .WillOnce(
             [&capturedDoc](const base::Name&, const store::Doc& doc) -> base::OptError
@@ -87,6 +87,7 @@ TEST(RemoteConfRefreshComponentTest, PersistedValueIsReturnedByAddTriggerOnRecre
 
     // Second manager: constructed with the persisted doc -> addTrigger returns persisted value
     auto store2 = std::make_shared<StrictMock<store::mocks::MockStore>>();
+    EXPECT_CALL(*store2, existsDoc(_)).WillOnce(Return(true));
     EXPECT_CALL(*store2, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(capturedDoc.value())));
 
     std::shared_ptr<wiconnector::IWIndexerConnector> nullConnector;

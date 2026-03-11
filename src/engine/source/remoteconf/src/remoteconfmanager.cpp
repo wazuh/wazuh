@@ -16,14 +16,17 @@ namespace
 const base::Name REMOTE_CONF_CACHE_DOC {"remote-config/engine-cnf/0"};
 }
 
-RemoteConfManager::RemoteConfManager(std::shared_ptr<wiconnector::IWIndexerConnector> indexerConnector,
-                                     std::shared_ptr<store::IStore> store)
-    : m_indexerConnector(std::move(indexerConnector))
-    , m_store(std::move(store))
+RemoteConfManager::RemoteConfManager(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerConnector,
+                                     const std::shared_ptr<store::IStore>& store)
+    : m_indexerConnector(indexerConnector)
+    , m_store(store)
     , m_attempts(3)
     , m_waitSeconds(5)
 {
-    loadSettingsFromStore();
+    if (store->existsDoc(REMOTE_CONF_CACHE_DOC))
+    {
+        loadSettingsFromStore();
+    }
 }
 
 void RemoteConfManager::synchronize()
@@ -91,7 +94,14 @@ void RemoteConfManager::synchronize()
     if (stateChanged)
     {
         LOG_INFO("Remote settings synchronized: changes detected and applied.");
-        saveSettingsToStore();
+        try
+        {
+            saveSettingsToStore();
+        }
+        catch (const std::exception& e)
+        {
+            LOG_WARNING("Failed to persist remote settings cache: {}", e.what());
+        }
     }
 }
 
@@ -112,15 +122,14 @@ void RemoteConfManager::loadSettingsFromStore()
     const auto docResp = m_store.lock()->readDoc(REMOTE_CONF_CACHE_DOC);
     if (base::isError(docResp))
     {
-        LOG_INFO("Remote settings cache not available: {}", base::getError(docResp).message);
-        return;
+        throw std::runtime_error(
+            fmt::format("Failed to load remote settings from store: {}", base::getError(docResp).message));
     }
 
     const auto& cached = base::getResponse(docResp);
     if (!cached.isObject())
     {
-        LOG_WARNING("Remote settings cache is corrupted (expected JSON object).");
-        return;
+        throw std::runtime_error("Remote settings cache is corrupted (expected JSON object).");
     }
 
     const auto fields = cached.getObject();
@@ -146,13 +155,14 @@ void RemoteConfManager::saveSettingsToStore() const
         {
             continue;
         }
-        persisted.set("/" + key, setting.lastConfig.value());
+        persisted.set(fmt::format("/{}", key), setting.lastConfig.value());
     }
 
     auto storePtr = base::utils::lockWeakPtr(m_store, "StoreInternal");
     if (auto err = storePtr->upsertDoc(REMOTE_CONF_CACHE_DOC, persisted); base::isError(err))
     {
-        LOG_WARNING("Failed to persist remote settings cache: {}", base::getError(err).message);
+        throw std::runtime_error(
+            fmt::format("Failed to save remote settings to store: {}", base::getError(err).message));
     }
 }
 

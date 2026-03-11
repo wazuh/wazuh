@@ -37,7 +37,7 @@ json::Json emptyRemote()
 std::shared_ptr<StrictMock<store::mocks::MockStore>> makeEmptyStore()
 {
     auto store = std::make_shared<StrictMock<store::mocks::MockStore>>();
-    EXPECT_CALL(*store, readDoc(_)).WillOnce(Return(store::mocks::storeReadError<store::Doc>()));
+    EXPECT_CALL(*store, existsDoc(_)).WillOnce(Return(false));
     return store;
 }
 
@@ -46,6 +46,7 @@ std::shared_ptr<StrictMock<store::mocks::MockStore>> makeCachedStore(std::string
     auto store = std::make_shared<StrictMock<store::mocks::MockStore>>();
     const auto docStr = "{\"" + std::string(key) + "\":" + value.str() + "}";
     json::Json doc(docStr.c_str());
+    EXPECT_CALL(*store, existsDoc(_)).WillOnce(Return(true));
     EXPECT_CALL(*store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(doc)));
     return store;
 }

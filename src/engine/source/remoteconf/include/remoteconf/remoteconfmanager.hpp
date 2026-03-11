@@ -34,8 +34,8 @@ public:
      * Loads the last persisted runtime settings from store, registers per-key
      * callbacks, and synchronizes updated values from wazuh-indexer.
      */
-    explicit RemoteConfManager(std::shared_ptr<wiconnector::IWIndexerConnector> indexerConnector,
-                               std::shared_ptr<store::IStore> store);
+    explicit RemoteConfManager(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerConnector,
+                               const std::shared_ptr<store::IStore>& store);
 
     /**
      * @brief Synchronizes runtime settings from wazuh-indexer.
