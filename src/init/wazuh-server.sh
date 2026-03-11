@@ -468,6 +468,7 @@ start_service()
 pstatus()
 {
     pfile=$1;
+    _pstatus_quiet=${2:-""}
     # pfile must be set
     if [ "X${pfile}" = "X" ]; then
         return 0;
@@ -479,7 +480,7 @@ pstatus()
         for pid in `cat ${DIR}/var/run/${daemon_name}-*.pid 2>/dev/null`; do
             ps -p ${pid} > /dev/null 2>&1
             if [ ! $? = 0 ]; then
-                if [ $USE_JSON = false ]; then
+                if [ $USE_JSON = false ] && [ "X${_pstatus_quiet}" = "X" ]; then
                     echo "${pfile}: Process ${pid} not used by Wazuh, removing..."
                 fi
                 rm -f ${DIR}/var/run/${daemon_name}-${pid}.pid
@@ -549,7 +550,7 @@ stop_service()
             first=false
         fi
 
-        pstatus ${i};
+        pstatus ${i} "quiet";
 
         if [ $? = 1 ]; then
             pid=`cat ${DIR}/var/run/${daemon_name}-*.pid`

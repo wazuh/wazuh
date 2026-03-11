@@ -267,6 +267,7 @@ start_service()
 pstatus()
 {
     pfile=$1;
+    _pstatus_quiet=${2:-""}
 
     # pfile must be set
     if [ "X${pfile}" = "X" ]; then
@@ -278,7 +279,9 @@ pstatus()
         for pid in `cat ${DIR}/var/run/${pfile}-*.pid 2>/dev/null`; do
             ps -p ${pid} > /dev/null 2>&1
             if [ ! $? = 0 ]; then
-                echo "${pfile}: Process ${pid} not used by Wazuh, removing..."
+                if [ "X${_pstatus_quiet}" = "X" ]; then
+                    echo "${pfile}: Process ${pid} not used by Wazuh, removing..."
+                fi
                 rm -f ${DIR}/var/run/${pfile}-${pid}.pid
                 continue;
             fi
@@ -328,7 +331,7 @@ stop_service()
 
     # Second pass: wait for all processes that are still alive
     for i in ${DAEMONS}; do
-        pstatus ${i};
+        pstatus ${i} "quiet";
         if [ $? = 1 ]; then
             pid=`cat ${DIR}/var/run/${i}-*.pid`
 
