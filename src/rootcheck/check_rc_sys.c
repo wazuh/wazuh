@@ -10,10 +10,14 @@
 
 #include "shared.h"
 #include "rootcheck.h"
+#include <errno.h>
+
+#define RC_ENOENT_SUSPECT (-2)
 
 /* Prototypes */
 static int read_sys_file(const char *file_name, int do_read);
 static int read_sys_dir(const char *dir_name, int do_read);
+static void rc_emit_hidden_alert(const char *file_name);
 
 /* Global variables */
 static int   _sys_errors;
@@ -36,24 +40,13 @@ static int read_sys_file(const char *file_name, int do_read)
 #endif
     if (lstat(file_name, &statbuf) < 0) {
 #ifndef WIN32
-        const char op_msg_fmt[] = "Anomaly detected in file '%*s'. Hidden from stats, but showing up on readdir. Possible kernel level rootkit.";
-        char op_msg[OS_SIZE_1024 + 1];
-
-        const int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
-
-        if (size >= 0) {
-            if ((size_t)size < sizeof(op_msg)) {
-                snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
-            } else {
-                const unsigned int surplus = size - sizeof(op_msg) + 1;
-                snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(strlen(file_name) - surplus), file_name);
-            }
-
-            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
-        } else {
-            mtdebug2(ARGV0, "Error %d (%s) with snprintf with file %s", errno, strerror(errno), file_name);
+        if (errno == ENOENT) {
+            mtdebug2(ARGV0, "File '%s' not found by lstat (ENOENT). "
+                     "Deferring for readdir verification.", file_name);
+            return (RC_ENOENT_SUSPECT);
         }
 
+        rc_emit_hidden_alert(file_name);
         _sys_errors++;
 #endif
         return (-1);
@@ -192,6 +185,36 @@ static int read_sys_file(const char *file_name, int do_read)
     return (0);
 }
 
+#ifndef WIN32
+/* Emit the "Hidden from stats" rootkit alert for a given file */
+static void rc_emit_hidden_alert(const char *file_name)
+{
+    const char op_msg_fmt[] = "Anomaly detected in file '%*s'. "
+        "Hidden from stats, but showing up on readdir. "
+        "Possible kernel level rootkit.";
+    char op_msg[OS_SIZE_1024 + 1];
+
+    const int size = snprintf(NULL, 0, op_msg_fmt,
+                              (int)strlen(file_name), file_name);
+
+    if (size >= 0) {
+        if ((size_t)size < sizeof(op_msg)) {
+            snprintf(op_msg, sizeof(op_msg), op_msg_fmt,
+                     (int)strlen(file_name), file_name);
+        } else {
+            const unsigned int surplus = size - sizeof(op_msg) + 1;
+            snprintf(op_msg, sizeof(op_msg), op_msg_fmt,
+                     (int)(strlen(file_name) - surplus), file_name);
+        }
+
+        notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+    } else {
+        mtdebug2(ARGV0, "Error %d (%s) with snprintf with file %s",
+                 errno, strerror(errno), file_name);
+    }
+}
+#endif /* WIN32 */
+
 static int read_sys_dir(const char *dir_name, int do_read)
 {
     int i = 0;
@@ -204,6 +227,10 @@ static int read_sys_dir(const char *dir_name, int do_read)
     short skip_fs;
 
 #ifndef WIN32
+    char **suspects = NULL;
+    unsigned int suspect_count = 0;
+    unsigned int suspect_capacity = 0;
+
     const char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin",
                                        "/usr/sbin", "/dev", "/etc",
                                        "/boot", NULL
@@ -333,8 +360,134 @@ static int read_sys_dir(const char *dir_name, int do_read)
             }
         }
 
+#ifndef WIN32
+        int rc = read_sys_file(f_name, do_read);
+
+        if (rc == RC_ENOENT_SUSPECT) {
+            if (suspect_count >= suspect_capacity) {
+                size_t new_capacity = (suspect_capacity == 0) ? 32 : suspect_capacity * 2;
+                char **new_suspects = (char **)realloc(suspects, new_capacity * sizeof(char *));
+                if (new_suspects == NULL) {
+                    mterror(ARGV0, "Out of memory collecting ENOENT suspects.");
+
+                    unsigned int k;
+                    for (k = 0; k < suspect_count; k++) {
+                        free(suspects[k]);
+                    }
+                    free(suspects);
+                    closedir(dp);
+                    return (-1);
+                }
+                suspects = new_suspects;
+                suspect_capacity = new_capacity;
+            }
+            suspects[suspect_count] = strdup(entry->d_name);
+            if (suspects[suspect_count] == NULL) {
+                mterror(ARGV0, "Out of memory duplicating suspect name.");
+
+                unsigned int k;
+                for (k = 0; k < suspect_count; k++) {
+                    free(suspects[k]);
+                }
+                free(suspects);
+                closedir(dp);
+                return (-1);
+            }
+            suspect_count++;
+        }
+#else
         read_sys_file(f_name, do_read);
+#endif /* WIN32 */
     }
+
+#ifndef WIN32
+    if (suspect_count > 0) {
+        DIR *dp2 = wopendir(dir_name);
+
+        if (dp2 != NULL) {
+            struct dirent *entry2;
+
+            while ((entry2 = readdir(dp2)) != NULL) {
+                unsigned int s;
+
+                for (s = 0; s < suspect_count; s++) {
+                    if (suspects[s] != NULL &&
+                            strcmp(suspects[s], entry2->d_name) == 0) {
+                        /* File still in directory listing but lstat said ENOENT.
+                         * This is a genuine anomaly — emit rootkit alert. */
+                        char full_path[PATH_MAX + 2];
+
+                        // Root directory
+                        if (strlen(dir_name) == 1 && *dir_name == PATH_SEP) {
+                            snprintf(full_path, PATH_MAX + 1, "%c%s",
+                                     PATH_SEP, suspects[s]);
+                        // Sub-directories
+                        } else {
+                            snprintf(full_path, PATH_MAX + 1, "%s%c%s",
+                                     dir_name, PATH_SEP, suspects[s]);
+                        }
+
+                        mtdebug2(ARGV0, "File '%s' still listed in readdir "
+                                 "after lstat ENOENT. Alerting.", full_path);
+                        rc_emit_hidden_alert(full_path);
+                        _sys_errors++;
+
+                        /* Mark as handled */
+                        free(suspects[s]);
+                        suspects[s] = NULL;
+                        break;
+                    }
+                }
+            }
+
+            closedir(dp2);
+
+            /* Log any suspects that disappeared from the listing (genuinely deleted) */
+            {
+                unsigned int s;
+                for (s = 0; s < suspect_count; s++) {
+                    if (suspects[s] != NULL) {
+                        mtdebug2(ARGV0, "File '%s/%s' no longer in readdir listing. "
+                                 "Skipping rootkit alert (deleted between scans).",
+                                 dir_name, suspects[s]);
+                    }
+                }
+            }
+        } else {
+            // Fallback: report all suspects if the directory can't be reopened
+            mtdebug2(ARGV0, "Could not reopen '%s' for readdir verification. "
+                     "Alerting all %u suspects.", dir_name, suspect_count);
+            unsigned int s;
+            for (s = 0; s < suspect_count; s++) {
+                if (suspects[s] != NULL) {
+                    char full_path[PATH_MAX + 2];
+
+                    if (strlen(dir_name) == 1 && *dir_name == PATH_SEP) {
+                        snprintf(full_path, PATH_MAX + 1, "%c%s",
+                                 PATH_SEP, suspects[s]);
+                    } else {
+                        snprintf(full_path, PATH_MAX + 1, "%s%c%s",
+                                 dir_name, PATH_SEP, suspects[s]);
+                    }
+
+                    rc_emit_hidden_alert(full_path);
+                    _sys_errors++;
+                }
+            }
+        }
+
+        /* Free all suspect strings */
+        {
+            unsigned int s;
+            for (s = 0; s < suspect_count; s++) {
+                free(suspects[s]);
+            }
+        }
+
+        free(suspects);
+        suspects = NULL;
+    }
+#endif /* WIN32 */
 
     /* skip further test because the FS cant deliver the stats (btrfs link count always is 1) */
     skip_fs = skipFS(dir_name);
