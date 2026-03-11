@@ -608,37 +608,20 @@ int main(int argc, char* argv[])
                             { archiver->deactivate(); });
         }
 
-        // Raw Event Indexer
-        if (enableProcessing)
-        {
-            rawEventIndexer = std::make_shared<raweventindexer::RawEventIndexer>(
-                indexerConnector, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
-            LOG_INFO("Raw Event Indexer initialized (index: {}).",
-                     raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
-        }
-
-        // Remote runtime settings refresh
-        if (enableProcessing)
+        // Remote runtime settings sync
         {
             remoteConf = std::make_shared<remoteconf::RemoteConfManager>(indexerConnector, store);
 
-            remoteConf->initialize();
-
-            const auto remoteConfRefreshInterval =
-                confManager.get<std::size_t>(conf::key::REMOTE_CONF_REFRESH_INTERVAL);
-            scheduler->scheduleTask("remote-conf-refresh",
-                                    scheduler::TaskConfig {.interval = remoteConfRefreshInterval,
+            const auto remoteConfSyncInterval = confManager.get<std::size_t>(conf::key::REMOTE_CONF_SYNC_INTERVAL);
+            scheduler->scheduleTask("remote-conf-sync",
+                                    scheduler::TaskConfig {.interval = remoteConfSyncInterval,
                                                            .CPUPriority = 0,
                                                            .timeout = 0,
                                                            .taskFunction = [remoteConf]()
                                                            {
-                                                               remoteConf->refresh();
+                                                               remoteConf->synchronize();
                                                            }});
-            LOG_INFO("Remote configuration refresh scheduled with interval: {} seconds.", remoteConfRefreshInterval);
-        }
-        else
-        {
-            LOG_INFO("Remote configuration refresh DISABLED (event processing is disabled).");
+            LOG_INFO("Remote configuration synchronize scheduled with interval: {} seconds.", remoteConfSyncInterval);
         }
 
         // Create and configure the api endpoints
@@ -739,6 +722,7 @@ int main(int argc, char* argv[])
             // Synchronize on startup
             cmSyncService->synchronize();
             iocSyncService->synchronize();
+            remoteConf->synchronize();
 
             while (engineRemoteServer->isRunning())
             {

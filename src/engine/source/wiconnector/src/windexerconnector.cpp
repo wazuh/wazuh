@@ -752,7 +752,7 @@ std::size_t WIndexerConnector::queryByBatches(std::string_view indexName,
     return processedDocs;
 }
 
-json::Json WIndexerConnector::getRemoteConfigEngine()
+json::Json WIndexerConnector::getEngineRemoteConfig()
 {
     std::shared_lock lock(m_mutex);
     if (!m_indexerConnectorAsync)
@@ -760,7 +760,6 @@ json::Json WIndexerConnector::getRemoteConfigEngine()
         throw std::runtime_error("IndexerConnectorAsync is not initialized");
     }
 
-    // TODO: Extract common helper to validate/extract first hit _source for single-doc searches.
     nlohmann::json query = {{"match_all", nlohmann::json::object()}};
     nlohmann::json source = {{"includes", {"engine"}}, {"excludes", nlohmann::json::array()}};
 
@@ -770,6 +769,13 @@ json::Json WIndexerConnector::getRemoteConfigEngine()
     if (totalHits == 0)
     {
         throw IndexerConnectorException("Remote settings document not found");
+    }
+
+    if (totalHits > 1)
+    {
+        throw IndexerConnectorException("Multiple remote settings documents found in index "
+                                        + std::string(REMOTE_CONF_INDEX)
+                                        + " (expected 1, got " + std::to_string(totalHits) + ")");
     }
 
     const auto& hitArray = hits["hits"];

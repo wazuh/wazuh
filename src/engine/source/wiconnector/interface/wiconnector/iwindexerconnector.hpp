@@ -134,7 +134,7 @@ public:
      * @return json::Json Engine settings object.
      * @throws std::exception on transport, not-found, or payload validation errors.
      */
-    virtual json::Json getRemoteConfigEngine() = 0;
+    virtual json::Json getEngineRemoteConfig() = 0;
 };
 
 } // namespace wiconnector

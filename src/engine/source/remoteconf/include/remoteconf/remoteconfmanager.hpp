@@ -1,10 +1,8 @@
 #ifndef REMOTECONF_REMOTECONFMANAGER_HPP
 #define REMOTECONF_REMOTECONFMANAGER_HPP
 
-#include <atomic>
 #include <functional>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <shared_mutex>
 #include <string>
@@ -13,12 +11,8 @@
 
 #include <base/json.hpp>
 #include <remoteconf/iremoteconf.hpp>
+#include <store/istore.hpp>
 #include <wiconnector/iwindexerconnector.hpp>
-
-namespace store
-{
-class IStore;
-}
 
 namespace remoteconf
 {
@@ -26,42 +20,42 @@ namespace remoteconf
 /**
  * @brief Runtime remote configuration manager.
  *
- * Orchestrates startup/refresh retrieval of engine runtime settings from indexer,
- * applies accepted per-key changes through registered callbacks, and persists a
- * normalized cache copy in store for startup fallback.
+ * On construction, loads the last persisted settings from store. Modules register
+ * per-key callbacks via addTrigger(). On each synchronize() call, fetches the
+ * current settings from wazuh-indexer, applies accepted changes through the
+ * registered callbacks, and persists successful updates to store.
  */
 class RemoteConfManager final : public IRemoteConf
 {
 public:
     /**
-     * @brief Constructs a remote configuration manager.
+     * @brief Runtime remote configuration manager.
      *
-     * @param connector Indexer connector used to fetch remote engine settings.
-     * @param cacheStore Optional store backend used for local cache persistence.
+     * Loads the last persisted runtime settings from store, registers per-key
+     * callbacks, and synchronizes updated values from wazuh-indexer.
      */
-    explicit RemoteConfManager(std::shared_ptr<wiconnector::IWIndexerConnector> connector,
-                               std::shared_ptr<store::IStore> cacheStore = {});
+    explicit RemoteConfManager(std::shared_ptr<wiconnector::IWIndexerConnector> indexerConnector,
+                               std::shared_ptr<store::IStore> store);
 
     /**
-     * @brief Initializes runtime settings from remote source/cache/defaults.
+     * @brief Synchronizes runtime settings from wazuh-indexer.
      */
-    void initialize() override;
-
-    /**
-     * @brief Refreshes runtime settings from the remote source.
-     */
-    void refresh() override;
+    void synchronize() override;
 
     /**
      * @brief Registers a callback trigger for a runtime setting key.
      *
-     * @param key Setting key (flattened path style).
-     * @param onChange Callback invoked with the candidate value. Return true to accept/apply it.
-     * @param defaultValue Fallback value applied when no remote/cache value is available.
+     * Returns the last persisted value for the key if available,
+     * otherwise returns the provided default value.
+     *
+     * @param key Setting key.
+     * @param onConfigChange Callback invoked with the candidate value. Return true to accept/apply it.
+     * @param defaultValue Fallback value returned when no persisted value is available.
+     * @return json::Json Persisted value or provided default value.
      */
-    void addTrigger(std::string_view key,
-                    std::function<bool(const json::Json& cnf)> onChange,
-                    const json::Json& defaultValue) override;
+    json::Json addTrigger(std::string_view key,
+                          std::function<bool(const json::Json&)> onConfigChange,
+                          const json::Json& defaultValue) override;
 
 private:
     /**
@@ -69,29 +63,19 @@ private:
      */
     struct SettingEntry
     {
-        json::Json defaultValue;
-        std::function<bool(const json::Json&)> onChange;
-        std::optional<json::Json> currentValue;
+        std::optional<json::Json> lastConfig;
+        std::function<bool(const json::Json&)> onConfigChange;
     };
 
-    using SettingsMap = std::unordered_map<std::string, json::Json>;
+    void loadSettingsFromStore();
+    void saveSettingsToStore() const;
 
-    static bool flattenObject(const json::Json& object, std::string& path, SettingsMap& out);
-    std::optional<SettingsMap> parseSource(const json::Json& source) const;
-    void syncRemoteSettings(const SettingsMap& remoteSettings);
-    void fillMissingWithDefaults();
-    std::optional<json::Json> readCachedSettings() const;
-    void updateCachedSettings(const json::Json& settings) const;
-
-    std::shared_ptr<wiconnector::IWIndexerConnector> m_connector;
-    std::shared_ptr<store::IStore> m_cacheStore;
-
-    std::mutex m_operationMutex;
-    std::shared_mutex m_entriesMutex;
-    std::unordered_map<std::string, SettingEntry> m_entries;
-    std::optional<json::Json> m_lastSettingsSnapshot;
-
-    std::atomic<bool> m_initialized {false};
+    std::weak_ptr<wiconnector::IWIndexerConnector> m_indexerConnector;
+    std::weak_ptr<store::IStore> m_store;
+    mutable std::shared_mutex m_mutex;
+    std::unordered_map<std::string, SettingEntry> m_settings;
+    std::size_t m_attempts;
+    std::size_t m_waitSeconds;
 };
 
 } // namespace remoteconf

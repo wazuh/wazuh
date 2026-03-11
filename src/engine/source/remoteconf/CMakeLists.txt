@@ -23,7 +23,6 @@ target_link_libraries(remoteconf_remoteconf
     PUBLIC
     remoteconf::iremoteconf
     wIndexerConnector::iwIndexerConnector
-    PRIVATE
     store::istore
 )
 add_library(remoteconf::remoteconf ALIAS remoteconf_remoteconf)
@@ -45,6 +44,7 @@ target_link_libraries(remoteconf_utest
     GTest::gmock
     conf
     remoteconf::remoteconf
+    store::mocks
     wIndexerConnector::mocks
 )
 target_include_directories(remoteconf_utest PRIVATE ${SRC_DIR})
@@ -60,6 +60,7 @@ target_link_libraries(remoteconf_ctest
     GTest::gmock
     conf
     remoteconf::remoteconf
+    store::mocks
     wIndexerConnector::mocks
 )
 target_include_directories(remoteconf_ctest PRIVATE ${SRC_DIR})

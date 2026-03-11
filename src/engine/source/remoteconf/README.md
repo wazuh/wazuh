@@ -1,71 +1,85 @@
 # Remote Runtime Configuration
 
-Fetches runtime settings from the `.wazuh-settings` index in wazuh-indexer and applies them to engine modules without restarting.
+Manages runtime engine settings fetched from wazuh-indexer and persisted in the local store.
 
 ## Supported keys
 
-| Key | Type | Path in indexer |
-|---|---|---|
-| `index_raw_events` | bool | `engine.index_raw_events` |
+| Key | Type |
+|---|---|
+| `index_raw_events` | bool |
 
 ## Architecture
 
 ```
 main.cpp
   └── RemoteConfManager(IWIndexerConnector, IStore)
-        └── IWIndexerConnector::getRemoteConfigEngine()
-        ├── initialize()   — called once at startup
-        └── refresh()      — called periodically by IScheduler
+        ├── constructor    — loads last persisted settings from store
+        ├── addTrigger()   — registers a callback and returns persisted/default value
+        └── synchronize()  — fetches current settings from wazuh-indexer
 ```
 
-`RemoteConfManager` depends on `IWIndexerConnector` and an optional `IStore` cache:
+`RemoteConfManager` depends on `IWIndexerConnector` to fetch remote settings and `IStore` to load and persist the last successfully applied settings:
 
 ```cpp
 auto manager = std::make_shared<remoteconf::RemoteConfManager>(indexerConnector, store);
 ```
 
-## Indexer document
+## Indexer fetch contract
 
-Index `.wazuh-settings`, first available document (no fixed `_id` filter):
+`IWIndexerConnector::getEngineRemoteConfig()` returns a normalized flat JSON object with engine runtime settings:
 
 ```json
 {
-  "_id": "1",
-  "_source": {
-    "engine": {
-      "index_raw_events": false
-    }
-  }
+  "index_raw_events": true
 }
 ```
 
 ## Behavior
 
-**`initialize()`** — fetches once at startup. On success, applies settings and persists cache. On remote failure, tries cache; if cache is unavailable/invalid, defaults are applied. Never throws.
+**Construction** — loads the last persisted settings from store document `remote-config/engine-cnf/0`. If the document does not exist, the manager starts with empty runtime state. If the document is invalid, it is ignored and a warning is logged.
 
-**`refresh()`** — fetches the current document and applies per-key diffs only when payload changed. On valid changes, cache is updated. On failure, in-memory state is preserved.
+**`addTrigger()`** — registers a callback for a setting key. Returns the last persisted value for that key if available, or the provided default value when no persisted value exists. The manager does not apply the returned value; the caller is responsible for applying it at startup.
 
-**Indexer fetch contract** — `getRemoteConfigEngine()` requests only the `engine` section from indexer and returns a normalized object with runtime keys.
+**`synchronize()`** — fetches the current flat settings object from wazuh-indexer. Ignores keys that have no registered callback. For registered keys, invokes the callback only when the remote value differs from the last applied value. If the callback returns `false`, the current value is kept and nothing is persisted. If the callback throws, the error is logged and the current value is kept. After a successful callback, the new value is persisted to store.
 
-**Per-key sync** — for each key with a registered subscriber, the callback is invoked only if the value changed. If the callback returns `false`, the previous committed value is kept. Keys absent from the remote payload are left unchanged.
-
-## Cache contract
+## Store contract
 
 - Store document name: `remote-config/engine-cnf/0`
-- Stored payload format: normalized engine variables object (for example: `{ "index_raw_events": false }`)
-- Corrupt/non-object cache document: ignored with warning log
+- Stored payload format: flat object containing only successfully applied settings
+- Corrupt or non-object cache document: ignored with warning log
+
+Example stored document:
+
+```json
+{
+  "index_raw_events": true
+}
+```
 
 ## Subscriber registration
 
 ```cpp
-manager.addTrigger(conf::key::REMOTE_RAW_EVENT_INDEXER,
+const auto initialValue = manager.addTrigger(
+    "index_raw_events",
     [](const json::Json& value) -> bool
     {
-        if (!value.isBool()) return false;
+        if (!value.isBool())
+        {
+            return false;
+        }
+
         value.getBool().value() ? enable() : disable();
         return true;
     },
     json::Json("false"));
+
+applyInitialConfig(initialValue);
 ```
 
-Can be called before or after `initialize()`. Type validation is callback-owned.
+`addTrigger()` returns the persisted value if one exists, or the default otherwise. The caller applies it at startup. Type validation is callback-owned.
+
+## Notes
+
+- The manager does not persist rejected or failed updates.
+- Unregistered remote keys are silently ignored.
+- The store document reflects applied state only, not the raw payload from wazuh-indexer.

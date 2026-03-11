@@ -1,61 +1,99 @@
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <vector>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <conf/keys.hpp>
 #include <remoteconf/remoteconfmanager.hpp>
+#include <store/mockStore.hpp>
 #include <wiconnector/mockswindexerconnector.hpp>
 
 namespace
 {
+using ::testing::_;
 using ::testing::InSequence;
 using ::testing::Return;
 using ::testing::StrictMock;
 
+constexpr std::string_view REMOTE_INDEX_RAW_EVENTS = "index_raw_events";
+
 } // namespace
 
-TEST(RemoteConfRefreshComponentTest, RefreshBeforeInitializeDoesNotThrow)
+TEST(RemoteConfRefreshComponentTest, SynchronizePropagatesChangedValue)
 {
-    std::shared_ptr<wiconnector::IWIndexerConnector> connector;
-    remoteconf::RemoteConfManager manager(connector);
-    EXPECT_NO_THROW(manager.refresh());
-}
+    auto store = std::make_shared<StrictMock<store::mocks::MockStore>>();
+    EXPECT_CALL(*store, readDoc(_)).WillOnce(Return(store::mocks::storeReadError<store::Doc>()));
+    EXPECT_CALL(*store, upsertDoc(_, _)).Times(2).WillRepeatedly(Return(store::mocks::storeOk()));
 
-TEST(RemoteConfRefreshComponentTest, InitializeThenRefreshPropagatesChangedValue)
-{
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
     {
-        InSequence sequence;
-        EXPECT_CALL(*connector, getRemoteConfigEngine()).WillOnce(Return(json::Json(R"({"index_raw_events":false})")));
-        EXPECT_CALL(*connector, getRemoteConfigEngine()).WillOnce(Return(json::Json(R"({"index_raw_events":true})")));
+        InSequence seq;
+        EXPECT_CALL(*connector, getEngineRemoteConfig()).WillOnce(Return(json::Json(R"({"index_raw_events":false})")));
+        EXPECT_CALL(*connector, getEngineRemoteConfig()).WillOnce(Return(json::Json(R"({"index_raw_events":true})")));
     }
 
-    remoteconf::RemoteConfManager manager(connector);
+    remoteconf::RemoteConfManager manager(connector, store);
 
     std::vector<bool> received;
     manager.addTrigger(
-        conf::key::REMOTE_RAW_EVENT_INDEXER,
-        [&received](const json::Json& value) -> bool
+        REMOTE_INDEX_RAW_EVENTS,
+        [&received](const json::Json& v) -> bool
         {
-            if (!value.isBool())
-            {
+            if (!v.isBool())
                 return false;
-            }
-            received.push_back(value.getBool().value());
+            received.push_back(v.getBool().value());
             return true;
         },
         json::Json("false"));
 
-    manager.initialize();
+    manager.synchronize();
 
     ASSERT_EQ(received.size(), 1U);
     EXPECT_FALSE(received[0]);
 
-    manager.refresh();
+    manager.synchronize();
 
     ASSERT_EQ(received.size(), 2U);
     EXPECT_TRUE(received[1]);
+}
+
+TEST(RemoteConfRefreshComponentTest, PersistedValueIsReturnedByAddTriggerOnRecreation)
+{
+    // First manager: synchronize applies a value, which is persisted via upsertDoc
+    std::optional<json::Json> capturedDoc;
+
+    auto store1 = std::make_shared<StrictMock<store::mocks::MockStore>>();
+    EXPECT_CALL(*store1, readDoc(_)).WillOnce(Return(store::mocks::storeReadError<store::Doc>()));
+    EXPECT_CALL(*store1, upsertDoc(_, _))
+        .WillOnce(
+            [&capturedDoc](const base::Name&, const store::Doc& doc) -> base::OptError
+            {
+                capturedDoc.emplace(doc);
+                return std::nullopt;
+            });
+
+    auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
+    EXPECT_CALL(*connector, getEngineRemoteConfig()).WillOnce(Return(json::Json(R"({"index_raw_events":true})")));
+
+    {
+        remoteconf::RemoteConfManager manager(connector, store1);
+        manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) { return true; }, json::Json("false"));
+        manager.synchronize();
+    }
+
+    ASSERT_TRUE(capturedDoc.has_value());
+
+    // Second manager: constructed with the persisted doc -> addTrigger returns persisted value
+    auto store2 = std::make_shared<StrictMock<store::mocks::MockStore>>();
+    EXPECT_CALL(*store2, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(capturedDoc.value())));
+
+    std::shared_ptr<wiconnector::IWIndexerConnector> nullConnector;
+    remoteconf::RemoteConfManager manager2(nullConnector, store2);
+
+    const auto result =
+        manager2.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) { return true; }, json::Json("false"));
+
+    EXPECT_EQ(result, json::Json("true"));
 }

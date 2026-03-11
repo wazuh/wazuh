@@ -124,14 +124,14 @@ public:
     /**
      * @brief Retrieves normalized remote engine configuration from wazuh-indexer.
      *
-     * Implements IWIndexerConnector::getRemoteConfigEngine by reading one document
+     * Implements IWIndexerConnector::getEngineRemoteConfig by reading one document
      * from `.wazuh-settings`, extracting `/_source/engine`, validating it is an object,
      * and returning only that object.
      *
      * @return json::Json Engine settings object with runtime key/value pairs.
      * @throws std::exception on connector/search failures or invalid payload shape.
      */
-    json::Json getRemoteConfigEngine() override;
+    json::Json getEngineRemoteConfig() override;
 
     /**
      * @brief Shuts down the indexer connector, releasing resources and stopping operations.
