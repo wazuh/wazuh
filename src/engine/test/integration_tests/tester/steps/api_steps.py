@@ -98,7 +98,10 @@ type: policy
 enabled: true
 title: Development 0.0.1
 hash: "tester-test-hash"
+enrichments: []
+filters: []
 index_unclassified_events: true
+index_discarded_events: false
 default_parent: {default_parent}
 root_decoder: {root_decoder}
 integrations:
@@ -283,6 +286,9 @@ def step_impl(context):
             "root_decoder": LOGTEST_DECODER_UUID,
             "integrations": [LOGTEST_INTEG_UUID],
             "filters": [],
+            "enrichments": [],
+            "index_unclassified_events": False,
+            "index_discarded_events": False,
             "outputs": [],
         },
         "resources": {

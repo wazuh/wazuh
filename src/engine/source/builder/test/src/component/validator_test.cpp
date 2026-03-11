@@ -70,7 +70,11 @@ INSTANTIATE_TEST_SUITE_P(
                                      {"550e8400-e29b-41d4-a716-446655440001"},
                                      {},
                                      {},
-                                     {}),
+                                     {},
+                                     "UNDEFINED",
+                                     "",
+                                     false,
+                                     false),
 
                     FAILURE(FailureExpected::Behaviour {
                         [](const auto& store, const auto& reader)
@@ -89,7 +93,11 @@ INSTANTIATE_TEST_SUITE_P(
                                      {"550e8400-e29b-41d4-a716-446655440001"},
                                      {},
                                      {},
-                                     {}),
+                                     {},
+                                     "UNDEFINED",
+                                     "",
+                                     false,
+                                     false),
                     FAILURE(FailureExpected::Behaviour {
                         [](const auto& store, const auto& reader)
                         {
@@ -112,7 +120,11 @@ INSTANTIATE_TEST_SUITE_P(
                                      {"550e8400-e29b-41d4-a716-446655440001"},
                                      {},
                                      {},
-                                     {}),
+                                     {},
+                                     "UNDEFINED",
+                                     "",
+                                     false,
+                                     false),
                     SUCCESS(SuccessExpected::Behaviour {
                         [](const auto& store, const auto& reader)
                         {

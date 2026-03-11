@@ -95,10 +95,10 @@ public:
            std::vector<std::string> filters,
            std::vector<std::string> enrichments,
            std::vector<std::string> outputs,
-           std::string_view originSpace = DEFAULT_ORIGIN_SPACE,
-           std::string_view hash = "",
-           bool indexUnclassifiedEvents = false,
-           bool indexDiscardedEvents = false)
+           std::string_view originSpace,
+           std::string_view hash,
+           bool indexUnclassifiedEvents,
+           bool indexDiscardedEvents)
         : m_title(policyTitle)
         , m_enabled(enabled)
         , m_rootDecoder(rootDecoder)
@@ -200,11 +200,10 @@ public:
                     filters.push_back(filterOpt.value());
                 }
             }
-            // TODO: Uncomment when filters are mandatory
-            // else
-            // {
-            //     throw std::runtime_error("Policy JSON must have a 'filters' array");
-            // }
+            else
+            {
+                throw std::runtime_error("Policy JSON must have a 'filters' array");
+            }
             return filters;
         }();
 
@@ -228,10 +227,10 @@ public:
                 }
             }
             // TODO: Uncomment when enrichments are mandatory
-            // else
-            // {
-            //     throw std::runtime_error("Policy JSON must have an 'enrichments' array");
-            // }
+            else
+            {
+                throw std::runtime_error("Policy JSON must have an 'enrichments' array");
+            }
             return enrichments;
         }();
 
@@ -281,25 +280,22 @@ public:
         auto indexUnclassifiedEvents = [&]() -> bool
         {
             auto indexOpt = policyJson.getBool(jsonpolicy::PATH_KEY_INDEX_UNCLASSIFIED_EVENTS);
-            // TODO: Uncomment when this field is mandatory
-            // if (!indexOpt.has_value())
-            // {
-            //     throw std::runtime_error(
-            //         "Policy JSON must have a boolean 'index_unclassified_events' field");
-            // }
-            // return indexOpt.value();
-            return indexOpt.value_or(false);
+            if (!indexOpt.has_value())
+            {
+                throw std::runtime_error(
+                    "Policy JSON must have a boolean 'index_unclassified_events' field");
+            }
+            return indexOpt.value();
         }();
 
         bool indexDiscardedEvents = [&]() -> bool
         {
             auto indexDiscardedOpt = policyJson.getBool(jsonpolicy::PATH_KEY_INDEX_DISCARDED_EVENTS);
-            // TODO: Uncomment when this field is mandatory
-            // if (!indexDiscardedOpt.has_value())
-            // {
-            //     throw std::runtime_error(
-            //         "Policy JSON must have a boolean 'index_discarded_events' field");
-            // }
+            if (!indexDiscardedOpt.has_value())
+            {
+                throw std::runtime_error(
+                    "Policy JSON must have a boolean 'index_discarded_events' field");
+            }
             return indexDiscardedOpt.value_or(false);
         }();
 
