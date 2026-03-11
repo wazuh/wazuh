@@ -220,59 +220,59 @@ static void test_remoted_internal_options_config(void **state) {
     // Set internal options with prime numbers using mocked getDefine_Int
 
     // FIM limits
-    will_return(__wrap_getDefine_Int, 1);
-    will_return(__wrap_getDefine_Int, 1);
-    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
 
     // Syscollector limits
-    will_return(__wrap_getDefine_Int, 1);
-    will_return(__wrap_getDefine_Int, 1);
-    will_return(__wrap_getDefine_Int, 1);
-    will_return(__wrap_getDefine_Int, 1);
-    will_return(__wrap_getDefine_Int, 1);
-    will_return(__wrap_getDefine_Int, 1);
-    will_return(__wrap_getDefine_Int, 1);
-    will_return(__wrap_getDefine_Int, 1);
-    will_return(__wrap_getDefine_Int, 1);
-    will_return(__wrap_getDefine_Int, 1);
-    will_return(__wrap_getDefine_Int, 1);
-    will_return(__wrap_getDefine_Int, 1);
-    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
 
     // SCA limits
-    will_return(__wrap_getDefine_Int, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
 
-    will_return(__wrap_getDefine_Int, 2);      // receive_chunk
-    will_return(__wrap_getDefine_Int, 3);      // send_chunk
-    will_return(__wrap_getDefine_Int, 5);      // buffer_relax
-    will_return(__wrap_getDefine_Int, 7);      // send_buffer_size
-    will_return(__wrap_getDefine_Int, 11);     // send_timeout_to_retry
-    will_return(__wrap_getDefine_Int, 13);     // recv_timeout
-    will_return(__wrap_getDefine_Int, 17);     // tcp_keepidle
-    will_return(__wrap_getDefine_Int, 19);     // tcp_keepintvl
-    will_return(__wrap_getDefine_Int, 23);     // tcp_keepcnt
-    will_return(__wrap_getDefine_Int, 29);     // worker_pool
-    will_return(__wrap_getDefine_Int, 31);     // merge_shared
-    will_return(__wrap_getDefine_Int, 37);     // pass_empty_keyfile
-    will_return(__wrap_getDefine_Int, 41);     // ctrl_msg_queue_size
-    will_return(__wrap_getDefine_Int, 43);     // keyupdate_interval
-    will_return(__wrap_getDefine_Int, 47);     // router_forwarding_disabled
-    will_return(__wrap_getDefine_Int, 53);     // state_interval
-    will_return(__wrap_getDefine_Int, 59);     // nofile
-    will_return(__wrap_getDefine_Int, 61);     // sender_pool
-    will_return(__wrap_getDefine_Int, 67);     // request_pool
-    will_return(__wrap_getDefine_Int, 71);     // request_timeout
-    will_return(__wrap_getDefine_Int, 73);     // response_timeout
-    will_return(__wrap_getDefine_Int, 79);     // rto_sec
-    will_return(__wrap_getDefine_Int, 83);     // rto_msec
-    will_return(__wrap_getDefine_Int, 89);     // max_attempts
-    will_return(__wrap_getDefine_Int, 97);     // guess_agent_group
-    will_return(__wrap_getDefine_Int, 101);    // shared_reload_interval
-    will_return(__wrap_getDefine_Int, 103);    // disk_storage
-    will_return(__wrap_getDefine_Int, 107);    // _s_verify_counter
-    will_return(__wrap_getDefine_Int, 109);    // batch_events_capacity
-    will_return(__wrap_getDefine_Int, 113);    // batch_events_per_agent_capacity
-    will_return(__wrap_getDefine_Int, 127);    // enrich_cache_expire_time
+    will_return(__wrap_getDefine_Int_default, 2);      // receive_chunk
+    will_return(__wrap_getDefine_Int_default, 3);      // send_chunk
+    will_return(__wrap_getDefine_Int_default, 5);      // buffer_relax
+    will_return(__wrap_getDefine_Int_default, 7);      // send_buffer_size
+    will_return(__wrap_getDefine_Int_default, 11);     // send_timeout_to_retry
+    will_return(__wrap_getDefine_Int_default, 13);     // recv_timeout
+    will_return(__wrap_getDefine_Int_default, 17);     // tcp_keepidle
+    will_return(__wrap_getDefine_Int_default, 19);     // tcp_keepintvl
+    will_return(__wrap_getDefine_Int_default, 23);     // tcp_keepcnt
+    will_return(__wrap_getDefine_Int_default, 29);     // worker_pool
+    will_return(__wrap_getDefine_Int_default, 31);     // merge_shared
+    will_return(__wrap_getDefine_Int_default, 37);     // pass_empty_keyfile
+    will_return(__wrap_getDefine_Int_default, 41);     // ctrl_msg_queue_size
+    will_return(__wrap_getDefine_Int_default, 43);     // keyupdate_interval
+    will_return(__wrap_getDefine_Int_default, 47);     // router_forwarding_disabled
+    will_return(__wrap_getDefine_Int_default, 53);     // state_interval
+    will_return(__wrap_getDefine_Int_default, 59);     // nofile
+    will_return(__wrap_getDefine_Int_default, 61);     // sender_pool
+    will_return(__wrap_getDefine_Int_default, 67);     // request_pool
+    will_return(__wrap_getDefine_Int_default, 71);     // request_timeout
+    will_return(__wrap_getDefine_Int_default, 73);     // response_timeout
+    will_return(__wrap_getDefine_Int_default, 79);     // rto_sec
+    will_return(__wrap_getDefine_Int_default, 83);     // rto_msec
+    will_return(__wrap_getDefine_Int_default, 89);     // max_attempts
+    will_return(__wrap_getDefine_Int_default, 97);     // guess_agent_group
+    will_return(__wrap_getDefine_Int_default, 101);    // shared_reload_interval
+    will_return(__wrap_getDefine_Int_default, 103);    // disk_storage
+    will_return(__wrap_getDefine_Int_default, 107);    // _s_verify_counter
+    will_return(__wrap_getDefine_Int_default, 109);    // batch_events_capacity
+    will_return(__wrap_getDefine_Int_default, 113);    // batch_events_per_agent_capacity
+    will_return(__wrap_getDefine_Int_default, 127);    // enrich_cache_expire_time
 
     // Mock ReadConfig calls
     expect_value(__wrap_ReadConfig, modules, CREMOTE);

@@ -837,7 +837,7 @@ void test_wm_agent_upgrade_sha1_sha_success(void **state) {
 void test_wm_agent_upgrade_com_upgrade_unsign_error(void **state) {
     cJSON * command = *state;
 
-    will_return(__wrap_getDefine_Int, 3600);
+    will_return(__wrap_getDefine_Int_default, 3600);
 
     // Unsign
     {
@@ -859,7 +859,7 @@ void test_wm_agent_upgrade_com_upgrade_unsign_error(void **state) {
 void test_wm_agent_upgrade_com_upgrade_uncompress_error(void **state) {
     cJSON * command = *state;
 
-    will_return(__wrap_getDefine_Int, 3600);
+    will_return(__wrap_getDefine_Int_default, 3600);
 
     // Unsign
     {
@@ -908,7 +908,7 @@ void test_wm_agent_upgrade_com_upgrade_uncompress_error(void **state) {
 void test_wm_agent_upgrade_com_upgrade_clean_directory_error(void **state) {
     cJSON * command = *state;
 
-    will_return(__wrap_getDefine_Int, 3600);
+    will_return(__wrap_getDefine_Int_default, 3600);
 
     // Unsign
     {
@@ -979,7 +979,7 @@ void test_wm_agent_upgrade_com_upgrade_clean_directory_error(void **state) {
 void test_wm_agent_upgrade_com_unmerge_error(void **state) {
     cJSON * command = *state;
 
-    will_return(__wrap_getDefine_Int, 3600);
+    will_return(__wrap_getDefine_Int_default, 3600);
 
     // Unsign
     {
@@ -1058,7 +1058,7 @@ void test_wm_agent_upgrade_com_unmerge_error(void **state) {
 void test_wm_agent_upgrade_com_installer_error(void **state) {
     cJSON * command = *state;
 
-    will_return(__wrap_getDefine_Int, 3600);
+    will_return(__wrap_getDefine_Int_default, 3600);
     // Unsign
     {
         expect_string(__wrap_w_ref_parent_folder, path, "test_file");
@@ -1139,7 +1139,7 @@ void test_wm_agent_upgrade_com_installer_error(void **state) {
 void test_wm_agent_upgrade_com_chmod_error(void **state) {
     cJSON * command = *state;
 
-    will_return(__wrap_getDefine_Int, 3600);
+    will_return(__wrap_getDefine_Int_default, 3600);
     // Unsign
     {
         expect_string(__wrap_w_ref_parent_folder, path, "test_file");
@@ -1226,7 +1226,7 @@ void test_wm_agent_upgrade_com_chmod_error(void **state) {
 void test_wm_agent_upgrade_com_execute_error(void **state) {
     cJSON * command = *state;
 
-    will_return(__wrap_getDefine_Int, 3600);
+    will_return(__wrap_getDefine_Int_default, 3600);
     // Unsign
     {
         expect_string(__wrap_w_ref_parent_folder, path, "test_file");
@@ -1330,7 +1330,7 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
 void test_wm_agent_upgrade_com_success(void **state) {
     cJSON * command = *state;
 
-    will_return(__wrap_getDefine_Int, 3600);
+    will_return(__wrap_getDefine_Int_default, 3600);
     // Unsign
     {
         expect_string(__wrap_w_ref_parent_folder, path, "test_file");
@@ -1731,7 +1731,7 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state) {
     char *output = NULL;
     // upgrade
     {
-        will_return(__wrap_getDefine_Int, 3600);
+        will_return(__wrap_getDefine_Int_default, 3600);
         // Unsign
         {
             expect_string(__wrap_w_ref_parent_folder, path, "test_file");

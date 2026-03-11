@@ -76,7 +76,7 @@ else()
                                     -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddNumberToObject \
                                     -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddItemToObject \
                                     -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,pthread_mutex_lock \
-                                    -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_Print -Wl,--wrap,getDefine_Int \
+                                    -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_Print -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default \
                                     -Wl,--wrap,FOREVER -Wl,--wrap,sleep -Wl,--wrap,getpid -Wl,--wrap,cJSON_Duplicate \
                                     -Wl,--wrap,strftime -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS} ${HASH_OP_WRAPPERS}")
 
