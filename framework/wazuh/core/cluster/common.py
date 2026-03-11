@@ -1849,7 +1849,13 @@ def as_wazuh_object(dct: Dict):
             if '__wazuh__' in encoded_callable:
                 # Encoded Wazuh instance method.
                 wazuh = Wazuh()
-                return getattr(wazuh, funcname)
+                func = getattr(wazuh, funcname)
+                # Verify that the method has the @expose_resources decorator
+                if not hasattr(func, '__wrapped__'):
+                    raise exception.WazuhInternalError(1000,
+                                                       extra_message=f"Method '{funcname}' is not exposed with @expose_resources decorator",
+                                                       cmd_error=True)
+                return func
             else:
                 # Encoded function or static method.
                 qualname = encoded_callable['__qualname__'].split('.')
@@ -1861,14 +1867,23 @@ def as_wazuh_object(dct: Dict):
                     raise exception.WazuhInternalError(1000,
                                                        extra_message=f"Decoding callable from module '{module_path}' is not allowed",
                                                        cmd_error=True)
-                
+
                 relative_mod = module_path.removeprefix(package_name)
                 module = import_module(relative_mod, package=package_name)
 
                 if classname is None:
-                    return getattr(module, funcname)
+                    func = getattr(module, funcname)
                 else:
-                    return getattr(getattr(module, classname), funcname)
+                    func = getattr(getattr(module, classname), funcname)
+
+                # Verify that the function has the @expose_resources decorator
+                # The decorator uses functools.wraps which sets the __wrapped__ attribute
+                if not hasattr(func, '__wrapped__'):
+                    raise exception.WazuhInternalError(1000,
+                                                       extra_message=f"Function '{funcname}' from module '{module_path}' is not exposed with @expose_resources decorator",
+                                                       cmd_error=True)
+
+                return func
         
         elif '__wazuh_exception__' in dct:
             wazuh_exception = dct['__wazuh_exception__']
