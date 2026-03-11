@@ -227,6 +227,24 @@ class EXPORTED Syscollector final
         bool checkIfFullSyncRequired(const std::string& tableName);
 
         /**
+         * @brief Get a metadata value from table_metadata.
+         *
+         * @param key Metadata key to query.
+         * @param value Output value. Defaults to 0 when the key is absent.
+         * @return true on success, false on error.
+         */
+        bool getMetadataValue(const std::string& key, int64_t& value);
+
+        /**
+         * @brief Update a metadata value in table_metadata.
+         *
+         * @param key Metadata key to update.
+         * @param value Value to persist.
+         * @return true on success, false on error.
+         */
+        bool updateMetadataValue(const std::string& key, int64_t value);
+
+        /**
          * @brief Get the last_sync_time for a given table.
          *
          * @param tableName Name of the table to query.

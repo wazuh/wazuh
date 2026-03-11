@@ -88,6 +88,8 @@ constexpr auto QUEUE_SIZE
     4096
 };
 
+constexpr auto SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY {"first_sync_completed"};
+
 static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
 {
     // LCOV_EXCL_START
@@ -2211,6 +2213,16 @@ bool Syscollector::syncModule(Mode mode)
     if (m_spSyncProtocol)
     {
         success = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
+
+        if (success)
+        {
+            int64_t firstSyncCompleted = 0;
+
+            if (!getMetadataValue(SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY, firstSyncCompleted) || firstSyncCompleted == 0)
+            {
+                updateMetadataValue(SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
+            }
+        }
     }
 
     // Sync VD data with appropriate option based on first scan status
@@ -3003,6 +3015,22 @@ std::string Syscollector::query(const std::string& jsonQuery)
                 response["error"] = MQ_ERR_INTERNAL;
                 response["message"] = "Failed to retrieve Syscollector version";
                 response["data"]["version"] = -1;
+            }
+        }
+        else if (command == "get_first_sync_completed")
+        {
+            int64_t firstSyncCompleted = 0;
+
+            if (getMetadataValue(SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY, firstSyncCompleted))
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "Syscollector first sync completion retrieved";
+                response["data"]["first_sync_completed"] = firstSyncCompleted > 0 ? 1 : 0;
+            }
+            else
+            {
+                response["error"] = MQ_ERR_INTERNAL;
+                response["message"] = "Failed to retrieve Syscollector first sync completion";
             }
         }
         else if (command == "set_version")
@@ -4109,71 +4137,112 @@ bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
 }
 // LCOV_EXCL_STOP
 
-int64_t Syscollector::getLastSyncTime(const std::string& tableName)
+bool Syscollector::getMetadataValue(const std::string& key, int64_t& value)
 {
-    int64_t lastSyncTime = 0;
+    value = 0;
 
-    auto callback = [&lastSyncTime](ReturnTypeCallback result, const nlohmann::json & data)
+    auto callback = [&value](ReturnTypeCallback result, const nlohmann::json & data)
     {
         if (result == ReturnTypeCallback::SELECTED && data.contains("last_sync_time"))
         {
-            lastSyncTime = data.at("last_sync_time").get<int64_t>();
+            value = data.at("last_sync_time").get<int64_t>();
         }
     };
 
-    auto selectQuery = SelectQuery::builder()
-                       .table("table_metadata")
-                       .columnList({"last_sync_time"})
-                       .rowFilter("WHERE table_name = '" + tableName + "'")
-                       .build();
+    try
+    {
+        auto selectQuery = SelectQuery::builder()
+                           .table("table_metadata")
+                           .columnList({"last_sync_time"})
+                           .rowFilter("WHERE table_name = '" + key + "'")
+                           .build();
 
-    m_spDBSync->selectRows(selectQuery.query(), callback);
+        m_spDBSync->selectRows(selectQuery.query(), callback);
+        return true;
+    }
+    catch (const std::exception& ex)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Failed to get metadata value '" + key + "': " + std::string(ex.what()));
+        }
+    }
 
+    return false;
+}
+
+bool Syscollector::updateMetadataValue(const std::string& key, int64_t value)
+{
+    auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+
+    try
+    {
+        std::map<std::string, int64_t> metadataValues;
+        auto selectQuery = SelectQuery::builder()
+                           .table("table_metadata")
+                           .columnList({"table_name", "last_sync_time"})
+                           .build();
+
+        auto selectCallback = [&metadataValues](ReturnTypeCallback result, const nlohmann::json & data)
+        {
+            if (result == ReturnTypeCallback::SELECTED &&
+                    data.contains("table_name") &&
+                    data.contains("last_sync_time") &&
+                    data.at("table_name").is_string() &&
+                    data.at("last_sync_time").is_number())
+            {
+                metadataValues[data.at("table_name").get<std::string>()] = data.at("last_sync_time").get<int64_t>();
+            }
+        };
+
+        m_spDBSync->selectRows(selectQuery.query(), selectCallback);
+        metadataValues[key] = value;
+
+        DBSyncTxn txn
+        {
+            m_spDBSync->handle(),
+            nlohmann::json{"table_metadata"},
+            0,
+            QUEUE_SIZE,
+            emptyCallback
+        };
+
+        nlohmann::json allData = nlohmann::json::array();
+
+        for (const auto& [tableName, timestamp] : metadataValues)
+        {
+            allData.push_back({{"table_name", tableName}, {"last_sync_time", timestamp}});
+        }
+
+        nlohmann::json input;
+        input["table"] = "table_metadata";
+        input["data"] = allData;
+
+        txn.syncTxnRow(input);
+        txn.getDeletedRows(emptyCallback);
+        return true;
+    }
+    catch (const std::exception& ex)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Failed to update metadata value '" + key + "': " + std::string(ex.what()));
+        }
+    }
+
+    return false;
+}
+
+int64_t Syscollector::getLastSyncTime(const std::string& tableName)
+{
+    int64_t lastSyncTime = 0;
+    getMetadataValue(tableName, lastSyncTime);
     return lastSyncTime;
-
 }
 
 void Syscollector::updateLastSyncTime(const std::string& tableName, int64_t timestamp)
 {
-    auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
-
-    // Read all current last_sync_time values from table_metadata
-    // We need to sync ALL rows to prevent DBSyncTxn from deleting unsynced rows
-    std::map<std::string, int64_t> allTimestamps;
-
-    for (const auto& [table, index] : INDEX_MAP)
-    {
-        allTimestamps[table] = getLastSyncTime(table);
-    }
-
-    // Update the one that changed
-    allTimestamps[tableName] = timestamp;
-
-    // Use DBSyncTxn to ensure transaction is committed immediately
-    // getDeletedRows() commits m_transaction and creates a new one
-    DBSyncTxn txn
-    {
-        m_spDBSync->handle(),
-        nlohmann::json{"table_metadata"},
-        0,
-        QUEUE_SIZE,
-        emptyCallback
-    };
-
-    // Build data array with ALL table timestamps to prevent deletion
-    nlohmann::json allData = nlohmann::json::array();
-
-    for (const auto& [table, ts] : allTimestamps)
-    {
-        allData.push_back({{"table_name", table}, {"last_sync_time", ts}});
-    }
-
-    nlohmann::json input;
-    input["table"] = "table_metadata";
-    input["data"] = allData;
-
-    txn.syncTxnRow(input);
-    txn.getDeletedRows(emptyCallback);  // Commits the transaction here
+    updateMetadataValue(tableName, timestamp);
 }
 
 bool Syscollector::recoveryIntervalHasEllapsed(const std::string& tableName, int64_t integrityInterval)

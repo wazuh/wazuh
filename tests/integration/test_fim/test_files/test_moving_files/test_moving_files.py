@@ -152,6 +152,15 @@ def test_moving_file_to_whodata(test_configuration, test_metadata, set_wazuh_con
     mod_add_event = test_metadata.get('mod_add_event')
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+
+    # Wait for the first FIM synchronization cycle to complete (succeed or fail) so that the
+    # sync thread releases fim_scan_mutex and fim_realtime_mutex. Without this, the sync
+    # handshake with the manager blocks all event processing for its entire duration.
+    wazuh_log_monitor.start(
+        timeout=250,
+        callback=generate_callback(r'.*FIM synchronization (finished|failed).*')
+    )
+
     os.rename(os.path.join(dirsrc, filename), os.path.join(dirdst, filename))
 
     # Check event 'delete'

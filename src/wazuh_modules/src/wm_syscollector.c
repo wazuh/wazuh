@@ -88,6 +88,13 @@ syscollector_delete_database_func syscollector_delete_database_ptr = NULL;
 typedef size_t (*syscollector_query_func)(const char* query, char** output);
 syscollector_query_func syscollector_query_ptr = NULL;
 
+typedef enum
+{
+    SYSCOLLECTOR_STARTUP_ACTION_WAIT = 0,
+    SYSCOLLECTOR_STARTUP_ACTION_IMMEDIATE,
+    SYSCOLLECTOR_STARTUP_ACTION_STOP
+} wm_syscollector_startup_action_t;
+
 // Mutex access function pointers
 typedef void (*syscollector_lock_scan_mutex_func)();
 typedef void (*syscollector_unlock_scan_mutex_func)();
@@ -280,6 +287,115 @@ static void wm_sys_send_message(const void* data, const char queue_id)
 static void wm_sys_send_diff_message(const void* data)
 {
     wm_sys_send_message(data, SYSCOLLECTOR_MQ);
+}
+
+static bool wm_sys_parse_query_int(const char* output, const char* field, int* value)
+{
+    bool result = false;
+    cJSON* root = NULL;
+
+    if (!output || !field || !value)
+    {
+        return false;
+    }
+
+    root = cJSON_Parse(output);
+
+    if (!root)
+    {
+        return false;
+    }
+
+    cJSON* error = cJSON_GetObjectItemCaseSensitive(root, "error");
+    cJSON* data = cJSON_GetObjectItemCaseSensitive(root, "data");
+    cJSON* field_item = data ? cJSON_GetObjectItemCaseSensitive(data, field) : NULL;
+
+    if (error && field_item && cJSON_IsNumber(error) && error->valueint == MQ_SUCCESS &&
+        cJSON_IsNumber(field_item))
+    {
+        *value = field_item->valueint;
+        result = true;
+    }
+
+    cJSON_Delete(root);
+    return result;
+}
+
+static bool wm_sys_query_int(const char* query, const char* field, int* value)
+{
+    bool result = false;
+    char* output = NULL;
+
+    if (!syscollector_query_ptr || !query || !field || !value)
+    {
+        return false;
+    }
+
+    syscollector_query_ptr(query, &output);
+
+    if (output)
+    {
+        result = wm_sys_parse_query_int(output, field, value);
+        free(output);
+    }
+
+    return result;
+}
+
+static wm_syscollector_startup_action_t wm_sys_get_startup_action(bool* first_sync_completed)
+{
+    int marker = 0;
+
+    if (first_sync_completed)
+    {
+        *first_sync_completed = false;
+    }
+
+    if (!syscollector_query_ptr)
+    {
+        mtdebug1(WM_SYS_LOGTAG, "Syscollector query function not available. Keeping startup synchronization delay.");
+        return SYSCOLLECTOR_STARTUP_ACTION_WAIT;
+    }
+
+    if (!wm_sys_query_int("{\"command\":\"get_first_sync_completed\"}", "first_sync_completed", &marker))
+    {
+        mtdebug1(WM_SYS_LOGTAG, "Failed to detect whether the first inventory synchronization already completed. Keeping startup synchronization delay.");
+        return SYSCOLLECTOR_STARTUP_ACTION_WAIT;
+    }
+
+    if (marker > 0)
+    {
+        if (first_sync_completed)
+        {
+            *first_sync_completed = true;
+        }
+
+        mtdebug1(WM_SYS_LOGTAG, "Inventory first synchronization already completed in a previous run. Keeping startup synchronization delay.");
+        return SYSCOLLECTOR_STARTUP_ACTION_WAIT;
+    }
+
+    mtdebug1(WM_SYS_LOGTAG, "Inventory initial scan data is not ready yet. First synchronization will wait for scan data.");
+
+    while (sync_module_running && !is_shutdown_process_started())
+    {
+        int version = 0;
+
+        if (!wm_sys_query_int("{\"command\":\"get_version\"}", "version", &version))
+        {
+            mtdebug1(WM_SYS_LOGTAG, "Failed to detect initial Syscollector scan data. Keeping startup synchronization delay.");
+            return SYSCOLLECTOR_STARTUP_ACTION_WAIT;
+        }
+
+        if (version > 0)
+        {
+            mtdebug1(WM_SYS_LOGTAG, "Initial Inventory scan data is ready. Triggering first synchronization without startup delay.");
+            return SYSCOLLECTOR_STARTUP_ACTION_IMMEDIATE;
+        }
+
+        sleep(1);
+    }
+
+    return SYSCOLLECTOR_STARTUP_ACTION_STOP;
 }
 
 static void wm_sys_persist_diff_message(const char* id, Operation_t operation, const char* index, const void* data, uint64_t version)
@@ -812,19 +928,51 @@ DWORD WINAPI wm_sync_module(__attribute__((unused)) void* args)
 void* wm_sync_module(__attribute__((unused)) void* args)
 {
 #endif
+    bool first_sync_completed = false;
+    bool wait_before_sync = true;
 
-    // Initial wait until syscollector is started
-    for (uint32_t i = 0; i < sync_interval && sync_module_running; i++)
+    switch (wm_sys_get_startup_action(&first_sync_completed))
     {
-        sleep(1);
+        case SYSCOLLECTOR_STARTUP_ACTION_IMMEDIATE:
+            wait_before_sync = false;
+            break;
+        case SYSCOLLECTOR_STARTUP_ACTION_STOP:
+#ifdef WIN32
+            return 0;
+#else
+            return NULL;
+#endif
+        case SYSCOLLECTOR_STARTUP_ACTION_WAIT:
+        default:
+            break;
     }
 
     while (sync_module_running)
     {
+        if (wait_before_sync)
+        {
+            for (uint32_t i = 0; i < sync_interval && sync_module_running; i++)
+            {
+                sleep(1);
+            }
+        }
+
+        wait_before_sync = true;
+
+        if (!sync_module_running)
+        {
+            break;
+        }
+
         if (syscollector_sync_module_ptr)
         {
             // Do not hold scan mutex while waiting for sync ACKs.
             bool sync_result = syscollector_sync_module_ptr(MODE_DELTA);
+
+            if (sync_result && !first_sync_completed)
+            {
+                first_sync_completed = true;
+            }
 
             // Recovery touches shared state; keep this section serialized.
             if (sync_result && sync_module_running && syscollector_run_recovery_process_ptr)
@@ -844,12 +992,6 @@ void* wm_sync_module(__attribute__((unused)) void* args)
         else
         {
             mtdebug1(WM_SYS_LOGTAG, "Sync function not available");
-        }
-
-        // Sleep in small intervals to allow responsive stopping
-        for (uint32_t i = 0; i < sync_interval && sync_module_running; i++)
-        {
-            sleep(1);
         }
     }
 

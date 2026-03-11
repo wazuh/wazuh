@@ -269,6 +269,13 @@ sca_delete_database_func sca_delete_database_ptr = NULL;
 typedef size_t (*sca_query_func)(const char* query, char** output);
 sca_query_func sca_query_ptr = NULL;
 
+typedef enum
+{
+    SCA_STARTUP_ACTION_WAIT = 0,
+    SCA_STARTUP_ACTION_IMMEDIATE,
+    SCA_STARTUP_ACTION_STOP
+} wm_sca_startup_action_t;
+
 // YAML to cJSON function pointer
 sca_set_yaml_to_cjson_func_func sca_set_yaml_to_cjson_func_ptr = NULL;
 
@@ -303,6 +310,115 @@ static int wm_sca_startmq(const char* key, short type, short attempts) {
 
 static int wm_sca_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
     return SendBinaryMSG(queue, message, message_len, locmsg, loc);
+}
+
+static bool wm_sca_parse_query_int(const char* output, const char* field, int* value)
+{
+    bool result = false;
+    cJSON* root = NULL;
+
+    if (!output || !field || !value)
+    {
+        return false;
+    }
+
+    root = cJSON_Parse(output);
+
+    if (!root)
+    {
+        return false;
+    }
+
+    cJSON* error = cJSON_GetObjectItemCaseSensitive(root, "error");
+    cJSON* data = cJSON_GetObjectItemCaseSensitive(root, "data");
+    cJSON* field_item = data ? cJSON_GetObjectItemCaseSensitive(data, field) : NULL;
+
+    if (error && field_item && cJSON_IsNumber(error) && error->valueint == MQ_SUCCESS &&
+        cJSON_IsNumber(field_item))
+    {
+        *value = field_item->valueint;
+        result = true;
+    }
+
+    cJSON_Delete(root);
+    return result;
+}
+
+static bool wm_sca_query_int(const char* query, const char* field, int* value)
+{
+    bool result = false;
+    char* output = NULL;
+
+    if (!sca_query_ptr || !query || !field || !value)
+    {
+        return false;
+    }
+
+    sca_query_ptr(query, &output);
+
+    if (output)
+    {
+        result = wm_sca_parse_query_int(output, field, value);
+        free(output);
+    }
+
+    return result;
+}
+
+static wm_sca_startup_action_t wm_sca_get_startup_action(bool* first_sync_completed)
+{
+    int marker = 0;
+
+    if (first_sync_completed)
+    {
+        *first_sync_completed = false;
+    }
+
+    if (!sca_query_ptr)
+    {
+        mdebug1("SCA query function not available. Keeping startup synchronization delay.");
+        return SCA_STARTUP_ACTION_WAIT;
+    }
+
+    if (!wm_sca_query_int("{\"command\":\"get_first_sync_completed\"}", "first_sync_completed", &marker))
+    {
+        mdebug1("Failed to detect whether the first SCA synchronization already completed. Keeping startup synchronization delay.");
+        return SCA_STARTUP_ACTION_WAIT;
+    }
+
+    if (marker > 0)
+    {
+        if (first_sync_completed)
+        {
+            *first_sync_completed = true;
+        }
+
+        mdebug1("SCA first synchronization already completed in a previous run. Keeping startup synchronization delay.");
+        return SCA_STARTUP_ACTION_WAIT;
+    }
+
+    mdebug1("SCA initial scan data is not ready yet. First synchronization will wait for scan data.");
+
+    while (sca_sync_module_running && !g_shutting_down)
+    {
+        int version = 0;
+
+        if (!wm_sca_query_int("{\"command\":\"get_version\"}", "version", &version))
+        {
+            mdebug1("Failed to detect initial SCA scan data. Keeping startup synchronization delay.");
+            return SCA_STARTUP_ACTION_WAIT;
+        }
+
+        if (version > 0)
+        {
+            mdebug1("Initial SCA scan data is ready. Triggering first synchronization without startup delay.");
+            return SCA_STARTUP_ACTION_IMMEDIATE;
+        }
+
+        sleep(1);
+    }
+
+    return SCA_STARTUP_ACTION_STOP;
 }
 
 static void wm_handle_sca_disable_and_notify_data_clean()
@@ -672,14 +788,42 @@ DWORD WINAPI wm_sca_sync_module(__attribute__((unused)) void * args) {
 #else
 void * wm_sca_sync_module(__attribute__((unused)) void * args) {
 #endif
-    // Initial wait until SCA is started
-    for (uint32_t i = 0; i < sca_sync_interval && sca_sync_module_running; i++)
+    bool first_sync_completed = false;
+    bool wait_before_sync = true;
+
+    switch (wm_sca_get_startup_action(&first_sync_completed))
     {
-        sleep(1);
+        case SCA_STARTUP_ACTION_IMMEDIATE:
+            wait_before_sync = false;
+            break;
+        case SCA_STARTUP_ACTION_STOP:
+#ifdef WIN32
+            return 0;
+#else
+            return NULL;
+#endif
+        case SCA_STARTUP_ACTION_WAIT:
+        default:
+            break;
     }
 
     while (sca_sync_module_running)
     {
+        if (!sca_sync_module_running)
+        {
+            break;
+        }
+
+        if (wait_before_sync)
+        {
+            for (uint32_t i = 0; i < sca_sync_interval && sca_sync_module_running; i++)
+            {
+                sleep(1);
+            }
+        }
+
+        wait_before_sync = true;
+
         if (!sca_sync_module_running)
         {
             break;
@@ -705,6 +849,11 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
         else
         {
             mdebug1("Sync function not available");
+        }
+
+        if (sync_result && !first_sync_completed)
+        {
+            first_sync_completed = true;
         }
 
         // If sync succeeded and integrity checks are enabled, check integrity
@@ -733,12 +882,6 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
         }
 
         mdebug1("SCA synchronization cycle finished, waiting for %d seconds before next run.", sca_sync_interval);
-
-        // Wait for sync_interval before next cycle
-        for (uint32_t i = 0; i < sca_sync_interval && sca_sync_module_running; i++)
-        {
-            sleep(1);
-        }
     }
 
 #ifdef WIN32

@@ -183,6 +183,18 @@ class SecurityConfigurationAssessment
         /// @param timestamp Current time
         void updateLastIntegrityCheckTime(int64_t timestamp);
 
+        /// @brief Get a metadata value from the local SCA database.
+        /// @param key Metadata key.
+        /// @param value Output value. Defaults to 0 when the key is absent.
+        /// @return true on success, false on error.
+        bool getMetadataValue(const std::string& key, int64_t& value);
+
+        /// @brief Update a metadata value in the local SCA database.
+        /// @param key Metadata key.
+        /// @param value Value to persist.
+        /// @return true on success, false on error.
+        bool updateMetadataValue(const std::string& key, int64_t value);
+
         /// @brief Perform full recovery: load all checks and resync
         /// @return true on success
         bool performRecovery();
