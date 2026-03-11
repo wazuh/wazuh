@@ -73,7 +73,7 @@ INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_
                    'b3650e11eba2f27er4d160c69de533ee7eed6016fga85ba2455d53a90927747f', 'Ubuntu','16.04.1 LTS','16','04',
                    'Xenial','ubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
-                   'Wazuh v3.6.2','ab73af41699f13fgt81903b5f23d8d00','f8d49771911ed9d5c45bdfa40babd065','master',
+                   'Wazuh v4.2.0','ab73af41699f13fgt81903b5f23d8d00','f8d49771911ed9d5c45bdfa40babd065','master',
                    'node01',strftime('%s','now','-3 days'),
                     strftime('%s','now','-10 minutes'),'updated','active', 'default,group-0', 'synced');
 
@@ -95,7 +95,7 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
                    'b3650e11eba2f27er4d160c69de533ee7eed601636a42ba2455d53a90927747f', 'Ubuntu','18.08.1 LTS','18','08',
                    'Bionic Beaver','ubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
-                   'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
+                   'Wazuh v4.0.0','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',strftime('%s','now','-5 days'),
                     strftime('%s','now','-2 hour'),'updated','disconnected', strftime('%s','now','-2 hour'), 'not synced');
 
@@ -107,7 +107,7 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
                    'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Xubuntu','21.04.1 LTS','21','04',
                    'Bionic Beaver','xubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
-                   'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
+                   'Wazuh v4.0.0','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',strftime('%s','now','-4 days'),
                     strftime('%s','now','-7 seconds'),'updated','active','group-1', 'synced');
 
@@ -119,7 +119,7 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
                    'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Ubuntu','18.04.1 LTS','18','04',
                    'Bionic Beaver','ubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
-                   'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
+                   'Wazuh v4.0.0','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',strftime('%s','now','-4 days'),
                     strftime('%s','now','-4 seconds'),'updated','active','group-2', 'synced');
 
@@ -131,7 +131,7 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
                    'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Xubuntu','18.04.1 LTS','18','04',
                    'Bionic Beaver','xubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
-                   'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
+                   'Wazuh v4.0.0','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',strftime('%s','now','-4 days'),
                     strftime('%s','now','-12 seconds'),'updated','active','group-2,group-1', 'synced');
 
@@ -143,7 +143,7 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
                    'b3650e11eba2f27er4d160c69de533ee7ffd601636a85ba2455d53a90927747f', 'Windows','10.0.0 XP','10','00',
                    'XP classic','windows',
                    'Windows |agent-9 |3.14-45 |#46-Windows SMP Thu Dec 32 24:45:28 UTC 2022 |x86_64','x86_64',
-                   'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
+                   'Wazuh v4.0.0','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',strftime('%s','now','-4 days'),
                     strftime('%s','now','-5 seconds'),'updated','active','default', 'synced');
 
