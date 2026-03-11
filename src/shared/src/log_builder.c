@@ -23,6 +23,7 @@
 #ifdef WIN32
 #define get_agent_ip_legacy_win32 wrap_get_agent_ip_legacy_win32
 #define getDefine_Int __wrap_getDefine_Int
+#define getDefine_Int_default __wrap_getDefine_Int_default
 #endif
 #else
 #define STATIC static
