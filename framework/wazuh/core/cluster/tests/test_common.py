@@ -1780,8 +1780,10 @@ def test_wazuh_json_encoder_default(mock_chmod, mock_chown, mock_gid, mock_uid):
 def test_as_wazuh_object_ok(mock_chmod, mock_chown, mock_gid, mock_uid):
     """Test the different outputs taking into account the input values."""
 
-    # Test the first condition and nested if
-    assert cluster_common.as_wazuh_object({"__callable__": {"__name__": "type", "__wazuh__": "version"}}) == "server"
+    # Test the first condition - Wazuh methods without @expose_resources must be blocked
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({"__callable__": {"__name__": "to_dict", "__wazuh__": "version"}})
+    assert "is not exposed with @expose_resources decorator" in str(err.value)
 
     # Test the first condition - non-internal callable must be blocked
     with pytest.raises(exception.WazuhInternalError) as err:
@@ -1794,22 +1796,29 @@ def test_as_wazuh_object_ok(mock_chmod, mock_chown, mock_gid, mock_uid):
                                                         "__module__": "itertools"}})
     assert "Decoding callable from module" in str(err.value)
 
-    # Test the first condition - allowed callable packages must be processed
-    func =  cluster_common.as_wazuh_object({"__callable__": {"__name__": "check_user_master",
-                                                             "__module__": "api.authentication",
-                                                             "__qualname__": "check_user_master",
-                                                             "__type__": "function"}})
-    assert callable(func)
-    assert func.__module__ == "api.authentication"
-    assert func.__name__ == "check_user_master"
+    # Test the first condition - non-exposed callables must be blocked (no @expose_resources)
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({"__callable__": {"__name__": "check_user_master",
+                                                         "__module__": "api.authentication",
+                                                         "__qualname__": "check_user_master",
+                                                         "__type__": "function"}})
+    assert "is not exposed with @expose_resources decorator" in str(err.value)
 
-    func =  cluster_common.as_wazuh_object({"__callable__": {"__name__": "get_node",
-                                                             "__module__": "wazuh.core.cluster.cluster",
-                                                             "__qualname__": "get_node",
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({"__callable__": {"__name__": "get_node",
+                                                         "__module__": "wazuh.core.cluster.cluster",
+                                                         "__qualname__": "get_node",
+                                                         "__type__": "function"}})
+    assert "is not exposed with @expose_resources decorator" in str(err.value)
+
+    # Test that functions with @expose_resources decorator are allowed
+    func =  cluster_common.as_wazuh_object({"__callable__": {"__name__": "read_config_wrapper",
+                                                             "__module__": "wazuh.cluster",
+                                                             "__qualname__": "read_config_wrapper",
                                                              "__type__": "function"}})
     assert callable(func)
-    assert func.__module__ == "wazuh.core.cluster.cluster"
-    assert func.__name__ == "get_node"
+    assert func.__module__ == "wazuh.cluster"
+    assert func.__name__ == "read_config_wrapper"
 
     # Test the second condition
     assert isinstance(cluster_common.as_wazuh_object(
