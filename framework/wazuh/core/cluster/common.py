@@ -1851,7 +1851,9 @@ def as_wazuh_object(dct: Dict):
                 wazuh = Wazuh()
                 func = getattr(wazuh, funcname)
                 # Verify that the method has the @expose_resources decorator
-                if not hasattr(func, '__wrapped__'):
+                # Check the underlying function for methods
+                underlying_func = getattr(func, '__func__', func)
+                if not getattr(underlying_func, '__wazuh_exposed__', False):
                     raise exception.WazuhInternalError(1000,
                                                        extra_message=f"Method '{funcname}' is not exposed with @expose_resources decorator",
                                                        cmd_error=True)
@@ -1877,8 +1879,10 @@ def as_wazuh_object(dct: Dict):
                     func = getattr(getattr(module, classname), funcname)
 
                 # Verify that the function has the @expose_resources decorator
-                # The decorator uses functools.wraps which sets the __wrapped__ attribute
-                if not hasattr(func, '__wrapped__'):
+                # The decorator sets a specific __wazuh_exposed__ marker
+                # For methods, check the underlying function via __func__
+                underlying_func = getattr(func, '__func__', func)
+                if not getattr(underlying_func, '__wazuh_exposed__', False):
                     raise exception.WazuhInternalError(1000,
                                                        extra_message=f"Function '{funcname}' from module '{module_path}' is not exposed with @expose_resources decorator",
                                                        cmd_error=True)
@@ -1899,6 +1903,9 @@ def as_wazuh_object(dct: Dict):
             return ast.literal_eval(json.dumps(exc_dict))
         return dct
 
+    except exception.WazuhInternalError:
+        # Re-raise Wazuh internal errors (including our security checks)
+        raise
     except (KeyError, AttributeError, TypeError, ValueError):
         raise exception.WazuhInternalError(1000,
                                            extra_message=f"Wazuh object cannot be decoded from JSON {dct}",
