@@ -297,6 +297,8 @@ Asset AssetBuilder::operator()(const json::Json& document) const
     eraseIfExists(syntax::asset::ENABLED_KEY);
     if (syntax::name::isFilter(name))
     {
+        // This will throw if the filter type is missing or invalid
+        syntax::asset::filter::getFilterType(document);
         eraseIfExists(syntax::asset::TYPE_KEY);
     }
 
