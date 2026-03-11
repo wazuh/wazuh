@@ -207,4 +207,57 @@ bool isStandaloneModeEnable()
     return enabled;
 }
 
+std::string getEnvOrDefault(const char* name, const std::string& defaultValue)
+{
+    const char* val = std::getenv(name);
+    return val ? std::string(val) : defaultValue;
+}
+
+std::size_t getEnvSizeOrDefault(const char* name, std::size_t defaultValue)
+{
+    const char* val = std::getenv(name);
+    if (val)
+    {
+        try
+        {
+            return std::stoull(val);
+        }
+        catch (...)
+        {
+            return defaultValue;
+        }
+    }
+    return defaultValue;
+}
+
+int getEnvIntOrDefault(const char* name, int defaultValue)
+{
+    const char* val = std::getenv(name);
+    if (val)
+    {
+        try
+        {
+            return std::stoi(val);
+        }
+        catch (...)
+        {
+            return defaultValue;
+        }
+    }
+    return defaultValue;
+}
+
+bool getEnvBoolOrDefault(const char* name, bool defaultValue)
+{
+    const char* val = std::getenv(name);
+    if (val)
+    {
+        std::string v(val);
+        std::transform(
+            v.begin(), v.end(), v.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        return v == "true" || v == "1" || v == "yes";
+    }
+    return defaultValue;
+}
+
 } // namespace base::process

@@ -7,11 +7,12 @@
  * See: https://github.com/gabime/spdlog/issues/1658#issuecomment-681193558
  *
  */
-
-#include <base/logging.hpp>
-
 #include <spdlog/pattern_formatter.h>
 #include <spdlog/sinks/base_sink.h>
+
+#include <base/dailyRotatingFileSink.hpp>
+#include <base/logging.hpp>
+#include <base/process.hpp>
 
 namespace Log
 {
@@ -96,8 +97,25 @@ void start(const LoggingConfig& cfg)
         logger = std::make_shared<spdlog::logger>("default", custumSink);
         spdlog::set_default_logger(logger);
     }
+    else if (cfg.enableRotation)
+    {
+        // Use our custom sink that combines daily AND size-based rotation
+        // This replicates Log4j2 policies: rotates daily OR when reaching max_size
+        auto sink = std::make_shared<daily_rotating_file_sink>(
+            daily_rotating_file_sink::Config {.filePath = cfg.filePath,
+                                              .maxFileSize = cfg.maxFileSize,
+                                              .rotationHour = cfg.rotationHour,
+                                              .rotationMinute = cfg.rotationMinute,
+                                              .maxFiles = cfg.maxFiles,
+                                              .maxAccumulatedSize = cfg.maxAccumulatedSize,
+                                              .truncate = cfg.truncate});
+
+        logger = std::make_shared<spdlog::logger>("default", sink);
+        spdlog::set_default_logger(logger);
+    }
     else
     {
+        // Simple file logging without rotation
         logger = spdlog::basic_logger_mt("default", cfg.filePath, cfg.truncate);
     }
 
@@ -154,12 +172,12 @@ extern "C"
 
         initializeFullLogFunction(
             [logWrapper](const int logLevel,
-                       const std::string& tag,
-                       const std::string& file,
-                       const int line,
-                       const std::string& func,
-                       const std::string& logMessage,
-                       va_list args)
+                         const std::string& tag,
+                         const std::string& file,
+                         const int line,
+                         const std::string& func,
+                         const std::string& logMessage,
+                         va_list args)
             { logWrapper(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str(), args); });
     }
 
@@ -243,4 +261,43 @@ createStandaloneLogFunction()
         backend_log(level, file, line, func, buffer, strlen(buffer));
     };
 }
+
+LoggingConfig getStandaloneLoggingConfig()
+{
+    static const LoggingConfig config = []()
+    {
+        LoggingConfig cfg;
+
+        // Get logging configuration from environment variables
+        // Environment variables (defaults match Log4j2 policies):
+        //   WAZUH_STANDALONE_LOG_LEVEL                (default: "info")
+        //   WAZUH_STANDALONE_LOG_FILE_PATH            (default: /var/log/wazuh-indexer/wazuh-engine.log)
+        //   WAZUH_STANDALONE_LOG_ROTATION_ENABLED     (default: true)
+        //   WAZUH_STANDALONE_LOG_MAX_FILE_SIZE        (default: 134217728 = 128 MB)
+        //   WAZUH_STANDALONE_LOG_ROTATION_HOUR        (default: 0 = midnight)
+        //   WAZUH_STANDALONE_LOG_ROTATION_MINUTE      (default: 0)
+        //   WAZUH_STANDALONE_LOG_MAX_FILES            (default: 7)
+        //   WAZUH_STANDALONE_LOG_MAX_ACCUMULATED_SIZE (default: 2147483648 = 2 GB)
+
+        auto verbosity = base::process::getEnvOrDefault("WAZUH_STANDALONE_LOG_LEVEL", "info");
+        cfg.level = strToLevel(verbosity);
+        cfg.filePath =
+            base::process::getEnvOrDefault("WAZUH_STANDALONE_LOG_FILE_PATH", "/var/log/wazuh-indexer/wazuh-engine.log");
+        cfg.truncate = false; // Don't truncate on restart
+
+        // Rotation configuration (replicates Log4j2 policies)
+        cfg.enableRotation = base::process::getEnvBoolOrDefault("WAZUH_STANDALONE_LOG_ROTATION_ENABLED", true);
+        cfg.maxFileSize = base::process::getEnvSizeOrDefault("WAZUH_STANDALONE_LOG_MAX_FILE_SIZE", 134217728); // 128 MB
+        cfg.rotationHour = base::process::getEnvIntOrDefault("WAZUH_STANDALONE_LOG_ROTATION_HOUR", 0);
+        cfg.rotationMinute = base::process::getEnvIntOrDefault("WAZUH_STANDALONE_LOG_ROTATION_MINUTE", 0);
+        cfg.maxFiles = static_cast<uint16_t>(base::process::getEnvIntOrDefault("WAZUH_STANDALONE_LOG_MAX_FILES", 7));
+        cfg.maxAccumulatedSize =
+            base::process::getEnvSizeOrDefault("WAZUH_STANDALONE_LOG_MAX_ACCUMULATED_SIZE", 2147483648); // 2 GB
+
+        return cfg;
+    }();
+
+    return config;
+}
+
 } // namespace logging

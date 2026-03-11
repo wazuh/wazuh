@@ -120,11 +120,31 @@ int main(int argc, char* argv[])
             return EXIT_SUCCESS;
         }
 
-        logging::LoggingConfig logConfig;
-        logConfig.level = logging::Level::Info; // Default log level
+        // Get logging configuration from environment variables
+        // Configuration is loaded using the same pattern as process::isStandaloneModeEnable()
+        // See logging::getStandaloneLoggingConfig() for details on environment variables
+        auto logConfig = logging::getStandaloneLoggingConfig();
+
         exitHandler.add([]() { logging::stop(); });
         logging::start(logConfig);
-        LOG_INFO("Logging initialized.");
+
+        if (logConfig.enableRotation)
+        {
+            LOG_INFO("Logging initialized in standalone mode with rotation enabled.");
+            LOG_INFO("Log file: {}", logConfig.filePath);
+            LOG_INFO("Rotation policy: Daily at {}:{:02d} OR when file reaches {} MB",
+                     logConfig.rotationHour,
+                     logConfig.rotationMinute,
+                     logConfig.maxFileSize / (1024 * 1024));
+            LOG_INFO("Max files: {}, Max accumulated size: {:.2f} GB",
+                     logConfig.maxFiles,
+                     logConfig.maxAccumulatedSize / (1024.0 * 1024 * 1024));
+        }
+        else
+        {
+            LOG_INFO("Logging initialized in standalone mode (rotation disabled).");
+            LOG_INFO("Log file: {}", logConfig.filePath);
+        }
     }
     else
     {
@@ -180,7 +200,6 @@ int main(int argc, char* argv[])
     }
 
     // Load the configuration
-
     auto confManager = conf::Conf(std::make_shared<conf::FileLoader>());
     try
     {
