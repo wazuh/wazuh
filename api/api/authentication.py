@@ -27,7 +27,7 @@ from wazuh.core.cluster.utils import read_config
 from wazuh.core.common import wazuh_uid, wazuh_gid
 from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager
 from wazuh.rbac.preprocessor import optimize_resources
-from wazuh.rbac.decorators import dapi_allower
+from wazuh.core.decorators import dapi_allower
 
 INVALID_TOKEN = "Invalid token"
 EXPIRED_TOKEN = "Token expired"

@@ -239,9 +239,11 @@ def validation() -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @mask_sensitive_config()
+@expose_resources(
+    actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+    resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*']
+)
 def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhResult:
     """Wrapper for get_active_configuration.
 
@@ -275,9 +277,11 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @mask_sensitive_config()
+@expose_resources(
+    actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+    resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*']
+)
 def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
                     distinct: bool = False) -> AffectedItemsWazuhResult:
     """Wrapper for get_ossec_conf.

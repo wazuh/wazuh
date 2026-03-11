@@ -9,7 +9,7 @@ from wazuh.core.exception import WazuhError, WazuhPermissionError
 from wazuh.core.results import WazuhResult
 from wazuh.rbac.auth_context import RBAChecker, get_policies_from_roles
 from wazuh.rbac.orm import AuthenticationManager
-from wazuh.rbac.decorators import dapi_allower
+from wazuh.core.decorators import dapi_allower
 
 
 class PreProcessor:

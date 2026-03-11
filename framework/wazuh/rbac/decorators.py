@@ -9,7 +9,6 @@ from functools import wraps
 
 from wazuh.core.agent import get_agents_info, get_groups, expand_group
 from wazuh.core.common import rbac, broadcast, cluster_nodes
-from wazuh.core.decorators import dapi_allower
 from wazuh.core.exception import WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.utils import expand_rules, expand_lists, expand_decoders
@@ -431,7 +430,6 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
     return result
 
 
-@dapi_allower
 def expose_resources(actions: list = None, resources: list = None, post_proc_func: callable = list_handler,
                      post_proc_kwargs: dict = None):
     """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
@@ -506,7 +504,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
             else:
                 return post_proc_func(result, original=original_kwargs, allowed=allow, target=target_params,
                                       add_denied=add_denied, **post_proc_kwargs)
-
+        wrapper.__wazuh_exposed__ = True
         return wrapper
 
     return decorator
