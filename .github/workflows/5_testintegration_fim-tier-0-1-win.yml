@@ -22,7 +22,7 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       # Install wingw required to build the winagent.
       - name: Install dependencies
         run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 -y
@@ -47,44 +47,92 @@ jobs:
         with:
           name: winagent
           path: src/winagent
-  # Execute the tests on windows.
-  run-test:
+  # Discover test modules dynamically to build the parallel matrix.
+  discover-tests:
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Discover fim test modules
+        id: set-matrix
+        run: |
+          matrix=$(
+            find tests/integration/test_fim -mindepth 2 -maxdepth 2 -type d -name 'test_*' | sort | \
+            while IFS= read -r dir; do
+              # Include only modules that have test files with both win32 and tier 0/1 marks
+              if find "$dir" -name "test_*.py" -exec grep -l "win32" {} + 2>/dev/null | \
+                 xargs -r grep -lE "tier\(level=[01]\)" 2>/dev/null | grep -q .; then
+                echo "${dir#tests/integration/test_fim/}"
+              fi
+            done | \
+            jq -R '{test_path: ., name: gsub("/"; "-")}' | \
+            jq -sc '.'
+          )
+          echo "matrix=${matrix}" >> $GITHUB_OUTPUT
+  # Build the MSI installer once on a single Windows runner and share it as an artifact.
+  build-installer:
     needs: build
+    runs-on: windows-2025
+    steps:
+      - name: Add WiX toolkit to PATH
+        shell: bash
+        run: echo "${WIX}bin" >> $GITHUB_PATH
+      - name: Download Artifact winagent
+        uses: actions/download-artifact@v4
+        with:
+          name: winagent
+          path: C:\winagent\
+      - name: Decompress wazuh
+        run: Expand-Archive -LiteralPath C:\winagent\wazuh.zip -DestinationPath C:\
+      - name: Build wazuh installer
+        run: |
+          cd C:\wazuh\src\win32
+          .\wazuh-installer-build-msi.bat
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-msi
+          path: C:\wazuh\src\win32\wazuh-agent--.msi
+      - name: Upload tests artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-tests
+          path: C:\wazuh\tests\
+  # Execute the tests on windows in parallel by test module.
+  run-test:
+    needs: [build-installer, discover-tests]
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.discover-tests.outputs.matrix) }}
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
     runs-on: windows-2025
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      - name: Add WiX toolkit to PATH
-        shell: bash
-        run: echo "${WIX}bin" >> $GITHUB_PATH
-      # Download the compressed winagent build.
-      - name: Download Artifact winagent
+          cache: pip
+      # Download the pre-built MSI and install it.
+      - name: Download MSI artifact
         uses: actions/download-artifact@v4
         with:
-          name: winagent
-          path: C:\winagent\
-      # Decompress the winagent files.
-      - name: Decompress wazuh
-        run: |
-          Expand-Archive -LiteralPath C:\winagent\wazuh.zip -DestinationPath C:\
-      # Build the winagent installer.
-      - name: Build wazuh installer
-        run: |
-          cd  C:\wazuh\src\win32
-          .\wazuh-installer-build-msi.bat
-      # Install the windows agent.
+          name: wazuh-msi
+          path: C:\wazuh-msi\
       - name: Install wazuh agent
-        run: |
-          cd  C:\wazuh\src\win32
-          .\wazuh-agent--.msi /q WAZUH_MANAGER="127.0.0.1"
+        run: C:\wazuh-msi\wazuh-agent--.msi /q WAZUH_MANAGER="127.0.0.1"
+      # Download the tests directory from the build-installer job.
+      - name: Download tests artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: wazuh-tests
+          path: C:\wazuh\tests\
       # Download and install integration tests framework.
       - name: Download and install qa-integration-framework
         shell: pwsh
@@ -103,17 +151,21 @@ jobs:
           git clone -b $QA_BRANCH --single-branch https://github.com/wazuh/qa-integration-framework.git
           pip install qa-integration-framework/
           Remove-Item qa-integration-framework -Recurse -Force
-      # Run fim integration tests.
-      - name: Run fim integration tests
+      # Run fim integration tests for this module.
+      - name: Run fim integration tests (${{ matrix.name }})
+        shell: pwsh
         run: |
           NET START wazuh
           cd C:\wazuh\tests\integration
-          $env:GITHUB_SHA="${{ github.sha }}"; $env:GITHUB_REF_NAME="$env:BRANCH_NAME"; python -m pytest --tier 0 --tier 1 test_fim\ --html=results.html --self-contained-html
+          $testPath = "${{ matrix.test_path }}".Replace('/', '\')
+          $env:GITHUB_SHA="${{ github.sha }}"; $env:GITHUB_REF_NAME="$env:BRANCH_NAME"; python -m pytest --tier 0 --tier 1 "test_fim\$testPath\" --html=results.html --self-contained-html
+          # Exit code 5 means no tests were collected/selected (e.g. Linux-only modules), treat as success
+          if ($LASTEXITCODE -eq 5) { exit 0 }
       # Upload the tests result html as an artifact
       - name: Upload failed test results
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: fim-tier-0-1-win-test-results-${{ github.run_id }}
+          name: fim-tier-0-1-win-test-results-${{ github.run_id }}-${{ matrix.name }}
           path: C:\wazuh\tests\integration\results.html
           retention-days: 7
