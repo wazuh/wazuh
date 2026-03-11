@@ -12,6 +12,7 @@ from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhException, WazuhIndexerError
 from wazuh.core.indexer.credential_manager import KeystoreClient
 from wazuh.core.indexer.max_version_components import MaxVersionIndex
+from wazuh.core.indexer.metrics import MetricsIndex
 
 
 class Indexer:
@@ -86,6 +87,7 @@ class Indexer:
 
         self._client = self._get_opensearch_client()
         self.max_version_components = MaxVersionIndex(client=self._client)
+        self.metrics = MetricsIndex(client=self._client)
 
     def _get_opensearch_client(self) -> AsyncOpenSearch:
         """
