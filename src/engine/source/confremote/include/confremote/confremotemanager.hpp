@@ -55,7 +55,7 @@ public:
      */
     json::Json addTrigger(std::string_view key,
                           std::function<bool(const json::Json&)> onConfigChange,
-                          const json::Json& defaultValue) override;
+                          const json::Json& defaultValue);
 
 private:
     /**
