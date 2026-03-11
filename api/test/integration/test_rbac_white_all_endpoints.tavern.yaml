@@ -22,8 +22,15 @@ stages:
         status: all
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *empty_response
+    response: &empty_response
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
 
   - name: Try to remove one agent (specific)
     request:
@@ -35,8 +42,10 @@ stages:
         status: all
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
+    response: &permission_denied
+      status_code: 403
+      json:
+        error: 4000
 
 ---
 test_name: GET /agents
