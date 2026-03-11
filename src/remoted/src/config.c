@@ -154,7 +154,6 @@ cJSON *getRemoteConfig(void) {
 
     cJSON *root = cJSON_CreateObject();
     cJSON *rem = cJSON_CreateArray();
-    unsigned int j;
     char port[255] = {0};
     char queue_size[255] = {0};
 

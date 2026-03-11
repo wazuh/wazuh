@@ -59,17 +59,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
 
     logr = (remoted *)d1;
 
-    /* attributes must be initialized */
-    if (!logr->lip) {
-        logr->lip = NULL;
-    }
-
-    logr->lip = (char *) realloc(logr->lip, sizeof(char) * (initial_lip_size));
-
-    if (!logr->lip) {
-        merror_exit(MEM_ERROR, errno, strerror(errno));
-    }
-
+    logr->lip = NULL;
     logr->rids_closing_time = DEFAULT_RIDS_CLOSING_TIME;
 
     while (node[i]) {
@@ -176,17 +166,14 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     }
 
     /* Set port in here */
-    logr->port = DEFAULT_SECURE;
+    if (logr->port == 0) {
+        logr->port = DEFAULT_REMOTE_PORT;
+    }
 
-    /* Set default protocol */
+    /* Set protocol in here */
     if (logr->proto == 0) {
         logr->proto = REMOTED_NET_PROTOCOL_DEFAULT;
     }
-    /* Only secure connections support TCP and UDP at the same time */
-    else if (logr->proto == REMOTED_NET_PROTOCOL_TCP_UDP) {
-        logr->proto = REMOTED_NET_PROTOCOL_DEFAULT;
-    }
-
     return (0);
 }
 

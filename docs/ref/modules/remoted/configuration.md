@@ -21,7 +21,6 @@ File: `/var/wazuh-manager/etc/wazuh-manager.conf`
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `connection` | `secure` | Connection type: secure (encrypted) |
 | `port` | `1514` | Listening port |
 | `protocol` | `tcp` | Protocol: tcp, udp, or tcp,udp |
 | `queue_size` | `131072` | Message queue size |
