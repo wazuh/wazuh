@@ -59,6 +59,7 @@ target_link_libraries(confremote_ctest
     GTest::gtest_main
     GTest::gmock
     conf
+    rawevtindexer::rawevtindexer
     confremote::confremote
     store::mocks
     wIndexerConnector::mocks

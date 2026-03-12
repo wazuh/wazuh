@@ -98,10 +98,6 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
         endpoint = 'archiver/status'
 
     # Raw event indexer
-    if isinstance(message, rawevtindexer.RawEvtIndexerEnable_Request):
-        endpoint = '_internal/raweventindexer/enable'
-    if isinstance(message, rawevtindexer.RawEvtIndexerDisable_Request):
-        endpoint = '_internal/raweventindexer/disable'
     if isinstance(message, rawevtindexer.RawEvtIndexerStatus_Request):
         endpoint = '_internal/raweventindexer/status'
 

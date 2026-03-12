@@ -75,15 +75,12 @@ void ConfRemoteManager::synchronize()
 
         try
         {
-            if (!it->second.onConfigChange(value))
-            {
-                LOG_WARNING("Remote setting '{}' was rejected. Keeping current value.", key);
-                continue;
-            }
+            it->second.onConfigChange(value);
         }
         catch (const std::exception& e)
         {
-            LOG_ERROR("Remote setting '{}' failed to apply: {}", key, e.what());
+            LOG_WARNING(
+                "Remote setting '{}' rejected (value: {}): {}. Keeping current value.", key, value.str(), e.what());
             continue;
         }
 
@@ -106,15 +103,15 @@ void ConfRemoteManager::synchronize()
 }
 
 json::Json ConfRemoteManager::addTrigger(std::string_view key,
-                                         std::function<bool(const json::Json&)> onConfigChange,
+                                         std::function<void(const json::Json&)> onConfigChange,
                                          const json::Json& defaultValue)
 {
     std::unique_lock lock(m_mutex);
 
-    auto& setting = m_settings[std::string(key)];
-    setting.onConfigChange = std::move(onConfigChange);
+    auto [it, inserted] = m_settings.try_emplace(std::string(key));
+    it->second.onConfigChange = std::move(onConfigChange);
 
-    return setting.lastConfig.has_value() ? setting.lastConfig.value() : defaultValue;
+    return it->second.lastConfig.has_value() ? it->second.lastConfig.value() : defaultValue;
 }
 
 void ConfRemoteManager::loadSettingsFromStore()
