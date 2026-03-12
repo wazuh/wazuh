@@ -34,27 +34,13 @@ jobs:
         run: |
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo "USER_DIR=/var/ossec" >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_WHITE_LIST="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSLOG="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AUTO_START="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_AGENT_MANAGER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf

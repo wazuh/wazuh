@@ -18,7 +18,6 @@ SEARCH_DIR=${SOURCES_PATH}/src
 
 function configure() {
     echo USER_LANGUAGE="en" > ${CONFIG}
-    echo USER_NO_STOP="y" >> ${CONFIG}
     echo USER_INSTALL_TYPE="agent" >> ${CONFIG}
     echo USER_DIR="${DESTINATION_PATH}" >> ${CONFIG}
     echo USER_DELETE_DIR="y" >> ${CONFIG}

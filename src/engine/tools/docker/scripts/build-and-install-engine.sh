@@ -22,12 +22,9 @@ fi
 
 # Install the engine
 USER_LANGUAGE="en"                   \
-USER_NO_STOP="y"                     \
 USER_CA_STORE="/path/to/my_cert.pem" \
 DOWNLOAD_CONTENT="y"                 \
 ./install.sh
-
-# USER_NO_STOP=no USER_LANGUAGE=en ${WAZUH_ROOT}/install.sh
 
 
 # Install python packages

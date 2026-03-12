@@ -926,7 +926,15 @@ InstallCommon()
     fi
 
     if [ ! -f ${INSTALLDIR}/etc/${WAZUH_CONF} ]; then
-        if [ -f  ../etc/ossec.mc ]; then
+        if [ ! -f ../etc/ossec.mc ]; then
+            echo "WARNING: missing ../etc/ossec.mc. Regenerating configuration template."
+            if ! ./init/gen_ossec.sh conf "${INSTYPE}" "${DIST_NAME}" "${DIST_VER}.${DIST_SUBVER}" "${INSTALLDIR}" > ../etc/ossec.mc; then
+                rm -f ../etc/ossec.mc
+                echo "WARNING: unable to regenerate ../etc/ossec.mc."
+            fi
+        fi
+
+        if [ -f ../etc/ossec.mc ]; then
             ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/ossec.mc ${INSTALLDIR}/etc/${WAZUH_CONF}
         else
             echo "WARNING: unable to generate ossec.conf file with desired configurations, using default configurations from ${OSSEC_CONF_SRC}"

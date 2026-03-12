@@ -238,12 +238,4 @@ WazuhUpgrade()
         rm -f $DIRECTORY/queue/alerts/execa
     fi
 
-    # Ensure that the 'Indexer' is configured
-    if [ "X$1" = "Xmanager" ]; then
-        local WAZUH_CONF_PATH="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}"
-        local INDEXER_TEMPLATE_PATH="./etc/templates/config/generic/wodle-indexer.manager.template"
-
-        . ./src/init/update-indexer.sh
-        updateIndexerTemplate "$WAZUH_CONF_PATH" "$INDEXER_TEMPLATE_PATH"
-    fi
 }

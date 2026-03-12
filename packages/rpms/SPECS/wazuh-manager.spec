@@ -67,22 +67,12 @@ popd
 rm -fr %{buildroot}
 
 echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_INSTALL_TYPE="manager"' >> ./etc/preloaded-vars.conf
 echo 'USER_DIR="%{_localstatedir}"' >> ./etc/preloaded-vars.conf
 echo 'USER_DELETE_DIR="y"' >> ./etc/preloaded-vars.conf
-echo 'USER_ENABLE_ACTIVE_RESPONSE="y"' >> ./etc/preloaded-vars.conf
-echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
-echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
-echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
-echo 'USER_ENABLE_SCA="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
-echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
-echo 'USER_WHITE_LIST="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_SYSLOG="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_AUTHD="y"' >> ./etc/preloaded-vars.conf
-echo 'USER_SERVER_IP="MANAGER_IP"' >> ./etc/preloaded-vars.conf
-echo 'USER_CA_STORE="/path/to/my_cert.pem"' >> ./etc/preloaded-vars.conf
 echo 'USER_GENERATE_AUTHD_CERT="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_CREATE_SSL_CERT="n"' >> ./etc/preloaded-vars.conf
@@ -315,12 +305,6 @@ if [ $1 = 2 ]; then
     cp -rp %{_localstatedir}/queue/ossec %{_localstatedir}/queue/sockets
   fi
 
-  FILE_PATH="%{_localstatedir}/packages_files/manager_installation_scripts/src/init/update-indexer.sh"
-  if [ -f "$FILE_PATH" ]; then
-    CONFIG_INDEXER_TEMPLATE="%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/generic/wodle-indexer.manager.template"
-    . "$FILE_PATH"
-    updateIndexerTemplate "%{_localstatedir}/etc/wazuh-manager.conf" $CONFIG_INDEXER_TEMPLATE
-  fi
 fi
 
 %define _vdfilename vd_1.0.0_vd_4.13.0.tar.xz

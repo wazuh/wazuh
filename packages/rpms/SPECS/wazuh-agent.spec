@@ -60,7 +60,6 @@ popd
 rm -fr %{buildroot}
 
 echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
 echo 'USER_DIR="%{_localstatedir}"' >> ./etc/preloaded-vars.conf
 echo 'USER_DELETE_DIR="y"' >> ./etc/preloaded-vars.conf
