@@ -154,6 +154,7 @@ size_t wm_control_dispatch(char *command, char **output) {
 
     } else {
         mterror(WM_CONTROL_LOGTAG, "Unknown command: '%s'", command);
+        os_strdup("Err", *output);
         return strlen(*output);
     }
 }
