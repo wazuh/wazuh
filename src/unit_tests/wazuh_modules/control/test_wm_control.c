@@ -18,32 +18,15 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#include "../../../wrappers/common.h"
-#include "../../../wrappers/libc/stdio_wrappers.h"
-#include "../../../wrappers/posix/unistd_wrappers.h"
+#include "../../wrappers/common.h"
+#include "../../wrappers/libc/stdio_wrappers.h"
+#include "../../wrappers/posix/unistd_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wm_control_wrappers.h"
 #include "wm_control.h"
 
 /* WM_CONTROL_LOGTAG expands to ARGV0 ":control".
  * For the manager build ARGV0 is "wazuh-manager-modulesd". */
 #define WM_CONTROL_TEST_LOGTAG "wazuh-manager-modulesd:control"
-
-/* ------------------------------------------------------------------ */
-/* Local wrappers                                                       */
-/* ------------------------------------------------------------------ */
-
-size_t __wrap_wm_control_execute_action(const char *action, char **output) {
-    check_expected(action);
-    *output = mock_type(char *);
-    return strlen(*output);
-}
-
-bool __wrap_wm_control_check_systemd(void) {
-    return mock_type(bool);
-}
-
-pid_t __wrap_fork(void) {
-    return mock_type(pid_t);
-}
 
 /* ------------------------------------------------------------------ */
 /* Setup / teardown                                                     */
@@ -59,6 +42,30 @@ static int teardown_test_mode(void **state) {
     return 0;
 }
 
+static void expect_check_systemd_not_available(void) {
+    expect_string(__wrap_access, __name, "/run/systemd/system");
+    expect_value(__wrap_access, __type, F_OK);
+    will_return(__wrap_access, -1);
+}
+
+static void expect_check_systemd_available(void) {
+    FILE *fp = (FILE *)1;
+
+    expect_string(__wrap_access, __name, "/run/systemd/system");
+    expect_value(__wrap_access, __type, F_OK);
+    will_return(__wrap_access, 0);
+
+    expect_string(__wrap_fopen, path, "/proc/1/comm");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, fp);
+
+    will_return(__wrap_fgets, "systemd\n");
+    expect_value(__wrap_fgets, __stream, fp);
+
+    expect_value(__wrap_fclose, _File, fp);
+    will_return(__wrap_fclose, 0);
+}
+
 /* ------------------------------------------------------------------ */
 /* wm_control_dispatch tests                                            */
 /* ------------------------------------------------------------------ */
@@ -69,9 +76,10 @@ static void test_dispatch_restart(void **state) {
 
     expect_string(__wrap__mtdebug2, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "Dispatching command: 'restart'");
-
-    expect_string(__wrap_wm_control_execute_action, action, "restart");
-    will_return(__wrap_wm_control_execute_action, strdup("ok "));
+    expect_check_systemd_not_available();
+    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on manager using wazuh-control");
+    will_return(__wrap_fork, 1234);
 
     size_t ret = wm_control_dispatch(command, &output);
 
@@ -88,9 +96,10 @@ static void test_dispatch_reload(void **state) {
 
     expect_string(__wrap__mtdebug2, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "Dispatching command: 'reload'");
-
-    expect_string(__wrap_wm_control_execute_action, action, "reload");
-    will_return(__wrap_wm_control_execute_action, strdup("ok "));
+    expect_check_systemd_not_available();
+    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'reload' on manager using wazuh-control");
+    will_return(__wrap_fork, 5678);
 
     size_t ret = wm_control_dispatch(command, &output);
 
@@ -108,9 +117,10 @@ static void test_dispatch_restart_with_args(void **state) {
 
     expect_string(__wrap__mtdebug2, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "Dispatching command: 'restart'");
-
-    expect_string(__wrap_wm_control_execute_action, action, "restart");
-    will_return(__wrap_wm_control_execute_action, strdup("ok "));
+    expect_check_systemd_not_available();
+    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on manager using wazuh-control");
+    will_return(__wrap_fork, 1234);
 
     size_t ret = wm_control_dispatch(command, &output);
 
@@ -147,7 +157,7 @@ static void test_dispatch_unknown_command(void **state) {
 static void test_execute_action_fork_fails(void **state) {
     char *output = NULL;
 
-    will_return(__wrap_wm_control_check_systemd, false);
+    expect_check_systemd_not_available();
     expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on manager using wazuh-control");
 
@@ -167,7 +177,7 @@ static void test_execute_action_fork_fails(void **state) {
 static void test_execute_action_restart_no_systemd(void **state) {
     char *output = NULL;
 
-    will_return(__wrap_wm_control_check_systemd, false);
+    expect_check_systemd_not_available();
     expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on manager using wazuh-control");
 
@@ -185,7 +195,7 @@ static void test_execute_action_restart_no_systemd(void **state) {
 static void test_execute_action_restart_systemd(void **state) {
     char *output = NULL;
 
-    will_return(__wrap_wm_control_check_systemd, true);
+    expect_check_systemd_available();
     expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on manager using systemctl");
 
@@ -203,7 +213,7 @@ static void test_execute_action_restart_systemd(void **state) {
 static void test_execute_action_reload_no_systemd(void **state) {
     char *output = NULL;
 
-    will_return(__wrap_wm_control_check_systemd, false);
+    expect_check_systemd_not_available();
     expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Executing 'reload' on manager using wazuh-control");
 
@@ -221,7 +231,7 @@ static void test_execute_action_reload_no_systemd(void **state) {
 static void test_execute_action_reload_systemd(void **state) {
     char *output = NULL;
 
-    will_return(__wrap_wm_control_check_systemd, true);
+    expect_check_systemd_available();
     expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Executing 'reload' on manager using systemctl");
 
@@ -245,7 +255,7 @@ static void test_check_systemd_no_run_dir(void **state) {
     expect_value(__wrap_access, __type, F_OK);
     will_return(__wrap_access, -1);
 
-    bool result = wm_control_check_systemd();
+    bool result = __real_wm_control_check_systemd();
 
     assert_false(result);
 }
@@ -259,7 +269,7 @@ static void test_check_systemd_fopen_fails(void **state) {
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
-    bool result = wm_control_check_systemd();
+    bool result = __real_wm_control_check_systemd();
 
     assert_false(result);
 }
@@ -281,7 +291,7 @@ static void test_check_systemd_is_systemd(void **state) {
     expect_value(__wrap_fclose, _File, fp);
     will_return(__wrap_fclose, 0);
 
-    bool result = wm_control_check_systemd();
+    bool result = __real_wm_control_check_systemd();
 
     assert_true(result);
 }
@@ -303,7 +313,7 @@ static void test_check_systemd_not_systemd(void **state) {
     expect_value(__wrap_fclose, _File, fp);
     will_return(__wrap_fclose, 0);
 
-    bool result = wm_control_check_systemd();
+    bool result = __real_wm_control_check_systemd();
 
     assert_false(result);
 }
@@ -325,7 +335,7 @@ static void test_check_systemd_fgets_null(void **state) {
     expect_value(__wrap_fclose, _File, fp);
     will_return(__wrap_fclose, 0);
 
-    bool result = wm_control_check_systemd();
+    bool result = __real_wm_control_check_systemd();
 
     assert_false(result);
 }
@@ -337,16 +347,16 @@ static void test_check_systemd_fgets_null(void **state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* wm_control_dispatch */
-        cmocka_unit_test(test_dispatch_restart),
-        cmocka_unit_test(test_dispatch_reload),
-        cmocka_unit_test(test_dispatch_restart_with_args),
-        cmocka_unit_test(test_dispatch_unknown_command),
+        cmocka_unit_test_setup_teardown(test_dispatch_restart,            setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_dispatch_reload,             setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_dispatch_restart_with_args,  setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_dispatch_unknown_command,    setup_test_mode, teardown_test_mode),
         /* wm_control_execute_action */
-        cmocka_unit_test(test_execute_action_fork_fails),
-        cmocka_unit_test(test_execute_action_restart_no_systemd),
-        cmocka_unit_test(test_execute_action_restart_systemd),
-        cmocka_unit_test(test_execute_action_reload_no_systemd),
-        cmocka_unit_test(test_execute_action_reload_systemd),
+        cmocka_unit_test_setup_teardown(test_execute_action_fork_fails,          setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_execute_action_restart_no_systemd,   setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_execute_action_restart_systemd,      setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_execute_action_reload_no_systemd,    setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_execute_action_reload_systemd,       setup_test_mode, teardown_test_mode),
         /* wm_control_check_systemd */
         cmocka_unit_test_setup_teardown(test_check_systemd_no_run_dir,    setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_check_systemd_fopen_fails,   setup_test_mode, teardown_test_mode),
