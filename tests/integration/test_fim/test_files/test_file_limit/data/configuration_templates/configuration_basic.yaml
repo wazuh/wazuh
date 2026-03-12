@@ -10,6 +10,12 @@
             attributes:
               - FIM_MODE
         - file_limit: FILE_LIMIT
+        - synchronization:
+            elements:
+              - response_timeout:
+                  value: 1
+              - interval:
+                  value: 9999999
     - section: sca
       elements:
         - enabled:
