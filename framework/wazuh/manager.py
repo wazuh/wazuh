@@ -216,7 +216,7 @@ def reload() -> AffectedItemsWazuhResult:
     try:
         # Validate the current configuration before reloading
         is_valid = validate_ossec_conf()
-        if not isinstance(is_valid, dict) or ('status' in is_valid and is_valid['status'] != 'OK'):
+        if is_valid.get('status') != 'OK':
             raise WazuhError(1125)
         manager_reload()
         result.affected_items.append(node_id)
@@ -403,10 +403,9 @@ def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
         write_ossec_conf(new_conf)
         is_valid = validate_ossec_conf()
 
-        if not isinstance(is_valid, dict) or ('status' in is_valid and is_valid['status'] != 'OK'):
+        if is_valid.get('status') != 'OK':
             raise WazuhError(1125)
-        else:
-            result.affected_items.append(node_id)
+        result.affected_items.append(node_id)
         exists(backup_file) and remove(backup_file)
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)

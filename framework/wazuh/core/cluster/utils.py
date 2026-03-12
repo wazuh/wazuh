@@ -49,8 +49,8 @@ IMBALANCE_TOLERANCE = 'imbalance_tolerance'
 REMOVE_DISCONNECTED_NODE_AFTER = 'remove_disconnected_node_after'
 
 logger = logging.getLogger('wazuh')
-# Lockfile for preventing concurrent API restart operations
-api_restart_lockfile = os.path.join(common.WAZUH_PATH, "var", "run", ".api_restart_lock")
+# Lockfile for preventing concurrent API restart/reload operations
+api_operation_lockfile = os.path.join(common.WAZUH_PATH, "var", "run", ".api_operation_lock")
 
 HELPER_DEFAULTS = {
     HAPROXY_PORT: 5555,
@@ -318,7 +318,7 @@ def manager_restart() -> WazuhResult:
     WazuhResult
         Confirmation message.
     """
-    lock_file = open(api_restart_lockfile, 'a+')
+    lock_file = open(api_operation_lockfile, 'a+')
     fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
         # control socket path
@@ -371,7 +371,7 @@ def manager_reload() -> WazuhResult:
     WazuhResult
         Confirmation message.
     """
-    lock_file = open(api_restart_lockfile, 'a+')
+    lock_file = open(api_operation_lockfile, 'a+')
     fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
         # control socket path
