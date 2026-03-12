@@ -383,7 +383,9 @@ INSTANTIATE_TEST_SUITE_P(
                 protoReq.set_trace_level("NONE");
 
                 google::protobuf::Struct meta;
-                (*meta.mutable_fields())["wazuh"].set_string_value("AgentName");
+                auto& wazuhValue = (*meta.mutable_fields())["wazuh"];
+                auto* wazuhStruct = wazuhValue.mutable_struct_value();
+                (*wazuhStruct->mutable_fields())["agent_name"].set_string_value("AgentName");
                 *protoReq.mutable_metadata() = meta;
                 return protoReq;
             },
@@ -418,14 +420,9 @@ INSTANTIATE_TEST_SUITE_P(
                 *protoReq.mutable_metadata() = meta;
                 return protoReq;
             },
-            [](auto& tester)
-            {
-                EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0);
-            },
-            []() {
-                return userErrorResponse<eEngine::tester::RunPost_Response>(
-                    "Metadata should contain 'wazuh' as root");
-            },
+            [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
+            []()
+            { return userErrorResponse<eEngine::tester::RunPost_Response>("Metadata should contain 'wazuh' as root"); },
             // Schema: validation not-OK, fields doesn't exist
             []() { return schemf::mocks::EmptySchema::create(false, false); },
         },
@@ -510,7 +507,9 @@ INSTANTIATE_TEST_SUITE_P(
                 protoReq.set_trace_level("NONE");
 
                 google::protobuf::Struct meta;
-                (*meta.mutable_fields())["wazuh"].set_string_value("bar");
+                auto& wazuhValue = (*meta.mutable_fields())["wazuh"];
+                auto* wazuhStruct = wazuhValue.mutable_struct_value();
+                (*wazuhStruct->mutable_fields())["foo"].set_string_value("bar");
                 *protoReq.mutable_metadata() = meta;
 
                 return protoReq;
