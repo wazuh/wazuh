@@ -3,370 +3,511 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"encoding/binary"
+	"context"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
-// Struct config for rate benchmark
-type rateConfig struct {
-	rate             int    // Rate (Events/sec) of the benchmark
-	timeTest         int    // Time duration of the benchmark
-	srcFile          string // Path to dataset of event (1 event per line)
-	dstFile          string // Path to the output file
-	truncFile        bool   // Truncate the output file
-	concurrent       int    // Number of concurrent connections
-	fullFormat       bool   // Use full format msg. Dont preppend  1:[123] agent->server: log
-	disableRateTrack bool   // Disable processing rate tracking
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const (
+	// Unix HTTP socket where wazuh-engine listens
+	SocketPath = "/var/wazuh-manager/queue/sockets/queue-http.sock"
+	// Inline JSON header sent with every batch
+	HeaderJSON = `{"wazuh":{"cluster": {"name": "wazuh", "id": "123"},"agent":{"id":"001","name":"test-agent"}}}`
+	// HTTP endpoint for event ingestion
+	Endpoint = "/events/enriched"
+	// Fixed queue identifier in event format
+	EventQueue = "1"
+	// After sending ends, stop when no new output for this long
+	DrainGrace = 2 * time.Second
+)
+
+// ---------------------------------------------------------------------------
+// Configuration (CLI flags with defaults)
+// ---------------------------------------------------------------------------
+
+// Config holds all benchmark parameters.
+type Config struct {
+	TestTimeSec int    // Sending-phase duration in seconds
+	Rate        int    // Target EPS (0 = unlimited)
+	BatchSize   int    // Events per HTTP request
+	InputDir    string // Directory with .txt / .log input files
+	OutputFile  string // ndjson output file watched for processed events
+	Truncate    bool   // Truncate output before the test starts
 }
 
-// Report of rate benchmark
-type rateReport struct {
-	startTime      time.Time // Starting time
-	endTime        time.Time // Ending time
-	totalEvents    int       // Total events send
-	proccessEvents int       // Total events proccessed
-	// Burst info
-	repeat int // How many times the batch is sent per burst
-	rest   int // How many events are partially sent (to reach the rate) per burst
-	// Processing rate tracking
-	ppsHistory []int   // Processed per second history
-	maxPPS     int     // Maximum processed per second
-	avgPPS     float64 // Average processed per second
+// ---------------------------------------------------------------------------
+// Per-second statistics
+// ---------------------------------------------------------------------------
+
+// SecondStat holds counters for a single elapsed second.
+type SecondStat struct {
+	Sec       int
+	Sent      int
+	Processed int
 }
 
-// #TODO Add a function/test/benchmark to measure the latency of log process in high load
+// Report holds the final benchmark report data.
+type Report struct {
+	Cfg            Config
+	EventsLoaded   int
+	InitialLines   int
+	StartTime      time.Time
+	SendEndTime    time.Time
+	EndTime        time.Time
+	TotalSent      int
+	TotalProcessed int
+	History        []SecondStat
+}
+
+// ---------------------------------------------------------------------------
+// main
+// ---------------------------------------------------------------------------
+
 func main() {
+	cfg := parseFlags()
+	validateConfig(cfg)
 
-	/*   Arguments	*/
-	// Path to dataset of logs
-	var datasetFile string
-	// Time duration of the benchmark
-	var timeTest int
-	// Rate (Events/sec) of the benchmark
-	var rate int
-	// Number of concurrent connections
-	var concurrent int
-	// Path to the output file
-	var watchedFile string
-	var truncateWatched bool
-	// Path/Adress to the sockets
-	var sockPath string
-	// Path/Adress to the sockets
-	var sockProto string
-	// header size in message
-	var header bool
-	// Full format msg
-	var fullFormat bool
-	// Disable processing rate tracking
-	var disableRateTrack bool
+	// Load events from all input files
+	events := loadEventsFromDir(cfg.InputDir)
+	if len(events) == 0 {
+		log.Fatalf("No events loaded from %s", cfg.InputDir)
+	}
 
-	// Parcer arguments
-	// Bench
-	flag.IntVar(&timeTest, "t", 5, "Time of the benchmark")
-	flag.IntVar(&rate, "r", 35, "Rate (Events/sec) of the benchmark. 0 for infinite")
-	flag.IntVar(&concurrent, "c", 1, "Number of concurrent connections")
-	// IO Files
-	flag.StringVar(&datasetFile, "i", "./test_logs.txt", "Path to dataset of logs. The input File")
-	flag.StringVar(&watchedFile, "o", "/var/wazuh-manager/logs/alerts/alerts.json", "Watched file. The Output file")
-	flag.BoolVar(&truncateWatched, "T", false, "Truncate the output file")
-	// Protocol
-	flag.StringVar(&sockPath, "s", "/var/wazuh-manager/queue/sockets/queue", "Path/Adress to the sockets")
-	flag.StringVar(&sockProto, "p", "unixgram", `Known networks are "tcp", "tcp4" (IPv4-only), `+
-		`"tcp6" (IPv6-only), "udp", "udp4" (IPv4-only), `+
-		`"udp6" (IPv6-only), "ip", "ip4" (IPv4-only),`+
-		`"ip6" (IPv6-only), "unix", "unixgram" and "unixpacket". `)
-	flag.BoolVar(&header, "b", false, "Use secure msg protocol. Preappend a header with size of logs (int32) before send")
-	flag.BoolVar(&fullFormat, "f", false, "Use full format msg. Dont preppend  1:[123] agent->server: log")
-	flag.BoolVar(&disableRateTrack, "R", false, "Disable rate tracking processing")
+	// Truncate output file if requested
+	if cfg.Truncate {
+		truncateFile(cfg.OutputFile)
+	}
+
+	initialLines := safeLineCount(cfg.OutputFile)
+	client := unixHTTPClient(SocketPath)
+
+	printHeader(cfg, len(events), initialLines)
+
+	report := run(cfg, client, events, initialLines)
+	printReport(report)
+}
+
+func parseFlags() Config {
+	var cfg Config
+	flag.IntVar(&cfg.TestTimeSec, "t", 60, "Sending-phase duration in seconds")
+	flag.IntVar(&cfg.Rate, "r", 1000, "Target sending rate (EPS). 0 = unlimited")
+	flag.IntVar(&cfg.BatchSize, "b", 50, "Events per HTTP request (batch size)")
+	flag.StringVar(&cfg.InputDir, "i", "./test_logs", "Directory with .txt / .log input files")
+	flag.StringVar(&cfg.OutputFile, "o",
+		"/var/wazuh-manager/logs/alerts/alerts.json",
+		"Output file to watch for processed events")
+	flag.BoolVar(&cfg.Truncate, "T", false, "Truncate output file before the test")
 	flag.Parse()
-
-	// Validate parameters
-	if concurrent < 1 {
-		log.Fatalf("Error: concurrent must be greater than 0\n")
-	} else if timeTest <= 0 {
-		log.Fatalf("Error: timeTest must be greater than 0\n")
-	} else if rate < 0 {
-		log.Fatalf("Error: rate must be greater than 0\n")
-	}
-
-	// Connect to the socket
-	conn := connectToSock(sockProto, sockPath)
-	defer conn.Close()
-
-	// if benchmark is a rate benchmark
-	rateConfig := rateConfig{rate, timeTest, datasetFile, watchedFile, truncateWatched, concurrent, fullFormat, disableRateTrack}
-	tReport := rateTest(rateConfig, conn, header)
-	printReport(tReport, rateConfig)
-
+	return cfg
 }
 
-// -----------------------------------------------------------------------------
-//	 						Test functions
-// -----------------------------------------------------------------------------
-// Rate test fuctions
+func validateConfig(c Config) {
+	if c.TestTimeSec <= 0 {
+		log.Fatal("-t must be > 0")
+	}
+	if c.Rate < 0 {
+		log.Fatal("-r must be >= 0")
+	}
+	if c.BatchSize <= 0 {
+		log.Fatal("-b must be > 0")
+	}
+}
 
-// Rate test
-func rateTest(config rateConfig, conn net.Conn, header bool) rateReport {
+// ---------------------------------------------------------------------------
+// Benchmark core
+// ---------------------------------------------------------------------------
 
-	report := rateReport{}
-	//  Clean output before start
-	if config.truncFile {
-		os.Truncate(config.dstFile, 0)
+func run(cfg Config, client *http.Client, events []string, initialLines int) Report {
+	report := Report{
+		Cfg:          cfg,
+		EventsLoaded: len(events),
+		InitialLines: initialLines,
+		StartTime:    time.Now(),
 	}
 
-	// Read input file
-	BatchEvents, _ := loadLines(config.srcFile)
-	lenBatchEvents := len(BatchEvents)
+	numEvents := len(events)
+	var totalSent atomic.Int64
+	var sentThisSec atomic.Int64
+	var sendDone atomic.Bool
 
-	if lenBatchEvents == 0 {
-		log.Fatalf("Error: File %s is empty\n", config.srcFile)
-	}
+	// -- Sender goroutine ---------------------------------------------------
+	go func() {
+		defer sendDone.Store(true)
 
-	var sleepTimeNano time.Duration
-	// If not infinite rate
-	if config.rate != 0 {
-		report.repeat = config.rate / lenBatchEvents
-		report.rest = config.rate % lenBatchEvents
-		sleepTimeNano = time.Duration(1e9 / config.rate)
-		fmt.Printf("sleepTimeNano: %v\n", sleepTimeNano)
-	} else {
-		report.repeat = 1
-		report.rest = 0
-		sleepTimeNano = 0
-	}
+		idx := 0
+		deadline := time.Now().Add(time.Duration(cfg.TestTimeSec) * time.Second)
 
-	// Initialize tracking variables
-	if !config.disableRateTrack {
-		report.ppsHistory = make([]int, 0)
-	}
-	var previousProcessedCount int = 0
-	if !config.truncFile {
-		previousProcessedCount = safeFileLineCounter(config.dstFile)
-	}
-
-	// Start benchmark
-	report.totalEvents = 0
-	report.startTime = time.Now()
-	timeout := time.After(time.Duration(config.timeTest) * time.Second)
-	tick := time.NewTicker(1 * time.Second)
-	defer tick.Stop()
-
-	var eps int
-	for {
-		select {
-
-		case <-timeout:
-			report.endTime = time.Now()
-			fmt.Printf("EPS: %10d\n", eps)
-			// Wait a grace period to process the last events and flush the queue
-			time.Sleep(time.Second * 5)
-			report.proccessEvents = safeFileLineCounter(config.dstFile)
-
-			// Calculate final statistics
-			if !config.disableRateTrack && len(report.ppsHistory) > 0 {
-				report.maxPPS = report.ppsHistory[0]
-				total := 0
-				for _, pps := range report.ppsHistory {
-					if pps > report.maxPPS {
-						report.maxPPS = pps
-					}
-					total += pps
+		if cfg.Rate == 0 {
+			// Unlimited: fire as fast as possible
+			for time.Now().Before(deadline) {
+				batch := nextBatch(events, &idx, numEvents, cfg.BatchSize)
+				if err := postBatch(client, batch); err != nil {
+					log.Printf("send: %v", err)
 				}
-				report.avgPPS = float64(total) / float64(len(report.ppsHistory))
+				n := int64(len(batch))
+				totalSent.Add(n)
+				sentThisSec.Add(n)
 			}
+		} else {
+			// Rate-limited: space out batches evenly
+			batchInterval := time.Duration(
+				float64(time.Second) * float64(cfg.BatchSize) / float64(cfg.Rate),
+			)
+			for time.Now().Before(deadline) {
+				start := time.Now()
 
-			return report
-		case <-tick.C:
-			if !config.disableRateTrack {
-				// Calculate current processed events count
-				currentProcessedCount := safeFileLineCounter(config.dstFile)
-				pps := currentProcessedCount - previousProcessedCount
-				report.ppsHistory = append(report.ppsHistory, pps)
-				previousProcessedCount = currentProcessedCount
-				// Display both sent and processed rates
-				fmt.Printf("EPS (sent): %10d | PPS (processed): %10d\n", eps, pps)
-			} else {
-				fmt.Printf("EPS (sent): %10d\n", eps)
-			}
-			eps = 0
-		default:
-			// Send the batch
-			for i := int(0); i < report.repeat; i++ {
-				for _, line := range BatchEvents {
-					until := time.Now().Add(sleepTimeNano)
-					sendLogSock(conn, header, line, config.fullFormat)
-					eps += 1
-					report.totalEvents++
-					for time.Now().Before(until) {
-						continue
-					}
-
+				batch := nextBatch(events, &idx, numEvents, cfg.BatchSize)
+				if err := postBatch(client, batch); err != nil {
+					log.Printf("send: %v", err)
 				}
-			}
-			for i := int(0); i < report.rest; i++ {
-				until := time.Now().Add(sleepTimeNano)
-				sendLogSock(conn, header, BatchEvents[i], config.fullFormat)
-				eps += 1
-				report.totalEvents++
-				for time.Now().Before(until) {
-					continue
+				n := int64(len(batch))
+				totalSent.Add(n)
+				sentThisSec.Add(n)
+
+				if wait := batchInterval - time.Since(start); wait > 0 {
+					time.Sleep(wait)
 				}
 			}
 		}
+	}()
 
-	}
-}
+	// -- Monitor loop (main goroutine) --------------------------------------
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
-// print report
-func printReport(report rateReport, config rateConfig) {
-	fmt.Printf("\n\n")
-	fmt.Printf("Benchmark report\n")
-	fmt.Printf("----------------\n\n")
-
-	fmt.Printf("Configuration:\n")
-	if config.rate != 0 {
-		fmt.Printf("Rate:         	  %10d events/sec\n", config.rate)
-	} else {
-		// Calcular los eps
-		fmt.Printf("Rate:         	  %10s events/sec\n", "infinite")
-	}
-	fmt.Printf("Time:         	  %10d sec\n", config.timeTest)
-	fmt.Printf("Concurrent connections: %d\n", config.concurrent)
-	fmt.Printf("Dataset: %s\n", config.srcFile)
-	fmt.Printf("Output:  %s\n", config.dstFile)
-	fmt.Printf("\n")
-
-	fmt.Printf("Results:\n")
-	duration := report.endTime.Sub(report.startTime).Seconds()
-	fmt.Printf("Duration:         %10.2f seconds\n", duration)
-	fmt.Printf("Sent events:      %10v\n", report.totalEvents)
-	fmt.Printf("Processed events: %10v\n", report.proccessEvents)
-	fmt.Printf("Lost events:      %10v\n", report.totalEvents-report.proccessEvents)
-
-	if duration > 0 {
-		fmt.Printf("Avg sent rate:    %10.2f events/sec\n", float64(report.totalEvents)/duration)
-		fmt.Printf("Avg proc rate:    %10.2f events/sec\n", float64(report.proccessEvents)/duration)
-	}
-
-	if !config.disableRateTrack && len(report.ppsHistory) > 0 {
-		fmt.Printf("\nProcessing Statistics:\n")
-		fmt.Printf("Max PPS:          %10d events/sec\n", report.maxPPS)
-		fmt.Printf("Avg PPS:          %10.2f events/sec\n", report.avgPPS)
-
-		// Show PPS history if we have data
-		fmt.Printf("\nPPS per second:\n")
-		for i, pps := range report.ppsHistory {
-			fmt.Printf("  Second %2d:      %10d events\n", i+1, pps)
-		}
-	}
-	fmt.Printf("\n")
-}
-
-// -----------------------------------------------------------------------------
-//	 						Sockets functions
-// -----------------------------------------------------------------------------
-
-// Exit on fail
-func connectToSock(protocol string, address string) net.Conn {
-
-	conn, err := net.Dial(protocol, address)
-	if err != nil {
-		fmt.Printf("Failed to dial: %v\n", err)
-		os.Exit(1)
-	}
-
-	return conn
-}
-
-// Exit on fail
-func sendLogSock(conn net.Conn, header bool, message string, fullFormat bool) {
-	var payload []byte
-
-	if fullFormat {
-		payload = []byte(message)
-	} else {
-		payload = []byte("1:[123] (hostname_test_bench) any->/var/some_location:" + message)
-	}
-
-	if header {
-		secMsg := new(bytes.Buffer)
-		err := binary.Write(secMsg, binary.LittleEndian, int32(len(payload)))
-		if err != nil {
-			fmt.Println("binary.Write failed:", err)
-			os.Exit(1)
-		}
-		payload = append(secMsg.Bytes(), payload...)
-	}
-
-	if _, err := conn.Write(payload); err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
-	}
-	return
-}
-
-// -----------------------------------------------------------------------------
-//	 							Files funcitions
-// -----------------------------------------------------------------------------
-
-/*
- * Load linea of a file in array string
- * Exit on fail
- */
-func loadLines(path string) ([]string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		log.Fatalf("Failed on read: %v\n", err)
-	}
-	defer file.Close()
-
-	var lines []string
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	return lines, scanner.Err()
-}
-
-/*
- * Count lines of a file
- * Exit on fail
- */
-func fileLineCounter(fileName string) int {
-
-	r, err := os.Open(fileName)
-	if err != nil {
-		log.Fatalf("os.Open(%s): %s", fileName, err)
-	}
-
-	buf := make([]byte, 32*1024)
-	count := 0
-	lineSep := []byte{'\n'}
+	var (
+		mu            sync.Mutex
+		history       []SecondStat
+		second        int
+		prevProcessed = initialLines
+		lastActivity  = time.Now()
+		draining      bool
+	)
 
 	for {
-		c, err := r.Read(buf)
-		count += bytes.Count(buf[:c], lineSep)
+		<-ticker.C
+		second++
 
-		switch {
-		case err == io.EOF:
-			return count
+		cur := safeLineCount(cfg.OutputFile)
+		pSec := cur - prevProcessed
+		sSec := int(sentThisSec.Swap(0))
+		prevProcessed = cur
 
-		case err != nil:
-			log.Fatalf("Error to open file: %s\n", err)
+		stat := SecondStat{Sec: second, Sent: sSec, Processed: pSec}
+		mu.Lock()
+		history = append(history, stat)
+		mu.Unlock()
+
+		if pSec > 0 {
+			lastActivity = time.Now()
+		}
+
+		// Detect transition to drain phase
+		if sendDone.Load() && !draining {
+			draining = true
+			report.SendEndTime = time.Now()
+			lastActivity = time.Now() // reset grace window
+			fmt.Printf("\n--- Sending complete (%d events). Draining... ---\n\n",
+				totalSent.Load())
+		}
+
+		tag := ""
+		if draining {
+			tag = "  [drain]"
+		}
+		fmt.Printf("[%3ds]  Sent: %8d  |  Processed: %8d%s\n",
+			second, sSec, pSec, tag)
+
+		if draining && time.Since(lastActivity) >= DrainGrace {
+			break
 		}
 	}
+
+	report.EndTime = time.Now()
+	report.TotalSent = int(totalSent.Load())
+	report.TotalProcessed = safeLineCount(cfg.OutputFile) - initialLines
+
+	mu.Lock()
+	report.History = history
+	mu.Unlock()
+
+	return report
 }
 
-// Count lines of a file safely (returns 0 if file doesn't exist)
-func safeFileLineCounter(fileName string) int {
-	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+// ---------------------------------------------------------------------------
+// Batch helpers
+// ---------------------------------------------------------------------------
+
+// nextBatch returns the next batchSize events cycling through the slice.
+func nextBatch(events []string, idx *int, n, batchSize int) []string {
+	batch := make([]string, batchSize)
+	for i := range batch {
+		batch[i] = events[*idx%n]
+		*idx++
+	}
+	return batch
+}
+
+// buildPayload constructs the HTTP body for a batch.
+//
+//	H {}
+//	E 1:/path/to/file.txt:raw log line
+//	E 1:/path/to/file.txt:another line
+//	...
+func buildPayload(batch []string) string {
+	size := 2 + len(HeaderJSON) + 1
+	for _, e := range batch {
+		size += 2 + len(e) + 1
+	}
+	var b strings.Builder
+	b.Grow(size)
+	b.WriteString("H ")
+	b.WriteString(HeaderJSON)
+	b.WriteByte('\n')
+	for _, e := range batch {
+		b.WriteString("E ")
+		b.WriteString(e)
+		b.WriteByte('\n')
+	}
+	return b.String()
+}
+
+// postBatch sends a batch via HTTP POST to /events/enrichment.
+func postBatch(client *http.Client, batch []string) error {
+	body := buildPayload(batch)
+	resp, err := client.Post(
+		"http://localhost"+Endpoint,
+		"application/x-ndjson",
+		strings.NewReader(body),
+	)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	io.Copy(io.Discard, resp.Body)
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// Event loading
+// ---------------------------------------------------------------------------
+
+// loadEventsFromDir reads all .txt and .log files from dir and builds events
+// in the format  queue:location:message  (e.g. "1:/path/file.txt:raw log").
+func loadEventsFromDir(dir string) []string {
+	globs := []string{"*.txt", "*.log"}
+	seen := map[string]bool{}
+	var files []string
+	for _, g := range globs {
+		matches, _ := filepath.Glob(filepath.Join(dir, g))
+		for _, m := range matches {
+			if !seen[m] {
+				seen[m] = true
+				files = append(files, m)
+			}
+		}
+	}
+
+	var events []string
+	for _, f := range files {
+		lines := readLines(f)
+		count := 0
+		for _, l := range lines {
+			l = strings.TrimSpace(l)
+			if l == "" {
+				continue
+			}
+			events = append(events, fmt.Sprintf("%s:%s:%s", EventQueue, f, l))
+			count++
+		}
+		fmt.Printf("  %s  -> %d lines\n", filepath.Base(f), count)
+	}
+	return events
+}
+
+func readLines(path string) []string {
+	f, err := os.Open(path)
+	if err != nil {
+		log.Fatalf("open %s: %v", path, err)
+	}
+	defer f.Close()
+
+	var out []string
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 1<<20), 1<<20)
+	for sc.Scan() {
+		out = append(out, sc.Text())
+	}
+	if err := sc.Err(); err != nil {
+		log.Fatalf("read %s: %v", path, err)
+	}
+	return out
+}
+
+// ---------------------------------------------------------------------------
+// File utilities
+// ---------------------------------------------------------------------------
+
+func safeLineCount(name string) int {
+	if _, err := os.Stat(name); os.IsNotExist(err) {
 		return 0
 	}
-	return fileLineCounter(fileName)
+	return lineCount(name)
+}
+
+func lineCount(name string) int {
+	f, err := os.Open(name)
+	if err != nil {
+		return 0
+	}
+	defer f.Close()
+
+	buf := make([]byte, 32*1024)
+	sep := []byte{'\n'}
+	count := 0
+	for {
+		n, err := f.Read(buf)
+		count += bytes.Count(buf[:n], sep)
+		if err == io.EOF {
+			return count
+		}
+		if err != nil {
+			return count
+		}
+	}
+}
+
+func truncateFile(path string) {
+	if err := os.Truncate(path, 0); err != nil && !os.IsNotExist(err) {
+		log.Printf("warning: truncate %s: %v", path, err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// HTTP client over Unix socket
+// ---------------------------------------------------------------------------
+
+func unixHTTPClient(sock string) *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				return net.Dial("unix", sock)
+			},
+		},
+		Timeout: 30 * time.Second,
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Printing
+// ---------------------------------------------------------------------------
+
+func printHeader(cfg Config, loaded, initial int) {
+	fmt.Println()
+	fmt.Println("Benchmark configuration")
+	fmt.Printf("  Socket:            %s\n", SocketPath)
+	fmt.Printf("  Endpoint:          POST %s\n", Endpoint)
+	if cfg.Rate == 0 {
+		fmt.Println("  Target rate:       unlimited")
+	} else {
+		fmt.Printf("  Target rate:       %d EPS\n", cfg.Rate)
+	}
+	fmt.Printf("  Send duration:     %d s\n", cfg.TestTimeSec)
+	fmt.Printf("  Batch size:        %d events\n", cfg.BatchSize)
+	fmt.Printf("  Input dir:         %s\n", cfg.InputDir)
+	fmt.Printf("  Output file:       %s\n", cfg.OutputFile)
+	fmt.Printf("  Truncate output:   %v\n", cfg.Truncate)
+	fmt.Printf("  Events loaded:     %d\n", loaded)
+	fmt.Printf("  Initial out lines: %d\n", initial)
+	fmt.Println()
+}
+
+func printReport(r Report) {
+	sendDur := r.SendEndTime.Sub(r.StartTime).Seconds()
+	if sendDur <= 0 {
+		sendDur = r.EndTime.Sub(r.StartTime).Seconds()
+	}
+	totalDur := r.EndTime.Sub(r.StartTime).Seconds()
+	drainDur := totalDur - sendDur
+
+	fmt.Println()
+	fmt.Println("=========================================================")
+	fmt.Println("                   BENCHMARK REPORT")
+	fmt.Println("=========================================================")
+
+	fmt.Println()
+	fmt.Println("Timing")
+	fmt.Printf("  Sending phase:     %10.2f s\n", sendDur)
+	fmt.Printf("  Drain phase:       %10.2f s\n", drainDur)
+	fmt.Printf("  Total:             %10.2f s\n", totalDur)
+
+	fmt.Println()
+	fmt.Println("Throughput")
+	fmt.Printf("  Events sent:       %10d\n", r.TotalSent)
+	fmt.Printf("  Events processed:  %10d\n", r.TotalProcessed)
+	lost := r.TotalSent - r.TotalProcessed
+	fmt.Printf("  Events lost:       %10d", lost)
+	if r.TotalSent > 0 {
+		fmt.Printf("  (%.2f%%)", float64(lost)/float64(r.TotalSent)*100)
+	}
+	fmt.Println()
+
+	fmt.Println()
+	if sendDur > 0 {
+		fmt.Printf("  Avg send rate:     %10.2f EPS\n",
+			float64(r.TotalSent)/sendDur)
+	}
+	if totalDur > 0 {
+		fmt.Printf("  Avg process rate:  %10.2f EPS (over total time)\n",
+			float64(r.TotalProcessed)/totalDur)
+	}
+
+	// Per-second table
+	if len(r.History) > 0 {
+		fmt.Println()
+		fmt.Println("Per-second detail")
+		fmt.Printf("  %6s  %12s  %12s\n", "Sec", "Sent (EPS)", "Processed")
+		fmt.Printf("  %6s  %12s  %12s\n", "------", "----------", "---------")
+
+		maxS, maxP := 0, 0
+		sumS, sumP := 0, 0
+		for _, h := range r.History {
+			fmt.Printf("  %6d  %12d  %12d\n", h.Sec, h.Sent, h.Processed)
+			if h.Sent > maxS {
+				maxS = h.Sent
+			}
+			if h.Processed > maxP {
+				maxP = h.Processed
+			}
+			sumS += h.Sent
+			sumP += h.Processed
+		}
+
+		n := float64(len(r.History))
+		fmt.Println()
+		fmt.Printf("  Peak sent rate:    %10d EPS\n", maxS)
+		fmt.Printf("  Peak process rate: %10d EPS\n", maxP)
+		fmt.Printf("  Avg sent (per-s):  %10.2f EPS\n", float64(sumS)/n)
+		fmt.Printf("  Avg proc (per-s):  %10.2f EPS\n", float64(sumP)/n)
+	}
+
+	fmt.Println()
+	fmt.Println("=========================================================")
 }
