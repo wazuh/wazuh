@@ -67,7 +67,7 @@ TEST(ConfRemoteManagerUnitTest, AddTriggerReturnsDefaultWhenStoreIsEmpty)
     confremote::ConfRemoteManager manager(connector, store);
 
     const json::Json defaultVal("false");
-    const auto result = manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) { return true; }, defaultVal);
+    const auto result = manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) {}, defaultVal);
 
     EXPECT_EQ(result, defaultVal);
 }
@@ -79,7 +79,7 @@ TEST(ConfRemoteManagerUnitTest, AddTriggerReturnsPersistedValueWhenStoreHasCache
     confremote::ConfRemoteManager manager(connector, store);
 
     const auto result =
-        manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) { return true; }, json::Json("false"));
+        manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) {}, json::Json("false"));
 
     EXPECT_EQ(result, json::Json("true"));
 }
@@ -97,11 +97,7 @@ TEST(ConfRemoteManagerUnitTest, SynchronizeSkipsCallbackWhenValueDoesNotChange)
     int calls = 0;
     manager.addTrigger(
         REMOTE_INDEX_RAW_EVENTS,
-        [&calls](const json::Json&)
-        {
-            ++calls;
-            return true;
-        },
+        [&calls](const json::Json&) { ++calls; },
         json::Json("false"));
 
     manager.synchronize();
@@ -125,9 +121,9 @@ TEST(ConfRemoteManagerUnitTest, SynchronizeNotifiesWhenValueChanges)
         REMOTE_INDEX_RAW_EVENTS,
         [&captured](const json::Json& v)
         {
-            if (v.isBool())
-                captured = v.getBool().value();
-            return v.isBool();
+            if (!v.isBool())
+                throw std::invalid_argument("expected bool");
+            captured = v.getBool().value();
         },
         json::Json("false"));
 
@@ -152,7 +148,7 @@ TEST(ConfRemoteManagerUnitTest, RejectedCallbackDoesNotCommitValue)
         [&calls](const json::Json&)
         {
             ++calls;
-            return false;
+            throw std::runtime_error("rejected");
         },
         json::Json("false"));
 
@@ -175,23 +171,22 @@ TEST(ConfRemoteManagerUnitTest, SynchronizeCallbackRejectsWrongTypeAndPreservesC
 
     confremote::ConfRemoteManager manager(connector, store);
 
-    std::vector<bool> accepted;
+    std::vector<bool> applied;
     manager.addTrigger(
         REMOTE_INDEX_RAW_EVENTS,
-        [&accepted](const json::Json& v)
+        [&applied](const json::Json& v)
         {
-            const bool ok = v.isBool();
-            accepted.push_back(ok);
-            return ok;
+            if (!v.isBool())
+                throw std::invalid_argument("expected bool");
+            applied.push_back(v.getBool().value());
         },
         json::Json("false"));
 
-    manager.synchronize();
-    manager.synchronize();
+    manager.synchronize(); // bool true  -> applied
+    manager.synchronize(); // string "true" -> throws, skipped
 
-    ASSERT_EQ(accepted.size(), 2U);
-    EXPECT_TRUE(accepted[0]);
-    EXPECT_FALSE(accepted[1]);
+    ASSERT_EQ(applied.size(), 1U);
+    EXPECT_TRUE(applied[0]);
 }
 
 TEST(ConfRemoteManagerUnitTest, SynchronizeWithFetchFailureKeepsCurrentState)
@@ -207,11 +202,7 @@ TEST(ConfRemoteManagerUnitTest, SynchronizeWithFetchFailureKeepsCurrentState)
     int calls = 0;
     manager.addTrigger(
         REMOTE_INDEX_RAW_EVENTS,
-        [&calls](const json::Json&)
-        {
-            ++calls;
-            return true;
-        },
+        [&calls](const json::Json&) { ++calls; },
         json::Json("false"));
 
     EXPECT_NO_THROW(manager.synchronize());
@@ -276,9 +267,8 @@ TEST(ConfRemoteManagerUnitTest, SynchronizeRemovedKeyKeepsCurrentState)
         [&values](const json::Json& v)
         {
             if (!v.isBool())
-                return false;
+                throw std::invalid_argument("expected bool");
             values.push_back(v.getBool().value());
-            return true;
         },
         json::Json("false"));
 
@@ -307,11 +297,7 @@ TEST(ConfRemoteManagerUnitTest, AddTriggerAfterFirstSynchronizeIsAppliedOnNextSy
     int calls = 0;
     manager.addTrigger(
         REMOTE_INDEX_RAW_EVENTS,
-        [&calls](const json::Json& v)
-        {
-            ++calls;
-            return v.isBool();
-        },
+        [&calls](const json::Json&) { ++calls; },
         json::Json("false"));
 
     manager.synchronize(); // trigger registered, value changed -> callback(true)

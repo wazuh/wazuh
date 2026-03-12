@@ -513,12 +513,10 @@ int main(int argc, char* argv[])
         // Raw Event Indexer
         if (enableProcessing)
         {
-            bool rawIndexerEnabled = confManager.get<bool>(conf::key::RAW_EVENT_INDEXER_ENABLED);
             rawEventIndexer = std::make_shared<raweventindexer::RawEventIndexer>(
-                indexerConnector, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME, rawIndexerEnabled);
-            LOG_INFO("Raw Event Indexer initialized (index: {}, enabled: {}).",
-                     raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME,
-                     rawIndexerEnabled);
+                indexerConnector, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
+            LOG_INFO("Raw Event Indexer initialized (index: {}).",
+                     raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
         }
 
         // Orchestrator
@@ -632,6 +630,17 @@ int main(int argc, char* argv[])
         // Remote runtime settings sync
         {
             remoteConf = std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store);
+
+            if (rawEventIndexer)
+            {
+                const auto onIndexRawEvents = [rawEventIndexer](const json::Json& v)
+                {
+                    rawEventIndexer->onRemoteConfig(v);
+                };
+                const auto initialValue =
+                    remoteConf->addTrigger("index_raw_events", onIndexRawEvents, json::Json("false"));
+                rawEventIndexer->onRemoteConfig(initialValue);
+            }
 
             const auto remoteConfSyncInterval = confManager.get<std::size_t>(conf::key::REMOTE_CONF_SYNC_INTERVAL);
             scheduler->scheduleTask("remote-conf-sync",

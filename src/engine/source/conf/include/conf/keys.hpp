@@ -31,7 +31,6 @@ constexpr std::string_view INDEXER_SSL_CA_BUNDLE = "analysisd.indexer_ssl_certif
 constexpr std::string_view INDEXER_SSL_CERTIFICATE = "analysisd.indexer_ssl_certificate";
 constexpr std::string_view INDEXER_SSL_KEY = "analysisd.indexer_ssl_key";
 
-constexpr std::string_view RAW_EVENT_INDEXER_ENABLED = "analysisd.raw_event_indexer_enabled";
 constexpr std::string_view REMOTE_CONF_SYNC_INTERVAL = "analysisd.remote_conf_sync_interval";
 
 constexpr std::string_view EVENT_QUEUE_SIZE = "analysisd.event_queue_size";

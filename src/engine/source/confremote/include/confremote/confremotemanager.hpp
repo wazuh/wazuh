@@ -49,12 +49,12 @@ public:
      * otherwise returns the provided default value.
      *
      * @param key Setting key.
-     * @param onConfigChange Callback invoked with the candidate value. Return true to accept/apply it.
+     * @param onConfigChange Callback invoked with the candidate value. Throw to reject and keep current value.
      * @param defaultValue Fallback value returned when no persisted value is available.
      * @return json::Json Persisted value or provided default value.
      */
     json::Json addTrigger(std::string_view key,
-                          std::function<bool(const json::Json&)> onConfigChange,
+                          std::function<void(const json::Json&)> onConfigChange,
                           const json::Json& defaultValue);
 
 private:
@@ -64,7 +64,7 @@ private:
     struct SettingEntry
     {
         std::optional<json::Json> lastConfig;
-        std::function<bool(const json::Json&)> onConfigChange;
+        std::function<void(const json::Json&)> onConfigChange;
     };
 
     void loadSettingsFromStore();

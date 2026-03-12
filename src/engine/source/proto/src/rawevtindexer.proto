@@ -5,30 +5,9 @@ import "engine.proto";
 package com.wazuh.api.engine.rawevtindexer;
 
 /*
- * This API is used to manage the raw event indexer in the engine
+ * This API is used to query the raw event indexer status in the engine.
+ * Enable/disable control is managed via remote configuration (wazuh-indexer).
  */
-
-/***************************************************
- * Enable the Raw Indexer
- *
- * endpoint: POST /_internal/raweventindexer/enable
- *
- * Enables the raw event indexer, which allows storing raw events
- **************************************************/
-message RawEvtIndexerEnable_Request {}
-
-// message RawIndexerEnable_Response -> Return a GenericStatus_Response
-
-/***************************************************
- * Disable the Raw Indexer
- *
- * endpoint: POST /_internal/raweventindexer/disable
- *
- * Disables the raw event indexer, which stops storing raw events
- **************************************************/
-message RawEvtIndexerDisable_Request {}
-
-// message RawIndexerDisable_Response -> Return a GenericStatus_Response
 
 /***************************************************
  * Get the status of the Raw Indexer
