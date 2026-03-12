@@ -801,7 +801,7 @@ cJSON* w_force_options_to_json(authd_force_options_t *force_options){
 }
 
 /* Get primary IP address using sysinfo */
-#if defined (__linux__) || defined (__MACH__) || defined(FreeBSD) || defined(OpenBSD)
+#if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
 static void *sysinfo_module_handle = NULL;
 sysinfo_networks_func sysinfo_network_ptr = NULL;
 sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
