@@ -21,7 +21,6 @@ from api.signals import cti_context
 from wazuh.core import common
 from wazuh.core import configuration
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.manager import query_update_check_service
 from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
@@ -612,7 +611,7 @@ async def check_available_version(pretty: bool = False, force_query: bool = Fals
 
     if force_query and configuration.update_check_is_enabled():
         logger.debug('Forcing query to the update check service...')
-        dapi = DistributedAPI(f=query_update_check_service,
+        dapi = DistributedAPI(f=manager.query_update_check_service,
                               f_kwargs={
                                   INSTALLATION_UID_KEY: installation_uid
                               },
