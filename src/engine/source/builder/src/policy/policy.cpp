@@ -85,16 +85,12 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
             m_assets.insert(base::Name(traceable));
         }
 
-        // Cleanup decoder temporary variables
-        if (policyData.shouldCleanupDecoderVariables())
+        // Cleanup decoder temporary variables (enabled/disabled according to policy)
         {
-            auto cleanupVars = base::Term<base::EngineOp>::create("CleanupDecoderVariables",
-                                                                  [](auto e)
-                                                                  {
-                                                                      e->eraseRootKeysByPrefix("_");
-                                                                      return base::result::makeSuccess(e, "");
-                                                                  });
+            auto [cleanupVars, traceable] =
+                builders::enrichment::getCleanupDecoderVariables(policyData.shouldCleanupDecoderVariables(), trace);
             preEnrichmentOps.push_back(cleanupVars);
+            m_assets.insert(base::Name(traceable));
         }
 
         // Use And instead of Chain to ensure failure propagates correctly

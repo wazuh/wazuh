@@ -286,17 +286,17 @@ parsec::Parser<std::list<ParserInfo>> pLogpar()
 namespace hlp::logpar
 {
 Logpar::Logpar(const json::Json& fieldParserOverrides,
-               const std::shared_ptr<schemf::IValidator>& schema,
+               const std::shared_ptr<schemf::IValidator>& schemaValidator,
                size_t maxGroupRecursion,
                size_t debugLvl)
     : m_maxGroupRecursion(maxGroupRecursion)
     , m_debugLvl(debugLvl)
 {
-    if (!schema)
+    if (!schemaValidator)
     {
         throw std::runtime_error("Schema must not be null");
     }
-    m_schema = schema;
+    m_schemaValidator = schemaValidator;
 
     // Load field parser overrides
     if (!fieldParserOverrides.isObject())
@@ -318,7 +318,7 @@ Logpar::Logpar(const json::Json& fieldParserOverrides,
     auto asObj = fieldParserOverrides.getObject("/fields").value();
     for (const auto& [key, value] : asObj)
     {
-        if (!schema->hasField(key))
+        if (!schemaValidator->hasField(key))
         {
             throw std::runtime_error(fmt::format("Field parser override '{}' not found in schema", key));
         }

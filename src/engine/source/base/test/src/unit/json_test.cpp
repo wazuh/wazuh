@@ -2997,24 +2997,31 @@ TEST(JsonTest, eraseRootKeysByPrefixRemovesOnlyRootMatches)
     Json input {R"({"_tmp":1,"_a":{"x":1},"event":{"_tmp":2},"ok":3})"};
     Json expected {R"({"event":{"_tmp":2},"ok":3})"};
 
-    ASSERT_TRUE(input.eraseRootKeysByPrefix("_"));
+    ASSERT_NO_THROW(input.eraseRootKeysByPrefix("_"));
     ASSERT_EQ(input, expected);
 }
 
-TEST(JsonTest, eraseRootKeysByPrefixNoMatchesReturnsFalse)
+TEST(JsonTest, eraseRootKeysByPrefixNoMatchesNoThrow)
 {
     Json input {R"({"event":1,"ok":2})"};
     Json expected {R"({"event":1,"ok":2})"};
 
-    ASSERT_FALSE(input.eraseRootKeysByPrefix("_"));
+    ASSERT_NO_THROW(input.eraseRootKeysByPrefix("_"));
     ASSERT_EQ(input, expected);
 }
 
-TEST(JsonTest, eraseRootKeysByPrefixEmptyPrefixNoop)
+TEST(JsonTest, eraseRootKeysByPrefixEmptyPrefixThrows)
 {
     Json input {R"({"_tmp":1,"ok":2})"};
-    Json expected {R"({"_tmp":1,"ok":2})"};
 
-    ASSERT_FALSE(input.eraseRootKeysByPrefix(""));
+    ASSERT_THROW(input.eraseRootKeysByPrefix(""), std::runtime_error);
+}
+
+TEST(JsonTest, eraseRootKeysByPrefixAllMatchLeavesEmptyObject)
+{
+    Json input {R"({"_a":1,"_b":2})"};
+    Json expected {R"({})"};
+
+    ASSERT_NO_THROW(input.eraseRootKeysByPrefix("_"));
     ASSERT_EQ(input, expected);
 }

@@ -921,9 +921,11 @@ public:
      * This is a convenience method for the common case of erasing members from the root object based on a key prefix.
      *
      * @param prefix Prefix used to match root keys.
-     * @return true if any root member was erased, false otherwise.
+     *
+     * @throws std::runtime_error if prefix is empty.
+     * @throws std::runtime_error if the current document root is not an object.
      */
-    bool eraseRootKeysByPrefix(std::string_view prefix);
+    void eraseRootKeysByPrefix(std::string_view prefix);
 
     /**
      * @brief In-place transformation of JSON keys and/or string values at a node selected by a RapidJSON Pointer.
