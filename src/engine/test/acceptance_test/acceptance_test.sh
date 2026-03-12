@@ -357,6 +357,47 @@ IFS=',' read -ra THREADS <<< "${THREAD_LIST}"
 
 mkdir -p "${RESULTS_DIR}"
 
+# ---------------------------------------------------------------------------
+# Pre-flight: check that required tools are available
+# ---------------------------------------------------------------------------
+log "Pre-flight checks..."
+
+# Python 3
+command -v python3 >/dev/null 2>&1 || die "python3 not found in PATH."
+
+# Go
+command -v go >/dev/null 2>&1 || die "go not found in PATH."
+
+# pip dependencies from requirements.txt
+REQUIREMENTS_FILE="${SCRIPT_DIR}/requirements.txt"
+if [[ -f "${REQUIREMENTS_FILE}" ]]; then
+    log "Checking Python dependencies (${REQUIREMENTS_FILE})..."
+    local_missing=()
+    while IFS= read -r line; do
+        # Skip comments and blank lines
+        pkg=$(echo "${line}" | sed 's/#.*//' | xargs)
+        [[ -z "${pkg}" ]] && continue
+        if ! python3 -c "import importlib; importlib.import_module('${pkg}')" 2>/dev/null; then
+            local_missing+=("${pkg}")
+        fi
+    done < "${REQUIREMENTS_FILE}"
+
+    if [[ ${#local_missing[@]} -gt 0 ]]; then
+        log "Installing missing Python packages: ${local_missing[*]}"
+        python3 -m pip install --quiet "${local_missing[@]}" || die "Failed to install Python dependencies."
+    else
+        log "All Python dependencies satisfied."
+    fi
+else
+    log "WARNING: ${REQUIREMENTS_FILE} not found, skipping pip check."
+fi
+
+# Verify key helper files exist
+[[ -f "${UTILS_DIR}/monitor.py" ]]        || die "monitor.py not found at ${UTILS_DIR}/monitor.py"
+[[ -f "${UTILS_DIR}/benchmark_tool.go" ]] || die "benchmark_tool.go not found at ${UTILS_DIR}/benchmark_tool.go"
+
+log "Pre-flight checks passed."
+
 # Save system info report alongside results
 generate_system_report
 
