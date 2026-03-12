@@ -38,6 +38,8 @@
 #define EXPORTED
 #endif
 
+class DisabledCollectorsCleanupService;
+
 class EXPORTED Syscollector final
 {
     public:
@@ -213,9 +215,7 @@ class EXPORTED Syscollector final
                                const std::string& sourceKey,
                                bool createFields);
 
-        bool hasDataInTable(const std::string& tableName);
         void checkDisabledCollectorsIndicesWithData();
-        void clearTablesForIndices(const std::vector<std::string>& indices);
         bool handleNotifyDataClean();
 
         // Recovery functions
@@ -435,8 +435,8 @@ class EXPORTED Syscollector final
         std::mutex                                                               m_pauseMutex;
         std::unique_ptr<SysNormalizer>                                           m_spNormalizer;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
-        std::vector<std::string>                                                 m_disabledCollectorsIndicesWithData;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocolVD;
+        std::shared_ptr<DisabledCollectorsCleanupService>                        m_disabledCollectorsCleanup;
         std::vector<std::pair<std::string, nlohmann::json>>*                     m_failedItems;  // Pointer to list of items that failed validation (for deferred deletion)
         std::vector<std::pair<std::string, nlohmann::json>>*                     m_itemsToUpdateSync;  // Pointer to list of items that passed limit check (for deferred sync=1 update)
 
