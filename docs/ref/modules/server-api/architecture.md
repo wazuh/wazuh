@@ -49,7 +49,6 @@ It **must not** contain business logic.
 | `cluster.py` | Cluster operations | `/cluster` |
 | `syscheck.py` | File Integrity Monitoring | `/syscheck` |
 | `rootcheck.py` | Policy and rootcheck | `/rootcheck` |
-| `active_response.py` | Trigger AR commands | `/active-response` |
 | `security.py` | Authentication and users | `/security` |
 | `rbac/` | Authorization logic | `/security/*` |
 | `mitre.py` | MITRE ATT&CK mappings | `/mitre` |

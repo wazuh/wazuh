@@ -36,7 +36,6 @@ _search_param = re.compile(r'^[^;|&^*>]+$')
 _sort_param = re.compile(r'^[\w_\-,\s+.]+$')
 _timeframe_type = re.compile(r'^(\d+[dhms]?)$')
 _wpk_path = re.compile(r'^[\w\-.\\/:\s]*[^\/]\.wpk$')
-_active_response_command = re.compile(f"^!?{_paths.pattern.lstrip('^')}")
 
 security_config_schema = {
     "type": "object",
@@ -390,13 +389,6 @@ def format_wpk_path(value):
     if not is_safe_path(value, relative=False):
         return False
     return check_exp(value, _wpk_path)
-
-
-@Draft4Validator.FORMAT_CHECKER.checks("active_response_command")
-def format_active_response_command(command):
-    if not is_safe_path(command):
-        return False
-    return check_exp(command, _active_response_command)
 
 
 @Draft4Validator.FORMAT_CHECKER.checks("query")
