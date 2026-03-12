@@ -123,6 +123,18 @@ public:
      */
     virtual std::size_t
     streamIocsByType(std::string_view iocType, std::size_t batchSize, const IocRecordCallback& onIoc) = 0;
+
+    /**
+     * @brief Retrieves remote engine runtime configuration from wazuh-indexer.
+     *
+     * Queries `.wazuh-settings` with `size=1`, requests only the `engine` section,
+     * and returns the normalized engine settings object, for example:
+     * { "index_raw_events": false }
+     *
+     * @return json::Json Engine settings object.
+     * @throws std::exception on transport, not-found, or payload validation errors.
+     */
+    virtual json::Json getEngineRemoteConfig() = 0;
 };
 
 } // namespace wiconnector

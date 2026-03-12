@@ -19,6 +19,7 @@ public:
                 streamIocsByType,
                 (std::string_view iocType, std::size_t batchSize, const IocRecordCallback& onIoc),
                 (override));
+    MOCK_METHOD(json::Json, getEngineRemoteConfig, (), (override));
 };
 } // namespace wiconnector::mocks
 
