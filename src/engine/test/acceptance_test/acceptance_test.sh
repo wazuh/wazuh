@@ -71,6 +71,44 @@ ANALYSIS_SOCK="${WAZUH_HOME}/queue/sockets/analysis"
 log()  { echo "[$(date '+%H:%M:%S')] $*"; }
 die()  { log "ERROR: $*"; exit 1; }
 
+# Track child PIDs for cleanup
+MONITOR_PID=""
+MONITOR_PIDFILE=""
+ANALYSISD_PID=""
+
+cleanup() {
+    local exit_code=$?
+    log "Cleanup triggered (exit code: ${exit_code})..."
+
+    # Stop monitor if running
+    if [[ -n "${MONITOR_PID}" ]] && kill -0 "${MONITOR_PID}" 2>/dev/null; then
+        log "Cleanup: stopping monitor (PID ${MONITOR_PID})..."
+        kill -INT "${MONITOR_PID}" 2>/dev/null || true
+        wait "${MONITOR_PID}" 2>/dev/null || true
+    fi
+    rm -f "${MONITOR_PIDFILE:-}" 2>/dev/null || true
+
+    # Stop analysisd if running
+    if pgrep -x "wazuh-manager-analysisd" > /dev/null 2>&1; then
+        log "Cleanup: stopping analysisd..."
+        "${MANAGER_CTL}" stop 2>/dev/null || true
+        local tries=0
+        while pgrep -x "wazuh-manager-analysisd" > /dev/null 2>&1; do
+            sleep 1
+            tries=$((tries + 1))
+            if [[ $tries -ge 15 ]]; then
+                pkill -9 -x "wazuh-manager-analysisd" 2>/dev/null || true
+                break
+            fi
+        done
+    fi
+
+    if [[ $exit_code -ne 0 ]]; then
+        log "Script exited with error (code ${exit_code})."
+    fi
+}
+trap cleanup EXIT
+
 stop_manager() {
     if pgrep -x "wazuh-manager-analysisd" > /dev/null 2>&1; then
         log "Stopping manager..."
@@ -90,6 +128,12 @@ stop_manager() {
         log "Manager stopped."
     else
         log "Manager not running."
+    fi
+
+    # Clean up stale KVDB lock files left by a previous crash
+    if find "${WAZUH_HOME}/engine" -name "LOCK" -type f 2>/dev/null | grep -q .; then
+        log "Removing stale KVDB lock files..."
+        find "${WAZUH_HOME}/engine" -name "LOCK" -type f -delete 2>/dev/null || true
     fi
 }
 
@@ -174,6 +218,7 @@ run_benchmark() {
     log "  output watched: ${BT_OUTPUT}"
     log "  csv: ${bench_csv}"
 
+    local bench_rc=0
     go run "${UTILS_DIR}/benchmark_tool.go" \
         -i "${BT_INPUT}" \
         -o "${BT_OUTPUT}" \
@@ -182,7 +227,12 @@ run_benchmark() {
         -b "${BT_BATCH}" \
         -T \
         -csv "${bench_csv}" \
-        2>&1 | tee "${bench_log}"
+        2>&1 | tee "${bench_log}" || bench_rc=$?
+
+    if [[ $bench_rc -ne 0 ]]; then
+        log "WARNING: benchmark_tool exited with code ${bench_rc}"
+        return 1
+    fi
 
     log "Benchmark finished."
 }
@@ -200,6 +250,60 @@ stop_analysisd() {
         fi
     done
     log "analysisd stopped."
+}
+
+generate_system_report() {
+    local report_file="${RESULTS_DIR}/system_report.txt"
+    log "Generating system report -> ${report_file}"
+
+    {
+        echo "=========================================="
+        echo "  System Report – Benchmark Environment"
+        echo "=========================================="
+        echo ""
+        echo "Date:           $(date '+%Y-%m-%d %H:%M:%S %Z')"
+        echo ""
+        echo "--- Linux ---"
+        echo "Kernel:         $(uname -r)"
+        echo "OS:             $(. /etc/os-release 2>/dev/null && echo "${PRETTY_NAME:-unknown}" || uname -o)"
+        echo "Architecture:   $(uname -m)"
+        echo ""
+        echo "--- CPU ---"
+        echo "Model:          $(lscpu | awk -F: '/Model name/ {gsub(/^ +/,"",$2); print $2; exit}')"
+        echo "Cores:          $(nproc) (logical)"
+        echo "Sockets:        $(lscpu | awk -F: '/^Socket\(s\)/ {gsub(/^ +/,"",$2); print $2}')"
+        echo "Cores per sock: $(lscpu | awk -F: '/Core\(s\) per socket/ {gsub(/^ +/,"",$2); print $2}')"
+        echo "Threads per core: $(lscpu | awk -F: '/Thread\(s\) per core/ {gsub(/^ +/,"",$2); print $2}')"
+        echo "Max MHz:        $(lscpu | awk -F: '/CPU max MHz/ {gsub(/^ +/,"",$2); print $2}')"
+        echo "Current MHz:    $(lscpu | awk -F: '/CPU MHz/ {gsub(/^ +/,"",$2); print $2; exit}')"
+        echo "CPU cache:      $(lscpu | awk -F: '/L3 cache/ {gsub(/^ +/,"",$2); print $2}')"
+        echo ""
+        echo "--- RAM ---"
+        echo "Total:          $(free -h | awk '/^Mem:/ {print $2}')"
+        echo "Available:      $(free -h | awk '/^Mem:/ {print $7}')"
+        echo "Swap:           $(free -h | awk '/^Swap:/ {print $2}')"
+        # RAM speed (requires dmidecode, may need root)
+        local ram_speed
+        ram_speed=$(dmidecode -t memory 2>/dev/null | awk '/Speed:/ && !/Unknown/ && !/Configured/ {print; exit}' | sed 's/^[[:space:]]*//' || echo "N/A (dmidecode not available or not root)")
+        echo "RAM Speed:      ${ram_speed:-N/A}"
+        local ram_type
+        ram_type=$(dmidecode -t memory 2>/dev/null | awk '/Type:/ && !/Unknown/ && !/Error/ && !/Detail/ {print; exit}' | sed 's/^[[:space:]]*//' || echo "N/A")
+        echo "RAM Type:       ${ram_type:-N/A}"
+        echo ""
+        echo "--- Test Parameters ---"
+        echo "Threads tested: ${THREADS[*]}"
+        echo "Bench duration: ${BT_TIME}s"
+        echo "Target rate:    ${BT_RATE} EPS (0=unlimited)"
+        echo "Batch size:     ${BT_BATCH}"
+        echo "Grace period:   ${GRACE_SECS}s"
+        echo "Monitor interval: ${MONITOR_INTERVAL}s"
+        echo "Input dir:      ${BT_INPUT}"
+        echo "Output watched: ${BT_OUTPUT}"
+        echo "Route:          ${ROUTE_NAME}"
+        echo "=========================================="
+    } > "${report_file}"
+
+    log "System report saved."
 }
 
 # ---------------------------------------------------------------------------
@@ -253,6 +357,9 @@ IFS=',' read -ra THREADS <<< "${THREAD_LIST}"
 
 mkdir -p "${RESULTS_DIR}"
 
+# Save system info report alongside results
+generate_system_report
+
 log "============================================================"
 log "  Engine Benchmark Suite"
 log "  Threads to test: ${THREADS[*]}"
@@ -282,7 +389,9 @@ for T in "${THREADS[@]}"; do
     sleep "${GRACE_SECS}"
 
     # Step 6: Run benchmark
-    run_benchmark "${T}"
+    if ! run_benchmark "${T}"; then
+        log "WARNING: Benchmark failed for ${T} thread(s). Cleaning up and continuing..."
+    fi
 
     # Step 7: Grace period after benchmark
     log "Grace period (${GRACE_SECS}s) after benchmark..."
