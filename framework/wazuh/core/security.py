@@ -12,6 +12,7 @@ from api import __path__ as api_path
 from api.authentication import change_keypair
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh import WazuhInternalError, WazuhError
+from wazuh.core.decorators import dapi_allower
 from wazuh.rbac.orm import RolesManager, TokenManager, check_database_integrity, DB_FILE
 
 REQUIRED_FIELDS = ['id']
@@ -106,7 +107,7 @@ def invalid_roles_tokens(roles: list = None):
     with TokenManager() as tm:
         tm.add_user_roles_rules(roles=set(roles))
 
-
+@dapi_allower
 def revoke_tokens() -> dict:
     """Revoke all tokens in current node.
 
