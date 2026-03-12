@@ -23,9 +23,12 @@ public:
     // Configure what hasField() should return
     bool m_hasFieldResult {false};
 
-    explicit EmptySchema(bool validationResult, bool hasFieldResult)
+    json::Json::Type m_jsonTypeResult {json::Json::Type::Object};
+
+    explicit EmptySchema(bool validationResult, bool hasFieldResult, json::Json::Type jsonTypeResult = json::Json::Type::Object)
         : m_validationResult(validationResult)
         , m_hasFieldResult(hasFieldResult)
+        , m_jsonTypeResult(jsonTypeResult)
     {
     }
 
@@ -33,19 +36,11 @@ public:
 
     bool hasField(const DotPath&) const override { return m_hasFieldResult; }
 
-    json::Json::Type getJsonType(const DotPath&) const override
-    {
-        if (m_validationResult)
-        {
-            return json::Json::Type::Object;
-        }
+    json::Json::Type getJsonType(const DotPath&) const override { return m_jsonTypeResult; }
 
-        throw std::runtime_error("Not implemented");
-    }
-
-    static std::shared_ptr<EmptySchema> create(bool validationResult = true, bool hasFieldResult = false)
+    static std::shared_ptr<EmptySchema> create(bool validationResult = true, bool hasFieldResult = false, json::Json::Type jsonTypeResult = json::Json::Type::Object)
     {
-        return std::make_shared<EmptySchema>(validationResult, hasFieldResult);
+        return std::make_shared<EmptySchema>(validationResult, hasFieldResult, jsonTypeResult);
     }
 };
 
