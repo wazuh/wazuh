@@ -85,6 +85,105 @@ eTester::Result fromOutput(const ::router::test::Output& output)
     return result;
 }
 
+base::RespOrError<std::pair<json::Json, json::Json>> parseAndValidatePublicMetadata(
+    const google::protobuf::Struct& protoMetadata)
+{
+    auto jsonOrErr = eMessage::eMessageToJson(protoMetadata, /*printPrimitiveFields=*/true);
+    if (std::holds_alternative<base::Error>(jsonOrErr))
+    {
+        return base::Error {
+            fmt::format("Error converting metadata to JSON: {}", std::get<base::Error>(jsonOrErr).message)};
+    }
+
+    json::Json metadata;
+    try
+    {
+        metadata = json::Json(std::get<std::string>(jsonOrErr).c_str());
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format("Error parsing metadata JSON: {}", e.what())};
+    }
+
+    auto rootObjectOpt = metadata.getJson();
+    if (!metadata.isObject() || !rootObjectOpt.has_value() || rootObjectOpt->isEmpty())
+    {
+        return base::Error {"Metadata must be a non-empty JSON object"};
+    }
+
+    if (rootObjectOpt->size() != 1)
+    {
+        return base::Error {"Metadata must contain only 'wazuh' as the top-level key"};
+    }
+
+    auto wazuhMetadataObject = metadata.getJson("/wazuh");
+    auto wazuhRootObjectOpt = wazuhMetadataObject ? wazuhMetadataObject->getJson() : std::nullopt;
+    if (!wazuhMetadataObject.has_value() || !wazuhMetadataObject->isObject() || !wazuhRootObjectOpt.has_value()
+        || wazuhRootObjectOpt->isEmpty())
+    {
+        return base::Error {"Metadata should contain 'wazuh' as root"};
+    }
+
+    return std::make_pair(std::move(metadata), std::move(wazuhMetadataObject.value()));
+}
+
+bool validateMetadataLeaves(const json::Json& node,
+                           const std::shared_ptr<schemf::ISchema>& schema,
+                           std::string& currentPath,
+                           std::string& error)
+{
+    if (node.isObject())
+    {
+        auto objOpt = node.getObject();
+        if (!objOpt.has_value())
+        {
+            return true;
+        }
+        else if (objOpt.value().empty())
+        {
+            error = fmt::format("Metadata field '{}' is an empty object, which is not allowed", currentPath);
+            return false;
+        }
+
+        for (const auto& [key, value] : objOpt.value())
+        {
+            const auto originalSize = currentPath.size();
+            if (!currentPath.empty())
+            {
+                currentPath.push_back('.');
+            }
+            currentPath.append(key);
+
+            if (!validateMetadataLeaves(value, schema, currentPath, error))
+            {
+                return false;
+            }
+
+            currentPath.resize(originalSize);
+        }
+
+        return true;
+    }
+
+    try
+    {
+        auto dotPath = DotPath(currentPath);
+        if (!schema->hasField(dotPath))
+        {
+            error =
+                fmt::format("Unknown field in metadata: {}. Only fields from the schema are allowed", dotPath.str());
+            return false;
+        }
+    }
+    catch (const std::exception& e)
+    {
+        error = fmt::format("Error validating metadata path '{}': {}", currentPath, e.what());
+        return false;
+    }
+
+    return true;
+}
+
 } // namespace
 
 adapter::RouteHandler sessionPost(const std::shared_ptr<::router::ITesterAPI>& tester)
@@ -458,42 +557,6 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
             return;
         }
 
-        auto jsonOrErr = eMessage::eMessageToJson(protoReq.metadata(), /*printPrimitiveFields=*/true);
-        if (std::holds_alternative<base::Error>(jsonOrErr))
-        {
-            res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Error converting metadata to JSON: {}", std::get<base::Error>(jsonOrErr).message));
-            return;
-        }
-
-        const auto& metadataStr = std::get<std::string>(jsonOrErr);
-
-        json::Json metadata;
-        try
-        {
-            metadata = json::Json(metadataStr.c_str());
-        }
-        catch (const std::exception& e)
-        {
-            res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Error parsing metadata JSON: {}", e.what()));
-            return;
-        }
-
-        // Validate metadata object
-        if (!metadata.isObject() || metadata.getJson().value().isEmpty())
-        {
-            res = adapter::userErrorResponse<ResponseType>("Metadata must be a non-empty JSON object");
-            return;
-        }
-
-        auto wazuhMetadataObject = metadata.getJson("/wazuh");
-        if (!wazuhMetadataObject || wazuhMetadataObject.value().isEmpty())
-        {
-            res = adapter::userErrorResponse<ResponseType>("Metadata should contain 'wazuh' as root");
-            return;
-        }
-
         // Ensure schema is available
         auto schemaLocked = wSchema.lock();
         if (!schemaLocked)
@@ -502,52 +565,18 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
             return;
         }
 
-        // Recursively validate that each leaf path in metadata exists in the schema.
-        std::string badFieldMsg {};
-        std::function<bool(const json::Json&, const std::string&)> validateRec;
-        validateRec = [&](const json::Json& node, const std::string& jsonPtr) -> bool
+        auto metadataOrError = parseAndValidatePublicMetadata(protoReq.metadata());
+        if (base::isError(metadataOrError))
         {
-            if (node.isObject())
-            {
-                auto objOpt = node.getObject();
-                if (!objOpt)
-                {
-                    return true; // empty object
-                }
-                for (const auto& kv : objOpt.value())
-                {
-                    const auto& key = std::get<0>(kv);
-                    const auto& val = std::get<1>(kv);
-                    const std::string childPtr = jsonPtr + "/" + key;
-                    if (!validateRec(val, childPtr))
-                    {
-                        return false;
-                    }
-                }
-                return true;
-            }
+            res = adapter::userErrorResponse<ResponseType>(base::getError(metadataOrError).message);
+            return;
+        }
 
-            // check schema in each leaf node
-            try
-            {
-                auto dp = DotPath::fromJsonPath(jsonPtr);
-                if (!schemaLocked->hasField(dp))
-                {
-                    badFieldMsg = fmt::format(
-                        "Unknown field in metadata: {}. Only fields from the schema are allowed", dp.str());
-                    return false;
-                }
-            }
-            catch (const std::exception& e)
-            {
-                badFieldMsg = fmt::format("Error validating metadata path '{}': {}", jsonPtr, e.what());
-                return false;
-            }
+        auto [metadata, wazuhMetadataObject] = base::getResponse(metadataOrError);
 
-            return true;
-        };
-
-        if (!validateRec(wazuhMetadataObject.value(), ""))
+        std::string badFieldMsg {};
+        std::string metadataPath {"wazuh"};
+        if (!validateMetadataLeaves(wazuhMetadataObject, schemaLocked, metadataPath, badFieldMsg))
         {
             res = adapter::userErrorResponse<ResponseType>(badFieldMsg);
             return;
