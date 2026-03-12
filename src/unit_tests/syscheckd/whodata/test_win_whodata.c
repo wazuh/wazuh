@@ -221,7 +221,7 @@ int test_group_setup(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$ OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 1");
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [../test_syscheck.conf]");
-    will_return_always(__wrap_getDefine_Int_default, 0);
+    will_return_always(__wrap_getDefine_Int, 0);
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
