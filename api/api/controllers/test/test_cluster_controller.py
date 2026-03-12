@@ -132,7 +132,7 @@ async def test_get_nodes_ruleset_sync_status(mock_exc, mock_dapi, mock_remove, m
         f_kwargs = {'node_list': '*',
                     'master_md5': {'dikt_key': 'dikt_value'}
                     }
-        mock_dapi.assert_has_calls([call(f=cluster.get_node_ruleset_integrity,
+        mock_dapi.assert_has_calls([call(f=cluster.get_ruleset_sync_status,
                                          request_type="local_master",
                                          is_async=True,
                                          wait_for_complete=False,
