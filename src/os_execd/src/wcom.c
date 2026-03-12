@@ -73,7 +73,7 @@ size_t wcom_dispatch(char *command, char ** output) {
         int timeout = -2;
 
         if (!max_restart_lock) {
-            max_restart_lock = getDefine_Int_default("execd", "max_restart_lock", 0, 3600, 600);
+            max_restart_lock = getDefine_Int("execd", "max_restart_lock", 0, 3600);
         }
 
         if (rcv_args) {
