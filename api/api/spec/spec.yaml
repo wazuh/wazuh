@@ -2104,14 +2104,6 @@ components:
                               type: integer
                               format: int32
                               description: "Events coming from ms-graph module"
-                            oscap:
-                              type: integer
-                              format: int32
-                              description: "Events coming from OSCAP module"
-                            osquery:
-                              type: integer
-                              format: int32
-                              description: "Events coming from OSQuery module"
                             rootcheck:
                               type: integer
                               format: int32
@@ -2140,10 +2132,6 @@ components:
                           type: integer
                           format: int32
                           description: "Events coming from remoted"
-                        syslog:
-                          type: integer
-                          format: int32
-                          description: "Events coming from syslog remoted"
                     dropped_breakdown:
                       type: object
                       properties:
@@ -2209,14 +2197,6 @@ components:
                               type: integer
                               format: int32
                               description: "Events discarded from ms-graph module because the queue was full"
-                            oscap:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from OSCAP module because the queue was full"
-                            osquery:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from OSQuery module because the queue was full"
                             rootcheck:
                               type: integer
                               format: int32
@@ -2245,10 +2225,6 @@ components:
                           type: integer
                           format: int32
                           description: "Events discarded from remoted because the queue was full"
-                        syslog:
-                          type: integer
-                          format: int32
-                          description: "Events discarded from syslog remoted because the queue was full"
                 written_breakdown:
                   type: object
                   properties:
@@ -2575,12 +2551,6 @@ components:
                                 select-groups:
                                   type: integer
                                   format: int32
-                            labels:
-                              type: object
-                              properties:
-                                get-labels:
-                                  type: integer
-                                  format: int32
                     task:
                       type: integer
                       format: int32
@@ -2741,12 +2711,6 @@ components:
                                 select-groups:
                                   type: integer
                                   format: int32
-                            labels:
-                              type: object
-                              properties:
-                                get-labels:
-                                  type: integer
-                                  format: int32
                     task:
                       type: integer
                       format: int32
@@ -2828,8 +2792,6 @@ components:
           description: "Wazuh installation type"
           enum:
           - server
-          - local
-          - hybrid
         max_agents:
           type: string
           minimum: 0
@@ -2860,8 +2822,6 @@ components:
           type: object
         global:
           type: object
-        labels:
-          type: object
         logging:
           type: object
         remote:
@@ -2870,21 +2830,9 @@ components:
             type: object
         reports:
           type: object
-        rootcheck:
-          type: object
-        sca:
-          type: object
         socket:
           type: object
-        syscheck:
-          type: object
         #Wodle sections inside WazuhConfiguration(wazuh configuration file)
-        aws-s3:
-          type: object
-        azure-logs:
-          type: object
-        docker-listener:
-          type: object
         syscollector:
           type: object
 
@@ -4162,22 +4110,13 @@ components:
         - cluster
         - command
         - global
-        - labels
-        - localfile
         - logging
         - remote
         - reports
-        - rootcheck
-        - sca
         - socket
-        - syscheck
         - vulnerability-detection
         - indexer
         # Wodle sections
-        - aws-s3
-        - azure-logs
-        - cis-cat
-        - docker-listener
         - syscollector
     field:
       in: query
@@ -5071,8 +5010,6 @@ paths:
                                       others: 0
                                     office365: 0
                                     ms-graph: 0
-                                    oscap: 0
-                                    osquery: 0
                                     rootcheck: 1
                                     sca: 194
                                     syscheck: 0
@@ -5845,7 +5782,7 @@ paths:
                       name: ac7cb188d538
                       status: active
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      version: v3.0.0
+                      version: v4.3.0
                       node_name: worker2
                       group_config_status: "synced"
                       status_code: 0
@@ -5870,7 +5807,7 @@ paths:
                       name: 91642a418627
                       status: active
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      version: v3.0.0
+                      version: v4.3.0
                       node_name: worker2
                       group_config_status: "synced"
                       status_code: 0
@@ -7100,9 +7037,6 @@ paths:
                           max_request_per_minute: 300
                         upload_configuration:
                           remote_commands:
-                            localfile:
-                              enabled: true
-                              exceptions: []
                             wodle_commands:
                               enabled: true
                               exceptions: []
@@ -7145,9 +7079,6 @@ paths:
                           max_request_per_minute: 300
                         upload_configuration:
                           remote_commands:
-                            localfile:
-                              enabled: true
-                              exceptions: []
                             wodle_commands:
                               enabled: true
                               exceptions: []
@@ -7191,9 +7122,6 @@ paths:
                           max_request_per_minute: 300
                         upload_configuration:
                           remote_commands:
-                            localfile:
-                              enabled: true
-                              exceptions: []
                             wodle_commands:
                               enabled: true
                               exceptions: []
@@ -7360,20 +7288,10 @@ paths:
                       alerts:
                         log_alert_level: "3"
                       remote:
-                        connection: secure
                         port: 1514
                         protocol:
                           - tcp
                         queue_size: 131072
-                      rootcheck:
-                        disabled: no
-                        check_dev: yes
-                        check_sys: yes
-                        check_pids: yes
-                        check_ports: yes
-                        check_if: yes
-                        frequency: 43200
-                        skip_nfs: yes
                       syscollector:
                         disabled: no
                         interval: "1h"
@@ -7388,10 +7306,6 @@ paths:
                         processes: yes
                         synchronization:
                           max_eps: 10
-                      sca:
-                        enabled: yes
-                        scan_on_start: yes
-                        interval: "12h"
                       vulnerability-detection:
                         enabled: yes
                         feed-update-interval: "60m"
@@ -7406,49 +7320,6 @@ paths:
                             - /var/wazuh-manager/etc/certs/manager.pem
                           key:
                             - /var/wazuh-manager/etc/certs/manager-key.pem
-                      syscheck:
-                        disabled: no
-                        frequency: 43200
-                        scan_on_start: yes
-                        alert_new_files: yes
-                        auto_ignore:
-                          frequency: 10
-                          timeframe: 3600
-                          item: no
-                        directories:
-                          - path: /etc
-                          - path: /usr/bin
-                          - path: /usr/sbin
-                          - path: /bin
-                          - path: /sbin
-                          - path: /boot
-                        ignore:
-                          - /etc/mtab
-                          - /etc/hosts.deny
-                          - /etc/mail/statistics
-                          - /etc/random-seed
-                          - /etc/random.seed
-                          - /etc/adjtime
-                          - /etc/httpd/logs
-                          - /etc/utmpx
-                          - /etc/wtmpx
-                          - /etc/cups/certs
-                          - /etc/dumpdates
-                          - /etc/svc/volatile
-                          - type: sregex
-                            item: ".log$|.swp$"
-                        nodiff:
-                          - /etc/ssl/private.key
-                        skip_nfs: yes
-                        skip_dev: yes
-                        skip_proc: yes
-                        skip_sys: yes
-                        process_priority: 10
-                        max_eps: 50
-                        synchronization:
-                          enabled: yes
-                          interval: "5m"
-                          max_eps: 10
                       command:
                         - name: disable-account
                           executable: disable-account
@@ -7470,24 +7341,6 @@ paths:
                         - name: netsh
                           executable: netsh.exe
                           timeout_allowed: yes
-                      localfile:
-                        - log_format: syslog
-                          location: /var/ossec/logs/active-responses.log
-                        - log_format: syslog
-                          location: /var/log/dpkg.log
-                        - log_format: command
-                          command: "df -P"
-                          frequency: 360
-                        - log_format: full_command
-                          command: "netstat -tulpn | sed 's/\\([[:alnum:]]\\+\\)\\ \\+[[:digit:]]\\+\\ \\+[[:digit:]
-                          ]\\+\\ \\+\\(.*\\):\\([[:digit:]]*\\)\\ \\+\\([0-9\\.\\:\\*]\\+\\).\\+\\ \\([[:digit:]]*\\/[
-                          [:alnum:]\\-]*\\).*/\\1 \\2 == \\3 == \\4 \\5/' | sort -k 4 -g | sed 's/ == \\(.*\\) ==/:\\1/'
-                           | sed 1,2d"
-                          alias: netstat listening ports
-                          frequency: 360
-                        - log_format: full_command
-                          command: "last -n 20"
-                          frequency: 360
                       auth:
                         disabled: no
                         port: "1515"
