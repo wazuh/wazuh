@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/csv"
 	"flag"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -47,6 +49,7 @@ type Config struct {
 	InputDir    string // Directory with .txt / .log input files
 	OutputFile  string // ndjson output file watched for processed events
 	Truncate    bool   // Truncate output before the test starts
+	CSVFile     string // Optional CSV report output file
 }
 
 // ---------------------------------------------------------------------------
@@ -99,6 +102,10 @@ func main() {
 
 	report := run(cfg, client, events, initialLines)
 	printReport(report)
+
+	if cfg.CSVFile != "" {
+		writeCSV(cfg.CSVFile, report)
+	}
 }
 
 func parseFlags() Config {
@@ -111,6 +118,7 @@ func parseFlags() Config {
 		"/var/wazuh-manager/logs/alerts/alerts.json",
 		"Output file to watch for processed events")
 	flag.BoolVar(&cfg.Truncate, "T", false, "Truncate output file before the test")
+	flag.StringVar(&cfg.CSVFile, "csv", "", "Path to CSV report output file (optional)")
 	flag.Parse()
 	return cfg
 }
@@ -510,4 +518,36 @@ func printReport(r Report) {
 
 	fmt.Println()
 	fmt.Println("=========================================================")
+}
+
+// ---------------------------------------------------------------------------
+// CSV output
+// ---------------------------------------------------------------------------
+
+// writeCSV writes per-second stats and a summary row to a CSV file.
+func writeCSV(path string, r Report) {
+	f, err := os.Create(path)
+	if err != nil {
+		log.Printf("csv: create %s: %v", path, err)
+		return
+	}
+	defer f.Close()
+
+	w := csv.NewWriter(f)
+	defer w.Flush()
+
+	// Header
+	w.Write([]string{"timestamp", "sent", "processed"})
+
+	// Per-second rows
+	for i, h := range r.History {
+		ts := r.StartTime.Add(time.Duration(i+1) * time.Second)
+		w.Write([]string{
+			ts.Format(time.RFC3339),
+			strconv.Itoa(h.Sent),
+			strconv.Itoa(h.Processed),
+		})
+	}
+
+	fmt.Printf("\nCSV report written to %s (%d rows)\n", path, len(r.History))
 }
