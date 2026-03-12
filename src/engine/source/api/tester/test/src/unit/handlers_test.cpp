@@ -402,7 +402,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             []() { return makeRunPostSuccessResponse(R"({"status":"ok"})"); },
             // Schema: validation OK, fields exist
-            []() { return schemf::mocks::EmptySchema::create(true, true); },
+            []() { return schemf::mocks::EmptySchema::create(true, true, json::Json::Type::String); },
         },
         // Fail case with invalid metadata
         LogtestPostCase {
@@ -424,7 +424,7 @@ INSTANTIATE_TEST_SUITE_P(
             []()
             { return userErrorResponse<eEngine::tester::RunPost_Response>("Metadata should contain 'wazuh' as root"); },
             // Schema: validation not-OK, fields doesn't exist
-            []() { return schemf::mocks::EmptySchema::create(false, false); },
+            []() { return schemf::mocks::EmptySchema::create(false, false, json::Json::Type::String); },
         },
         LogtestPostCase {
             "QueueZero",
@@ -494,7 +494,31 @@ INSTANTIATE_TEST_SUITE_P(
                     "metadata is required and must be a JSON object");
             },
             // Schema: validation OK, but no fields since metadata is missing
-            []() { return schemf::mocks::EmptySchema::create(true, false); },
+            []() { return schemf::mocks::EmptySchema::create(true, false, json::Json::Type::Object); },
+        },
+        LogtestPostCase {
+            "Failed metadata type",
+            []()
+            {
+                eEngine::tester::PublicRunPost_Request protoReq;
+                protoReq.set_queue(1);
+                protoReq.set_location("/var/log/test");
+                protoReq.set_event("   ");
+                protoReq.set_trace_level("NONE");
+
+                google::protobuf::Struct meta;
+                auto& wazuhValue = (*meta.mutable_fields())["wazuh"];
+                auto* wazuhStruct = wazuhValue.mutable_struct_value();
+                (*wazuhStruct->mutable_fields())["foo"].set_string_value("bar");
+                *protoReq.mutable_metadata() = meta;
+
+                return protoReq;
+            },
+            [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
+            []()
+            { return userErrorResponse<eEngine::tester::RunPost_Response>("Type missmatch metadata field 'wazuh.foo' type 'string' should be 'object' according to schema"); },
+            // Metadata is present and fields exist but schema-level validation fails.
+            []() { return schemf::mocks::EmptySchema::create(false, true, json::Json::Type::Object); },
         },
         LogtestPostCase {
             "EmptyEvent",
@@ -518,7 +542,7 @@ INSTANTIATE_TEST_SUITE_P(
             []()
             { return userErrorResponse<eEngine::tester::RunPost_Response>("event is required and cannot be empty"); },
             // Metadata is present and fields exist but schema-level validation fails.
-            []() { return schemf::mocks::EmptySchema::create(false, true); },
+            []() { return schemf::mocks::EmptySchema::create(false, true, json::Json::Type::String); },
         }));
 
 class LogtestDeleteTest : public ::testing::TestWithParam<LogtestDeleteCase>

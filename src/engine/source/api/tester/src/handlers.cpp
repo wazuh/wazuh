@@ -85,33 +85,23 @@ eTester::Result fromOutput(const ::router::test::Output& output)
     return result;
 }
 
-base::RespOrError<std::pair<json::Json, json::Json>> parseAndValidatePublicMetadata(
-    const google::protobuf::Struct& protoMetadata)
+base::RespOrError<std::pair<json::Json, json::Json>>
+parseAndValidatePublicMetadata(const google::protobuf::Struct& protoMetadata)
 {
-    auto jsonOrErr = eMessage::eMessageToJson(protoMetadata, /*printPrimitiveFields=*/true);
-    if (std::holds_alternative<base::Error>(jsonOrErr))
+    auto metadataOrError = eMessage::eStructToJson(protoMetadata);
+    if (std::holds_alternative<base::Error>(metadataOrError))
     {
         return base::Error {
-            fmt::format("Error converting metadata to JSON: {}", std::get<base::Error>(jsonOrErr).message)};
+            fmt::format("Error converting metadata to JSON: {}", std::get<base::Error>(metadataOrError).message)};
     }
 
-    json::Json metadata;
-    try
-    {
-        metadata = json::Json(std::get<std::string>(jsonOrErr).c_str());
-    }
-    catch (const std::exception& e)
-    {
-        return base::Error {fmt::format("Error parsing metadata JSON: {}", e.what())};
-    }
-
-    auto rootObjectOpt = metadata.getJson();
-    if (!metadata.isObject() || !rootObjectOpt.has_value() || rootObjectOpt->isEmpty())
+    const auto& metadata = std::get<json::Json>(metadataOrError);
+    if (!metadata.isObject() || metadata.isEmpty())
     {
         return base::Error {"Metadata must be a non-empty JSON object"};
     }
 
-    if (rootObjectOpt->size() != 1)
+    if (metadata.size() != 1)
     {
         return base::Error {"Metadata must contain only 'wazuh' as the top-level key"};
     }
@@ -128,9 +118,9 @@ base::RespOrError<std::pair<json::Json, json::Json>> parseAndValidatePublicMetad
 }
 
 bool validateMetadataLeaves(const json::Json& node,
-                           const std::shared_ptr<schemf::ISchema>& schema,
-                           std::string& currentPath,
-                           std::string& error)
+                            const std::shared_ptr<schemf::ISchema>& schema,
+                            std::string& currentPath,
+                            std::string& error)
 {
     if (node.isObject())
     {
@@ -172,6 +162,17 @@ bool validateMetadataLeaves(const json::Json& node,
         {
             error =
                 fmt::format("Unknown field in metadata: {}. Only fields from the schema are allowed", dotPath.str());
+            return false;
+        }
+
+        auto jSchemaType = schema->getJsonType(dotPath);
+        auto jValueType = node.type();
+        if (jSchemaType != jValueType)
+        {
+            error = fmt::format("Type missmatch metadata field '{}' type '{}' should be '{}' according to schema",
+                                dotPath.str(),
+                                json::Json::typeToStr(jValueType),
+                                json::Json::typeToStr(jSchemaType));
             return false;
         }
     }

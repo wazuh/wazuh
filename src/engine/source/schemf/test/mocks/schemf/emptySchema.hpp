@@ -22,9 +22,12 @@ public:
     // Configure what hasField() should return
     bool m_hasFieldResult {false};
 
-    explicit EmptySchema(bool validationResult, bool hasFieldResult)
+    json::Json::Type m_jsonTypeResult {json::Json::Type::Object};
+
+    explicit EmptySchema(bool validationResult, bool hasFieldResult, json::Json::Type jsonTypeResult = json::Json::Type::Object)
         : m_validationResult(validationResult)
         , m_hasFieldResult(hasFieldResult)
+        , m_jsonTypeResult(jsonTypeResult)
     {
     }
 
