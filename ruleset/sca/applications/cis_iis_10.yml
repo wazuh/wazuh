@@ -33,8 +33,20 @@ checks:
     rationale: "Isolating web content from system files may reduce the probability of: - Web sites/applications exhausting system disk space - File IO vulnerability in the web site/application from affecting the confidentiality and/or integrity of system files"
     remediation: "1. Browse to web content in C:\\inetpub\\wwwroot\\ 2. Copy or cut content onto a dedicated and restricted web folder on a non-systemdrive such as D:\\webroot\\ 3. Change mappings for any applications or Virtual Directories to reflect the new location To change the mapping for the application named app1 which resides under the Default Web Site, open IIS Manager: 1. Expand the server node 2. Expand Sites 3. Expand Default Web Site 4. Click on app1 5. In the Actions pane, select Basic Settings 6. In the Physical path text box, put the new location of the application, D:\\wwwroot\\app1 in the example above"
     compliance:
-      - cis: ["1.1"]
-      - cis_csc: ["14"]
+      cis: ["1.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:%systemroot%\system32\inetsrv\appcmd list vdir -> r:SystemDrive'
@@ -48,8 +60,20 @@ checks:
     rationale: "Ensuring that directory browsing is disabled may reduce the probability of disclosing sensitive content that is inadvertently accessible via IIS."
     remediation: "Enter the following command in AppCmd.exe to configure:%systemroot%\\system32\\inetsrv\\appcmd set config /section:directoryBrowse /enabled:false"
     compliance:
-      - cis: ["1.3"]
-      - cis_csc: ["14"]
+      cis: ["1.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://blogs.iis.net/thomad/archive/2008/02/10/moving-the-iis7-inetpub-directory-to-a-different-drive.aspx
     condition: all
@@ -62,8 +86,20 @@ checks:
     rationale: "Setting Application Pools to use unique least privilege identities such as ApplicationPoolIdentity reduces the potential harm the identity could cause should the application ever become compromised. Additionally, it will simplify application pools configuration and account management."
     remediation: "To change the ApplicationPool identity to the built-in ApplicationPoolIdentity using AppCmd.exe, run the following from a command prompt: Enter the following command in AppCmd.exe to configure %systemroot%\\system32\\inetsrv\\appcmd set config /section:applicationPools /[name='<apppool name>'].processModel.identityType:ApplicationPoolIdentity "
     compliance:
-      - cis: ["1.4"]
-      - cis_csc: ["18"]
+      cis: ["1.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://technet.microsoft.com/en-us/library/cc771170%28WS.10%29.aspx
       - http://learn.iis.net/page.aspx/140/understanding-built-in-user-and-group-accounts-in-iis-7/
@@ -79,8 +115,20 @@ checks:
     rationale: "By setting sites to run under unique Application Pools, resource-intensive applications can be assigned to their own application pools which could improve server and application performance.In addition, it can help maintain application availability: if an application in one pool fails, applications in other pools are not affected.Last, isolating applications helps mitigate the potential risk of one application being allowed access to the resources of another application. It is also recommended to stop any application pool that is not in use or was created by an installation such as .Net 4.0."
     remediation: "The following appcmd.exe command will set the application pool for a given application: %systemroot%\\system32\\inetsrv\\appcmd set app '<website name>/' /applicationpool:<apppool name>"
     compliance:
-      - cis: ["1.5"]
-      - cis_csc: ["14.6"]
+      cis: ["1.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://technet.microsoft.com/en-us/library/cc753449%28WS.10%29.aspx
       - http://blogs.iis.net/tomwoolums/archive/2008/12/17/iis-7-0-application-pools.aspx
@@ -95,8 +143,20 @@ checks:
     rationale: "Configuring the anonymous user identity to use the application pool identity will help ensure site isolation - provided sites are set to use the application pool identity. Since a unique principal will run each application pool, it will ensure the identity is least privilege. Additionally, it will simplify Site management."
     remediation: "To use AppCmd.exe to configure anonymousAuthenticationat the server level, the command would look like this: %systemroot%\\system32\\inetsrv\\appcmd set config -section:anonymousAuthentication /username:\"\" --password"
     compliance:
-      - cis: ["1.6"]
-      - cis_csc: ["14.6"]
+      cis: ["1.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://learn.iis.net/page.aspx/202/application-pool-identity-as-anonymous-user/
       - http://learn.iis.net/page.aspx/624/application-pool-identities/
@@ -110,8 +170,20 @@ checks:
     rationale: "WebDAV is not widely used, and it has serious security concerns because it may allow clients to modify unauthorized files on the web server. Therefore, the WebDav feature should be disabled."
     remediation: "To disable this feature using PowerShell, enter the following command: Remove-WindowsFeature Web-DAV-Publishing Verify that Success is True"
     compliance:
-      - cis: ["1.7"]
-      - cis_csc: ["9.2"]
+      cis: ["1.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - "c:powershell.exe import-module servermanager;Get-WindowsFeature Web-DAV-Publishing -> r:available"
@@ -123,8 +195,20 @@ checks:
     rationale: "Configuring a global Authorization rule that restricts access will ensure inheritance of the settings down through the hierarchy of web directories; if that content is copied elsewhere, the authorization rules flow with it. This will ensure access to current and future content is only granted to the appropriate principals, mitigating risk of accidental or unauthorized access."
     remediation: "To configure URL Authorization at the server level using command line utilities:Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config -section:system.webServer/security/authorization /-\"[users='*',roles='',verbs='']\"; %systemroot%\\system32\\inetsrv\\appcmd set config -section:system.webServer/security/authorization /+\"[accessType='Allow',roles='Administrators']\""
     compliance:
-      - cis: ["2.1"]
-      - cis_csc: ["18"]
+      cis: ["2.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://www.iis.net/learn/manage/configuring-security/understanding-iis-url-authorization
       - http://www.iis.net/learn/get-started/whats-new-in-iis-7/changes-in-security-between-iis-60-and-iis-7-and-above#Authorization
@@ -138,8 +222,20 @@ checks:
     rationale: "Configuring authentication will help mitigate the risk of unauthorized users accessing data and/or services, and in some cases reduce the potential harm that can be done to a system."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config - section:system.web/authentication /mode:<Windows|Passport|Forms>"
     compliance:
-      - cis: ["2.2"]
-      - cis_csc: ["14.6"]
+      cis: ["2.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://learn.iis.net/page.aspx/377/using-aspnet-forms-authentication/rev/1
       - http://learn.iis.net/page.aspx/244/how-to-take-advantage-of-the-iis7-integrated-pipeline/
@@ -156,8 +252,20 @@ checks:
     rationale: "Requiring SSL for Forms Authentication will protect the confidentiality of credentials during the login process, helping mitigate the risk of stolen user information."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config - section:system.web/authentication /mode:Forms"
     compliance:
-      - cis: ["2.3"]
-      - cis_csc: ["14.4"]
+      cis: ["2.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://technet.microsoft.com/en-us/library/cc771077(WS.10).aspx
     condition: all
@@ -170,8 +278,20 @@ checks:
     rationale: "Using cookies to manage session state may help mitigate the risk of session hi-jacking attempts by preventing ASP.NET from having to move session information to the URL. Moving session information identifiers into the URL may cause session IDs to show up in proxy logs, browsing history, and be accessible to client scripting via document.location."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config - section:system.web/authentication /forms.cookieless:\"UseCookies\""
     compliance:
-      - cis: ["2.4"]
-      - cis_csc: ["18"]
+      cis: ["2.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://technet.microsoft.com/en-us/library/cc732830%28WS.10%29.aspx
     condition: all
@@ -219,8 +339,20 @@ checks:
     rationale: "Setting the validation property to AES will provide confidentiality and integrity protection to the viewstate. AES is the strongest encryption algorithm supported by the validation property. Setting the validation property to SHA1 will provide integrity protection to the viewstate. SHA1 is the strongest hashing algorithm supported by the validation property."
     remediation: "To set the Machine Key encryption at the global level using an appcmd.exe command: %systemroot%\\system32\\inetsrv\\appcmd set config /commit:WEBROOT /section:machineKey /validation:SHA1"
     compliance:
-      - cis: ["3.8"]
-      - cis_csc: ["14.4"]
+      cis: ["3.8"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://technet.microsoft.com/en-us/library/cc772271%28WS.10%29.aspx
       - http://technet.microsoft.com/en-us/library/cc772287%28WS.10%29.aspx
@@ -234,8 +366,20 @@ checks:
     rationale: "SHA-2 is the strongest hashing algorithm supported by the validation property so it should be used as the validation method for the MachineKey in .Net 4.5."
     remediation: "To set the Machine Key encryption at the global level using an appcmd.exe command: %systemroot%\\system32\\inetsrv\\appcmd set config /commit:WEBROOT /section:machineKey /validation:HMACSHA256"
     compliance:
-      - cis: ["3.9"]
-      - cis_csc: ["14.4"]
+      cis: ["3.9"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://www.iis.net/learn/get-started/whats-new-in-iis-8/iis-80-aspnet-configuration-management
     condition: all
@@ -248,8 +392,20 @@ checks:
     rationale: "The CAS determines the permissions that are granted to the application on the server. Setting a minimal level of trust that is compatible with the applications will limit the potential harm that a compromised application could cause to a system."
     remediation: "To set the .Net Trust Level to Medium at the server level using an appcmd.exe command: %systemroot%\\system32\\inetsrv\\appcmd set config /commit:WEBROOT /section:trust /level:Medium"
     compliance:
-      - cis: ["3.10"]
-      - cis_csc: ["14.6"]
+      cis: ["3.10"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://technet.microsoft.com/en-us/library/cc772237(WS.10).aspx
       - http://msdn.microsoft.com/en-us/library/ms691448%28VS.90%29.aspx
@@ -265,8 +421,20 @@ checks:
     rationale: "While this is not the only way to fingerprint a site through the response headers, it makes it harder and prevents some potential attackers."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd.exe set config -section:system.webServer/httpProtocol /-\"customHeaders.[name='X-Powered-By']\" /commit:apphost"
     compliance:
-      - cis: ["3.11"]
-      - cis_csc: ["5.1"]
+      cis: ["3.11"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://blogs.msdn.microsoft.com/jpsanders/2015/10/07/remove-server-and-x-powered-by-headers-from-your-azure-mobile-apps/
     condition: none
@@ -279,8 +447,20 @@ checks:
     rationale: "While this is not the only way to fingerprint a site through the response headers, it makes it harder and prevents some potential attackers. The server header removal directive is a new feature in IIS 10 that can assist in mitigating this risk."
     remediation: "Enter the following command to use AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd.exe set config -section:system.webServer/security/requestFiltering /removeServerHeader:\"True\" /commit:apphost"
     compliance:
-      - cis: ["3.12"]
-      - cis_csc: ["5.1"]
+      cis: ["3.12"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://blogs.msdn.microsoft.com/jpsanders/2015/10/07/remove-server-and-x-powered-by-headers-from-your-azure-mobile-apps/
     condition: all
@@ -294,8 +474,20 @@ checks:
     rationale: "Setting an appropriate value that has been tested for the maxAllowedContentLength filter will lower the impact an abnormally large request would otherwise have on IIS and/or web applications. This helps to ensure availability of web content and services, and may also help mitigate the risk of buffer overflow type attacks in unmanaged components."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config /section:requestfiltering /requestLimits.maxAllowedContentLength:30000000"
     compliance:
-      - cis: ["4.1"]
-      - cis_csc: ["18"]
+      cis: ["4.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/requestLimits
       - http://learn.iis.net/page.aspx/143/use-request-filtering/
@@ -309,8 +501,20 @@ checks:
     rationale: "With a properly configured Request Filter limiting the amount of data accepted in the URL, chances of undesired application behaviors affecting the availability of content and services are reduced."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config /section:requestfiltering /requestLimits.maxURL:4096"
     compliance:
-      - cis: ["4.2"]
-      - cis_csc: ["18"]
+      cis: ["4.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/requestLimits
       - http://learn.iis.net/page.aspx/143/use-request-filtering/
@@ -324,8 +528,20 @@ checks:
     rationale: "With a properly configured Request Filter limiting the amount of data accepted in the query string, chances of undesired application behaviors such as app pool failures are reduced."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config /section:requestfiltering /requestLimits.maxQueryString:2048"
     compliance:
-      - cis: ["4.3"]
-      - cis_csc: ["18"]
+      cis: ["4.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/requestLimits
       - http://learn.iis.net/page.aspx/143/use-request-filtering/
@@ -339,8 +555,20 @@ checks:
     rationale: "This feature can help defend against canonicalization attacks, reducing the potential attack surface of servers, sites, and/or applications."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config /section:requestfiltering /allowHighBitCharacters:false"
     compliance:
-      - cis: ["4.4"]
-      - cis_csc: ["18"]
+      cis: ["4.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://learn.iis.net/page.aspx/143/use-request-filtering/
       - http://learn.iis.net/page.aspx/936/urlscan-1-reference/
@@ -355,8 +583,20 @@ checks:
     rationale: "This feature will help prevent attacks that rely on URLs that have been crafted to contain double-encoded request(s)."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config /section:requestfiltering /allowDoubleEscaping:false"
     compliance:
-      - cis: ["4.5"]
-      - cis_csc: ["18"]
+      cis: ["4.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/requestLimits
       - http://learn.iis.net/page.aspx/143/use-request-filtering/
@@ -370,8 +610,20 @@ checks:
     rationale: "Attackers may abuse HTTP TRACE functionality to gain access to information in HTTP headers such as cookies and authentication data. This risk can be mitigated by not allowing the TRACE verb."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config /section:requestfiltering /+verbs.[verb='TRACE',allowed='false']"
     compliance:
-      - cis: ["4.6"]
-      - cis_csc: ["18"]
+      cis: ["4.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://www.kb.cert.org/vuls/id/867593
       - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/verbs
@@ -385,8 +637,20 @@ checks:
     rationale: "Disallowing all but the necessary file extensions can greatly reduce the attack surface of applications and servers."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config /section:requestfiltering /fileExtensions.allowunlisted:false"
     compliance:
-      - cis: ["4.7"]
-      - cis_csc: ["18"]
+      cis: ["4.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/requestLimits
       - http://www.iis.net/learn/manage/configuring-security/configure-request-filtering-in-iis
@@ -400,8 +664,20 @@ checks:
     rationale: "By allowing both Execute/Scriptand Write permissions, a handler can run malicious code on the target server. Ensuring these two permissions are never together will help lower the risk of malicious code being executed on the server."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config /section:handlers /accessPolicy:Read,Script"
     compliance:
-      - cis: ["4.8"]
-      - cis_csc: ["18"]
+      cis: ["4.8"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://technet.microsoft.com/en-us/library/dd391910%28WS.10%29.aspx
       - http://blogs.iis.net/thomad/archive/2006/11/05/quo-vadis-accessflags.aspx
@@ -415,8 +691,20 @@ checks:
     rationale: "Restricting this attribute to falsewill help prevent potentially malicious ISAPI extensions from being run."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd.exe set config -section:system.webServer/security/isapiCgiRestriction /notListedIsapisAllowed:false"
     compliance:
-      - cis: ["4.9"]
-      - cis_csc: ["18"]
+      cis: ["4.9"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://technet.microsoft.com/en-us/library/dd378846%28WS.10%29.aspx
       - http://www.iis.net/ConfigReference/system.webServer/security/isapiCgiRestriction
@@ -430,8 +718,20 @@ checks:
     rationale: "Restricting this attribute to falsewill help prevent unlisted CGI extensions, including potentially malicious CGI scripts from being run."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd.exe set config -section:system.webServer/security/isapiCgiRestriction /notListedCgisAllowed:false"
     compliance:
-      - cis: ["4.10"]
-      - cis_csc: ["18"]
+      cis: ["4.10"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://technet.microsoft.com/en-us/library/dd391919%28WS.10%29.aspx
     condition: all
@@ -444,8 +744,20 @@ checks:
     rationale: "Dynamic IP address filtering allows administrators to configure the server to block access for IPs that exceed the specified number of requests or requests frequency. Ensure that you receive the Forbidden page once the block has been enforced."
     remediation: 'Enter the following commands in powershell.exe to configure: Set-WebConfigurationProperty -pspath ''MACHINE/WEBROOT/APPHOST'' -filter "system.webServer/security/dynamicIpSecurity/denyByConcurrentRequests" -name"enabled" -value "True"Set-WebConfigurationProperty -pspath ''MACHINE/WEBROOT/APPHOST'' -filter "system.webServer/security/dynamicIpSecurity/denyByConcurrentRequests" -name "maxConcurrentRequests" -value <number of requests>'
     compliance:
-      - cis: ["4.11"]
-      - cis_csc: ["9.5"]
+      cis: ["4.11"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://www.iis.net/learn/get-started/whats-new-in-iis-8/iis-80-dynamic-ip-address-restrictions
     condition: all
@@ -459,8 +771,20 @@ checks:
     rationale: "Moving IIS logging to a restricted, non-system drive will help mitigate the risk of logs being maliciously altered, removed, or lost in the event of system drive failure(s)."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config -section:sites -siteDefaults.logfile.directory:<new log location> "
     compliance:
-      - cis: ["5.1"]
-      - cis_csc: ["6.4"]
+      cis: ["5.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://technet.microsoft.com/en-us/library/cc770709(v=ws.10).aspx?
     condition: none
@@ -480,8 +804,20 @@ checks:
     rationale: "By using SSL, the FTP transmission is encrypted and secured from point to point and all FTP traffic as well as credentials are thereby guarded against interception."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd.exe set config -section:system.applicationHost/sites /siteDefaults.ftpServer.security.ssl.controlChannelPolicy:\"SslRequire\" /siteDefaults.ftpServer.security.ssl.dataChannelPolicy:\"SslRequire\" /commit:apphost"
     compliance:
-      - cis: ["6.1"]
-      - cis_csc: ["14.4"]
+      cis: ["6.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://www.windowsnetworking.com/articles_tutorials/IIS-FTP-Publishing-Service-Part3.html
       - http://learn.iis.net/page.aspx/304/using-ftp-over-ssl/#03
@@ -496,8 +832,20 @@ checks:
     rationale: "Successful brute force FTP attacks can allow an otherwise unauthorized user to make changes to data that should not be made. This could allow the unauthorized user to modify website code by uploading malicious software or even changing functionality for items such as online payments."
     remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd.exe set config -section:system.ftpServer/security/authentication /denyByFailure.enabled:\"True\" /commit:apphost"
     compliance:
-      - cis: ["6.2"]
-      - cis_csc: ["9.1"]
+      cis: ["6.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://www.iis.net/learn/get-started/whats-new-in-iis-8/iis-80-ftp-logon-attempt-restrictions
     condition: all
@@ -511,8 +859,20 @@ checks:
     rationale: "HTTP Strict Transport Security (HSTS) is a simple and widely supported standard to protect visitors by ensuring that their browsers always connect to a website over HTTPS. HSTS exists to remove the need for the common, insecure practice of redirecting users from http:// to https:// URLs. HSTS relies on the User Agent/Browser to enforce the required behavior. All major browsers support it. If the browser doesn't support HSTS, it will be ignored.When a browser knows that a domain has enabled HSTS, it does two things:1. Always uses an https:// connection, even when clicking on an http:// link or after typing a domain into the location bar without specifying a protocol.2. Removes the ability for users to click through warnings about invalid certificates.A domain instructs browsers that it has enabled HSTS by returning an HTTP header over an HTTPS connection."
     remediation: "To set the HTTP Header at the server level using an AppCmd.exe command, run the following command from an elevated command prompt: %systemroot%\\system32\\inetsrv\\appcmd.exe set config -section:system.webServer/httpProtocol /+\"customHeaders.[name='Strict-Transport-Security',value='max-age=480; preload']\""
     compliance:
-      - cis: ["7.1"]
-      - cis_csc: ["18"]
+      cis: ["7.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     references:
       - http://tools.ietf.org/html/rfc6797#section-5.1
@@ -527,8 +887,20 @@ checks:
     rationale: "Disabling weak protocols will help ensure the confidentiality and integrity of in-transit data."
     remediation: "Set the following key is set to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\SSL 2.0\\Server:Enabled HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\SSL 2.0\\Client:Enabled. Set the following key is set to 1: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\SSL 2.0\\Server:DisabledByDefault HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\SSL 2.0\\Client:DisabledByDefault"
     compliance:
-      - cis: ["7.2"]
-      - cis_csc: ["14.4"]
+      cis: ["7.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://technet.microsoft.com/en-us/library/dn786419.aspx
       - http://technet.microsoft.com/en-us/library/dn786433.aspx
@@ -547,8 +919,20 @@ checks:
     rationale: "Disabling weak protocols will help ensure the confidentiality and integrity of in-transit data."
     remediation: "Set the following keys to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\SSL 3.0\\Server:Enabled HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\SSL 3.0\\Client:Enabled. Set the following keys to 1: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\SSL 3.0\\Server:DisabledByDefault HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\SSL 3.0\\Client:DisabledByDefault"
     compliance:
-      - cis: ["7.3"]
-      - cis_csc: ["14.4"]
+      cis: ["7.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.openssl.org/~bodo/ssl-poodle.pdf
       - http://technet.microsoft.com/en-us/library/dn786419.aspx
@@ -568,8 +952,20 @@ checks:
     rationale: "Disabling weak protocols will help ensure the confidentiality and integrity of in-transit data."
     remediation: "Set the following key to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.0\\Server:Enabled HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.0\\Client:Enabled. Set the following key is set to 1: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.0\\Server:DisabledByDefault HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.0\\Client:DisabledByDefault"
     compliance:
-      - cis: ["7.4"]
-      - cis_csc: ["14.4"]
+      cis: ["7.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://msdn.microsoft.com/en-us/library/aa374757%28v=vs.85%29.aspx
       - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
@@ -588,8 +984,20 @@ checks:
     rationale: "Disabling weak protocols will help ensure the confidentiality and integrity of in-transit data"
     remediation: "Set the following key to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.1\\Server:Enabled HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.1\\Client:Enabled. Set the following key is set to 1: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.1\\Server:DisabledByDefault HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.1\\Client:DisabledByDefault"
     compliance:
-      - cis: ["7.5"]
-      - cis_csc: ["14.4"]
+      cis: ["7.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://technet.microsoft.com/en-us/library/dn786433.aspx
       - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
@@ -609,8 +1017,20 @@ checks:
     rationale: "Enabling this protocol will help ensure the confidentiality and integrity of data in transit."
     remediation: "Set the following key to 1: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.2\\Server:Enabled. Set the following key to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.2\\Server:DisabledByDefault"
     compliance:
-      - cis: ["7.6"]
-      - cis_csc: ["14.4"]
+      cis: ["7.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://msdn.microsoft.com/en-us/library/aa374757%28v=vs.85%29.aspx
       - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
@@ -627,8 +1047,20 @@ checks:
     rationale: "By disabling the NULL cipher, there is a better chance of maintaining data confidentiality and integrity."
     remediation: "Set the following key to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers\\NULL:Enabled"
     compliance:
-      - cis: ["7.7"]
-      - cis_csc: ["14.4"]
+      cis: ["7.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
       - http://technet.microsoft.com/en-us/library/dn786419.aspx
@@ -644,8 +1076,20 @@ checks:
     rationale: "By disabling DES, there is a better chance of maintaining data confidentiality and integrity."
     remediation: "Set the following key to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers\\DES 56/56:Enabled"
     compliance:
-      - cis: ["7.8"]
-      - cis_csc: ["14.4"]
+      cis: ["7.8"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
       - http://technet.microsoft.com/en-us/library/dn786419.aspx
@@ -661,8 +1105,20 @@ checks:
     rationale: "The use of RC4 may increase an adversaries ability to read sensitive information sent over SSL/TLS."
     remediation: "Set the following keys to 0 to disable RC4 40/128, RC4 56/128, RC4 64/128, RC4 128/128 ciphers: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers\\RC4 40/128:Enabled, HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers\\RC4 56/128:Enabled, HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers\\RC4 64/128:Enabled,HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers\\RC4 128/128:Enabled."
     compliance:
-      - cis: ["7.9"]
-      - cis_csc: ["14.4"]
+      cis: ["7.9"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
       - http://technet.microsoft.com/en-us/library/dn786419.aspx
@@ -681,8 +1137,20 @@ checks:
     rationale: "This item is Scored for the following reasons and should be disabled: Enabling AES 256/256 is recommended. This cipher does not suffer from known practical attacks."
     remediation: "Set the following key to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers\\AES 128/128:Enabled"
     compliance:
-      - cis: ["7.10"]
-      - cis_csc: ["14.4"]
+      cis: ["7.10"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
       - http://technet.microsoft.com/en-us/library/dn786419.aspx
@@ -698,8 +1166,20 @@ checks:
     rationale: "Enabling this cipher will help ensure the confidentiality and integrity of data in transit."
     remediation: "Set the following key to 1: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers\\AES 128/128:Enabled"
     compliance:
-      - cis: ["7.11"]
-      - cis_csc: ["14.4"]
+      cis: ["7.11"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
       - http://technet.microsoft.com/en-us/library/dn786419.aspx
@@ -715,8 +1195,20 @@ checks:
     rationale: "Cipher suites should be ordered from strongest to weakest in order to ensure that the more secure configuration is used for encryption between the server and client."
     remediation: "Set HKLM\\SOFTWARE\\Policies\\Microsoft\\Cryptography\\Configuration\\SSL\\00010002:Functions to TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256."
     compliance:
-      - cis: ["7.12"]
-      - cis_csc: ["14.4"]
+      cis: ["7.12"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Cryptography\Configuration\SSL\00010002 -> Functions -> TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256.'

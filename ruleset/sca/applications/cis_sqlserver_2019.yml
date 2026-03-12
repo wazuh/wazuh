@@ -38,10 +38,20 @@ checks:
     rationale: "This feature can be used to remotely access and exploit vulnerabilities on remote SQL Server instances and to run unsafe Visual Basic for Application functions."
     remediation: "Run the following T-SQL command: EXECUTE sp_configure 'show advanced options', 1; RECONFIGURE; EXECUTE sp_configure 'Ad Hoc Distributed Queries', 0; RECONFIGURE; GO EXECUTE sp_configure 'show advanced options', 0; RECONFIGURE;"
     compliance:
-      - cis: ["2.1"]
-      - cis_csc: ["9.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.6", "CM.1"]
+      cis: ["2.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/ad-hoc-distributed-queries-server-configuration-option"
     condition: all
@@ -55,10 +65,20 @@ checks:
     rationale: "Enabling use of CLR assemblies widens the attack surface of SQL Server and puts it at risk from both inadvertent and malicious assemblies."
     remediation: "Run the following T-SQL command: EXECUTE sp_configure 'clr enabled', 0; RECONFIGURE;"
     compliance:
-      - cis: ["2.2"]
-      - cis_csc: ["18.9"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.6", "CM.1"]
+      cis: ["2.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/t-sql/statements/create-assembly-transact-sql"
     condition: all
@@ -72,11 +92,20 @@ checks:
     rationale: "When enabled, this option allows a member of the db_owner role in a database to gain access to objects owned by a login in any other database, causing an unnecessary information disclosure. When required, cross-database ownership chaining should only be enabled for the specific databases requiring it instead of at the instance level for all databases by using the ALTER DATABASE <database_name> SET DB_CHAINING ON command. This database option may not be changed on the master , model , or tempdb system databases."
     remediation: "Run the following T-SQL command: EXECUTE sp_configure 'cross db ownership chaining', 0; RECONFIGURE; GO"
     compliance:
-      - cis: ["2.3"]
-      - cis_csc: ["14.4"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.6", "CM.1"]
-      - tsc: ["CC5.2"]
+      cis: ["2.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/cross-db-ownership-chaining-server-configuration-option"
     condition: all
@@ -90,11 +119,20 @@ checks:
     rationale: "Disabling the Database Mail XPs option reduces the SQL Server surface, eliminates a DOS attack vector and channel to exfiltrate data from the database server to a remote host."
     remediation: "Run the following T-SQL command: EXECUTE sp_configure 'show advanced options', 1; RECONFIGURE; EXECUTE sp_configure 'Database Mail XPs', 0; RECONFIGURE; GO EXECUTE sp_configure 'show advanced options', 0; RECONFIGURE;"
     compliance:
-      - cis: ["2.4"]
-      - cis_csc: ["18"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.6", "CM.1"]
-      - tsc: ["CC5.2"]
+      cis: ["2.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/database-mail/database-mail"
     condition: all
@@ -108,11 +146,20 @@ checks:
     rationale: "Enabling this option will increase the attack surface of SQL Server and allow users to execute functions in the security context of SQL Server."
     remediation: "Run the following T-SQL command: EXECUTE sp_configure 'show advanced options', 1; RECONFIGURE; EXECUTE sp_configure 'Ole Automation Procedures', 0; RECONFIGURE; GO EXECUTE sp_configure 'show advanced options', 0; RECONFIGURE;"
     compliance:
-      - cis: ["2.5"]
-      - cis_csc: ["18"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.6", "CM.1"]
-      - tsc: ["CC5.2"]
+      cis: ["2.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/ole-automation-procedures-server-configuration-option"
     condition: all
@@ -126,11 +173,20 @@ checks:
     rationale: "Functionality can be abused to launch a Denial-of-Service (DoS) attack on remote servers by off-loading query processing to a target."
     remediation: "Run the following T-SQL command: EXECUTE sp_configure 'show advanced options', 1; RECONFIGURE; EXECUTE sp_configure 'remote access', 0; RECONFIGURE; GO EXECUTE sp_configure 'show advanced options', 0; RECONFIGURE; Restart the Database Engine."
     compliance:
-      - cis: ["2.6"]
-      - cis_csc: ["9.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.6", "CM.1"]
-      - tsc: ["CC5.2"]
+      cis: ["2.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/configure-the-remote-access-server-configuration-option"
     condition: all
@@ -144,11 +200,20 @@ checks:
     rationale: 'The Dedicated Administrator Connection (DAC) lets an administrator access a running server to execute diagnostic functions or Transact-SQL statements, or to troubleshoot problems on the server, even when the server is locked or running in an abnormal state and not responding to a SQL Server Database Engine connection. In a cluster scenario, the administrator may not actually be logged on to the same node that is currently hosting the SQL Server instance and thus is considered "remote". Therefore, this setting should usually be enabled ( 1 ) for SQL Server failover clusters; otherwise it should be disabled ( 0 ) which is the default.'
     remediation: "Run the following T-SQL command on non-clustered installations: EXECUTE sp_configure 'remote admin connections', 0; RECONFIGURE; GO"
     compliance:
-      - cis: ["2.7"]
-      - cis_csc: ["9.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.6", "CM.1"]
-      - tsc: ["CC5.2"]
+      cis: ["2.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/remote-admin-connections-server-configuration-option"
     condition: all
@@ -162,11 +227,20 @@ checks:
     rationale: "Enforcing this control reduces the threat of an entity leveraging these facilities for malicious purposes."
     remediation: "Run the following T-SQL command: EXECUTE sp_configure 'show advanced options', 1; RECONFIGURE; EXECUTE sp_configure 'scan for startup procs', 0; RECONFIGURE; GO EXECUTE sp_configure 'show advanced options', 0; RECONFIGURE; Restart the Database Engine."
     compliance:
-      - cis: ["2.8"]
-      - cis_csc: ["18"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.6", "CM.1"]
-      - tsc: ["CC5.2"]
+      cis: ["2.8"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/configure-the-scan-for-startup-procs-server-configuration-option"
     condition: all
@@ -180,11 +254,20 @@ checks:
     rationale: "Provides protection from malicious CLR assemblies or extended procedures."
     remediation: "Execute the following T-SQL statement against the databases (replace <dbname> below) returned by the Audit Procedure: ALTER DATABASE [<database_name>] SET TRUSTWORTHY OFF;"
     compliance:
-      - cis: ["2.9"]
-      - cis_csc: ["14.4"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.6", "CM.1"]
-      - tsc: ["CC5.2"]
+      cis: ["2.9"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/security/trustworthy-database-property"
       - "https://support.microsoft.com/it-it/help/2183687/guidelines-for-using-the-trustworthy-database-setting-in-sql-server"
@@ -199,11 +282,20 @@ checks:
     rationale: "Using a non-default port helps protect the database from attacks directed to the default port."
     remediation: "1: In SQL Server Configuration Manager, in the console pane, expand SQL Server Network Configuration, expand Protocols for <InstanceName> , and then double-click the TCP/IP protocol. 2: In the TCP/IP Properties dialog box, on the IP Addresses tab, several IP addresses appear in the format IP1 , IP2 , up to IPAll . One of these is for the IP address of the loopback adapter, 127.0.0.1 . Additional IP addresses appear for each IP Address on the computer. 3: Under IPALL, change the TCP Port field from 1433 to another non-standard port or leave the TCP Port field empty and set the TCP Dynamic Ports value to 0 to enable dynamic port assignment and then click OK. 4: In the console pane, click SQL Server Services. 5: In the details pane, right-click SQL Server (<InstanceName>) and then click Restart, to stop and restart SQL Server."
     compliance:
-      - cis: ["2.11"]
-      - cis_csc: ["9"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.6", "CM.1"]
-      - tsc: ["CC5.2"]
+      cis: ["2.11"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/configure-a-server-to-listen-on-a-specific-tcp-port"
     condition: none
@@ -217,11 +309,20 @@ checks:
     rationale: "Enforcing this control reduces the probability of an attacker executing brute force attacks against a well-known principal."
     remediation: "Execute the following T-SQL query: USE [master] GO DECLARE @tsql nvarchar(max) SET @tsql = 'ALTER LOGIN ' + SUSER_NAME(0x01) + ' DISABLE' EXEC (@tsql) GO"
     compliance:
-      - cis: ["2.13"]
-      - cis_csc: ["5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.6", "CM.1"]
-      - tsc: ["CC5.2"]
+      cis: ["2.13"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-server-principals-transact-sql"
       - "https://docs.microsoft.com/en-us/sql/t-sql/statements/alter-login-transact-sql"
@@ -237,11 +338,20 @@ checks:
     rationale: "It is more difficult to launch password-guessing and brute-force attacks against the sa login if the name is not known."
     remediation: "Replace the <different_user> value within the below syntax and execute to rename the sa login. ALTER LOGIN sa WITH NAME = <different_user>;"
     compliance:
-      - cis: ["2.14"]
-      - cis_csc: ["5"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.6", "CM.1"]
-      - tsc: ["CC5.2"]
+      cis: ["2.14"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/security/choose-an-authentication-mode"
     condition: none
@@ -255,11 +365,20 @@ checks:
     rationale: "Because authentication of users for contained databases occurs within the database not at the server\\instance level, the database must be opened every time to authenticate a user. The frequent opening/closing of the database consumes additional server resources and may contribute to a denial of service."
     remediation: "Execute the following T-SQL, replacing <database_name> with each database name found by the Audit Procedure: ALTER DATABASE <database_name> SET AUTO_CLOSE OFF;"
     compliance:
-      - cis: ["2.15"]
-      - cis_csc: ["18"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.6", "CM.1"]
-      - tsc: ["CC5.2"]
+      cis: ["2.15"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/databases/security-best-practices-with-contained-databases"
     condition: all
@@ -273,11 +392,20 @@ checks:
     rationale: "Enforcing this control reduces the probability of an attacker executing brute force attacks against a well-known principal name."
     remediation: "Execute the appropriate ALTER or DROP statement below based on the principal_id returned for the login named sa . Replace the <different_name> value within the below syntax and execute to rename the sa login. USE [master] GO -- If principal_id = 1 or the login owns database objects, rename the sa login ALTER LOGIN [sa] WITH NAME = <different_name>; GO -- If the login owns no database objects, then drop it -- Do NOT drop the login if it is principal_id = 1 DROP LOGIN sa"
     compliance:
-      - cis: ["2.16"]
-      - cis_csc: ["5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.6", "CM.1"]
-      - tsc: ["CC5.2"]
+      cis: ["2.16"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:sqlcmd -Q "SELECT principal_id, name FROM sys.server_principals WHERE name = ''sa'';" -> r:0 rows affected'
@@ -292,10 +420,20 @@ checks:
     rationale: "Windows provides a more robust authentication mechanism than SQL Server authentication."
     remediation: "Perform either the GUI or T-SQL method shown: GUI Method: 1. Open SQL Server Management Studio. 2. Open the Object Explorer tab and connect to the target database instance. 3. Right click the instance name and select Properties. 4. Select the Security page from the left menu. 5. Set the Server authentication setting to Windows Authentication Mode. or T-SQL Method: Run the following T-SQL in a Query Window: USE [master] GO EXEC xp_instance_regwrite N'HKEY_LOCAL_MACHINE', N'Software\\Microsoft\\MSSQLServer\\MSSQLServer', N'LoginMode', REG_DWORD, 1 GO Restart the SQL Server service for the change to take effect."
     compliance:
-      - cis: ["3.1"]
-      - cis_csc: ["16.9"]
-      - pci_dss: ["8.2.1"]
-      - tsc: ["CC6.1"]
+      cis: ["3.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/server-properties-security-page"
     condition: all
@@ -309,9 +447,20 @@ checks:
     rationale: "Every SQL Server login belongs to the public role and cannot be removed from this role. Therefore, any permissions granted to this role will be available to all logins unless they have been explicitly denied to specific logins or user-defined server roles."
     remediation: "Add the extraneous permissions found in the Audit query results to the specific logins to user-defined server roles which require the access. Revoke the <permission_name> from the public role as shown below USE [master] GO REVOKE <permission_name> FROM public; GO"
     compliance:
-      - cis: ["3.8"]
-      - cis_csc: ["5.1"]
-      - pci_dss: ["7.1"]
+      cis: ["3.8"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/security/authentication-access/server-level-roles"
       - "https://docs.microsoft.com/en-us/sql/relational-databases/security/authentication-access/server-level-roles#permissions-of-fixed-server-roles"
@@ -326,9 +475,20 @@ checks:
     rationale: "Allowing local Windows groups as SQL Logins provides a loophole whereby anyone with OS level administrator rights (and no SQL Server rights) could add users to the local Windows groups and thereby give themselves or others access to the SQL Server instance."
     remediation: "1. For each LocalGroupName login, if needed create an equivalent AD group containing only the required user accounts. 2. Add the AD group or individual Windows accounts as a SQL Server login and grant it the permissions required. 3. Drop the LocalGroupName login using the syntax below after replacing <name> . USE [master] GO DROP LOGIN [<name>] GO"
     compliance:
-      - cis: ["3.10"]
-      - cis_csc: ["14.4"]
-      - pci_dss: ["7.1"]
+      cis: ["3.10"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:sqlcmd -Q "USE [master] SELECT pr.[name] AS LocalGroupName, pe.[permission_name], pe.[state_desc] FROM sys.server_principals pr JOIN sys.server_permissions pe ON pr.[principal_id] = pe.[grantee_principal_id] WHERE pr.[type_desc] = ''WINDOWS_GROUP'' AND pr.[name] like CAST(SERVERPROPERTY(''MachineName'') AS nvarchar) + ''%'';" -> r:0 rows affected'
@@ -343,10 +503,20 @@ checks:
     rationale: "Ensuring SQL logins comply with the secure password policy applied by the Windows Server Benchmark will ensure the passwords for SQL logins with sysadmin privileges are changed on a frequent basis to help prevent compromise via a brute force attack. CONTROL SERVER is an equivalent permission to sysadmin and logins with that permission should also be required to have expiring passwords."
     remediation: "For each <login_name> found by the Audit Procedure, execute the following T-SQL statement: ALTER LOGIN <login_name> WITH CHECK_EXPIRATION = ON;"
     compliance:
-      - cis: ["4.2"]
-      - cis_csc: ["16.2, 16.10"]
-      - pci_dss: ["8.2"]
-      - tsc: ["CC6.1"]
+      cis: ["4.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/security/password-policy"
     condition: all
@@ -360,10 +530,20 @@ checks:
     rationale: "Ensure SQL authenticated login passwords comply with the secure password policy applied by the Windows Server Benchmark so that they cannot be easily compromised via brute force attack."
     remediation: "For each <login_name> found by the Audit Procedure, execute the following T-SQL statement: ALTER LOGIN <login_name> WITH CHECK_POLICY = ON; Note: In the case of AWS RDS do not perform this remediation for the Master account."
     compliance:
-      - cis: ["4.3"]
-      - cis_csc: ["16, 4.4"]
-      - pci_dss: ["8.2"]
-      - tsc: ["CC6.1"]
+      cis: ["4.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/security/password-policy"
     condition: all
@@ -380,11 +560,20 @@ checks:
     rationale: "The SQL Server error log contains important information about major server events and login attempt information as well."
     remediation: "Adjust the number of logs to prevent data loss. The default value of 6 may be insufficient for a production environment. Perform either the GUI or T-SQL method shown: GUI Method: 1. Open SQL Server Management Studio. 2. Open Object Explorer and connect to the target instance. 3. Navigate to the Management tab in Object Explorer and expand. Right click on the SQL Server Logs file and select Configure 4. Check the Limit the number of error log files before they are recycled 5. Set the Maximum number of error log files to greater than or equal to 12. T-SQL Method: Run the following T-SQL to change the number of error log files, replace <NumberAbove12> with your desired number of error log files: EXEC master.sys.xp_instance_regwrite N'HKEY_LOCAL_MACHINE', N'Software\\Microsoft\\MSSQLServer\\MSSQLServer', N'NumErrorLogs', REG_DWORD, <NumberAbove12>;"
     compliance:
-      - cis: ["5.1"]
-      - cis_csc: ["6.3"]
-      - pci_dss: ["10.7"]
-      - nist_800_53: ["CM.1", "AU.4"]
-      - tsc: ["CC5.2"]
+      cis: ["5.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "http://msdn.microsoft.com/en-us/library/ms177285(v=sql.120).aspx"
     condition: all
@@ -398,13 +587,20 @@ checks:
     rationale: "Default trace provides valuable audit information regarding security-related activities on the server."
     remediation: "Run the following T-SQL command: EXECUTE sp_configure 'show advanced options', 1; RECONFIGURE; EXECUTE sp_configure 'default trace enabled', 1; RECONFIGURE; GO EXECUTE sp_configure 'show advanced options', 0; RECONFIGURE;"
     compliance:
-      - cis: ["5.2"]
-      - cis_csc: ["6.2"]
-      - nist_800_53: ["SI.2", "SA.11", "SI.4"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["A1.2", "CC6.8"]
+      cis: ["5.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/default-trace-enabled-server-configuration-option"
     condition: all
@@ -421,14 +617,20 @@ checks:
     rationale: "Assemblies with EXTERNAL_ACCESS or UNSAFE permission sets can be used to access sensitive areas of the operating system, steal and/or transmit data and alter the state and other protection measures of the underlying Windows Operating System. Assemblies which are Microsoft-created ( is_user_defined = 0 ) are excluded from this check as they are required for overall system functionality."
     remediation: "ALTER ASSEMBLY <assembly_name> WITH PERMISSION_SET = SAFE;"
     compliance:
-      - cis: ["6.2"]
-      - cis_csc: ["18"]
-      - pci_dss: ["10.2.5"]
-      - hipaa: ["164.312.b"]
-      - nist_800_53: ["AU.14", "AC.7"]
-      - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7", "32.2"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      cis: ["6.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/clr-integration/security/clr-integration-code-access-security"
       - "https://docs.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-assemblies-transact-sql"

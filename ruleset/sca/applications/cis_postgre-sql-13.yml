@@ -59,8 +59,20 @@ checks:
       as a "want" of the default systemd target. Multiple instances of PostgreSQL services often
       distinguish themselves using a version number.
     compliance:
-      - cis: ["1.2"]
-      - cis_csc: ["18", "5.1"]
+      cis: ["1.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://linuxcommand.org/man_pages/runlevel8.html
       - https://linuxcommand.org/man_pages/chkconfig8.html
@@ -108,8 +120,20 @@ checks:
 
       (1 row)"
     compliance:
-      - cis: ["3.1.2"]
-      - cis_csc: ["6.2", "6.3"]
+      cis: ["3.1.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/runtime-config-logging.html
     condition: all
@@ -152,8 +176,20 @@ checks:
 
       Active: active (running) since <date>; 1s ago"
     compliance:
-      - cis: ["3.1.3"]
-      - cis_csc: ["6.2", "6.3"]
+      cis: ["3.1.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/runtime-config-logging.html
     condition: all
@@ -207,8 +243,20 @@ checks:
       it is a good idea to have the logs outside of your PGDATA directory so that they are not
       included by things like pg_basebackup or pgBackRest."
     compliance:
-      - cis: ["3.1.4"]
-      - cis_csc: ["6.2", "6.3"]
+      cis: ["3.1.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/runtime-config-logging.html
     condition: all
@@ -247,8 +295,20 @@ checks:
       (1 row)
       Note: In this example, a new logfile will be created for each day (e.g. postgresql20180901.log)"
     compliance:
-      - cis: ["3.1.5"]
-      - cis_csc: ["6.2", "6.3"]
+      cis: ["3.1.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://man7.org/linux/man-pages/man3/strftime.3.html
       - https://www.postgresql.org/docs/current/runtime-config-logging.html
@@ -288,8 +348,20 @@ checks:
       0600
       (1 row)"
     compliance:
-      - cis: ["3.1.6"]
-      - cis_csc: ["14.4", "14.6"]
+      cis: ["3.1.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -337,8 +409,20 @@ checks:
       on
       (1 row)"
     compliance:
-      - cis: ["3.1.7"]
-      - cis_csc: ["6.3", "6.4"]
+      cis: ["3.1.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:psql -U $user -h $host $db -c "SHOW log_truncate_on_rotation" -> r:\son'
@@ -364,8 +448,20 @@ checks:
       t
       (1 row)"
     compliance:
-      - cis: ["3.1.8"]
-      - cis_csc: ["6.3", "6.4"]
+      cis: ["3.1.8"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -392,8 +488,20 @@ checks:
       t
       (1 row)"
     compliance:
-      - cis: ["3.1.9"]
-      - cis_csc: ["6.3", "6.4"]
+      cis: ["3.1.9"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -421,8 +529,20 @@ checks:
       t
       (1 row)"
     compliance:
-      - cis: ["3.1.10"]
-      - cis_csc: ["6", "6.2"]
+      cis: ["3.1.10"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://tools.ietf.org/html/rfc3164 section-4.1.1
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
@@ -454,8 +574,20 @@ checks:
       proddb
       (1 row)"
     compliance:
-      - cis: ["3.1.11"]
-      - cis_csc: ["6", "6.3"]
+      cis: ["3.1.11"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://tools.ietf.org/html/rfc3164#section-4.1.3
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
@@ -483,8 +615,20 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.12"]
-      - cis_csc: ["6", "6.4"]
+      cis: ["3.1.12"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: none
@@ -517,8 +661,20 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.13"]
-      - cis_csc: ["6", "6.4"]
+      cis: ["3.1.13"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: none
@@ -546,8 +702,20 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.14"]
-      - cis_csc: ["6", "5.1"]
+      cis: ["3.1.14"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -575,8 +743,20 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.15"]
-      - cis_csc: ["6", "5.1"]
+      cis: ["3.1.15"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html+
     condition: all
@@ -603,8 +783,20 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.16"]
-      - cis_csc: ["6", "5.1"]
+      cis: ["3.1.16"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -630,8 +822,20 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.17"]
-      - cis_csc: ["6", "6.3"]
+      cis: ["3.1.17"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -662,8 +866,20 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.18"]
-      - cis_csc: ["6", "6.3"]
+      cis: ["3.1.18"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:psql -U $user -h $host $db -c "SHOW log_connections" -> r:\son'
@@ -691,8 +907,20 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.19"]
-      - cis_csc: ["6", "6.3"]
+      cis: ["3.1.19"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -717,8 +945,20 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.20"]
-      - cis_csc: ["6", "6.3"]
+      cis: ["3.1.20"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -748,8 +988,20 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.21"]
-      - cis_csc: ["6", "5.1"]
+      cis: ["3.1.21"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -787,8 +1039,20 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.22"]
-      - cis_csc: ["6", "6.3"]
+      cis: ["3.1.22"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://pgbadger.darold.net/
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
@@ -816,8 +1080,20 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.23"]
-      - cis_csc: ["6", "6.3"]
+      cis: ["3.1.23"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -850,8 +1126,20 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.24"]
-      - cis_csc: ["6", "6.3"]
+      cis: ["3.1.24"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
       - https://en.wikipedia.org/wiki/Time_zone
@@ -935,8 +1223,21 @@ checks:
       # systemctl status postgresql-13|grep 'ago$'
       Active: active (running) since [date] 10s ago
     compliance:
-      - cis: ["3.2"]
-      - cis: ["6", "6.2"]
+      cis: ["3.2"]
+      cis: ["6", "6.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.pgaudit.org/
     condition: all
@@ -971,8 +1272,20 @@ checks:
       and then report on differences from that ideal.
 
     compliance:
-      - cis: ["4.5"]
-      - cis_csc: ["5.1"]
+      cis: ["4.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://github.com/cybertec-postgresql/pg_permission
     condition: all
@@ -997,8 +1310,20 @@ checks:
       this setup.
 
     compliance:
-      - cis: ["4.7"]
-      - cis_csc: ["5.1", "5.8", "4.3"]
+      cis: ["4.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://github.com/pgaudit/set_user
     condition: all
@@ -1039,8 +1364,20 @@ checks:
       operating systems, users must obtain or build their own FIPS 140-2 OpenSSL libraries.
 
     compliance:
-      - cis: ["6.7"]
-      - cis_csc: ["14.2", "14.4"]
+      cis: ["6.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/security_hardening/using-the-system-wide-cryptographic-policies_security-hardening#switching-the-system-to-fips-mode_using-the-system-wide-cryptographic-policies
       - https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp1758.pdf
@@ -1060,8 +1397,20 @@ checks:
       compromised in transit.
 
     compliance:
-      - cis: ["6.8"]
-      - cis_csc: ["14.2", "14.4"]
+      cis: ["6.8"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/ssl-tcp.html
       - http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-52r1.pdf
@@ -1128,8 +1477,20 @@ checks:
       backup/recovery solution, stringent testing must be conducted. A backup is only good if
       it can be restored successfully.
     compliance:
-      - cis: ["8.3"]
-      - cis_csc: ["10", "10.1", "10.2"]
+      cis: ["8.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://pgbackrest.org/
       - https://github.com/pgbackrest/pgbackrest

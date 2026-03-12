@@ -62,8 +62,20 @@ checks:
     rationale: "WebDAV functionality opens up an unnecessary path for exploiting your web server. Through misconfigurations of WebDAV operations, an attacker may be able to access and manipulate files on the server."
     remediation: "To remove the http_dav_module, recompile nginx from source without the --withhttp_dav_module flag."
     compliance:
-      - cis: ["2.1.2"]
-      - cis_csc: ["5.1"]
+      cis: ["2.1.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://nginx.org/en/docs/configure.html
       - https://tools.ietf.org/html/rfc4918
@@ -78,8 +90,20 @@ checks:
     rationale: "Compression has been linked with the Breach attack and others. While the Breach attack has been mitigated with modern usages of the HTTP protocol, disabling the use of compression is considered a defense-in-depth strategy to mitigate other attacks."
     remediation: "In order to disable the http_gzip_module, nginx must be recompiled from source. This can be accomplished using the below command in the folder you used during your original compilation. This must be done without the --with-http_gzip_static_module configuration directive. './configure --without-http_gzip_module'"
     compliance:
-      - cis: ["2.1.3"]
-      - cis_csc: ["5.1"]
+      cis: ["2.1.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://nginx.org/en/docs/configure.html
       - http://nginx.org/en/docs/configure.html
@@ -94,8 +118,20 @@ checks:
     rationale: "Automated directory listings may reveal information helpful to an attacker, such as naming conventions and directory paths. Directory listings may also reveal files that were not intended to be revealed."
     remediation: "Perform the following to disable the autoindex module: 1. Search the NGINX configuration files (nginx.conf and any included configuration files) to find autoindex directives. 'egrep -i '^\\s*autoindex\\s+' /etc/nginx/nginx.conf'. 'egrep -i '^\\s*autoindex\\s+' /etc/nginx/conf.d/*'. 2. Set the value for all autoindex directives to off, or remove those directives."
     compliance:
-      - cis: ["2.1.4"]
-      - cis_csc: ["5.1"]
+      cis: ["2.1.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://nginx.org/en/docs/http/ngx_http_autoindex_module.htm
     condition: none
@@ -112,8 +148,20 @@ checks:
     rationale: "Running a web server under a non-privileged, dedicated service account helps mitigate the risk of lateral movement to other services or processes in the event the user account running the web services is compromised. The default user nobody is typically used for several processes, and if this is compromised, it could allow an attacker to have access to all processes running as that user."
     remediation: "Add a system account for the nginx user with a home directory of /var/cache/nginx and a shell of /sbin/nologin so it does not have the ability to log in, then add the nginx user to be used by nginx: 'user add nginx -r -g nginx -d /var/cache/nginx -s /sbin/nologin'. Then add the nginx user to /etc/nginx/nginx.conf by adding the user directive as shown below: 'user nginx;'"
     compliance:
-      - cis: ["2.2.1"]
-      - cis_csc: ["5.1"]
+      cis: ["2.2.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://nginx.org/en/docs/ngx_core_module.html#user
     condition: all
@@ -129,8 +177,20 @@ checks:
     rationale: "As a defense-in-depth measure, the nginx user account should be locked to prevent logins and to prevent someone from switching users to nginx using the password. In general, there shouldn't be a need for anyone to have to su as nginx, and when there is a need, sudo should be used instead, which would not require the nginx account password."
     remediation: "Use the passwd command to lock the nginx service account: 'passwd -l nginx'"
     compliance:
-      - cis: ["2.2.2"]
-      - cis_csc: ["5.1"]
+      cis: ["2.2.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:passwd -S nginx -> r:^nginx L.+'
@@ -142,8 +202,20 @@ checks:
     rationale: "The account used for nginx should only be used for the nginx service and does not need to have the ability to log in. This prevents an attacker who compromises the account to log in with it."
     remediation: "Change the login shell for the nginx account to /sbin/nologin by using the following command: 'chsh -s /sbin/nologin nginx'"
     compliance:
-      - cis: ["2.2.3"]
-      - cis_csc: ["5.1"]
+      cis: ["2.2.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - "c:grep nginx /etc/passwd -> r:/sbin/nologin"
@@ -157,8 +229,20 @@ checks:
     rationale: "Setting ownership to only those users in the root group and the root user will reduce the likelihood of unauthorized modifications to the nginx configuration files."
     remediation: "Run the following command to ensure ownership and group ownership is set to root: 'chown -R root:root /etc/nginx'"
     compliance:
-      - cis: ["2.3.1"]
-      - cis_csc: ["5.1"]
+      cis: ["2.3.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:stat -L /etc/nginx -> r:Access:\s*(" && r:Uid:\s+\(.+root\)\s+Gid:\s+\(.+root\)$'
@@ -170,8 +254,20 @@ checks:
     rationale: "This ensures that only users who need access to configuration files are able to view them, thus preventing unauthorized access. Other users will need to use sudo in order to access these files."
     remediation: "To set permissions to least privilege on the nginx configuration files, issue these commands: 'find /etc/nginx -type d | xargs chmod 750'. 'find /etc/nginx -type f | xargs chmod 640'"
     compliance:
-      - cis: ["2.3.2"]
-      - cis_csc: ["14"]
+      cis: ["2.3.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev-sec.io/baselines/nginx/
     condition: none
@@ -186,8 +282,20 @@ checks:
     rationale: "The PID file should be owned by root and the group root. It should also be readable to everyone, but only writable by root (permissions 644). This will prevent unauthorized modification of the PID file, which could cause a denial of service."
     remediation: "If the PID file is not owned by root, issue this command: 'chown root:root /var/run/nginx.pid'. If the PID file has permissions greater than 644, issue this command: 'chown 644 /var/run/nginx.pid'"
     compliance:
-      - cis: ["2.3.3"]
-      - cis_csc: ["5.1"]
+      cis: ["2.3.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:ls -l /var/run/nginx.pid -> r:^.+\S+\s+root\s+root\s+.+'
@@ -199,8 +307,20 @@ checks:
     rationale: "Core dumps may contain sensitive information that should not be accessible by other accounts on the system."
     remediation: "Either remove the working_directory directive from the NGINX configuration files or ensure that the configured directory meets the following requirements: 1. It is not within the NGINX web document root. 2. It is owned by root and has a group ownership of the NGINX group: 'chown root:nginx /var/log/nginx'. 3. It has no read-write-search access permission for other users: 'chmod o-rwx /var/log/nginx'"
     compliance:
-      - cis: ["2.3.4"]
-      - cis_csc: ["5.1"]
+      cis: ["2.3.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.nginx.com/resources/wiki/start/topics/tutorials/debugging/#coredump
     condition: none
@@ -216,8 +336,20 @@ checks:
     rationale: "Limiting the listening ports to only those that are authorized helps to ensure no unauthorized services are running through the use of nginx."
     remediation: "If any ports are listening that are not authorized, comment out or delete the associated configuration for that listener."
     compliance:
-      - cis: ["2.4.1"]
-      - cis_csc: ["5.1"]
+      cis: ["2.4.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:grep -ir " listen " /etc/nginx -> r:^.+listen\s+80\s+.*|^.+listen\s+443\s+.*|^.+:443\s+.*'
@@ -231,8 +363,20 @@ checks:
     rationale: "Setting a keep-alive timeout on the server side helps mitigate denial of service attacks that establish too many persistent connections, exhausting server resources."
     remediation: "Find the HTTP or server block of your nginx configuration, and add the keepalive_timeout directive. Set it to 10 seconds or less, but not 0. This example command sets it to 10 seconds: 'keepalive_timeout 10;'"
     compliance:
-      - cis: ["2.4.3"]
-      - cis_csc: ["5.1"]
+      cis: ["2.4.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://nginx.org/en/docs/http/ngx_http_core_module.html#keepalive_timeout
     condition: any
@@ -247,7 +391,20 @@ checks:
     rationale: "Setting the send_timeout directive on the server side helps mitigate slow HTTP denial of service attacks by ensuring write operations taking up large amounts of time are closed."
     remediation: "Find the HTTP or server block of your nginx configuration, and add the send_timeout directive. Set it to 10 seconds or less, but not 0. 'send_timeout 10;'"
     compliance:
-      - cis: ["2.4.4"]
+      cis: ["2.4.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.owasp.org/index.php/SCG_WS_nginx
       - http://nginx.org/en/docs/http/ngx_http_core_module.html#send_timeout
@@ -265,8 +422,20 @@ checks:
     rationale: "Attackers can conduct reconnaissance on a website using these response headers, then target attacks for specific known vulnerabilities associated with the underlying technologies. Hiding the version will slow down and deter some potential attackers."
     remediation: "To disable the server_tokens directive, set it to off inside a server block in your nginx.conf: 'server {...server_tokens off;...}'"
     compliance:
-      - cis: ["2.5.1"]
-      - cis_csc: ["5.1"]
+      cis: ["2.5.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:curl -I 127.0.0.1 -> r:^.*Server:\s+nginx/.+'
@@ -278,8 +447,20 @@ checks:
     rationale: "By gathering information about the server, attackers can target attacks against its known vulnerabilities. Removing pages that disclose the server runs NGINX helps reduce targeted attacks on the server."
     remediation: "Edit /usr/share/nginx/html/index.html andusr/share/nginx/html/50x.html and remove any lines that reference NGINX."
     compliance:
-      - cis: ["2.5.2"]
-      - cis_csc: ["5.1"]
+      cis: ["2.5.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:grep -i nginx /usr/share/nginx/html/index.html -> r:.+'
@@ -292,8 +473,20 @@ checks:
     rationale: "Disabling hidden files prevents an attacker from being able to reference a hidden file that may be put in your location and have sensitive information, like .git files."
     remediation: "Edit the nginx.conf file and add the following line: 'location ~ /\\. { deny all; return 404; }'"
     compliance:
-      - cis: ["2.5.3"]
-      - cis_csc: ["5.1"]
+      cis: ["2.5.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://programming-review.com/nginx-disable-access-to-htaccess-file/
     condition: all
@@ -307,8 +500,20 @@ checks:
     rationale: "Attackers can conduct reconnaissance on a website using these response headers, then target attacks for specific known vulnerabilities associated with the underlying technologies. Removing these headers will reduce the likelihood of targeted attacks."
     remediation: "Implement the below directives as part of your location block. Edit /etc/nginx/nginx.conf and add the following: 'location /docs {....proxy_hide_header X-Powered-By;proxy_hide_header Server;....}'"
     compliance:
-      - cis: ["2.5.4"]
-      - cis_csc: ["5.1"]
+      cis: ["2.5.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://nginx.org/en/docs/http/ngx_http_proxy_module.html
     condition: all
@@ -327,8 +532,20 @@ checks:
     rationale: "Performing detailed logging ensures that incident responders, auditors, and others are able to clearly view the activity that has occurred on your server."
     remediation: "Edit the log format directive in /etc/nginx/nginx.conf so it logs everything needed to meet your organizational policies. The following variables may be considered as useful examples include in your log_format with descriptive logging. You should consult the NGINX documentation and your organizational policy to ensure you are logging sufficient information and removing sensitive information where needed. '$remote_addr - client address'. '$remote_user - the user if basic authentication is used'. '$status - the HTTP response status'. '$content_type - Content-Type request header field'. '$time_local - local time in the Common Log Format'. '$request_method - request method, usually GET or POST'. '$request - full original request line'. '$uri - normalized URI in request'. '$server_port - port of the server which accepted a request'. '$server_name - name of the server which accepted a request'. '$http_user_agent - user agent of the client requesting access'. '$http_x_forwarded_for - client address a proxy or load balancer is forwarding traffic for'"
     compliance:
-      - cis: ["3.1"]
-      - cis_csc: ["6.3"]
+      cis: ["3.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://nginx.org/en/docs/http/ngx_http_log_module.html#log_format
     condition: all
@@ -353,8 +570,20 @@ checks:
     rationale: "Access logging allows incident responders and auditors to investigate access to a system in the event of an incident."
     remediation: "Ensure the access_log directive is configured for every core site your organization requires logging for. This should look similar to the below configuration snippet. You may use different log file locations based on your needs. 'access_log /var/log/nginx/host.access.log main;'"
     compliance:
-      - cis: ["3.2"]
-      - cis_csc: ["6.3"]
+      cis: ["3.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://nginx.org/en/docs/http/ngx_http_log_module.html#log_format
     condition: none
@@ -368,8 +597,20 @@ checks:
     rationale: "Error logging can be useful in identifying an attacker attempting to exploit a system and recreating an attacker's steps. Error logging also helps with identifying possible issues with an application."
     remediation: "Edit /etc/nginx/nginx.conf so the error_log directive is present and not commented out. The error_log should be configured to the logging location of your choice. The configuration should look similar to the below: 'error_log /var/log/nginx/error.log info;'"
     compliance:
-      - cis: ["3.3"]
-      - cis_csc: ["6.3"]
+      cis: ["3.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'f:/etc/nginx/nginx.conf -> r:^\s*error_log\s+/var/log/nginx/error\.log\s+info;'
@@ -381,8 +622,20 @@ checks:
     rationale: "Log files are important to track activity that occurs on your server, but they take up significant amounts of space. Log rotation should be configured in order to ensure the logs do not consume so much disk space that logging becomes unavailable."
     remediation: 'Follow the below procedure to change the default configuration to the recommended log rotation configuration. You may need to manually edit or change the below command if the configuration is not the default. To change log compression from daily to weekly: ''sed -i s/daily/weekly/ /etc/logrotate.d/nginx''. To change log rotation from every year to every 13 weeks: ''sed -i "s/rotate 52/rotate 13/" /etc/logrotate.d/nginx'''
     compliance:
-      - cis: ["3.4"]
-      - cis_csc: ["6.3", "6.4"]
+      cis: ["3.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'f:/etc/logrotate.d/nginx -> r:^\s*rotate\s+13'
@@ -395,8 +648,20 @@ checks:
     rationale: "A centralized logging solution aggregates logs from multiple systems to ensure logs can be referenced in the event systems are thought to be compromised. Centralized log servers are also often used to correlate logs for potential patterns of attack. If a centralized logging solution is not used and systems (and their logs) are believed to be compromised, then logs may not be permitted to be used as evidence."
     remediation: "To enable central logging for your error logs, add the below line to your server block in your server configuration file. 192.168.2.1 should be replaced with the location of your central log server. 'error_log syslog:server=192.168.2.1 info;'"
     compliance:
-      - cis: ["3.5"]
-      - cis_csc: ["6.5"]
+      cis: ["3.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://nginx.org/en/docs/syslog.html
     condition: all
@@ -410,8 +675,20 @@ checks:
     rationale: "A centralized logging solution aggregates logs from multiple systems to ensure logs can be referenced in the event systems are thought to be compromised. Centralized log servers are also often used to correlate logs for potential patterns of attack. If a centralized logging solution is not used and systems (and their logs) are believed to be compromised, then logs may not be permitted to be used as evidence."
     remediation: "To enable central logging for your access logs, add the below line to your server block in your server configuration file. 192.168.2.1 should be replaced with the location of your central log server. The local logging facility may be changed to any unconfigured facility on your server. 'access_log syslog:server=192.168.2.1,facility=local7,tag=nginx,severity=info combined;'"
     compliance:
-      - cis: ["3.6"]
-      - cis_csc: ["6.5"]
+      cis: ["3.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://nginx.org/en/docs/syslog.html
     condition: all
@@ -425,8 +702,20 @@ checks:
     rationale: "Being able to identify the originating client IP address can help auditors or incident responders identify where the corresponding user came from. This may be useful in the event of an attack to analyze if the IP address is a good candidate for blocking. It may also be useful to correlate an attacker's actions."
     remediation: "To ensure your proxy or load balancer will forward information about the client and the proxy to the application, you must set the below headers in your location block. Edit your location block so it shows the proxy_set_header directives for the client and the proxy as shown below. These headers are the exact same and there is no need to have both present. 'server {...location / {proxy_pass (Insert Application URL here);proxy_set_header X-Real-IP $remote_addr;proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;}}'"
     compliance:
-      - cis: ["3.7"]
-      - cis_csc: ["6.4", "6.7"]
+      cis: ["3.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
       - http://nginx.org/en/docs/http/ngx_http_proxy_module.html
@@ -447,8 +736,20 @@ checks:
     rationale: "Redirecting user agent traffic to HTTPS helps to ensure all user traffic is encrypted. Modern browsers alert users that your website is insecure when HTTPS is not used. This can decrease user trust in your website and ultimately result in decreased use of your web services. Redirection from HTTP to HTTPS couples security with usability; users are able to access your website even if they lack the security awareness to use HTTPS over HTTP when requesting your website."
     remediation: "Edit your web server or proxy configuration file to redirect all unencrypted listening ports, such as port 80, using a redirection through the return directive (cisecurity.org is used as an example server name). 'server {listen 80;server_name cisecurity.org;return 301 https://$host$request_uri;}'"
     compliance:
-      - cis: ["4.1.1"]
-      - cis_csc: ["5.1", "14.4"]
+      cis: ["4.1.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://serversforhackers.com/c/redirect-http-to-https-nginx
     condition: any
@@ -463,8 +764,20 @@ checks:
     rationale: "Without a certificate and full trust chain installed on your web server, modern browsers will flag your web server as untrusted."
     remediation: "Use the following procedure to install a certificate and its signing certificate chain onto your web server, load balancer, or proxy. Step 1: Create the server's private key and a certificate signing request. The following command will create your certificate's private key with 2048-bit key strength. Optionally, this parameter may be changed to 4096 for greater security. It will also output your certificate signing request to the nginx.csr file in your present working directory. Step 2: Obtain a signed certificate from your certificate authority. Provide your chosen certificate authority with your certificate signing request. Follow your certificate authority's signing procedures in order to obtain a certificate and the certificate's trust chain. A full trust chain is typically delivered in .pem format. Step 3: Install certificate and signing certificate chain on your web server. Place the .pem file from your certificate authority into the directory of your choice. Locate your created key file from the command you used to generate your certificate signing request. Open your website configuration file and edit your encrypted listener to leverage the ssl_certificate and ssl_certificate_key directives for a web server as shown below. You should also inspect include files inside your nginx.conf. This should be part of the server block. After editing this file, you must recycle nginx services for these changes to take effect. This can be done with the following command: 'sudo service nginx restart'"
     compliance:
-      - cis: ["4.1.2"]
-      - cis_csc: ["14.2"]
+      cis: ["4.1.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - http://nginx.org/en/docs/http/configuring_https_servers.html#chains
       - https://www.digicert.com/csr-ssl-installation/nginx-openssl.htm
@@ -481,8 +794,20 @@ checks:
     rationale: "A server's private key file should be restricted to 400 permissions. This ensures only the owner of the private key file can access it. This is the minimum necessary permissions for the server to operate. If the private key file is not protected, an unauthorized user with access to the server may be able to find the private key file and use it to decrypt traffic sent to your server."
     remediation: "Run the following command on your key file to ensure its permissions are set to 400. The file name /etc/nginx/nginx.key should be replaced with the location of your key file. 'sudo chmod 400 /etc/nginx/nginx.key'"
     compliance:
-      - cis: ["4.1.3"]
-      - cis_csc: ["5.1"]
+      cis: ["4.1.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - "f:/etc/nginx/nginx.key"
@@ -495,8 +820,20 @@ checks:
     rationale: "Why disable SSL 3.0: The POODLE Vulnerability allowed attackers to exploit SSL 3.0 to obtain cleartext information by exploiting weaknesses in CBC in 2014. SSL 3.0 is also no longer FIPS 140-2 compliant. Why disable TLS 1.0: TLS 1.0 was deprecated from use when PCI DSS Compliance mandated that it not be used for any applications processing credit card numbers in June 2018. TLS 1.0 does not make use of modern protections, and almost all user agents that do not support TLS 1.2 or higher are no longer supported by their vendor. Why disable TLS 1.1: Because of the increased security associated with higher versions of TLS, TLS 1.0 should be disabled. Modern browsers will begin to flag TLS 1.1 as deprecated in early 2019. Why enable TLS 1.2: TLS 1.2 takes advantage of several security features including modern cipher suites, perfect forward security, and authenticated encryption."
     remediation: 'Run the following commands to change your ssl_protocols if they are already configured. This remediation advice assumes your nginx configuration file does not include server configuration outside of /etc/nginx/nginx.conf. You may have to also inspect the include files in your nginx.conf to ensure this is properly implemented. Web Server: ''sed -i "s/ssl_protocols[^;]*;/ssl_protocols TLSv1.2;/" /etc/nginx/nginx.conf''. Proxy. ''sed -i "s/proxy_ssl_protocols[^;]*;/proxy_ssl_protocols TLSv1.2;/" /etc/nginx/nginx.conf''. If your ssl_protocols are not already configured, this can be accomplished manually by opening your web server or proxy server configuration file and manually adding the directives. Web Server. ''server {ssl_protocols TLSv1.2;}''. Proxy. ''location / {proxy_pass cisecurity.org;proxy_ssl_protocols TLSv1.2;}'''
     compliance:
-      - cis: ["4.1.4"]
-      - cis_csc: ["5.1"]
+      cis: ["4.1.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://webkit.org/blog/8462/deprecation-of-legacy-tls-1-0-and-1-1-versions/
       - https://www.cloudflare.com/learning-resources/tls-1-3/
@@ -511,8 +848,20 @@ checks:
     rationale: "The use of strong ciphers is critical to maintaining strong encryption on your web server, load balancer, or proxy. Weak ciphers may compromise the security of your site or your users by allowing legacy user agents to connect to your site in a vulnerable way. You may also meet compliance concerns by ensuring that your upstream connections meet the same level of security if using a proxy or load balancer. The server should enforce the cipher preference on the server side to protect users from malicious actors on the client side."
     remediation: "The following procedures may be used to implement industry standard cipher profiles if you have an existing profile defined. These profiles may be modified to meet the requirements defined in your company's policy. This procedure assumes that all server blocks will be in /etc/nginx/nginx.conf and not inside any included files in the configuration. Set the ssl_cipher directive as part of your server block, and set the proxy_ssl_ciphers directive as part of the location block for your upstream server."
     compliance:
-      - cis: ["4.1.5"]
-      - cis_csc: ["5.1", "14.4"]
+      cis: ["4.1.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - CIS Apache HTTP Server Benchmark
       - https://ssllabs.com
@@ -532,8 +881,20 @@ checks:
     rationale: "Backward-compatible Perfect Forward Secrecy (PFS) ciphers (e.g. DHE-RSA-AES128-SHA256) should use strong and unique parameters. By default, NGINX will generate 1024-bit RSA keys for PFS ciphers; stronger alternatives should be used instead to provide betterprotection for data protected by encryption."
     remediation: "Generate strong DHE (Ephemeral Diffie-Hellman) parameters using the following commands: 'mkdir /etc/nginx/ssl'. 'openssl dhparam -out /etc/nginx/ssl/dhparam.pem 2048'. 'chmod 400 /etc/nginx/ssl/dhparam.pem'. Alter the server configuration to use the new parameters: 'http {server {ssl_dhparam /etc/nginx/ssl/dhparam.pem;}}"
     compliance:
-      - cis: ["4.1.6"]
-      - cis_csc: ["14.2"]
+      cis: ["4.1.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://weakdh.org/sysadmin.html
     condition: all
@@ -547,8 +908,20 @@ checks:
     rationale: "OCSP stapling protects your users from accessing a website where a private key is believed to be compromised. If a private key is compromised, an attacker may be able to obtain unauthorized access to the encrypted data transmitted by a user. Note: OCSP stapling, while a step forward from the older certificate revocation list model, does share similar risks. Between the time a certificate is revoked and the point where a new signed OCSP profile is requested, if a server's certificate has been revoked a user agent may not be informed."
     remediation: 'Follow this procedure to enable OCSP validation. Step 1: Ensure your NGINX server has access to your CA''s OCSP server. Your CA''s OCSP server may be found on your CA''s website and will vary depending on your CA vendor. Issue the following command in order to check your connectivity to their site. ''curl -I "insert certificate authority ocsp server here"''. If you get a 200 code response, your server has access. Step 2. Enable OCSP on nginx. Implement the ssl_stapling and ssl_stapling_verify directives. The directive ssl_stapling enables OCSP stapling, and the directive ssl_stapling_verify enables verification of the OCSP responses on nginx. ''server {ssl_stapling on;ssl_stapling_verify on;}'''
     compliance:
-      - cis: ["4.1.7"]
-      - cis_csc: ["5.1"]
+      cis: ["4.1.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.digicert.com/ssl-support/nginx-enable-ocsp-stapling-on-server.htm
     condition: all
@@ -563,8 +936,20 @@ checks:
     rationale: "HSTS headers help protect a server's users from accessing the server over unencrypted protocols. This header helps to prevent HTTP downgrade attacks."
     remediation: 'Ensure the below snippet of code can be found in your server configuration for your proxy or web server. This will ensure the HSTS header is set with a validity period of six months, or 15768000 seconds. ''server {add_header Strict-Transport-Security "max-age=15768000;";}'''
     compliance:
-      - cis: ["4.1.8"]
-      - cis_csc: ["5.1", "14.4"]
+      cis: ["4.1.8"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.globalsign.com/en/blog/what-is-hsts-and-how-do-i-use-it/
       - https://mozilla.github.io/server-side-tls/ssl-config-generator/
@@ -582,8 +967,20 @@ checks:
     rationale: "HTTP Public Key Pinning assists in preventing a user agent from falling victim to a forged certificate, such as man in the middle attacks."
     remediation: 'Find the fingerprint of your certificate by referencing the fingerprint section of your certificate details. Take down the SHA256 fingerprint in this section as well as that of a backup certificate or the next scheduled certificate for the website. Insert your SHA256 fingerprint along with the below header to your server configuration: ''add_header Public-Key-Pins ''pinsha256="base64+primary==InsertPrimaryCertificateSHA256FingerPrintHere"; pinsha256="base64+backup==InsertBackupCertificateSHA256FingerPrintHere"; maxage=5184000;'''
     compliance:
-      - cis: ["4.1.9"]
-      - cis_csc: ["5.1"]
+      cis: ["4.1.9"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://developer.mozilla.org/en-US/docs/Web/HTTP/Public_Key_Pinning
     condition: all
@@ -597,8 +994,20 @@ checks:
     rationale: "Using client certificate validation allows you to establish a trusted proxy server."
     remediation: "In order to implement this recommendation, you must create a client certificate to be authenticated against and have it signed. Once you have a signed certificate, place the certificate in a location of your choice. In the below example, we use /etc/nginx/ssl/cert.pem. Implement the configuration as part of the location block: 'proxy_ssl_certificate /etc/nginx/ssl/nginx.pem; proxy_ssl_certificate_key /etc/nginx/ssl/nginx.key;'"
     compliance:
-      - cis: ["4.1.10"]
-      - cis_csc: ["1.6"]
+      cis: ["4.1.10"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://docs.nginx.com/nginx/admin-guide/security-controls/securing-httptraffic-upstream/
       - http://www.staticshin.com/programming/proxy-ssl-cert-in-nginx.html
@@ -615,8 +1024,20 @@ checks:
     rationale: "Configuring NGINX to validate the identity of the upstream server helps mitigate the risk of a man in the middle attack occurring against your server."
     remediation: "Obtain the full certificate chain of the upstream server in .pem format. Then reference that file in the location block as part of the proxy_ssl_trusted_certificate directive. Implement the proxy_ssl_trusted_certificate and proxy_ssl_verify directives as shown below as part of the location block you are using to send traffic to your upstream server. 'proxy_ssl_trusted_certificate /etc/nginx/trusted_ca_cert.crt; proxy_ssl_verify on;'"
     compliance:
-      - cis: ["4.1.11"]
-      - cis_csc: ["5.1"]
+      cis: ["4.1.11"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://docs.nginx.com/nginx/admin-guide/security-controls/securing-httptraffic-upstream/
       - http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_trusted_certificate
@@ -634,8 +1055,20 @@ checks:
     rationale: "Perfect forward secrecy is an encryption mechanism that enables past session keys to not be compromised even if the server's private key is compromised. If an attacker recorded all traffic to a server and stored it and then obtained the private key without perfect forward secrecy, all communications would be compromised. With perfect forward secrecy, session keys are generated using Diffie-Hellman for every session a user initiates, which isolates session compromise to only that communication session. Allowing session resumption breaks perfect forward secrecy; this expands the surface area for an attacker to compromise past sessions and communications with a server if they are able to compromise the session."
     remediation: "Turn off the ssl_session_tickets directive as part of any server block in your nginx configuration. 'ssl_session_tickets off;'"
     compliance:
-      - cis: ["4.1.13"]
-      - cis_csc: ["5.1"]
+      cis: ["4.1.13"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.imperialviolet.org/2013/06/27/botchingpfs.html
       - https://scotthelme.co.uk/perfect-forward-secrecy/
@@ -650,8 +1083,20 @@ checks:
     rationale: "HTTP/2.0 introduces both performance benefits through full multiplexing and several security benefits. HTTP/2.0 has improved cipher suite requirements and blacklists. It also disables session renegotiation and TLS compression. This helps protect against vulnerabilities like CRIME and ensures we have stronger encryption."
     remediation: "Open the nginx server configuration file and configure all listening ports with http2, similar to that of this example:"
     compliance:
-      - cis: ["4.1.14"]
-      - cis_csc: ["5.1"]
+      cis: ["4.1.14"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://mozilla.github.io/server-side-tls/ssl-config-generator/
       - http://http2.github.io/http2-spec/
@@ -672,8 +1117,20 @@ checks:
     rationale: "IP restrictions help you to only allow traffic based on the concept of least privilege. You may specify vlans, countries, or specific servers that may be allowed or denied on your site. It is recommended that you implicitly deny all traffic and only allow those with a legitimate use case to access your website if choosing to take this approach. This allows you to limit the surface area an attack may come from."
     remediation: "Compile a list of network ranges or IP addresses you would want to access your web server or proxy. Then add these ranges with the allow directive. The deny directive should be included with all IP addresses implicitly denied. 'location / {allow 10.1.1.1;deny all;}'"
     compliance:
-      - cis: ["5.1.1"]
-      - cis_csc: ["5.1", "9.5"]
+      cis: ["5.1.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://help.dreamhost.com/hc/en-us/articles/222784068-The-most-importantsteps-to-take-to-make-an-nginx-server-more-secure
       - http://nginx.org/en/docs/http/ngx_http_access_module.html
@@ -694,8 +1151,20 @@ checks:
     rationale: "Setting the client header and body timeouts help your server mitigate possible denial of service attacks. By timing out a request, the server is able to free up resources that may be waiting for the body or header."
     remediation: "Find the HTTP or server block of your nginx configuration and add the client_header_timeout and client_body_timeout directives set to the configuration. The below example sets the timeouts to 10 seconds. 'client_body_timeout 10; client_header_timeout 10;'"
     compliance:
-      - cis: ["5.2.1"]
-      - cis_csc: ["5.1"]
+      cis: ["5.2.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.owasp.org/index.php/SCG_WS_nginx
       - https://blog.qualys.com/securitylabs/2011/11/02/how-to-protect-against-slowhttp-attacks
@@ -711,8 +1180,20 @@ checks:
     rationale: "Limiting the size of the request body helps prevent unexpectedly long or large client requests from being passed to an application to perform buffer overflow attacks. This value should be set low enough to protect the application but high enough not to interfere with functionality and block legitimate request bodies."
     remediation: "Find the HTTP or server block of your nginx configuration and add the client_max_body_size set to 100K in this block. The appropriate value may be different based on your application's needs. 'client_max_body_size 100K'"
     compliance:
-      - cis: ["5.2.2"]
-      - cis_csc: ["5.1"]
+      cis: ["5.2.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.cyberciti.biz/tips/linux-unix-bsd-nginx-webserver-security.html
       - http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_temp_path
@@ -729,8 +1210,20 @@ checks:
     rationale: "The large_client_header_buffers directive may assist in preventing buffer overflow attacks that leverage long URI query parameters."
     remediation: "Open your nginx.conf file and locate your server or HTTP blocks. This may be added to the HTTP block for all configurations or the server block for more specific configurations to meet your needs. Add the below line to implement this recommendation: 'large_client_header_buffers 2 1k'"
     compliance:
-      - cis: ["5.2.3"]
-      - cis_csc: ["5.1"]
+      cis: ["5.2.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.cyberciti.biz/tips/linux-unix-bsd-nginx-webserver-security.html
       - https://www.owasp.org/index.php/Denial_of_Service_Cheat_Sheet
@@ -746,8 +1239,20 @@ checks:
     rationale: "Limiting the number of simultaneous connections is an effective way to prevent slow denial of service attacks that try to use as many server resources as possible. This can also help prevent brute force attacks on a login page."
     remediation: "Implement the below directives under the HTTP and server blocks of your nginx configuration or any include files. The below configuration creates a memory zone of 10 megabytes called limitperip. It will limit the number of connections per IP address to 10 simultaneous connections. The number of simultaneous connections to allow may be different depending on your organization's policies and use cases. 'http {limit_conn_zone $binary_remote_addr zone=limitperip:10m;server {limit_conn limitperip 10;}}'"
     compliance:
-      - cis: ["5.2.4"]
-      - cis_csc: ["5.1"]
+      cis: ["5.2.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.nginx.com/resources/library/complete-nginx-cookbook/
       - http://nginx.org/en/docs/http/ngx_http_limit_conn_module.html
@@ -764,8 +1269,20 @@ checks:
     rationale: "Rate limiting allows you to mitigate potential denial of service attacks as a defense in depth mechanism."
     remediation: 'Implement the below directives under the HTTP and server blocks of your nginx configuration or any include files. The below configuration creates a memory zone of 10 megabytes called "ratelimit" and sets the number of requests per second that can be sent by any given IP address to 5. Further, this configuration sets a burst of 10 to ensure that requests may come more frequently and sets no delay to ensure that the bursting may be all at once and not queued. ''http {limit_req_zone $binary_remote_addr zone=ratelimit:10m rate=5r/s;server {location / {limit_req zone=ratelimit burst=10 nodelay;}}}'''
     compliance:
-      - cis: ["5.2.5"]
-      - cis_csc: ["5.1"]
+      cis: ["5.2.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://scotthelme.co.uk/mitigating-http-get-dos-attack/
       - https://www.nginx.com/blog/rate-limiting-nginx/
@@ -783,8 +1300,20 @@ checks:
     rationale: "The X-Frame-Options header allows you to mitigate the risk of clickjacking attacks."
     remediation: 'Add the below to your server blocks in your nginx configuration. The policy should be configured to meet your organization''s needs. ''add_header X-Frame-Options "SAMEORIGIN";'''
     compliance:
-      - cis: ["5.3.1"]
-      - cis_csc: ["5.1"]
+      cis: ["5.3.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
       - https://scotthelme.co.uk/hardening-your-http-response-headers/
@@ -801,8 +1330,20 @@ checks:
     rationale: 'Implementing the X-Content-Type-Options header with the "nosniff" directive helps to prevent drive-by download attacks where a user agent is sniffing content types in responses.'
     remediation: 'Open the nginx configuration file that contains your server blocks. Add the below line into your server block to add X-Content-Type-Options header and direct your user agent to not sniff content types. ''add_header X-Content-Type-Options "nosniff";'''
     compliance:
-      - cis: ["5.3.2"]
-      - cis_csc: ["5.1"]
+      cis: ["5.3.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://scotthelme.co.uk/hardening-your-http-response-headers/
       - https://www.veracode.com/blog/2014/03/guidelines-for-setting-security-headers
@@ -820,8 +1361,20 @@ checks:
     rationale: "X-Xss-Protection allows you to protect users whose browsers do not support Content Security Policy (generally older browsers), or protect users if you do not have a Content Security Policy."
     remediation: 'Open your nginx configuration file that contains your server blocks. Add the below line into your server block to add Content-Security-Policy and direct your user agent to block reflected cross-site scripting. ''add_header X-Xss-Protection "1; mode=block";'''
     compliance:
-      - cis: ["5.3.3"]
-      - cis_csc: ["5.1"]
+      cis: ["5.3.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.owasp.org/index.php/OWASP_Secure_Headers_Project
       - https://scotthelme.co.uk/hardening-your-http-response-headers/
@@ -837,8 +1390,20 @@ checks:
     rationale: "Content Security Policies assist organizations in mitigating and reporting cross-site scripting (XSS) attacks."
     remediation: 'Open your nginx configuration file that contains your server blocks. Add the below line into your server block to add Content-Security-Policy and direct your user agent to accept documents from only specific origins. ''add_header Content-Security-Policy "default-src ''self''";'''
     compliance:
-      - cis: ["5.3.4"]
-      - cis_csc: ["5.1"]
+      cis: ["5.3.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://scotthelme.co.uk/hardening-your-http-response-headers/
       - https://www.owasp.org/index.php/OWASP_Secure_Headers_Project
@@ -855,8 +1420,20 @@ checks:
     rationale: "A Referrer header may expose sensitive data in another web server's log if you use sensitive data in your URL parameters, such as personal information, username, and password or persistent sessions. Ultimately, depending on your application design, not using a properly configured Referrer Policy may allow session hijacking, credential gathering, or sensitive data exposure in a third party's logs."
     remediation: 'Add the below line to the server blocks within your nginx configuration. The policy should be customized for your specific organization''s needs. The below policy will ensure your website is never allowed in a referrer. ''add_header Referrer-Policy "no-referrer";'''
     compliance:
-      - cis: ["5.3.5"]
-      - cis_csc: ["5.1"]
+      cis: ["5.3.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://scotthelme.co.uk/a-new-security-header-referrer-policy/
       - https://www.w3.org/TR/referrer-policy/

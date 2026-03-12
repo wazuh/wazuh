@@ -40,13 +40,22 @@ checks:
     impact: "Without automatic update, updates may not be made in a timely manner and the system will be exposed to additional risk."
     remediation: "Graphical Method: Perform the following steps to enable the system to automatically check for updates: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Check for updates to enabled 6. Select Done Terminal Method: Run the following command to enable auto update: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticCheckEnabled 3. The key must be set to <true/>."
     compliance:
-      - cis: ["1.2"]
-      - cis_csc_v8: ["7.3", "7.4"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
+      cis: ["1.2"]
+      cis_csc_v8: ["7.3", "7.4"]
+      cis_csc_v7: ["3.4", "3.5"]
+      cmmc: ["SI.L2-3.14.1"]
+      fedramp: ["SI-2"]
+      gdpr: ["32", "35"]
+      hipaa: ["164.308(a)(1)", "164.308(a)(8)"]
+      iso_27001: ["A.12.6.1", "A.12.5.1"]
+      nis2: ["21.2.f", "21.2.a"]
+      nist_800_171: ["3.14.1"]
+      nist_800_53: ["SI-2"]
+      pci_dss: ["6.2"]
+      tsc: ["CC7.1", "CC3.1", "CC3.2", "CC3.3", "CC3.4", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
+    mitre:
+      tactic: ["TA0043", "TA0007"]
+      technique: ["T1595", "T1190", "T1203"]
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticCheckEnabled'')" -> r:^1$'
@@ -60,13 +69,22 @@ checks:
     impact: 'If "Download new updates when available" is not selected, updates may not be made in a timely manner and the system will be exposed to additional risk.'
     remediation: "Perform the following to enable the system to automatically check for updates: Graphical Method: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Download new updates when available to enabled 6. Select Done Terminal Method: Run the following command to enable auto update: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticDownload 3. The key must be set to <true/>."
     compliance:
-      - cis: ["1.3"]
-      - cis_csc_v8: ["7.3", "7.4"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
+      cis: ["1.3"]
+      cis_csc_v8: ["7.3", "7.4"]
+      cis_csc_v7: ["3.4", "3.5"]
+      cmmc: ["SI.L2-3.14.1"]
+      fedramp: ["SI-2"]
+      gdpr: ["32", "35"]
+      hipaa: ["164.308(a)(1)", "164.308(a)(8)"]
+      iso_27001: ["A.12.6.1", "A.12.5.1"]
+      nis2: ["21.2.f", "21.2.a"]
+      nist_800_171: ["3.14.1"]
+      nist_800_53: ["SI-2"]
+      pci_dss: ["6.2"]
+      tsc: ["CC7.1", "CC3.1", "CC3.2", "CC3.3", "CC3.4", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
+    mitre:
+      tactic: ["TA0043", "TA0007"]
+      technique: ["T1595", "T1190", "T1203"]
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticDownload'')" -> r:^1$'
@@ -80,13 +98,22 @@ checks:
     impact: "Unpatched software may be exploited."
     remediation: "Graphical Method: Perform the following steps to enable macOS updates to run automatically: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Install macOS updates to enabled 6. Select Done Terminal Method: Run the following command to to enable automatic checking and installing of macOS updates: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool TRUE Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticallyInstallMacOSUpdates 3. The key must be set to <true/>."
     compliance:
-      - cis: ["1.4"]
-      - cis_csc_v8: ["7.3", "7.4"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
+      cis: ["1.4"]
+      cis_csc_v8: ["7.3", "7.4"]
+      cis_csc_v7: ["3.4", "3.5"]
+      cmmc: ["SI.L2-3.14.1"]
+      fedramp: ["SI-2"]
+      gdpr: ["32", "35"]
+      hipaa: ["164.308(a)(1)", "164.308(a)(8)"]
+      iso_27001: ["A.12.6.1", "A.12.5.1"]
+      nis2: ["21.2.f", "21.2.a"]
+      nist_800_171: ["3.14.1"]
+      nist_800_53: ["SI-2"]
+      pci_dss: ["6.2"]
+      tsc: ["CC7.1", "CC3.1", "CC3.2", "CC3.3", "CC3.4", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
+    mitre:
+      tactic: ["TA0043", "TA0007"]
+      technique: ["T1595", "T1190", "T1203"]
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticallyInstallMacOSUpdates'')" -> r:^1$'
@@ -100,13 +127,22 @@ checks:
     impact: "Unpatched software may be exploited."
     remediation: "Graphical Method: Perform the following steps to enable App Store updates to install automatically: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Install application updates from the App Store to enabled 6. Select Done Terminal Method: Run the following command to turn on App Store auto updating: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool TRUE Note: This remediation requires a log out and log in to show in the GUI. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticallyInstallAppUpdates 3. The key must be set to <true/>."
     compliance:
-      - cis: ["1.5"]
-      - cis_csc_v8: ["7.3", "7.4"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
+      cis: ["1.5"]
+      cis_csc_v8: ["7.3", "7.4"]
+      cis_csc_v7: ["3.4", "3.5"]
+      cmmc: ["SI.L2-3.14.1"]
+      fedramp: ["SI-2"]
+      gdpr: ["32", "35"]
+      hipaa: ["164.308(a)(1)", "164.308(a)(8)"]
+      iso_27001: ["A.12.6.1", "A.12.5.1"]
+      nis2: ["21.2.f", "21.2.a"]
+      nist_800_171: ["3.14.1"]
+      nist_800_53: ["SI-2"]
+      pci_dss: ["6.2"]
+      tsc: ["CC7.1", "CC3.1", "CC3.2", "CC3.3", "CC3.4", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
+    mitre:
+      tactic: ["TA0043", "TA0007"]
+      technique: ["T1595", "T1190", "T1203"]
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.commerce AutoUpdate -> r:^1$"
@@ -124,14 +160,22 @@ checks:
       - "https://support.apple.com/guide/security/protecting-against-malware-"
       - "https://support.apple.com/guide/deployment/rapid-security-responses-"
     compliance:
-      - cis: ["1.6"]
-      - cis_csc_v8: ["7.3", "7.4", "7.7"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["CA.L2-3.12.2", "RA.L2-3.11.3", "SI.L1-3.14.1"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - pci_dss_v4.0: ["11.3.1", "11.3.2", "11.3.2.1"]
-      - soc_2: ["CC7.1"]
+      cis: ["1.6"]
+      cis_csc_v8: ["7.3", "7.4", "7.7"]
+      cis_csc_v7: ["3.4", "3.5"]
+      cmmc: ["SI.L2-3.14.1"]
+      fedramp: ["SI-2"]
+      gdpr: ["32", "35"]
+      hipaa: ["164.308(a)(1)", "164.308(a)(8)"]
+      iso_27001: ["A.12.6.1", "A.12.5.1"]
+      nis2: ["21.2.f", "21.2.a"]
+      nist_800_171: ["3.14.1"]
+      nist_800_53: ["SI-2"]
+      pci_dss: ["6.2"]
+      tsc: ["CC7.1", "CC3.1", "CC3.2", "CC3.3", "CC3.4", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
+    mitre:
+      tactic: ["TA0043", "TA0007"]
+      technique: ["T1595", "T1190", "T1203"]
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''ConfigDataInstall'')" && c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''CriticalUpdateInstall'')" -> r:^1$'
@@ -147,13 +191,22 @@ checks:
     references:
       - "https://support.apple.com/guide/deployment/manage-software-updates-"
     compliance:
-      - cis: ["1.7"]
-      - cis_csc_v8: ["7.3", "7.4"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
+      cis: ["1.7"]
+      cis_csc_v8: ["7.3", "7.4"]
+      cis_csc_v7: ["3.4", "3.5"]
+      cmmc: ["SI.L2-3.14.1"]
+      fedramp: ["SI-2"]
+      gdpr: ["32", "35"]
+      hipaa: ["164.308(a)(1)", "164.308(a)(8)"]
+      iso_27001: ["A.12.6.1", "A.12.5.1"]
+      nis2: ["21.2.f", "21.2.a"]
+      nist_800_171: ["3.14.1"]
+      nist_800_53: ["SI-2"]
+      pci_dss: ["6.2"]
+      tsc: ["CC7.1", "CC3.1", "CC3.2", "CC3.3", "CC3.4", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
+    mitre:
+      tactic: ["TA0043", "TA0007"]
+      technique: ["T1595", "T1190", "T1203"]
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.applicationaccess'').objectForKey(''enforcedSoftwareUpdateDelay'')" -> n:^(\d+)$ compare <= 30'
@@ -176,16 +229,22 @@ checks:
       - "https://support.apple.com/en-us/guide/security/seca0e83763f/web"
       - "http://support.apple.com/en-us/HT201642"
     compliance:
-      - cis: ["2.2.1"]
-      - cis_csc_v8: ["4.1", "4.5", "13.1"]
-      - cis_csc_v7: ["5.1", "9.4", "9.5"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L1-3.1.20", "AU.L2-3.3.5", "AU.L2-3.3.6", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6", "SI.L2-3.14.3", "SI.L2-3.14.7"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.13.1.1", "A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["AU-6(1)", "AU-7", "CM-7(1)", "CM-9", "IR-4(1)", "SA-10", "SC-7(5)", "SI-4(2)", "SI-4(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.4", "10.5.3", "10.6.1", "11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "10.7", "10.7.1", "10.7.2", "10.7.3", "11.5", "2.1.1", "2.2.1"]
-      - soc_2: ["CC6.6", "CC7.1", "CC7.2", "CC8.1"]
+      cis: ["2.2.1"]
+      cis_csc_v8: ["4.1", "4.5", "13.1"]
+      cis_csc_v7: ["5.1", "9.4", "9.5"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: any
     rules:
       - "c:defaults read /Library/Preferences/com.apple.alf globalstate -> r:^1$|^2$"
@@ -201,15 +260,22 @@ checks:
     references:
       - "http://support.apple.com/en-us/HT201642"
     compliance:
-      - cis: ["2.2.2"]
-      - cis_csc_v8: ["4.1", "4.5", "4.8"]
-      - cis_csc_v7: ["5.1", "9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L1-3.1.20", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1", "A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10", "SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.4", "11.5", "2.2", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+      cis: ["2.2.2"]
+      cis_csc_v8: ["4.1", "4.5", "4.8"]
+      cis_csc_v7: ["5.1", "9.4"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: any
     rules:
       - "c:defaults read /Library/Preferences/com.apple.alf stealthenabled -> r:^1$|^2$"
@@ -226,15 +292,23 @@ checks:
     impact: "The timed service will periodically synchronize with named time servers and will make the computer time more accurate."
     remediation: "Graphical Method: Perform the following to enable the date and time to be set automatically: 1. Open System Settings 2. Select General 3. Select Date & Time 4. Set Set time and date automatically to enabled Note: By default, the operating system will use time.apple.com as the time server. You can change to any time server that meets your organization's requirements. Terminal Method: Run the following commands to enable the date and time setting automatically: $ /usr/bin/sudo /usr/sbin/systemsetup -setnetworktimeserver <your.time.server> setNetworkTimeServer: <your.time.server> $ /usr/bin/sudo /usr/sbin/systemsetup -setusingnetworktime on setUsingNetworkTime: On example: $ /usr/bin/sudo /usr/sbin/systemsetup -setnetworktimeserver time.apple.com setNetworkTimeServer: time.apple.com $ /usr/bin/sudo /usr/sbin/systemsetup -setusingnetworktime on setUsingNetworkTime: On Run the following commands if you have not set, or need to set, a new time zone: $ /usr/bin/sudo /usr/sbin/systemsetup -listtimezones $ /usr/bin/sudo /usr/sbin/systemsetup -settimezone <selected time zone> example: $ /usr/bin/sudo /usr/sbin/systemsetup -listtimezones Time Zones: Africa/Abidjan Africa/Accra Africa/Addis_Ababa ... $ /usr/bin/sudo /usr/sbin/systemsetup -settimezone America/New_York Set TimeZone: America/New_York."
     compliance:
-      - cis: ["2.3.2.1"]
-      - cis_csc_v8: ["8.4"]
-      - cis_csc_v7: ["6.1"]
-      - cmmc_v2.0: ["AU.L2-3.3.7"]
-      - iso_27001-2013: ["A.12.4.4"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.4"]
-      - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-      - soc_2: ["CC4.1", "CC5.2"]
+      cis: ["2.3.2.1"]
+      cis_csc_v8: ["8.4"]
+      cis_csc_v7: ["6.1"]
+      cmmc: ["AU.L2-3.3.7"]
+      fedramp: ["AU-7"]
+      gdpr: ["32", "33"]
+      hipaa: ["164.312(b)", "164.308(a)(6)"]
+      iso_27001: ["A.12.4.1", "A.12.4.2", "A.12.4.3", "A.16.1.2"]
+      nis2: ["21.2.a", "23", "21.2.b"]
+      nist_800_171: ["3.3.7"]
+      nist_800_53: ["AU-7"]
+      pci_dss: ["10.4", "10.6"]
+      tsc: ["CC4.1", "CC5.2", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.2"]
+    mitre:
+      tactic: ["TA0005", "TA0006", "TA0007"]
+      technique: ["T1562", "T1070", "T1059", "T1040"]
+      subtechnique: ["T1562.002", "T1070.001"]
     condition: all
     rules:
       - 'c:/usr/sbin/systemsetup -getusingnetworktime -> r:Network Time:\s*\t*On'
@@ -247,15 +321,23 @@ checks:
     impact: "Accurate time is required for many computer functions."
     remediation: "Terminal Method: Run the following commands to ensure your time is set within an appropriate limit: $ /usr/bin/sudo /usr/sbin/systemsetup -getnetworktimeserver The output will include Network Time Server: and the name of your time server example: Network Time Server: time.apple.com. $ /usr/bin/sudo /usr/bin/sntp -sS <your.time.server> example: $ /usr/bin/sudo /usr/sbin/systemsetup -getnetworktimeserver Network Time Server: time.apple.com $ /usr/bin/sudo /usr/bin/sntp -sS time.apple.com."
     compliance:
-      - cis: ["2.3.2.2"]
-      - cis_csc_v8: ["8.4"]
-      - cis_csc_v7: ["6.1"]
-      - cmmc_v2.0: ["AU.L2-3.3.7"]
-      - iso_27001-2013: ["A.12.4.4"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.4"]
-      - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-      - soc_2: ["CC4.1", "CC5.2"]
+      cis: ["2.3.2.2"]
+      cis_csc_v8: ["8.4"]
+      cis_csc_v7: ["6.1"]
+      cmmc: ["AU.L2-3.3.7"]
+      fedramp: ["AU-7"]
+      gdpr: ["32", "33"]
+      hipaa: ["164.312(b)", "164.308(a)(6)"]
+      iso_27001: ["A.12.4.1", "A.12.4.2", "A.12.4.3", "A.16.1.2"]
+      nis2: ["21.2.a", "23", "21.2.b"]
+      nist_800_171: ["3.3.7"]
+      nist_800_53: ["AU-7"]
+      pci_dss: ["10.4", "10.6"]
+      tsc: ["CC4.1", "CC5.2", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.2"]
+    mitre:
+      tactic: ["TA0005", "TA0006", "TA0007"]
+      technique: ["T1562", "T1070", "T1059", "T1040"]
+      subtechnique: ["T1562.002", "T1070.001"]
     condition: all
     rules:
       - "c:systemsetup -getnetworktimeserver -> r:Network Time Server:"
@@ -268,15 +350,22 @@ checks:
     impact: "Many Apple devices are now sold without optical drives, however drive sharing may be needed for legacy optical media. The media should be explicitly re-shared as needed rather than using a persistent share. Optical drives should not be used for long-term storage. To store necessary data from an optical drive it should be copied to another form of external storage. Optionally, an image can be made of the optical drive so that it is stored in its original form on another form of external storage."
     remediation: "Graphical Method: Perform the following steps to disable DVD or CD Sharing: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set DVD or CD sharing to disabled Terminal Method: Run the following command to disable DVD or CD Sharing: $ /usr/bin/sudo /bin/launchctl disable system/com.apple.ODSAgent Note: If using the Terminal method, the GUI will still show the service checked until after a reboot."
     compliance:
-      - cis: ["2.3.3.1"]
-      - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+      cis: ["2.3.3.1"]
+      cis_csc_v8: ["4.1", "4.8"]
+      cis_csc_v7: ["5.1", "9.2"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - 'c:sh -c "launchctl list | grep -c com.apple.ODSAgent" -> r:^0$'
@@ -291,15 +380,22 @@ checks:
     references:
       - "https://support.apple.com/guide/mac-help/turn-screen-sharing-on-or-off-"
     compliance:
-      - cis: ["2.3.3.2"]
-      - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+      cis: ["2.3.3.2"]
+      cis_csc_v8: ["4.1", "4.8"]
+      cis_csc_v7: ["5.1", "9.2"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - 'not c:launchctl list -> r:com\.apple\.screensharing$'
@@ -312,15 +408,22 @@ checks:
     impact: "File Sharing can be used to share documents with other users, but hardened servers should be used rather than user endpoints. Turning on File Sharing increases the visibility and attack surface of a system unnecessarily."
     remediation: "Graphical Method: Perform the following steps to disable File Sharing: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set File Sharing to disabled Terminal Method: Run the following command to disable File Sharing: $ /usr/bin/sudo /bin/launchctl disable system/com.apple.smbd."
     compliance:
-      - cis: ["2.3.3.3"]
-      - cis_csc_v8: ["4.1", "4.8", "5.4"]
-      - cis_csc_v7: ["4.3", "5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.3", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3", "A.9.2.3"]
-      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)", "CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5", "7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.1", "CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+      cis: ["2.3.3.3"]
+      cis_csc_v8: ["4.1", "4.8", "5.4"]
+      cis_csc_v7: ["4.3", "5.1", "9.2"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - 'c:sh -c "launchctl list | grep -c com.apple.smbd" -> r:^0$'
@@ -332,15 +435,22 @@ checks:
     rationale: "Disabling Printer Sharing mitigates the risk of attackers attempting to exploit the print server to gain access to the system."
     remediation: "Graphical Method: Perform the following steps to disable Printer Sharing: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set Printer Sharing to disabled Terminal Method: Run the following command to disable Printer Sharing: $ /usr/bin/sudo /usr/sbin/cupsctl --no-share-printers."
     compliance:
-      - cis: ["2.3.3.4"]
-      - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+      cis: ["2.3.3.4"]
+      cis_csc_v8: ["4.1", "4.8"]
+      cis_csc_v7: ["5.1", "9.2"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - 'c:sh -c "cupsctl | grep _share_printers | cut -d ''='' -f2" -> r:^0$'
@@ -353,15 +463,22 @@ checks:
     impact: "The SSH server built into macOS should not be enabled on a standard user computer, particularly one that changes locations and IP addresses. A standard user that runs local applications, including email, web browser, and productivity tools, should not use the same device as a server. There are Enterprise management toolsets that do utilize SSH. If they are in use, the computer should be locked down to only respond to known, trusted IP addresses and appropriate administrator service accounts. For macOS computers that are being used for specialized functions, there are several options to harden the SSH server to protect against unauthorized access, including brute force attacks. There are some basic criteria that need to be considered: - Do not open an SSH server to the internet without controls in place to mitigate SSH brute force attacks. This is particularly important for systems bound to Directory environments. It is great to have controls in place to protect the system, but if they trigger after the user is already locked out of their account, they are not optimal. If authorization happens after authentication, directory accounts for users that don't even use the system can be locked out. - Do not use SSH key pairs when there is no insight to the security on the client system that will authenticate into the server with a private key. If an attacker gets access to the remote system and can find the key, they may not need a password or a key logger to access the SSH server. - Detailed instructions on hardening an SSH server, if needed, are available in the CIS Linux Benchmarks, but it is beyond the scope of this benchmark."
     remediation: "Perform the following to disable Remote Login: Graphical Method: Perform the following steps to disable Remote Login: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set Remote Login to disabled Terminal Method: Run the following command to disable Remote Login: $ /usr/bin/sudo /usr/sbin/systemsetup -setremotelogin off Do you really want to turn remote login off? If you do, you will lose this connection and can only turn it back on locally at the server (yes/no)? Entering yes will disable remote login."
     compliance:
-      - cis: ["2.3.3.5"]
-      - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+      cis: ["2.3.3.5"]
+      cis_csc_v8: ["4.1", "4.8"]
+      cis_csc_v7: ["5.1", "9.2"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - 'c:systemsetup -getremotelogin -> r:Remote Login:\s*\t*Off'
@@ -374,15 +491,22 @@ checks:
     impact: "Many organizations utilize ARD for client management."
     remediation: "Graphical Method: Perform the following steps to disable Remote Management: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set Remote Management to disabled Terminal Method: Run the following command to disable Remote Management: $ /usr/bin/sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources /kickstart -deactivate -stop Starting... Removed preference to start ARD after reboot. Done."
     compliance:
-      - cis: ["2.3.3.6"]
-      - cis_csc_v8: ["4.1", "4.8", "5.4"]
-      - cis_csc_v7: ["4.3", "9.2", "14.3"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.3", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1", "A.13.1.3", "A.9.2.3"]
-      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)", "CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5", "7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.1", "CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+      cis: ["2.3.3.6"]
+      cis_csc_v8: ["4.1", "4.8", "5.4"]
+      cis_csc_v7: ["4.3", "9.2", "14.3"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - "not p:/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent"
@@ -395,15 +519,22 @@ checks:
     impact: "With remote Apple events turned on, an AppleScript program running on another Mac can interact with the local computer."
     remediation: "Graphical Method: Perform the following steps to disable Remote Apple Events: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set Remote Apple Events to disabled Terminal Method: Run the following commands to set Remote Apple Events to Off: $ /usr/bin/sudo /usr/sbin/systemsetup -setremoteappleevents off setremoteappleevents: Off."
     compliance:
-      - cis: ["2.3.3.7"]
-      - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+      cis: ["2.3.3.7"]
+      cis_csc_v8: ["4.1", "4.8"]
+      cis_csc_v7: ["5.1", "9.2"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - 'c:systemsetup -getremoteappleevents -> r:Remote Apple Events:\s*\t*Off'
@@ -416,15 +547,22 @@ checks:
     impact: "Internet Sharing allows the computer to function as a router and other computers to use it for access. This can expose both the computer itself and the networks it is accessing to unacceptable access from unapproved devices."
     remediation: "Graphical Method: Perform the following steps to disable Internet Sharing: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set Internet Sharing to disabled Terminal Method: Run the following command to turn off Internet Sharing: $ usr/bin/sudo /usr/bin/defaults write /Library/Preferences/SystemConfiguration/com.apple.nat NAT -dict Enabled -int 0 Note: Using the Terminal Method will not be reflected in the GUI, but will disable the underlying service. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.MCX 2. The key to include is forceInternetSharingOff 3. The key must be set to <true/>."
     compliance:
-      - cis: ["2.3.3.8"]
-      - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+      cis: ["2.3.3.8"]
+      cis_csc_v8: ["4.1", "4.8"]
+      cis_csc_v7: ["5.1", "9.2"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: any
     rules:
       - 'not c:defaults read /Library/Preferences/SystemConfiguration/com.apple.nat -> r:Enabled\s*\t*=\s*\t*1'
@@ -441,14 +579,22 @@ checks:
       - "https://support.apple.com/guide/mac-help/about-content-caching-mchl9388ba1b/"
       - "https://support.apple.com/guide/mac-help/set-up-content-caching-on-mac-"
     compliance:
-      - cis: ["2.3.3.9"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
+      cis: ["2.3.3.9"]
+      cis_csc_v8: ["4.8"]
+      cis_csc_v7: ["9.2"]
+      cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.4.7", "3.4.8", "3.13.6"]
+      nist_800_53: ["CM-2", "CM-3", "CM-6", "CM-7"]
+      pci_dss: ["1.1", "1.2", "2.2", "6.4"]
+      tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.AssetCache'').objectForKey(''Activated'')" -> r:^0$'
@@ -466,12 +612,22 @@ checks:
     impact: "The backup will run periodically in the background and could have user impact while running."
     remediation: "Graphical Method: Perform the following steps to enable Time Machine automatic backup: 1. Open System Settings 2. Select General 3. Select Time Machine 4. Select Options... 5. Set Back up frequency to Automatically <every hour/every day/every week> Terminal Method: Run the following command to enable automatic backups if Time Machine is enabled: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.TimeMachine.plist AutoBackup -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.MCX.TimeMachine 2. The key to include is AutoBackup 3. The key must be set to."
     compliance:
-      - cis: ["2.3.4.1"]
-      - cis_csc_v8: ["11.2"]
-      - cis_csc_v7: ["10.1"]
-      - hipaa: ["164.308(a)(7)(ii)(A)"]
-      - iso_27001-2013: ["A.12.3.1"]
-      - pci_dss_v3.2.1: ["12.10.1"]
+      cis: ["2.3.4.1"]
+      cis_csc_v8: ["11.2"]
+      cis_csc_v7: ["10.1"]
+      cmmc: ["MP.L2-3.8.3", "MP.L2-3.8.8", "SC.L2-3.13.16"]
+      fedramp: ["CP-2", "CP-4", "CP-6", "CP-7", "CP-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(7)"]
+      iso_27001: ["A.12.3.1", "A.17.1.1", "A.17.1.2", "A.17.2.1"]
+      nis2: ["21.2.c"]
+      nist_800_171: ["3.8.3", "3.8.8", "3.13.16"]
+      nist_800_53: ["CP-2", "CP-4", "CP-6", "CP-7", "CP-9"]
+      pci_dss: ["12.10"]
+      tsc: ["A1.1", "A1.2", "CC9.1", "CC9.2"]
+    mitre:
+      tactic: ["TA0040"]
+      technique: ["T1490", "T1485", "T1486"]
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.TimeMachine'').objectForKey(''AutoBackup'')" -> r:^1$'
@@ -484,16 +640,23 @@ checks:
     rationale: "Backup volumes need to be encrypted."
     remediation: "Graphical Method: Perform the following steps to enable encryption on the Time Machine drive: 1. Open System Settings 2. Select General 3. Select Time Machine 4. Select the unencrypted drive 5. Select - to forget that drive as a destination 6. Select + to add a different drive as the destination 7. Select Set Up Disk... 8. Set Encrypt Backup to enabled 9. Enter a password in the New Password and the same password in the Re-enter Password fields 10. A password hint is required, but it is recommended that you do not use any identifying information for the password Note: In macOS 12.0 Monterey and previous, the existing Time Machine drive could have encryption added without formatting it. This is no longer possible in macOS 13.0 Ventura. If you wish to keep previous backups from the unencrypted volume, you will need to manually move those files over to the new encrypted drive."
     compliance:
-      - cis: ["2.3.4.2"]
-      - cis_csc_v8: ["3.6", "3.11", "11.3"]
-      - cis_csc_v7: ["10.4", "13.6", "14.8"]
-      - cmmc_v2.0: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "MP.L2-3.8.9", "SC.L2-3.13.11", "SC.L2-3.13.16"]
-      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
-      - iso_27001-2013: ["A.10.1.1", "A.12.3.1", "A.6.2.1"]
-      - nist_sp_800-53: ["CP-9(8)", "SC-28", "SC-28(1)"]
-      - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1", "9.5", "9.5.1"]
-      - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
-      - soc_2: ["A1.2", "CC6.1", "CC6.4", "CC6.7"]
+      cis: ["2.3.4.2"]
+      cis_csc_v8: ["3.6", "3.11", "11.3"]
+      cis_csc_v7: ["10.4", "13.6", "14.8"]
+      cmmc: ["AC.L2-3.1.19"]
+      fedramp: ["MP-4", "MP-5", "MP-6", "SC-8", "SC-13", "SC-28"]
+      gdpr: ["32", "25", "30"]
+      hipaa: ["164.310(d)(1)", "164.312(a)(1)", "164.312(e)(1)", "164.530(c)"]
+      iso_27001: ["A.8.2.3", "A.8.3.1", "A.8.3.2", "A.10.1.1", "A.13.2.1", "A.18.1.4"]
+      nis2: ["21.2.g", "21.2.j", "21.2.i"]
+      nist_800_171: ["3.1.19"]
+      nist_800_53: ["MP-4", "MP-5", "MP-6", "SC-8", "SC-13"]
+      pci_dss: ["3.1", "3.2", "3.3", "3.4", "3.5", "4.1", "4.2", "7.2"]
+      tsc: ["CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
+    mitre:
+      tactic: ["TA0009", "TA0010"]
+      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
+      subtechnique: ["T1048.003", "T1552.001"]
     condition: all
     rules:
       - 'c: sh -c "defaults read /Library/Preferences/com.apple.TimeMachine.plist | grep -c NotEncrypted" -> r:^0$'
@@ -511,15 +674,22 @@ checks:
     references:
       - "https://support.apple.com/en-us/HT204690"
     compliance:
-      - cis: ["2.6.1.1"]
-      - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+      cis: ["2.6.1.1"]
+      cis_csc_v8: ["4.1", "4.8"]
+      cis_csc_v7: ["5.1"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - 'c:sh -c "launchctl list | grep -c com.apple.locationd" -> r:^1$'
@@ -533,15 +703,22 @@ checks:
     impact: "Users may be provided visibility to a setting they cannot control if organizations control Location Services globally by policy."
     remediation: "Graphical Method: Perform the following steps to set whether the location services icon is in the menu bar: 1. Open System Settings 2. Select Privacy & Security 3. Select Location Services 4. Select Details... 5. Set Show location icon in menu bar when System Services request your location to enabled Terminal Method: Run the following commands to set the option of the location services icon being in the menu bar: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.locationmenu.plist ShowSystemServices -bool true."
     compliance:
-      - cis: ["2.6.1.2"]
-      - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+      cis: ["2.6.1.2"]
+      cis_csc_v8: ["4.1", "4.8"]
+      cis_csc_v7: ["5.1"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.locationmenu.plist ShowSystemServices -> r:^1$|^true$"
@@ -557,16 +734,23 @@ checks:
     rationale: "Disallowing unsigned software will reduce the risk of unauthorized or malicious applications from running on the system."
     remediation: "Graphical Method: Perform the following steps to enable Gatekeeper: 1. Open System Settings 2. Select Privacy & Security 3. Set 'Allow apps downloaded from' to 'App Store and identified developers' Terminal Method: Run the following command to enable Gatekeeper to allow applications from App Store and identified developers: $ /usr/bin/sudo /usr/sbin/spctl --master-enable Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.systempolicy.control 2. The key to include is AllowIdentifiedDevelopers 3. The key must be set to <true/> 4. The key to also include is EnableAssessment 5. The key must be set to <true/>."
     compliance:
-      - cis: ["2.6.4"]
-      - cis_csc_v8: ["10.1", "10.2", "10.5"]
-      - cis_csc_v7: ["8.2", "8.4"]
-      - cmmc_v2.0: ["SI.L1-3.14.2", "SI.L1-3.14.4"]
-      - hipaa: ["164.308(a)(5)(ii)(B)"]
-      - iso_27001-2013: ["A.12.2.1"]
-      - nist_sp_800-53: ["SI-16"]
-      - pci_dss_v3.2.1: ["1.4", "11.4", "5.1", "5.1.1", "5.2"]
-      - pci_dss_v4.0: ["5.1.1", "5.2.1", "5.2.2", "5.3.1", "5.3.2"]
-      - soc_2: ["CC6.8"]
+      cis: ["2.6.4"]
+      cis_csc_v8: ["10.1", "10.2", "10.5"]
+      cis_csc_v7: ["8.2", "8.4"]
+      cmmc: ["SI.L2-3.14.1", "SI.L2-3.14.4", "AU.L2-3.3.1"]
+      fedramp: ["SI-3", "SI-4", "AU-12"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)", "164.312(b)"]
+      iso_27001: ["A.12.2.1", "A.12.4.1"]
+      nis2: ["21.2.f", "21.2.a"]
+      nist_800_171: ["3.14.1", "3.14.2", "3.14.4", "3.3.1"]
+      nist_800_53: ["SI-3", "SI-4", "AU-12"]
+      pci_dss: ["5.1", "5.2", "5.3"]
+      tsc: ["CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
+    mitre:
+      tactic: ["TA0002", "TA0005"]
+      technique: ["T1562", "T1070", "T1059", "T1105"]
+      subtechnique: ["T1562.001", "T1562.002", "T1070.004"]
     condition: all
     rules:
       - "c:spctl --status -> r:^assessments enabled"
@@ -583,16 +767,23 @@ checks:
       - "https://derflounder.wordpress.com/2019/01/15/unlock-or-decrypt-your-filevault-"
       - "https://derflounder.wordpress.com/2021/10/29/use-of-filevault-institutional-"
     compliance:
-      - cis: ["2.6.5"]
-      - cis_csc_v8: ["3.6", "3.11"]
-      - cis_csc_v7: ["13.6", "14.8"]
-      - cmmc_v2.0: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
-      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
-      - iso_27001-2013: ["A.10.1.1", "A.6.2.1"]
-      - nist_sp_800-53: ["SC-28", "SC-28(1)"]
-      - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
-      - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
-      - soc_2: ["CC6.1"]
+      cis: ["2.6.5"]
+      cis_csc_v8: ["3.6", "3.11"]
+      cis_csc_v7: ["13.6", "14.8"]
+      cmmc: ["AC.L2-3.1.19"]
+      fedramp: ["MP-4", "MP-5", "MP-6", "SC-8", "SC-13", "SC-28"]
+      gdpr: ["32", "25", "30"]
+      hipaa: ["164.310(d)(1)", "164.312(a)(1)", "164.312(e)(1)", "164.530(c)"]
+      iso_27001: ["A.8.2.3", "A.8.3.1", "A.8.3.2", "A.10.1.1", "A.13.2.1", "A.18.1.4"]
+      nis2: ["21.2.g", "21.2.j", "21.2.i"]
+      nist_800_171: ["3.1.19"]
+      nist_800_53: ["MP-4", "MP-5", "MP-6", "SC-8", "SC-13"]
+      pci_dss: ["3.1", "3.2", "3.3", "3.4", "3.5", "4.1", "4.2", "7.2"]
+      tsc: ["CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
+    mitre:
+      tactic: ["TA0009", "TA0010"]
+      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
+      subtechnique: ["T1048.003", "T1552.001"]
     condition: all
     rules:
       - "c:fdesetup status -> r:^FileVault is On"
@@ -608,15 +799,22 @@ checks:
     impact: "Users will need to enter their password to unlock some additional preference panes that are unlocked by default like Network, Startup and Printers & Scanners."
     remediation: "Graphical Method: Perform the following steps to verify that an administrator password is required to access system-wide preferences: 1. Open System Settings 2. Select Privacy & Security 3. Select Advanced 4. Set Require an administrator password to access system-wide settings to enabled. Terminal Method: The authorizationdb settings cannot be written to directly, so the plist must be exported out to temporary file. Changes can be made to the temporary plist, then imported back into the authorizationdb settings. Run the following commands to enable that an administrator password is required to access system-wide preferences: $ /usr/bin/sudo /usr/bin/security authorizationdb read system.preferences > /tmp/system.preferences.plist YES (0) $ /usr/bin/sudo /usr/bin/defaults write /tmp/system.preferences.plist shared -bool false $ /usr/bin/sudo /usr/bin/security authorizationdb write system.preferences < /tmp/system.preferences.plist YES (0)."
     compliance:
-      - cis: ["2.6.7"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
+      cis: ["2.6.7"]
+      cis_csc_v8: ["4.1"]
+      cis_csc_v7: ["5.1"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - "c:security authorizationdb read system.preferences | grep -A1 shared -> r:>false<"
@@ -634,15 +832,22 @@ checks:
     impact: "The laptop will require a user to log in with their username and password, not TouchID, into the OS after the FileVault key is destroyed."
     remediation: "Terminal Method: Run the following command to ensure FileVault keys are set to be destroyed on standby: $ /usr/bin/sudo /usr/bin/pmset -a destroyfvkeyonstandby 1."
     compliance:
-      - cis: ["2.9.1.3"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
+      cis: ["2.9.1.3"]
+      cis_csc_v8: ["4.1"]
+      cis_csc_v7: ["16.11"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - "c:pmset -b -g -> r:^DestroyFVKeyOnStandby 1"
@@ -655,15 +860,22 @@ checks:
     impact: "Power Nap exists for unattended user application updates like email and social media clients. With Power Nap disabled, the computer will not wake and reconnect to known wireless SSIDs intermittently when slept."
     remediation: "Graphical Method: Perform the following steps to disable Power Nap: Desktop Instructions: 1. Open System Settings 2. Select Energy Saver 3. Set Power Nap to disabled 4. Select UPS (if applicable) 5. Set Power Nap to disabled Laptop Instructions: 1. Open System Settings 2. Select Battery 3. Select Power Adapter (for laptops only) 4. Set Power Nap to disabled 5. Select Battery 6. Set Power Nap to disabled 7. Select UPS (if applicable) 8. Set Power Nap to disabled Terminal Method: Run the following command to disable Power Nap: $ /usr/bin/sudo /usr/bin/pmset -a powernap 0."
     compliance:
-      - cis: ["2.9.2"]
-      - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+      cis: ["2.9.2"]
+      cis_csc_v8: ["4.1", "4.8"]
+      cis_csc_v7: ["5.1", "9.2"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - 'not c:sh -c "pmset -g custom" -> r:powernap\s*\t*1'
@@ -676,14 +888,22 @@ checks:
     impact: "Management programs like Apple Remote Desktop Administrator use wake-on-LAN to connect with computers. If turned off, such management programs will not be able to wake a computer over the LAN. If the wake-on-LAN feature is needed, do not turn off this feature. The control to prevent computer sleep has been retired for this version of the Benchmark. Forcing the computer to stay on and use energy in case a management push is needed is contrary to most current management processes. Only keep computers unslept if after hours pushes are required on closed LANs."
     remediation: "Graphical Method: Perform the following steps to disable Wake for network access: Desktop Instructions: 1. Open System Settings 2. Select Energy Saver 3. Set Wake for network access to disabled Laptop Instructions: 1. Open System Settings 2. Select Battery 3. Select Options... 4. Set Wake for network access to Never Terminal Method: Run the following command to disable Wake for network access: $ /usr/bin/sudo /usr/bin/pmset -a womp 0 Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.MCX 2. The key to include is com.apple.EnergySaver.desktop.ACPower 3. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict> 4. The key to also include is com.apple.EnergySaver.portable.ACPower 5. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict> 6. The key to also include is com.apple.EnergySaver.portable.BatteryPower 7. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict> Note: Both Wake on LAN and Wake on Modem Ring need to be set. Only setting Wake On LAN will allow the profile to install but not set any settings. This profile will only apply the setting at installation and is not sticky."
     compliance:
-      - cis: ["2.9.3"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
+      cis: ["2.9.3"]
+      cis_csc_v8: ["4.8"]
+      cis_csc_v7: ["9.2"]
+      cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.4.7", "3.4.8", "3.13.6"]
+      nist_800_53: ["CM-2", "CM-3", "CM-6", "CM-7"]
+      pci_dss: ["1.1", "1.2", "2.2", "6.4"]
+      tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: any
     rules:
       - 'c:sh -c "pmset -g | grep -e womp" -> r:0'
@@ -703,13 +923,22 @@ checks:
       - "https://blog.kolide.com/screensaver-security-on-macos-10-13-is-broken-"
       - "https://github.com/rtrouton/profiles/blob/master/SetDefaultScreensaver/SetDefaul"
     compliance:
-      - cis: ["2.10.2"]
-      - cis_csc_v8: ["4.7"]
-      - cis_csc_v7: ["4.2"]
-      - iso_27001-2013: ["A.9.4.3"]
-      - pci_dss_v3.2.1: ["2.1", "2.1.1"]
-      - pci_dss_v4.0: ["2.2.2", "2.3.1"]
-      - soc_2: ["CC6.3"]
+      cis: ["2.10.2"]
+      cis_csc_v8: ["4.7"]
+      cis_csc_v7: ["4.2"]
+      cmmc: ["CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+      fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.4.2", "3.4.6", "3.4.7"]
+      nist_800_53: ["CM-2", "CM-3", "CM-6", "CM-7"]
+      pci_dss: ["2.1", "2.2", "2.3"]
+      tsc: ["CC6.3", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.screensaver'').objectForKey(''askForPassword'')" -> n:^(\d+)$ compare == 1'
@@ -723,15 +952,22 @@ checks:
     impact: "If users are not informed of their responsibilities, unapproved activities may occur. Users that are not approved for access may take the lack of a warning banner as implied consent to access."
     remediation: 'Graphical Method: Perform the following steps to enable a login banner set to your organization''s required text: 1. Open System Settings 2. Select Lock Screen 3. Set Show message when locked to enabled 4. Select Set 5. Insert text in the Set a message to appear on the lock screen that matches your organization''s required text 6. Select Done Terminal Method: Run the following command to enable a custom login screen message: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText "<custom message>" example: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText "Center for Internet Security Test Message" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.loginwindow 2. The key to include is LoginwindowText 3. The key must be set to <string><Your organization''s required text></string>.'
     compliance:
-      - cis: ["2.10.3"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
+      cis: ["2.10.3"]
+      cis_csc_v8: ["4.1"]
+      cis_csc_v7: ["5.1"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''LoginwindowText'')" -> r:^.+$'
@@ -743,15 +979,22 @@ checks:
     rationale: "Prompting the user to enter both their username and password makes it twice as hard for unauthorized users to gain access to the system since they must discover two attributes."
     remediation: "Graphical Method: Perform the following steps to ensure the login window display name and password: 1. Open System Settings 2. Select Lock Screen 3. Set 'Login window showstoName and Password` Terminal Method: Run the following command to enable the login window to display name and password: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -bool true Note: The GUI will not display the updated setting until the current user(s) logs out. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.loginwindow 2. The key to include is SHOWFULLNAME 3. The key must be set to <true/>."
     compliance:
-      - cis: ["2.10.4"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
+      cis: ["2.10.4"]
+      cis_csc_v8: ["4.1"]
+      cis_csc_v7: ["5.1"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''SHOWFULLNAME'')" -> r:^1$|^true$'
@@ -764,15 +1007,22 @@ checks:
     impact: "The user can set the hint to any value, including the password itself or clues that allow trivial social engineering attacks."
     remediation: "Graphical Method: Perform the following steps to disable password hints from being shown: 1. Open System Settings 2. Select Lock Screen 3. Set 'Show password hints` to disabled Terminal Method: Run the following command to disable password hints: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow RetriesUntilHint -int 0 Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.loginwindow 2. The key to include is RetriesUntilHint 3. The key must be set to <integer>0</integer>."
     compliance:
-      - cis: ["2.10.5"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
+      cis: ["2.10.5"]
+      cis_csc_v8: ["4.1"]
+      cis_csc_v7: ["5.1"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''RetriesUntilHint'')" -> r:^0$'
@@ -785,13 +1035,23 @@ checks:
     rationale: "Password hints that are closely related to the user's password are a security vulnerability, especially in the social media age. Unauthorized users are more likely to guess a user's password if there is a password hint. The password hint is very susceptible to social engineering attacks and information exposure on social media networks."
     remediation: "Graphical Method: Perform the following steps to remove a user's password hint: 1. Open System Settings 2. Select Touch ID & Passwords (or Login Password on non-Touch ID Macs) 3. Select Change... 4. Change the password and ensure that no text is entered in the Password hint box Note: This will only change the currently logged-in user's password, and not any others that are not compliant on the Mac. Use the terminal method if multiple users are not in compliance. Terminal Method: Run the following command to remove a user's password hint: $ /usr/bin/sudo /usr/bin/dscl . -list /Users hint . -delete /Users/<username> hint example: $ /usr/bin/sudo /usr/bin/dscl . -list /Users hint . -delete /Users/firstuser hint $ /usr/bin/sudo /usr/bin/dscl . -list /Users hint . -delete /Users/seconduser hint."
     compliance:
-      - cis: ["2.11.1"]
-      - cis_csc_v8: ["5.2"]
-      - cis_csc_v7: ["4.4"]
-      - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - iso_27001-2013: ["A.9.4.3"]
-      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-      - soc_2: ["CC6.1"]
+      cis: ["2.11.1"]
+      cis_csc_v8: ["5.2"]
+      cis_csc_v7: ["4.4"]
+      cmmc: ["IA.L2-3.5.7"]
+      fedramp: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)", "164.312(d)", "164.312(b)"]
+      iso_27001: ["A.9.2.1", "A.9.2.2", "A.9.2.5", "A.9.2.6", "A.9.2.4", "A.9.4.2"]
+      nis2: ["21.2.i", "21.2.k"]
+      nist_800_171: ["3.5.7"]
+      nist_800_53: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
+      pci_dss: ["2.2", "8.3", "8.1", "8.2"]
+      tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
+    mitre:
+      tactic: ["TA0006", "TA0003"]
+      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
+      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: none
     rules:
       - 'not c:dscl . -list /Users hint -> r:^[\w@-]*$'
@@ -806,16 +1066,23 @@ checks:
     impact: "A guest user can use that access to find out additional information about the system and might be able to use privilege escalation vulnerabilities to establish greater access."
     remediation: "Graphical Method: Perform the following steps to disable guest account availability: 1. Open System Settings 2. Select Users & Groups 3. Select the i next to the Guest User 4. Set Allow guests to log in to this computer to disabled Terminal Method: Run the following command to disable the guest account: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled -bool false Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.MCX 2. The key to include is DisableGuestAccount 3. The key must be set to <true/> 4. The key to include is EnableGuestAccount 5. The key must be set to <false/>."
     compliance:
-      - cis: ["2.12.1"]
-      - cis_csc_v8: ["5.2", "6.2", "6.8"]
-      - cis_csc_v7: ["4.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.4", "AC.L2-3.1.5", "IA.L2-3.5.7", "SC.L2-3.13.3"]
-      - hipaa: ["164.308(a)(3)(ii)(B)", "164.308(a)(3)(ii)(C)", "164.308(a)(4)(i)", "164.308(a)(4)(ii)(C)"]
-      - iso_27001-2013: ["A.9.4.3"]
-      - nist_sp_800-53: ["AC-2(1)", "AC-5", "AC-6", "AC-6(1)", "AC-6(7)", "AU-9(4)"]
-      - pci_dss_v3.2.1: ["8.1.3"]
-      - pci_dss_v4.0: ["10.3.1", "2.2.2", "7.1", "7.1.1", "7.2", "7.2.1", "7.2.2", "7.2.4", "7.2.6", "7.3", "7.3.1", "7.3.2", "8.2.4", "8.2.5", "8.3.5", "8.3.6", "8.6.3"]
-      - soc_2: ["CC5.2", "CC6.1", "CC6.2", "CC6.3"]
+      cis: ["2.12.1"]
+      cis_csc_v8: ["5.2", "6.2", "6.8"]
+      cis_csc_v7: ["4.4"]
+      cmmc: ["IA.L2-3.5.7"]
+      fedramp: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)", "164.312(d)", "164.312(b)"]
+      iso_27001: ["A.9.2.1", "A.9.2.2", "A.9.2.5", "A.9.2.6", "A.9.2.4", "A.9.4.2"]
+      nis2: ["21.2.i", "21.2.k"]
+      nist_800_171: ["3.5.7"]
+      nist_800_53: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
+      pci_dss: ["2.2", "8.3", "8.1", "8.2"]
+      tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
+    mitre:
+      tactic: ["TA0006", "TA0003"]
+      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
+      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''DisableGuestAccount'')" -> r:^1$'
@@ -829,16 +1096,23 @@ checks:
     impact: "Unauthorized users could access shared files on the system."
     remediation: "Graphical Method: Perform the following steps to no longer allow guest user access to shared folders: 1. Open System Settings 2. Select Users & Groups 3. Select the i next to the Guest User 4. Set Allow guests to connect to shared folders to disabled Terminal Method: Run the following commands to verify that shared folders are not accessible to guest users: $ /usr/bin/sudo /usr/sbin/sysadminctl -smbGuestAccess off."
     compliance:
-      - cis: ["2.12.2"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
+      cis: ["2.12.2"]
+      cis_csc_v8: ["3.3"]
+      cis_csc_v7: ["14.6"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      fedramp: ["AC-5", "AC-6"]
+      gdpr: ["32", "25", "30"]
+      hipaa: ["164.312(a)(1)"]
+      iso_27001: ["A.8.2.3", "A.8.3.1", "A.8.3.2", "A.10.1.1", "A.13.2.1", "A.18.1.4"]
+      nis2: ["21.2.g", "21.2.j", "21.2.i"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.1.5", "3.1.3", "3.8.2"]
+      nist_800_53: ["AC-5", "AC-6"]
+      pci_dss: ["7.1", "1.3"]
+      tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
+    mitre:
+      tactic: ["TA0009", "TA0010"]
+      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
+      subtechnique: ["T1048.003", "T1552.001"]
     condition: any
     rules:
       - "c:sysadminctl -smbGuestAccess status -> r:SMB guest access disabled"
@@ -851,13 +1125,22 @@ checks:
     impact: "If automatic login is not disabled, an unauthorized user could gain access to the system without supplying any credentials."
     remediation: "Graphical Method: Perform the following steps to set automatic login to off: 1. Open System Settings 2. Select Users & Groups 3. Set Automatic login in as... to Off Terminal Method: Run the following command to disable automatic login: $ /usr/bin/sudo /usr/bin/defaults delete /Library/Preferences/com.apple.loginwindow autoLoginUser Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.loginwindow 2. The key to include is com.apple.login.mcx.DisableAutoLoginClient 3. The key must be set to <true/> Note: If both the profile is enabled and a user is set to autologin, the profile will take precedent. In this case, the graphical or terminal remediation method should also be applied in case the profile is ever removed."
     compliance:
-      - cis: ["2.12.3"]
-      - cis_csc_v8: ["4.7"]
-      - cis_csc_v7: ["4.2"]
-      - iso_27001-2013: ["A.9.4.3"]
-      - pci_dss_v3.2.1: ["2.1", "2.1.1"]
-      - pci_dss_v4.0: ["2.2.2", "2.3.1"]
-      - soc_2: ["CC6.3"]
+      cis: ["2.12.3"]
+      cis_csc_v8: ["4.7"]
+      cis_csc_v7: ["4.2"]
+      cmmc: ["CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+      fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.4.2", "3.4.6", "3.4.7"]
+      nist_800_53: ["CM-2", "CM-3", "CM-6", "CM-7"]
+      pci_dss: ["2.1", "2.2", "2.3"]
+      tsc: ["CC6.3", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''com.apple.login.mcx.DisableAutoLoginClient'')" -> r:^1$'
@@ -875,16 +1158,23 @@ checks:
     rationale: "Logs generated by auditd may be useful when investigating a security incident as they may help reveal the vulnerable application and the actions taken by a malicious actor."
     remediation: "Terminal Method: Perform the following to enable security auditing: Run the following command to load auditd: $ /usr/bin/sudo /bin/launchctl load -w /System/Library/LaunchDaemons/com.apple.auditd.plist."
     compliance:
-      - cis: ["3.1"]
-      - cis_csc_v8: ["8.2", "8.5"]
-      - cis_csc_v7: ["4.9", "6.2"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1", "A.9.4.2"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
+      cis: ["3.1"]
+      cis_csc_v8: ["8.2", "8.5"]
+      cis_csc_v7: ["4.9", "6.2"]
+      cmmc: ["AU.L2-3.3.1"]
+      fedramp: ["AU-7"]
+      gdpr: ["32", "33"]
+      hipaa: ["164.312(b)"]
+      iso_27001: ["A.12.4.1", "A.12.4.2", "A.12.4.3", "A.16.1.2"]
+      nis2: ["21.2.a", "23", "21.2.b"]
+      nist_800_171: ["3.3.1"]
+      nist_800_53: ["AU-7"]
+      pci_dss: ["10.2", "10.3", "5.3", "6.4"]
+      tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
+    mitre:
+      tactic: ["TA0005", "TA0006", "TA0007"]
+      technique: ["T1562", "T1070", "T1059", "T1040"]
+      subtechnique: ["T1562.002", "T1070.001"]
     condition: all
     rules:
       - "c:launchctl list -> r:com\\.apple\\.auditd"
@@ -902,16 +1192,23 @@ checks:
       - "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-171r2.pdf"
       - "https://www.whitehouse.gov/wp-content/uploads/2021/08/M-21-31-Improving-"
     compliance:
-      - cis: ["3.2"]
-      - cis_csc_v8: ["3.14", "8.2", "8.5"]
-      - cis_csc_v7: ["6.2", "14.9"]
-      - cmmc_v2.0: ["AC.L2-3.1.7", "AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)", "164.312(c)(1)", "164.312(c)(2)"]
-      - iso_27001-2013: ["A.12.4.1", "A.12.4.3"]
-      - nist_sp_800-53: ["AC-6(9)", "AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2", "10.2.1", "10.2.2", "10.2.4", "10.2.5", "10.3", "11.5"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "9.4.5"]
-      - soc_2: ["CC5.2", "CC6.1", "CC7.2"]
+      cis: ["3.2"]
+      cis_csc_v8: ["3.14", "8.2", "8.5"]
+      cis_csc_v7: ["6.2", "14.9"]
+      cmmc: ["AC.L2-3.1.7"]
+      fedramp: ["AC-6"]
+      gdpr: ["32", "25", "30"]
+      hipaa: ["164.312(b)", "164.312(c)(1)"]
+      iso_27001: ["A.8.2.3", "A.8.3.1", "A.8.3.2", "A.10.1.1", "A.13.2.1", "A.18.1.4"]
+      nis2: ["21.2.g", "21.2.j", "21.2.i"]
+      nist_800_171: ["3.1.7"]
+      nist_800_53: ["AC-6"]
+      pci_dss: ["10.2", "11.5"]
+      tsc: ["CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
+    mitre:
+      tactic: ["TA0009", "TA0010"]
+      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
+      subtechnique: ["T1048.003", "T1552.001"]
     condition: any
     rules:
       - "f:/etc/security/audit_control -> r:^flags && r:-fm && r:-ex && r:ad && r:aa && r:lo && r:-fr && r:-fw"
@@ -925,15 +1222,23 @@ checks:
     impact: "Without log files system maintenance and security forensics cannot be properly performed."
     remediation: "Terminal Method: Perform the following to ensure that install logs are retained for at least 365 days: Edit the /etc/asl/com.apple.install file and add or modify the ttl value to 365 or greater on the file line. Also, remove the all_max= setting and value from the file line."
     compliance:
-      - cis: ["3.3"]
-      - cis_csc_v8: ["8.1", "8.3"]
-      - cis_csc_v7: ["6.4", "6.7"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1", "A.12.4.3"]
-      - pci_dss_v3.2.1: ["10.7"]
-      - pci_dss_v4.0: ["10.1", "10.1.1"]
-      - soc_2: ["A1.1"]
+      cis: ["3.3"]
+      cis_csc_v8: ["8.1", "8.3"]
+      cis_csc_v7: ["6.4", "6.7"]
+      cmmc: ["AU.L2-3.3.1"]
+      fedramp: ["AU-2", "AU-3", "AU-6", "AU-8", "AU-11", "AU-12", "SI-4", "IR-5"]
+      gdpr: ["32", "33"]
+      hipaa: ["164.312(b)"]
+      iso_27001: ["A.12.4.1", "A.12.4.2", "A.12.4.3", "A.16.1.2"]
+      nis2: ["21.2.a", "23", "21.2.b"]
+      nist_800_171: ["3.3.1"]
+      nist_800_53: ["AU-2", "AU-3", "AU-6", "AU-8", "AU-11", "AU-12", "SI-4", "IR-5"]
+      pci_dss: ["10.1"]
+      tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
+    mitre:
+      tactic: ["TA0005", "TA0006", "TA0007"]
+      technique: ["T1562", "T1070", "T1059", "T1040"]
+      subtechnique: ["T1562.002", "T1070.001"]
     condition: all
     rules:
       - 'f:/etc/asl/com.apple.install -> n:^\s*ttl=(\d+) compare > 364'
@@ -947,15 +1252,23 @@ checks:
     impact: "The recommendation is that at least 60 days or 5 gigabytes of audit records are retained. Systems that have very little remaining disk space may have issues retaining sufficient data."
     remediation: "Terminal Method: Perform the following to set the audit retention length: Edit the /etc/security/audit_control file so that expire-after: is at least 60d OR 5G."
     compliance:
-      - cis: ["3.4"]
-      - cis_csc_v8: ["8.1", "8.3"]
-      - cis_csc_v7: ["6.4", "6.7"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1", "A.12.4.3"]
-      - pci_dss_v3.2.1: ["10.7"]
-      - pci_dss_v4.0: ["10.1", "10.1.1"]
-      - soc_2: ["A1.1"]
+      cis: ["3.4"]
+      cis_csc_v8: ["8.1", "8.3"]
+      cis_csc_v7: ["6.4", "6.7"]
+      cmmc: ["AU.L2-3.3.1"]
+      fedramp: ["AU-2", "AU-3", "AU-6", "AU-8", "AU-11", "AU-12", "SI-4", "IR-5"]
+      gdpr: ["32", "33"]
+      hipaa: ["164.312(b)"]
+      iso_27001: ["A.12.4.1", "A.12.4.2", "A.12.4.3", "A.16.1.2"]
+      nis2: ["21.2.a", "23", "21.2.b"]
+      nist_800_171: ["3.3.1"]
+      nist_800_53: ["AU-2", "AU-3", "AU-6", "AU-8", "AU-11", "AU-12", "SI-4", "IR-5"]
+      pci_dss: ["10.1"]
+      tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
+    mitre:
+      tactic: ["TA0005", "TA0006", "TA0007"]
+      technique: ["T1562", "T1070", "T1059", "T1040"]
+      subtechnique: ["T1562.002", "T1070.001"]
     condition: any
     rules:
       - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)s OR \d+[\w@-] compare => 5184000'
@@ -979,15 +1292,22 @@ checks:
     impact: "Some applications, like Final Cut Studio and AirPort Base Station management, may not operate properly if the mDNSResponder is turned off."
     remediation: "Terminal Method: Run the following command to disable Bonjour Advertising services: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.mDNSResponder.plist NoMulticastAdvertisements -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mDNSResponder 2. The key to include is NoMulticastAdvertisements."
     compliance:
-      - cis: ["4.1"]
-      - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+      cis: ["4.1"]
+      cis_csc_v8: ["4.1", "4.8"]
+      cis_csc_v7: ["5.1", "9.2"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.mDNSResponder'').objectForKey(''NoMulticastAdvertisements'')" -> r:^1$'
@@ -1003,15 +1323,22 @@ checks:
       - "https://www.stigviewer.com/stig/apple_macos_11_big_sur/2021-06-16/finding/V-"
       - "https://httpd.apache.org/security/vulnerabilities_24.html"
     compliance:
-      - cis: ["4.2"]
-      - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+      cis: ["4.2"]
+      cis_csc_v8: ["4.1", "4.8"]
+      cis_csc_v7: ["5.1", "9.2"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - "not c:launchctl list -> r:org\\.apache\\.httpd"
@@ -1024,15 +1351,22 @@ checks:
     impact: "The nfs server is both a point of attack for the system and a means for unauthorized file transfers."
     remediation: "Terminal Method: Run the following command to disable the nfsd fileserver services: $ /usr/bin/sudo /sbin/nfsd stop $ /usr/bin/sudo /bin/launchctl disable system/com.apple.nfsd Remove the exported Directory listing. $ /usr/bin/sudo /bin/rm /etc/exports."
     compliance:
-      - cis: ["4.3"]
-      - cis_csc_v8: ["4.1", "4.8"]
-      - cis_csc_v7: ["5.1", "9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+      cis: ["4.3"]
+      cis_csc_v8: ["4.1", "4.8"]
+      cis_csc_v7: ["5.1", "9.2"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - "not c:launchctl list -> r:com\\.apple\\.nfsd"
@@ -1051,15 +1385,22 @@ checks:
       - "https://developer.apple.com/documentation/security/disabling_and_enabling_syst"
       - "https://support.apple.com/en-us/HT204899"
     compliance:
-      - cis: ["5.1.2"]
-      - cis_csc_v8: ["2.3", "2.6", "10.5"]
-      - cis_csc_v7: ["2.6"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.9"]
-      - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
-      - nist_sp_800-53: ["CM-10", "CM-7(1)", "CM-7(2)", "CM-8(3)", "SI-16"]
-      - pci_dss_v3.2.1: ["1.4"]
-      - pci_dss_v4.0: ["1.2.5", "12.3.4", "2.2.4"]
-      - soc_2: ["CC5.2", "CC6.8", "CC7.1"]
+      cis: ["5.1.2"]
+      cis_csc_v8: ["2.3", "2.6", "10.5"]
+      cis_csc_v7: ["2.6"]
+      cmmc: ["CM.L2-3.4.9", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-8", "CM-10"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.4.9", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-8", "CM-10"]
+      pci_dss: ["12.3"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - "c:csrutil status -> r:^System Integrity Protection status: enabled\\."
@@ -1077,14 +1418,22 @@ checks:
       - "https://github.com/usnistgov/macos_security/issues/40"
       - "https://www.naut.ca/blog/2020/11/13/forbidden-commands-to-liberate-macos/"
     compliance:
-      - cis: ["5.1.3"]
-      - cis_csc_v8: ["2.3", "2.6"]
-      - cis_csc_v7: ["2.6"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.9"]
-      - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
-      - nist_sp_800-53: ["CM-10", "CM-7(1)", "CM-7(2)", "CM-8(3)"]
-      - pci_dss_v4.0: ["1.2.5", "12.3.4", "2.2.4"]
-      - soc_2: ["CC5.2", "CC7.1"]
+      cis: ["5.1.3"]
+      cis_csc_v8: ["2.3", "2.6"]
+      cis_csc_v7: ["2.6"]
+      cmmc: ["CM.L2-3.4.9", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-8", "CM-10"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.4.9", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-8", "CM-10"]
+      pci_dss: ["12.3"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - "not c:nvram -p -> r:amfi_get_out_of_my_way=1"
@@ -1102,16 +1451,23 @@ checks:
       - "https://eclecticlight.co/2020/06/25/big-surs-signed-system-volume-added-"
       - "https://support.apple.com/guide/security/signed-system-volume-security-"
     compliance:
-      - cis: ["5.1.4"]
-      - cis_csc_v8: ["3.6", "3.11"]
-      - cis_csc_v7: ["13.6", "14.8"]
-      - cmmc_v2.0: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
-      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
-      - iso_27001-2013: ["A.10.1.1", "A.6.2.1"]
-      - nist_sp_800-53: ["SC-28", "SC-28(1)"]
-      - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
-      - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
-      - soc_2: ["CC6.1"]
+      cis: ["5.1.4"]
+      cis_csc_v8: ["3.6", "3.11"]
+      cis_csc_v7: ["13.6", "14.8"]
+      cmmc: ["AC.L2-3.1.19"]
+      fedramp: ["MP-4", "MP-5", "MP-6", "SC-8", "SC-13", "SC-28"]
+      gdpr: ["32", "25", "30"]
+      hipaa: ["164.310(d)(1)", "164.312(a)(1)", "164.312(e)(1)", "164.530(c)"]
+      iso_27001: ["A.8.2.3", "A.8.3.1", "A.8.3.2", "A.10.1.1", "A.13.2.1", "A.18.1.4"]
+      nis2: ["21.2.g", "21.2.j", "21.2.i"]
+      nist_800_171: ["3.1.19"]
+      nist_800_53: ["MP-4", "MP-5", "MP-6", "SC-8", "SC-13"]
+      pci_dss: ["3.1", "3.2", "3.3", "3.4", "3.5", "4.1", "4.2", "7.2"]
+      tsc: ["CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
+    mitre:
+      tactic: ["TA0009", "TA0010"]
+      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
+      subtechnique: ["T1048.003", "T1552.001"]
     condition: all
     rules:
       - "c:csrutil authenticated-root status -> r:^Authenticated Root status: enabled"
@@ -1130,16 +1486,22 @@ checks:
     references:
       - "https://workbench.cisecurity.org/communities/113"
     compliance:
-      - cis: ["5.2.1"]
-      - cis_csc_v8: ["6.2"]
-      - cis_csc_v7: ["16.7"]
-      - cmmc_v2.0: ["AC.L1-3.1.1"]
-      - hipaa: ["164.308(a)(3)(ii)(C)"]
-      - iso_27001-2013: ["A.9.2.6"]
-      - nist_sp_800-53: ["AC-2(1)"]
-      - pci_dss_v3.2.1: ["8.1.3"]
-      - pci_dss_v4.0: ["8.2.4", "8.2.5"]
-      - soc_2: ["CC6.2", "CC6.3"]
+      cis: ["5.2.1"]
+      cis_csc_v8: ["6.2"]
+      cis_csc_v7: ["16.7"]
+      cmmc: ["AC.L2-3.1.1"]
+      fedramp: ["AC-2"]
+      gdpr: ["32", "25"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.9.1.1", "A.9.4.1", "A.13.1.1"]
+      nis2: ["21.2.i", "21.2.k"]
+      nist_800_171: ["3.1.1"]
+      nist_800_53: ["AC-2"]
+      pci_dss: ["8.1", "8.2"]
+      tsc: ["CC6.2", "CC6.3", "CC6.1", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0004", "TA0005"]
+      technique: ["T1078", "T1098", "T1556"]
     condition: all
     rules:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxFailedLoginAttempts=(\d+) compare < 6'
@@ -1152,13 +1514,23 @@ checks:
     impact: "Short passwords can be easily attacked."
     remediation: 'Terminal Method: Run the following command to set the password length to greater than or equal to 15: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "minChars=<value>15>" example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "minChars=15" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is minLength 3. The key must be set to <integer><value>15></integer> Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release.'
     compliance:
-      - cis: ["5.2.2"]
-      - cis_csc_v8: ["5.2"]
-      - cis_csc_v7: ["4.4"]
-      - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - iso_27001-2013: ["A.9.4.3"]
-      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-      - soc_2: ["CC6.1"]
+      cis: ["5.2.2"]
+      cis_csc_v8: ["5.2"]
+      cis_csc_v7: ["4.4"]
+      cmmc: ["IA.L2-3.5.7"]
+      fedramp: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)", "164.312(d)", "164.312(b)"]
+      iso_27001: ["A.9.2.1", "A.9.2.2", "A.9.2.5", "A.9.2.6", "A.9.2.4", "A.9.4.2"]
+      nis2: ["21.2.i", "21.2.k"]
+      nist_800_171: ["3.5.7"]
+      nist_800_53: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
+      pci_dss: ["2.2", "8.3", "8.1", "8.2"]
+      tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
+    mitre:
+      tactic: ["TA0006", "TA0003"]
+      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
+      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:minChars=(\d+) compare > 14'
@@ -1171,13 +1543,23 @@ checks:
     impact: "Password policy should be in effect to reduce the risk of exposed services being compromised easily through dictionary attacks or other social engineering attempts."
     remediation: 'Terminal Method: Run the following command to set the that passwords must contain at least one letter: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy - setaccountpolicies "requiresAlpha=<value>1>" example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "requiresAlpha=1" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is requireAlphanumeric 3. The key must be set to <true/> Note: This profile sets a requirement of both an alphabetical and a numeric character. Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release.'
     compliance:
-      - cis: ["5.2.3"]
-      - cis_csc_v8: ["5.2"]
-      - cis_csc_v7: ["4.4"]
-      - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - iso_27001-2013: ["A.9.4.3"]
-      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-      - soc_2: ["CC6.1"]
+      cis: ["5.2.3"]
+      cis_csc_v8: ["5.2"]
+      cis_csc_v7: ["4.4"]
+      cmmc: ["IA.L2-3.5.7"]
+      fedramp: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)", "164.312(d)", "164.312(b)"]
+      iso_27001: ["A.9.2.1", "A.9.2.2", "A.9.2.5", "A.9.2.6", "A.9.2.4", "A.9.4.2"]
+      nis2: ["21.2.i", "21.2.k"]
+      nist_800_171: ["3.5.7"]
+      nist_800_53: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
+      pci_dss: ["2.2", "8.3", "8.1", "8.2"]
+      tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
+    mitre:
+      tactic: ["TA0006", "TA0003"]
+      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
+      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: any
     rules:
       - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character\\."
@@ -1191,13 +1573,23 @@ checks:
     impact: "Password policy should be in effect to reduce the risk of exposed services being compromised easily through dictionary attacks or other social engineering attempts."
     remediation: 'Terminal Method: Run the following command to set passwords to require at least one number: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy - setaccountpolicies "requiresNumeric=<value>1>" example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "requiresNumeric=2" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is requireAlphanumeric 3. The key must be set to <true/> Note: This profile sets a requirement of both an alphabetical and a numeric character. Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release.'
     compliance:
-      - cis: ["5.2.4"]
-      - cis_csc_v8: ["5.2"]
-      - cis_csc_v7: ["4.4"]
-      - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - iso_27001-2013: ["A.9.4.3"]
-      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-      - soc_2: ["CC6.1"]
+      cis: ["5.2.4"]
+      cis_csc_v8: ["5.2"]
+      cis_csc_v7: ["4.4"]
+      cmmc: ["IA.L2-3.5.7"]
+      fedramp: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)", "164.312(d)", "164.312(b)"]
+      iso_27001: ["A.9.2.1", "A.9.2.2", "A.9.2.5", "A.9.2.6", "A.9.2.4", "A.9.4.2"]
+      nis2: ["21.2.i", "21.2.k"]
+      nist_800_171: ["3.5.7"]
+      nist_800_53: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
+      pci_dss: ["2.2", "8.3", "8.1", "8.2"]
+      tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
+    mitre:
+      tactic: ["TA0006", "TA0003"]
+      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
+      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: any
     rules:
       - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character\\."
@@ -1213,13 +1605,23 @@ checks:
     impact: "Password policy should be in effect to reduce the risk of exposed services being compromised easily through dictionary attacks or other social engineering attempts."
     remediation: 'Terminal Method: Run the following command to set passwords to require at upper and lower case letter: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "requiresMixedCase=<value>1>" example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "requiresMixedCase=1".'
     compliance:
-      - cis: ["5.2.6"]
-      - cis_csc_v8: ["5.2"]
-      - cis_csc_v7: ["4.4"]
-      - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - iso_27001-2013: ["A.9.4.3"]
-      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-      - soc_2: ["CC6.1"]
+      cis: ["5.2.6"]
+      cis_csc_v8: ["5.2"]
+      cis_csc_v7: ["4.4"]
+      cmmc: ["IA.L2-3.5.7"]
+      fedramp: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)", "164.312(d)", "164.312(b)"]
+      iso_27001: ["A.9.2.1", "A.9.2.2", "A.9.2.5", "A.9.2.6", "A.9.2.4", "A.9.4.2"]
+      nis2: ["21.2.i", "21.2.k"]
+      nist_800_171: ["3.5.7"]
+      nist_800_53: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
+      pci_dss: ["2.2", "8.3", "8.1", "8.2"]
+      tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
+    mitre:
+      tactic: ["TA0006", "TA0003"]
+      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
+      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: any
     rules:
       - 'c:sh  -c "pwpolicy -getaccountpolicies | grep -A1 minimumMixedCaseCharacters " -> n:>(\d+)< compare >= 1'
@@ -1232,13 +1634,23 @@ checks:
     impact: "Required password changes will lead to some locked computers requiring admin assistance."
     remediation: 'Terminal Method: Run the following command to require that passwords expire after at most 365 days: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "maxMinutesUntilChangePassword=<value<525600>" example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "maxMinutesUntilChangePassword=43200" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is maxPINAgeInDays 3. The key must be set to <integer><value>365></integer> Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release.'
     compliance:
-      - cis: ["5.2.7"]
-      - cis_csc_v8: ["5.3"]
-      - cis_csc_v7: ["16.9"]
-      - cmmc_v2.0: ["IA.L2-3.5.6"]
-      - nist_sp_800-53: ["AC-2(3)"]
-      - pci_dss_v3.2.1: ["8.1.4"]
-      - pci_dss_v4.0: ["8.3.7"]
+      cis: ["5.2.7"]
+      cis_csc_v8: ["5.3"]
+      cis_csc_v7: ["16.9"]
+      cmmc: ["IA.L2-3.5.6"]
+      fedramp: ["AC-2"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)", "164.312(d)", "164.312(b)"]
+      iso_27001: ["A.9.2.1", "A.9.2.2", "A.9.2.5", "A.9.2.6", "A.9.2.4", "A.9.4.2"]
+      nis2: ["21.2.i", "21.2.k"]
+      nist_800_171: ["3.5.6"]
+      nist_800_53: ["AC-2"]
+      pci_dss: ["8.1", "8.3"]
+      tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
+    mitre:
+      tactic: ["TA0006", "TA0003"]
+      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
+      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxMinutesUntilChangePassword=(\d+) compare < 525601'
@@ -1251,13 +1663,23 @@ checks:
     impact: "Required password changes will lead to some locked computers requiring admin assistance."
     remediation: 'Terminal Method: Run the following command to require that the password must to be different from at least the last 15 passwords: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "usingHistory=<value>15>" example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "usingHistory=15" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is pinHistory 3. The key must be set to <integer><value>15></integer> Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release.'
     compliance:
-      - cis: ["5.2.8"]
-      - cis_csc_v8: ["5.2"]
-      - cis_csc_v7: ["4.4"]
-      - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - iso_27001-2013: ["A.9.4.3"]
-      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-      - soc_2: ["CC6.1"]
+      cis: ["5.2.8"]
+      cis_csc_v8: ["5.2"]
+      cis_csc_v7: ["4.4"]
+      cmmc: ["IA.L2-3.5.7"]
+      fedramp: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)", "164.312(d)", "164.312(b)"]
+      iso_27001: ["A.9.2.1", "A.9.2.2", "A.9.2.5", "A.9.2.6", "A.9.2.4", "A.9.4.2"]
+      nis2: ["21.2.i", "21.2.k"]
+      nist_800_171: ["3.5.7"]
+      nist_800_53: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
+      pci_dss: ["2.2", "8.3", "8.1", "8.2"]
+      tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
+    mitre:
+      tactic: ["TA0006", "TA0003"]
+      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
+      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:usingHistory=(\d+) compare > 14'
@@ -1273,15 +1695,23 @@ checks:
     impact: "This control has a serious impact where users often have to use sudo. It is even more of an impact where users have to use sudo multiple times in quick succession as part of normal work processes. Organizations with that common use case will likely find this control too onerous and are better to accept the risk of not requiring a 0 grace period. In some ways the use of sudo -s, which is undesirable, is better than a long grace period since that use does change the hash to show that it is a root shell rather than a normal shell where sudo commands will be implemented without a password."
     remediation: "Terminal Method: Run the following command to edit the sudo settings: $ /usr/bin/sudo /usr/sbin/visudo -f /etc/sudoers.d/<configuration file name> example: $ /usr/bin/sudo /usr/sbin/visudo -f /etc/sudoers.d/10_cissudoconfiguration Note: Unlike other Unix and/or Linux distros, macOS will ignore configuration files in the sudoers.d folder that contain a . so do not add a file extension to the configuration file. Add the line Defaults timestamp_timeout=0 to the configuration file. If /etc/sudoers.d/ is not owned by root or in the wheel group, run the following to change ownership and group: $ /usr/bin/sudo /usr/sbin/chown -R root:wheel /etc/security/sudoers.d/."
     compliance:
-      - cis: ["5.4"]
-      - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-      - hipaa: ["164.312(a)(2)(iii)"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
-      - pci_dss_v3.2.1: ["8.1.8"]
-      - pci_dss_v4.0: ["8.2.8"]
+      cis: ["5.4"]
+      cis_csc_v8: ["4.3"]
+      cis_csc_v7: ["16.11"]
+      cmmc: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
+      fedramp: ["AC-2", "AC-11", "AC-12"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)", "164.312(d)", "164.312(b)"]
+      iso_27001: ["A.9.2.1", "A.9.2.2", "A.9.2.5", "A.9.2.6", "A.9.2.4", "A.9.4.2"]
+      nis2: ["21.2.i", "21.2.k"]
+      nist_800_171: ["3.1.10", "3.1.11"]
+      nist_800_53: ["AC-2", "AC-11", "AC-12"]
+      pci_dss: ["8.1", "8.2"]
+      tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
+    mitre:
+      tactic: ["TA0006", "TA0003"]
+      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
+      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
       - "c:sudo -V -> r:Authentication timestamp timeout: 0\\.0 minutes"
@@ -1297,15 +1727,23 @@ checks:
     references:
       - "https://github.com/jorangreef/sudo-prompt/issues/33"
     compliance:
-      - cis: ["5.5"]
-      - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-      - hipaa: ["164.312(a)(2)(iii)"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
-      - pci_dss_v3.2.1: ["8.1.8"]
-      - pci_dss_v4.0: ["8.2.8"]
+      cis: ["5.5"]
+      cis_csc_v8: ["4.3"]
+      cis_csc_v7: ["16.11"]
+      cmmc: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
+      fedramp: ["AC-2", "AC-11", "AC-12"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)", "164.312(d)", "164.312(b)"]
+      iso_27001: ["A.9.2.1", "A.9.2.2", "A.9.2.5", "A.9.2.6", "A.9.2.4", "A.9.4.2"]
+      nis2: ["21.2.i", "21.2.k"]
+      nist_800_171: ["3.1.10", "3.1.11"]
+      nist_800_53: ["AC-2", "AC-11", "AC-12"]
+      pci_dss: ["8.1", "8.2"]
+      tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
+    mitre:
+      tactic: ["TA0006", "TA0003"]
+      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
+      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
       - "c:sudo -V -> r:Type of authentication timestamp record: tty"
@@ -1318,14 +1756,23 @@ checks:
     impact: "Some legacy POSIX software might expect an available root account."
     remediation: "Graphical Method: Perform the following steps to ensure that the root user is disabled: 1. Open /System/Library/CoreServices/Applications/Directory Utility 2. Click the lock icon to unlock the service 3. Click Edit in the menu bar 4. Click Disable Root User Terminal Method: Run the following command to disable the root user: $ /usr/bin/sudo /usr/sbin/dsenableroot -d username = root user password:."
     compliance:
-      - cis: ["5.6"]
-      - cis_csc_v8: ["5.4"]
-      - cis_csc_v7: ["4.3"]
-      - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
-      - iso_27001-2013: ["A.9.2.3"]
-      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - soc_2: ["CC6.1", "CC6.3"]
+      cis: ["5.6"]
+      cis_csc_v8: ["5.4"]
+      cis_csc_v7: ["4.3"]
+      cmmc: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
+      fedramp: ["AC-6"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)", "164.312(d)", "164.312(b)"]
+      iso_27001: ["A.9.2.1", "A.9.2.2", "A.9.2.5", "A.9.2.6", "A.9.2.4", "A.9.4.2"]
+      nis2: ["21.2.i", "21.2.k"]
+      nist_800_171: ["3.1.5", "3.1.6", "3.1.7", "3.13.3"]
+      nist_800_53: ["AC-6"]
+      pci_dss: ["7.1"]
+      tsc: ["CC6.1", "CC6.3", "CC6.2", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
+    mitre:
+      tactic: ["TA0006", "TA0003"]
+      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
+      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
       - "c:dscl . -read /Users/root AuthenticationAuthority -> r:^No such key: AuthenticationAuthority"
@@ -1341,15 +1788,23 @@ checks:
       - "https://derflounder.wordpress.com/2014/02/16/managing-the-authorization-"
       - "https://www.jamf.com/jamf-nation/discussions/18195/system-login-screensaver"
     compliance:
-      - cis: ["5.7"]
-      - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-      - hipaa: ["164.312(a)(2)(iii)"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
-      - pci_dss_v3.2.1: ["8.1.8"]
-      - pci_dss_v4.0: ["8.2.8"]
+      cis: ["5.7"]
+      cis_csc_v8: ["4.3"]
+      cis_csc_v7: ["16.11"]
+      cmmc: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
+      fedramp: ["AC-2", "AC-11", "AC-12"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)", "164.312(d)", "164.312(b)"]
+      iso_27001: ["A.9.2.1", "A.9.2.2", "A.9.2.5", "A.9.2.6", "A.9.2.4", "A.9.4.2"]
+      nis2: ["21.2.i", "21.2.k"]
+      nist_800_171: ["3.1.10", "3.1.11"]
+      nist_800_53: ["AC-2", "AC-11", "AC-12"]
+      pci_dss: ["8.1", "8.2"]
+      tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
+    mitre:
+      tactic: ["TA0006", "TA0003"]
+      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
+      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
       - "c:security authorizationdb read system.login.screensaver -> r:use-login-window-ui"
@@ -1364,15 +1819,22 @@ checks:
     references:
       - "https://support.apple.com/en-au/HT202277"
     compliance:
-      - cis: ["5.8"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
+      cis: ["5.8"]
+      cis_csc_v8: ["4.1"]
+      cis_csc_v7: ["5.1"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - "d:/Library/Security -> r:^PolicyBanner"
@@ -1388,15 +1850,22 @@ checks:
     impact: "The Guest account should not be necessary after it is disabled, and it will be automatically re-created if the Guest account is re-enabled."
     remediation: "Terminal Method: Run the following command to remove the Guest user home folder: $ /usr/bin/sudo /bin/rm -R /Users/Guest."
     compliance:
-      - cis: ["5.10"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
+      cis: ["5.10"]
+      cis_csc_v8: ["4.1"]
+      cis_csc_v7: ["5.1"]
+      cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      fedramp: ["CM-7", "CM-9"]
+      gdpr: ["32"]
+      hipaa: ["164.308(a)(1)"]
+      iso_27001: ["A.12.1.1", "A.12.1.2", "A.14.2.1"]
+      nis2: ["21.2.e", "21.2.a"]
+      nist_800_171: ["3.1.1", "3.1.2", "3.4.1", "3.4.6", "3.4.2", "3.4.7"]
+      nist_800_53: ["CM-7", "CM-9"]
+      pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
+      tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1036", "T1564"]
     condition: all
     rules:
       - "not d:/Users/Guest"

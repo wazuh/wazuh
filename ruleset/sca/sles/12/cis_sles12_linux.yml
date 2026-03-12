@@ -36,7 +36,20 @@ checks:
     rationale: "Since the /tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. In addition, making /tmp its own file system allows an administrator to set the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /tmp.  For systems that were previously installed, create a new partition and configure /etc/fstab or the systemd tmp.mount service as appropriate."
     compliance:
-      - cis: ["1.1.2"]
+      cis: ["1.1.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -49,9 +62,20 @@ checks:
     rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /tmp."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information.  Run the following command to remount /tmp : # mount -o remount,nodev /tmp"
     compliance:
-      - cis: ["1.1.3"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["1.1.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:mount -> r:\s/tmp\s && r:nodev'
@@ -62,9 +86,20 @@ checks:
     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /tmp."
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information.  Run the following command to remount /tmp : # mount -o remount,nosuid /tmp"
     compliance:
-      - cis: ["1.1.4"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["1.1.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:mount -> r:\s/tmp\s && r:nosuid'
@@ -76,10 +111,20 @@ checks:
     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /tmp."
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information.  Run the following command to remount /tmp : # mount -o remount,noexec /tmp"
     compliance:
-      - cis: ["1.1.5"]
-      - cis_csc: ["2"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["1.1.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:mount -> r:\s/tmp\s && r:noexec'
@@ -91,7 +136,20 @@ checks:
     rationale: "Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion if it is not bound to a separate partition."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var.  For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
-      - cis: ["1.1.6"]
+      cis: ["1.1.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -104,8 +162,20 @@ checks:
     rationale: "There are two important reasons to ensure that system logs are stored on a separate partition: protection against resource exhaustion (since logs can grow quite large) and protection of audit data."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log.  For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
-      - cis: ["1.1.11"]
-      - cis_csc: ["6.3"]
+      cis: ["1.1.11"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -119,8 +189,20 @@ checks:
     rationale: "There are two important reasons to ensure that data gathered by auditd is stored on a separate partition: protection against resource exhaustion (since the audit.log file can grow quite large) and protection of audit data. The audit daemon calculates how much free space is left and performs actions based on the results. If other processes (such as syslog ) consume space in the same partition as auditd, it may not perform as desired."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit.  For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
-      - cis: ["1.1.12"]
-      - cis_csc: ["6.3"]
+      cis: ["1.1.12"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -134,7 +216,20 @@ checks:
     rationale: "If the system is intended to support local users, create a separate partition for the /home directory to protect against resource exhaustion and restrict the type of files that can be stored under /home."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home.  For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
-      - cis: ["1.1.13"]
+      cis: ["1.1.13"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -148,9 +243,20 @@ checks:
     rationale: "Since the user partitions are not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. See the fstab(5) manual page for more information.  # mount -o remount,nodev /home. Notes: The actions in this recommendation refer to the /home partition, which is the default user partition that is defined. If you have created other user partitions, it is recommended that the Remediation and Audit steps be applied to these partitions as well."
     compliance:
-      - cis: ["1.1.14"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["1.1.14"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:mount -> r:\s/home\s && r:nodev'
@@ -162,9 +268,20 @@ checks:
     rationale: "Since the /dev/shm filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create special devices in /dev/shm partitions."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information.  Run the following command to remount /dev/shm : # mount -o remount,nodev /dev/shm    Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0. Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0"
     compliance:
-      - cis: ["1.1.15"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["1.1.15"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:mount -> r:\s/dev/shm\s && r:nodev'
@@ -176,9 +293,20 @@ checks:
     rationale: "Setting this option on a file system prevents users from introducing privileged programs onto the system and allowing non-root users to execute them."
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information.  Run the following command to remount /dev/shm : # mount -o remount,nosuid /dev/shm    Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0. Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0"
     compliance:
-      - cis: ["1.1.16"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["1.1.16"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:mount -> r:\s/dev/shm\s && r:nosuid'
@@ -190,10 +318,20 @@ checks:
     rationale: "Setting this option on a file system prevents users from executing programs from shared memory. This deters users from introducing potentially malicious software on the system."
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information.  Run the following command to remount /dev/shm : # mount -o remount,noexec /dev/shm    Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0. Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0"
     compliance:
-      - cis: ["1.1.17"]
-      - cis_csc: ["2"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["1.1.17"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:mount -> r:\s/dev/shm\s && r:noexec'
@@ -208,8 +346,20 @@ checks:
     rationale: "Setting a hard limit on core dumps prevents users from overriding the soft variable. If core dumps are required, consider setting limits for user groups (see limits.conf(5) ). In addition, setting the fs.suid_dumpable variable to 0 will prevent setuid programs from dumping core."
     remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0.  Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file:fs.suid_dumpable = 0.  Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0"
     compliance:
-      - cis: ["1.5.1"]
-      - cis_csc: ["13"]
+      cis: ["1.5.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:grep -Rh ^*[[:space:]]*hard[[:space:]][[:space:]]*core[[:space:]][[:space:]]* /etc/security/limits.conf /etc/security/limits.d -> r:\s*\t*0$'
@@ -223,8 +373,20 @@ checks:
     rationale: "Randomly placing virtual memory regions will make it difficult to write memory page exploits as the memory placement will be consistently shifting."
     remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: kernel.randomize_va_space = 2.  Run the following command to set the active kernel parameter: # sysctl -w kernel.randomize_va_space=2"
     compliance:
-      - cis: ["1.5.3"]
-      - cis_csc: ["8.4"]
+      cis: ["1.5.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:^\s*kernel\.randomize_va_space\s*=\s*2$'
@@ -243,8 +405,20 @@ checks:
     rationale: "Disabling this service will reduce the remote attack surface of the system."
     remediation: "Run the following commands to disable chargen and chargen-udp : # chkconfig chargen off # chkconfig chargen-udp off"
     compliance:
-      - cis: ["2.1.1"]
-      - cis_csc: ["9.1"]
+      cis: ["2.1.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:chkconfig --list -> r:chargen:|chargen-udp: && r::on"
@@ -255,8 +429,20 @@ checks:
     rationale: "Disabling this service will reduce the remote attack surface of the system."
     remediation: "Run the following commands to disable daytime and daytime-udp: # chkconfig daytime off # chkconfig daytime-udp off"
     compliance:
-      - cis: ["2.1.2"]
-      - cis_csc: ["9.1"]
+      cis: ["2.1.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:chkconfig --list -> r:daytime:|daytime-udp && r::on"
@@ -267,8 +453,20 @@ checks:
     rationale: "Disabling this service will reduce the remote attack surface of the system."
     remediation: "Run the following commands to disable discard and discard-udp: # chkconfig discard off # chkconfig discard-udp off"
     compliance:
-      - cis: ["2.1.3"]
-      - cis_csc: ["9.1"]
+      cis: ["2.1.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:chkconfig --list -> r:discard:|discard-udp: && r::on"
@@ -279,8 +477,20 @@ checks:
     rationale: "Disabling this service will reduce the remote attack surface of the system."
     remediation: "Run the following commands to disable echo and echo-udp: # chkconfig echo off # chkconfig echo-udp off"
     compliance:
-      - cis: ["2.1.4"]
-      - cis_csc: ["9.1"]
+      cis: ["2.1.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:chkconfig --list -> r:echo:|echo-udp: && r::on"
@@ -291,8 +501,20 @@ checks:
     rationale: "Disabling this service will reduce the remote attack surface of the system."
     remediation: "Run the following commands to disable time and time-udp: # chkconfig time off # chkconfig time-udp off"
     compliance:
-      - cis: ["2.1.5"]
-      - cis_csc: ["9.1"]
+      cis: ["2.1.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:chkconfig --list -> r:time:|time-udp && r::on"
@@ -303,10 +525,20 @@ checks:
     rationale: "These legacy services contain numerous security exposures and have been replaced with the more secure SSH package."
     remediation: "Run the following commands to disable rsh , rlogin , and rexec : # chkconfig rexec off # chkconfig rlogin off # chkconfig rsh off"
     compliance:
-      - cis: ["2.1.6"]
-      - cis_csc: ["3.4", "9.1"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.1.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:chkconfig --list -> r:rexec:|rlogin:|rsh: && r::on"
@@ -317,10 +549,20 @@ checks:
     rationale: "The software presents a security risk as it uses unencrypted protocols for communication."
     remediation: "Run the following command to disable talk: # chkconfig talk off"
     compliance:
-      - cis: ["2.1.7"]
-      - cis_csc: ["9.1"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.1.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:chkconfig --list -> r:talk: && r::on"
@@ -331,10 +573,20 @@ checks:
     rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow a user with access to sniff network traffic the ability to steal credentials. The ssh package provides an encrypted session and stronger security."
     remediation: "Run the following command to disable telnet: # chkconfig telnet off"
     compliance:
-      - cis: ["2.1.8"]
-      - cis_csc: ["3.4", "9.1"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.1.8"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:chkconfig --list -> r:telnet: && r::on"
@@ -345,10 +597,20 @@ checks:
     rationale: "TFTP does not support authentication nor does it ensure the confidentiality or integrity of data. It is recommended that TFTP be removed, unless there is a specific need for TFTP. In that case, extreme caution must be used when configuring the services."
     remediation: "Run the following command to disable tftp: # systemctl disable atftpd"
     compliance:
-      - cis: ["2.1.9", "2.2.17"]
-      - cis_csc: ["9.1"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.1.9", "2.2.17"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:chkconfig --list -> r:tftp: && r::on"
@@ -359,9 +621,20 @@ checks:
     rationale: "The rsyncd service presents a security risk as it uses unencrypted protocols for communication."
     remediation: "Run the following command to disable rsyncd: # systemctl disable rsyncd"
     compliance:
-      - cis: ["2.1.10", "2.2.18"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.1.10", "2.2.18"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:chkconfig --list -> r:rsync: && r::on"
@@ -372,8 +645,20 @@ checks:
     rationale: "If there are no xinetd services required, it is recommended that the daemon be disabled."
     remediation: "Run the following command to disable xinetd : # systemctl disable xinetd"
     compliance:
-      - cis: ["2.1.11"]
-      - cis_csc: ["9.1"]
+      cis: ["2.1.11"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:systemctl is-enabled xinetd -> r:enabled"
@@ -387,10 +672,20 @@ checks:
     rationale: "If ntp is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
     remediation: "Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod limited nomodify notrap nopeer noquery    restrict -6 default kod limited nomodify notrap nopeer noquery    Add or edit server or pool lines to /etc/ntp.conf as appropriate: server <remote-server>    Add or edit the NTPD_OPTIONS in /etc/sysconfig/ntp to include '-u ntp:ntp': NTPD_OPTIONS='-u ntp:ntp'"
     compliance:
-      - cis: ["2.2.1.2"]
-      - cis_csc: ["6.1"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.2.1.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'f:/etc/ntp.conf -> r:^restrict\s+-4\s+default|^restrict\s+default && r:\s+kod && r:\s+nomodify && r:\s+notrap && r:\s+nopeer && r:\s+noquery'
@@ -405,10 +700,20 @@ checks:
     rationale: "Unless your organization specifically requires graphical login access via X Windows, remove it to reduce the potential attack surface."
     remediation: "Run the following command to remove the X Windows System packages: # zypper remove xorg-x11*"
     compliance:
-      - cis: ["2.2.2"]
-      - cis_csc: ["2"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.2.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:rpm -qa xorg-x11* -> r:^xorg-x11"
@@ -420,10 +725,20 @@ checks:
     rationale: "Automatic discovery of network services is not normally required for system functionality.  It is recommended to disable the service to reduce the potential attack surface."
     remediation: "Run the following command to disable avahi-daemon : # systemctl disable avahi-daemon"
     compliance:
-      - cis: ["2.2.3"]
-      - cis_csc: ["9.1"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.2.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:systemctl is-enabled avahi-daemon -> r:enabled"
@@ -434,8 +749,20 @@ checks:
     rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that this service be disabled to reduce the potential attack surface."
     remediation: "Run the following command to disable dhcpd : # systemctl disable dhcpd"
     compliance:
-      - cis: ["2.2.5"]
-      - cis_csc: ["9.1"]
+      cis: ["2.2.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:systemctl is-enabled dhcpd -> r:enabled"
@@ -447,10 +774,20 @@ checks:
     rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be disabled to reduce remote attack surface."
     remediation: "Run the following commands to disable nfs and rpcbind : # systemctl disable nfs # systemctl disable rpcbind"
     compliance:
-      - cis: ["2.2.7"]
-      - cis_csc: ["9.1"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.2.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:systemctl is-enabled nfs -> r:enabled"
@@ -462,10 +799,20 @@ checks:
     rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the service be disabled to reduce the potential attack surface."
     remediation: "Run the following command to disable named : # systemctl disable named"
     compliance:
-      - cis: ["2.2.8"]
-      - cis_csc: ["9.1"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.2.8"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:systemctl is-enabled named -> r:enabled"
@@ -476,10 +823,20 @@ checks:
     rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended sftp be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the service be disabled to reduce the potential attack surface."
     remediation: "Run the following command to disable vsftpd : # systemctl disable vsftpd    Notes: Additional FTP servers also exist and should be audited."
     compliance:
-      - cis: ["2.2.9"]
-      - cis_csc: ["9.1"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.2.9"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:systemctl is-enabled vsftpd -> r:enabled"
@@ -491,8 +848,20 @@ checks:
     rationale: "Unless there is a need to run the system as a web server, it is recommended that the service be disabled to reduce the potential attack surface."
     remediation: "Run the following command to disable apache2 : # systemctl disable apache2    Notes: Several httpd servers exist and can use other service names. apache, apache2, lighttpd, and nginx are example services that provide an HTTP server. These and other services should also be audited."
     compliance:
-      - cis: ["2.2.10"]
-      - cis_csc: ["9.1"]
+      cis: ["2.2.10"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:systemctl is-enabled apache2 -> r:enabled"
@@ -503,10 +872,20 @@ checks:
     rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the service be disabled to reduce the potential attack surface."
     remediation: "Run the following command to disable dovecot : # systemctl disable dovecot    Notes: Several IMAP/POP3 servers exist and can use other service names. cyrus-imap is an example service that provides an IMAP/POP3 server. These and other services should also be audited."
     compliance:
-      - cis: ["2.2.11"]
-      - cis_csc: ["9.1"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.2.11"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:systemctl is-enabled dovecot -> r:enabled"
@@ -518,10 +897,20 @@ checks:
     rationale: "If there is no need to mount directories and file systems to Windows systems, then this service can be disabled to reduce the potential attack surface."
     remediation: "Run the following command to disable smb : # systemctl disable smb"
     compliance:
-      - cis: ["2.2.12"]
-      - cis_csc: ["9.1"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.2.12"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:systemctl is-enabled smb -> r:enabled"
@@ -532,10 +921,20 @@ checks:
     rationale: "If there is no need for a proxy server, it is recommended that the squid proxy be disabled to reduce the potential attack surface."
     remediation: "Run the following command to disable squid : # systemctl disable squid    Notes: Several HTTP proxy servers exist. These and other services should be checked."
     compliance:
-      - cis: ["2.2.13"]
-      - cis_csc: ["9.1"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.2.13"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:systemctl is-enabled squid -> r:enabled"
@@ -546,10 +945,20 @@ checks:
     rationale: "The SNMP server can communicate using SNMP v1, which transmits data in the clear and does not require authentication to execute commands. Unless absolutely necessary, it is recommended that the SNMP service not be used. If SNMP is required the server should be configured to disallow SNMP v1."
     remediation: "Run the following command to disable snmpd: # systemctl disable snmpd    Notes: Additional methods of disabling a service exist. Consult your distribution documentation for appropriate methods."
     compliance:
-      - cis: ["2.2.14"]
-      - cis_csc: ["9.1"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.2.14"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:systemctl is-enabled snmpd -> r:enabled"
@@ -560,10 +969,20 @@ checks:
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be disabled and other, more secure services be used"
     remediation: "Run the following command to disable ypserv : # systemctl disable ypserv"
     compliance:
-      - cis: ["2.2.16"]
-      - cis_csc: ["9.1"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.2.16"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:systemctl is-enabled ypserv -> r:enabled"
@@ -575,10 +994,20 @@ checks:
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
     remediation: "Run the following command to uninstall ypbind : # zypper remove ypbind"
     compliance:
-      - cis: ["2.3.1"]
-      - cis_csc: ["2"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
+      cis: ["2.3.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "c:rpm -qa ypbind -> r:ypbind"
@@ -596,10 +1025,20 @@ checks:
     rationale: "Setting the flag to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
     remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.ip_forward = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.ip_forward=0 # sysctl -w net.ipv4.route.flush=1"
     compliance:
-      - cis: ["3.1.1"]
-      - cis_csc: ["3", "11"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["3.1.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.ip_forward -> r:\s0$'
@@ -612,10 +1051,20 @@ checks:
     rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.send_redirects = 0    net.ipv4.conf.default.send_redirects = 0. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.send_redirects=0 # sysctl -w net.ipv4.conf.default.send_redirects=0 # sysctl -w net.ipv4.route.flush=1"
     compliance:
-      - cis: ["3.1.2"]
-      - cis_csc: ["3", "11"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["3.1.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:^net\.ipv4\.conf\.all\.send_redirects\s*=\s*0$'
@@ -633,10 +1082,20 @@ checks:
     rationale: "Setting net.ipv4.conf.all.accept_source_route and net.ipv4.conf.default.accept_source_route to 0 disables the system from accepting source routed packets. Assume this system was capable of routing packets to Internet routable addresses on one interface and private addresses on another interface. Assume that the private addresses were not routable to the Internet routable addresses and vice versa. Under normal routing circumstances, an attacker from the Internet routable addresses could not use the system as a way to reach the private address systems. If, however, source routed packets were allowed, they could be used to gain access to the private address systems as the route could be specified, rather than rely on routing protocols that did not allow this routing."
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_source_route = 0    net.ipv4.conf.default.accept_source_route = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_source_route=0 # sysctl -w net.ipv4.conf.default.accept_source_route=0 # sysctl -w net.ipv4.route.flush=1"
     compliance:
-      - cis: ["3.2.1"]
-      - cis_csc: ["3", "11"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["3.2.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:^net\.ipv4\.conf\.all\.accept_source_route\s*=\s*0$'
@@ -651,10 +1110,20 @@ checks:
     rationale: "Attackers could use bogus ICMP redirect messages to maliciously alter the system routing tables and get them to send packets to incorrect networks and allow your system packets to be captured."
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_redirects = 0    net.ipv4.conf.default.accept_redirects = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_redirects=0 # sysctl -w net.ipv4.conf.default.accept_redirects=0 # sysctl -w net.ipv4.route.flush=1."
     compliance:
-      - cis: ["3.2.2"]
-      - cis_csc: ["3", "11"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["3.2.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^net\.ipv4\.conf\.all\.accept_redirects\s*=\s*0$'
@@ -669,10 +1138,20 @@ checks:
     rationale: "It is still possible for even known gateways to be compromised. Setting net.ipv4.conf.all.secure_redirects to 0 protects the system from routing table updates by possibly compromised known gateways."
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.secure_redirects = 0    net.ipv4.conf.default.secure_redirects = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.secure_redirects=0 # sysctl -w net.ipv4.conf.default.secure_redirects=0 # sysctl -w net.ipv4.route.flush=1."
     compliance:
-      - cis: ["3.2.3"]
-      - cis_csc: ["3", "11"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["3.2.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:^net\.ipv4\.conf\.all\.secure_redirects\s*=\s*0$'
@@ -686,10 +1165,20 @@ checks:
     rationale: "Enabling this feature and logging these packets allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their system."
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.log_martians = 1    net.ipv4.conf.default.log_martians = 1.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.log_martians=1 # sysctl -w net.ipv4.conf.default.log_martians=1 # sysctl -w net.ipv4.route.flush=1."
     compliance:
-      - cis: ["3.2.4"]
-      - cis_csc: ["6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["3.2.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^net\.ipv4\.conf\.all\.log_martians\s*=\s*1$'
@@ -704,10 +1193,20 @@ checks:
     rationale: "Accepting ICMP echo and timestamp requests with broadcast or multicast destinations for your network could be used to trick your host into starting (or participating) in a Smurf attack. A Smurf attack relies on an attacker sending large amounts of ICMP broadcast messages with a spoofed source address. All hosts receiving this message and responding would send echo-reply messages back to the spoofed address, which is probably not routable. If many hosts respond to the packets, the amount of traffic on the network could be significantly multiplied."
     remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_echo_ignore_broadcasts = 1    Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 # sysctl -w net.ipv4.route.flush=1."
     compliance:
-      - cis: ["3.2.5"]
-      - cis_csc: ["3", "11"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["3.2.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
@@ -720,10 +1219,20 @@ checks:
     rationale: "Some routers (and some attackers) will send responses that violate RFC-1122 and attempt to fill up a log file system with many useless error messages."
     remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_ignore_bogus_error_responses = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 # sysctl -w net.ipv4.route.flush=1."
     compliance:
-      - cis: ["3.2.6"]
-      - cis_csc: ["3", "11"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["3.2.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
@@ -736,10 +1245,20 @@ checks:
     rationale: "Setting these flags is a good way to deter attackers from sending your system bogus packets that cannot be responded to. One instance where this feature breaks down is if asymmetrical routing is employed. This would occur when using dynamic routing protocols (bgp, ospf, etc) on your system. If you are using asymmetrical routing on your system, you will not be able to enable this feature without breaking the routing."
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.rp_filter = 1    net.ipv4.conf.default.rp_filter = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.rp_filter=1 # sysctl -w net.ipv4.conf.default.rp_filter=1 # sysctl -w net.ipv4.route.flush=1"
     compliance:
-      - cis: ["3.2.7"]
-      - cis_csc: ["3", "11"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["3.2.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:^net\.ipv4\.conf\.all\.rp_filter\s*=\s*1$'
@@ -754,10 +1273,20 @@ checks:
     rationale: "Attackers use SYN flood attacks to perform a denial of service attacked on a system by sending many SYN packets without completing the three way handshake. This will quickly use up slots in the kernel's half-open connection queue and prevent legitimate connections from succeeding. SYN cookies allow the system to keep accepting valid connections, even if under a denial of service attack."
     remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.tcp_syncookies = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.tcp_syncookies=1 # sysctl -w net.ipv4.route.flush=1"
     compliance:
-      - cis: ["3.2.8"]
-      - cis_csc: ["3", "11"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["3.2.8"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.tcp_syncookies\s*=\s*1$'
@@ -776,12 +1305,20 @@ checks:
     rationale: "SSH v1 suffers from insecurities that do not affect SSH v2."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: Protocol 2"
     compliance:
-      - cis: ["5.2.2"]
-      - cis_csc: ["3.4"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      cis: ["5.2.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^\s*\t*# && r:Protocol\s*\t*2$'
@@ -793,12 +1330,20 @@ checks:
     rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information. INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LogLevel INFO"
     compliance:
-      - cis: ["5.2.3"]
-      - cis_csc: ["16"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      cis: ["5.2.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^\s*\t*# && r:LogLevel\s*\t*INFO'
@@ -810,10 +1355,20 @@ checks:
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4"
     compliance:
-      - cis: ["5.2.5"]
-      - cis_csc: ["16"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      cis: ["5.2.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^\s*\t*# && n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
@@ -825,12 +1380,20 @@ checks:
     rationale: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes"
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes"
     compliance:
-      - cis: ["5.2.6"]
-      - cis_csc: ["9"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      cis: ["5.2.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^\s*\t*# && r:IgnoreRhosts\s*\t*yes'
@@ -842,12 +1405,20 @@ checks:
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no"
     compliance:
-      - cis: ["5.2.7"]
-      - cis_csc: ["9"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      cis: ["5.2.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^\s*\t*# && r:HostbasedAuthentication\s*\t*no'
@@ -859,12 +1430,20 @@ checks:
     rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo or su. This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident"
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no"
     compliance:
-      - cis: ["5.2.8"]
-      - cis_csc: ["5.8"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      cis: ["5.2.8"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^\s*\t*# && r:PermitRootLogin\s*\t*no'
@@ -876,12 +1455,20 @@ checks:
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system"
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no"
     compliance:
-      - cis: ["5.2.9"]
-      - cis_csc: ["16"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      cis: ["5.2.9"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^\s*\t*# && r:PermitEmptyPasswords\s*\t*no'
@@ -899,12 +1486,20 @@ checks:
     rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
     remediation: "Remove any users other than root with UID 0 or assign them a new UID if appropriate."
     compliance:
-      - cis: ["6.2.5"]
-      - cis_csc: ["5.1"]
-      - pci_dss: ["10.2.5"]
-      - hipaa: ["164.312.b"]
-      - nist_800_53: ["AU.14", "AC.7"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      cis: ["6.2.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'f:/etc/passwd -> !r:^\s*\t*# && !r:^\s*\t*root: && r:^[\w@-]+:[\w@-]+:0:'
@@ -915,12 +1510,20 @@ checks:
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
     remediation: "If any accounts in the /etc/shadow file do not have a password, run the following command to lock the account until it can be determined why it does not have a password: # passwd -l <username>.  Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off."
     compliance:
-      - cis: ["6.2.1"]
-      - cis_csc: ["16"]
-      - pci_dss: ["10.2.5"]
-      - hipaa: ["164.312.b"]
-      - nist_800_53: ["AU.14", "AC.7"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      cis: ["6.2.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'f:/etc/shadow -> r:^[\w@-]+::'
