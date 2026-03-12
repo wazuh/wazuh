@@ -1052,7 +1052,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *empty_response
+      <<: *permission_denied
 
 ---
 test_name: DELETE /experimental/rootcheck
@@ -2088,7 +2088,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *empty_response
+      <<: *permission_denied
 
   - name: Try to get a rule (specific)
     request:
@@ -2100,16 +2100,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1208
-          total_affected_items: 0
-          total_failed_items: 1
+      <<: *permission_denied
 ---
 test_name: GET /rules/groups
 
@@ -2122,7 +2113,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *empty_response
+      <<: *permission_denied
 
 ---
 test_name: GET /rules/requirement/{requirement}
@@ -2136,7 +2127,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *empty_response
+      <<: *permission_denied
 
 ---
 test_name: GET /rules/files/{filename}
@@ -2164,7 +2155,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *empty_response
+      <<: *permission_denied
 
   - name: Try to get rules file (specific)
     request:
