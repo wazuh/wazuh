@@ -179,7 +179,7 @@ async def get_nodes_ruleset_sync_status(pretty: bool = False, wait_for_complete:
     """
     nodes = raise_if_exc(await get_system_nodes())
 
-    master_dapi = DistributedAPI(f=cluster.get_ruleset_sync_status,
+    master_dapi = DistributedAPI(f=cluster.get_node_ruleset_integrity,
                                  request_type='local_master',
                                  is_async=True,
                                  wait_for_complete=wait_for_complete,
