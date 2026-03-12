@@ -2,7 +2,7 @@
 
 This document covers the key API endpoints with practical examples, the Wazuh Query Language (WQL), error handling, and input validation.
 
-> All paths are validated against `api/api/spec/spec.yaml` (OpenAPI 3.0).  
+> All paths are validated against `api/api/spec/spec.yaml` (OpenAPI 3.0).
 > For the complete endpoint specification, refer to the [official Wazuh API Reference](https://documentation.wazuh.com/current/user-manual/api/reference.html).
 
 ---
@@ -340,7 +340,6 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | DELETE | `/agents/{agent_id}/group` | Remove from all groups |
 | PUT | `/agents/{agent_id}/group/{group_id}` | Assign to group |
 | DELETE | `/agents/{agent_id}/group/{group_id}` | Remove from group |
-| GET | `/agents/{agent_id}/group/is_sync` | Sync status |
 | GET | `/agents/{agent_id}/config/{component}/{configuration}` | Active config |
 | GET | `/agents/{agent_id}/daemons/stats` | Daemon stats |
 | GET | `/agents/{agent_id}/stats/{component}` | Component stats |
@@ -393,8 +392,6 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | GET | `/cluster/{node_id}/stats` | Node stats |
 | GET | `/cluster/{node_id}/stats/hourly` | Hourly stats |
 | GET | `/cluster/{node_id}/stats/weekly` | Weekly stats |
-| GET | `/cluster/{node_id}/stats/analysisd` | Analysisd stats |
-| GET | `/cluster/{node_id}/stats/remoted` | Remoted stats |
 | GET | `/cluster/{node_id}/logs` | Node logs |
 | GET | `/cluster/{node_id}/logs/summary` | Log summary |
 

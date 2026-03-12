@@ -379,18 +379,6 @@ if __name__ == '__main__':
     logging.config.dictConfig(uvicorn_params['log_config'])
     logger = logging.getLogger('wazuh-api')
 
-    # Check deprecated options. To delete after expected versions
-    if 'use_only_authd' in api_conf:
-        del api_conf['use_only_authd']
-        logger.warning(
-            "'use_only_authd' option was deprecated on v4.3.0. Wazuh Authd will always be used")
-
-    if 'path' in api_conf['logs']:
-        del api_conf['logs']['path']
-        logger.warning(
-            "Log 'path' option was deprecated on v4.3.0. Default path will always be used: "
-            f"{API_LOG_PATH}.<log_format>")
-
     # Configure ssl files
     if api_conf['https']['enabled']:
         configure_ssl(uvicorn_params)
