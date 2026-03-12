@@ -192,6 +192,10 @@ def _read_option(section_name: str, opt: str) -> tuple:
                 json_path = json_attribs.copy()
                 json_path['path'] = path.strip()
                 opt_value.append(json_path)
+    elif section_name == 'labels' and opt_name == 'label':
+        opt_value = {'value': opt.text}
+        for a in opt.attrib:
+            opt_value[a] = opt.attrib[a]
     elif (section_name == 'syscheck' and opt_name in ('synchronization', 'whodata')) or \
         (section_name == 'cluster' and opt_name == 'haproxy_helper'):
         opt_value = {}
