@@ -70,6 +70,18 @@ namespace sca
                 }
             }
 
+            if (check.contains("mitre") && check["mitre"].is_string())
+            {
+                try
+                {
+                    check["mitre"] = nlohmann::json::parse(check["mitre"].get<std::string>());
+                }
+                catch (const nlohmann::json::parse_error&)
+                {
+                    check.erase("mitre");
+                }
+            }
+
             if (check.contains("rules") && check["rules"].is_string())
             {
                 check["rules"] = stringToJsonArray(check["rules"].get<std::string>());
