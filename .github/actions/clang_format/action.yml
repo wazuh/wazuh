@@ -17,7 +17,7 @@ runs:
         if: env.ACT # Only run for local execution
         shell: bash
         run: |
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
           echo "deb http://deb.debian.org/debian/ testing main" >>  /etc/apt/sources.conf
           sudo apt update
 
@@ -33,17 +33,11 @@ runs:
         shell: bash
         run: |
 
-          # Don't apply changes, just check
-          arguments="--dry-run "
+          readonly ERRORS_FILE=${{ inputs.path }}/clang_format_errors.txt
+          mapfile -t SOURCE_FILES < <(find "${{ inputs.path }}" -type f \( -name "*.cpp" -o -name "*.hpp" \))
 
-          # Retrieve all the source files for the desired module
-          sourceFiles=$(find ${{ inputs.path }} -type f \( -name "*.cpp" -o -name "*.hpp" \) | tr '\n' ' ')
-          arguments+="-i $sourceFiles "
+          clang-format --dry-run -i "${SOURCE_FILES[@]}" 2> "${ERRORS_FILE}"
 
-          ERRORS_FILE=${{ inputs.path }}/clang_format_errors.txt
-          clang-format $arguments 2> ${ERRORS_FILE}
-
-          # Check if there are errors
           if [ -s "${ERRORS_FILE}" ]; then
             echo "---------------------------------"
             echo "FAILED: Clang-format check failed"
