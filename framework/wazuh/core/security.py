@@ -107,7 +107,7 @@ def invalid_roles_tokens(roles: list = None):
     with TokenManager() as tm:
         tm.add_user_roles_rules(roles=set(roles))
 
-@dapi_allower
+@dapi_allower()
 def revoke_tokens() -> dict:
     """Revoke all tokens in current node.
 

@@ -872,7 +872,7 @@ class Agent:
             return 'null'
 
     @staticmethod
-    @dapi_allower
+    @dapi_allower()
     def get_agents_overview(offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None, search: str = None,
                             select: set = None, filters: dict = None, q: str = "", count: bool = True,
                             get_data: bool = True) -> dict:
