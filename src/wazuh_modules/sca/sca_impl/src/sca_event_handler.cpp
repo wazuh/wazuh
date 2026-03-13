@@ -390,6 +390,7 @@ std::vector<nlohmann::json> SCAEventHandler::GetChecksForPolicy(const std::strin
                                     "reason",
                                     "condition",
                                     "compliance",
+                                    "mitre",
                                     "rules",
                                     "version"})
                        .rowFilter(filter)
@@ -463,6 +464,7 @@ nlohmann::json SCAEventHandler::GetPolicyCheckById(const std::string& policyChec
                                     "reason",
                                     "condition",
                                     "compliance",
+                                    "mitre",
                                     "rules",
                                     "version"})
                        .rowFilter(filter)
@@ -739,7 +741,26 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
 
     if (check.contains("compliance") && check["compliance"].is_string())
     {
-        check["compliance"] = StringToJsonArray(check["compliance"].get<std::string>());
+        try
+        {
+            check["compliance"] = nlohmann::json::parse(check["compliance"].get<std::string>());
+        }
+        catch (const nlohmann::json::parse_error&)
+        {
+            check.erase("compliance");
+        }
+    }
+
+    if (check.contains("mitre") && check["mitre"].is_string())
+    {
+        try
+        {
+            check["mitre"] = nlohmann::json::parse(check["mitre"].get<std::string>());
+        }
+        catch (const nlohmann::json::parse_error&)
+        {
+            check.erase("mitre");
+        }
     }
 
     if (check.contains("rules") && check["rules"].is_string())
@@ -793,7 +814,7 @@ bool SCAEventHandler::ValidateAndHandleStatefulMessage(const nlohmann::json& sta
 {
     if (statefulEvent.empty())
     {
-        return true;
+        return false;
     }
 
     auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();

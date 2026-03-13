@@ -60,7 +60,26 @@ namespace sca
 
             if (check.contains("compliance") && check["compliance"].is_string())
             {
-                check["compliance"] = stringToJsonArray(check["compliance"].get<std::string>());
+                try
+                {
+                    check["compliance"] = nlohmann::json::parse(check["compliance"].get<std::string>());
+                }
+                catch (const nlohmann::json::parse_error&)
+                {
+                    check.erase("compliance");
+                }
+            }
+
+            if (check.contains("mitre") && check["mitre"].is_string())
+            {
+                try
+                {
+                    check["mitre"] = nlohmann::json::parse(check["mitre"].get<std::string>());
+                }
+                catch (const nlohmann::json::parse_error&)
+                {
+                    check.erase("mitre");
+                }
             }
 
             if (check.contains("rules") && check["rules"].is_string())

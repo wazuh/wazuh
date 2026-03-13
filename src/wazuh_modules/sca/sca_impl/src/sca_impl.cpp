@@ -48,6 +48,7 @@ constexpr auto CHECK_SQL_STATEMENT
     reason TEXT,
     condition TEXT,
     compliance TEXT,
+    mitre TEXT,
     rules TEXT,
     regex_type TEXT DEFAULT 'pcre2',
     version INTEGER NOT NULL DEFAULT 1,

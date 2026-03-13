@@ -63,6 +63,21 @@ namespace sca
             }
         }
 
+        // Extract mitre - might be object or string
+        std::string mitre = "";
+
+        if (checkData.contains("mitre"))
+        {
+            if (checkData["mitre"].is_object())
+            {
+                mitre = checkData["mitre"].dump();
+            }
+            else if (checkData["mitre"].is_string())
+            {
+                mitre = checkData["mitre"].get<std::string>();
+            }
+        }
+
         // Extract rules as array and convert to string
         std::string rules = "";
 
@@ -81,7 +96,7 @@ namespace sca
         const std::string regexType = checkData.value("regex_type", "");
 
         return calculateChecksum(
-                   id, policyId, name, description, rationale, remediation, refs, condition, compliance, rules, regexType
+                   id, policyId, name, description, rationale, remediation, refs, condition, compliance, mitre, rules, regexType
                );
     }
 
@@ -94,13 +109,14 @@ namespace sca
                                   const std::string& refs,
                                   const std::string& condition,
                                   const std::string& compliance,
+                                  const std::string& mitre,
                                   const std::string& rules,
                                   const std::string& regexType)
     {
         // Calculate required buffer size
         const auto size = std::snprintf(nullptr,
                                         0,
-                                        "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
+                                        "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
                                         id.c_str(),
                                         policyId.c_str(),
                                         name.c_str(),
@@ -110,6 +126,7 @@ namespace sca
                                         refs.c_str(),
                                         condition.c_str(),
                                         compliance.c_str(),
+                                        mitre.c_str(),
                                         rules.c_str(),
                                         regexType.c_str());
 
@@ -122,7 +139,7 @@ namespace sca
         std::unique_ptr<char[]> checksumBuffer(new char[size + 1]);
         std::snprintf(checksumBuffer.get(),
                       size + 1,
-                      "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
+                      "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
                       id.c_str(),
                       policyId.c_str(),
                       name.c_str(),
@@ -132,6 +149,7 @@ namespace sca
                       refs.c_str(),
                       condition.c_str(),
                       compliance.c_str(),
+                      mitre.c_str(),
                       rules.c_str(),
                       regexType.c_str());
 
