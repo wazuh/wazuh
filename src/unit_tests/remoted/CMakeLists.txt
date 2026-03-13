@@ -86,9 +86,6 @@ list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsAllowedID -Wl,--
 list(APPEND remoted_names "test_remote-config")
 list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,ReadConfig -Wl,--wrap,getDefine_Int -Wl,--wrap,get_node_name -Wl,--wrap,get_cluster_name -Wl,--wrap,w_query_agentd")
 
-list(APPEND remoted_names "test_syslogtcp")
-list(APPEND remoted_flags "-W -Wl,--wrap,w_query_agentd")
-
 list(APPEND remoted_names "test_remote-state")
 list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,rem_get_tsize \
                             -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Begin -Wl,--wrap,OSHash_Begin_ex \

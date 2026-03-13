@@ -69,11 +69,6 @@ defaultwhitelist="liste blanche (white list) par défaut pour la réponse active
 addwhite="Voulez-vous d'autres adresses IP dans votre liste (white list) ?"
 ipswhite="IPs (séparées par des espaces) : "
 
-# Part 3.5/server/local
-syslog="Voulez-vous activer fonctionnalité syslog (port udp 514) ?"
-nosyslog="Fonctionnalité syslog désactivé"
-yessyslog="Fonctionnalité syslog activé"
-
 # Part 3.4/3.5
 readlogs="Mise en place de la configuration pour analyser les logs suivants :"
 

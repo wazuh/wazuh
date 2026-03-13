@@ -32,11 +32,73 @@ int __wrap_ReadConfig(int modules, const char *cfgfile, void *d1, void *d2) {
     return mock();
 }
 
+typedef struct test_state {
+    OS_XML xml;
+    remoted *logr;
+} test_state;
+
 /* setup/teardown */
+
+static xml_node *create_xml_node(const char *element, const char *content) {
+    xml_node *node = calloc(1, sizeof(xml_node));
+    if (element) node->element = strdup(element);
+    if (content) node->content = strdup(content);
+    return node;
+}
+
+static xml_node **create_node_array(int count, ...) {
+    va_list args;
+    xml_node **nodes = calloc(count + 1, sizeof(xml_node *));
+
+    va_start(args, count);
+    for (int i = 0; i < count; i++) {
+        nodes[i] = va_arg(args, xml_node *);
+    }
+    va_end(args);
+
+    nodes[count] = NULL;
+    return nodes;
+}
+
+static void free_node_array(xml_node **nodes) {
+    if (!nodes) return;
+    for (int i = 0; nodes[i]; i++) {
+        free(nodes[i]->element);
+        free(nodes[i]->content);
+        free(nodes[i]);
+    }
+    free(nodes);
+}
+static remoted *create_remoted() {
+    remoted *logr = calloc(1, sizeof(remoted));
+    logr->port = 0;
+    logr->proto = 0;
+    logr->queue_size = 0;
+    logr->rids_closing_time = 0;
+    logr->connection_overtake_time = 60;
+    logr->lip = NULL;
+    return logr;
+}
+
+static int setup(void **state) {
+    test_state *ts = calloc(1, sizeof(test_state));
+    if (!ts) return 1;
+    ts->logr = create_remoted();
+    if (!ts->logr) { free(ts); return 1; }
+    *state = ts;
+    return 0;
+}
+
+static int teardown(void **state) {
+    test_state *ts = *state;
+    if (ts->logr->lip) free(ts->logr->lip);
+    free(ts->logr);
+    free(ts);
+    return 0;
+}
 
 
 /* wraps */
-
 
 /* tests */
 
@@ -337,6 +399,92 @@ static void test_remoted_internal_options_config(void **state) {
     cJSON_Delete(json);
 }
 
+// Read_remote tests
+
+static void test_read_remote_valid_port(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("port", "1514")
+    );
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(ts->logr->port, 1514);
+
+    free_node_array(nodes);
+}
+
+static void test_read_remote_invalid_port(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("port", "-1")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'port': -1.");
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, OS_INVALID);
+    assert_int_equal(ts->logr->port, 0);
+
+    free_node_array(nodes);
+}
+
+static void test_read_remote_connection_section(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("connection", "secure")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'connection'.");
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+static void test_read_remote_allowed_ips_section(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("allowed-ips", "x")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'allowed-ips'.");
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+static void test_read_remote_denied_ips_section(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("denied-ips", "x")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'denied-ips'.");
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -354,6 +502,11 @@ int main(void)
         cmocka_unit_test(test_w_remoted_parse_agents_invalid_value),
         cmocka_unit_test(test_w_remoted_parse_agents_invalid_element),
         cmocka_unit_test(test_remoted_internal_options_config),
+        cmocka_unit_test_setup_teardown(test_read_remote_valid_port, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_invalid_port, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_connection_section, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_allowed_ips_section, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_denied_ips_section, setup, teardown),
 
     };
 

@@ -3,8 +3,8 @@
 
     - Se você escolher 'servidor', você poderá analizar todos os logs,
       criar notificações de e-mail e respostas, e também receber
-      logs de máquinas remotas e de sistemas com 'clientes' rodando
-      (de onde o tráfego é enviado criptografado para o servidor).
+      logs de sistemas com 'clientes' rodando (de onde o tráfego é enviado
+      criptografado para o servidor).
 
     - Se você escolher 'cliente'(agente), você poderá ler arquivos
       locais (do syslog, snort, apache, etc) e encaminhá-los

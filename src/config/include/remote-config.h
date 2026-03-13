@@ -11,9 +11,6 @@
 #ifndef CLOGREMOTE_H
 #define CLOGREMOTE_H
 
-#define SYSLOG_CONN 1
-#define SECURE_CONN 2
-
 #define REMOTED_NET_PROTOCOL_TCP     (0x1 << 0)               ///< Config for TCP protocol enabled
 #define REMOTED_NET_PROTOCOL_UDP     (0x1 << 1)               ///< Config for UDP protocol enabled
 #define REMOTED_NET_PROTOCOL_DEFAULT REMOTED_NET_PROTOCOL_TCP ///< Default remoted protocol
@@ -33,20 +30,16 @@
 
 /* socklen_t header */
 typedef struct _remoted {
-    int *proto;
-    int *port;
-    int *conn;
-    int *ipv6;
+    int proto;
+    int port;
+    int ipv6;
 
-    char **lip;
-    os_ip **allowips;
-    os_ip **denyips;
+    char *lip;
 
     bool allow_higher_versions;
 
     int tcp_sock;       ///< This socket is used to receive requests over TCP
     int udp_sock;       ///< This socket is used to receive requests over UDP
-    int position;       ///< This allows the childs to access its corresponding remoted parameters (unique per child)
     socklen_t peer_size;
     long queue_size;
     bool worker_node;

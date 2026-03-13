@@ -5,7 +5,5 @@
   sections:
     - section: remote
       elements:
-        - connection:
-            value: secure
         - port:
             value: 1514

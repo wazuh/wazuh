@@ -4,7 +4,7 @@
 
     - Si elige 'servidor', será capaz de analizar todos
       los registros, crear  notificaciónes de correo  y
-      respuestas, así como también recibir registros syslog
+      respuestas, así como también recibir registros
       desde equipos remotos y sistemas  ejecutando  el  'agente'
       (quienes transmitirán su trafico cifrado hacia el servidor).
 

@@ -350,32 +350,6 @@ ConfigureServer()
 
     AddWhite
 
-    if [ "X$INSTYPE" = "Xmanager" ]; then
-      # Remote syslog toggle.
-      echo ""
-      $ECHO "  3.6- ${syslog} ($yes/$no) [$yes]: "
-
-      if [ "X${USER_ENABLE_SYSLOG}" = "X" ]; then
-        read ANSWER
-      else
-        ANSWER=${USER_ENABLE_SYSLOG}
-      fi
-
-      echo ""
-      case $ANSWER in
-        $nomatch)
-            echo "   --- ${nosyslog}."
-            ;;
-        *)
-            echo "   - ${yessyslog}."
-            RLOG="yes"
-            ;;
-      esac
-
-      # Enable remote connection support on manager installs.
-      SLOG="yes"
-    fi
-
     UseSSLCert
 
     # Configure auth daemon, boot behavior, logs, and write config.
@@ -610,7 +584,6 @@ setDefaultConfigByInstallType()
     if [ "X${INSTYPE}" = "Xmanager" ]; then
         setDefaultIfEmpty USER_WHITE_LIST "n"
         setDefaultIfEmpty USER_AUTO_START "y"
-        setDefaultIfEmpty USER_ENABLE_SYSLOG "y"
         setDefaultIfEmpty USER_ENABLE_AUTHD "y"
         setDefaultIfEmpty USER_ENABLE_SYSCHECK "n"
         setDefaultIfEmpty USER_ENABLE_ROOTCHECK "n"
