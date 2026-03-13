@@ -50,7 +50,7 @@ constexpr std::string_view PATH_KEY_FILTERS = "/filters";
 constexpr std::string_view PATH_KEY_ENRICHMENTS = "/enrichments";
 constexpr std::string_view PATH_KEY_INDEX_UNCLASSIFIED_EVENTS = "/index_unclassified_events";
 constexpr std::string_view PATH_KEY_OUTPUTS = "/outputs";
-constexpr std::string_view PATH_KEY_TITLE = "/title";
+constexpr std::string_view PATH_KEY_TITLE = "/metadata/title";
 constexpr std::string_view PATH_KEY_ENABLED = "/enabled";
 constexpr std::string_view PATH_KEY_ORIGIN_SPACE = "/origin_space";
 constexpr std::string_view PATH_KEY_HASH = "/hash";
@@ -130,7 +130,7 @@ public:
             auto titleOpt = policyJson.getString(jsonpolicy::PATH_KEY_TITLE);
             if (!titleOpt.has_value() || titleOpt->empty())
             {
-                throw std::runtime_error("Policy JSON must have a non-empty 'title' field");
+                return std::string{"Untitled Policy"};
             }
             return titleOpt.value();
         }();
