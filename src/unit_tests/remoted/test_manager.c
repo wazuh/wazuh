@@ -4804,7 +4804,7 @@ void test_save_controlmsg_startup(void **state)
 {
     int wdb_sock = -1;
     char r_msg[OS_SIZE_128] = {0};
-    strcpy(r_msg, "agent startup {\"version\":\"v4.5.0\"}");
+    strcpy(r_msg, "agent startup {\"version\":\"v5.0.0\"}");
 
     bool is_startup = true;
     bool is_shutdown = false;
@@ -4813,8 +4813,8 @@ void test_save_controlmsg_startup(void **state)
     keyentry key;
     keyentry_init(&key, "NEW_AGENT", "001", "192.168.1.1", "test_key");
 
-    expect_string(__wrap_compare_wazuh_versions, version1, "v4.5.0");
-    expect_string(__wrap_compare_wazuh_versions, version2, "v4.5.0");
+    expect_string(__wrap_compare_wazuh_versions, version1, "v5.0.0");
+    expect_string(__wrap_compare_wazuh_versions, version2, "v5.0.0");
     expect_value(__wrap_compare_wazuh_versions, compare_patch, false);
     will_return(__wrap_compare_wazuh_versions, 0);
 

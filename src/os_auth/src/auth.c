@@ -22,7 +22,7 @@
 
 // Redefine ossec_version
 #undef __ossec_version
-#define __ossec_version "v4.5.0"
+#define __ossec_version "v5.0.0"
 #endif
 
 keystore keys;

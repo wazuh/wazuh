@@ -31,8 +31,8 @@
   #define STATIC
 
 // Redefine ossec_version
-#undef __ossec_version
-#define __ossec_version "v4.5.0"
+  #undef __ossec_version
+  #define __ossec_version "v5.0.0"
 #else
   #define STATIC static
 #endif
