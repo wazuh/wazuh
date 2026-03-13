@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 - Fixed incorrect Windows 11 edition detection after upgrading the agent to version 4.14.3. ([#34530](https://github.com/wazuh/wazuh/pull/34530))
 - Fixed macOS agent crash during syscollector reload caused by invalid `pthread_cond_destroy()` usage. ([#34274](https://github.com/wazuh/wazuh/pull/34274))
 - Fixed Windows OS edition detection. ([34540](https://github.com/wazuh/wazuh/pull/34540))
+- Fix pthread_mutex_destroy invalid argument error on AIX in syscollector. ([#34900](https://github.com/wazuh/wazuh/pull/34900))
 
 #### Changed
 
