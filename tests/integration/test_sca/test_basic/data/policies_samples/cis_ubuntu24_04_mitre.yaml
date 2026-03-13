@@ -12,7 +12,7 @@ requirements:
   description: "Requirements for running the SCA scan against Linux systems"
   condition: any
   rules:
-    - "f:/etc/os-release -> r:Ubuntu 24.04"
+    - "f:/etc/os-release -> r:Ubuntu 24\\.04"
     - "f:/proc/sys/kernel/ostype -> Linux"
 
 checks:
@@ -22,7 +22,7 @@ checks:
     rationale: "Test_1"
     remediation: "Run the following script to unload and disable the cramfs module."
     compliance:
-      nist_800_53: [CM.7]
+      nist_800_53: ["CM.7"]
       pci_dss: ["1.3.4"]
     mitre:
       tactic: ["TA0005"]

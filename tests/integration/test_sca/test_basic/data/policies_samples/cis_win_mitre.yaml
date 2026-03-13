@@ -21,7 +21,7 @@ checks:
     rationale: "Test_1"
     remediation: "Disable the built-in Administrator account."
     compliance:
-      nist_800_53: [CM.7]
+      nist_800_53: ["CM.7"]
       pci_dss: ["1.3.4"]
     mitre:
       tactic: ["TA0005"]

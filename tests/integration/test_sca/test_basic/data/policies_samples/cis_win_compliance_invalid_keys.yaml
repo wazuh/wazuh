@@ -1,12 +1,15 @@
 policy:
-  id: cis_win_compliance_invalid_keys
-  file: cis_win_compliance_invalid_keys.yaml
-  name: Test Compliance Invalid Keys Policy (Windows)
-  description: Test policy to validate that invalid compliance keys are rejected with warnings
+  id: "cis_win_compliance_invalid_keys"
+  file: "cis_win_compliance_invalid_keys.yaml"
+  name: "Test Compliance Invalid Keys Policy (Windows)"
+  description: "Test policy to validate that invalid compliance keys are rejected with warnings"
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+  regex_type: pcre2
 
 requirements:
-  title: Check Windows family platform
-  description: Requirements for running the policy against Windows family.
+  title: "Check Windows family platform."
+  description: "Requirements for running the SCA scan against Windows family"
   condition: any
   rules:
     - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows'
@@ -14,10 +17,10 @@ requirements:
 checks:
 
   - id: 99010
-    title: Test check with mixed valid and invalid compliance keys
-    description: This check includes both valid and invalid compliance keys.
-    rationale: Validates that invalid keys are rejected with a warning while valid keys are kept.
-    remediation: No remediation needed.
+    title: "Test check with mixed valid and invalid compliance keys"
+    description: "This check includes both valid and invalid compliance keys."
+    rationale: "Validates that invalid keys are rejected with a warning while valid keys are kept."
+    remediation: "No remediation needed."
     compliance:
       pci_dss: ["5.2.1"]
       nist_800_53: ["14.6"]

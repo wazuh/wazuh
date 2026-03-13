@@ -25,8 +25,8 @@ checks:
     compliance:
       pci_dss: ["10.2.5"]
       hipaa: ["164.312.b"]
-      nist_800_53: [AU.14, AC.7]
-      tsc: [CC6.1, CC6.8, CC7.2, CC7.3, CC7.4]
+      nist_800_53: ["AU.14", "AC.7"]
+      tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
       - 'c:net user administrator -> r:Account active\s+No'

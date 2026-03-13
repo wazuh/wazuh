@@ -1,23 +1,25 @@
 policy:
-  id: cis_win_compliance_valid_keys
-  file: cis_win_compliance_valid_keys.yaml
-  name: Test Compliance Valid Keys Policy (Windows)
-  description: Test policy to validate the new compliance flat-object format with only allowed keys
+  id: "cis_win_compliance_valid_keys"
+  file: "cis_win_compliance_valid_keys.yaml"
+  name: "Test Compliance Valid Keys Policy (Windows)"
+  description: "Test policy to validate the new compliance flat-object format with only allowed keys"
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+  regex_type: pcre2
 
 requirements:
-  title: Check Windows family platform
-  description: Requirements for running the policy against Windows family.
+  title: "Check Windows family platform."
+  description: "Requirements for running the SCA scan against Windows family"
   condition: any
   rules:
     - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows'
 
 checks:
-
   - id: 99001
-    title: Test check with valid compliance keys only
-    description: This check uses only allowed compliance keys in the new flat object format.
-    rationale: Validates that valid compliance keys are accepted.
-    remediation: No remediation needed.
+    title: "Test check with valid compliance keys only"
+    description: "This check uses only allowed compliance keys in the new flat object format."
+    rationale: "Validates that valid compliance keys are accepted."
+    remediation: "No remediation needed."
     compliance:
       pci_dss: ["2.2.4", "6.2"]
       nist_800_53: ["CM.1"]
@@ -27,10 +29,10 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:.'
 
   - id: 99002
-    title: Test check with all 10 valid compliance keys
-    description: This check uses all 10 allowed compliance framework keys.
-    rationale: Validates that all allowed keys are accepted.
-    remediation: No remediation needed.
+    title: "Test check with all 10 valid compliance keys"
+    description: "This check uses all 10 allowed compliance framework keys."
+    rationale: "Validates that all allowed keys are accepted."
+    remediation: "No remediation needed."
     compliance:
       cmmc: ["L2-3.4.7"]
       fedramp: ["AC-1"]
