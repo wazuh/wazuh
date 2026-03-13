@@ -26,7 +26,6 @@ typedef enum global_db_access
     WDB_GET_ALL_AGENTS,
     WDB_FIND_AGENT,
     WDB_GET_AGENT_INFO,
-    WDB_GET_AGENT_LABELS,
     WDB_SELECT_AGENT_NAME,
     WDB_SELECT_AGENT_GROUP,
     WDB_FIND_GROUP,
@@ -159,15 +158,6 @@ int wdb_find_agent(const char* name, const char* ip, int* sock);
  * @return JSON* with the information on success or NULL on failure.
  */
 cJSON* wdb_get_agent_info(int id, int* sock);
-
-/**
- * @brief Returns a JSON with all the agent's labels.
- *
- * @param[in] id Id of the agent for whom the labels are requested.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return JSON* with the labels on success or NULL on failure.
- */
-cJSON* wdb_get_agent_labels(int id, int* sock);
 
 /**
  * @brief Get name from agent table in global.db by using its ID.
