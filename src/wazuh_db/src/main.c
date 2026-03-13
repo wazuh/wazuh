@@ -22,7 +22,6 @@ static void * run_dealer(void * args);
 static void * run_worker(void * args);
 static void * run_gc(void * args);
 static void * run_backup(void * args);
-static void * cleanup_deprecated_dbs(void * args);
 
 extern wdb_state_t wdb_state;
 
@@ -45,7 +44,6 @@ int main(int argc, char ** argv)
     pthread_t * worker_pool = NULL;
     pthread_t thread_gc;
     pthread_t thread_backup;
-    pthread_t thread_cleanup;
 
     OS_SetName(ARGV0);
 
@@ -244,11 +242,6 @@ int main(int argc, char ** argv)
         }
     }
 
-    if (status = pthread_create(&thread_cleanup, NULL, cleanup_deprecated_dbs, NULL), status != 0) {
-        merror("Couldn't create 'cleanup_deprecated_dbs' thread: %s", strerror(status));
-        goto failure;
-    }
-
     // Join threads
     pthread_join(thread_dealer, NULL);
 
@@ -264,7 +257,6 @@ int main(int argc, char ** argv)
     if(backups_enabled) {
         pthread_join(thread_backup, NULL);
     }
-    pthread_join(thread_cleanup, NULL);
     wdb_close_all();
     wdb_free_conf();
 
@@ -484,53 +476,6 @@ void * run_backup(__attribute__((unused)) void * args) {
     return NULL;
 }
 
-void * cleanup_deprecated_dbs(__attribute__((unused)) void * args) {
-    char path[PATH_MAX];
-    char * end = NULL;
-    struct dirent * dirent = NULL;
-    DIR * dir;
-
-    if (!(dir = wopendir(WDB2_DIR))) {
-        merror("Couldn't open directory '%s': %s.", WDB2_DIR, strerror(errno));
-        return NULL;
-    }
-
-    while ((dirent = readdir(dir)) != NULL) {
-        // Delete .template.db
-        if (strcmp(dirent->d_name, ".template.db") == 0) {
-            if (snprintf(path, sizeof(path), "%s/%s", WDB2_DIR, dirent->d_name) < (int)sizeof(path)) {
-                minfo("Removing deprecated template database: '%s'", path);
-                if (remove(path) < 0) {
-                    mdebug1(DELETE_ERROR, path, errno, strerror(errno));
-                }
-            }
-            continue;
-        }
-
-        // Taking only databases with numbers as a first character in the names to
-        // exclude global.db, global.db-journal, wdb socket, and current directory.
-        if (dirent->d_name[0] >= '0' && dirent->d_name[0] <= '9') {
-            if (end = strchr(dirent->d_name, '.'), end) {
-                int id = (int)strtol(dirent->d_name, &end, 10);
-                if (id >= 0 && strncmp(end, ".db", 3) == 0) {
-                    // Delete all numeric databases (deprecated in this version)
-                    if (snprintf(path, sizeof(path), "%s/%s", WDB2_DIR, dirent->d_name) < (int)sizeof(path)) {
-                        minfo("Removing deprecated numeric database: '%s'", path);
-                        if (remove(path) < 0) {
-                            mdebug1(DELETE_ERROR, path, errno, strerror(errno));
-                        }
-                    }
-                }
-            } else {
-                mwarn("Strange file found: '%s/%s'", WDB2_DIR, dirent->d_name);
-            }
-        }
-    }
-
-    closedir(dir);
-
-    return NULL;
-}
 
 void wdb_help() {
     print_header();

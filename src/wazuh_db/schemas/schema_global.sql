@@ -9,6 +9,7 @@
 */
 
 PRAGMA foreign_keys=ON;
+PRAGMA user_version = 1;
 
 CREATE TABLE IF NOT EXISTS agent (
     id INTEGER PRIMARY KEY,
@@ -46,25 +47,11 @@ CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
 CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
 CREATE INDEX IF NOT EXISTS agent_group_hash ON agent (group_hash);
 
-CREATE TABLE IF NOT EXISTS labels (
-    id INTEGER REFERENCES agent (id) ON DELETE CASCADE,
-    key TEXT NOT NULL,
-    value TEXT NOT NULL,
-    PRIMARY KEY (id,key)
-);
-
-CREATE TABLE IF NOT EXISTS info (
-    key TEXT PRIMARY KEY,
-    value TEXT
-);
-
 CREATE TABLE IF NOT EXISTS `group` (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
     UNIQUE (name)
 );
-
-CREATE INDEX IF NOT EXISTS group_name ON `group` (name);
 
 CREATE TABLE IF NOT EXISTS belongs (
     id_agent INTEGER REFERENCES agent (id) ON DELETE CASCADE,
@@ -74,7 +61,6 @@ CREATE TABLE IF NOT EXISTS belongs (
     PRIMARY KEY (id_agent, id_group)
 );
 
-CREATE INDEX IF NOT EXISTS belongs_id_agent ON belongs (id_agent);
 CREATE INDEX IF NOT EXISTS belongs_id_group ON belongs (id_group);
 
 CREATE TABLE IF NOT EXISTS metadata (
@@ -82,4 +68,3 @@ CREATE TABLE IF NOT EXISTS metadata (
     value TEXT
 );
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '7');

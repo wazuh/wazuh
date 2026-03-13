@@ -63,6 +63,25 @@ int wdb_metadata_get_entry(wdb_t * wdb, const char *key, char *output) {
     return ret;
 }
 
+int wdb_user_version_get(wdb_t *wdb, int *version) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_prepare(wdb->db, "PRAGMA user_version;", -1, &stmt, NULL)) {
+        merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    int ret = OS_INVALID;
+
+    if (wdb_step(stmt) == SQLITE_ROW) {
+        *version = sqlite3_column_int(stmt, 0);
+        ret = OS_SUCCESS;
+    }
+
+    sqlite3_finalize(stmt);
+    return ret;
+}
+
 int wdb_count_tables_with_name(wdb_t * wdb, const char * key, int* count) {
     sqlite3_stmt *stmt = NULL;
 

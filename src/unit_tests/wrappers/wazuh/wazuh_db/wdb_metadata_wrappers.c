@@ -30,6 +30,8 @@ int __wrap_wdb_metadata_get_entry(__attribute__((unused)) wdb_t * wdb,
     return mock();
 }
 
-int __wrap_wdb_is_older_than_v310(__attribute__((unused)) wdb_t *wdb) {
+int __wrap_wdb_user_version_get(__attribute__((unused)) wdb_t *wdb, int *version) {
+    *version = mock();
     return mock();
 }
+
