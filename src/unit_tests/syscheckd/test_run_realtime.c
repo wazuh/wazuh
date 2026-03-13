@@ -141,6 +141,8 @@ static int setup_realtime_start(void **state) {
     if(hash == NULL)
         return -1;
 
+    hash->table = calloc(1, sizeof(OSHashNode *));
+
     *state = hash;
 
     state[1] = syscheck.realtime;
@@ -152,10 +154,13 @@ static int setup_realtime_start(void **state) {
 static int teardown_realtime_start(void **state) {
     OSHash *hash = *state;
 
-    free(hash);
-
     if (syscheck.realtime) {
         free(syscheck.realtime);
+    }
+
+    if (hash) {
+        free(hash->table);
+        free(hash);
     }
 
     syscheck.realtime = state[1];
@@ -357,12 +362,6 @@ void test_realtime_start_failure_hash(void **state) {
     expect_string(__wrap__merror, formatted_msg,
         "(1102): Could not acquire memory due to [(12)-(Cannot allocate memory)].");
 
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     ret = realtime_start();
 
     errno = 0;
@@ -385,15 +384,11 @@ void test_realtime_start_failure_inotify(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, FIM_ERROR_INOTIFY_INITIALIZE);
 
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     ret = realtime_start();
 
     assert_int_equal(ret, -1);
+    /* OSHash_Free already freed the hash passed via mock */
+    *state = NULL;
 }
 
 void test_realtime_adddir_realtime_start_failure(void **state) {

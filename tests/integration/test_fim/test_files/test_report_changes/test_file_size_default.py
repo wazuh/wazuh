@@ -1,4 +1,4 @@
-'''
+"""
 copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
@@ -61,7 +61,8 @@ pytest_args:
 
 tags:
     - fim_report_changes
-'''
+"""
+
 import os
 import time
 import sys
@@ -74,38 +75,69 @@ from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG, RT_DELAY
 from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import FILE_SIZE_LIMIT_REACHED, EVENT_TYPE_REPORT_CHANGES, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED, \
-                                               ERROR_MSG_FILE_LIMIT_REACHED, DIFF_FOLDER_DELETED, ERROR_MSG_FOLDER_DELETED, EVENT_UNABLE_DIFF
+from wazuh_testing.modules.fim.patterns import (
+    FILE_SIZE_LIMIT_REACHED,
+    EVENT_TYPE_REPORT_CHANGES,
+    ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED,
+    ERROR_MSG_FILE_LIMIT_REACHED,
+    DIFF_FOLDER_DELETED,
+    ERROR_MSG_FOLDER_DELETED,
+    EVENT_UNABLE_DIFF,
+)
 from wazuh_testing.modules.fim.utils import make_diff_file_path
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.file import write_file, translate_size
 from wazuh_testing.utils.string import generate_string
 from wazuh_testing.utils.callbacks import generate_callback
-from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
+from wazuh_testing.utils.configuration import (
+    get_test_cases_data,
+    load_configuration_template,
+)
 
 from . import TEST_CASES_PATH, CONFIGS_PATH
 
 
 # Marks
-pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.darwin, pytest.mark.tier(level=1)]
+pytestmark = [
+    pytest.mark.agent,
+    pytest.mark.linux,
+    pytest.mark.win32,
+    pytest.mark.darwin,
+    pytest.mark.tier(level=1),
+]
 
 
 # Test metadata, configuration and ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_file_size_default.yaml')
-config_path = Path(CONFIGS_PATH, 'configuration_disk_quota_default.yaml')
+cases_path = Path(TEST_CASES_PATH, "cases_file_size_default.yaml")
+config_path = Path(CONFIGS_PATH, "configuration_disk_quota_default.yaml")
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
-test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
+test_configuration = load_configuration_template(
+    config_path, test_configuration, test_metadata
+)
 
 
 # Set configurations required by the fixtures.
-local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_WINDOWS_DEBUG: '2', RT_DELAY: 1000}
+local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_WINDOWS_DEBUG: "2", RT_DELAY: 1000}
 
 
 # Tests
-@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_file_size_default(test_configuration, test_metadata, configure_local_internal_options,
-                           truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, file_to_monitor, clean_fim_sync_db, daemons_handler, detect_end_scan):
-    '''
+@pytest.mark.parametrize(
+    "test_configuration, test_metadata",
+    zip(test_configuration, test_metadata),
+    ids=cases_ids,
+)
+def test_file_size_default(
+    test_configuration,
+    test_metadata,
+    configure_local_internal_options,
+    truncate_monitored_files,
+    set_wazuh_configuration,
+    folder_to_monitor,
+    file_to_monitor,
+    daemons_handler,
+    detect_end_scan,
+):
+    """
     description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
                  'diff' information from the default value of the 'file_size' option. For this purpose,
                  the test will monitor a directory, create a testing file smaller than the default limit,
@@ -166,39 +198,63 @@ def test_file_size_default(test_configuration, test_metadata, configure_local_in
     tags:
         - diff
         - scheduled
-    '''
-    if test_metadata.get('fim_mode') == 'whodata' and sys.platform == WINDOWS:
+    """
+    if test_metadata.get("fim_mode") == "whodata" and sys.platform == WINDOWS:
         time.sleep(5)
 
-    size_limit = translate_size('50MB')
-    diff_file_path = make_diff_file_path(folder=test_metadata.get('folder_to_monitor'), filename=test_metadata.get('filename'))
+    size_limit = translate_size("50MB")
+    diff_file_path = make_diff_file_path(
+        folder=test_metadata.get("folder_to_monitor"),
+        filename=test_metadata.get("filename"),
+    )
 
     # Modify file with a smaller size than the configured value
-    to_write = generate_string(int(size_limit / 100), '0')
+    to_write = generate_string(int(size_limit / 100), "0")
     write_file(file_to_monitor, data=to_write)
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=60)
-    assert wazuh_log_monitor.callback_result, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
-    assert 'More changes...' in str(wazuh_log_monitor.callback_result), 'Wrong content_changes field'
+    wazuh_log_monitor.start(
+        callback=generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=60
+    )
+    assert wazuh_log_monitor.callback_result, (
+        ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
+    )
+    assert "More changes..." in str(wazuh_log_monitor.callback_result), (
+        "Wrong content_changes field"
+    )
 
     if not os.path.exists(diff_file_path):
-        pytest.raises(FileNotFoundError(f"{diff_file_path} not found. It should exist before increasing the size."))
+        raise (
+            FileNotFoundError(
+                f"{diff_file_path} not found. It should exist before increasing the size."
+            )
+        )
 
     # Increase the size of the file over the configured value
-    to_write = generate_string(int(size_limit), '1')
+    to_write = generate_string(int(size_limit), "1")
     write_file(file_to_monitor, data=to_write)
 
     wazuh_log_monitor.start(callback=generate_callback(DIFF_FOLDER_DELETED), timeout=60)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FOLDER_DELETED
 
     if os.path.exists(diff_file_path):
-        pytest.raises(FileExistsError(f"{diff_file_path} found. It should not exist after incresing the size."))
+        raise (
+            FileExistsError(
+                f"{diff_file_path} found. It should not exist after increasing the size."
+            )
+        )
 
-    wazuh_log_monitor.start(callback=generate_callback(FILE_SIZE_LIMIT_REACHED), timeout=30)
+    wazuh_log_monitor.start(
+        callback=generate_callback(FILE_SIZE_LIMIT_REACHED), timeout=30
+    )
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FILE_LIMIT_REACHED
 
     # Check the content_changes field in the event
     wazuh_log_monitor.start(callback=generate_callback(EVENT_UNABLE_DIFF), timeout=30)
-    assert wazuh_log_monitor.callback_result, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
-    assert 'Unable to calculate diff due to \'file_size\' limit has been reached.' in wazuh_log_monitor.callback_result, 'Wrong content_changes field'
+    assert wazuh_log_monitor.callback_result, (
+        ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
+    )
+    assert (
+        "Unable to calculate diff due to 'file_size' limit has been reached."
+        in wazuh_log_monitor.callback_result
+    ), "Wrong content_changes field"

@@ -20,7 +20,6 @@ from itertools import groupby, chain
 from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, path
 import psutil
 from pyexpat import ExpatError
-from requests import get, exceptions
 from shutil import Error, move, copy2
 from signal import signal, alarm, SIGALRM, SIGKILL
 from xml.etree.ElementTree import Element  # nosec B405
@@ -864,7 +863,7 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
 
 
 def check_remote_commands(new_conf: Element, original_conf: Element):
-    """Check if higher version agents are allowed.
+    """Check remote commands are allowed.
 
     Parameters
     ----------
@@ -875,8 +874,8 @@ def check_remote_commands(new_conf: Element, original_conf: Element):
 
     Raises
     ------
-    WazuhError(1127)
-        Raised if the agents allow_higher_versions setting is modified in the configuration to upload.
+    WazuhError(1124)
+        Raised if remote command settings are modified in the configuration to upload.
     """
 
     def _filter_remote_commands(commands: list, exceptions: list) -> list:
@@ -928,8 +927,8 @@ def check_remote_commands(new_conf: Element, original_conf: Element):
 
     ALLOW_KEY = 'allow'
     EXCEPTIONS_KEY = 'exceptions'
-    LOCALFILE_HIERARCHY = ['wazuh_config', 'localfile']
-    WODLE_HIERARCHY = ['wazuh_config', 'wodle']
+    LOCALFILE_HIERARCHY = ['ossec_config', 'localfile']
+    WODLE_HIERARCHY = ['ossec_config', 'wodle']
     LOCALFILE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['localfile']
     WODLE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['wodle_command']
 
@@ -968,14 +967,14 @@ def xml_to_dict(root, section_path: list):
         """Convert an XML element into a nested dictionary."""
         result = {}
 
-        for child in element:
-            if len(child):  # Has children
+        if len(element):
+            for child in element:
                 result[child.tag] = element_to_dict(child)
-            else:
-                result[child.tag] = {
-                    'attrib': child.attrib,
-                    'value': child.text.strip() if child.text else None
-                }
+        else:
+            result = {
+                'attrib': element.attrib,
+                'value': element.text.strip() if element.text else None
+            }
 
         return result
 
@@ -1042,7 +1041,7 @@ def check_wazuh_limits_unchanged(new_conf, original_conf):
     WazuhError(1127)
         Raised if one of the protected limits is modified in the configuration to upload.
     """
-    CONFIG_LIMITS_HIERARCHY = ['wazuh_config', 'global', 'limits']
+    CONFIG_LIMITS_HIERARCHY = ['ossec_config', 'global', 'limits']
     limits_configuration = configuration.api_conf['upload_configuration']['limits']
     for disabled_limit in [conf for conf, allowed in limits_configuration.items() if not allowed['allow']]:
         new_limits = xml_to_dict(new_conf, CONFIG_LIMITS_HIERARCHY + [disabled_limit])
@@ -1068,8 +1067,8 @@ def check_agents_allow_higher_versions(new_conf: Element, original_conf: Element
         Raised if the agents allow_higher_versions setting is modified in the configuration to upload.
     """
 
-    AUTH_HIERARCHY = ['wazuh_config', 'auth', 'allow_higher_versions']
-    REMOTE_HIERARCHY = ['wazuh_config', 'remote', 'allow_higher_versions']
+    AUTH_HIERARCHY = ['ossec_config', 'auth', 'allow_higher_versions']
+    REMOTE_HIERARCHY = ['ossec_config', 'remote', 'agents', 'allow_higher_versions']
     upload_configuration = configuration.api_conf['upload_configuration']
 
     if not upload_configuration['agents']['allow_higher_versions']['allow']:
@@ -1100,7 +1099,7 @@ def check_indexer(new_conf, original_conf):
         Raised if the indexer section is modified in the configuration to upload.
     """
 
-    CONFIG_INDEXER_HIERARCHY = ['wazuh_config', 'indexer']
+    CONFIG_INDEXER_HIERARCHY = ['ossec_config', 'indexer']
     upload_configuration = configuration.api_conf['upload_configuration']
 
     if not upload_configuration['indexer']['allow']:
@@ -2382,5 +2381,3 @@ def get_utc_strptime(date: str, datetime_format: str, date_is_at_utc: bool = Tru
         dt = dt.replace(tzinfo=get_localtime()).astimezone(timezone.utc)
 
     return dt
-
-
