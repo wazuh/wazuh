@@ -15,33 +15,34 @@ on:
 jobs:
   rtr:
     strategy:
-          fail-fast: false
-          matrix:
-              module: [syscheckd]
-              target: [agent, winagent]
-    # We don't use wz-linux-amd64 because the install_build_deps action adds a fixed repository for Wine
-    runs-on: wz-linux-amd64
+      fail-fast: false
+      matrix:
+        module: [syscheckd]
+        target: [agent, winagent]
+    runs-on: ubuntu-24.04
+
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-      - name: "Install dependencies"
-        uses: ./.github/actions/install_build_deps
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/install_build_deps
         with:
           target: ${{ matrix.target }}
-      - name: Set up Python
-        uses: actions/setup-python@v4
+
+      - uses: actions/setup-python@v5
         with:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
-      - name: "Install a compatible CMake"
-        uses: ./.github/actions/reinstall_cmake
-      - name: Run RTR for module ${{ matrix.module }} and target ${{ matrix.target }}
+
+      - uses: ./.github/actions/reinstall_cmake
+
+      - name: Run RTR
         run: |
-          cd src/
-          python build.py --target ${{ matrix.target }} --readytoreview ${{ matrix.module }}
-      - name: Uploading coverage report
+          cd src/ || exit 1
+          python build.py --target ${{ matrix.target }} --readytoreview ${{ matrix.module }} || exit 1
+
+      - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage_report ${{ matrix.target }}
+          name: coverage_report_${{ matrix.target }}
           path: ./**/coverage_report/**

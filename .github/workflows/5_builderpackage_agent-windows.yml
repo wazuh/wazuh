@@ -103,11 +103,8 @@ jobs:
       - name: Copy binaries to workspace
         shell: bash
         run: |
-          # Copy compiled binaries from artifact to workspace
           cp -r compiled-binaries/src/* src/ || true
-          # Restore VERSION.json with commit info
           cp compiled-binaries/VERSION.json . || true
-          # Verify key files exist
           ls -la src/build/bin/*.exe src/build/lib/*.dll || echo "Warning: Some binaries may be missing"
 
       - name: Set PKG_NAME
@@ -137,13 +134,11 @@ jobs:
       - name: Download cv2pdb for debug symbols
         shell: pwsh
         run: |
-          # Download cv2pdb.exe for converting debug symbols
           $cv2pdbUrl = "https://github.com/rainers/cv2pdb/releases/download/v0.52/cv2pdb-0.52.zip"
           Invoke-WebRequest -Uri $cv2pdbUrl -OutFile cv2pdb.zip
           Expand-Archive -Path cv2pdb.zip -DestinationPath cv2pdb_temp
-          # Copy cv2pdb.exe to win32 directory where the script expects it
           Copy-Item cv2pdb_temp/cv2pdb.exe src/win32/
-          # Verify
+
           if (Test-Path "src/win32/cv2pdb.exe") {
             Write-Host "cv2pdb.exe downloaded successfully"
           } else {
@@ -242,14 +237,6 @@ jobs:
             exit 1
           }
 
-      - name: Set up Python virtual environment
-        shell: pwsh
-        run: |
-          python -m venv checkfiles_env
-          & checkfiles_env\Scripts\Activate.ps1
-          python -m pip install --upgrade pip
-          python -m pip install -r .github/actions/check_files/requirements.txt
-
       - name: Check installed files
         shell: pwsh
         run: |
@@ -330,52 +317,26 @@ jobs:
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
           aws-region: ${{ secrets.CI_AWS_REGION }}
 
-      - name: Upload package to S3
+      - name: Upload artifacts to S3
         run: |
           PACKAGE_NAME="${{ needs.package-windows-i686.outputs.package-name }}"
-          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
-              if [ -s "/tmp/$PACKAGE_NAME" ]; then
-            aws s3 cp /tmp/$PACKAGE_NAME $S3_URI/
-            echo "S3 URI: $S3_URI/$PACKAGE_NAME"
-          else
-            echo "Package file is empty or does not exist."
-            exit 1
-          fi
-
-      - name: Upload checksum to S3
-        if: inputs.checksum == true
-        run: |
-          PACKAGE_NAME="${{ needs.package-windows-i686.outputs.package-name }}"
-          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
-          if [ -s "/tmp/$PACKAGE_NAME.sha512" ]; then
-            aws s3 cp /tmp/$PACKAGE_NAME.sha512 $S3_URI/
-          else
-            echo "Warning: Checksum file not found, skipping"
-          fi
-
-      - name: Upload debug symbols to S3
-        if: needs.package-windows-i686.outputs.package-symbols-name != ''
-        run: |
           SYMBOLS_NAME="${{ needs.package-windows-i686.outputs.package-symbols-name }}"
           S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
-          if [ -s "/tmp/$SYMBOLS_NAME" ]; then
-            aws s3 cp /tmp/$SYMBOLS_NAME $S3_URI/
-          else
-            echo "Warning: Debug symbols file not found, skipping"
+
+          [ -s "/tmp/$PACKAGE_NAME" ] || exit 1
+          aws s3 cp "/tmp/$PACKAGE_NAME" "$S3_URI/" || exit 1
+
+          if [ "${{ inputs.checksum }}" == "true" ] && [ -s "/tmp/$PACKAGE_NAME.sha512" ]; then
+            aws s3 cp "/tmp/$PACKAGE_NAME.sha512" "$S3_URI/" || exit 1
           fi
 
-      - name: Upload debug symbols checksum to S3
-        if: inputs.checksum == true && needs.package-windows-i686.outputs.package-symbols-name != ''
-        run: |
-          SYMBOLS_NAME="${{ needs.package-windows-i686.outputs.package-symbols-name }}"
-          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
-          if [ -s "/tmp/$SYMBOLS_NAME.sha512" ]; then
-            aws s3 cp /tmp/$SYMBOLS_NAME.sha512 $S3_URI/
-          else
-            echo "Warning: Debug symbols checksum file not found, skipping"
-          fi
+          if [ -n "$SYMBOLS_NAME" ] && [ -s "/tmp/$SYMBOLS_NAME" ]; then
+            aws s3 cp "/tmp/$SYMBOLS_NAME" "$S3_URI/" || exit 1
+            if [ "${{ inputs.checksum }}" == "true" ] && [ -s "/tmp/$SYMBOLS_NAME.sha512" ]; then
+              aws s3 cp "/tmp/$SYMBOLS_NAME.sha512" "$S3_URI/" || exit 1
+            fi
+          fi  smoke-test-windows:
 
-  smoke-test-windows:
     needs: [upload-windows-i686-to-s3]
     if: success()
     uses: ./.github/workflows/5_testintegration_agent-start.yml

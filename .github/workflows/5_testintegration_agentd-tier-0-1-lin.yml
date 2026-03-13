@@ -79,7 +79,8 @@ jobs:
           cd tests/integration || exit 1
           sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" ../../venv/bin/python -m pytest --tier 0 --tier 1 test_agentd/ --html=results.html --self-contained-html || exit 1
 
-      - if: failure()
+      - name: Upload failed test results
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: agentd-test-results-${{ github.run_id }}
