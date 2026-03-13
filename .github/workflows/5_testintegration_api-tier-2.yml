@@ -25,38 +25,31 @@ jobs:
           architecture: x64
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
-      # Build wazuh manager for linux.
       - name: Build wazuh manager for linux
         run: |
           make deps -C src TARGET=manager -j2
           make -C src TARGET=manager -j2
-      # Install wazuh manager for linux.
       - name: Install wazuh manager for linux
         run: |
-          echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_INSTALL_TYPE="manager"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo "USER_DIR=$INSTALLATION_DIR" >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSLOG="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_UPDATE_CHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AUTO_START="y"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          sudo sh install.sh
-          rm ./etc/preloaded-vars.conf
+         cat << EOF > ./etc/preloaded-vars.conf
+          USER_LANGUAGE="en"
+          USER_INSTALL_TYPE="manager"
+          USER_DIR="$INSTALLATION_DIR"
+          USER_ENABLE_SYSLOG="n"
+          USER_ENABLE_AUTHD="n"
+          USER_ENABLE_UPDATE_CHECK="n"
+          USER_AUTO_START="y"
+          EOF
 
-          sudo mkdir -p $INSTALLATION_DIR/etc/certs
-          sudo touch $INSTALLATION_DIR/etc/certs/root-ca.pem
-          sudo touch $INSTALLATION_DIR/etc/certs/manager.pem
-          sudo touch $INSTALLATION_DIR/etc/certs/manager-key.pem
+          sudo sh install.sh || exit 1
+          rm ./etc/preloaded-vars.conf || exit 1
 
-          sudo $INSTALLATION_DIR/bin/wazuh-manager-control restart
-      # Download and install integration tests framework.
+          sudo mkdir -p $INSTALLATION_DIR/etc/certs || exit 1
+          sudo touch $INSTALLATION_DIR/etc/certs/root-ca.pem || exit 1
+          sudo touch $INSTALLATION_DIR/etc/certs/manager.pem || exit 1
+          sudo touch $INSTALLATION_DIR/etc/certs/manager-key.pem || exit 1
+
+          sudo $INSTALLATION_DIR/bin/wazuh-manager-control restart || exit 1
       - name: Download and install integration tests framework
         run: |
           VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
@@ -72,7 +65,6 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run integration tests.
       - name: Run API tests
         run: |
           mkdir -p /tmp/wazuh-logs
@@ -81,20 +73,17 @@ jobs:
           sudo tail -F $INSTALLATION_DIR/logs/cluster.log >> /tmp/wazuh-logs/cluster.log 2>/dev/null &
           cd tests/integration
           sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest --tier 2 test_api/ --html=results.html --self-contained-html
-      # Collect logs if tests fail
       - name: Collect logs on failure
         if: failure()
         run: |
           sudo journalctl -u wazuh-manager > /tmp/wazuh-logs/wazuh-manager.service.log || true
           sudo chown -R $(whoami):$(whoami) /tmp/wazuh-logs || true
-      # Upload logs artifact if test fails
       - name: Upload logs artifact
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: wazuh-logs-${{ github.job }}
           path: /tmp/wazuh-logs
-      # Upload the tests result html as an artifact
       - name: Upload failed test results
         if: failure()
         uses: actions/upload-artifact@v4

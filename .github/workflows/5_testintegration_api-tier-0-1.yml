@@ -9,102 +9,102 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_api-tier-0-1.yml"
-        - "api/**"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_api/**"
+      - ".github/workflows/5_testintegration_api-tier-0-1.yml"
+      - "api/**"
+      - "src/Makefile"
+      - "tests/integration/conftest.py"
+      - "tests/integration/test_api/**"
 
 jobs:
   build:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-      BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
+      BRANCH_BASE: ${{ github.base_ref || inputs.base_branch || 'main' }}
       INSTALLATION_DIR: /var/wazuh-manager
     runs-on: wz-linux-amd64
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+ 
+      - uses: actions/setup-python@v5
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      - name: "Install a compatible CMake"
-        uses: ./.github/actions/reinstall_cmake
-      # Build wazuh manager for linux.
+
+      - uses: ./.github/actions/reinstall_cmake
+ 
       - name: Build wazuh manager for linux
         run: |
-          make deps -C src TARGET=manager -j2
-          make -C src TARGET=manager -j2
-      # Install wazuh manager for linux.
+          make deps -C src TARGET=manager -j$(nproc) || exit 1
+          make -C src TARGET=manager -j$(nproc) || exit 1
+
       - name: Install wazuh manager for linux
         run: |
-          echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_INSTALL_TYPE="manager"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo "USER_DIR=$INSTALLATION_DIR" >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSLOG="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_UPDATE_CHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AUTO_START="y"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          sudo sh install.sh
-          rm ./etc/preloaded-vars.conf
-
-          # Generate dummy SSL certificates for indexer module
-          sudo mkdir -p $INSTALLATION_DIR/etc/certs
+          cat << 'EOF' > ./etc/preloaded-vars.conf
+          USER_LANGUAGE="en"
+          USER_INSTALL_TYPE="manager"
+          USER_DIR="/var/wazuh-manager"
+          USER_ENABLE_SYSLOG="n"
+          USER_ENABLE_AUTHD="n"
+          USER_ENABLE_UPDATE_CHECK="n"
+          USER_AUTO_START="y"
+          EOF
+ 
+          sudo sh install.sh || exit 1
+          rm ./etc/preloaded-vars.conf || exit 1
+          sudo mkdir -p $INSTALLATION_DIR/etc/certs || exit 1
           sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
             -keyout $INSTALLATION_DIR/etc/certs/root-ca.pem -out $INSTALLATION_DIR/etc/certs/root-ca.pem \
-            -days 1 -subj "/CN=test" 2>/dev/null
+            -days 1 -subj "/CN=test" 2>/dev/null || exit 1
           sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
             -keyout $INSTALLATION_DIR/etc/certs/manager-key.pem -out $INSTALLATION_DIR/etc/certs/manager.pem \
-            -days 1 -subj "/CN=test" 2>/dev/null
-          sudo $INSTALLATION_DIR/bin/wazuh-manager-control restart
-      # Download and install integration tests framework.
+            -days 1 -subj "/CN=test" 2>/dev/null || exit 1
+ 
+          sudo $INSTALLATION_DIR/bin/wazuh-manager-control restart || exit 1
+ 
       - name: Download and install integration tests framework
         run: |
           VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
-          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
-              QA_BRANCH=${BRANCH_NAME}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
-              QA_BRANCH=${BRANCH_BASE}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${VERSION}`" != "X" ]; then
-              QA_BRANCH=${VERSION}
-          else
-              QA_BRANCH="main"
+          [ -n "$VERSION" ] || exit 1
+
+          QA_BRANCH="main"
+          if [ -n "${BRANCH_NAME}" ] && git ls-remote --exit-code https://github.com/wazuh/qa-integration-framework.git "${BRANCH_NAME}" >/dev/null 2>&1; then
+              QA_BRANCH="${BRANCH_NAME}"
+          elif [ -n "${BRANCH_BASE}" ] && git ls-remote --exit-code https://github.com/wazuh/qa-integration-framework.git "${BRANCH_BASE}" >/dev/null 2>&1; then
+              QA_BRANCH="${BRANCH_BASE}"
+          elif [ -n "${VERSION}" ] && git ls-remote --exit-code https://github.com/wazuh/qa-integration-framework.git "${VERSION}" >/dev/null 2>&1; then
+              QA_BRANCH="${VERSION}"
           fi
-          git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          sudo pip install qa-integration-framework/
-          sudo rm -rf qa-integration-framework/
-      # Run integration tests.
+ 
+          git clone -b "${QA_BRANCH}" --single-branch https://github.com/wazuh/qa-integration-framework.git || exit 1
+
+          python3 -m venv venv || exit 1
+          ./venv/bin/pip install --upgrade pip || exit 1
+          ./venv/bin/pip install ./qa-integration-framework/ || exit 1
+          rm -rf qa-integration-framework/ || exit 1
+
       - name: Run API tests
         run: |
-          mkdir -p /tmp/wazuh-logs
+          mkdir -p /tmp/wazuh-logs || exit 1
           sudo tail -F $INSTALLATION_DIR/logs/api.log >> /tmp/wazuh-logs/api.log 2>/dev/null &
           sudo tail -F $INSTALLATION_DIR/logs/wazuh-manager.log >> /tmp/wazuh-logs/wazuh-manager.log 2>/dev/null &
           sudo tail -F $INSTALLATION_DIR/logs/cluster.log >> /tmp/wazuh-logs/cluster.log 2>/dev/null &
-          cd tests/integration
-          sudo WAZUH_PATH="$INSTALLATION_DIR" GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python -m pytest --tier 0 --tier 1 test_api/ --html=results.html --self-contained-html
-      # Collect logs if tests fail
+ 
+          cd tests/integration || exit 1
+          sudo WAZUH_PATH="$INSTALLATION_DIR" GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" ../../venv/bin/python -m pytest --tier 0 --tier 1 test_api/ --html=results.html --self-contained-html || exit 1
+ 
       - name: Collect logs on failure
         if: failure()
         run: |
           sudo journalctl -u wazuh-manager > /tmp/wazuh-logs/wazuh-manager.service.log || true
           sudo chown -R $(whoami):$(whoami) /tmp/wazuh-logs || true
-      # Upload logs artifact if test fails
+ 
       - name: Upload logs artifact
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: wazuh-logs-${{ github.job }}
           path: /tmp/wazuh-logs
-      # Upload the tests result html as an artifact
+ 
       - name: Upload failed test results
         if: failure()
         uses: actions/upload-artifact@v4
