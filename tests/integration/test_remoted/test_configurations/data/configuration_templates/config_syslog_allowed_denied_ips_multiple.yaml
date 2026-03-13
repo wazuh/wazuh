@@ -1,9 +1,0 @@
-- sections:
-    - section: remote
-      elements:
-        - ipv6:
-            value: IPV6
-        - port:
-            value: '514'
-        - protocol:
-            value: UDP

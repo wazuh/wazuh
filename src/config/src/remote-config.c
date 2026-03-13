@@ -39,9 +39,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
 {
     int i = 0;
     remoted * logr = NULL;
-    int defined_queue_size = 0;
     const int DEFAULT_RIDS_CLOSING_TIME = 300;
-    int initial_lip_size = 2;
 
     /*** XML Definitions ***/
     /* Remote options */

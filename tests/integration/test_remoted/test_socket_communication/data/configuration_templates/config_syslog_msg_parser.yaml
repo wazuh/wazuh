@@ -1,9 +1,0 @@
-- sections:
-    - section: remote
-      elements:
-        - port:
-            value: PORT
-        - protocol:
-            value: PROTOCOL
-        - ipv6:
-            value: "yes"

@@ -89,7 +89,8 @@ def test_invalid_connection_protocol(test_configuration, test_metadata, configur
         log_monitor.start(callback=generate_callback(patterns.DETECT_REMOTED_STARTED,
                                                      replacement={
                                                         "port": test_metadata['port'],
-                                                        "protocol_valid_upper": protocol_valid_upper}))
+                                                        "protocol_valid_upper": protocol_valid_upper,
+                                                        "connection": "secure"}))
         assert log_monitor.callback_result
 
     else:
@@ -98,7 +99,8 @@ def test_invalid_connection_protocol(test_configuration, test_metadata, configur
         log_monitor.start(callback=generate_callback(patterns.DETECT_REMOTED_STARTED,
                                                      replacement={
                                                         "port": test_metadata['port'],
-                                                        "protocol_valid_upper": used_protocol}))
+                                                        "protocol_valid_upper": used_protocol,
+                                                        "connection": "secure"}))
         assert log_monitor.callback_result
 
         real_config_list = get_real_configuration

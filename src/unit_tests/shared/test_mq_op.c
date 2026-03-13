@@ -406,7 +406,7 @@ void test_SendMSGAction_socket_error(void ** state){
     int queue = 0;
 
     expect_value(__wrap_OS_SendUnix, socket, queue);
-    expect_string(__wrap_OS_SendUnix, msg, "2:location:message");
+    expect_string(__wrap_OS_SendUnix, msg, "1:location:message");
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, OS_SOCKTERR);
 
@@ -422,7 +422,7 @@ void test_SendMSGAction_socket_busy(void ** state){
     int queue = 0;
 
     expect_value(__wrap_OS_SendUnix, socket, queue);
-    expect_string(__wrap_OS_SendUnix, msg, "2:location:message");
+    expect_string(__wrap_OS_SendUnix, msg, "1:location:message");
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, OS_INVALID);
 
@@ -439,7 +439,7 @@ void test_SendMSGAction_non_secure_msg(void ** state){
     int queue = 0;
 
     expect_value(__wrap_OS_SendUnix, socket, queue);
-    expect_string(__wrap_OS_SendUnix, msg, "2:location:message");
+    expect_string(__wrap_OS_SendUnix, msg, "1:location:message");
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, 1);
 
