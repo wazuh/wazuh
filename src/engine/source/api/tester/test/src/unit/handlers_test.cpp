@@ -10,7 +10,7 @@
 #include <cmstore/mockcmstore.hpp>
 #include <eMessages/tester.pb.h>
 #include <router/mockTester.hpp>
-#include <schemf/emptySchema.hpp>
+#include <schemf/mockSchema.hpp>
 
 using namespace api::adapter;
 using namespace api::test;
@@ -70,8 +70,26 @@ struct LogtestPostCase
     std::function<eEngine::tester::PublicRunPost_Request()> makeReq;
     std::function<void(MockTesterAPI&)> mocker;
     std::function<httplib::Response()> expectedResponse;
-    std::function<std::shared_ptr<schemf::ISchema>()> makeSchema;
+    std::function<std::shared_ptr<schemf::IValidator>()> makeSchema;
 };
+
+std::shared_ptr<schemf::IValidator> makeSchemaValidator(bool shouldValidate)
+{
+    auto schema = std::make_shared<schemf::mocks::MockSchema>();
+    EXPECT_CALL(*schema, validate(testing::_, testing::Matcher<const json::Json&>(testing::_)))
+        .WillRepeatedly(
+            [shouldValidate](const auto&, const auto&) -> base::RespOrError<schemf::ValidationResult>
+            {
+                if (shouldValidate)
+                {
+                    return schemf::ValidationResult {};
+                }
+
+                return base::Error {"schema validation failed"};
+            });
+
+    return schema;
+}
 } // namespace
 
 TEST_P(TesterHandlerTest, Handler)
@@ -352,7 +370,7 @@ TEST_P(LogtestPostTest, Handler)
     const auto& testCase = GetParam();
     testCase.mocker(*tester);
 
-    std::shared_ptr<schemf::ISchema> schema = testCase.makeSchema();
+    std::shared_ptr<schemf::IValidator> schema = testCase.makeSchema();
 
     auto handler = publicRunPost(tester, base::eventParsers::parsePublicEvent, schema);
 
@@ -402,7 +420,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             []() { return makeRunPostSuccessResponse(R"({"status":"ok"})"); },
             // Schema: validation OK, fields exist
-            []() { return schemf::mocks::EmptySchema::create(true, true, json::Json::Type::String); },
+            []() { return makeSchemaValidator(true); },
         },
         // Fail case with invalid metadata
         LogtestPostCase {
@@ -423,8 +441,7 @@ INSTANTIATE_TEST_SUITE_P(
             [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
             []()
             { return userErrorResponse<eEngine::tester::RunPost_Response>("Metadata should contain 'wazuh' as root"); },
-            // Schema: validation not-OK, fields doesn't exist
-            []() { return schemf::mocks::EmptySchema::create(false, false, json::Json::Type::String); },
+            []() { return makeSchemaValidator(false); },
         },
         LogtestPostCase {
             "QueueZero",
@@ -451,8 +468,7 @@ INSTANTIATE_TEST_SUITE_P(
                 return userErrorResponse<eEngine::tester::RunPost_Response>(
                     "queue is required and must be non-zero (1..255)");
             },
-            // Schema: validation OK, fields exist
-            []() { return schemf::mocks::EmptySchema::create(true, true); },
+            []() { return makeSchemaValidator(true); },
         },
         LogtestPostCase {
             "QueueTooHigh",
@@ -473,8 +489,7 @@ INSTANTIATE_TEST_SUITE_P(
             [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
             []()
             { return userErrorResponse<eEngine::tester::RunPost_Response>("Invalid queue: 300 (must be 1..255)"); },
-            // Schema: validation OK, fields exist
-            []() { return schemf::mocks::EmptySchema::create(true, true); },
+            []() { return makeSchemaValidator(true); },
         },
         LogtestPostCase {
             "MissingMetadata",
@@ -491,10 +506,9 @@ INSTANTIATE_TEST_SUITE_P(
             [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
             []() {
                 return userErrorResponse<eEngine::tester::RunPost_Response>(
-                    "metadata is required and must be a JSON object");
+                    "Metadata is required and must be a JSON object");
             },
-            // Schema: validation OK, but no fields since metadata is missing
-            []() { return schemf::mocks::EmptySchema::create(true, false, json::Json::Type::Object); },
+            []() { return makeSchemaValidator(true); },
         },
         LogtestPostCase {
             "Failed metadata type",
@@ -516,9 +530,11 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
             []()
-            { return userErrorResponse<eEngine::tester::RunPost_Response>("Type missmatch metadata field 'wazuh.foo' type 'string' should be 'object' according to schema"); },
-            // Metadata is present and fields exist but schema-level validation fails.
-            []() { return schemf::mocks::EmptySchema::create(false, true, json::Json::Type::Object); },
+            {
+                return userErrorResponse<eEngine::tester::RunPost_Response>(
+                    "Metadata field 'wazuh.foo' doesn't exist or doesn't match the expected one from the schema");
+            },
+            []() { return makeSchemaValidator(false); },
         },
         LogtestPostCase {
             "EmptyEvent",
@@ -539,10 +555,10 @@ INSTANTIATE_TEST_SUITE_P(
                 return protoReq;
             },
             [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
-            []()
-            { return userErrorResponse<eEngine::tester::RunPost_Response>("event is required and cannot be empty"); },
-            // Metadata is present and fields exist but schema-level validation fails.
-            []() { return schemf::mocks::EmptySchema::create(false, true, json::Json::Type::String); },
+            []() {
+                return userErrorResponse<eEngine::tester::RunPost_Response>("event is required and cannot be empty");
+            },
+            []() { return makeSchemaValidator(true); },
         }));
 
 class LogtestDeleteTest : public ::testing::TestWithParam<LogtestDeleteCase>

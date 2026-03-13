@@ -236,6 +236,15 @@ public:
      * @return base::OptError
      */
     virtual base::RespOrError<ValidationResult> validate(const DotPath& name, const ValidationToken& token) const = 0;
+
+    /**
+     * @brief Check if a JSON value is valid for a field.
+     *
+     * @param name Name of the field.
+     * @param jsonValue The JSON value to validate.
+     * @return base::OptError
+     */
+    virtual base::RespOrError<ValidationResult> validate(const DotPath& name, const json::Json& jsonValue) const = 0;
 };
 
 /**

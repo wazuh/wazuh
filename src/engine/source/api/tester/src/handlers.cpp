@@ -118,7 +118,7 @@ parseAndValidatePublicMetadata(const google::protobuf::Struct& protoMetadata)
 }
 
 bool validateMetadataLeaves(const json::Json& node,
-                            const std::shared_ptr<schemf::ISchema>& schema,
+                            const std::shared_ptr<schemf::IValidator>& schemaValidator,
                             std::string& currentPath,
                             std::string& error)
 {
@@ -144,7 +144,7 @@ bool validateMetadataLeaves(const json::Json& node,
             }
             currentPath.append(key);
 
-            if (!validateMetadataLeaves(value, schema, currentPath, error))
+            if (!validateMetadataLeaves(value, schemaValidator, currentPath, error))
             {
                 return false;
             }
@@ -157,22 +157,12 @@ bool validateMetadataLeaves(const json::Json& node,
 
     try
     {
-        auto dotPath = DotPath(currentPath);
-        if (!schema->hasField(dotPath))
+        const auto& dotPath = DotPath(currentPath);
+        if (base::isError(schemaValidator->validate(dotPath, node)))
         {
             error =
-                fmt::format("Unknown field in metadata: {}. Only fields from the schema are allowed", dotPath.str());
-            return false;
-        }
-
-        auto jSchemaType = schema->getJsonType(dotPath);
-        auto jValueType = node.type();
-        if (jSchemaType != jValueType)
-        {
-            error = fmt::format("Type missmatch metadata field '{}' type '{}' should be '{}' according to schema",
-                                dotPath.str(),
-                                json::Json::typeToStr(jValueType),
-                                json::Json::typeToStr(jSchemaType));
+                fmt::format("Metadata field '{}' doesn't exist or doesn't match the expected one from the schema",
+                            dotPath.str());
             return false;
         }
     }
@@ -508,11 +498,11 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
 
 adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>& tester,
                                     const base::eventParsers::PublicProtocolHandler& protocolHandler,
-                                    const std::shared_ptr<schemf::ISchema>& schema)
+                                    const std::shared_ptr<schemf::IValidator>& schemaValidator)
 {
     return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
             protocolHandler,
-            wSchema = std::weak_ptr<schemf::ISchema>(schema)](const auto& req, auto& res)
+            wSchemaValidator = std::weak_ptr<schemf::IValidator>(schemaValidator)](const auto& req, auto& res)
     {
         using RequestType = eTester::PublicRunPost_Request;
         using ResponseType = eTester::RunPost_Response;
@@ -554,13 +544,13 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
 
         if (!protoReq.has_metadata())
         {
-            res = adapter::userErrorResponse<ResponseType>("metadata is required and must be a JSON object");
+            res = adapter::userErrorResponse<ResponseType>("Metadata is required and must be a JSON object");
             return;
         }
 
-        // Ensure schema is available
-        auto schemaLocked = wSchema.lock();
-        if (!schemaLocked)
+        // Ensure schemaValidator is available
+        auto schemaValidatorLocked = wSchemaValidator.lock();
+        if (!schemaValidatorLocked)
         {
             res = adapter::userErrorResponse<ResponseType>("Schema is not available");
             return;
@@ -577,7 +567,7 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
 
         std::string badFieldMsg {};
         std::string metadataPath {"wazuh"};
-        if (!validateMetadataLeaves(wazuhMetadataObject, schemaLocked, metadataPath, badFieldMsg))
+        if (!validateMetadataLeaves(wazuhMetadataObject, schemaValidatorLocked, metadataPath, badFieldMsg))
         {
             res = adapter::userErrorResponse<ResponseType>(badFieldMsg);
             return;
