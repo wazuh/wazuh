@@ -244,4 +244,10 @@ base::RespOrError<TargetFieldKind> Schema::validateTargetField(const DotPath& na
 {
     return m_validator->validateTargetField(name);
 }
+
+base::RespOrError<ValidationResult> Schema::validate(const DotPath& name, const json::Json& jsonValue) const
+{
+    auto valueToken = ValueToken::create(jsonValue);
+    return m_validator->validate(name, valueToken);
+}
 } // namespace schemf

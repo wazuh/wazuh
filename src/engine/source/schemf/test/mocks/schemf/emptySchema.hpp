@@ -1,8 +1,9 @@
-#ifndef SCHEMF_MOCKS_EMPTY_SCHEMA_HPP
-#define SCHEMF_MOCKS_EMPTY_SCHEMA_HPP
+// TODO: Deprecated, remove once all tests are updated
+
+#ifndef _SCHEMF_MOCKS_EMPTY_SCHEMA_HPP
+#define _SCHEMF_MOCKS_EMPTY_SCHEMA_HPP
 
 #include <memory>
-#include <optional>
 #include <stdexcept>
 
 #include <schemf/ivalidator.hpp>
@@ -16,20 +17,11 @@ public:
     EmptySchema() = default;
     ~EmptySchema() = default;
 
-    // Configure whether validate() should succeed (true) or fail (false)
-    bool m_validationResult {true};
+    Type getType(const DotPath& name) const override { throw std::runtime_error("Not implemented"); }
 
-    // Configure what hasField() should return
-    bool m_hasFieldResult {false};
+    bool hasField(const DotPath& name) const override { return false; }
 
-    json::Json::Type m_jsonTypeResult {json::Json::Type::Object};
-
-    explicit EmptySchema(bool validationResult, bool hasFieldResult, json::Json::Type jsonTypeResult = json::Json::Type::Object)
-        : m_validationResult(validationResult)
-        , m_hasFieldResult(hasFieldResult)
-        , m_jsonTypeResult(jsonTypeResult)
-    {
-    }
+    json::Json::Type getJsonType(const DotPath& name) const override { throw std::runtime_error("Not implemented"); }
 
     base::RespOrError<TargetFieldKind> validateTargetField(const DotPath& name) const override
     {
@@ -59,10 +51,21 @@ public:
         return ValidationResult();
     }
 
+    base::RespOrError<ValidationResult> validate(const DotPath& name, const json::Json&) const override
+    {
+        auto res = validateTargetField(name);
+        if (base::isError(res))
+        {
+            return base::getError(res);
+        }
+
+        return ValidationResult();
+    }
+
     // TODO DELETE THIS
     static std::shared_ptr<EmptySchema> create() { return std::make_shared<EmptySchema>(); }
 };
 
 } // namespace schemf::mocks
 
-#endif // SCHEMF_MOCKS_EMPTY_SCHEMA_HPP
+#endif // _SCHEMF_MOCKS_EMPTY_SCHEMA_HPP
