@@ -139,9 +139,6 @@ runs:
             echo "Configuring project fields..."
             export GITHUB_TOKEN="${{ inputs.project_token }}"
 
-            # Add issue to project first
-            gh project item-add 86 --owner wazuh --url "$ISSUE_URL"
-
             # Configure project fields
             bash .github/scripts/configure-project-fields.sh "$ISSUE_NUMBER" "$RELEASE" "$STAGE"
           else
