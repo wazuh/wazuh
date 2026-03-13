@@ -2,13 +2,30 @@ name: 4.X - FIM on Linux - Integration tests - Tier 0 and 1
 
 on:
   workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
+
+# Note: Github will force this by default in June 2026, but we set it explicitly to avoid any issues with JavaScript actions in the meantime.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build:
+  test-fim:
+    name: FIM integration tests - Tier ${{ matrix.tier }}
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
+      BUILD_WORKFLOW: 5_builderpackage_agent-linux.yml
+      PACKAGES_PATH: /tmp/packages
+      AGENT_PACKAGE_REGEXP: wazuh-agent.*amd64.*\.deb
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        tier: [0, 1]
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -17,42 +34,36 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      - name: "Install a compatible CMake"
-        uses: ./.github/actions/reinstall_cmake
-      # Build wazuh agent for linux.
-      - name: Build wazuh agent for linux
+
+      - name: Download package artifact
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: ${{ env.BUILD_WORKFLOW }}
+          workflow_conclusion: success
+          name_is_regexp: true
+          name: ${{ env.AGENT_PACKAGE_REGEXP }}
+          path: ${{ env.PACKAGES_PATH }}
+          if_no_artifact_found: fail
+          check_artifacts: true
+          search_artifacts: true
+          branch: ${{ env.BRANCH_BASE }}
+
+      - name: Install and configure wazuh agent
         run: |
-          make deps -C src TARGET=agent -j2
-          make -C src TARGET=agent -j2
-      # Install wazuh agent for linux.
-      - name: Install wazuh agent for linux
-        run: |
-          echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo "USER_DIR=/var/ossec" >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_WHITE_LIST="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSLOG="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AUTO_START="y"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AGENT_SERVER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          sudo sh install.sh
-          rm ./etc/preloaded-vars.conf
+          PACKAGE_NAME=$(find "${PACKAGES_PATH}" -maxdepth 1 -type f -name "wazuh-agent*amd64*.deb" -exec basename {} \; | grep -v -E "^wazuh-agent-dbg" | head -n 1)
+          if [ -z "$PACKAGE_NAME" ]; then
+            echo "No agent package found in ${PACKAGES_PATH}"
+            exit 1
+          fi
+
+          sudo dpkg -i "${PACKAGES_PATH}/${PACKAGE_NAME}" || sudo apt-get install -f -y
+
+          OSSEC_CONF="/var/ossec/etc/ossec.conf"
+          if [ -f "$OSSEC_CONF" ]; then
+            sudo sed -i '0,/<address>.*<\/address>/s//<address>127.0.0.1<\/address>/' "$OSSEC_CONF"
+          fi
+
+          sudo /var/ossec/bin/wazuh-control restart
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
@@ -78,4 +89,4 @@ jobs:
       - name: Run fim integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 --tier 1 test_fim/
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python -m pytest --tier ${{ matrix.tier }} test_fim/
