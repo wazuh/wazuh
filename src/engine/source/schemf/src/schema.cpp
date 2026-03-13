@@ -239,4 +239,10 @@ base::RespOrError<ValidationResult> Schema::validate(const DotPath& name, const 
 {
     return m_validator->validate(name, token);
 }
+
+base::RespOrError<ValidationResult> Schema::validate(const DotPath& name, const json::Json& jsonValue) const
+{
+    auto valueToken = ValueToken::create(jsonValue);
+    return m_validator->validate(name, valueToken);
+}
 } // namespace schemf

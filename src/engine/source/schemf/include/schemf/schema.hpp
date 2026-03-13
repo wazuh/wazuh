@@ -101,6 +101,11 @@ public:
      * @copydoc IValidator::validate
      */
     base::RespOrError<ValidationResult> validate(const DotPath& name, const ValidationToken& token) const override;
+
+    /**
+     * @copydoc IValidator::validate
+     */
+    base::RespOrError<ValidationResult> validate(const DotPath& name, const json::Json& jsonValue) const override;
 };
 } // namespace schemf
 

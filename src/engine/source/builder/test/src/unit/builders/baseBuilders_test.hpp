@@ -278,10 +278,11 @@ auto expectFilterHelper(const std::string& name, Builder builder)
 
         EXPECT_CALL(*ctx, context()).WillOnce(testing::ReturnRefOfCopy(mocks.context));
         EXPECT_CALL(*ctx, validator()).Times(testing::AtLeast(1)).WillRepeatedly(testing::ReturnRef(*mocks.validator));
-        EXPECT_CALL(*mocks.validator, validate(testing::_, testing::_))
+        EXPECT_CALL(*mocks.validator,
+                    validate(testing::Matcher<const DotPath&>(testing::_),
+                             testing::Matcher<const schemf::ValidationToken&>(testing::_)))
             .Times(testing::AtLeast(1))
             .WillRepeatedly(testing::Return(schemf::ValidationResult()));
-
         EXPECT_CALL(*mocks.ctx, registry()).WillOnce(testing::ReturnRef(*mocks.registry));
         EXPECT_CALL(innerRegistry, get(name)).WillOnce(testing::Return(builder));
 
@@ -306,7 +307,9 @@ auto expectMapHelper(const std::string& name, Builder builder)
         EXPECT_CALL(*mocks.allowedFields, check(testing::_, testing::_)).WillOnce(testing::Return(true));
 
         EXPECT_CALL(*ctx, validator()).Times(testing::AtLeast(1)).WillRepeatedly(testing::ReturnRef(*mocks.validator));
-        EXPECT_CALL(*mocks.validator, validate(testing::_, testing::_))
+        EXPECT_CALL(*mocks.validator,
+                    validate(testing::Matcher<const DotPath&>(testing::_),
+                             testing::Matcher<const schemf::ValidationToken&>(testing::_)))
             .Times(testing::AtLeast(1))
             .WillRepeatedly(testing::Return(schemf::ValidationResult()));
 
@@ -341,7 +344,9 @@ auto expectAnyFilterHelper(Builders... builders)
 
         EXPECT_CALL(*ctx, context()).WillRepeatedly(testing::ReturnRefOfCopy(mocks.context));
         EXPECT_CALL(*ctx, validator()).Times(testing::AtLeast(1)).WillRepeatedly(testing::ReturnRef(*mocks.validator));
-        EXPECT_CALL(*mocks.validator, validate(testing::_, testing::_))
+        EXPECT_CALL(*mocks.validator,
+                    validate(testing::Matcher<const DotPath&>(testing::_),
+                             testing::Matcher<const schemf::ValidationToken&>(testing::_)))
             .Times(testing::AtLeast(1))
             .WillRepeatedly(testing::Return(schemf::ValidationResult()));
 
@@ -377,7 +382,9 @@ auto expectAnyMapHelper(Builders... builders)
         EXPECT_CALL(*mocks.allowedFields, check(testing::_, testing::_)).WillRepeatedly(testing::Return(true));
 
         EXPECT_CALL(*ctx, validator()).Times(testing::AtLeast(1)).WillRepeatedly(testing::ReturnRef(*mocks.validator));
-        EXPECT_CALL(*mocks.validator, validate(testing::_, testing::_))
+        EXPECT_CALL(*mocks.validator,
+                    validate(testing::Matcher<const DotPath&>(testing::_),
+                             testing::Matcher<const schemf::ValidationToken&>(testing::_)))
             .Times(testing::AtLeast(1))
             .WillRepeatedly(testing::Return(schemf::ValidationResult()));
 

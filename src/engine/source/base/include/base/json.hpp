@@ -149,7 +149,7 @@ private:
     Json(const rapidjson::GenericObject<true, rapidjson::Value>& object);
 
     /**
-     * @brief Get Json type from internal rapidjason type.
+     * @brief Get Json type from internal rapidjson type.
      *
      * @param t rapidjson::Type to convert.
      * @return constexpr Type The converted type.

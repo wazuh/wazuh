@@ -18,6 +18,10 @@ public:
                 validate,
                 (const DotPath& name, const ValidationToken& token),
                 (const, override));
+    MOCK_METHOD(base::RespOrError<ValidationResult>,
+                validate,
+                (const DotPath& name, const json::Json& jsonValue),
+                (const, override));
 };
 } // namespace schemf::mocks
 

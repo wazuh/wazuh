@@ -44,7 +44,8 @@ auto customTargetExpected(bool hasField = true, schemf::Type type = schemf::Type
     return [hasField, type](const BuildersMocks& mocks)
     {
         EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
-        EXPECT_CALL(*mocks.validator, validate(DotPath("targetField"), testing::_))
+        EXPECT_CALL(*mocks.validator,
+                    validate(DotPath("targetField"), testing::Matcher<const schemf::ValidationToken&>(testing::_)))
             .WillOnce(testing::Return(schemf::ValidationResult()));
         EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField"))).WillOnce(testing::Return(hasField));
         if (hasField)
@@ -60,7 +61,8 @@ auto arrayTargetExpected(bool hasField = true, schemf::Type type = schemf::Type:
     return [hasField, type](const BuildersMocks& mocks)
     {
         EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
-        EXPECT_CALL(*mocks.validator, validate(DotPath("targetField"), testing::_))
+        EXPECT_CALL(*mocks.validator,
+                    validate(DotPath("targetField"), testing::Matcher<const schemf::ValidationToken&>(testing::_)))
             .WillOnce(testing::Return(schemf::ValidationResult(
                 [](const json::Json& json) -> base::OptError
                 {
