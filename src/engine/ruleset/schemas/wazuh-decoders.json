@@ -11871,38 +11871,8 @@
             "string"
           ]
         },
-        "vulnerability.classification": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nThe classification of the vulnerability scoring system. For example (https://www.first.org/cvss/)",
-          "type": [
-            "string"
-          ]
-        },
-        "vulnerability.description": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nThe description of the vulnerability that provides additional context of the vulnerability. For example (https://cve.mitre.org/about/faqs.html#cve_entry_descriptions_created)",
-          "type": [
-            "string"
-          ]
-        },
-        "vulnerability.enumeration": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nThe type of identifier used for this vulnerability. For example (https://cve.mitre.org/about/)",
-          "type": [
-            "string"
-          ]
-        },
         "vulnerability.id": {
           "description": "Module: ecs\nIndexerType: keyword\n\nThe identification (ID) is the number portion of a vulnerability entry. It includes a unique identification number for the vulnerability. For example (https://cve.mitre.org/about/faqs.html#what_is_cve_id)",
-          "type": [
-            "string"
-          ]
-        },
-        "vulnerability.reference": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nA resource that provides additional information, context, and mitigations for the identified vulnerability.",
-          "type": [
-            "string"
-          ]
-        },
-        "vulnerability.report_id": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nThe report or scan identification number.",
           "type": [
             "string"
           ]
@@ -11921,22 +11891,6 @@
         },
         "vulnerability.score.base": {
           "description": "Module: ecs\nIndexerType: float\n\nScores can range from 0.0 to 10.0, with 10.0 being the most severe.\nBase scores cover an assessment for exploitability metrics (attack vector, complexity, privileges, and user interaction), impact metrics (confidentiality, integrity, and availability), and scope. For example (https://www.first.org/cvss/specification-document)",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "vulnerability.score.environmental": {
-          "description": "Module: ecs\nIndexerType: float\n\nScores can range from 0.0 to 10.0, with 10.0 being the most severe.\nEnvironmental scores cover an assessment for any modified Base metrics, confidentiality, integrity, and availability requirements. For example (https://www.first.org/cvss/specification-document)",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "vulnerability.score.temporal": {
-          "description": "Module: ecs\nIndexerType: float\n\nScores can range from 0.0 to 10.0, with 10.0 being the most severe.\nTemporal scores cover an assessment for code maturity, remediation level, and confidence. For example (https://www.first.org/cvss/specification-document)",
           "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
           "type": [
             "number",
