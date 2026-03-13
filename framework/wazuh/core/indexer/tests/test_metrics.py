@@ -6,7 +6,7 @@
 Unit tests for MetricsIndex bulk indexing operations.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -42,7 +42,7 @@ class TestBulkIndex:
         """Verify that bulk_index delegates to async_bulk."""
         docs = [{"field": "value1"}, {"field": "value2"}]
 
-        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock) as mock_bulk:
+        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock, return_value=(2, 0)) as mock_bulk:
             await metrics_index.bulk_index(
                 index="wazuh-metrics-agents",
                 docs=docs,
@@ -55,7 +55,7 @@ class TestBulkIndex:
         """Verify each action has _op_type create, _index, and _source."""
         docs = [{"agent_id": "001"}, {"agent_id": "002"}]
 
-        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock) as mock_bulk:
+        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock, return_value=(2, 0)) as mock_bulk:
             await metrics_index.bulk_index(
                 index="wazuh-metrics-agents",
                 docs=docs,
@@ -76,7 +76,7 @@ class TestBulkIndex:
         """Verify chunk_size is mapped from bulk_size parameter."""
         docs = [{"x": 1}]
 
-        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock) as mock_bulk:
+        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock, return_value=(1, 0)) as mock_bulk:
             await metrics_index.bulk_index(
                 index="wazuh-metrics-comms",
                 docs=docs,
@@ -91,7 +91,7 @@ class TestBulkIndex:
         """Verify raise_on_error=False so individual failures do not crash the task."""
         docs = [{"x": 1}]
 
-        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock) as mock_bulk:
+        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock, return_value=(1, 0)) as mock_bulk:
             await metrics_index.bulk_index(
                 index="wazuh-metrics-agents",
                 docs=docs,
@@ -106,7 +106,7 @@ class TestBulkIndex:
         """Verify the OpenSearch client is passed to async_bulk."""
         docs = [{"x": 1}]
 
-        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock) as mock_bulk:
+        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock, return_value=(1, 0)) as mock_bulk:
             await metrics_index.bulk_index(
                 index="wazuh-metrics-agents",
                 docs=docs,
@@ -119,7 +119,7 @@ class TestBulkIndex:
     @pytest.mark.asyncio
     async def test_bulk_index_empty_docs(self, metrics_index):
         """Verify bulk_index handles an empty document list without errors."""
-        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock) as mock_bulk:
+        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock, return_value=(0, 0)) as mock_bulk:
             await metrics_index.bulk_index(
                 index="wazuh-metrics-agents",
                 docs=[],
@@ -136,7 +136,7 @@ class TestBulkIndex:
         docs = [{"ts": "2026-03-11"}]
 
         for stream in ["wazuh-metrics-agents", "wazuh-metrics-comms"]:
-            with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock) as mock_bulk:
+            with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock, return_value=(1, 0)) as mock_bulk:
                 await metrics_index.bulk_index(
                     index=stream,
                     docs=docs,
@@ -146,3 +146,36 @@ class TestBulkIndex:
                 _, call_args, _ = mock_bulk.mock_calls[0]
                 actions = list(call_args[1])
                 assert actions[0]["_index"] == stream
+
+    @pytest.mark.asyncio
+    async def test_bulk_index_logs_warning_on_failures(self, metrics_index):
+        """Verify a warning is logged when some documents fail to index."""
+        docs = [{"x": i} for i in range(100)]
+
+        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock, return_value=(95, 5)):
+            metrics_index._logger = MagicMock()
+            await metrics_index.bulk_index(
+                index="wazuh-metrics-agents",
+                docs=docs,
+                bulk_size=100,
+            )
+            metrics_index._logger.warning.assert_called_once_with(
+                "Metrics bulk index on '%s': %d indexed, %d failed",
+                "wazuh-metrics-agents",
+                95,
+                5,
+            )
+
+    @pytest.mark.asyncio
+    async def test_bulk_index_no_warning_on_success(self, metrics_index):
+        """Verify no warning is logged when all documents are indexed successfully."""
+        docs = [{"x": 1}]
+
+        with patch("wazuh.core.indexer.metrics.async_bulk", new_callable=AsyncMock, return_value=(1, 0)):
+            metrics_index._logger = MagicMock()
+            await metrics_index.bulk_index(
+                index="wazuh-metrics-agents",
+                docs=docs,
+                bulk_size=100,
+            )
+            metrics_index._logger.warning.assert_not_called()
