@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import logging
 from typing import List
 
 from opensearchpy import AsyncOpenSearch
@@ -24,6 +25,7 @@ class MetricsIndex:
         """
         super().__init__()
         self._client = client
+        self._logger = logging.getLogger('wazuh').getChild('MetricsIndex')
 
     async def bulk_index(self, index: str, docs: List[dict], bulk_size: int) -> None:
         """
@@ -57,9 +59,13 @@ class MetricsIndex:
             }
             for doc in docs
         )
-        await async_bulk(
+        success, failed = await async_bulk(
             self._client,
             actions,
             chunk_size=bulk_size,
             raise_on_error=False,
         )
+        if failed:
+            self._logger.warning(
+                "Metrics bulk index on '%s': %d indexed, %d failed", index, success, failed
+            )
