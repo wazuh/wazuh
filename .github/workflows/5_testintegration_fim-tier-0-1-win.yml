@@ -54,10 +54,19 @@ jobs:
   # Execute the tests on windows.
   run-test:
     needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard_name: tier-0
+            pytest_tier_args: "--tier 0"
+          - shard_name: tier-1
+            pytest_tier_args: "--tier 1"
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
     runs-on: windows-2025
+    name: Run FIM integration tests (${{ matrix.shard_name }})
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -112,12 +121,12 @@ jobs:
         run: |
           NET START wazuh
           cd C:\wazuh\tests\integration
-          $env:GITHUB_SHA="${{ github.sha }}"; $env:GITHUB_REF_NAME="$env:BRANCH_NAME"; python -m pytest --tier 0 --tier 1 test_fim\ --html=results.html --self-contained-html
+          $env:GITHUB_SHA="${{ github.sha }}"; $env:GITHUB_REF_NAME="$env:BRANCH_NAME"; python -m pytest ${{ matrix.pytest_tier_args }} test_fim\ --html=results.html --self-contained-html
       # Upload the tests result html as an artifact
       - name: Upload failed test results
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: fim-tier-0-1-win-test-results-${{ github.run_id }}
+          name: fim-tier-0-1-win-${{ matrix.shard_name }}-test-results-${{ github.run_id }}
           path: C:\wazuh\tests\integration\results.html
           retention-days: 7
