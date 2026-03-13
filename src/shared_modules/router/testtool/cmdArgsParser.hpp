@@ -84,7 +84,7 @@ public:
                   << "\t-t TOPIC\t\tSpecifies the topic to use.\n"
                   << "\t-s SUBSCRIBER_ID\tSpecifies the subscriber id to use.\n"
                   << "\t-f FBS_PATH\t\tSpecifies the path to the fbs to read flatbuffer messages.\n"
-                  << "\nExample:"
+                  << "\nExample:\n"
                   << "\n\t./router_testtool -m broker\n"
                   << "\n\t./router_testtool -m publisher -t TOPIC\n"
                   << "\n\t./router_testtool -m subscriber -t TOPIC -s SUBSCRIBER_ID\n"
