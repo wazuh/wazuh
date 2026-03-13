@@ -31,7 +31,6 @@
 #define WM_HEADER_SIZE  OS_SIZE_2048
 #define VU_WM_NAME "vulnerability-detector"
 #define AZ_WM_NAME "azure-logs"
-#define KEY_WM_NAME "agent-key-polling"             // Deprecated key-polling module
 #define SCA_WM_NAME "sca"
 #define GCP_PUBSUB_WM_NAME "gcp-pubsub"
 #define GCP_BUCKET_WM_NAME "gcp-bucket"

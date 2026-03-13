@@ -63,7 +63,7 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # Keep agent daemon name for agent/winagent targets and manager daemon name for
-# server/local/hybrid targets.
+# server targets.
 set(WAZUH_MODULESD_DAEMON_NAME "wazuh-modulesd")
 set(WAZUH_RUNTIME_GROUP "wazuh")
 if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")

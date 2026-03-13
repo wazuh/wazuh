@@ -70,8 +70,8 @@ def send_msg_to_wdb(msg, raw=False):
     ),
     (
             ['version'],
-            [{'version': 'v5.0.0', 'count': 1}, {'version': 'v3.8.2', 'count': 2},
-             {'version': 'v3.6.2', 'count': 1}, {'version': 'N/A', 'count': 2},
+            [{'version': 'v5.0.0', 'count': 1}, {'version': 'v4.2.0', 'count': 1},
+             {'version': 'v4.0.0', 'count': 2}, {'version': 'N/A', 'count': 2}
              ]
     ),
     (
@@ -90,7 +90,7 @@ def send_msg_to_wdb(msg, raw=False):
             [{'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '24.04.3 LTS'}},
              {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '18.08.1 LTS'}},
              {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.06.1 LTS'}},
-             {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.04.1 LTS'}},       
+             {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.04.1 LTS'}},
              {'count': 2, 'os': {'name': 'N/A', 'platform': 'N/A', 'version': 'N/A'}}]
     ),
 ])
@@ -422,7 +422,7 @@ def test_agent_get_agents_keys(socket_mock, send_mock, agent_list, expected_item
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'ip': '172.17.0.202'}, None, 1731, ['001']),
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'name': 'agent-6'}, None, 1731, ['006']),
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'node_name': 'random'}, None, 1731, []),
-    (full_agent_list, {'status': 'all', 'older_than': '1s', 'version': 'Wazuh v3.6.2'}, None, 1731, ['002']),
+    (full_agent_list, {'status': 'all', 'older_than': '1s', 'version': 'Wazuh v4.2.0'}, None, 1731, ['002']),
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'manager': 'master'}, None, 1731,
      ['001', '002', '005', '006', '007', '008', '009', '010']),
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'os.name': 'ubuntu'}, None, 1731,

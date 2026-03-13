@@ -38,7 +38,7 @@ getPreinstalledDirByType()
 
         SED_EXTRACT_PREINSTALLEDDIR="s|^ExecStart=/usr/bin/env \\(.*\\)/bin/[^[:space:]]*control start$|\\1|p"
 
-        if [ "X$pidir_service_name" = "Xwazuh-manager" ] || [ "X$pidir_service_name" = "Xwazuh-local" ]; then #manager, hibrid or local
+        if [ "X$pidir_service_name" = "Xwazuh-manager" ]; then #manager or agent
             type="manager"
         else
             type="agent"
@@ -225,7 +225,7 @@ isWazuhInstalled()
 ##########
 getPreinstalledDir()
 {
-    # Getting preinstalled dir for Wazuh manager and hibrid installations
+    # Getting preinstalled dir for Wazuh manager installations
     pidir_service_name="wazuh-manager"
     if getPreinstalledDirByType && isWazuhInstalled $PREINSTALLEDDIR; then
         return 0;
@@ -233,12 +233,6 @@ getPreinstalledDir()
 
     # Getting preinstalled dir for Wazuh agent installations
     pidir_service_name="wazuh-agent"
-    if getPreinstalledDirByType && isWazuhInstalled $PREINSTALLEDDIR; then
-        return 0;
-    fi
-
-    # Getting preinstalled dir for Wazuh local installations
-    pidir_service_name="wazuh-local"
     if getPreinstalledDirByType && isWazuhInstalled $PREINSTALLEDDIR; then
         return 0;
     fi

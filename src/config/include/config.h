@@ -91,8 +91,6 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 #ifndef CLIENT
 // Current key-request module
 int authd_read_key_request(xml_node **nodes, void *config);
-// Deprecated agent-key-polling module
-int wm_key_request_read(__attribute__((unused)) xml_node **nodes, __attribute__((unused)) void *module);
 #endif
 #endif
 int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, void *d2);

@@ -252,8 +252,6 @@ endif
 failtarget:
 	@echo "TARGET is required: "
 	@echo "   make TARGET=manager   to build the manager"
-	@echo "   make TARGET=local      - local version of manager"
-	@echo "   make TARGET=hybrid     - hybrid version of manager"
 	@echo "   make TARGET=agent    to build the unix agent"
 	@echo "   make TARGET=winagent to build the windows agent"
 
@@ -321,24 +319,12 @@ ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME}: ${libgcc_s_path}
 	cp $< $@
 	${STRIP_TOOL} -x $@
 
-.PHONY: server manager local hybrid agent selinux
+.PHONY: server manager agent selinux
 
 ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=manager')
 endif
 server manager: ${CPPLIBDEPS}
-	${MAKE} ${BUILD_CMAKE_PROJECTS}
-
-ifeq (${MAKECMDGOALS},local)
-$(error Do not use 'local' directly, use 'TARGET=local')
-endif
-local: ${CPPLIBDEPS}
-	${MAKE} ${BUILD_CMAKE_PROJECTS}
-
-ifeq (${MAKECMDGOALS},hybrid)
-$(error Do not use 'hybrid' directly, use 'TARGET=hybrid')
-endif
-hybrid: ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 
 ifeq (${MAKECMDGOALS},agent)
@@ -349,7 +335,7 @@ agent: ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 
 ifneq (,$(filter ${USE_SELINUX},YES yes y Y 1))
-server manager local hybrid agent: selinux
+server manager agent: selinux
 endif
 
 selinux: $(SELINUX_POLICY)
@@ -393,7 +379,7 @@ build-external:
 ifneq (${TARGET},winagent)
 ifneq (${TARGET},agent)
 ifneq (,$(wildcard ${EXTERNAL_CPYTHON}))
-server local hybrid: build_python
+server: build_python
 endif
 endif
 endif
