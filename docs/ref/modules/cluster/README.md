@@ -65,7 +65,7 @@ Several internal threads handle different cluster operations:
   Maintains persistent connections by sending periodic keep-alive messages from workers to the master.
 
 - **Agent info thread**  
-  Sends agent operating system details, labels, and status information. The master validates agent existence before storing updates to avoid stale data.
+  Sends agent operating system details and status information. The master validates agent existence before storing updates to avoid stale data.
 
 - **Agent groups send thread**  
   Distributes agent group assignment information to worker nodes. This data is calculated by the master when agents connect for the first time.

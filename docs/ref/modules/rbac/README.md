@@ -73,22 +73,6 @@ Agents example:
 
 ---
 
-### Adding an agents group label
-
-Edit `agent.conf`:
-
-```xml
-<agent_config>
-  <labels>
-    <label key="group">Team_A</label>
-  </labels>
-</agent_config>
-```
-
-Save configuration.
-
----
-
 ### Creating and mapping an internal user
 
 Create role with DLS for alerts:
