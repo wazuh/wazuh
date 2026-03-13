@@ -40,123 +40,96 @@ on:
         default: false
 # ===================== JOBS =====================
 jobs:
-  build-macos-intel64:
-    if: github.event_name == 'pull_request' || inputs.architecture == 'intel64'
-    runs-on: macos-14-large
+  build-macos:
+    if: github.event_name == 'pull_request' || inputs.architecture == matrix.arch
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: intel64
+            runner: macos-14-large
+          - arch: arm64
+            runner: macos-14
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
-    name: Build PKG package (intel64)
+    name: Build PKG package (${{ matrix.arch }})
     outputs:
       package-name: ${{ steps.build.outputs.package-name }}
       package-symbols-name: ${{ steps.build.outputs.package-symbols-name }}
       version: ${{ steps.build.outputs.version }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set VERSION
+      - name: Set VERSION and append commit
         run: |
           VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
+          [ -n "$VERSION" ] || exit 1
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "ARCH=intel64" >> $GITHUB_ENV
 
-      - name: Append short commit to VERSION file
-        run: |
           SHORT_COMMIT=$(git rev-parse --short=7 HEAD)
-          if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
-          echo "Found commit: $SHORT_COMMIT"
+          [ -n "$SHORT_COMMIT" ] || exit 1
           sed -i '' '/"stage":/s/$/,/; /}/{i\
               "commit": "'"$SHORT_COMMIT"'"'$'\n''}' VERSION.json || exit 1
-          cat VERSION.json
 
       - name: Install dependencies
-        run: |
-          bash packages/macos/generate_wazuh_packages.sh -i
+        run: bash packages/macos/generate_wazuh_packages.sh -i || exit 1
 
-      - name: Build macOS intel64 package (without notarization)
+      - name: Build macOS package
         id: build
         run: |
           REVISION=${{ inputs.revision || '1' }}
-          FLAGS="-a ${{ env.ARCH }} -j 2 -r $REVISION --verbose "
-          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
-          if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
-          echo "generate_wazuh_packages.sh $FLAGS"
-          sudo bash packages/macos/generate_wazuh_packages.sh $FLAGS
+          FLAGS="-a ${{ matrix.arch }} -j 2 -r $REVISION --verbose "
+          [ "${{ inputs.checksum }}" == "true" ] && FLAGS+="--checksum "
+          [ "${{ inputs.debug }}" == "true" ] && FLAGS+="--debug "
 
-          PACKAGE_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent*.pkg" -exec basename {} 2>/dev/null \;)
-          PACKAGE_SYMBOLS_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent-debug-symbols*.zip" -exec basename {} 2>/dev/null \;)
+          sudo bash packages/macos/generate_wazuh_packages.sh $FLAGS || exit 1
+
+          PACKAGE_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent*.pkg" -exec basename {} \;)
+          PACKAGE_SYMBOLS_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent-debug-symbols*.zip" -exec basename {} \;)
 
           echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
           echo "package-symbols-name=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_OUTPUT
           echo "version=${{ env.VERSION }}" >> $GITHUB_OUTPUT
 
-      - name: Upload package as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.build.outputs.package-name }}
-          path: packages/macos/output/${{ steps.build.outputs.package-name }}
-          retention-days: 7
-
-      - name: Upload debug symbols as artifact
-        if: steps.build.outputs.package-symbols-name != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.build.outputs.package-symbols-name }}
-          path: packages/macos/output/${{ steps.build.outputs.package-symbols-name }}
-          retention-days: 7
-
-      - name: Upload checksums as artifacts
-        if: inputs.checksum == true
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.build.outputs.package-name }}-checksums
-          path: |
-            packages/macos/output/${{ steps.build.outputs.package-name }}.sha512
-            packages/macos/output/${{ steps.build.outputs.package-symbols-name }}.sha512
-          retention-days: 7
-
-  test-macos-intel64:
-    needs: build-macos-intel64
-    runs-on: macos-14-large
+  test-macos:
+    needs: build-macos
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: intel64
+            runner: macos-14-large
+          - arch: arm64
+            runner: macos-14
+    if: always() && needs.build-macos.result == 'success' && (github.event_name == 'pull_request' || inputs.architecture == matrix.arch)
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
-    name: Test PKG package (intel64)
+    name: Test PKG package (${{ matrix.arch }})
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Download package artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.build-macos-intel64.outputs.package-name }}
+          name: ${{ needs.build-macos.outputs.package-name }}
           path: packages/macos/output
-
-      - name: Set environment variables
-        run: |
-          echo "PACKAGE_NAME=${{ needs.build-macos-intel64.outputs.package-name }}" >> $GITHUB_ENV
-          echo "VERSION=${{ needs.build-macos-intel64.outputs.version }}" >> $GITHUB_ENV
-          echo "ARCH=intel64" >> $GITHUB_ENV
 
       - name: Test install macOS package
         run: |
-          sudo installer -pkg packages/macos/output/${{ env.PACKAGE_NAME }} -target / | sudo tee installer.log
-          if grep -q "The install was successful" "installer.log"; then
-            echo "Installation successfully."
-          else
-            echo "The installation could not be completed."
-            exit 1
-          fi
+          sudo installer -pkg "packages/macos/output/${{ needs.build-macos.outputs.package-name }}" -target / | sudo tee installer.log
+          grep -q "The install was successful" "installer.log" || exit 1
 
       - name: Checking files after installation
         run: |
-          python3 -m venv venv
+          python3 -m venv venv || exit 1
           source venv/bin/activate
-          python3 -m pip install -r .github/actions/check_files/requirements.txt
-          sudo /Library/Ossec/bin/wazuh-control stop
+          python3 -m pip install -r .github/actions/check_files/requirements.txt || exit 1
+          sudo /Library/Ossec/bin/wazuh-control stop || exit 1
           echo "Running check_files.py (base comparison)"
-          sudo python3 .github/actions/check_files/check_files.py -f ".github/actions/check_files/macos_agent_$(uname -m).csv" --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec'
+          sudo ./venv/bin/python .github/actions/check_files/check_files.py -f ".github/actions/check_files/macos_agent_$(uname -m).csv" --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec' || exit 1
           echo "Running check_files.py (actual state dump)"
-          sudo python3 .github/actions/check_files/check_files.py -b 'macos_actual_state.csv' --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec'
+          sudo ./venv/bin/python .github/actions/check_files/check_files.py -b 'macos_actual_state.csv' --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec' || exit 1
 
       - name: Uninstall package
         run: |
@@ -380,14 +353,14 @@ jobs:
 
       - name: Checking files after installation
         run: |
-          python3 -m venv venv
+          python3 -m venv venv || exit 1
           source venv/bin/activate
-          python3 -m pip install -r .github/actions/check_files/requirements.txt
-          sudo /Library/Ossec/bin/wazuh-control stop
+          python3 -m pip install -r .github/actions/check_files/requirements.txt || exit 1
+          sudo /Library/Ossec/bin/wazuh-control stop || exit 1
           echo "Running check_files.py (base comparison)"
-          sudo python3 .github/actions/check_files/check_files.py -f ".github/actions/check_files/macos_agent_$(uname -m).csv" --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec'
+          sudo ./venv/bin/python .github/actions/check_files/check_files.py -f ".github/actions/check_files/macos_agent_$(uname -m).csv" --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec' || exit 1
           echo "Running check_files.py (actual state dump)"
-          sudo python3 .github/actions/check_files/check_files.py -b 'macos_actual_state.csv' --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec'
+          sudo ./venv/bin/python .github/actions/check_files/check_files.py -b 'macos_actual_state.csv' --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec' || exit 1
 
       - name: Uninstall package
         run: |

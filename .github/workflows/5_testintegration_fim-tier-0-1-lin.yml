@@ -39,23 +39,6 @@ jobs:
           make -C src TARGET=agent -j2
       - name: Install wazuh agent for linux
         run: |
-<<<<<<< HEAD
-          echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo "USER_DIR=/var/ossec" >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AGENT_MANAGER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          sudo sh install.sh
-          rm ./etc/preloaded-vars.conf
-      # Download and install integration tests framework.
-=======
           cat << 'EOF' > ./etc/preloaded-vars.conf
           USER_LANGUAGE="en"
           USER_INSTALL_TYPE="agent"
@@ -67,7 +50,6 @@ jobs:
 
           sudo sh install.sh || exit 1
           rm ./etc/preloaded-vars.conf || exit 1
->>>>>>> 9299cb81c6 (ci: refactor and clean up integration test workflows)
       - name: Download and install integration tests framework
         run: |
           VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
@@ -83,7 +65,6 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Install audit required by FIM
       - name: Install audit
         run: |
           sudo apt-get update

@@ -58,7 +58,6 @@ jobs:
   helper_tests:
     name: Helper Functions Test
 
-    # Only runs if the PR status is different to Draft
     if: ${{ !github.event.pull_request.draft }}
     runs-on: wz-linux-amd64
     needs: build
@@ -126,7 +125,6 @@ jobs:
   api_tests:
     name: API Endpoints Test
 
-    # Only runs if the PR status is different to Draft
     if: ${{ !github.event.pull_request.draft }}
     runs-on: wz-linux-amd64
     needs: build

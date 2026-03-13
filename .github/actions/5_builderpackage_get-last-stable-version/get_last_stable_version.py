@@ -1,14 +1,21 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Module providing a function to get the last stable version for a given 
+"""Module providing a function to get the last stable version for a given
 owner, repository and target_version combination.
 """
+
 import argparse
 import requests
 from packaging import version
 
-def get_previous_stable_version(owner: str, repository: str,
-                                target_version: str, token: str | None = None) -> str | None:
+GITHUB_API_URL = "https://api.github.com/repos/{owner}/{repository}/releases"
+REQUEST_TIMEOUT = 20
+UNSTABLE_SUFFIXES = ["-alpha", "-rc", "-beta"]
+
+
+def get_previous_stable_version(
+    owner: str, repository: str, target_version: str, token: str | None = None
+) -> str | None:
     """Returns the previous stable version for the given arguments.
     Args:
         owner: (str): Repository owner.
@@ -19,35 +26,27 @@ def get_previous_stable_version(owner: str, repository: str,
     Returns:
         ver: (str): Most recent stable version.
     """
-    url = f"https://api.github.com/repos/{owner}/{repository}/releases"
-    headers = None
-    if token:
-        headers = {
-            "Authorization": f"Bearer {token}" 
-        }
+    url = GITHUB_API_URL.format(owner=owner, repository=repository)
+    headers = {"Authorization": f"Bearer {token}"} if token else None
+
     try:
-        # Get GitHub releases
-        response = requests.get(url, headers = headers, timeout=20)
+        response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         releases = response.json()
-        
-        # Extract stable versions
+
         stable_versions = []
         for release in releases:
-            tag = release['tag_name']
-            if not any(x in tag for x in ['-alpha', '-rc', '-beta']):
+            tag = release["tag_name"]
+            if not any(x in tag for x in UNSTABLE_SUFFIXES):
                 try:
-                    ver = version.parse(tag[1:])  # Remove initial 'v'
+                    ver = version.parse(tag[1:])
                     stable_versions.append(ver)
                 except version.InvalidVersion:
                     continue
 
-        # Sort versions
         stable_versions.sort(reverse=True)
-
         target_ver = version.parse(target_version)
 
-        # Find the first version lower than the target
         for ver in stable_versions:
             if ver < target_ver:
                 return str(ver)
@@ -60,6 +59,7 @@ def get_previous_stable_version(owner: str, repository: str,
     except requests.RequestException as e:
         print(f"Request error: {e}")
 
+
 def main():
     """Main function."""
     script_description = (
@@ -68,19 +68,37 @@ def main():
     )
 
     parser = argparse.ArgumentParser(description=script_description)
-    parser.add_argument("-o", "--owner", type=str, action="store",
-                        required=True, help="Repository owner.")
-    parser.add_argument("-r",  "--repository", type=str, action="store",
-                        required=True, help="Repository name.")
-    parser.add_argument("-v", "--version", type=str, action="store",
-                        required=True, help="Base version.")
-    parser.add_argument("-t", "--token", type=str, action="store",
-                        required=False, help="Github token.")
+    parser.add_argument(
+        "-o",
+        "--owner",
+        type=str,
+        action="store",
+        required=True,
+        help="Repository owner.",
+    )
+    parser.add_argument(
+        "-r",
+        "--repository",
+        type=str,
+        action="store",
+        required=True,
+        help="Repository name.",
+    )
+    parser.add_argument(
+        "-v", "--version", type=str, action="store", required=True, help="Base version."
+    )
+    parser.add_argument(
+        "-t", "--token", type=str, action="store", required=False, help="Github token."
+    )
 
     args = parser.parse_args()
 
-    print(get_previous_stable_version(args.owner, args.repository,
-                                       args.version, args.token))
+    print(
+        get_previous_stable_version(
+            args.owner, args.repository, args.version, args.token
+        )
+    )
+
 
 if __name__ == "__main__":
     main()

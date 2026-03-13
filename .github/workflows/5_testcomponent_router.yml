@@ -3,77 +3,45 @@ name: 5.X - Router - Component tests
 on:
   workflow_dispatch:
   pull_request:
-  # Pull request events
     types: [synchronize, opened, reopened, ready_for_review]
-  # Path filtering
     paths:
       - ".github/workflows/5_testcomponent_router.yml"
       - "src/shared_modules/utils/**"
       - "src/shared_modules/router/**"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  router-modules:
+  router-tests:
     runs-on: wz-linux-amd64
-    steps:
-      - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
-        with:
-          cancel_others: 'true'
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: 'false'
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
-
-      - name: Router - Build tests
-        uses: ./.github/actions/build_target_cpp
-        with:
-          target: "librouter_ctest"
-          test: "true"
-          asan: "false"
-
-      - name: Router - Run tests
-        uses: ./.github/actions/test_cpp
-        with:
-          target: "librouter_ctest"
-          valgrind: "true"
-
-
-  router-asan:
     strategy:
+      fail-fast: true
       matrix:
-        os: [ wz-linux-amd64, wz-linux-amd64 ]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
-        with:
-          cancel_others: 'true'
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: 'false'
+        include:
+          - test_type: valgrind
+            asan_enabled: "false"
+            valgrind_enabled: "true"
+          - test_type: asan
+            asan_enabled: "true"
+            valgrind_enabled: "false"
+    name: Run tests (${{ matrix.test_type }})
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
+      - uses: ./.github/actions/build_external_deps
 
-      - name: Router - Build tests
-        uses: ./.github/actions/build_target_cpp
+      - uses: ./.github/actions/build_target_cpp
         with:
           target: "librouter_ctest"
           test: "true"
-          asan: "true"
+          asan: ${{ matrix.asan_enabled }}
 
-      - name: Router - Run tests
-        uses: ./.github/actions/test_cpp
+      - uses: ./.github/actions/test_cpp
         with:
           target: "librouter_ctest"
-          valgrind: "false"
+          valgrind: ${{ matrix.valgrind_enabled }}
