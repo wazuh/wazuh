@@ -28,11 +28,9 @@ public:
      *
      * @param connector Shared pointer to the indexer connector
      * @param indexName The index name to use for raw events (default: DEFAULT_INDEX_NAME)
-     * @param isEnabled Initial enabled state (default: false)
      */
     explicit RawEventIndexer(std::weak_ptr<wiconnector::IWIndexerConnector> connector,
-                             std::string_view indexName = DEFAULT_INDEX_NAME,
-                             bool isEnabled = false);
+                             std::string_view indexName = DEFAULT_INDEX_NAME);
 
     /**
      * @copydoc IRawEventIndexer::index
@@ -63,6 +61,11 @@ public:
      * @copydoc IRawEventIndexer::isEnabled
      */
     bool isEnabled() const override;
+
+    /**
+     * @copydoc IRawEventIndexer::onRemoteConfig
+     */
+    void onRemoteConfig(const json::Json& value) override;
 
     ~RawEventIndexer() override = default;
 };

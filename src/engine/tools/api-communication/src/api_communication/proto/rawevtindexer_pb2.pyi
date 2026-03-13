@@ -5,14 +5,6 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
-class RawEvtIndexerDisable_Request(_message.Message):
-    __slots__ = []
-    def __init__(self) -> None: ...
-
-class RawEvtIndexerEnable_Request(_message.Message):
-    __slots__ = []
-    def __init__(self) -> None: ...
-
 class RawEvtIndexerStatus_Request(_message.Message):
     __slots__ = []
     def __init__(self) -> None: ...
