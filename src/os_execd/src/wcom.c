@@ -195,8 +195,8 @@ size_t wcom_restart(char ** output) {
 #ifndef WIN32
         char *exec_cmd[3] = {NULL};
 
-        if (waccess("active-response/bin/restart.sh", F_OK) == 0) {
-            exec_cmd[0] = "active-response/bin/restart.sh";
+        if (waccess("active-response/bin/restart-wazuh.sh", F_OK) == 0) {
+            exec_cmd[0] = "active-response/bin/restart-wazuh.sh";
             exec_cmd[1] = "agent";
         } else {
             exec_cmd[0] = "bin/wazuh-control";
@@ -248,8 +248,8 @@ size_t wcom_reload(char ** output) {
 #ifndef WIN32
         char *exec_cmd[4] = {NULL};
 
-        if (waccess("active-response/bin/restart.sh", F_OK) == 0) {
-            exec_cmd[0] = "active-response/bin/restart.sh";
+        if (waccess("active-response/bin/restart-wazuh.sh", F_OK) == 0) {
+            exec_cmd[0] = "active-response/bin/restart-wazuh.sh";
             exec_cmd[1] = "agent";
             exec_cmd[2] = "reload";
         } else {

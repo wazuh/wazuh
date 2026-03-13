@@ -207,6 +207,22 @@ WazuhUpgrade()
     rm -f $PREINSTALLEDDIR/active-response/bin/ossec-slack.sh
     rm -f $PREINSTALLEDDIR/active-response/bin/ossec-tweeter.sh
 
+    # Remove old Active Response binaries (renamed in 5.x)
+
+    rm -f $PREINSTALLEDDIR/active-response/bin/firewall-drop
+    rm -f $PREINSTALLEDDIR/active-response/bin/default-firewall-drop
+    rm -f $PREINSTALLEDDIR/active-response/bin/pf
+    rm -f $PREINSTALLEDDIR/active-response/bin/npf
+    rm -f $PREINSTALLEDDIR/active-response/bin/ipfw
+    rm -f $PREINSTALLEDDIR/active-response/bin/firewalld-drop
+    rm -f $PREINSTALLEDDIR/active-response/bin/host-deny
+    rm -f $PREINSTALLEDDIR/active-response/bin/ip-customblock
+    rm -f $PREINSTALLEDDIR/active-response/bin/route-null
+    rm -f $PREINSTALLEDDIR/active-response/bin/wazuh-slack
+    rm -f $PREINSTALLEDDIR/active-response/bin/kaspersky
+    rm -f $PREINSTALLEDDIR/active-response/bin/kaspersky.py
+    rm -f $PREINSTALLEDDIR/active-response/bin/restart.sh
+
     # Remove old databases if upgrading from pre 5.X to 5.X
     if [ $MAJOR -lt 5 ]; then
         if [ -f $PREINSTALLEDDIR/queue/syscollector/db/local.db ]; then

@@ -54,7 +54,14 @@ setBuildCextra()
 
 isPFFirewall()
 {
-    [ "X$(sh ./src/init/fw-check.sh)" = "XPF" ]
+    UNAME=$(uname)
+    if [ "X${UNAME}" = "XFreeBSD" ] || [ "X${UNAME}" = "XOpenBSD" ]; then
+        grep -qi 'pf_enable="YES"' /etc/rc.conf 2>/dev/null
+    elif [ "X${UNAME}" = "XDarwin" ]; then
+        which pfctl > /dev/null 2>&1
+    else
+        return 1
+    fi
 }
 
 ##########
