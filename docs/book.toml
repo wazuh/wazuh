@@ -1,11 +1,30 @@
 [book]
-authors = ["Dwordcito"]
+title = "Wazuh technical documentation"
+authors = ["Wazuh Core Team"]
+description = "Technical documentation for Wazuh Manager and Agent components and modules"
 language = "en"
 src = "."
-title = "Wazuh technical documentation"
-# Add mermaid support
+
+[build]
+build-dir = "book"
+create-missing = false
+
 [preprocessor.mermaid]
 command = "mdbook-mermaid"
 
 [output.html]
-additional-js = ["js/mermaid.min.js", "js/mermaid-init.js"]
+default-theme = "light"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/wazuh/wazuh"
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+
+[output.html.fold]
+enable = true
+level = 0
+
+[output.html.search]
+enable = true
+
+[output.html.playground]
+editable = false
+copyable = true
