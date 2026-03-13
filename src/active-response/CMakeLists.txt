@@ -76,32 +76,32 @@ endfunction()
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # Build firewall-related active responses
   add_active_response_executable(
-    default-firewall-drop
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/firewalls/default-firewall-drop.c)
-  add_active_response_executable(pf
-                                 ${CMAKE_CURRENT_SOURCE_DIR}/src/firewalls/pf.c)
+    block-ip-iptables
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/firewalls/block-ip-iptables.c)
   add_active_response_executable(
-    npf ${CMAKE_CURRENT_SOURCE_DIR}/src/firewalls/npf.c)
+    block-ip-pf ${CMAKE_CURRENT_SOURCE_DIR}/src/firewalls/block-ip-pf.c)
   add_active_response_executable(
-    ipfw ${CMAKE_CURRENT_SOURCE_DIR}/src/firewalls/ipfw.c)
+    block-ip-npf ${CMAKE_CURRENT_SOURCE_DIR}/src/firewalls/block-ip-npf.c)
+  add_active_response_executable(
+    block-ip-ipfw ${CMAKE_CURRENT_SOURCE_DIR}/src/firewalls/block-ip-ipfw.c)
 
   # Build other active response programs
   add_active_response_executable(
-    firewalld-drop ${CMAKE_CURRENT_SOURCE_DIR}/src/firewalld-drop.c)
+    block-ip-firewalld ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-firewalld.c)
   add_active_response_executable(
     disable-account ${CMAKE_CURRENT_SOURCE_DIR}/src/disable-account.c)
-  add_active_response_executable(host-deny
-                                 ${CMAKE_CURRENT_SOURCE_DIR}/src/host-deny.c)
   add_active_response_executable(
-    ip-customblock ${CMAKE_CURRENT_SOURCE_DIR}/src/ip-customblock.c)
+    block-ip-hostsdeny ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-hostsdeny.c)
+  add_active_response_executable(
+    block-ip-custom ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-custom.c)
   add_active_response_executable(
     restart-wazuh ${CMAKE_CURRENT_SOURCE_DIR}/src/restart-wazuh.c)
-  add_active_response_executable(route-null
-                                 ${CMAKE_CURRENT_SOURCE_DIR}/src/route-null.c)
-  add_active_response_executable(kaspersky
-                                 ${CMAKE_CURRENT_SOURCE_DIR}/src/kaspersky.c)
-  add_active_response_executable(wazuh-slack
-                                 ${CMAKE_CURRENT_SOURCE_DIR}/src/wazuh-slack.c)
+  add_active_response_executable(
+    block-ip-route ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-route.c)
+  add_active_response_executable(
+    scan-kaspersky ${CMAKE_CURRENT_SOURCE_DIR}/src/scan-kaspersky.c)
+  add_active_response_executable(
+    notify-slack ${CMAKE_CURRENT_SOURCE_DIR}/src/notify-slack.c)
 endif()
 
 # Build Windows active responses
@@ -120,23 +120,23 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
                              OUTPUT_NAME restart-wazuh)
   target_link_libraries(restart-wazuh PRIVATE wazuh ${WAZUH_WINDOWS_LIBS})
 
-  # route-null.exe
+  # block-ip-route.exe
   add_executable(
-    route-null
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/route-null.c $<TARGET_OBJECTS:win32_stubs>
-    ${SRC_FOLDER}/win32/route-null.rc ${RESOURCE_OBJ_APP})
-  target_compile_definitions(route-null PRIVATE ARGV0="route-null")
+    block-ip-route
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-route.c $<TARGET_OBJECTS:win32_stubs>
+    ${SRC_FOLDER}/win32/block-ip-route.rc ${RESOURCE_OBJ_APP})
+  target_compile_definitions(block-ip-route PRIVATE ARGV0="block-ip-route")
   set_target_properties(
-    route-null PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
-                          OUTPUT_NAME route-null)
-  target_link_libraries(route-null PRIVATE wazuh ${WAZUH_WINDOWS_LIBS})
+    block-ip-route PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
+                              OUTPUT_NAME block-ip-route)
+  target_link_libraries(block-ip-route PRIVATE wazuh ${WAZUH_WINDOWS_LIBS})
 
-  # netsh.exe
+  # block-ip-netsh.exe
   add_executable(
-    netsh ${CMAKE_CURRENT_SOURCE_DIR}/src/netsh.c $<TARGET_OBJECTS:win32_stubs>
-          ${SRC_FOLDER}/win32/netsh.rc ${RESOURCE_OBJ_APP})
-  target_compile_definitions(netsh PRIVATE ARGV0="netsh")
-  set_target_properties(netsh PROPERTIES RUNTIME_OUTPUT_DIRECTORY
-                                         ${SRC_FOLDER}/build/bin OUTPUT_NAME netsh)
-  target_link_libraries(netsh PRIVATE wazuh ${WAZUH_WINDOWS_LIBS})
+    block-ip-netsh ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-netsh.c
+    $<TARGET_OBJECTS:win32_stubs> ${SRC_FOLDER}/win32/block-ip-netsh.rc ${RESOURCE_OBJ_APP})
+  target_compile_definitions(block-ip-netsh PRIVATE ARGV0="block-ip-netsh")
+  set_target_properties(block-ip-netsh PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                                         ${SRC_FOLDER}/build/bin OUTPUT_NAME block-ip-netsh)
+  target_link_libraries(block-ip-netsh PRIVATE wazuh ${WAZUH_WINDOWS_LIBS})
 endif()

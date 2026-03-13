@@ -9,8 +9,8 @@
 
 #include "active_responses.h"
 
-#define LOCK_PATH "active-response/bin/host-deny-lock"
-#define LOCK_FILE "active-response/bin/host-deny-lock/pid"
+#define LOCK_PATH "active-response/bin/block-ip-hostsdeny-lock"
+#define LOCK_FILE "active-response/bin/block-ip-hostsdeny-lock/pid"
 #define DEFAULT_HOSTS_DENY_PATH "/etc/hosts.deny"
 #define FREEBSD_HOSTS_DENY_PATH "/etc/hosts.allow"
 

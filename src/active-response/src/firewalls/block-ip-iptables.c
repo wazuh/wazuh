@@ -9,8 +9,8 @@
 
 #include "active_responses.h"
 
-#define LOCK_PATH "active-response/bin/fw-drop"
-#define LOCK_FILE "active-response/bin/fw-drop/pid"
+#define LOCK_PATH "active-response/bin/block-ip-iptables-lock"
+#define LOCK_FILE "active-response/bin/block-ip-iptables-lock/pid"
 #define IP4TABLES "iptables"
 #define IP6TABLES "ip6tables"
 

@@ -9,7 +9,7 @@
 
 #include "active_responses.h"
 
-#define PATH_TO_KASPERSKY   "active-response/bin/kaspersky.py"
+#define PATH_TO_KASPERSKY   "active-response/bin/scan-kaspersky.py"
 
 int main (int argc, char **argv) {
     (void)argc;
