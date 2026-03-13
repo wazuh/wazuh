@@ -121,6 +121,7 @@ int main (int argc, char **argv) {
         write_debug_file(argv[0], log_msg);
     }
 
+    char *exec_args_add[11] = { netsh_path, "advfirewall", "firewall", "add", "rule", name, "interface=any", "dir=in", "action=block", remoteip, NULL };
     char *exec_args_delete[8] = { netsh_path, "advfirewall", "firewall", "delete", "rule", name, remoteip, NULL };
 
     if ((action == ADD_COMMAND)) {

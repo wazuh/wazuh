@@ -15,9 +15,9 @@
 #include <stdexcept>      // For std::runtime_error
 #include <string>         // For std::string and std::wstring
 #include <locale>         // For localization utilities (if needed for string conversion)
-#include <shellapi.h>
 
 #include "utilsWrapperWin.hpp"
+#include <shellapi.h>
 
 // Define GUIDs for Windows Update API in this .cpp file to instantiate them
 #include <initguid.h>

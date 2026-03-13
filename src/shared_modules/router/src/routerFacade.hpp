@@ -81,7 +81,8 @@ public:
      * @param name Provider name.
      * @param onConnect Callback to be called when the provider is connected.
      */
-    void initProviderRemote(const std::string& name, const std::function<void()>& onConnect = []() {});
+    void initProviderRemote(const std::string& name,
+                            const std::function<void()>& onConnect = []() {});
 
     /**
      * @brief Removes remote provider.

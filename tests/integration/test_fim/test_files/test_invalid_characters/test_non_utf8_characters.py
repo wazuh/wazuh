@@ -70,6 +70,7 @@ from wazuh_testing.modules.agentd.configuration import (
     AGENTD_WINDOWS_DEBUG,
 )
 from wazuh_testing.modules.fim import configuration
+from wazuh_testing.modules.fim.patterns import FIM_EVENT_JSON
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import file

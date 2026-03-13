@@ -21,7 +21,7 @@ from wazuh_testing.constants.paths.logs import (
     WAZUH_API_LOG_FILE_PATH,
     WAZUH_API_JSON_LOG_FILE_PATH,
 )
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
+from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, SHARED_CONFIGURATIONS_PATH
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import socket_controller
 from wazuh_testing.tools.monitors import queue_monitor
@@ -85,7 +85,7 @@ def pytest_collection_modifyitems(
     deselected_tests = []
     _host_types = set(["server", "agent"])
     _platforms = set(
-        [platforms.LINUX, platforms.WINDOWS, platforms.MACOS, platforms.SOLARIS]
+        [platforms.LINUX, platforms.WINDOWS, platforms.MACOS]
     )
 
     for item in items:
