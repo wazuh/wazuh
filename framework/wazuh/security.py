@@ -22,7 +22,7 @@ from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$')
 
-@dapi_allower
+@dapi_allower()
 def get_user_me(token: dict) -> AffectedItemsWazuhResult:
     """Get the information of the current user.
 
@@ -1185,7 +1185,7 @@ def remove_role_policy(role_id: str, policy_ids: list) -> AffectedItemsWazuhResu
 
     return result
 
-@dapi_allower
+@dapi_allower()
 def revoke_current_user_tokens() -> WazuhResult:
     """Revoke all current user's tokens.
 

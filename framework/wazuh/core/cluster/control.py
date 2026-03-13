@@ -187,7 +187,7 @@ async def get_system_nodes():
         raise e
 
 
-@dapi_allower
+@dapi_allower(is_async=True)
 async def get_node_ruleset_integrity(lc: local_client.LocalClient) -> dict:
     """Retrieve custom ruleset integrity.
 

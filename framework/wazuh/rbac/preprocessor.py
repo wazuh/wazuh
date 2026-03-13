@@ -150,7 +150,7 @@ def get_roles(auth_context: Union[dict, str] = None, user_id: int = None) -> lis
 
     return roles
 
-@dapi_allower
+@dapi_allower()
 def get_permissions(user_id: int = None, auth_context: Union[dict, str] = None) -> WazuhResult:
     """Obtain the permissions of a user using auth_context or user_id.
 

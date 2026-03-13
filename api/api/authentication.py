@@ -34,7 +34,7 @@ EXPIRED_TOKEN = "Token expired"
 pool = ThreadPoolExecutor(max_workers=1)
 
 
-@dapi_allower
+@dapi_allower()
 def check_user_master(user: str, password: str) -> dict:
     """Validate a username-password pair.
 
@@ -145,7 +145,7 @@ def change_keypair():
     return private_key, public_key
 
 
-@dapi_allower
+@dapi_allower()
 def get_security_conf() -> dict:
     """Read the security configuration file.
 
@@ -202,7 +202,7 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
 
 
 @rbac_utils.token_cache(rbac_utils.tokens_cache)
-@dapi_allower
+@dapi_allower()
 def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool) -> dict:
     """Check the validity of a token with the current time and the generation time of the token.
 
