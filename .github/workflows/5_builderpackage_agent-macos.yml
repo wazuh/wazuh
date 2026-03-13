@@ -38,7 +38,7 @@ on:
           Default is 'false'.
         required: false
         default: false
-
+# ===================== JOBS =====================
 jobs:
   build-macos-intel64:
     if: github.event_name == 'pull_request' || inputs.architecture == 'intel64'
@@ -507,5 +507,6 @@ jobs:
     if: success()
     uses: ./.github/workflows/5_testintegration_agent-start.yml
     with:
+      base_branch: ''
       platform: 'macos'
     secrets: inherit

@@ -613,5 +613,6 @@ jobs:
     if: success()
     uses: ./.github/workflows/5_testintegration_agent-start.yml
     with:
+      base_branch: ''
       platform: 'linux'
     secrets: inherit
