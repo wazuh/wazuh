@@ -1,0 +1,84 @@
+{
+  "offset": 1001,
+  "document": {
+    "dataType": "CVE_RECORD",
+    "dataVersion": "5.0",
+    "cveMetadata": {
+      "cveId": "CVE-2024-1234",
+      "assignerOrgId": "f16605f4-842c-4b52-a98e-05e09d1b3e7b",
+      "assignerShortName": "linux",
+      "datePublished": "2024-01-15T00:00:00",
+      "dateUpdated": "2024-01-20T00:00:00",
+      "state": "PUBLISHED"
+    },
+    "containers": {
+      "cna": {
+        "providerMetadata": {
+          "orgId": "f16605f4-842c-4b52-a98e-05e09d1b3e7b",
+          "shortName": "linux",
+          "dateUpdated": "2024-01-20T00:00:00"
+        },
+        "descriptions": [
+          {
+            "lang": "en",
+            "value": "A use-after-free vulnerability in the Linux kernel net/ipv4/tcp.c allows local attackers to escalate privileges."
+          }
+        ],
+        "metrics": [
+          {
+            "cvssV3_1": {
+              "vectorString": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+              "baseScore": 7.8,
+              "baseSeverity": "HIGH",
+              "attackVector": "LOCAL",
+              "attackComplexity": "LOW",
+              "privilegesRequired": "LOW",
+              "userInteraction": "NONE",
+              "scope": "UNCHANGED",
+              "confidentialityImpact": "HIGH",
+              "integrityImpact": "HIGH",
+              "availabilityImpact": "HIGH"
+            }
+          }
+        ],
+        "affected": [
+          {
+            "vendor": "linux",
+            "product": "linux_kernel",
+            "versions": [
+              {
+                "version": "5.15.0",
+                "lessThan": "5.15.150",
+                "status": "affected",
+                "versionType": "semver"
+              },
+              {
+                "version": "6.1.0",
+                "lessThan": "6.1.80",
+                "status": "affected",
+                "versionType": "semver"
+              }
+            ]
+          }
+        ],
+        "references": [
+          {
+            "url": "https://lore.kernel.org/netdev/example"
+          }
+        ],
+        "problemTypes": [
+          {
+            "descriptions": [
+              {
+                "lang": "en",
+                "description": "CWE-416: Use After Free",
+                "cweId": "CWE-416",
+                "type": "CWE"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

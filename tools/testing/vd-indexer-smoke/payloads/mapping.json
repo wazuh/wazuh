@@ -1,0 +1,96 @@
+{
+  "mappings": {
+    "date_detection": false,
+    "dynamic": "strict_allow_templates",
+    "dynamic_templates": [
+      {
+        "adp_objects": {
+          "mapping": {
+            "type": "object",
+            "enabled": true
+          },
+          "match_mapping_type": "object",
+          "path_match": "document.containers.adp.*"
+        }
+      },
+      {
+        "cna_objects": {
+          "mapping": {
+            "type": "object",
+            "enabled": true
+          },
+          "match_mapping_type": "object",
+          "path_match": "document.containers.cna.*"
+        }
+      }
+    ],
+    "properties": {
+      "offset": {
+        "type": "unsigned_long"
+      },
+      "document": {
+        "properties": {
+          "dataType": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "dataVersion": {
+            "type": "keyword",
+            "ignore_above": 1024
+          },
+          "cveMetadata": {
+            "properties": {
+              "cveId": {
+                "type": "keyword",
+                "ignore_above": 1024
+              },
+              "assignerOrgId": {
+                "type": "keyword",
+                "ignore_above": 1024
+              },
+              "assignerShortName": {
+                "type": "keyword",
+                "ignore_above": 1024
+              },
+              "dateUpdated": {
+                "type": "date"
+              },
+              "dateReserved": {
+                "type": "date"
+              },
+              "datePublished": {
+                "type": "date"
+              },
+              "state": {
+                "type": "keyword",
+                "ignore_above": 1024
+              }
+            }
+          },
+          "containers": {
+            "properties": {
+              "cna": {
+                "type": "object",
+                "dynamic": true,
+                "enabled": true
+              },
+              "adp": {
+                "type": "object",
+                "dynamic": true,
+                "enabled": true
+              }
+            }
+          }
+        }
+      },
+      "hash": {
+        "properties": {
+          "sha256": {
+            "type": "keyword",
+            "ignore_above": 1024
+          }
+        }
+      }
+    }
+  }
+}

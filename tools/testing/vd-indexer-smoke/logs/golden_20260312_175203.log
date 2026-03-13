@@ -1,0 +1,256 @@
+== Checking Indexer connectivity ==
+{
+    "name": "node-1",
+    "cluster_name": "wazuh-cluster",
+    "cluster_uuid": "d6nUuWJ3SWSFQoZufwh2tA",
+    "version": {
+        "number": "7.10.2",
+        "build_type": "deb",
+        "build_hash": "3734ae877c66dbca5c8fb35d9bbb2ff8b1923634",
+        "build_date": "2026-01-08T19:04:12.221513880Z",
+        "build_snapshot": false,
+        "lucene_version": "9.12.3",
+        "minimum_wire_compatibility_version": "7.10.0",
+        "minimum_index_compatibility_version": "7.0.0"
+    },
+    "tagline": "The OpenSearch Project: https://opensearch.org/"
+}
+== Deleting index .cti-cves-smoke ==
+{
+    "acknowledged": true
+}
+== Creating index .cti-cves-smoke with mapping ==
+{
+    "acknowledged": true,
+    "shards_acknowledged": true,
+    "index": ".cti-cves-smoke"
+}
+== Upserting CVE-2024-1234 from cve_2024_1234_published.json ==
+{
+    "_index": ".cti-cves-smoke",
+    "_id": "CVE-2024-1234",
+    "_version": 1,
+    "result": "created",
+    "_shards": {
+        "total": 2,
+        "successful": 1,
+        "failed": 0
+    },
+    "_seq_no": 0,
+    "_primary_term": 1
+}
+== Upserting CVE-2024-5678 from cve_2024_5678_published.json ==
+{
+    "_index": ".cti-cves-smoke",
+    "_id": "CVE-2024-5678",
+    "_version": 1,
+    "result": "created",
+    "_shards": {
+        "total": 2,
+        "successful": 1,
+        "failed": 0
+    },
+    "_seq_no": 1,
+    "_primary_term": 1
+}
+== Upserting CVE-2024-9999 from cve_2024_9999_rejected.json ==
+{
+    "_index": ".cti-cves-smoke",
+    "_id": "CVE-2024-9999",
+    "_version": 1,
+    "result": "created",
+    "_shards": {
+        "total": 2,
+        "successful": 1,
+        "failed": 0
+    },
+    "_seq_no": 2,
+    "_primary_term": 1
+}
+== Refreshing index .cti-cves-smoke ==
+{
+    "_shards": {
+        "total": 2,
+        "successful": 1,
+        "failed": 0
+    }
+}
+== Verifying count in .cti-cves-smoke ==
+{
+    "count": 3,
+    "_shards": {
+        "total": 1,
+        "successful": 1,
+        "skipped": 0,
+        "failed": 0
+    }
+}
+== Assert count == 3 ==
+Count assertion passed: 3
+== Verifying incremental query offset > 1001 ==
+{
+    "took": 2,
+    "timed_out": false,
+    "_shards": {
+        "total": 1,
+        "successful": 1,
+        "skipped": 0,
+        "failed": 0
+    },
+    "hits": {
+        "total": {
+            "value": 2,
+            "relation": "eq"
+        },
+        "max_score": null,
+        "hits": [
+            {
+                "_index": ".cti-cves-smoke",
+                "_id": "CVE-2024-5678",
+                "_score": null,
+                "_source": {
+                    "offset": 1002,
+                    "document": {
+                        "dataType": "CVE_RECORD",
+                        "dataVersion": "5.0",
+                        "cveMetadata": {
+                            "cveId": "CVE-2024-5678",
+                            "assignerOrgId": "3a12de42-2f28-4e93-b8d3-7a58c0b7f1aa",
+                            "assignerShortName": "openssl",
+                            "datePublished": "2024-02-10T00:00:00",
+                            "dateUpdated": "2024-02-15T00:00:00",
+                            "state": "PUBLISHED"
+                        },
+                        "containers": {
+                            "cna": {
+                                "providerMetadata": {
+                                    "orgId": "3a12de42-2f28-4e93-b8d3-7a58c0b7f1aa",
+                                    "shortName": "openssl",
+                                    "dateUpdated": "2024-02-15T00:00:00"
+                                },
+                                "descriptions": [
+                                    {
+                                        "lang": "en",
+                                        "value": "A buffer overflow in OpenSSL 3.x before 3.2.1 allows remote attackers to cause a denial of service."
+                                    }
+                                ],
+                                "metrics": [
+                                    {
+                                        "cvssV3_1": {
+                                            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                                            "baseScore": 7.5,
+                                            "baseSeverity": "HIGH",
+                                            "attackVector": "NETWORK",
+                                            "attackComplexity": "LOW",
+                                            "privilegesRequired": "NONE",
+                                            "userInteraction": "NONE",
+                                            "scope": "UNCHANGED",
+                                            "confidentialityImpact": "NONE",
+                                            "integrityImpact": "NONE",
+                                            "availabilityImpact": "HIGH"
+                                        }
+                                    }
+                                ],
+                                "affected": [
+                                    {
+                                        "vendor": "openssl",
+                                        "product": "openssl",
+                                        "versions": [
+                                            {
+                                                "version": "3.0.0",
+                                                "lessThan": "3.0.13",
+                                                "status": "affected",
+                                                "versionType": "semver"
+                                            },
+                                            {
+                                                "version": "3.1.0",
+                                                "lessThan": "3.1.5",
+                                                "status": "affected",
+                                                "versionType": "semver"
+                                            },
+                                            {
+                                                "version": "3.2.0",
+                                                "lessThan": "3.2.1",
+                                                "status": "affected",
+                                                "versionType": "semver"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "references": [
+                                    {
+                                        "url": "https://www.openssl.org/news/secadv/20240213.txt"
+                                    }
+                                ],
+                                "problemTypes": [
+                                    {
+                                        "descriptions": [
+                                            {
+                                                "lang": "en",
+                                                "description": "CWE-119: Buffer Overflow",
+                                                "cweId": "CWE-119",
+                                                "type": "CWE"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "sort": [
+                    1002,
+                    "CVE-2024-5678"
+                ]
+            },
+            {
+                "_index": ".cti-cves-smoke",
+                "_id": "CVE-2024-9999",
+                "_score": null,
+                "_source": {
+                    "offset": 1003,
+                    "document": {
+                        "dataType": "CVE_RECORD",
+                        "dataVersion": "5.0",
+                        "cveMetadata": {
+                            "cveId": "CVE-2024-9999",
+                            "assignerOrgId": "f16605f4-842c-4b52-a98e-05e09d1b3e7b",
+                            "assignerShortName": "linux",
+                            "datePublished": "2024-03-01T00:00:00",
+                            "dateUpdated": "2024-03-05T00:00:00",
+                            "state": "REJECTED"
+                        },
+                        "containers": {
+                            "cna": {
+                                "providerMetadata": {
+                                    "orgId": "f16605f4-842c-4b52-a98e-05e09d1b3e7b",
+                                    "shortName": "linux",
+                                    "dateUpdated": "2024-03-05T00:00:00"
+                                },
+                                "descriptions": [
+                                    {
+                                        "lang": "en",
+                                        "value": "Rejected: duplicate of CVE-2024-1234."
+                                    }
+                                ],
+                                "rejectedReasons": [
+                                    {
+                                        "lang": "en",
+                                        "value": "This CVE ID has been rejected or withdrawn by its CVE Numbering Authority."
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "sort": [
+                    1003,
+                    "CVE-2024-9999"
+                ]
+            }
+        ]
+    }
+}
+== Assert incremental total == 2 and IDs == CVE-2024-5678,CVE-2024-9999 ==
+Incremental assertions passed: total=2, ids=['CVE-2024-5678', 'CVE-2024-9999']
+== Smoke test workflow completed ==

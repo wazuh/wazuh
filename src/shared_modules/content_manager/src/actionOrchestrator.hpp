@@ -16,7 +16,6 @@
 #include "components/factoryContentUpdater.hpp"
 #include "components/updaterContext.hpp"
 #include "componentsHelper.hpp"
-#include "factoryOffsetUpdater.hpp"
 #include "utils/rocksDBWrapper.hpp"
 #include <memory>
 #include <utility>
@@ -45,9 +44,8 @@ public:
      */
     struct UpdateData
     {
-        UpdateType type;      ///< Orchestration update type.
-        int offset;           ///< Offset value used in the update.
-        std::string fileHash; ///< Hash value used in the update.
+        UpdateType type; ///< Orchestration update type.
+        int offset;      ///< Reserved for compatibility and full-reload forcing.
 
         /**
          * @brief Creates an UpdateData struct for content update.
@@ -58,14 +56,14 @@ public:
          */
         static UpdateData createContentUpdateData(const int offset)
         {
-            return UpdateData(UpdateType::CONTENT, offset, "");
+            return UpdateData(UpdateType::CONTENT, offset);
         }
 
         /**
          * @brief Creates an UpdateData struct for offset update.
          *
-         * @param offset Offset used in the update that will be written in the RocksDB database to be used in posterior
-         * content updates. Should be nonnegative.
+         * @param offset Compatibility parameter. In indexer flow, offset 0 forces full reload; any other value runs
+         * incremental flow.
          * @return UpdateData Struct ready to be used by the orchestrator.
          */
         static UpdateData createOffsetUpdateData(const int offset)
@@ -74,14 +72,13 @@ public:
             {
                 throw std::invalid_argument {"Offset value (" + std::to_string(offset) + ") shouldn't be negative"};
             }
-            return UpdateData(UpdateType::OFFSET, offset, "");
+            return UpdateData(UpdateType::OFFSET, offset);
         }
 
         /**
          * @brief Creates an UpdateData struct for file hash update.
          *
-         * @param fileHash Hash used in the update that will be written in the RocksDB database to be used in posterior
-         * content updates. Should be nonnegative.
+         * @param fileHash Compatibility parameter kept for callers using legacy API.
          * @return UpdateData Struct ready to be used by the orchestrator.
          */
         static UpdateData createHashUpdateData(const std::string& fileHash)
@@ -90,7 +87,7 @@ public:
             {
                 throw std::invalid_argument {"Invalid hash value: The hash is empty"};
             }
-            return UpdateData(UpdateType::FILE_HASH, -1, fileHash);
+            return UpdateData(UpdateType::FILE_HASH, -1);
         }
 
     private:
@@ -98,10 +95,9 @@ public:
          * @brief Private struct constructor called from the static methods of this struct.
          *
          */
-        UpdateData(const UpdateType type, const int offset, const std::string& fileHash)
+        UpdateData(const UpdateType type, const int offset)
             : type(type)
-            , offset(offset)
-            , fileHash(fileHash) {};
+            , offset(offset) {};
     };
 
     /**
@@ -153,30 +149,8 @@ public:
 
         try
         {
-            if (UpdateType::OFFSET == updateData.type)
-            {
-                runOffsetUpdate(spUpdaterContext, updateData.offset);
-            }
-            else if (UpdateType::FILE_HASH == updateData.type)
-            {
-                runFileHashUpdate(spUpdaterContext, updateData.fileHash);
-            }
-            else if (UpdateType::CONTENT == updateData.type)
-            {
-                runContentUpdate(spUpdaterContext, updateData.offset == 0);
-            }
-            else
-            {
-                // LCOV_EXCL_START
-                logDebug1(WM_CONTENTUPDATER, "Invalid update type, the orchestration will be skipped");
-                // LCOV_EXCL_STOP
-            }
-        }
-        catch (const OffsetProcessingException& e)
-        {
-            logWarn(WM_CONTENTUPDATER, "Offset processing failed. Triggered a snapshot download.");
-            cleanContext(spUpdaterContext);
-            runContentUpdate(spUpdaterContext, true);
+            const bool forceFullReload = updateData.offset == 0;
+            runContentUpdate(spUpdaterContext, forceFullReload);
         }
         catch (const std::exception& e)
         {
@@ -215,126 +189,28 @@ private:
     }
 
     /**
-     * @brief Creates and triggers a new orchestration that updates the offset in the database.
-     *
-     * @param spUpdaterContext Updater context.
-     * @param offset New value of the offset.
-     */
-    void runOffsetUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, int offset) const
-    {
-        logDebug2(WM_CONTENTUPDATER, "Running '%s' offset update", m_spBaseContext->topicName.c_str());
-
-        spUpdaterContext->currentOffset = offset;
-
-        FactoryOffsetUpdater::create(m_spBaseContext->configData)->handleRequest(std::move(spUpdaterContext));
-    }
-
-    /**
-     * @brief Performs a file hash update in the database with the specified hash.
-     *
-     * @param spUpdaterContext Updater context.
-     * @param fileHash Hash value to be used in the update.
-     */
-    void runFileHashUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, const std::string& fileHash) const
-    {
-        logDebug2(WM_CONTENTUPDATER, "Running '%s' file hash update", m_spBaseContext->topicName.c_str());
-
-        if (spUpdaterContext->spUpdaterBaseContext->spRocksDB)
-        {
-            spUpdaterContext->spUpdaterBaseContext->spRocksDB->put(
-                Utils::getCompactTimestamp(std::time(nullptr)), fileHash, Components::Columns::DOWNLOADED_FILE_HASH);
-        }
-
-        spUpdaterContext->spUpdaterBaseContext->downloadedFileHash = fileHash;
-    }
-
-    /**
      * @brief Triggers a new orchestration that updates the content.
      *
      * @param spUpdaterContext Updater context.
-     * @param resetOffset If true, the current offset is set to zero.
+     * @param forceFullReload If true, clears the stored cursor to force a full reload.
      */
-    void runContentUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, const bool resetOffset) const
+    void runContentUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, const bool forceFullReload) const
     {
         logDebug2(WM_CONTENTUPDATER,
-                  "Running '%s' content update",
-                  spUpdaterContext->spUpdaterBaseContext->topicName.c_str());
+                  "Running '%s' content update (forceFullReload=%s)",
+                  spUpdaterContext->spUpdaterBaseContext->topicName.c_str(),
+                  forceFullReload ? "true" : "false");
 
-        if (resetOffset)
+        if (forceFullReload && spUpdaterContext->spUpdaterBaseContext->spRocksDB)
         {
-            spUpdaterContext->currentOffset = 0;
-        }
-        else if (spUpdaterContext->spUpdaterBaseContext->spRocksDB)
-        {
-            // If the database exists, get the last offset
-            spUpdaterContext->currentOffset = std::stoi(
-                spUpdaterContext->spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET)
-                    .second.ToString());
+            logDebug2(WM_CONTENTUPDATER,
+                      "Clearing stored cursor for '%s' to force full reload",
+                      spUpdaterContext->spUpdaterBaseContext->topicName.c_str());
+            spUpdaterContext->spUpdaterBaseContext->spRocksDB->put(
+                Utils::getCompactTimestamp(std::time(nullptr)), "0", Components::Columns::CURRENT_OFFSET);
         }
 
-        const auto& contentSource {
-            spUpdaterContext->spUpdaterBaseContext->configData.at("contentSource").get_ref<const std::string&>()};
-
-        logDebug2(WM_CONTENTUPDATER,
-                  "Current offset: '%d'. Current hash: '%s'. ContentSource: '%s'",
-                  spUpdaterContext->currentOffset,
-                  spUpdaterContext->spUpdaterBaseContext->downloadedFileHash.c_str(),
-                  contentSource.c_str());
-        // Check if the full content download should be triggered
-        // 1. If the current offset is '0' and the content source is 'cti-offset'.
-        // 2. If the offset should be reset.
-        if ((0 == spUpdaterContext->currentOffset && "cti-offset" == contentSource) || resetOffset)
-        {
-            logDebug2(WM_CONTENTUPDATER, "Triggering full content download");
-            // Copy original data.
-            auto originalData = spUpdaterContext->data;
-
-            try
-            {
-                runFullContentDownload(spUpdaterContext);
-            }
-            catch (const SnapshotProcessingException& e)
-            {
-                logWarn(WM_CONTENTUPDATER, "Couldn't run full content download: %s.", e.what());
-                throw;
-            }
-            catch (const std::exception& e)
-            {
-                logWarn(WM_CONTENTUPDATER, "Couldn't run full content download: %s.", e.what());
-                throw;
-            }
-
-            // Restore original data.
-            spUpdaterContext->data = std::move(originalData);
-        }
-
-        try
-        {
-            // Run the updater chain
-            m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
-        }
-        catch (const std::exception& e)
-        {
-            throw OffsetProcessingException {e.what()};
-        }
-    }
-
-    /**
-     * @brief Creates and triggers a new orchestration that downloads a snapshot from CTI.
-     *
-     * @param spUpdaterContext Updater context.
-     */
-    void runFullContentDownload(std::shared_ptr<UpdaterContext> spUpdaterContext) const
-    {
-        logDebug1(WM_CONTENTUPDATER, "Performing full-content download");
-
-        // Set new configuration.
-        auto fullContentConfig = spUpdaterContext->spUpdaterBaseContext->configData;
-        fullContentConfig.at("contentSource") = "cti-snapshot";
-        fullContentConfig.at("compressionType") = "zip";
-
-        // Trigger orchestration.
-        FactoryContentUpdater::create(fullContentConfig)->handleRequest(std::move(spUpdaterContext));
+        m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
     }
 };
 
