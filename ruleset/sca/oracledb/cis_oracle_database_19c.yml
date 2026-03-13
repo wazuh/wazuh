@@ -41,8 +41,19 @@ checks:
     rationale: "extproc allows the database to run procedures from OS libraries. These library calls can, in turn, run any OS command."
     remediation: "Remove extproc from the listener.ora file."
     compliance:
-      - cis: ["2.1.1"]
-      - cis_csc: ["18.9", "9.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - "f:$listener_file -> r:extproc"
@@ -54,8 +65,19 @@ checks:
     rationale: "Blocking  unprivileged  users from  making  alterations of  the listener.ora file,  where remote  data/service  settings  are specified,  will  help  protect data  confidentiality."
     remediation: "Use a text  editor  such  as  vi to set the admin_restrictions_<listener_name> to the value ON"
     compliance:
-      - cis: ["2.1.2"]
-      - cis_csc: ["5.1", "4.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'f:$listener_file -> r:.+admin_restrictions_.+ ON'
@@ -70,8 +92,19 @@ checks:
     rationale: "If  the parameter AUDIT_SYS_OPERATIONS is FALSE,  all statements  except  for Startup/Shutdown  and Logon by  SYSDBA/SYSOPER users  are not audited."
     remediation: "To  remediate this  setting,  execute the following SQL statement and restart the instance. ALTER SYSTEM SET AUDIT_SYS_OPERATIONS = TRUE SCOPE=SPFILE;"
     compliance:
-      - cis: ["2.2.1"]
-      - cis_csc: ["5.4", "6.2", "4.8", "6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME) = ''AUDIT_SYS_OPERATIONS'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> TRUE'
@@ -83,8 +116,19 @@ checks:
     rationale: "Enabling  the basic auditing  features  for the Oracle  instance  permits the collection  of  data  to troubleshoot problems, as  well  as  provides  valuable  forensic  logs  in  the case  of  a system breach this  value should  be  set according to  the needs of  the organization."
     remediation: "To  remediate this  setting,  execute one of  the following SQL statements  and restart the instance. ALTER SYSTEM SET AUDIT_TRAIL = DB, EXTENDED SCOPE = SPFILE; ALTER SYSTEM SET AUDIT_TRAIL = OS SCOPE = SPFILE; ALTER SYSTEM SET AUDIT_TRAIL = XML, EXTENDED SCOPE = SPFILE; ALTER SYSTEM SET AUDIT_TRAIL = DB SCOPE = SPFILE; ALTER SYSTEM SET AUDIT_TRAIL = XML SCOPE = SPFILE;"
     compliance:
-      - cis: ["2.2.2"]
-      - cis_csc: ["6", "6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''AUDIT_TRAIL'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> r:^DB|^OS|^XML|^DB,EXTENDED|^XML,EXTENDED'
@@ -96,8 +140,19 @@ checks:
     rationale: "Not requiring database  connections to  match the domain  that  is  being called  remotely could  allow unauthorized  domain  sources to  potentially connect via brute-force tactics."
     remediation: "To  remediate this  setting,  execute the following SQL statement. ALTER SYSTEM SET GLOBAL_NAMES = TRUE SCOPE = SPFILE;"
     compliance:
-      - cis: ["2.2.3"]
-      - cis_csc: ["9", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''GLOBAL_NAMES'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> TRUE'
@@ -110,8 +165,19 @@ checks:
     rationale: "Allowing  the OS  to  use external  groups  for database  management  could cause privilege overlaps  and generally weaken  security."
     remediation: "ALTER SYSTEM SET OS_ROLES = FALSE SCOPE = SPFILE;"
     compliance:
-      - cis: ["2.2.4"]
-      - cis_csc: ["16", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''OS_ROLES'';\" | sqlplus / as sysdba| grep -A 1 ^- | grep -v ^-" -> FALSE'
@@ -124,8 +190,19 @@ checks:
     rationale: "Permitting  a remote  listener  for connections to  the database  instance  can allow for the potential spoofing  of  connections and that  could compromise  data  confidentiality and integrity."
     remediation: "ALTER SYSTEM SET REMOTE_LISTENER = '' SCOPE = SPFILE;"
     compliance:
-      - cis: ["2.2.5"]
-      - cis_csc: ["9", "9.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''REMOTE_LISTENER'' AND VALUE IS NOT NULL;\" | sqlplus / as sysdba | grep -A 1 \"^SQL>\" | grep -v \"^SQL>\"" -> r:no rows selected'
@@ -138,8 +215,19 @@ checks:
     rationale: "The use of  this  sort  of  password  login file  could permit  unsecured,  privileged  connections to  the database."
     remediation: "ALTER SYSTEM SET REMOTE_LOGIN_PASSWORDFILE = 'NONE' SCOPE = SPFILE;"
     compliance:
-      - cis: ["2.2.6"]
-      - cis_csc: ["16", "16.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''REMOTE_LOGIN_PASSWORDFILE'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> r:^NONE|^EXCLUSIVE'
@@ -151,8 +239,19 @@ checks:
     rationale: "Permitting  OS roles  for database  connections can allow the spoofing  of  connections and permit  granting  the privileges  of  an  OS  role  to  unauthorized  users to  make  connections, this value should  be  restricted  according to  the needs of  the organization."
     remediation: "ALTER SYSTEM SET REMOTE_OS_AUTHENT = FALSE SCOPE = SPFILE;"
     compliance:
-      - cis: ["2.2.7"]
-      - cis_csc: ["16", "16.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''REMOTE_OS_AUTHENT'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> FALSE'
@@ -164,8 +263,19 @@ checks:
     rationale: "Allowing  remote  clients OS  roles to  have  permissions for database  management  could cause privilege overlaps  and generally weaken  security"
     remediation: "ALTER SYSTEM SET REMOTE_OS_ROLES = FALSE SCOPE = SPFILE;"
     compliance:
-      - cis: ["2.2.8"]
-      - cis_csc: ["16", "16.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''REMOTE_OS_ROLES'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> FALSE'
@@ -177,8 +287,19 @@ checks:
     rationale: "Oracle  database  password  case-sensitivity  increases the pool  of  characters  that can  be chosen for the passwords,  making  brute-force password  attacks quite difficult."
     remediation: "ALTER SYSTEM SET SEC_CASE_SENSITIVE_LOGON = TRUE SCOPE = SPFILE;"
     compliance:
-      - cis: ["2.2.9"]
-      - cis_csc: ["16", "4.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''SEC_CASE_SENSITIVE_LOGON'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> TRUE'
@@ -190,8 +311,19 @@ checks:
     rationale: "Allowing  an  unlimited number  of  login attempts  for a user  connection  can facilitate  both brute-force  login attacks and the occurrence  of  denial-of-service."
     remediation: "ALTER SYSTEM SET SEC_MAX_FAILED_LOGIN_ATTEMPTS = 3 SCOPE = SPFILE;"
     compliance:
-      - cis: ["2.2.10"]
-      - cis_csc: ["16.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''SEC_MAX_FAILED_LOGIN_ATTEMPTS'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> n:(\d+) compare <= 3'
@@ -203,8 +335,19 @@ checks:
     rationale: "Bad packets received  from  the client  can potentially indicate  packet-based  attacks on  the system, such  as  TCP SYN Flood or  Smurf attacks,  which could result  in  a denial-ofservice  condition,  this  value should  be  set according to  the needs of  the organization."
     remediation: "ALTER SYSTEM SET SEC_PROTOCOL_ERROR_FURTHER_ACTION = '(DROP,3)' SCOPE = SPFILE;"
     compliance:
-      - cis: ["2.2.11"]
-      - cis_csc: ["18"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''SEC_PROTOCOL_ERROR_FURTHER_ACTION'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> (DROP,3)'
@@ -216,8 +359,19 @@ checks:
     rationale: "Bad packets received  from  the client  can potentially indicate  packet-based  attacks on  the system, which could result  in  a denial-of-service condition."
     remediation: "ALTER SYSTEM SET SEC_PROTOCOL_ERROR_TRACE_ACTION=LOG SCOPE = SPFILE;"
     compliance:
-      - cis: ["2.2.12"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''SEC_PROTOCOL_ERROR_TRACE_ACTION'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> LOG'
@@ -229,8 +383,19 @@ checks:
     rationale: "Allowing  the database  to  return  information about the patch/update  release number  could facilitate  unauthorized  users'  attempts  to  gain  access  based upon  known patch weaknesses."
     remediation: "ALTER SYSTEM SET SEC_RETURN_SERVER_RELEASE_BANNER = FALSE SCOPE = SPFILE;"
     compliance:
-      - cis: ["2.2.13"]
-      - cis_csc: ["9", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''SEC_RETURN_SERVER_RELEASE_BANNER'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> FALSE'
@@ -242,8 +407,19 @@ checks:
     rationale: "A user  without SELECT privilege  can still infer the value stored  in  a column  by  referring to that column  in  a DELETE or UPDATE statement. This  setting prevents  inadvertent information disclosure  by  ensuring  that  only  users who already have  SELECT privilege  can execute the statements  that  would allow them  to  infer the stored  values."
     remediation: "ALTER SYSTEM SET SQL92_SECURITY = TRUE SCOPE = SPFILE;"
     compliance:
-      - cis: ["2.2.14"]
-      - cis_csc: ["18", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''SQL92_SECURITY'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> TRUE'
@@ -258,8 +434,19 @@ checks:
     rationale: "If  RESOURCE_LIMIT is set to  FALSE,  none  of  the system  resource  limits  that  are set in  any database  profiles  are enforced. If  RESOURCE_LIMIT is set to  TRUE, the limits  set in  database profiles are enforced."
     remediation: "ALTER SYSTEM SET RESOURCE_LIMIT = TRUE SCOPE = SPFILE;"
     compliance:
-      - cis: ["2.2.16"]
-      - cis_csc: ["14.4", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''RESOURCE_LIMIT'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> TRUE'
@@ -275,8 +462,19 @@ checks:
     rationale: "Repeated  failed  login attempts  can indicate  the initiation  of  a brute-force login attack, this value  should  be  set according to  the needs of  the organization. (See  the Notes for a warning on  a known bug that  can make  this  security  measure backfire.)"
     remediation: "ALTER PROFILE <profile_name> LIMIT FAILED_LOGIN_ATTEMPTS 5;"
     compliance:
-      - cis: ["3.1"]
-      - cis_csc: ["16.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT FROM DBA_PROFILES P WHERE TO_NUMBER(DECODE(P.LIMIT, ''DEFAULT'',(SELECT DISTINCT DECODE(LIMIT,''UNLIMITED'',9999,LIMIT) FROM DBA_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME=''FAILED_LOGIN_ATTEMPTS''), ''UNLIMITED'',''9999'', P.LIMIT)) > 5 AND P.RESOURCE_NAME = ''FAILED_LOGIN_ATTEMPTS'' AND EXISTS ( SELECT ''X'' FROM DBA_USERS U WHERE U.PROFILE = P.PROFILE ) ;\" | sqlplus / as sysdba | grep -A 1 FAILED_LOGIN_ATTEMPTS | grep -v FAILED_LOGIN_ATTEMPTS" -> n:(\d+) compare <= 5'
@@ -289,8 +487,19 @@ checks:
     rationale: "Locking the user  account after repeated  failed  login attempts  can block further brute-force login attacks,  but can create  administrative  headaches as  this  account unlocking process always  requires  DBA intervention."
     remediation: "ALTER PROFILE <profile_name> LIMIT PASSWORD_LOCK_TIME 1;"
     compliance:
-      - cis: ["3.2"]
-      - cis_csc: ["16.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT FROM DBA_PROFILES P WHERE TO_NUMBER(DECODE(P.LIMIT, ''DEFAULT'',(SELECT DISTINCT DECODE(LIMIT,''UNLIMITED'',9999,LIMIT) FROM DBA_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME=''PASSWORD_LOCK_TIME''), ''UNLIMITED'',''9999'', P.LIMIT)) < 1 AND P.RESOURCE_NAME = ''PASSWORD_LOCK_TIME'' AND EXISTS ( SELECT ''X'' FROM DBA_USERS U WHERE U.PROFILE = P.PROFILE );\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> n:(\d+) compare >= 1'
@@ -305,8 +514,19 @@ checks:
     rationale: "Allowing  passwords to  remain  unchanged for long  periods makes the success of  bruteforce  login attacks more  likely."
     remediation: "ALTER PROFILE <profile_name> LIMIT PASSWORD_LIFE_TIME 90;"
     compliance:
-      - cis: ["3.3"]
-      - cis_csc: ["16"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT FROM DBA_PROFILES P WHERE TO_NUMBER(DECODE(P.LIMIT, ''DEFAULT'',(SELECT DISTINCT DECODE(LIMIT,''UNLIMITED'',9999,LIMIT) FROM DBA_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME=''PASSWORD_LIFE_TIME''), ''UNLIMITED'',''9999'',P.LIMIT)) > 90 AND P.RESOURCE_NAME = ''PASSWORD_LIFE_TIME'' AND EXISTS ( SELECT ''X'' FROM DBA_USERS U WHERE U.PROFILE = P.PROFILE );\" | sqlplus / as sysdba | grep -A 1 \"PASSWORD_LIFE_TIME\" | grep -v \"PASSWORD_LIFE_TIME\"" -> n:(\d+) compare <= 90'
@@ -321,8 +541,19 @@ checks:
     rationale: "Allowing  reuse of  a password  within  a short period  of  time  after the password's  initial use can make  the success of  both  social-engineering  and brute-force password-based  attacks more  likely."
     remediation: "ALTER PROFILE <profile_name> LIMIT PASSWORD_REUSE_MAX 20;"
     compliance:
-      - cis: ["3.4"]
-      - cis_csc: ["16", "4.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT FROM DBA_PROFILES P WHERE TO_NUMBER(DECODE(P.LIMIT, ''DEFAULT'',(SELECT DISTINCT DECODE(LIMIT,''UNLIMITED'',9999,LIMIT) FROM DBA_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME=''PASSWORD_REUSE_MAX''), ''UNLIMITED'',''9999'',P.LIMIT)) < 20 AND P.RESOURCE_NAME = ''PASSWORD_REUSE_MAX'' AND EXISTS ( SELECT ''X'' FROM DBA_USERS U WHERE U.PROFILE = P.PROFILE );\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> n:(\d+) compare >= 20'
@@ -337,8 +568,19 @@ checks:
     rationale: "Reusing the same  password  after only  a short period  of  time  has passed  makes the success of  brute-force login attacks more  likely."
     remediation: "ALTER PROFILE <profile_name> LIMIT PASSWORD_REUSE_TIME 365;"
     compliance:
-      - cis: ["3.5"]
-      - cis_csc: ["16", "4.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT FROM DBA_PROFILES P WHERE TO_NUMBER(DECODE(P.LIMIT, ''DEFAULT'',(SELECT DISTINCT DECODE(LIMIT,''UNLIMITED'',9999,LIMIT) FROM DBA_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME=''PASSWORD_REUSE_TIME''), ''UNLIMITED'',''9999'',P.LIMIT)) < 365 AND P.RESOURCE_NAME = ''PASSWORD_REUSE_TIME'' AND EXISTS ( SELECT ''X'' FROM DBA_USERS U WHERE U.PROFILE = P.PROFILE );\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> n:(\d+) compare >= 365'
@@ -353,8 +595,19 @@ checks:
     rationale: "Locking the user  account after the expiration  of  the password  change  requirement's grace period  can help  prevent password-based  attacks against any forgotten or  disused accounts, while still allowing  the account and its information to  be  accessible  by  DBA intervention."
     remediation: "ALTER PROFILE <profile_name> LIMIT PASSWORD_GRACE_TIME 5;"
     compliance:
-      - cis: ["3.6"]
-      - cis_csc: ["16", "16.10", "16.9"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT FROM DBA_PROFILES P WHERE TO_NUMBER(DECODE(P.LIMIT, ''DEFAULT'',(SELECT DISTINCT DECODE(LIMIT,''UNLIMITED'',9999,LIMIT) FROM DBA_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME=''PASSWORD_GRACE_TIME''), ''UNLIMITED'',''9999'',P.LIMIT)) > 5 AND P.RESOURCE_NAME = ''PASSWORD_GRACE_TIME'' AND EXISTS ( SELECT ''X'' FROM DBA_USERS U WHERE U.PROFILE = P.PROFILE );\" | sqlplus / as sysdba | grep -A 1 ^PASSWORD_GRACE_TIME | grep -v ^PASSWORD_GRACE_TIME" -> n:(\d+) compare <= 5'
@@ -369,8 +622,19 @@ checks:
     rationale: "Through Oracle  database  profiles, password  complexity  rules (mixed  cases with  digits  and special characters),  blocking  of  simple  combinations, and enforcing change/history  settings can  potentially thwart  unauthorized  logins  by  an  unauthorized  user."
     remediation: "Create  a custom  password  verification  function  which fulfills  the password  requirements  of the  organization."
     compliance:
-      - cis: ["3.7"]
-      - cis_csc: ["16", "4.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT FROM DBA_PROFILES P WHERE DECODE(P.LIMIT, ''DEFAULT'',(SELECT LIMIT FROM DBA_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME = P.RESOURCE_NAME), LIMIT) = ''NULL'' AND P.RESOURCE_NAME = ''PASSWORD_VERIFY_FUNCTION'' AND EXISTS ( SELECT ''X'' FROM DBA_USERS U WHERE U.PROFILE = P.PROFILE );\" | sqlplus / as sysdba | grep -A 1 ^PASSWORD_VERIFY_FUNCTION | grep -v ^PASSWORD_VERIFY_FUNCTION" -> NULL'
@@ -383,8 +647,19 @@ checks:
     rationale: "Limiting  the number  of  the SESSIONS_PER_USER can help  prevent memory  resource exhaustion by  poorly  formed  requests  or  intentional denial-of-service attacks."
     remediation: "ALTER PROFILE <profile_name> LIMIT SESSIONS_PER_USER 10;"
     compliance:
-      - cis: ["3.8"]
-      - cis_csc: ["18", "16.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT, DECODE (P.CON_ID,0,(SELECT NAME FROM V\\"\$DATABASE"), 1,(SELECT NAME FROM V\\"\$DATABASE"), (SELECT NAME FROM V\\"\$PDBS" B WHERE P.CON_ID = B.CON_ID)) DATABASE FROM CDB_PROFILES P WHERE TO_NUMBER(DECODE(P.LIMIT, ''DEFAULT'',(SELECT DECODE(LIMIT,''UNLIMITED'',9999,LIMIT) FROM CDB_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME=''SESSIONS_PER_USER'' AND CON_ID = P.CON_ID), ''UNLIMITED'',''9999'',P.LIMIT)) > 10 AND P.RESOURCE_NAME = ''SESSIONS_PER_USER'' AND EXISTS ( SELECT ''X'' FROM CDB_USERS U WHERE U.PROFILE = P.PROFILE ) ORDER BY CON_ID, PROFILE, RESOURCE_NAME;\" | sqlplus / as sysdba | grep -A 1 ^SESSIONS_PER_USER | grep -v ^SESSIONS_PER_USER" -> n:(\d+) compare <= 10'
@@ -399,8 +674,19 @@ checks:
     rationale: "Setting 'INACTIVE_ACCOUNT_TIME' can help  with  deactivation  of  inactive  or  unused accounts."
     remediation: "ALTER PROFILE <profile_name> LIMIT INACTIVE_ACCOUNT_TIME 120;"
     compliance:
-      - cis: ["3.9"]
-      - cis_csc: ["18", "16.9"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT FROM DBA_PROFILES P WHERE TO_NUMBER(DECODE(P.LIMIT,''DEFAULT'',(SELECT DISTINCT DECODE(LIMIT,''UNLIMITED'',9999,LIMIT) FROM DBA_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME=''INACTIVE_ACCOUNT_TIME''), ''UNLIMITED'',''9999'', P.LIMIT)) > 120 AND P.RESOURCE_NAME = ''INACTIVE_ACCOUNT_TIME'' AND EXISTS ( SELECT ''X'' FROM DBA_USERS U WHERE U.PROFILE = P.PROFILE );\" | sqlplus / as sysdba | grep -A 1 ^INACTIVE_ACCOUNT_TIME | grep -v ^INACTIVE_ACCOUNT_TIME" -> n:(\d+) compare <= 120'
@@ -418,8 +704,19 @@ checks:
     rationale: "Default passwords should  be  considered  well  known to  attackers.  Consequently, if  default passwords remain  in  place,  any attacker  with  access  to  the database  can authenticate  as  the user  with  that  default password."
     remediation: ""
     compliance:
-      - cis: ["4.1"]
-      - cis_csc: ["5.3", "4.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT DISTINCT A.USERNAME FROM DBA_USERS_WITH_DEFPWD A, DBA_USERS B WHERE A.USERNAME = B.USERNAME AND B.ACCOUNT_STATUS = ''OPEN'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> r:no rows selected'
@@ -432,8 +729,19 @@ checks:
     rationale: "The sample  schemas are typically not required  for production  operations  of  the database. The default users,  views,  and/or  procedures/functions  created by  sample  schemas could be  used  to  launch  exploits  against production  environments."
     remediation: "$ORACLE_HOME/demo/schema/drop_sch.sql DROP USER SCOTT CASCADE;"
     compliance:
-      - cis: ["4.2"]
-      - cis_csc: ["18.9", "4.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT USERNAME FROM DBA_USERS WHERE USERNAME IN (''BI'',''HR'',''IX'',''OE'',''PM'',''SCOTT'',''SH'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -446,8 +754,19 @@ checks:
     rationale: "Allowing  remote  OS  authentication  of  a user  to  the database  can potentially allow supposed privileged users to  connect as  authenticated,  even  when  the remote  system  is compromised."
     remediation: "ALTER USER <username> IDENTIFIED BY <password>;"
     compliance:
-      - cis: ["4.3"]
-      - cis_csc: ["16", "16.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT USERNAME FROM DBA_USERS WHERE AUTHENTICATION_TYPE = ''EXTERNAL'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -460,8 +779,19 @@ checks:
     rationale: "Users should  be  created with  function-appropriate  profiles. The DEFAULT profile,  being defined by  Oracle, is  subject to  change  at  any time  (e.g. by  patch or  version update).  The DEFAULT profile has unlimited settings  that  are often required  by  the SYS user  when patching;  such  unlimited settings  should  be  tightly reserved  and not applied to unnecessary  users."
     remediation: "ALTER USER <username> PROFILE <appropriate_profile>;"
     compliance:
-      - cis: ["4.4"]
-      - cis_csc: ["16", "4.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT USERNAME FROM DBA_USERS WHERE PROFILE=''DEFAULT'' AND ACCOUNT_STATUS=''OPEN'' AND ORACLE_MAINTAINED = ''N'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -474,8 +804,19 @@ checks:
     rationale: "The table sys.user$mig is not deleted after the migration.  An  attacker  could access  the table containing  the Oracle  password  hashes."
     remediation: "DROP TABLE SYS.USER$MIG;"
     compliance:
-      - cis: ["4.5"]
-      - cis_csc: ["16.14", "16.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT OWNER, TABLE_NAME FROM DBA_TABLES WHERE TABLE_NAME=''USER\$MIG'' AND OWNER=''SYS'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -488,8 +829,19 @@ checks:
     rationale: "Using public  database  links in  the database  can allow anyone  with  a connection  to  the database  to  query,  update, insert, delete  data  on  a remote  database  depending on  the userid  that  is  part  of  the link."
     remediation: "DROP PUBLIC DATABASE LINK <DB_LINK>;"
     compliance:
-      - cis: ["4.6"]
-      - cis_csc: ["14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT DB_LINK, HOST FROM DBA_DB_LINKS WHERE OWNER = ''PUBLIC'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -510,8 +862,19 @@ checks:
     rationale: "As  described below,  Oracle  Database  PL/SQL  packages  - DBMS_LDAP,  UTL_INADDR, UTL_TCP, UTL_MAIL,  UTL_SMTP, UTL_DBWS, UTL_ORAMTS, UTL_HTTP and  type  HTTPURITYPE can be  used  by unauthorized users to  create  specially crafted error messages  or  send  information to external servers.  The PUBLIC should not be  able  to  execute these packages. • The use of  the DBMS_LDAP package can be  used  to  create  specially crafted error messages  or  send  information via DNS to  the outside. • The  UTL_INADDR package  can be  used  to  create  specially crafted error messages  or send information via DNS to the  outside. • The  UTL_TCP package could allow an  unauthorized  user  to  corrupt the TCP stream used to  carry the protocols that  communicate with  the instance's  external communications. • The  UTL_MAIL package  could allow an  unauthorized  user  to  corrupt the SMTP function to  accept  or  generate  junk  mail  that  can result  in  a denial-of-service condition due to  network saturation. • The UTL_SMTP package  could allow an  unauthorized  user  to  corrupt the SMTP function to  accept  or  generate  junk  mail  that  can result  in  a denial-of-service condition due to  network saturation. • The UTL_DBWS package  could allow an  unauthorized  user  to  corrupt the HTTP stream used  to  carry the protocols that  communicate for the instance's  web-based external  communications. • The UTL_ORAMTS package  could be  used  to  send  (sensitive) information to  external websites.  The use of  this  package should  be  restricted  according to  the needs of  the organization. • The UTL_HTTP package  could be  used  to  send  (sensitive) information to  external websites. • The  use of this package should  be  restricted  according to  the needs of  the organization. • The ability to  perform HTTP  requests  could be  used  to  leak  information from  the database  to  an  external  destination."
     remediation: "REVOKE EXECUTE ON DBMS_LDAP FROM PUBLIC; REVOKE EXECUTE ON UTL_INADDR FROM PUBLIC; REVOKE EXECUTE ON UTL_TCP FROM PUBLIC; REVOKE EXECUTE ON UTL_MAIL FROM PUBLIC; REVOKE EXECUTE ON UTL_SMTP FROM PUBLIC; REVOKE EXECUTE ON UTL_DBWS FROM PUBLIC; REVOKE EXECUTE ON UTL_ORAMTS FROM PUBLIC; REVOKE EXECUTE ON UTL_HTTP FROM PUBLIC; REVOKE EXECUTE ON HTTPURITYPE FROM PUBLIC;"
     compliance:
-      - cis: ["5.1.1.1"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT TABLE_NAME, PRIVILEGE, GRANTEE FROM DBA_TAB_PRIVS WHERE GRANTEE=''PUBLIC'' AND PRIVILEGE=''EXECUTE'' AND TABLE_NAME IN (''DBMS_LDAP'',''UTL_INADDR'',''UTL_TCP'',''UTL_MAIL'',''UTL_SMTP'',''UTL_DBWS'',''UTL_ORA MTS'',''UTL_HTTP'',''HTTPURITYPE'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -524,8 +887,19 @@ checks:
     rationale: "As  described below,  Oracle  Database  PL/SQL  File  System  packages  - DBMS_ADVISOR, DBMS_LOB and  UTL_FILE – should not be  granted to  PUBLIC. • Use of  the DBMS_ADVISOR package  could allow an  unauthorized  user  to  corrupt operating system  files on  the instance's  host. • Use of  the DBMS_LOB package  could allow an  unauthorized  user  to  manipulate  BLOB's, CLOB's, NCLOB's,  BFILE's,  and temporary LOBs  on  the instance, either  destroying  data or causing a denial-of-service condition due to  corruption  of  disk  space. • Use  of  the UTL_FILE package  could allow a user  to  read  OS  files.  These files could contain sensitive information (e.g. passwords in  .bash_history)"
     remediation: "REVOKE EXECUTE ON DBMS_ADVISOR FROM PUBLIC; REVOKE EXECUTE ON DBMS_LOB FROM PUBLIC; REVOKE EXECUTE ON UTL_FILE FROM PUBLIC;"
     compliance:
-      - cis: ["6", "7"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT TABLE_NAME, PRIVILEGE, GRANTEE FROM DBA_TAB_PRIVS WHERE GRANTEE=''PUBLIC'' AND PRIVILEGE=''EXECUTE'' AND TABLE_NAME IN (''DBMS_ADVISOR'',''DBMS_LOB'',''UTL_FILE'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -538,8 +912,19 @@ checks:
     rationale: "As  described below,  Oracle  Database  PL/SQL  Encryption  packages  - DBMS_CRYPTO, DBMS_OBFUSCATION_TOOLKIT and DBMS_RANDOM – should  not be  granted to  PUBLIC. • Execution of  the DBMS_CRYPTO procedures  by  the PUBLIC can  potentially endanger portions of  or  all of  the data  storage. • Allowing the PUBLIC privileges to  access  this  capability  can be  potentially harm  data storage. • Use of  the DBMS_RANDOM package can allow the unauthorized  application of  the random  number-generating function."
     remediation: "REVOKE EXECUTE ON DBMS_CRYPTO FROM PUBLIC; REVOKE EXECUTE ON DBMS_OBFUSCATION_TOOLKIT FROM PUBLIC; REVOKE EXECUTE ON DBMS_RANDOM FROM PUBLIC;"
     compliance:
-      - cis: ["5.1.1.3"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT TABLE_NAME, PRIVILEGE, GRANTEE FROM DBA_TAB_PRIVS WHERE GRANTEE=''PUBLIC'' AND PRIVILEGE=''EXECUTE'' AND TABLE_NAME IN (''DBMS_CRYPTO'',''DBMS_OBFUSCATION_TOOLKIT'', ''DBMS_RANDOM'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -552,8 +937,19 @@ checks:
     rationale: "As  described below,  Oracle  Database  PL/SQL  Java  packages  - DBMS_JAVA and DBMS_JAVA_TEST – should not be  granted to  PUBLIC. • The DBMS_JAVA package could allow an  attacker  to  run OS  commands  from  the database. • The DBMS_JAVA_TEST package  could allow an  attacker  to  run operating system commands from  the database."
     remediation: "REVOKE EXECUTE ON DBMS_JAVA FROM PUBLIC; REVOKE EXECUTE ON DBMS_JAVA_TEST FROM PUBLIC;"
     compliance:
-      - cis: ["5.1.1.4"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT TABLE_NAME, PRIVILEGE, GRANTEE FROM DBA_TAB_PRIVS WHERE GRANTEE=''PUBLIC'' AND PRIVILEGE=''EXECUTE'' AND TABLE_NAME IN (''DBMS_JAVA'',''DBMS_JAVA_TEST'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -566,8 +962,19 @@ checks:
     rationale: "As  described below,  Oracle  Database  PL/SQL  Job Scheduler packages  - DBMS_SCHEDULER and  DBMS_JOB – should not be  granted to  the user  PUBLIC. • Use of  the DBMS_SCHEDULER package  could allow an  unauthorized  user  to  run database  or  operating system  jobs. • Use of  the DBMS_JOB package  could allow an  unauthorized  user  to  disable or overload the job queue.  It  has been  superseded  by  the DBMS_SCHEDULER package"
     remediation: "REVOKE EXECUTE ON DBMS_JOB FROM PUBLIC; REVOKE EXECUTE ON DBMS_SCHEDULER FROM PUBLIC;"
     compliance:
-      - cis: ["6", "7"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT TABLE_NAME, PRIVILEGE, GRANTEE FROM DBA_TAB_PRIVS WHERE GRANTEE=''PUBLIC'' AND PRIVILEGE=''EXECUTE'' AND TABLE_NAME IN (''DBMS_SCHEDULER'',''DBMS_JOB'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -580,8 +987,19 @@ checks:
     rationale: "As  described below,  Oracle  Database  PL/SQL  SQL Injection Helper  Packages  packages  - DBMS_SQL, DBMS_XMLGEN,  DBMS_XMLQUERY,  DBMS_XLMSTORE,  DBMS_XLMSAVE and 'DBMS_REDACT'  – should  not be  granted to  PUBLIC. • The DBMS_SQL package  could allow privilege escalation  if  input validation  is  not done properly. • The  package DBMS_XMLGEN can be  used  to  search  the entire  database  for sensitive information like  credit  card  numbers • The package DBMS_XMLQUERY can be  used  to  search  the entire  database  for sensitive information like  credit  card  numbers.  Malicious users may be  able  to  exploit this package  as  an  auxiliary inject  function  in  a SQL injection attack. • Malicious users may be  able  to  exploit the DBMS_XLMSTORE package as  an  auxiliary inject  function  in  a SQL injection attack. • Malicious users may be  able  to  exploit the DBMS_XLMSAVE package  as  an  auxiliary inject  function  in  a SQL injection attack. • Malicious users may be  able  to  exploit DBMS_REDACT as  an  auxiliary inject  function in a SQL injection attack."
     remediation: "REVOKE EXECUTE ON DBMS_SQL FROM PUBLIC; REVOKE EXECUTE ON DBMS_XMLGEN FROM PUBLIC; REVOKE EXECUTE ON DBMS_XMLQUERY FROM PUBLIC; REVOKE EXECUTE ON DBMS_XMLSAVE FROM PUBLIC; REVOKE EXECUTE ON DBMS_XMLSTORE FROM PUBLIC; REVOKE EXECUTE ON DBMS_AW FROM PUBLIC;REVOKE EXECUTE ON OWA_UTIL FROM PUBLIC; REVOKE EXECUTE ON DBMS_REDACT FROM PUBLIC;"
     compliance:
-      - cis: ["5.1.1.6"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT TABLE_NAME, PRIVILEGE, GRANTEE FROM DBA_TAB_PRIVS WHERE GRANTEE=''PUBLIC'' AND PRIVILEGE=''EXECUTE'' AND TABLE_NAME IN (''DBMS_SQL'', ''DBMS_XMLGEN'', ''DBMS_XMLQUERY'',''DBMS_XMLSTORE'',''DBMS_XMLSAVE'',''DBMS_AW'',''OWA_UTIL'',''DBMS_RED ACT'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -597,8 +1015,19 @@ checks:
     rationale: "As  described below,  these non-default group of  PL/SQL  packages, which are not granted to  PUBLIC by default,  packages  should  not be  granted to  PUBLIC. • The DBMS_BACKUP_RESTORE package can allow access  to  OS  files. • The  DBMS_FILE_TRANSFER package  could allow to  transfer  files from  one database server to  another without authorization to  do  so. • The DBMS_SYS_SQL package  could allow a user  to  run code  as  a different user without  entering  valid credentials. • The  DBMS_REPCAT_SQL_UTL package could allow an  unauthorized  user  to  run SQL commands  as  user  SYS. • The  INITJVMAUX package  could allow an  unauthorized  user  to  run SQL commands  as user SYS. • The  DBMS_AQADM_SYS package  could allow an  unauthorized  user  to  run SQL commands  as  user  SYS. • The  DBMS_STREAMS_RPC package  could allow an  unauthorized  user  to  run SQL commands  as  user  SYS.102 | P a g e • The DBMS_PRVTAQIM package could allow an  unauthorized  user  to  escalate  privileges because  any SQL statements  could be  executed  as  user SYS. • The LTADM package could allow an  unauthorized  user  to  run any SQL command as user SYS.  It  allows  privilege escalation  if  granted to  unprivileged  users. • The  DBMS_IJOB package could allow an  attacker  to  change  identities  by  using a different username  to  execute a database  job.  It  allows  a user  to  run database  jobs  in the  context of  another user."
     remediation: "REVOKE EXECUTE ON DBMS_BACKUP_RESTORE FROM PUBLIC; REVOKE EXECUTE ON DBMS_FILE_TRANSFER FROM PUBLIC; REVOKE EXECUTE ON DBMS_SYS_SQL FROM PUBLIC; REVOKE EXECUTE ON DBMS_REPCAT_SQL_UTL FROM PUBLIC; REVOKE EXECUTE ON INITJVMAUX FROM PUBLIC; REVOKE EXECUTE ON DBMS_AQADM_SYS FROM PUBLIC; REVOKE EXECUTE ON DBMS_STREAMS_RPC FROM PUBLIC; REVOKE EXECUTE ON DBMS_PRVTAQIM FROM PUBLIC; REVOKE EXECUTE ON LTADM FROM PUBLIC; REVOKE EXECUTE ON DBMS_IJOB FROM PUBLIC; REVOKE EXECUTE ON DBMS_PDB_EXEC_SQL FROM PUBLIC;"
     compliance:
-      - cis: ["5.1.2.1"]
-      - cis_csc: ["18", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT TABLE_NAME, PRIVILEGE, GRANTEE FROM DBA_TAB_PRIVS WHERE GRANTEE=''PUBLIC'' AND PRIVILEGE=''EXECUTE'' AND TABLE_NAME IN (''DBMS_BACKUP_RESTORE'',''DBMS_FILE_TRANSFER'',''DBMS_SYS_SQL'',''DBMS_REPCAT_SQL_U TL'',''INITJVMAUX'', ''DBMS_AQADM_SYS'',''DBMS_STREAMS_RPC'',''DBMS_PRVTAQIM'',''LTADM'', ''DBMS_IJOB'',''DBMS_PDB_EXEC_SQL'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -614,8 +1043,19 @@ checks:
     rationale: "Permitting  non-privileged  users the authorization to  manipulate  the SYS.AUD$ table  can allow distortion  of  the audit records,  hiding  unauthorized  activities."
     remediation: "REVOKE ALL ON AUD$ FROM <grantee>;"
     compliance:
-      - cis: ["5.1.3.1"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_TAB_PRIVS WHERE TABLE_NAME=''AUD\$'' AND OWNER = ''SYS'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -628,8 +1068,19 @@ checks:
     rationale: "Permitting  users the authorization to  manipulate  the DBA_ views  can expose  sensitive data."
     remediation: "REVOKE ALL ON <DBA_%> FROM <Non-DBA/SYS grantee>;"
     compliance:
-      - cis: ["5.1.3.2"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE,TABLE_NAME FROM DBA_TAB_PRIVS WHERE TABLE_NAME LIKE ''DBA_%'' AND OWNER = ''SYS'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -642,8 +1093,19 @@ checks:
     rationale: "Access  to  sensitive information such  as  hashed  passwords may allow unauthorized  users to decrypt  the passwords hashes  which could potentially result  in  complete  compromise  of the  database."
     remediation: "REVOKE ALL ON SYS.CDB_LOCAL_ADMINAUTH$ FROM <grantee>; REVOKE ALL ON SYS.DEFAULT_PWD$ FROM <grantee>; REVOKE ALL ON SYS.ENC$ FROM <grantee>; REVOKE ALL ON SYS.HISTGRM$ FROM <grantee>; REVOKE ALL ON SYS.HIST_HEAD$ FROM <grantee>; REVOKE ALL ON SYS.LINK$ FROM <grantee>; REVOKE ALL ON SYS.PDB_SYNC$ FROM <grantee>; REVOKE ALL ON SYS.SCHEDULER$_CREDENTIAL FROM <grantee>; REVOKE ALL ON SYS.USER$ FROM <grantee>; REVOKE ALL ON SYS.USER_HISTORY$ FROM <grantee>; REVOKE ALL ON SYS.XS$VERIFIERS FROM <grantee>;"
     compliance:
-      - cis: ["5.1.3.3"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE, TABLE_NAME FROM DBA_TAB_PRIVS WHERE TABLE_NAME in (''CDB_LOCAL_ADMINAUTH\$'',''DEFAULT_PWD\$'',''ENC\$'',''HISTGRM\$'',''HIST_HEAD\$'',''LINK\$'' ,''PDB_SYNC\$'',''SCHEDULER\$_CREDENTIAL'',''USER\$'',''USER_HISTORY\$'',''XS\$VERIFIERS'') AND OWNER = ''SYS'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -659,8 +1121,19 @@ checks:
     rationale: "Authorization to  use the ANY expansion of  a privilege can allow an  unauthorized  user to potentially change  confidential  data  or  damage  the data  catalog."
     remediation: "REVOKE '<ANY Privilege>' FROM <grantee>;"
     compliance:
-      - cis: ["5.2.1"]
-      - cis_csc: ["14.4", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE LIKE ''%ANY%'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -673,8 +1146,19 @@ checks:
     rationale: "Assignment  of  the WITH_ADMIN privilege  can allow the granting  of  a restricted  privilege to an unauthorized  user."
     remediation: "REVOKE <privilege> FROM <grantee>;"
     compliance:
-      - cis: ["5.2.2"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE ADMIN_OPTION=''YES'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -687,8 +1171,19 @@ checks:
     rationale: "Migrated  OUTLN users have  more  privileges  than  required."
     remediation: "REVOKE EXECUTE ANY PROCEDURE FROM OUTLN;"
     compliance:
-      - cis: ["5.2.3"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''EXECUTE ANY PROCEDURE'' AND GRANTEE=''OUTLN'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -701,8 +1196,19 @@ checks:
     rationale: "Migrated  DBSNMP users  have  more  privileges  than  required."
     remediation: "REVOKE EXECUTE ANY PROCEDURE FROM DBSNMP;"
     compliance:
-      - cis: ["5.2.4"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''EXECUTE ANY PROCEDURE'' AND GRANTEE=''DBSNMP'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -715,8 +1221,19 @@ checks:
     rationale: "SELECT ANY DICTIONARY is  a powerful  system  privilege which would allow an unauthorized user  to  gather  information about the database  through data  dictionary objects. Information collected could potentially be  used  to  exploit the database."
     remediation: "REVOKE SELECT ANY DICTIONARY FROM <grantee>;"
     compliance:
-      - cis: ["5.2.5"]
-      - cis_csc: ["14.4", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''SELECT ANY DICTIONARY'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -729,8 +1246,19 @@ checks:
     rationale: "Assignment  of  the SELECT ANY TABLE privilege  can allow the unauthorized  viewing of sensitive  data."
     remediation: "REVOKE SELECT ANY TABLE FROM <grantee>;"
     compliance:
-      - cis: ["5.2.6"]
-      - cis_csc: ["14.4", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''SELECT ANY TABLE'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -743,8 +1271,19 @@ checks:
     rationale: "The AUDIT SYSTEM privilege  can allow the unauthorized  alteration  of  system  audit activities, such  as  disabling the creation  of  audit trails."
     remediation: "REVOKE AUDIT SYSTEM FROM <grantee>;"
     compliance:
-      - cis: ["5.2.7"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''AUDIT SYSTEM'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -757,8 +1296,19 @@ checks:
     rationale: "The EXEMPT ACCESS POLICY privilege  can allow an  unauthorized  user  to  potentially access and  change  data."
     remediation: "REVOKE EXEMPT ACCESS POLICY FROM <grantee>;"
     compliance:
-      - cis: ["5.2.8"]
-      - cis_csc: ["14.4", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''EXEMPT ACCESS POLICY'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -771,8 +1321,19 @@ checks:
     rationale: "The BECOME USER privilege can allow the unauthorized  use of  another user's  privileges, this capability should  be  restricted  according to  the needs of  the organization."
     remediation: "REVOKE BECOME USER FROM <grantee>;"
     compliance:
-      - cis: ["5.2.9"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''BECOME USER'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -785,8 +1346,19 @@ checks:
     rationale: "The CREATE PROCEDURE privilege  can lead  to  severe  problems  in  unauthorized  hands,  such as rogue procedures  facilitating  data  theft or  denial-of-service by  corrupting  data  tables."
     remediation: "REVOKE CREATE PROCEDURE FROM <grantee>;"
     compliance:
-      - cis: ["5.2.10"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''CREATE PROCEDURE'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -799,8 +1371,19 @@ checks:
     rationale: "The ALTER SYSTEM privilege  can lead  to  severe  problems, such  as  the instance's  session being killed  or  the stopping  of  redo  log recording,  which would make  transactions unrecoverable."
     remediation: "REVOKE ALTER SYSTEM FROM <grantee>;"
     compliance:
-      - cis: ["5.2.11"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''ALTER SYSTEM'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -813,8 +1396,19 @@ checks:
     rationale: "The CREATE ANY LIBRARY privilege  can allow the creation  of  numerous  library-associated objects  and potentially corrupt the libraries'  integrity."
     remediation: "REVOKE CREATE ANY LIBRARY FROM <grantee>;"
     compliance:
-      - cis: ["5.2.12"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''CREATE ANY LIBRARY'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -827,8 +1421,19 @@ checks:
     rationale: "The CREATE LIBRARY privilege  can allow the creation  of  numerous  library-associated objects  and potentially corrupt the libraries'  integrity"
     remediation: "REVOKE CREATE LIBRARY FROM <grantee>;"
     compliance:
-      - cis: ["5.2.13"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''CREATE LIBRARY'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -841,8 +1446,19 @@ checks:
     rationale: "The GRANT ANY OBJECT PRIVILEGE capability can allow an  unauthorized  user  to  potentially access  or  change  confidential  data, or  damage  the data  catalog due to  potential complete instance access."
     remediation: "REVOKE GRANT ANY OBJECT PRIVILEGE FROM <grantee>;"
     compliance:
-      - cis: ["5.2.14"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''GRANT ANY OBJECT PRIVILEGE'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -855,8 +1471,19 @@ checks:
     rationale: "The GRANT ANY ROLE capability can allow an  unauthorized  user  to  potentially access  or change confidential  data  or  damage  the data  catalog due to  potential complete  instance access."
     remediation: "REVOKE GRANT ANY ROLE FROM <grantee>;"
     compliance:
-      - cis: ["5.2.15"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''GRANT ANY ROLE'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -869,8 +1496,19 @@ checks:
     rationale: "The GRANT ANY PRIVILEGE capability  can allow an  unauthorized  user  to  potentially access or change  confidential  data  or  damage  the data  catalog due to  potential complete  instance access."
     remediation: "REVOKE GRANT ANY PRIVILEGE FROM <grantee>;"
     compliance:
-      - cis: ["5.2.16"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''GRANT ANY PRIVILEGE'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -886,8 +1524,19 @@ checks:
     rationale: "Permitting  unauthorized  access  to  the SELECT_CATALOG_ROLE can allow the disclosure  of  all dictionary  data."
     remediation: "REVOKE SELECT_CATALOG_ROLE FROM <grantee>;"
     compliance:
-      - cis: ["5.3.1"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, GRANTED_ROLE FROM DBA_ROLE_PRIVS WHERE GRANTED_ROLE=''SELECT_CATALOG_ROLE'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -900,8 +1549,19 @@ checks:
     rationale: "Permitting  unauthorized  access  to  the EXECUTE_CATALOG_ROLE can  allow the disruption  of operations by  initialization  of  rogue procedures, this  capability  should  be  restricted according  to  the needs of  the organization."
     remediation: "REVOKE EXECUTE_CATALOG_ROLE FROM <grantee>;"
     compliance:
-      - cis: ["5.3.2"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, GRANTED_ROLE FROM DBA_ROLE_PRIVS WHERE GRANTED_ROLE=''EXECUTE_CATALOG_ROLE'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -914,8 +1574,19 @@ checks:
     rationale: "Assignment  of  the DBA role  to  an  ordinary  user  can provide a great number  of  unnecessary privileges  to  that  user  and open  the door  to  data  breaches, integrity violations, and denialof-service  conditions."
     remediation: "REVOKE DBA FROM <grantee>;"
     compliance:
-      - cis: ["5.3.3"]
-      - cis_csc: ["5.1", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT ''GRANT'' AS PATH, GRANTEE, GRANTED_ROLE FROM DBA_ROLE_PRIVS WHERE GRANTED_ROLE = ''DBA'' AND GRANTEE NOT IN (''SYS'', ''SYSTEM'') UNION SELECT ''PROXY'', PROXY || ''-'' || CLIENT, ''DBA'' FROM DBA_PROXIES WHERE CLIENT IN (SELECT GRANTEE FROM DBA_ROLE_PRIVS WHERE GRANTED_ROLE = ''DBA'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -934,8 +1605,19 @@ checks:
     rationale: "Any unauthorized  attempts  to  create, drop  or  alter a user  should  cause concern,  whether successful  or  not.  Auditing  can also  be  useful  in  forensics if  an  account is  compromised,  and auditing  is  mandated  by  many  common  security  initiatives.  An  abnormally  high  number  of these  activities  in  a given period  might be  worth investigation.  Any failed  attempt to  drop  a user  or  create  a user  may be  worth further review."
     remediation: "AUDIT USER;"
     compliance:
-      - cis: ["6.1.1"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''USER'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -948,8 +1630,19 @@ checks:
     rationale: "Roles are a key database  security  infrastructure  component.  Any attempt to  create, drop  or alter  a role  should  be  audited.  This  statement auditing  option  also  audits  attempts, successful  or  not,  to  set a role  in  a session.  Any unauthorized  attempts  to  create, drop  or alter  a role  may be  worthy  of  investigation.  Attempts  to  set a role  by  users without the role privilege  may warrant investigation."
     remediation: "AUDIT ROLE;"
     compliance:
-      - cis: ["6.1.2"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''ROLE'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -962,8 +1655,19 @@ checks:
     rationale: "Logging of  all grant and revokes (roles  and system  privileges) can provide forensic evidence about a pattern of  suspect/unauthorized  activities. Any unauthorized  attempt may be  cause for further investigation."
     remediation: "AUDIT SYSTEM GRANT;"
     compliance:
-      - cis: ["6.1.3"]
-      - cis_csc: ["5.4", "4.8"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''SYSTEM GRANT'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -976,8 +1680,19 @@ checks:
     rationale: "As  profiles  are part  of  the database  security  infrastructure, auditing  the creation, modification, and deletion  of  profiles  is  recommended."
     remediation: "AUDIT PROFILE;"
     compliance:
-      - cis: ["6.1.4"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''PROFILE'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -990,8 +1705,19 @@ checks:
     rationale: "As  the logging of  user  activities  involving the creation  or  dropping  of  a DATABASE LINK can provide forensic  evidence  about a pattern of  unauthorized  activities, the audit capability should be  enabled."
     remediation: "AUDIT DATABASE LINK;"
     compliance:
-      - cis: ["6.1.5"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''DATABASE LINK'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1004,8 +1730,19 @@ checks:
     rationale: "As  the logging of  user  activities  involving the creation, alteration, or  dropping  of  a PUBLIC DATABASE LINK can  provide forensic  evidence  about a pattern of  unauthorized  activities, the audit capability  should  be  enabled."
     remediation: "AUDIT PUBLIC DATABASE LINK;"
     compliance:
-      - cis: ["6.1.6"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''PUBLIC DATABASE LINK'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1018,8 +1755,19 @@ checks:
     rationale: "As  the logging of  user  activities  involving the creation  or  dropping  of  a PUBLIC SYNONYM can provide  forensic  evidence  about a pattern of  unauthorized  activities, the audit capability should be  enabled."
     remediation: "AUDIT PUBLIC SYNONYM;"
     compliance:
-      - cis: ["6.1.7"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''PUBLIC SYNONYM'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1032,8 +1780,19 @@ checks:
     rationale: "As  the logging of  user  activities  involving the creation  or  dropping  of  a SYNONYM can provide forensic  evidence  about a pattern of  suspect/unauthorized  activities, the audit capability should be  enabled."
     remediation: "AUDIT SYNONYM;"
     compliance:
-      - cis: ["6.1.8"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''SYNONYM'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1046,8 +1805,19 @@ checks:
     rationale: "As  the logging of  user  activities  involving the creation  or  dropping  of  a DIRECTORY can provide forensic  evidence  about a pattern of  unauthorized  activities, the audit capability should be  enabled."
     remediation: "AUDIT DIRECTORY;"
     compliance:
-      - cis: ["6.1.9"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''DIRECTORY'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1060,8 +1830,19 @@ checks:
     rationale: "As  the logging of  user  activities  involving the capability  to  access  the description of  all schema  objects in  the database  can provide forensic  evidence  about a pattern of unauthorized activities, the audit capability  should  be  enabled."
     remediation: "AUDIT SELECT ANY DICTIONARY;"
     compliance:
-      - cis: ["6.1.10"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''SELECT ANY DICTIONARY'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1074,8 +1855,19 @@ checks:
     rationale: "Logging of  privilege grants  that  can lead  to  the creation, alteration, or  deletion  of  critical data,  the modification  of  objects,  object  privilege propagation and other such  activities  can be  critical  to  forensic  investigations."
     remediation: "AUDIT GRANT ANY OBJECT PRIVILEGE;"
     compliance:
-      - cis: ["6.1.11"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''GRANT ANY OBJECT PRIVILEGE'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1088,8 +1880,19 @@ checks:
     rationale: "Auditing  the use of  this  privilege is  part  of  a comprehensive auditing  policy  that  can help  in detecting  issues  and can be  useful  in  forensics."
     remediation: "AUDIT GRANT ANY PRIVILEGE;"
     compliance:
-      - cis: ["6.1.12"]
-      - cis_csc: ["5.4", "6.2", "4.8", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''GRANT ANY PRIVILEGE'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1102,8 +1905,19 @@ checks:
     rationale: "Dropping  procedures  of  another user  could be  part  of  a privilege escalation  exploit and should  be  audited."
     remediation: "AUDIT DROP ANY PROCEDURE;"
     compliance:
-      - cis: ["6.1.13"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''DROP ANY PROCEDURE'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1116,8 +1930,19 @@ checks:
     rationale: "As  the logging of  attempts  to  alter the SYS.AUD$ table  can provide forensic  evidence  of  the initiation  of  a pattern of  unauthorized  activities, this  logging capability  should  be  enabled."
     remediation: "AUDIT ALL ON SYS.AUD$ BY ACCESS;"
     compliance:
-      - cis: ["6.1.14"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT * FROM CDB_OBJ_AUDIT_OPTS WHERE OBJECT_NAME=''AUD$'' AND ALT=''A/A'' AND AUD=''A/A'' AND COM=''A/A'' AND DEL=''A/A'' AND GRA=''A/A'' AND IND=''A/A'' AND INS=''A/A'' AND LOC=''A/A'' AND REN=''A/A'' AND SEL=''A/A'' AND UPD=''A/A'' AND FBK=''A/A'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1129,8 +1954,19 @@ checks:
     rationale: "Any unauthorized  attempts  to  create  or  drop  a procedure in  another's schema  should  cause concern,  whether successful  or  not.  Changes to  critical  stored  code  can dramatically  change the  behavior  of  the application and produce serious security  consequences, including enabling  privilege escalation  and introducing SQL injection vulnerabilities.  Audit records of such changes can be  helpful in  forensics."
     remediation: "AUDIT PROCEDURE;"
     compliance:
-      - cis: ["6.1.15"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''PROCEDURE'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1143,8 +1979,19 @@ checks:
     rationale: "Any unauthorized  attempt to  alter the system  should  be  cause for concern.  Alterations outside of  some  specified maintenance window  may be  of  concern.  In  forensics,  these audit records could be  quite useful."
     remediation: "AUDIT ALTER SYSTEM;"
     compliance:
-      - cis: ["6.1.16"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''ALTER SYSTEM'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1157,8 +2004,19 @@ checks:
     rationale: "Triggers  are often part  of  schema  security, data  validation  and other critical  constraints upon  actions and data. A trigger in  another schema  may be  used  to  escalate  privileges, redirect  operations, transform data  and perform other sorts of  perhaps undesired actions. Any  unauthorized  attempt to  create, drop  or  alter a trigger in  another schema  may be  cause for investigation."
     remediation: "AUDIT TRIGGER;"
     compliance:
-      - cis: ["6.1.17"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''TRIGGER'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1171,8 +2029,19 @@ checks:
     rationale: "Auditing  attempts  to  connect to  the database  is  basic and mandated  by  most  security initiatives. Any attempt to  logon to  a locked  account,  failed  attempts  to  logon to  default accounts  or  an  unusually high  number  of  failed  logon attempts  of  any sort, for any user, in  a particular  time  period  may indicate  an  intrusion attempt.  In  forensics,  the logon record may  be  first in  a chain of  evidence  and contain information found in  no  other type  of  audit record  for the session.  Logon and logoff  in  the audit trail define  the period  and duration  of the  session."
     remediation: "AUDIT SESSION;"
     compliance:
-      - cis: ["6.1.18"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''CREATE SESSION'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1188,8 +2057,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  create  user  accounts, whether successful  or unsuccessful,  may provide clues and forensic  evidences about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all activities  involving CREATE USER."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS CREATE USER;"
     compliance:
-      - cis: ["6.2.1"]
-      - cis_csc: ["6.2", "16", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''CREATE USER'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''CREATE USER'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL ;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1201,8 +2081,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  alter user  accounts, whether successful  or unsuccessful,  may provide clues and forensic  evidences about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all activities  involving ALTER USER."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALTER USER;"
     compliance:
-      - cis: ["6.2.2"]
-      - cis_csc: ["6.2", "16", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''ALTER USER'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALTER USER'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1214,8 +2105,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  drop  user, whether successful  or  unsuccessful, may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  activities  involving DROP USER."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS DROP USER;"
     compliance:
-      - cis: ["6.2.3"]
-      - cis_csc: ["6.2", "16", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''DROP USER'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''DROP USER'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1227,8 +2129,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  create  roles,  whether successful  or  unsuccessful, may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities  involving CREATE ROLE."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS CREATE ROLE;"
     compliance:
-      - cis: ["6.2.4"]
-      - cis_csc: ["6.2", "16", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''CREATE ROLE'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''CREATE ROLE'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1240,8 +2153,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  alter roles,  whether successful  or  unsuccessful, may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities  involving alteration  of  roles."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALTER ROLE;"
     compliance:
-      - cis: ["6.2.5"]
-      - cis_csc: ["6.2", "16", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''ALTER ROLE'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALTER ROLE'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1253,8 +2177,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  drop  roles,  whether successful  or  unsuccessful, may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities  involving DROP ROLE."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS DROP ROLE;"
     compliance:
-      - cis: ["6.2.6"]
-      - cis_csc: ["6.2", "16", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''DROP ROLE'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''DROP ROLE'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1266,8 +2201,19 @@ checks:
     rationale: "With  unauthorized  grants  and permissions,  a malicious user  may be  able  to  change  the security  of  the database, access/update confidential  data, or  compromise  the integrity of the  database. Logging and monitoring  of  all attempts  to  grant system  privileges, object privileges or  roles,  whether successful  or  unsuccessful, may provide forensic  evidence about  potential suspicious/unauthorized activities  as  well  as  privilege escalation  activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization security policies  and industry/government regulations may require logging of  all user activities involving GRANT."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS GRANT;"
     compliance:
-      - cis: ["6.2.7"]
-      - cis_csc: ["6.2", "16", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''GRANT'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''GRANT'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1279,8 +2225,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  revoke  system  privileges, object  privileges  or roles, whether successful  or  unsuccessful, may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving REVOKE."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS REVOKE;"
     compliance:
-      - cis: ["6.2.8"]
-      - cis_csc: ["6.2", "16", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''REVOKE'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''REVOKE'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1292,8 +2249,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  create  profiles, whether successful  or unsuccessful,  may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving creation  of  database  profiles."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS CREATE PROFILE;"
     compliance:
-      - cis: ["6.2.9"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''CREATE PROFILE'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''CREATE PROFILE'') AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1305,8 +2273,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  alter profiles, whether successful  or  unsuccessful, may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security policies and industry/government regulations may require logging of  all user  activities involving  alteration  of  database  profiles."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALTER PROFILE;"
     compliance:
-      - cis: ["6.2.10"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''ALTER PROFILE'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALTER PROFILE'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1318,8 +2297,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  drop  profiles, whether successful  or unsuccessful,  may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving dropping  database  profiles."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS DROP PROFILE;"
     compliance:
-      - cis: ["6.2.11"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''DROP PROFILE'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''DROP PROFILE'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1331,8 +2321,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  create  database  links,  whether successful  or unsuccessful,  may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities  involving creation  of  database  links."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS CREATE DATABASE LINK;"
     compliance:
-      - cis: ["6.2.12"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''CREATE DATABASE LINK'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''CREATE DATABASE LINK'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1344,8 +2345,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  alter database  links,  whether successful  or unsuccessful,  may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities  involving alteration  of  database  links."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALTER DATABASE LINK;"
     compliance:
-      - cis: ["6.2.13"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''ALTER DATABASE LINK'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALTER DATABASE LINK'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1357,8 +2369,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  drop  database  links,  whether successful  or unsuccessful,  may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities  involving dropping  database  links."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS DROP DATABASE LINK;"
     compliance:
-      - cis: ["6.2.14"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS (SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''DROP DATABASE LINK'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''DROP DATABASE LINK'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1370,8 +2393,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  create  synonyms, whether successful  or unsuccessful,  may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving creation  of  synonyms  or public synonyms."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS CREATE SYNONYM;"
     compliance:
-      - cis: ["6.2.15"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''CREATE SYNONYM'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''CREATE SYNONYM'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1383,8 +2417,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  alter synonyms, whether successful  or unsuccessful,  may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving alteration  of  synonyms  or public synonyms."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALTER SYNONYM;"
     compliance:
-      - cis: ["6.2.16"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''ALTER SYNONYM'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALTER SYNONYM'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1396,8 +2441,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  drop  synonyms, whether successful  or unsuccessful,  may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities involving  dropping  of  synonyms  or  public  synonyms."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS DROP SYNONYM;"
     compliance:
-      - cis: ["6.2.17"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''DROP SYNONYM'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''DROP SYNONYM'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1409,8 +2465,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  access  a data  dictionary, whether successful  or unsuccessful,  may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving access  to  the database."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD PRIVILEGES SELECT ANY DICTIONARY;"
     compliance:
-      - cis: ["6.2.18"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''SELECT ANY DICTIONARY'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''SELECT ANY DICTIONARY'' ) AND AUD.AUDIT_OPTION_TYPE = ''SYSTEM PRIVILEGE'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL ;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1422,8 +2489,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  access  the AUDSYS.AUD$UNIFIED, whether successful  or  unsuccessful, may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving access  to  this  table."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALL on AUDSYS.AUD$UNIFIED;"
     compliance:
-      - cis: ["6.2.19"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''AUD$UNIFIED'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT OBJECT_NAME FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALL'' ) AND AUD.AUDIT_OPTION_TYPE = ''OBJECT ACTION'' AND AUD.OBJECT_SCHEMA = ''AUDSYS'' AND AUD.OBJECT_NAME = ''AUD$UNIFIED'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.OBJECT_NAME WHERE E.OBJECT_NAME IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1435,8 +2513,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  create  procedures, functions,  packages  or package  bodies, whether successful  or  unsuccessful, may provide clues and forensic evidence about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving creation  of  procedures, functions,  packages  or  package bodies."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS CREATE PROCEDURE, CREATE FUNCTION, CREATE PACKAGE, CREATE PACKAGE BODY;"
     compliance:
-      - cis: ["6.2.20"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''CREATE PROCEDURE'',''CREATE FUNCTION'',''CREATE PACKAGE'',''CREATE PACKAGE BODY'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''CREATE PROCEDURE'',''CREATE FUNCTION'',''CREATE PACKAGE'',''CREATE PACKAGE BODY'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1448,8 +2537,19 @@ checks:
     rationale: "Unauthorized  alteration  of  procedures, functions,  packages  or  package bodies  may impact critical business  functions or  compromise  integrity of  the database. Logging and monitoring  of  all attempts, whether successful  or  unsuccessful, to  alter procedures, functions,  packages  or  package bodies  may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving alteration  of  procedures, functions,  packages  or  package bodies."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALTER PROCEDURE, ALTER FUNCTION, ALTER PACKAGE, ALTER PACKAGE BODY;"
     compliance:
-      - cis: ["6.2.21"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''ALTER PROCEDURE'',''ALTER FUNCTION'',''ALTER PACKAGE'',''ALTER PACKAGE BODY'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALTER PROCEDURE'',''ALTER FUNCTION'',''ALTER PACKAGE'',''ALTER PACKAGE BODY'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1461,8 +2561,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts, whether successful  or  unsuccessful, to  drop procedures,  functions,  packages  or  package bodies  may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving dropping  procedures, functions,  packages  or  package bodies."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS DROP PROCEDURE, DROP FUNCTION, DROP PACKAGE, DROP PACKAGE BODY;"
     compliance:
-      - cis: ["6.2.22"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS (SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''DROP PROCEDURE'',''DROP FUNCTION'',''DROP PACKAGE'',''DROP PACKAGE BODY'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''DROP PROCEDURE'',''DROP FUNCTION'',''DROP PACKAGE'',''DROP PACKAGE BODY'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1474,8 +2585,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  execute ALTER SYSTEM statements,  whether successful  or  unsuccessful, may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  that  involve ALTER SYSTEM statements."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALTER SYSTEM;"
     compliance:
-      - cis: ["6.2.23"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''ALTER SYSTEM'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALTER SYSTEM'' ) AND AUD.AUDIT_OPTION_TYPE = ''SYSTEM PRIVILEGE'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1487,8 +2609,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  create  triggers, whether successful  or unsuccessful,  may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving creation  of  triggers."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS CREATE TRIGGER;"
     compliance:
-      - cis: ["6.2.24"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''CREATE TRIGGER'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''CREATE TRIGGER'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1500,8 +2633,19 @@ checks:
     rationale: "Unauthorized  alteration  of  triggers  may impact  critical  business  functions or  compromise integrity/security of  the database. Logging and monitoring  of  all attempts  to  alter triggers, whether successful  or  unsuccessful, may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving alteration  of  triggers."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALTER TRIGGER;"
     compliance:
-      - cis: ["6.2.25"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''ALTER TRIGGER'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALTER TRIGGER'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1513,8 +2657,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  drop  triggers, whether successful  or unsuccessful,  may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities  involving dropping  triggers."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS DROP TRIGGER;"
     compliance:
-      - cis: ["6.2.26"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''DROP TRIGGER'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''DROP TRIGGER'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1526,8 +2681,19 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  logon to  the database, whether successful  or unsuccessful,  may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities  involving LOGON and LOGOFF."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS LOGON, LOGOFF;"
     compliance:
-      - cis: ["6.2.27"]
-      - cis_csc: ["6.2", "16", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''LOGON'',''LOGOFF'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''LOGON'',''LOGOFF'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'

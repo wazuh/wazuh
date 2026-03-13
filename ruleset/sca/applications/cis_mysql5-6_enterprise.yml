@@ -34,7 +34,19 @@ checks:
     rationale: "Disabling the MySQL command history reduces the probability of exposing sensitive information, such as passwords and encryption keys."
     remediation: "Perform the following steps: 1. Remove .mysql_history if it exists. And 2. Set the MYSQL_HISTFILE environment variable to /dev/null. This will need to be placed in the shell's startup script. Or Create $HOME/.mysql_history as a symbolic to /dev/null."
     compliance:
-      - cis: ["1.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/mysql-logging.html
       - https://bugs.mysql.com/bug.php?id=72158
@@ -49,7 +61,19 @@ checks:
     rationale: "Preventing the MySQL user from logging in interactively may reduce the impact of a compromised MySQL account. There is also more accountability as accessing the operating system where the MySQL server lies will require the user's own account. Interactive access by the MySQL user is unnecessary and should be disabled."
     remediation: "Execute one of the following commands in a terminal: 'usermod -s /bin/false mysql' or 'usermod -s /sbin/nologin mysql'"
     compliance:
-      - cis: ["1.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - "c:getent passwd mysql -> r:/bin/false|/sbin/nologin"
@@ -60,7 +84,19 @@ checks:
     rationale: "The use of the MYSQL_PWD environment variable implies the clear text storage of MySQL credentials. Avoiding this may increase assurance that the confidentiality of MySQL credentials is preserved."
     remediation: "Check which users and/or scripts are setting MYSQL_PWD and change them to use a more secure method."
     compliance:
-      - cis: ["1.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/environment-variables.html
     condition: none
@@ -74,7 +110,19 @@ checks:
     rationale: "Preventing shared libraries that do not contain user-defined functions from loading will reduce the attack surface of the server."
     remediation: "Remove '--allow-suspicious-udfs' from the 'mysqld' start up command line. Or Remove 'allow-suspicious-udfs' from the MySQL option file."
     compliance:
-      - cis: ["4.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/udf-security.html
       - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_allow-suspicious-udfs
@@ -88,7 +136,19 @@ checks:
     rationale: "Disabling 'local_infile' reduces an attacker's ability to read sensitive files off the affected server via a SQL injection vulnerability."
     remediation: "Add a line local-infile=0 in the [mysqld] section of the MySQL configuration file and restart the MySQL service."
     compliance:
-      - cis: ["4.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/string-functions.html#function_load-file
       - https://dev.mysql.com/doc/refman/5.6/en/load-data.html
@@ -102,7 +162,19 @@ checks:
     rationale: "If this option is used, all clients of the affected server will have unrestricted access to all databases."
     remediation: "Open the MySQL configuration (e.g. my.cnf) file and set: skip-grant-tables = FALSE"
     compliance:
-      - cis: ["4.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_skip-grant-tables
     condition: all
@@ -115,7 +187,19 @@ checks:
     rationale: "Prevents sym links being used for data base files. This is especially important when MySQL is executing as root as arbitrary files may be overwritten. The symbolic-links option might allow someone to direct actions by to MySQL server to other files and/or directories."
     remediation: "Open the MySQL configuration file (my.cnf), locate 'skip_symbolic_links' and set it to YES. If the option does not exist, create it in the 'mysqld' section."
     compliance:
-      - cis: ["4.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/symbolic-links.html
       - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_symbolic-links
@@ -129,7 +213,19 @@ checks:
     rationale: "Setting secure_file_priv reduces an attacker's ability to read sensitive files off the affected server via a SQL injection vulnerability. "
     remediation: "Add the line secure_file_priv=<path_to_load_directory> to the [mysqld] section of the MySQL configuration file and restart the MySQL service."
     compliance:
-      - cis: ["4.8"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_secure_file_priv
     condition: all
@@ -142,7 +238,19 @@ checks:
     rationale: "Without strict mode the server tries to do proceed with the action when an error might have been a more secure choice. For example, by default MySQL will truncate data if it does not fit in a field, which can lead to unknown behavior, or be leveraged by an attacker to circumvent data validation. "
     remediation: "Add STRICT_ALL_TABLES to the sql_mode in the server's configuration file."
     compliance:
-      - cis: ["4.9"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - "c:grep -Rh strict_all_tables /etc/mysql/my.cnf /etc/mysql/my.ini /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:strict_all_tables"
@@ -154,7 +262,19 @@ checks:
     rationale: "Enabling error logging may increase the ability to detect malicious attempts against MySQL, and other critical messages, such as if the error log is not enabled then connection error might go unnoticed."
     remediation: "Set the log-error option to the path for the error log in the MySQL configuration file (my.cnf or my.ini)."
     compliance:
-      - cis: ["6.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/error-log.html
     condition: all
@@ -167,7 +287,19 @@ checks:
     rationale: "Moving the MySQL logs off the system partition will reduce the probability of denial of service via the exhaustion of available disk space to the operating system."
     remediation: "In the MySQL configuration file (my.cnf), locate the log-bin entry and set it to a file not on root ('/'), /var, or /usr."
     compliance:
-      - cis: ["6.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/binary-log.html
       - https://dev.mysql.com/doc/refman/5.6/en/replication-options-binary-log.html
@@ -181,7 +313,19 @@ checks:
     rationale: "This might help to detect malicious behavior by logging communication errors and aborted connections."
     remediation: "Ensure a line containing log-warnings = 2 is found in the mysqld section of the MySQL configuration file (my.cnf)."
     compliance:
-      - cis: ["6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_log-warnings
     condition: all
@@ -194,7 +338,19 @@ checks:
     rationale: "With raw logging of passwords enabled someone with access to the log files might see plain text passwords."
     remediation: "IN the MySQL configuration file (my.cnf), locate and set the value of this option: log-raw = OFF"
     compliance:
-      - cis: ["6.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/password-logging.html
       - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_log-raw
@@ -209,7 +365,19 @@ checks:
     rationale: "The mysql_old_password plugin leverages an algorithm that can be quickly brute forced using an offline dictionary attack. See CVE-2003-1480 for additional details."
     remediation: "Configure mysql to leverage the mysql_native_password or sha256_password plugin."
     compliance:
-      - cis: ["7.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/password-hashing.html
       - https://dev.mysql.com/doc/refman/5.6/en/sha256-authentication-plugin.html
@@ -226,7 +394,19 @@ checks:
     rationale: "Enabling this option will prevent all use of passwords employing the old format (and hence insecure communication over the network)."
     remediation: "Add a line secure_auth=ON to the [mysqld] section of the MySQL option file."
     compliance:
-      - cis: ["7.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_secure-auth
     condition: all
@@ -239,7 +419,19 @@ checks:
     rationale: "The use of the password parameter may negatively impact the confidentiality of the user's password."
     remediation: "Use the mysql_config_editor to store authentication credentials in .mylogin.cnf in encrypted form. If not possible, use the user-specific options file, .my.cnf., and restricting file access permissions to the user identity. "
     compliance:
-      - cis: ["7.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/mysql-config-editor.html
     condition: none
@@ -252,7 +444,19 @@ checks:
     rationale: "Blank passwords negate the benefits provided by authentication mechanisms. Without this setting an administrative user might accidentally create a user without a password."
     remediation: "In the MySQL configuration file (my.cnf), find the sql_mode setting in the [mysqld] area, and add the NO_AUTO_CREATE_USER to the sql_mode setting."
     compliance:
-      - cis: ["7.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:grep -Rh no_auto_create_user /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> !r:^\s*\t*# && r:\s*no_auto_create_user\s*$'
@@ -263,7 +467,19 @@ checks:
     rationale: "Complex passwords help mitigate dictionary, brute forcing, and other password attacks. This recommendation prevents users from choosing weak passwords which can easily be guessed."
     remediation: "Add to the global configuration: plugin-load=validate_password.so validate-password=FORCE_PLUS_PERMANENT validate_password_length=14 validate_password_mixed_case_count=1 validate_password_number_count=1 validate_password_special_char_count=1 validate_password_policy=MEDIUM. And change passwords for users which have passwords which are identical to their username. Restarting the server is required."
     compliance:
-      - cis: ["7.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/validate-password-plugin.html
     condition: all
@@ -283,7 +499,19 @@ checks:
     rationale: "The password which the client uses is stored in the master info repository, which by default is a plaintext file. The TABLE master info repository is a bit safer, but with filesystem access it's still possible to gain access to the password the slave is using."
     remediation: "Open the MySQL configuration file (my.cnf); locate master_info_repository; set the master_info_repository value to TABLE. Add the option if it does not exist."
     compliance:
-      - cis: ["9.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/replication-options-slave.html#sysvar_master_info_repository
     condition: all
@@ -297,7 +525,19 @@ checks:
     rationale: "The audit_log_connection_policy offers three options: NONE, ERRORS, and ALL. Each option determines whether connection events are logged and the type of connection events that are logged. Setting a non 'NONE' value for audit_log_connection_policy ensures at a minimum, failed connection events are being logged. The ERRORS setting will log failed connection events and the ALL setting will log all connection events. For MySQL versions => 5.6.20, the audit_log_policy variable can override the audit_log_connection_policy, potentially invalidating this benchmark recommendation, therefore enforcing a setting for audit_log_connection_policy ensures the integrity of this recommendation."
     remediation: "Set the audit_log_connection_policy option to ERRORS or ALL in the MySQL configuration file."
     compliance:
-      - cis: ["6.5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: none
     rules:
       - 'c:grep -Rh audit_log_connection_policy /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> !r:^\s*\t*# && r:audit_log_connection_policy\s*=\s* && r:none|NONE'
@@ -308,7 +548,19 @@ checks:
     rationale: "The audit_log_exclude_accounts variable has two permitted values, either NULL or a list of MySQL accounts. Setting this variable correctly ensures no single user is able to unintentionally evade being logged. Particular attention should be made to privileged accounts, as such accounts will generally be bestowed with more privileges than normal users, and should not be listed against this variable."
     remediation: "Set audit_log_exclude_accounts=NULL in my.cnf."
     compliance:
-      - cis: ["6.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:grep -Rh audit_log_exclude_accounts /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> !r:^\s*\t*# && r:audit_log_exclude_accounts\s*=\s* && r:null\s*$|NULL\s*$'
@@ -319,7 +571,19 @@ checks:
     rationale: "The audit_log_include_accounts variable has two permitted values, either NULL or a list of MySQL accounts. Setting this variable correctly ensures all MySQL users are being logged in the audit log."
     remediation: "Set audit_log_include_accounts=NULL in my.cnf."
     compliance:
-      - cis: ["6.7"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:grep -Rh audit_log_include_accounts /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> !r:^\s*\t*# && r:audit_log_include_accounts\s*=\s* && r:null\s*$|NULL\s*$'
@@ -330,7 +594,19 @@ checks:
     rationale: "If this setting is set to QUERIES, CONNECTIONS or NONE then either connections or queries are not written to the audit log file."
     remediation: "Set audit_log_policy='ALL' in the MySQL configuration file and activate the setting by restarting the server or executing SET GLOBAL audit_log_policy='ALL';"
     compliance:
-      - cis: ["6.9"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:grep -Rh audit_log_policy /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> !r:^\s*\t*# && r:audit_log_policy\s*=\s* && r:ALL|LOGINS|all|logins'
@@ -341,7 +617,19 @@ checks:
     rationale: "This setting must be set to ALL to ensure all statement information is written to the audit log."
     remediation: "Add the option audit_log_statement_policy='ALL' to the mysqld section of the MySQL configuration file and restart the server."
     compliance:
-      - cis: ["6.10"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:grep -Rh audit_log_statement_policy /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:audit_log_statement_policy\s*=\s* && r:all$|ALL$'
@@ -352,7 +640,19 @@ checks:
     rationale: "This setting controls how information is written to the audit log. It can be set to SYNCHRONOUS to make it fully durable or other settings which are less durable but have less performance overhead."
     remediation: "Set audit_log_strategy='SEMISYNCHRONOUS' (or SYNCHRONOUS) in the mysqld section of the configuration file (my.cnf)."
     compliance:
-      - cis: ["6.11"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:grep -Rh audit_log_strategy /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:audit_log_strategy\s*=\s* && r:semisynchronous|synchronous|SEMISYNCHRONOUS|SYNCHRONOUS'
@@ -363,7 +663,19 @@ checks:
     rationale: "This makes disables unloading on the plugin."
     remediation: "Ensure a line audit_log = 'FORCE_PLUS_PERMANENT' is found in the mysqld section of the MySQL configuration file (my.cnf)."
     compliance:
-      - cis: ["6.12"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:grep -Rh force_plus_permanent /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:^audit_log\s*=\s*force_plus_permanent|^audit_log\s*=\s*FORCE_PLUS_PERMANENT'
