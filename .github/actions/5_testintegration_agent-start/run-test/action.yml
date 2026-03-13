@@ -38,6 +38,10 @@ runs:
         fi
         echo "Found package: $PACKAGE"
         VERSION=$(echo "$PACKAGE" | grep -oP '\d+\.\d+\.\d+' | head -n 1)
+        if [ -z "$VERSION" ]; then
+          echo "ERROR: Could not extract version from package filename: $PACKAGE"
+          exit 1
+        fi
         echo "TAG=$VERSION" >> "$GITHUB_ENV"
 
     - name: Pull Docker image

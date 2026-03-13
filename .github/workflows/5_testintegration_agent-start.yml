@@ -3,6 +3,11 @@ name: 5.X - Agent Startup Smoke Test
 on:
   workflow_call:
     inputs:
+      base_branch:
+        description: 'Base branch to download artifacts from (empty = use artifacts from current run)'
+        required: false
+        type: string
+        default: ''
       platform:
         description: 'Platform to test (linux, windows, macos, all)'
         required: false
