@@ -9,8 +9,8 @@
 
 #include "active_responses.h"
 
-#define LOCK_PATH "active-response/bin/fw-drop"
-#define LOCK_FILE "active-response/bin/fw-drop/pid"
+#define LOCK_PATH "active-response/bin/block-ip-firewalld-lock"
+#define LOCK_FILE "active-response/bin/block-ip-firewalld-lock/pid"
 
 int main (int argc, char **argv) {
     (void)argc;
@@ -30,7 +30,7 @@ int main (int argc, char **argv) {
     // Get srcip
     const char *srcip = get_srcip_from_json(input_json);
     if (!srcip) {
-        write_debug_file(argv[0], "Cannot read 'srcip' from data");
+        write_debug_file(argv[0], "Cannot read 'source.ip' from alert");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }

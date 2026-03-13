@@ -878,20 +878,18 @@ InstallCommon()
   ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/src/*.sh ${INSTALLDIR}/active-response/bin/
   ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/src/*.py ${INSTALLDIR}/active-response/bin/
   if [ "X${INSTYPE}" = "Xagent" ]; then
-    ./init/fw-check.sh execute
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/firewall-drop ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/default-firewall-drop ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/pf ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/npf ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/ipfw ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/firewalld-drop ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/block-ip-iptables ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/block-ip-pf ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/block-ip-npf ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/block-ip-ipfw ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/block-ip-firewalld ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/block-ip-hostsdeny ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/block-ip-route ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/block-ip-custom ${INSTALLDIR}/active-response/bin/
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/disable-account ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/host-deny ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/ip-customblock ${INSTALLDIR}/active-response/bin/
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/restart-wazuh ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/route-null ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/kaspersky ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/wazuh-slack ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/notify-slack ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/scan-kaspersky ${INSTALLDIR}/active-response/bin/
   fi
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var

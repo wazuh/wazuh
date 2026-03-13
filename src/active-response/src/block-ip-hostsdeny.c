@@ -9,8 +9,8 @@
 
 #include "active_responses.h"
 
-#define LOCK_PATH "active-response/bin/host-deny-lock"
-#define LOCK_FILE "active-response/bin/host-deny-lock/pid"
+#define LOCK_PATH "active-response/bin/block-ip-hostsdeny-lock"
+#define LOCK_FILE "active-response/bin/block-ip-hostsdeny-lock/pid"
 #define DEFAULT_HOSTS_DENY_PATH "/etc/hosts.deny"
 #define FREEBSD_HOSTS_DENY_PATH "/etc/hosts.allow"
 
@@ -35,7 +35,7 @@ int main (int argc, char **argv) {
     // Get srcip
     const char *srcip = get_srcip_from_json(input_json);
     if (!srcip) {
-        write_debug_file(argv[0], "Cannot read 'srcip' from data");
+        write_debug_file(argv[0], "Cannot read 'source.ip' from alert");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }

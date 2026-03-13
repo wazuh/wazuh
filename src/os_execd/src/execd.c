@@ -244,7 +244,7 @@ void ExecdRun(char *exec_msg, int *childcount)
 
         cJSON_Delete(json_root);
 
-        os_strdup("active-response/bin/restart.sh", cmd_api[0]);
+        os_strdup("active-response/bin/restart-wazuh.sh", cmd_api[0]);
 
         os_strdup("agent", cmd_api[1]);
 
