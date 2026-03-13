@@ -1,58 +1,183 @@
-# Acceptance Tests for Wazuh-Engine
+# Engine Benchmark Suite
 
-## Overview
+Automated benchmark harness for the Wazuh Engine (`wazuh-manager-analysisd`).  
+Measures how resource usage and event throughput scale across different orchestrator thread counts.
 
-The `acceptance` directory contains scripts to measure the performance of the Wazuh-Engine. The primary script, `acceptance_test.sh`, is used to send events to the Wazuh-Engine, capturing and plotting the performance metrics.
+## Directory Structure
 
-## Configuration
+```
+acceptance_test/
+├── acceptance_test.sh          # Main orchestration script
+├── requirements.txt            # Python dependencies
+├── README.md
+├── results/                    # Generated after a run
+│   ├── system_report.txt       # Hardware & test parameters snapshot
+│   ├── monitor-1T.csv          # Resource samples (1 thread)
+│   ├── bench-1T.csv            # EPS / processed events (1 thread)
+│   ├── monitor-4T.csv
+│   ├── bench-4T.csv
+│   └── ...
+└── utils/
+    ├── benchmark_tool.go       # Event sender (Go)
+    ├── monitor.py              # Process resource monitor (Python)
+    └── graphics_generator.py   # Chart generator (Python)
+```
 
-The main script used for these tests is `acceptance_test.sh`, which is configured through several environment variables to specify the conditions and parameters of the test.
+## How It Works
 
-### Test Configurations
+For each requested thread count, `acceptance_test.sh` executes the following steps:
 
-- **General Settings**
-  - `STATS_MONITOR_POLL_TIME_SECS`: Sampling time in seconds for monitoring stats.
+1. **Stop** the manager (if running) and clean stale KVDB locks.
+2. **Launch** `wazuh-manager-analysisd` with `WAZUH_ORCHESTRATOR_THREADS=N`.
+3. **Wait** until the engine is ready (log line detection + route verification via `curl`).
+4. **Start** `monitor.py` to sample CPU, memory, FDs and disk I/O every second.
+5. **Grace period** before the benchmark.
+6. **Run** `benchmark_tool.go` — sends events at the configured rate and records throughput.
+7. **Grace period** after the benchmark.
+8. **Stop** the monitor and analysisd.
 
-- **Benchmark Settings**
-  - `BT_TIME`: Duration in seconds for the test.
-  - `BT_RATE`: Rate of events sent per second (0 for infinite).
-  - `BT_INPUT`: Path to the log file used as input for the test.
-  - `BT_OUTPUT`: Output file path; used to count the processed logs/events.
+A `trap` ensures that child processes (monitor, analysisd) are cleaned up on any exit.
 
-### Engine Specific Configurations
-  - `ORCHESTRATOR_THREADS`: Threads that will be used by the engine's orchestrator.
+Before the test loop starts, the script also:
+- Verifies that `python3` and `go` are available.
+- Checks / installs Python dependencies from `requirements.txt`.
+- Generates `system_report.txt` with CPU model, cores, RAM, OS version and test parameters.
+
+## Requirements
+
+| Tool | Purpose |
+|------|---------|
+| **Python 3** | `monitor.py`, `graphics_generator.py` |
+| **Go** | `benchmark_tool.go` |
+| **curl** | Engine route verification |
+| **psutil** (pip) | Process resource sampling |
+| **matplotlib, pandas, numpy** (pip) | Chart generation |
+
+Python packages are auto-installed by the script if missing.
 
 ## Usage
 
-### Running the Test Script
-
-To execute the acceptance tests run:
+### Running the Benchmark
 
 ```bash
+# Minimal — single thread, 10 s, unlimited rate
 ./acceptance_test.sh
+
+# Full example — sweep 1, 2, 4, 8 threads
+./acceptance_test.sh \
+    --threads 1,2,4,8 \
+    --time 60 \
+    --rate 0 \
+    --batch 100 \
+    --input /path/to/log/files \
+    --grace 5 \
+    --results ./results
 ```
 
-This script will conduct tests according to the specified configurations and generate two types of files:
-- A `.log` file recording the EPS (events per second) results.
-- A `.csv` file containing detailed performance metrics such as memory usage, CPU utilization, and disk writes.
+### CLI Options
 
-### Benchmark Tool
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--threads LIST` | `1` | Comma-separated thread counts to test |
+| `--time SECS` | `10` | Benchmark sending duration |
+| `--rate EPS` | `0` | Target EPS (`0` = unlimited) |
+| `--batch SIZE` | `50` | Events per HTTP request |
+| `--input DIR` | `utils/test_logs` | Directory with `.txt` / `.log` input files |
+| `--output FILE` | `$WAZUH_HOME/logs/alerts/alerts.json` | Output file to watch for processed events |
+| `--grace SECS` | `5` | Grace period before & after benchmark |
+| `--monitor-interval SECS` | `1` | Monitor sampling interval |
+| `--results DIR` | `./results` | Directory for output CSVs |
+| `--route NAME` | `cmsync_standard` | Engine route to verify on startup |
+| `--timeout SECS` | `120` | Max wait for engine readiness |
 
-The script utilizes `utils/benchmark_tool.go` to send events:
+### Generating Charts
+
+After a run completes, generate comparison charts from the results directory:
+
+```bash
+python3 utils/graphics_generator.py -r ./results -o ./charts
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-r, --results DIR` | *(required)* | Results directory |
+| `-o, --output DIR` | `./charts` | Output directory for images |
+| `--format FMT` | `png` | Image format (`png`, `svg`, `pdf`) |
+
+Generated charts include:
+- **Time-series overlays** — CPU %, RSS, VMS, FDs, I/O ops, disk %, sent and processed events, all aligned by elapsed time and grouped by thread count.
+- **Sent vs Processed detail** — Per-thread subplot showing both curves.
+- **Scaling summary** — Bar charts for total processed events, average EPS and loss %.
+- **Resource scaling** — Bar charts for average/peak CPU and average/peak RSS across thread counts.
+
+## Output Files
+
+### CSV Formats
+
+**`monitor-NT.csv`** — one row per sample:
+
+| Column | Description |
+|--------|-------------|
+| `timestamp` | ISO-8601 timestamp |
+| `cpu_pct` | CPU usage (%) |
+| `rss_mb` | Resident Set Size (MB) |
+| `vms_mb` | Virtual Memory Size (MB) |
+| `fds` | Open file descriptors |
+| `read_ops` / `write_ops` | Cumulative I/O operations |
+| `read_bytes` / `write_bytes` | Cumulative I/O bytes |
+| `disk_pct` | Disk usage (%) |
+
+**`bench-NT.csv`** — one row per second:
+
+| Column | Description |
+|--------|-------------|
+| `timestamp` | ISO-8601 timestamp |
+| `sent` | Cumulative events sent |
+| `processed` | Cumulative events processed (output file lines) |
+
+**`system_report.txt`** — hardware snapshot: date, kernel, CPU model/cores/MHz, RAM total/available/speed, and all test parameters used for the run.
+
+## Utilities Reference
+
+### `utils/benchmark_tool.go`
+
+Sends events to the engine via Unix socket and tracks throughput.
 
 ```bash
 go run utils/benchmark_tool.go -h
 ```
 
-### Monitoring Tool
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-t` | `60` | Sending duration (seconds) |
+| `-r` | `1000` | Target EPS (`0` = unlimited) |
+| `-b` | `50` | Batch size (events per request) |
+| `-i` | `./test_logs` | Input directory with log files |
+| `-o` | `alerts.json` | Output file to watch |
+| `-T` | `false` | Truncate output file before test |
+| `-csv` | *(none)* | Path to CSV report output |
 
-The `utils/monitor.py` script is used to monitor the process and gather metrics:
+### `utils/monitor.py`
+
+Monitors a process and writes resource samples to CSV.
 
 ```bash
 python3 utils/monitor.py -h
 ```
 
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-p, --pid PID` | | Monitor by PID |
+| `-n, --name NAME` | | Monitor by process name |
+| `-o, --output FILE` | `stdout` | CSV output file |
+| `-s, --interval SECS` | `1` | Sampling interval |
+| `--pidfile FILE` | | Write monitor PID to file |
+| `-d, --debug` | | Enable debug logging |
 
-## Requirements
+### `utils/graphics_generator.py`
 
-Ensure you have Python 3, Go, and the necessary permissions to execute scripts and access system logs and configurations.
+Reads a results directory and produces comparison charts.
+
+```bash
+python3 utils/graphics_generator.py -h
+```
