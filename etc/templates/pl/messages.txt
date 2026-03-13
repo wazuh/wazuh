@@ -20,7 +20,7 @@ system="System"
 user="Użytkownik"
 host="Host"
 hitanyorabort="Wciśnij ENTER aby kontynuować lub Ctrl-C aby przerwać."
-whattoinstall="Wybierz rodzaj instalacji (manager, agent, or pomoc)?"
+whattoinstall="Wybierz rodzaj instalacji (manager, agent lub pomoc)?"
 serverchose="Wybrana instalacja: manager"
 clientchose="Wybrana instalacja: agent (klient)"
 

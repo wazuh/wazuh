@@ -1,5 +1,5 @@
 
-  - Masz do wyboru dwa metody instalacji: serwer oraz agent.
+  - Masz do wyboru dwie metody instalacji: serwer oraz agent.
 
     - Jeśli wybierzesz 'serwer', bęziesz miał możliwość analizy
       wszystkich logów, tworzenia powiadomienia e-mail, aktywnej

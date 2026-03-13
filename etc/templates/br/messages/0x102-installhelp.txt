@@ -1,5 +1,5 @@
 
-  - Você tem dois opções de instalação: servidor ou cliente.
+  - Você tem duas opções de instalação: servidor ou cliente.
 
     - Se você escolher 'servidor', você poderá analizar todos os logs,
       criar notificações de e-mail e respostas, e também receber

@@ -20,7 +20,7 @@ system="Sistem"
 user="Kullanıcı"
 host="Bilgisayar"
 hitanyorabort="Devam etmek için ENTER veya çıkmak için Ctrl-C ye basın"
-whattoinstall="Ne tür kurulum yapmak istiyorsunuz (sunucu,aracı, veya yardım)?"
+whattoinstall="Ne tür kurulum yapmak istiyorsunuz (sunucu, aracı veya yardım)?"
 serverchose="Manager kurulumu seçildi"
 clientchose="Aracı(istemci) kurulumu seçildi"
 
