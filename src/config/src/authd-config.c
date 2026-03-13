@@ -56,6 +56,9 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     static const char *xml_ssl_auto_negotiate = "ssl_auto_negotiate";
     static const char *xml_remote_enrollment = "remote_enrollment";
     static const char *xml_agents = "agents";
+#ifndef CLIENT
+    static const char *xml_key_request = "key_request";
+#endif
 
     authd_config_t *config = (authd_config_t *)d1;
     int i;
@@ -194,6 +197,17 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
 
             config->flags.remote_enrollment = b;
+#ifndef CLIENT
+        } else if (!strcmp(node[i]->element, xml_key_request)) {
+            XML_NODE children = OS_GetElementsbyNode(xml, node[i]);
+
+            if (children == NULL) {
+                continue;
+            }
+
+            authd_read_key_request(children, config);
+            OS_ClearNode(children);
+#endif
         } else if (!strcmp(node[i]->element, xml_limit_maxagents)) {
             mdebug1("The <%s> tag is deprecated since version 4.1.0.", xml_limit_maxagents);
         } else if (!strcmp(node[i]->element, xml_ciphers)) {
