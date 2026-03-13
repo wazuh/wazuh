@@ -9,78 +9,77 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_agentd-tier-0-1-lin.yml"
-        - "src/client-agent/**"
-        - "src/config/src/buffer-config.c"
-        - "src/config/src/client-config.c"
-        - "src/config/include/client-config.h"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_agentd/**"
+      - ".github/workflows/5_testintegration_agentd-tier-0-1-lin.yml"
+      - "src/client-agent/**"
+      - "src/config/src/buffer-config.c"
+      - "src/config/src/client-config.c"
+      - "src/config/include/client-config.h"
+      - "src/Makefile"
+      - "tests/integration/conftest.py"
+      - "tests/integration/test_agentd/**"
 
 jobs:
   build:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-      BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
+      BRANCH_BASE: ${{ github.base_ref || inputs.base_branch || 'main' }}
     runs-on: wz-linux-amd64
+
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      - name: "Install a compatible CMake"
-        uses: ./.github/actions/reinstall_cmake
-      # Build wazuh agent for linux.
+
+      - uses: ./.github/actions/reinstall_cmake
+
       - name: Build wazuh agent for linux
         run: |
-          make deps -C src TARGET=agent -j2
-          make -C src TARGET=agent -j2
-      # Install wazuh agent for linux.
+          make deps -C src TARGET=agent -j$(nproc) || exit 1
+          make -C src TARGET=agent -j$(nproc) || exit 1
+
       - name: Install wazuh agent for linux
         run: |
-          echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AGENT_MANAGER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo "USER_DIR=/var/ossec" >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          sudo sh install.sh
-          rm ./etc/preloaded-vars.conf
-      # Download and install integration tests framework.
+          cat << 'EOF' > ./etc/preloaded-vars.conf
+          USER_LANGUAGE="en"
+          USER_AGENT_MANAGER_IP="127.0.0.1"
+          USER_INSTALL_TYPE="agent"
+          USER_DIR="/var/ossec"
+          USER_ENABLE_SYSCHECK="n"
+          USER_ENABLE_ROOTCHECK="n"
+          EOF
+
+          sudo sh install.sh || exit 1
+          rm ./etc/preloaded-vars.conf || exit 1
       - name: Download and install integration tests framework
         run: |
           VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
-          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
-              QA_BRANCH=${BRANCH_NAME}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
-              QA_BRANCH=${BRANCH_BASE}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${VERSION}`" != "X" ]; then
-              QA_BRANCH=${VERSION}
-          else
-              QA_BRANCH="main"
+          [ -n "$VERSION" ] || exit 1
+
+          QA_BRANCH="main"
+          if [ -n "${BRANCH_NAME}" ] && git ls-remote --exit-code https://github.com/wazuh/qa-integration-framework.git "${BRANCH_NAME}" >/dev/null 2>&1; then
+              QA_BRANCH="${BRANCH_NAME}"
+          elif [ -n "${BRANCH_BASE}" ] && git ls-remote --exit-code https://github.com/wazuh/qa-integration-framework.git "${BRANCH_BASE}" >/dev/null 2>&1; then
+              QA_BRANCH="${BRANCH_BASE}"
+          elif [ -n "${VERSION}" ] && git ls-remote --exit-code https://github.com/wazuh/qa-integration-framework.git "${VERSION}" >/dev/null 2>&1; then
+              QA_BRANCH="${VERSION}"
           fi
-          git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          sudo pip install qa-integration-framework/
-          sudo rm -rf qa-integration-framework/
-      # Run Agentd integration tests.
+
+          git clone -b "${QA_BRANCH}" --single-branch https://github.com/wazuh/qa-integration-framework.git || exit 1
+
+          python3 -m venv venv || exit 1
+          ./venv/bin/pip install --upgrade pip || exit 1
+          ./venv/bin/pip install ./qa-integration-framework/ || exit 1
+          rm -rf qa-integration-framework/ || exit 1
+
       - name: Run Agentd integration tests
         run: |
-          cd tests/integration
-          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python -m pytest --tier 0 --tier 1 test_agentd/ --html=results.html --self-contained-html
+          cd tests/integration || exit 1
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" ../../venv/bin/python -m pytest --tier 0 --tier 1 test_agentd/ --html=results.html --self-contained-html || exit 1
 
-      # Upload the tests result html as an artifact
-      - name: Upload failed test results
-        if: failure()
+      - if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: agentd-test-results-${{ github.run_id }}

@@ -33,14 +33,13 @@ jobs:
           architecture: x64
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
-      # Build wazuh agent for linux.
       - name: Build wazuh agent for linux
         run: |
           make deps -C src TARGET=agent -j2
           make -C src TARGET=agent -j2
-      # Install wazuh agent for linux.
       - name: Install wazuh agent for linux
         run: |
+<<<<<<< HEAD
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
@@ -56,6 +55,19 @@ jobs:
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
       # Download and install integration tests framework.
+=======
+          cat << 'EOF' > ./etc/preloaded-vars.conf
+          USER_LANGUAGE="en"
+          USER_INSTALL_TYPE="agent"
+          USER_DIR="/var/ossec"
+          USER_ENABLE_SYSCHECK="n"
+          USER_ENABLE_ROOTCHECK="n"
+          USER_AGENT_MANAGER_IP="127.0.0.1"
+          EOF
+
+          sudo sh install.sh || exit 1
+          rm ./etc/preloaded-vars.conf || exit 1
+>>>>>>> 9299cb81c6 (ci: refactor and clean up integration test workflows)
       - name: Download and install integration tests framework
         run: |
           VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
@@ -76,12 +88,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install auditd -y
-      # Run fim integration tests.
       - name: Run fim integration tests
         run: |
           cd tests/integration
           sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python -m pytest --tier 0 --tier 1 test_fim/ --html=results.html --self-contained-html
-      # Upload the tests result html as an artifact
       - name: Upload failed test results
         if: failure()
         uses: actions/upload-artifact@v4
