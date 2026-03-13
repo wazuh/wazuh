@@ -248,10 +248,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Internal definitions files */
 #ifndef WIN32
-#define OSSEC_DEFINES  "etc/internal_options.conf"
 #ifdef CLIENT
+#define OSSEC_DEFINES  "etc/internal_options.conf"
 #define OSSEC_LDEFINES "etc/local_internal_options.conf"
 #else
+#define OSSEC_DEFINES  "etc/wazuh-manager-internal-options.conf"
 #define OSSEC_LDEFINES "etc/wazuh-manager-internal-options.conf"
 #endif
 #else
