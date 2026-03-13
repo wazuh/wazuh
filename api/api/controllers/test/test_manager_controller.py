@@ -23,7 +23,7 @@ with patch('wazuh.common.wazuh_uid'):
             get_stats_weekly, get_status, put_restart, update_configuration)
         from wazuh import manager, analysis
         from wazuh.core import common
-        from wazuh.core.manager import query_update_check_service
+        from wazuh.manager import query_update_check_service
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser

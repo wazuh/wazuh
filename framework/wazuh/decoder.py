@@ -22,6 +22,7 @@ from wazuh.core.logtest import validate_dummy_logtest
 from wazuh.rbac.decorators import expose_resources
 
 
+@expose_resources(actions=['decoders:read'], resources=['decoder:file:*'])
 def get_decoders(names: list = None, status: str = None, filename: list = None, relative_dirname: str = None,
                  parents: bool = False, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
                  sort_by: list = None, sort_ascending: bool = True, search_text: str = None,
@@ -230,6 +231,7 @@ def get_decoder_file_path(filename: str,
         return normpath(join(common.WAZUH_PATH, decoders[0]['relative_dirname'], filename))
 
 
+@expose_resources(actions=['decoders:read'], resources=['decoder:file:*'])
 def get_decoder_file(filename: str, raw: bool = False,
                      relative_dirname: str = None) -> Union[str, AffectedItemsWazuhResult]:
     """Read content of a specified file.
