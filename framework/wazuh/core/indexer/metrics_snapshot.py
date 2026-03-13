@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from wazuh.core.agent import WazuhDBQueryAgents
 
 
 class MetricsSnapshotTasks:
@@ -41,6 +42,24 @@ class MetricsSnapshotTasks:
                 await self._collect_and_index()
             except Exception:
                 self.logger.exception("Metrics snapshot failed - skipping cycle")
+
+    def _get_agents_sync(self):
+        query = WazuhDBQueryAgents(limit=None)
+        return query.run()["items"]
+
+    async def _collect_agents(self, timestamp: str):
+        loop = asyncio.get_running_loop()
+
+        agents_data = await loop.run_in_executor(None, self._get_agents_sync)
+        node_name = self.server.configuration.get("node_name", "unknown")
+        node_type = self.server.configuration.get("node_type", "master")
+
+        for agent in agents_data:
+            agent["@timestamp"] = timestamp
+            agent["wazuh.cluster.node_name"] = node_name
+            agent["wazuh.cluster.node_type"] = node_type
+
+        return agents_data
 
     async def _collect_and_index(self):
         pass  # TODO:
