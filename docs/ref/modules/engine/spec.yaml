@@ -1398,56 +1398,6 @@ paths:
   #################################
   # Raw Event Indexer
   #################################
-  /_internal/raweventindexer/enable:
-    post:
-      tags:
-        - Raw Event Indexer
-      summary: Enable the raw event indexer
-      description: |
-        This endpoint enables raw event indexing in the engine.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/EmptyRequest"
-      responses:
-        "200":
-          $ref: "#/components/responses/GenericSuccess_200"
-        "400":
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Response"
-        "500":
-          $ref: "#/components/responses/InternalServerError_500"
-
-  /_internal/raweventindexer/disable:
-    post:
-      tags:
-        - Raw Event Indexer
-      summary: Disable the raw event indexer
-      description: |
-        This endpoint disables raw event indexing in the engine.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/EmptyRequest"
-      responses:
-        "200":
-          $ref: "#/components/responses/GenericSuccess_200"
-        "400":
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Response"
-        "500":
-          $ref: "#/components/responses/InternalServerError_500"
-
   /_internal/raweventindexer/status:
     post:
       tags:
