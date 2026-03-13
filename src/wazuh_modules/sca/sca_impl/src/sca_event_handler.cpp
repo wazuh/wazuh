@@ -814,7 +814,7 @@ bool SCAEventHandler::ValidateAndHandleStatefulMessage(const nlohmann::json& sta
 {
     if (statefulEvent.empty())
     {
-        return true;
+        return false;
     }
 
     auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();

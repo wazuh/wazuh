@@ -1546,7 +1546,7 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_RowDataWithoutNew_UsesRowDataDirec
 
 TEST_F(SCAEventHandlerTest, ValidateAndHandleStatefulMessage_EmptyEvent)
 {
-    // Test with empty stateful event - should return true immediately
+    // Test with empty stateful event - should return false immediately
     nlohmann::json emptyEvent;
     nlohmann::json checkData = {{"id", "test_check"}};
     std::vector<nlohmann::json> failedChecks;
@@ -1554,7 +1554,7 @@ TEST_F(SCAEventHandlerTest, ValidateAndHandleStatefulMessage_EmptyEvent)
     bool result = handler->ValidateAndHandleStatefulMessage(emptyEvent, "test context", checkData, &failedChecks);
 
     // Should return true for empty event without processing
-    EXPECT_TRUE(result);
+    EXPECT_FALSE(result);
     EXPECT_TRUE(failedChecks.empty());
 }
 
