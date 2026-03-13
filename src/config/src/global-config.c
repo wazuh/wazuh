@@ -425,8 +425,6 @@ void config_free(_Config *config) {
         free(config->hostname_white_list);
     }
 
-    labels_free(config->labels); /* null-ended label set */
-
     // Cluster configuration
     if (config->cluster_name) {
         free(config->cluster_name);
