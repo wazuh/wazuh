@@ -1225,12 +1225,12 @@ char* w_strcat_list(char ** list, char sep_char) {
 }
 
 int print_hex_string(const char *src_buf, unsigned int src_size, char *dst_buf, unsigned int dst_size) {
-    if (src_buf && dst_buf) {
-        unsigned int i = 0;
-        for (; (i < (dst_size-1)/2) && (i < src_size); ++i) {
-            sprintf(dst_buf+2*i, "%.2x", src_buf[i]);
+    if (src_buf && dst_buf && dst_size > 0) {
+        unsigned int limit = ((dst_size - 1) / 2) < src_size ? ((dst_size - 1) / 2) : src_size;
+        for (unsigned int i = 0; i < limit; ++i) {
+            sprintf(dst_buf + 2 * i, "%.2x", (unsigned char)src_buf[i]);
         }
-        dst_buf[i * 2] = '\0';
+        dst_buf[limit * 2] = '\0';
         return OS_SUCCESS;
     }
     return OS_INVALID;
