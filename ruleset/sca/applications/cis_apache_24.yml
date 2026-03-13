@@ -55,7 +55,6 @@ checks:
     rationale: "Disabling WebDAV modules will improve the security posture of the web server by reducing the amount of potentially vulnerable code paths exposed to the network and reducing potential for unauthorized access to files via misconfigured WebDAV access controls."
     remediation: "Perform either one of the following to disable WebDAV module: 1. For source builds with static modules run the Apache ./configure script without including the mod_dav, and mod_dav_fs in the --enable-modules=configure script options. $ cd $DOWNLOAD_HTTPD $ ./configure 2. For dynamically loaded modules comment out or remove the LoadModule directive for mod_dav, and mod_dav_fs modules from the httpd.conf file. ##LoadModule dav_module modules/mod_dav.so ##LoadModule dav_fs_module modules/mod_dav_fs.so"
     compliance:
-      cis: ["2.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -82,7 +81,6 @@ checks:
     rationale: "When mod_status is loaded into the server, its handler capability is available in all configuration files, including per-directory files (e.g., .htaccess). The mod_status module may provide an adversary with information that can be used to refine exploits that depend on measuring server load."
     remediation: "Perform either one of the following to disable the mod_status module: 1) For source builds with static modules, run the Apache ./configure script with the --disable-status configure script options. 2) For dynamically loaded modules, comment out or remove the LoadModule directive for the mod_status module from the httpd.conf file. ##LoadModule status_module modules/mod_status.so"
     compliance:
-      cis: ["2.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -109,7 +107,6 @@ checks:
     rationale: "Automated directory listings should not be enabled because they will reveal information helpful to an attacker such as naming conventions and directory paths. They may also reveal files that were not intended to be revealed."
     remediation: "Perform either one of the following to disable the mod_autoindex module: 1. For source builds with static modules, run the Apache ./configure script with the --disable-autoindex configure script options. $ cd $DOWNLOAD_HTTPD $ ./configure -disable-autoindex. 2. For dynamically loaded modules, comment out or remove the LoadModule directive for mod_autoindex from the httpd.conf file. ## LoadModule autoindex_module modules/mod_autoindex.so"
     compliance:
-      cis: ["2.5"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -136,7 +133,6 @@ checks:
     rationale: "Proxy servers can act as an important security control when properly configured, however a secure proxy server is not within the scope of this benchmark. A web server should be primarily a web server or a proxy server but not both, for the same reasons that other multi-use servers are not recommended. Scanning for web servers that will also proxy requests is a very common attack, as proxy servers are useful for anonymizing attacks on other servers, or possibly proxying requests into an otherwise protected network."
     remediation: "Perform either one of the following to disable the proxy module: 1. For source builds with static modules, run the Apache ./configure script without including the mod_proxy in the --enable-modules=configure script options. $ cd $DOWNLOAD_HTTPD $ ./configure 2. For dynamically loaded modules, comment out or remove the LoadModule directive for mod_proxy module and all other proxy modules from the httpd.conf file. ##LoadModule proxy_module modules/mod_proxy.so ##LoadModule proxy_connect_module modules/mod_proxy_connect.so ##LoadModule proxy_ftp_module modules/mod_proxy_ftp.so ##LoadModule proxy_http_module modules/mod_proxy_http.so ##LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so ##LoadModule proxy_scgi_module modules/mod_proxy_scgi.so ##LoadModule proxy_ajp_module modules/mod_proxy_ajp.so ##LoadModule proxy_balancer_module modules/mod_proxy_balancer.so ##LoadModule proxy_express_module modules/mod_proxy_express.so ##LoadModule proxy_wstunnel_module modules/mod_proxy_wstunnel.so ##LoadModule proxy_fdpass_module modules/mod_proxy_fdpass.so"
     compliance:
-      cis: ["2.6"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -163,7 +159,6 @@ checks:
     rationale: "The user directories should not be globally enabled since that allows anonymous access to anything users may want to share with other users on the network. Also consider that every time a new account is created on the system, there is potentially new content available via the web site."
     remediation: "Perform either one of the following to disable the user directories module: 1. For source builds with static modules, run the Apache ./configure script with the --disable-userdir configure script options. $ cd $DOWNLOAD_HTTPD $ ./configure --disable-userdir 2. For dynamically loaded modules, comment out or remove the LoadModule directive for mod_userdir module from the httpd.conf file. ##LoadModule userdir_module modules/mod_userdir.so"
     compliance:
-      cis: ["2.7"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -190,7 +185,6 @@ checks:
     rationale: "While having server configuration information available as a web page may be convenient it is recommended that this module NOT be enabled. Once mod_info is loaded into the server, its handler capability is available in per-directory .htaccess files and can leak sensitive information from the configuration directives of other Apache modules such as system paths, usernames/passwords, database names, etc."
     remediation: "Perform either one of the following to disable the mod_info module: 1. For source builds with static modules, run the Apache ./configure script without including the mod_info in the --enable-modules=configure script options. $ cd $DOWNLOAD_HTTPD $ ./configure 2. For dynamically loaded modules, comment out or remove the LoadModule directive for the mod_info module from the httpd.conf file. ##LoadModule info_module modules/mod_info.so"
     compliance:
-      cis: ["2.8"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -217,7 +211,6 @@ checks:
     rationale: "Service accounts such as the apache account are a risk if they can be used to get a login shell to the system."
     remediation: "Change the apache account to use the nologin shell or an invalid shell such as /dev/null: # chsh -s /sbin/nologin apache"
     compliance:
-      cis: ["3.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -242,7 +235,6 @@ checks:
     rationale: "As a defense-in-depth measure the Apache user account should be locked to prevent logins, and to prevent a user from suing to apache using the password. In general, there should not be a need for anyone to have to su as apache, and when there is a need, then sudo should be used instead, which would not require the apache account password."
     remediation: "Use the passwd command to lock the apache account: # passwd -l apache"
     compliance:
-      cis: ["3.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -268,7 +260,6 @@ checks:
     rationale: ".htaccess files decentralizes access control and increases the risk of server configuration being changed inappropriately."
     remediation: "Perform the following to implement the recommended state: 1. Search the Apache configuration files (httpd.conf and any included configuration files) to find AllowOverride directives. 2. Set the value for all AllowOverride directives to None. 3. Remove any AllowOverrideList directives found."
     compliance:
-      cis: ["4.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -299,7 +290,6 @@ checks:
     rationale: "Likewise, the options for other directories and hosts needs to be restricted to the minimal options required. A setting of None is recommended, however it is recognized that other options may be needed in some cases: Multiviews, FollowSymbolicLinks & SymLinksIfOwnerMatch, ExecCGI, Includes & IncludesNOEXEC, & Indexes."
     remediation: "Perform the following to implement the recommended state: 1. Search the Apache configuration files (httpd.conf and any included configuration files) to find all <Directory> elements. 2. Add or modify any existing Options directive to NOT have a value of Includes. Other options may be set if necessary and appropriate as described above."
     compliance:
-      cis: ["5.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -328,7 +318,6 @@ checks:
     rationale: "Historically, sample content and features have been remotely exploited and can provide different levels of access to the server. Usually these routines are not written for production use and consequently little thought was given to security in their development."
     remediation: "Review all pre-installed content and remove content which is not required. In particular look for the unnecessary content which may be found in the document root directory, a configuration directory such as conf/extra directory, or as a Unix/Linux package. 1. Remove the default index.html or welcome page if it is a separate package. If it is part of main Apache httpd package such as it is on Red Hat Linux, then comment out the configuration as shown below. Removing a file such as the welcome.conf, is not recommended as it may get replaced if the package is updated. 2. Remove the Apache user manual content or comment out configurations referencing the manual. # yum erase httpd-manual 3. Remove or comment out any Server Information handler configuration. 4. Remove or comment out any other handler configuration such as perl-status."
     compliance:
-      cis: ["5.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -359,7 +348,6 @@ checks:
     rationale: "CGI programs have a long history of security bugs and problems associated with improperly accepting user-input. Since these programs are often targets of attackers, we need to make sure that there are no unnecessary CGI programs that could potentially be used for malicious purposes. Usually these programs are not written for production use and consequently little thought was given to security in their development. The printenv script in particular will disclose inappropriate information about the web server including directory paths and detailed version and configuration information."
     remediation: "Perform the following to implement the recommended state: 1. Locate cgi-bin files and directories enabled in the Apache configuration via Script, ScriptAlias, ScriptAliasMatch, or ScriptInterpreterSource directives. 2. Remove the printenvdefault CGI in cgi-bin directory if it is installed. # rm $APACHE_PREFIX/cgi-bin/printenv"
     compliance:
-      cis: ["5.5"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -385,7 +373,6 @@ checks:
     rationale: "CGI programs have a long history of security bugs and problems associated with improperly accepting user-input. Since these programs are often targets of attackers, we need to make sure that there are no unnecessary CGI programs that could potentially be used for malicious purposes. Usually these programs are not written for production use and consequently little thought was given to security in their development. The test-cgi script in particular will disclose inappropriate information about the web server including directory paths and detailed version and configuration information."
     remediation: "Perform the following to implement the recommended state: 1. Locate cgi-bin files and directories enabled in the Apache configuration via Script, ScriptAlias, ScriptAliasMatch, or ScriptInterpreterSource directives. 2. Remove the test-cgi default CGI in cgi-bin directory if it is installed. # rm $APACHE_PREFIX/cgi-bin/test-cgi"
     compliance:
-      cis: ["5.6"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -411,7 +398,6 @@ checks:
     rationale: "The HTTP 1.1 protocol requires support for the TRACE request method which reflects the request back as a response and was intended for diagnostics purposes. The TRACE method is not needed and is easily subjected to abuse and should be disabled."
     remediation: "Perform the following to implement the recommended state: 1. Locate the main Apache configuration file such as httpd.conf. 2. Add a TraceEnable directive to the server level configuration with a value of off. Server level configuration is the top-level configuration, not nested within any other directives like <Directory> or <Location>."
     compliance:
-      cis: ["5.8"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -439,7 +425,6 @@ checks:
     rationale: "Having multiple interfaces on web servers is fairly common, and without explicit Listen directives, the web server is likely to be listening on an inappropriate IP address / interface that was not intended for the web server. Single homed system with a single IP addressed are also required to have an explicit IP address in the Listen directive, in case additional interfaces are added to the system at a later date."
     remediation: "Perform the following to implement the recommended state: 1. Find any Listen directives in the Apache configuration file with no IP address specified, or with an IP address of all zeros similar to the examples below. Keep in mind there may be both IPv4 and IPv6 addresses on the system. 2. Modify the Listen directives in the Apache configuration file to have explicit IP addresses according to the intended usage. Multiple Listen directives may be specified for each IP address & Port."
     compliance:
-      cis: ["5.13"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -469,7 +454,6 @@ checks:
     rationale: "Using iframes and regular web frames to embed malicious content along with expected web content has been a favored attack vector for attacking web clients for a long time. This can happen when the attacker lures the victim to a malicious web site, which using frames to include the expected content from the legitimate site. The attack can also be performed via XSS (either reflected, DOM or stored XSS) to add the malicious content to the legitimate web site. To combat this vector, an HTTP Response header, X-Frame-Options, has been introduced that allows a server to specify whether a web page may be loaded in any frame (DENY) or those frames that share the pages origin (SAMEORIGIN)."
     remediation: "Perform the following to implement the recommended state: Add or modify the Header directive for the X-Frames-Options header in the Apache configuration to have the condition always, an action of append and a value of SAMEORIGIN or DENY, as shown below. Header always append X-Frame-Options SAMEORIGIN"
     compliance:
-      cis: ["5.14"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -498,7 +482,6 @@ checks:
     rationale: "Enabling the SSLInsecureRenegotiation directive leaves the server vulnerable to man-in- the-middle renegotiation attack. Therefore, the SSLInsecureRenegotiation directive should not be enabled."
     remediation: "Perform the following to implement the recommended state: Search the Apache configuration files for the SSLInsecureRenegotiation directive. If the directive is present modify the value to be off. If the directive is not present then no action is required. SSLInsecureRenegotiation off"
     compliance:
-      cis: ["7.6"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -527,7 +510,6 @@ checks:
     rationale: "If SSL compression is enabled, HTTPS communication between the client and the server may be at increased risk to the CRIME attack. The CRIME attack increases a malicious actor's ability to derive the value of a session cookie, which commonly contains an authenticator. If the authenticator in a session cookie is derived, it can be used to impersonate the account associated with the authenticator."
     remediation: "Perform the following to implement the recommended state: 1. Search the Apache configuration files for the SSLCompression directive. 2. If the directive is present, set it to off."
     compliance:
-      cis: ["7.7"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -556,7 +538,6 @@ checks:
     rationale: "Information is power and identifying web server details greatly increases the efficiency of any attack, as security vulnerabilities are extremely dependent upon specific software versions and configurations. Excessive probing and requests may cause too much 'noise' being generated and may tip off an administrator. If an attacker can accurately target their exploits, the chances of successful compromise prior to detection increase dramatically. Script Kiddies are constantly scanning the Internet and documenting the version information openly provided by web servers. The purpose of this scanning is to accumulate a database of software installed on those hosts, which can then be used when new vulnerabilities are released."
     remediation: "Perform the following to implement the recommended state: Add or modify the ServerTokens directive as shown below to have the value of Prod or ProductOnly: ServerTokens Prod"
     compliance:
-      cis: ["8.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -583,7 +564,6 @@ checks:
     rationale: "Server signatures are helpful when the server is acting as a proxy, since it helps the user distinguish errors from the proxy rather than the destination server, however in this context there is no need for the additional information."
     remediation: "Perform the following to implement the recommended state: Add or modify the ServerSignature directive to have the value of Off: ServerSignature Off"
     compliance:
-      cis: ["8.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -610,7 +590,6 @@ checks:
     rationale: "One common technique for DoS is to initiate many connections to the server. By decreasing the timeout for old connections and we allow the server to free up resources more quickly and be more responsive. By making the server more efficient, it will be more resilient to DoS conditions. The Timeout directive affects several timeout values for Apache, so review the Apache document carefully."
     remediation: "Perform the following to implement the recommended state: Add or modify the Timeout directive in the Apache configuration to have a value of 10 seconds or shorter. Timeout 10"
     compliance:
-      cis: ["9.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -637,7 +616,6 @@ checks:
     rationale: "Allowing per-client reuse of TCP sockets reduces the amount of system and network resources required to serve requests. This efficiency gain may improve a server resiliency to DoS attacks."
     remediation: "Perform the following to implement the recommended state: Add or modify the KeepAlive directive in the Apache configuration to have a value of On, so that KeepAlive connections are enabled. KeepAlive On"
     compliance:
-      cis: ["9.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -664,7 +642,6 @@ checks:
     rationale: "The MaxKeepAliveRequests directive is important to be used to mitigate the risk of Denial of Service (DoS) attack technique by reducing the overhead imposed on the server. The KeepAlive directive must be enabled before it is effective. Enabling KeepAlives allows for multiple HTTP requests to be sent while keeping the same TCP connection alive. This reduces the overhead of having to setup and tear down TCP connections for each request. By making the server more efficient, it will be more resilient to DoS conditions."
     remediation: "Perform the following to implement the recommended state: Add or modify the MaxKeepAliveRequests directive in the Apache configuration to have a value of 100 or more. MaxKeepAliveRequests 100"
     compliance:
-      cis: ["9.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -691,7 +668,6 @@ checks:
     rationale: "The KeepAliveTimeout directive is used mitigate some of the risk, by requiring more effort for a successful DoS attack. By enabling KeepAlive and keeping the timeout relatively low for old connections and we allow the server to free up resources more quickly and be more responsive."
     remediation: "Perform the following to implement the recommended state: Add or modify the KeepAliveTimeout directive in the Apache configuration to have a value of 15 or less. KeepAliveTimeout 15"
     compliance:
-      cis: ["9.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -718,7 +694,6 @@ checks:
     rationale: "Setting a request header timeout is vital for mitigating Denial of Service attacks based on slow requests. The slow request attacks are particularly lethal and relative easy to perform, because they require very little bandwidth and can easily be done through anonymous proxies. Starting in June 2009 with the Slow Loris DoS attack, which used a slow GET request as published by Robert Hansen (RSnake) on his blog http://ha.ckers.org/slowloris/. Later in November 2010 at the OWASP App Sec DC conference Wong Onn Chee demonstrated a slow POST request attack which was even more effective."
     remediation: "Perform the following to implement the recommended state: 1. Load the mod_requesttimeout module in the Apache configuration with the following configuration. LoadModule reqtimeout_module modules/mod_reqtimeout.so 2. Add a RequestReadTimeout directive similar to the one below with the maximum request header timeout value of 40 seconds or less. RequestReadTimeout header=20-40,MinRate=500 body=20,MinRate=500"
     compliance:
-      cis: ["9.5"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -748,7 +723,6 @@ checks:
     rationale: "It is not sufficient to timeout only on the header portion of the request, as the server will still be vulnerable to attacks like the OWASP Slow POST attack, which provide the body of the request very slowly. Therefore, the body portion of the request must have a timeout as well. A timeout of 20 seconds or less is recommended."
     remediation: "Perform the following to implement the recommended state: 1. Load the mod_requesttimeout module in the Apache configuration with the following configuration. LoadModule reqtimeout_module modules/mod_reqtimeout.so 2. Add a RequestReadTimeout directive similar to the one below with the maximum request body timeout value of 20 seconds or less. RequestReadTimeout header=20-40,MinRate=500 body=20,MinRate=500"
     compliance:
-      cis: ["9.6"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -776,7 +750,6 @@ checks:
     rationale: "The limiting of the size of the request line is helpful so that the web server can prevent an unexpectedly long or large request from being passed to a potentially vulnerable CGI program, module or application that would have attempted to process the request. Of course, the underlying dependency is that we need to set the limits high enough to not interfere with any one application on the server, while setting them low enough to be of value in protecting the applications. Since the configuration directive is available only at the server configuration level, it is not possible to tune the value for different portions of the same web server. Please read the Apache documentation carefully, as these requests may interfere with the expected functionality of some web applications."
     remediation: "Perform the following to implement the recommended state: Add or modify the LimitRequestline directive in the Apache configuration to have a value of 512 or shorter. LimitRequestline 512"
     compliance:
-      cis: ["10.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -803,7 +776,6 @@ checks:
     rationale: "The limiting of the number of fields is helpful so that the web server can prevent an unexpectedly high number of fields from being passed to a potentially vulnerable CGI program, module or application that would have attempted to process the request. Of course, the underlying dependency is that we need to set the limits high enough to not interfere with any one application on the server, while setting them low enough to be of value in protecting the applications. Since the configuration directives are available only at the server configuration level, it is not possible to tune the value for different portions of the same web server. Please read the Apache documentation carefully, as these requests may interfere with the expected functionality of some web applications."
     remediation: "Perform the following to implement the recommended state: Add or modify the LimitRequestFields directive in the Apache configuration to have a value of 100 or less. If the directive is not present the default depends on a compile time configuration, but defaults to a value of 100. LimitRequestFields 100"
     compliance:
-      cis: ["10.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -830,7 +802,6 @@ checks:
     rationale: "By limiting of the size of request headers is helpful so that the web server can prevent an unexpectedly long or large value from being passed to exploit a potentially vulnerable program. Of course, the underlying dependency is that we need to set the limits high enough to not interfere with any one application on the server, while setting them low enough to be of value in protecting the applications. Since the configuration directives are available only at the server configuration level, it is not possible to tune the value for different portions of the same web server. Please read the Apache documentation carefully, as these requests may interfere with the expected functionality of some web applications."
     remediation: "Perform the following to implement the recommended state: Add or modify the LimitRequestFieldsize directive in the Apache configuration to have a value of 1024 or less. LimitRequestFieldsize 1024"
     compliance:
-      cis: ["10.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -857,7 +828,6 @@ checks:
     rationale: "The limiting of the size of the request body is helpful so that the web server can prevent an unexpectedly long or large request from being passed to a potentially vulnerable program. Of course, the underlying dependency is that we need to set the limits high enough to not interfere with any one application on the server, while setting them low enough to be of value in protecting the applications. The LimitRequestBody may be configured on a per directory, or per location context. Please read the Apache documentation carefully, as these requests may interfere with the expected functionality of some web applications."
     remediation: "Perform the following to implement the recommended state: Add or modify the LimitRequestBody directive in the Apache configuration to have a value of 102400 (100K) or less. Please read the Apache documentation so that it is understood that this directive will limit the size of file up-loads to the web server. LimitRequestBody 102400"
     compliance:
-      cis: ["10.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]

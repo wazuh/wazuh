@@ -37,7 +37,6 @@ checks:
     rationale: "It is important that a system has the newest updates applied so as to prevent unauthorized persons from exploiting identified vulnerabilities."
     remediation: "Open a terminal session and enter the following command to enable the auto update feature: sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -int 1"
     compliance:
-      cis: ["1.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -65,7 +64,6 @@ checks:
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited"
     remediation: "Open a terminal session and enter the following command to enable the auto update feature: sudo defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool TRUE    The remediation requires a log out and log in to show in the GUI. Please note that."
     compliance:
-      cis: ["1.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -90,7 +88,6 @@ checks:
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited"
     remediation: "Open a terminal session and enter the following command to enable install system data files and security updates: sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -bool true && sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool true"
     compliance:
-      cis: ["1.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -119,7 +116,6 @@ checks:
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited"
     remediation: "Open a terminal session and enter the following command to enable install system data files and security updates: sudo defaults write /Library/Preferences/com.apple.commerce AutoUpdateRestartRequired -bool TRUE"
     compliance:
-      cis: ["1.5"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -144,7 +140,6 @@ checks:
     rationale: "Kerberos may not operate correctly if the time on the Mac is off by more than 5 minutes.  This in turn can affect Apple's single sign-on feature, Active Directory logons, and other features."
     remediation: "Run the following commands: sudo systemsetup -setnetworktimeserver <timeserver>    sudo systemsetup -setusingnetworktime on"
     compliance:
-      cis: ["2.2.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -169,7 +164,6 @@ checks:
     rationale: "Disabling Remote Apple Events mitigates the risk of an unauthorized program gaining access to the system."
     remediation: "Run the following command in Terminal: sudo systemsetup -setremoteappleevents off"
     compliance:
-      cis: ["2.4.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -194,7 +188,6 @@ checks:
     rationale: "Disabling Printer Sharing mitigates the risk of attackers attempting to exploit the print server to gain access to the system."
     remediation: "Perform the following to implement the prescribed state: 1. Open System Preferences 2. Select Sharing 3. Uncheck Printer Sharing"
     compliance:
-      cis: ["2.4.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -219,7 +212,6 @@ checks:
     rationale: "Disabling Remote Login mitigates the risk of an unauthorized person gaining access to the system via Secure Shell (SSH). While SSH is an industry standard to connect to posix servers, the scope of the benchmark is for Apple macOS clients, not servers."
     remediation: "Run the following command in Terminal: sudo systemsetup -setremotelogin off"
     compliance:
-      cis: ["2.4.5"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -244,7 +236,6 @@ checks:
     rationale: "By disabling file sharing, the remote attack surface and risk of unauthorized access to files stored on the system is reduced."
     remediation: "Run the following command in Terminal to turn off AFP from the command line: sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.AppleFileServer.plist  - Run the following command in Terminal to turn off SMB sharing from the CLI:  sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.smbd.plist"
     compliance:
-      cis: ["2.4.8"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -270,7 +261,6 @@ checks:
     rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access."
     remediation: 'Run the following command in Terminal:  sudo pmset -a womp 0   Note: The -c flag means "wall power." Different settings must be used for other power sources.'
     compliance:
-      cis: ["2.5.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -295,7 +285,6 @@ checks:
     rationale: "Encrypting sensitive data minimizes the likelihood of unauthorized users gaining access to it."
     remediation: "Perform the following to implement the prescribed state: 1. Open System Preferences 2. Select Security & Privacy 3. Select FileVault 4. Select Turn on FileVault"
     compliance:
-      cis: ["2.6.1.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -320,7 +309,6 @@ checks:
     rationale: "Disallowing unsigned software will reduce the risk of unauthorized or malicious applications from running on the system."
     remediation: "Run the following command in Terminal: sudo spctl --master-enable"
     compliance:
-      cis: ["2.6.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -345,7 +333,6 @@ checks:
     rationale: "A firewall minimizes the threat of unauthorized users from gaining access to your system while connected to a network or the Internet."
     remediation: "Run the following command in Terminal: defaults write /Library/Preferences/com.apple.alf globalstate - int <value>    Where <value> is: - 1 = on for specific services - 2 = on for essential services"
     compliance:
-      cis: ["2.6.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -372,7 +359,6 @@ checks:
     rationale: "Stealth mode on the firewall minimizes the threat of system discovery tools while connected to a network or the Internet."
     remediation: "Run the following command in Terminal: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on"
     compliance:
-      cis: ["2.6.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -399,7 +385,6 @@ checks:
     rationale: "Enabling Secure Keyboard Entry minimizes the risk of a key logger from detecting what is entered in Terminal."
     remediation: "Perform the following to implement the prescribed state: 1. Open Terminal 2. Select Terminal 3. Select Secure Keyboard Entry"
     compliance:
-      cis: ["2.10"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -424,7 +409,6 @@ checks:
     rationale: "Java has been one of the most exploited environments and Java 6, which was provided as an OS component by Apple, is no longer maintained by Apple or Oracle. The old versions provided by Apple are both unsupported and missing the more modern security controls that have limited current exploits. The EOL version may still be installed and should be removed from the computer or not be in the default path."
     remediation: "Java 6 can be removed completely or, if required Java applications will only work with Java 6, a custom path can be used. Apple is likely to finally pull the plug on Java 6 in upcoming macOS versions so any applications that still require Java 6 will likely soon be unavailable."
     compliance:
-      cis: ["2.11"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -449,7 +433,6 @@ checks:
     rationale: "Logs generated by auditd may be useful when investigating a security incident as they may help reveal the vulnerable application and the actions taken by a malicious actor."
     remediation: "Run the following command in Terminal: sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.auditd.plist"
     compliance:
-      cis: ["3.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -474,7 +457,6 @@ checks:
     rationale: "Maintaining an audit trail of system activity logs can help identify configuration errors, troubleshoot service disruptions, and analyze compromises or attacks that have occurred, have begun, or are about to begin. Audit logs are necessary to provide a trail of evidence in case the system or network is compromised."
     remediation: '1. Open a terminal session and edit the /etc/security/audit_control file 2. Find the line beginning with "flags" 3. Add the following flags: lo, ad, fd, fm, -all.  4. Save the file.'
     compliance:
-      cis: ["3.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -499,7 +481,6 @@ checks:
     rationale: 'Bonjour can simplify device discovery from an internal rogue or compromised host. An attacker could use Bonjour''s multicast DNS feature to discover a vulnerable or poorly- configured service or additional information to aid a targeted attack. Implementing this control disables the continuous broadcasting of "I''m here!" messages. Typical end-user endpoints should not have to advertise services to other computers.'
     remediation: "Run the following command in Terminal: defaults write /Library/Preferences/com.apple.mDNSResponder.plist NoMulticastAdvertisements"
     compliance:
-      cis: ["4.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -524,7 +505,6 @@ checks:
     rationale: "Web serving should not be done from a user desktop. Dedicated webservers or appropriate cloud storage should be used. Open ports make it easier to exploit the computer."
     remediation: "Stop the Web Server sudo apachectl stop    Ensure that the web server will not auto-start at boot sudo defaults write /System/Library/LaunchDaemons/org.apache.httpd Disabled - bool true"
     compliance:
-      cis: ["4.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -550,7 +530,6 @@ checks:
     rationale: "FTP servers should not be run on an end user desktop. Dedicated servers or appropriate cloud storage should be used. Open ports make it easier to exploit the computer."
     remediation: "Stop the ftp Server sudo -s launchctl unload -w /System/Library/LaunchDaemons/ftp.plist"
     compliance:
-      cis: ["4.5"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -575,7 +554,6 @@ checks:
     rationale: "File serving should not be done from a user desktop, dedicated servers should be used.  Open ports make it easier to exploit the computer."
     remediation: "Stop the NFS Server sudo nfsd disable    Remove the exported Directory listing rm /etc/export"
     compliance:
-      cis: ["4.6"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -602,7 +580,6 @@ checks:
     rationale: "Enabling and using the root account puts the system at risk since any successful exploit or mistake while the root account is in use could have unlimited access privileges within the system. Using the sudo command allows users to perform functions as a root user while limiting and password protecting the access privileges. By default the root account is not enabled on a macOS computer. An administrator can escalate privileges using the sudo command (use -s or -i to get a root shell)."
     remediation: "Open System Preferences, Uses & Groups. Click the lock icon to unlock it. In the Network Account Server section, click Join or Edit. Click Open Directory Utility. Click the lock icon to unlock it. Select the Edit menu > Disable Root User."
     compliance:
-      cis: ["5.8"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -627,7 +604,6 @@ checks:
     rationale: "Disabling automatic login decreases the likelihood of an unauthorized person gaining access to a system."
     remediation: "Run the following command in Terminal: sudo defaults delete /Library/Preferences/com.apple.loginwindow autoLoginUser"
     compliance:
-      cis: ["5.9"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -652,7 +628,6 @@ checks:
     rationale: "Running without System Integrity Protection on a production system runs the risk of the modification of system binaries or code injection of system processes that would otherwise be protected by SIP."
     remediation: "Perform the following while booted in macOS Recovery Partition.  1. Select Terminal from the Utilities menu    2. Run the following command in Terminal: /usr/bin/csrutil enable    3. The output should be: Successfully enabled System Integrity Protection. Please restart the machine for the changes to take effect.    4. Reboot."
     compliance:
-      cis: ["5.20"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -677,7 +652,6 @@ checks:
     rationale: "Disabling the guest account mitigates the risk of an untrusted user doing basic reconnaissance and possibly using privilege escalation attacks to take control of the system."
     remediation: "Run the following command in Terminal: sudo defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled - bool NO"
     compliance:
-      cis: ["6.1.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -702,7 +676,6 @@ checks:
     rationale: "The Guest home folders are unneeded after the Guest account is disabled and could be used inappropriately."
     remediation: "1. Run the following command in Terminal: rm -R /Users/Guest  2. Make sure there is no output"
     compliance:
-      cis: ["6.1.5"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -727,7 +700,6 @@ checks:
     rationale: "Visible filename extensions allows the user to identify the file type and the application it is associated with which leads to quick identification of misrepresented malicious files."
     remediation: "Perform the following to implement the prescribed state: 1. Select Finder 2. Select Preferences 3. Check Show all filename extensions    Alternatively, use the following command: defaults write NSGlobalDomain AppleShowAllExtensions -bool true"
     compliance:
-      cis: ["6.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -752,7 +724,6 @@ checks:
     rationale: "Hackers have taken advantage of this setting via drive-by attacks. These attacks occur when a user visits a legitimate website that has been corrupted. The user unknowingly downloads a malicious file either by closing an infected pop-up or hovering over a malicious banner. An attacker can create a malicious file that will fall within Safari's safe file list that will download and execute without user input."
     remediation: 'Perform the following to implement the prescribed state: 1. Open Safari 2. Select Safari from the menu bar 3. Select Preferences 4. Select General 5. Uncheck Open "safe" files after downloading    Alternatively run the following command in Terminal: defaults write com.apple.Safari AutoOpenSafeDownloads -boolean no'
     compliance:
-      cis: ["6.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]

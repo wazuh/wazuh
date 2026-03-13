@@ -59,9 +59,6 @@ checks:
       - "https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/"
       - "https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html"
     compliance:
-      cis: ["1.1.2.1"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -87,9 +84,6 @@ checks:
     rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /tmp."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp."
     compliance:
-      cis: ["1.1.2.2"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -114,9 +108,6 @@ checks:
     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /tmp."
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp."
     compliance:
-      cis: ["1.1.2.3"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -142,9 +133,6 @@ checks:
     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /tmp."
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp."
     compliance:
-      cis: ["1.1.2.4"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -177,9 +165,6 @@ checks:
     references:
       - 'AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/'
     compliance:
-      cis: ["1.1.3.1"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -205,9 +190,6 @@ checks:
     rationale: "Since the /var filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var partition. Example: <device> /var <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var with the configured options: # mount -o remount /var."
     compliance:
-      cis: ["1.1.3.2"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -233,9 +215,6 @@ checks:
     rationale: "Since the /var filesystem is only intended for variable files such as logs, set this option to ensure that users cannot create setuid files in /var."
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var partition. Example: <device> /var <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var with the configured options: # mount -o remount /var."
     compliance:
-      cis: ["1.1.3.3"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -268,9 +247,6 @@ checks:
     references:
       - 'AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/'
     compliance:
-      cis: ["1.1.4.1"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -296,9 +272,6 @@ checks:
     rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /var/tmp."
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/tmp partition. Example: <device> /var/tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/tmp with the configured options: # mount -o remount /var/tmp."
     compliance:
-      cis: ["1.1.4.2"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -324,9 +297,6 @@ checks:
     rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /var/tmp."
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/tmp partition. Example: <device> /var/tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/tmp with the configured options: # mount -o remount /var/tmp."
     compliance:
-      cis: ["1.1.4.3"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -352,9 +322,6 @@ checks:
     rationale: "Since the /var/tmp filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/tmp."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/tmp partition. Example: <device> /var/tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/tmp with the configured options: # mount -o remount /var/tmp."
     compliance:
-      cis: ["1.1.4.4"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -387,9 +354,6 @@ checks:
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     compliance:
-      cis: ["1.1.5.1"]
-      cis_csc_v8: ["8.3"]
-      cis_csc_v7: ["6.4"]
       cmmc: ["AU.L2-3.3.1", "AU.L2-3.3.2", "AU.L2-3.3.3", "AU.L2-3.3.6", "SI.L2-3.14.1"]
       fedramp: ["AU-2", "AU-3", "AU-6", "AU-8", "AU-11", "AU-12", "SI-4", "IR-5"]
       gdpr: ["32", "33"]
@@ -415,9 +379,6 @@ checks:
     rationale: "Since the /var/log filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/log."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log with the configured options: # mount -o remount /var/log."
     compliance:
-      cis: ["1.1.5.2"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -443,9 +404,6 @@ checks:
     rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot run executable binaries from /var/log."
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log with the configured options: # mount -o remount /var/log."
     compliance:
-      cis: ["1.1.5.3"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -471,9 +429,6 @@ checks:
     rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot create setuid files in /var/log."
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log with the configured options: # mount -o remount /var/log."
     compliance:
-      cis: ["1.1.5.4"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -506,9 +461,6 @@ checks:
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     compliance:
-      cis: ["1.1.6.1"]
-      cis_csc_v8: ["8.3"]
-      cis_csc_v7: ["6.4"]
       cmmc: ["AU.L2-3.3.1", "AU.L2-3.3.2", "AU.L2-3.3.3", "AU.L2-3.3.6", "SI.L2-3.14.1"]
       fedramp: ["AU-2", "AU-3", "AU-6", "AU-8", "AU-11", "AU-12", "SI-4", "IR-5"]
       gdpr: ["32", "33"]
@@ -534,9 +486,6 @@ checks:
     rationale: "Since the /var/log/audit filesystem is only intended for audit logs, set this option to ensure that users cannot run executable binaries from /var/log/audit."
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var partition. Example: <device> /var/log/audit <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit."
     compliance:
-      cis: ["1.1.6.2"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -562,9 +511,6 @@ checks:
     rationale: "Since the /var/log/audit filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/log/audit."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/log/audit partition. Example: <device> /var/log/audit <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit."
     compliance:
-      cis: ["1.1.6.3"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -590,9 +536,6 @@ checks:
     rationale: "Since the /var/log/audit filesystem is only intended for variable files such as logs, set this option to ensure that users cannot create setuid files in /var/log/audit."
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log/audit partition. Example: <device> /var/log/audit <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit."
     compliance:
-      cis: ["1.1.6.4"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -625,9 +568,6 @@ checks:
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     compliance:
-      cis: ["1.1.7.1"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -653,9 +593,6 @@ checks:
     rationale: "Since the /home filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /home."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /home with the configured options: # mount -o remount /home."
     compliance:
-      cis: ["1.1.7.2"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -681,9 +618,6 @@ checks:
     rationale: "Since the /home filesystem is only intended for user file storage, set this option to ensure that users cannot create setuid files in /home."
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /home with the configured options: # mount -o remount /home."
     compliance:
-      cis: ["1.1.7.3"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -717,9 +651,6 @@ checks:
       - https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/
       - https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html
     compliance:
-      cis: ["1.1.8.1"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -744,9 +675,6 @@ checks:
     rationale: "Since the /dev/shm filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create special devices in /dev/shm partitions."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm using the updated options from /etc/fstab: # mount -o remount /dev/shm."
     compliance:
-      cis: ["1.1.8.2"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -772,9 +700,6 @@ checks:
     rationale: "Setting this option on a file system prevents users from executing programs from shared memory. This deters users from introducing potentially malicious software on the system."
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. Example: <device> /dev/shm <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /dev/shm with the configured options: # mount -o remount /dev/shm. NOTE It is recommended to use tmpfs as the device/filesystem type as /dev/shm is used as shared memory space by applications."
     compliance:
-      cis: ["1.1.8.3"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -800,9 +725,6 @@ checks:
     rationale: "Setting this option on a file system prevents users from introducing privileged programs onto the system and allowing non-root users to execute them."
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm using the updated options from /etc/fstab: # mount -o remount /dev/shm."
     compliance:
-      cis: ["1.1.8.4"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -834,9 +756,6 @@ checks:
     rationale: "It is important to ensure that an RPM's package signature is always checked prior to installation to ensure that the software is obtained from a trusted source."
     remediation: 'Edit /etc/dnf/dnf.conf and set gpgcheck=1 in the [main] section. Example: # sed -i ''s/^gpgcheck\s*=\s*.*/gpgcheck=1/'' /etc/dnf/dnf.conf. Edit any failing files in /etc/yum.repos.d/* and set all instances starting with gpgcheck to 1. Example: # find /etc/yum.repos.d/ -name "*.repo" -exec echo "Checking:" {} \; -exec sed -i ''s/^gpgcheck\s*=\s*.*/gpgcheck=1/'' {} \;.'
     compliance:
-      cis: ["1.2.2"]
-      cis_csc_v8: ["7.3"]
-      cis_csc_v7: ["3.4"]
       cmmc: ["SI.L2-3.14.1"]
       fedramp: ["SI-2"]
       gdpr: ["32", "35"]
@@ -868,9 +787,6 @@ checks:
     rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
     remediation: "Run the following command to install AIDE: # dnf install aide. Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Initialize AIDE: Run the following commands: # aide --init # mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz."
     compliance:
-      cis: ["1.3.1"]
-      cis_csc_v8: ["3.14"]
-      cis_csc_v7: ["14.9"]
       cmmc: ["AC.L2-3.1.7"]
       fedramp: ["AC-6"]
       gdpr: ["32", "25", "30"]
@@ -899,9 +815,6 @@ checks:
       - "https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service"
       - "https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer"
     compliance:
-      cis: ["1.3.2"]
-      cis_csc_v8: ["3.14"]
-      cis_csc_v7: ["14.9"]
       cmmc: ["AC.L2-3.1.7"]
       fedramp: ["AC-6"]
       gdpr: ["32", "25", "30"]
@@ -935,9 +848,6 @@ checks:
     impact: 'If password protection is enabled, only the designated superuser can edit a Grub 2 menu item by pressing "e" or access the GRUB 2 command line by pressing "c". If GRUB 2 is set up to boot automatically to a password-protected menu entry the user has no option to back out of the password prompt to select another menu entry. Holding the SHIFT key will not display the menu in this case. The user must enter the correct username and password. If unable, the configuration files will have to be edited via the LiveCD or other means to fix the problem.'
     remediation: "Create an encrypted password with grub2-setpassword: # grub2-setpassword Enter password: <password> Confirm password: <password>."
     compliance:
-      cis: ["1.4.1"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -964,9 +874,6 @@ checks:
     rationale: "Setting the permissions to read and write for root only prevents non-root users from seeing the boot parameters or changing them. Non-root users who read the boot parameters may be able to identify weaknesses in security upon boot and be able to exploit them."
     remediation: "Run the following commands to set ownership and permissions on your grub configuration files: Run the following command to set ownership and permissions on grub.cfg: # chown root:root /boot/grub2/grub.cfg # chmod og-rwx /boot/grub2/grub.cfg Run the following command to set ownership and permissions on grubenv: # chown root:root /boot/grub2/grubenv # chmod u-x,og-rwx /boot/grub2/grubenv Run the following command to set ownership and permissions on user.cfg: # chown root:root /boot/grub2/user.cfg # chmod u-x,og-rwx /boot/grub2/user.cfg Note: This may require a re-boot to enable the change."
     compliance:
-      cis: ["1.4.2"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -1000,7 +907,6 @@ checks:
     references:
       - "https://www.freedesktop.org/software/systemd/man/coredump.conf.html"
     compliance:
-      cis: ["1.5.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1027,7 +933,6 @@ checks:
     references:
       - "https://www.freedesktop.org/software/systemd/man/coredump.conf.html"
     compliance:
-      cis: ["1.5.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1060,9 +965,6 @@ checks:
     rationale: "Without a Mandatory Access Control system installed only the default Discretionary Access Control system will be available."
     remediation: "Run the following command to install SELinux: # dnf install libselinux."
     compliance:
-      cis: ["1.6.1.1"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -1089,9 +991,6 @@ checks:
     impact: "Files created while SELinux is disabled are not labeled at all. This behavior causes problems when changing to enforcing mode because files are labeled incorrectly or are not labeled at all. To prevent incorrectly labeled and unlabeled files from causing problems, file systems are automatically relabeled when changing from the disabled state to permissive or enforcing mode. This can be a long running process that should be accounted for as it may extend downtime during initial re-boot."
     remediation: 'Run the following command to remove the selinux=0 and enforcing=0 parameters: grubby --update-kernel ALL --remove-args "selinux=0 enforcing=0" Run the following command to remove the selinux=0 and enforcing=0 parameters if they were created by the deprecated grub2-mkconfig command: # grep -Prsq -- ''\h*([^#\n\r]+\h+)?kernelopts=([^#\n\r]+\h+)?(selinux|enforcing)=0\b'' /boot/grub2 /boot/efi && grub2-mkconfig -o "$(grep -Prl -- ''\h*([^#\n\r]+\h+)?kernelopts=([^#\n\r]+\h+)?(selinux|enforcing)=0\b'' /boot/grub2 /boot/efi).'
     compliance:
-      cis: ["1.6.1.2"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -1118,9 +1017,6 @@ checks:
     rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that at least the default recommendations are met."
     remediation: "Edit the /etc/selinux/config file to set the SELINUXTYPE parameter: SELINUXTYPE=targeted."
     compliance:
-      cis: ["1.6.1.3"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -1149,9 +1045,6 @@ checks:
     references:
       - "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/sect-security-enhanced_linux-introduction-selinux_modes"
     compliance:
-      cis: ["1.6.1.4"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -1180,9 +1073,6 @@ checks:
     references:
       - "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/sect-security-enhanced_linux-introduction-selinux_modes"
     compliance:
-      cis: ["1.6.1.5"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -1209,9 +1099,6 @@ checks:
     rationale: "For unconfined processes, SELinux policy rules are applied, but policy rules exist that allow processes running in unconfined domains almost all access. Processes running in unconfined domains fall back to using DAC rules exclusively. If an unconfined process is compromised, SELinux does not prevent an attacker from gaining access to system resources and data, but of course, DAC rules are still used. SELinux is a security enhancement on top of DAC rules - it does not replace them."
     remediation: "Investigate any unconfined processes found during the audit action. They may need to have an existing security context assigned to them or a policy built for them."
     compliance:
-      cis: ["1.6.1.6"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -1237,9 +1124,6 @@ checks:
     rationale: "The SETroubleshoot service is an unnecessary daemon to have running on a server, especially if X Windows is disabled."
     remediation: "Run the following command to uninstall setroubleshoot: # dnf remove setroubleshoot."
     compliance:
-      cis: ["1.6.1.7"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1264,9 +1148,6 @@ checks:
     rationale: "Since this service is not used very often, remove it to reduce the amount of potentially vulnerable code running on the system."
     remediation: "Run the following command to uninstall mcstrans: # dnf remove mcstrans."
     compliance:
-      cis: ["1.6.1.8"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1295,7 +1176,6 @@ checks:
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the "uname -a" command once they have logged in.'
     remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform OR If the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd."
     compliance:
-      cis: ["1.7.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1320,7 +1200,6 @@ checks:
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
     remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue."
     compliance:
-      cis: ["1.7.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1345,7 +1224,6 @@ checks:
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
     remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue.net."
     compliance:
-      cis: ["1.7.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1370,9 +1248,6 @@ checks:
     rationale: "If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/motd: # chown root:root /etc/motd # chmod u-x,go-wx /etc/motd."
     compliance:
-      cis: ["1.7.4"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -1398,9 +1273,6 @@ checks:
     rationale: "If the /etc/issue file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/issue: # chown root:root /etc/issue # chmod u-x,go-wx /etc/issue."
     compliance:
-      cis: ["1.7.5"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -1426,9 +1298,6 @@ checks:
     rationale: "If the /etc/issue.net file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/issue.net: # chown root:root /etc/issue.net # chmod u-x,go-wx /etc/issue.net."
     compliance:
-      cis: ["1.7.6"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -1461,9 +1330,6 @@ checks:
     references:
       - "https://wiki.gnome.org/Projects/GDM"
     compliance:
-      cis: ["1.8.1"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1497,9 +1363,6 @@ checks:
     rationale: "XDMCP is inherently insecure. - XDMCP is not a ciphered protocol. This may allow an attacker to capture keystrokes entered by a user. - XDMCP is vulnerable to man-in-the-middle attacks. This may allow an attacker to steal the credentials of legitimate users by impersonating the XDMCP server."
     remediation: "Edit the file /etc/gdm/custom.conf and remove the line: Enable=true."
     compliance:
-      cis: ["1.8.10"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1530,9 +1393,6 @@ checks:
     references:
       - https://access.redhat.com/articles/3642912#what-polices-are-provided-1
     compliance:
-      cis: ["1.10"]
-      cis_csc_v8: ["3.10"]
-      cis_csc_v7: ["14.4"]
       cmmc: ["AC.L2-3.1.17", "AC.L2-3.1.13", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.8", "SC.L2-3.13.15"]
       fedramp: ["SC-8"]
       gdpr: ["32", "25", "30"]
@@ -1565,9 +1425,6 @@ checks:
     rationale: "Time synchronization is important to support time sensitive security mechanisms like Kerberos and also ensures log files have consistent time records across the enterprise, which aids in forensic investigations."
     remediation: "Run the following command to install chrony: # dnf install chrony."
     compliance:
-      cis: ["2.1.1"]
-      cis_csc_v8: ["8.4"]
-      cis_csc_v7: ["6.1"]
       cmmc: ["AU.L2-3.3.7"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -1593,9 +1450,6 @@ checks:
     rationale: "If chrony is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
     remediation: 'Add or edit server or pool lines to /etc/chrony.conf as appropriate: server <remote-server> Add or edit the OPTIONS in /etc/sysconfig/chronyd to include ''-u chrony'': OPTIONS="-u chrony".'
     compliance:
-      cis: ["2.1.2"]
-      cis_csc_v8: ["8.4"]
-      cis_csc_v7: ["6.1"]
       cmmc: ["AU.L2-3.3.7"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -1628,9 +1482,6 @@ checks:
     impact: 'Many Linux systems run applications which require a Java runtime. Some Linux Java packages have a dependency on specific X Windows xorg-x11-fonts. One workaround to avoid this dependency is to use the "headless" Java packages for your specific Java runtime.'
     remediation: "Run the following command to remove the X Windows Server packages: # dnf remove xorg-x11-server-common."
     compliance:
-      cis: ["2.2.1"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1655,9 +1506,6 @@ checks:
     rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to remove this package to reduce the potential attack surface."
     remediation: "Run the following commands to stop, mask and remove avahi: # systemctl stop avahi-daemon.socket avahi-daemon.service # dnf remove avahi."
     compliance:
-      cis: ["2.2.2"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1685,9 +1533,6 @@ checks:
     references:
       - "More detailed documentation on CUPS is available at the project homepage at http://www.cups.org."
     compliance:
-      cis: ["2.2.3"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1712,9 +1557,6 @@ checks:
     rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that the dhcp-server package be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove dhcp: # dnf remove dhcp-server."
     compliance:
-      cis: ["2.2.4"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1739,9 +1581,6 @@ checks:
     rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the package be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove bind: # dnf remove bind."
     compliance:
-      cis: ["2.2.5"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1766,9 +1605,6 @@ checks:
     rationale: "Unless there is a need to run the system as a FTP server, it is recommended that the package be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove vsftpd: # dnf remove vsftpd."
     compliance:
-      cis: ["2.2.6"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1794,9 +1630,6 @@ checks:
     impact: "TFTP is often used to provide files for network booting such as for PXE based installation of servers."
     remediation: "Run the following command to remove tftp-server: # dnf remove tftp-server."
     compliance:
-      cis: ["2.2.7"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1821,9 +1654,6 @@ checks:
     rationale: "Unless there is a need to run the system as a web server, it is recommended that the packages be removed to reduce the potential attack surface. Note: Several http servers exist. They should also be audited, and removed, if not required."
     remediation: "Run the following command to remove httpd and nginx: # dnf remove httpd nginx."
     compliance:
-      cis: ["2.2.8"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1849,9 +1679,6 @@ checks:
     rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the package be removed to reduce the potential attack surface. Note: Several IMAP/POP3 servers exist and can use other service names. These should also be audited and the packages removed if not required."
     remediation: "Run the following command to remove dovecot and cyrus-imapd: # dnf remove dovecot cyrus-imapd."
     compliance:
-      cis: ["2.2.9"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1877,9 +1704,6 @@ checks:
     rationale: "If there is no need to mount directories and file systems to Windows systems, then this package can be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove samba: # dnf remove samba."
     compliance:
-      cis: ["2.2.10"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1904,9 +1728,6 @@ checks:
     rationale: "Unless a system is specifically set up to act as a proxy server, it is recommended that the squid package be removed to reduce the potential attack surface. Note: Several HTTP proxy servers exist. These should be checked and removed unless required."
     remediation: "Run the following command to remove the squid package: # dnf remove squid."
     compliance:
-      cis: ["2.2.11"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1931,9 +1752,6 @@ checks:
     rationale: "The SNMP server can communicate using SNMPv1, which transmits data in the clear and does not require authentication to execute commands. SNMPv3 replaces the simple/clear text password sharing used in SNMPv2 with more securely encoded parameters. If the the SNMP service is not required, the net-snmp package should be removed to reduce the attack surface of the system. Note: If SNMP is required: - The server should be configured for SNMP v3 only. User Authentication and Message Encryption should be configured. - If SNMP v2 is absolutely necessary, modify the community strings' values."
     remediation: "Run the following command to remove net-snmpd: # dnf remove net-snmp."
     compliance:
-      cis: ["2.2.12"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["2.6", "9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1958,9 +1776,6 @@ checks:
     rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow a user with access to sniff network traffic the ability to steal credentials. The ssh package provides an encrypted session and stronger security."
     remediation: "Run the following command to remove the telnet-server package: # dnf remove telnet-server."
     compliance:
-      cis: ["2.2.13"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["2.6", "9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -1985,7 +1800,6 @@ checks:
     rationale: "Unless a system is specifically designated to act as a DNS caching, DNS forwarding and/or DHCP server, it is recommended that the package be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove dnsmasq: # dnf remove dnsmasq."
     compliance:
-      cis: ["2.2.14"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2010,9 +1824,6 @@ checks:
     rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems. Note: - This recommendation is designed around the postfix mail server. - Depending on your environment you may have an alternative MTA installed such as sendmail. If this is the case consult the documentation for your installed MTA to configure the recommended state."
     remediation: "Edit /etc/postfix/main.cf and add the following line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below: inet_interfaces = loopback-only. Run the following command to restart postfix: # systemctl restart postfix."
     compliance:
-      cis: ["2.2.15"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -2038,9 +1849,6 @@ checks:
     impact: "Many of the libvirt packages used by Enterprise Linux virtualization are dependent on the nfs-utils package. If the nfs-utils package is required as a dependency, the nfs-server service should be disabled and masked to reduce the attack surface of the system."
     remediation: "Run the following command to remove nfs-utils: # dnf remove nfs-utils OR If the nfs-utils package is required as a dependency, run the following command to stop and mask the nfs-server service: # systemctl --now mask nfs-server."
     compliance:
-      cis: ["2.2.16"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -2067,9 +1875,6 @@ checks:
     impact: "Many of the libvirt packages used by Enterprise Linux virtualization, and the nfs-utils package used for The Network File System (NFS), are dependent on the rpcbind package. If the rpcbind package is required as a dependency, the services rpcbind.service and rpcbind.socket should be stopped and masked to reduce the attack surface of the system."
     remediation: "Run the following command to remove rpcbind: # dnf remove rpcbind OR If the rpcbind package is required as a dependency, run the following commands to stop and mask the rpcbind.service and rpcbind.socket systemd units: # systemctl --now mask rpcbind.service # systemctl --now mask rpcbind.socket."
     compliance:
-      cis: ["2.2.17"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -2096,9 +1901,6 @@ checks:
     impact: "There are packages that are dependent on the rsync package. If the rsync package is removed, these packages will be removed as well. Before removing the rsync-daemon package, review any dependent packages to determine if they are required on the system. If a dependent package is required, mask the rsyncd service and leave the rsync-daemon package installed."
     remediation: "Run the following command to remove the rsync package: # dnf remove rsync-daemon OR Run the following command to mask the rsyncd service: # systemctl --now mask rsyncd."
     compliance:
-      cis: ["2.2.18"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -2128,9 +1930,6 @@ checks:
     impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
     remediation: "Run the following command to remove the telnet package: # dnf remove telnet."
     compliance:
-      cis: ["2.3.1"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["2.6"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -2156,9 +1955,6 @@ checks:
     impact: "Removing the LDAP client will prevent or inhibit using LDAP for authentication in your environment."
     remediation: "Run the following command to remove the openldap-clients package: # dnf remove openldap-clients."
     compliance:
-      cis: ["2.3.2"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["2.6"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -2183,9 +1979,6 @@ checks:
     rationale: "TFTP does not have built-in encryption, access control or authentication. This makes it very easy for an attacker to exploit TFTP to gain access to files."
     remediation: "Run the following command to remove tftp: # dnf remove tftp."
     compliance:
-      cis: ["2.3.3"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -2210,9 +2003,6 @@ checks:
     rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended SFTP be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the package be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove ftp: # dnf remove ftp."
     compliance:
-      cis: ["2.3.4"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -2272,9 +2062,6 @@ checks:
     impact: "Changing firewall settings while connected over the network can result in being locked out of the system."
     remediation: "Run the following command to install nftables # dnf install nftables."
     compliance:
-      cis: ["3.4.1.1"]
-      cis_csc_v8: ["4.4"]
-      cis_csc_v7: ["9.4"]
       cmmc: ["AC.L2-3.1.20", "CM.L2-3.4.7", "SC.L2-3.13.1", "SC.L2-3.13.6"]
       fedramp: ["SC-7"]
       gdpr: ["32"]
@@ -2308,9 +2095,6 @@ checks:
     impact: "Adding or modifying firewall rules can cause loss of connectivity to the system."
     remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example if FirewallD is not in use on the system: # nft create table inet filter Note: FirewallD uses the table inet firewalld NFTables table that is created when FirewallD is installed."
     compliance:
-      cis: ["3.4.2.2"]
-      cis_csc_v8: ["4.4"]
-      cis_csc_v7: ["9.4"]
       cmmc: ["AC.L2-3.1.20", "CM.L2-3.4.7", "SC.L2-3.13.1", "SC.L2-3.13.6"]
       fedramp: ["SC-7"]
       gdpr: ["32"]
@@ -2338,9 +2122,6 @@ checks:
     impact: "If configuring over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
     remediation: 'Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \; } Example: # nft create chain inet filter input { type filter hook input priority 0 \; } # nft create chain inet filter forward { type filter hook forward priority 0 \; } # nft create chain inet filter output { type filter hook output priority 0 \; }.'
     compliance:
-      cis: ["3.4.2.3"]
-      cis_csc_v8: ["4.4"]
-      cis_csc_v7: ["9.4"]
       cmmc: ["AC.L2-3.1.20", "CM.L2-3.4.7", "SC.L2-3.13.1", "SC.L2-3.13.6"]
       fedramp: ["SC-7"]
       gdpr: ["32"]
@@ -2374,9 +2155,6 @@ checks:
     impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
     remediation: 'If NFTables utility is in use on your system: Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \; } Example: # nft chain inet filter input { policy drop \; } # nft chain inet filter forward { policy drop \; }.'
     compliance:
-      cis: ["3.4.2.7"]
-      cis_csc_v8: ["4.4"]
-      cis_csc_v7: ["9.4"]
       cmmc: ["AC.L2-3.1.20", "CM.L2-3.4.7", "SC.L2-3.13.1", "SC.L2-3.13.6"]
       fedramp: ["SC-7"]
       gdpr: ["32"]
@@ -2414,9 +2192,6 @@ checks:
     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
     remediation: "Run the following command to Install auditd: # dnf install audit."
     compliance:
-      cis: ["4.1.1.1"]
-      cis_csc_v8: ["8.2", "8.5"]
-      cis_csc_v7: ["6.2", "6.3"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -2442,9 +2217,6 @@ checks:
     rationale: "Audit events need to be captured on processes that start up prior to auditd, so that potential malicious activity cannot go undetected."
     remediation: "Run the following command to update the grub2 configuration with audit=1: # grubby --update-kernel ALL --args 'audit=1'."
     compliance:
-      cis: ["4.1.1.2"]
-      cis_csc_v8: ["8.2"]
-      cis_csc_v7: ["6.2"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -2470,9 +2242,6 @@ checks:
     rationale: "During boot if audit=1, then the backlog will hold 64 records. If more that 64 records are created during boot, auditd records will be lost and potential malicious activity could go undetected."
     remediation: "Run the following command to add audit_backlog_limit=<BACKLOG SIZE> to GRUB_CMDLINE_LINUX: # grubby --update-kernel ALL --args 'audit_backlog_limit=<BACKLOG SIZE>' Example: # grubby --update-kernel ALL --args 'audit_backlog_limit=8192'."
     compliance:
-      cis: ["4.1.1.3"]
-      cis_csc_v8: ["8.2"]
-      cis_csc_v7: ["6.2"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -2498,9 +2267,6 @@ checks:
     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
     remediation: "Run the following command to enable auditd: # systemctl --now enable auditd."
     compliance:
-      cis: ["4.1.1.4"]
-      cis_csc_v8: ["8.2"]
-      cis_csc_v7: ["6.2", "6.3"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -2530,9 +2296,6 @@ checks:
     rationale: "It is important that an appropriate size is determined for log files so that they do not impact the system and audit data is not lost."
     remediation: "Set the following parameter in /etc/audit/auditd.conf in accordance with site policy: max_log_file = <MB>."
     compliance:
-      cis: ["4.1.2.1"]
-      cis_csc_v8: ["8.3"]
-      cis_csc_v7: ["6.4"]
       cmmc: ["AU.L2-3.3.1", "AU.L2-3.3.2", "AU.L2-3.3.3", "AU.L2-3.3.6", "SI.L2-3.14.1"]
       fedramp: ["AU-2", "AU-3", "AU-6", "AU-8", "AU-11", "AU-12", "SI-4", "IR-5"]
       gdpr: ["32", "33"]
@@ -2558,9 +2321,6 @@ checks:
     rationale: "In high security contexts, the benefits of maintaining a long audit history exceed the cost of storing the audit history."
     remediation: "Set the following parameter in /etc/audit/auditd.conf: max_log_file_action = keep_logs."
     compliance:
-      cis: ["4.1.2.2"]
-      cis_csc_v8: ["8.3"]
-      cis_csc_v7: ["6.4"]
       cmmc: ["AU.L2-3.3.1", "AU.L2-3.3.2", "AU.L2-3.3.3", "AU.L2-3.3.6", "SI.L2-3.14.1"]
       fedramp: ["AU-2", "AU-3", "AU-6", "AU-8", "AU-11", "AU-12", "SI-4", "IR-5"]
       gdpr: ["32", "33"]
@@ -2587,8 +2347,6 @@ checks:
     impact: "If the admin_space_left_action parameter is set to halt the audit daemon will shutdown the system when the disk partition containing the audit logs becomes full."
     remediation: "Set the following parameters in /etc/audit/auditd.conf: space_left_action = email action_mail_acct = root. set admin_space_left_action to either halt or single in /etc/audit/auditd.conf. Example: admin_space_left_action = halt."
     compliance:
-      cis: ["4.1.2.3"]
-      cis_csc_v8: ["8.2", "8.3"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -2620,9 +2378,6 @@ checks:
     rationale: "Changes in the /etc/sudoers and /etc/sudoers.d files can indicate that an unauthorized change has been made to the scope of system administrator activity."
     remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor scope changes for system administrators. Example: # printf " -w /etc/sudoers -p wa -k scope -w /etc/sudoers.d -p wa -k scope " >> /etc/audit/rules.d/50-scope.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi.'
     compliance:
-      cis: ["4.1.3.1"]
-      cis_csc_v8: ["8.5"]
-      cis_csc_v7: ["4.8"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-3", "AU-7"]
       gdpr: ["32", "33"]
@@ -2670,9 +2425,6 @@ checks:
     rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
     remediation: 'Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at the end of the file: Example: # printf -- "-e 2" >> /etc/audit/rules.d/99-finalize.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi.'
     compliance:
-      cis: ["4.1.3.20"]
-      cis_csc_v8: ["3.3", "8.5"]
-      cis_csc_v7: ["6.2", "6.3"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -2699,9 +2451,6 @@ checks:
     rationale: "Configuration differences between what is currently running and what is on disk could cause unexpected problems or may give a false impression of compliance requirements."
     remediation: 'If the rules are not aligned across all three () areas, run the following command to merge and load all rules: # augenrules --load Check if reboot is required. if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then echo "Reboot required to load rules"; fi.'
     compliance:
-      cis: ["4.1.3.21"]
-      cis_csc_v8: ["8.5"]
-      cis_csc_v7: ["6.3"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-3", "AU-7"]
       gdpr: ["32", "33"]
@@ -2736,9 +2485,6 @@ checks:
     rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
     remediation: "Run the following command to remove more permissive mode from the audit tools: # chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules."
     compliance:
-      cis: ["4.1.4.8"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -2765,9 +2511,6 @@ checks:
     rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
     remediation: "Run the following command to change the owner of the audit tools to the root user: # chown root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules."
     compliance:
-      cis: ["4.1.4.9"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -2794,9 +2537,6 @@ checks:
     rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
     remediation: "Run the following command to remove more permissive mode from the audit tools: # chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules Run the following command to change owner and group of the audit tools to root user and group: # chown root:root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules."
     compliance:
-      cis: ["4.1.4.10"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -2829,9 +2569,6 @@ checks:
     rationale: "The security enhancements of rsyslog such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
     remediation: "Run the following command to install rsyslog: # dnf install rsyslog."
     compliance:
-      cis: ["4.2.1.1"]
-      cis_csc_v8: ["8.2"]
-      cis_csc_v7: ["6.2", "6.3"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -2857,9 +2594,6 @@ checks:
     rationale: "If the rsyslog service is not enabled to start on boot, the system will not capture logging events."
     remediation: "Run the following command to enable rsyslog: # systemctl --now enable rsyslog."
     compliance:
-      cis: ["4.2.1.2"]
-      cis_csc_v8: ["8.2"]
-      cis_csc_v7: ["6.2", "6.3"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -2885,9 +2619,6 @@ checks:
     rationale: "IF RSyslog is the preferred method for capturing logs, all logs of the system should be sent to it for further processing. Note: This recommendation only applies if rsyslog is the chosen method for client side logging. Do not apply this recommendation if journald is used."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes Restart the service: # systemctl restart rsyslog."
     compliance:
-      cis: ["4.2.1.3"]
-      cis_csc_v8: ["8.2", "8.9"]
-      cis_csc_v7: ["6.2", "6.3", "6.5"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -2914,9 +2645,6 @@ checks:
     impact: "The systems global umask could override, but only making the file permissions stricter, what is configured in RSyslog with the FileCreateMode directive. RSyslog also has its own $umask directive that can alter the intended file creation mode. In addition, consideration should be given to how FileCreateMode is used. Thus it is critical to ensure that the intended file creation mode is not overridden with less restrictive settings in /etc/rsyslog.conf, /etc/rsyslog.d/*conf files and that FileCreateMode is set before any file is created."
     remediation: "Edit either /etc/rsyslog.conf or a dedicated .conf file in /etc/rsyslog.d/ and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640 Restart the service: # systemctl restart rsyslog."
     compliance:
-      cis: ["4.2.1.4"]
-      cis_csc_v8: ["3.3", "8.2"]
-      cis_csc_v7: ["5.1", "6.2", "6.3"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -2945,9 +2673,6 @@ checks:
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: 'Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add the following line (where loghost.example.com is the name of your central log host). The target directive may either be a fully qualified domain name or an IP address. *.* action(type="omfwd" target="192.168.2.100" port="514" protocol="tcp" action.resumeRetryCount="100" queue.type="LinkedList" queue.size="1000") Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog.'
     compliance:
-      cis: ["4.2.1.6"]
-      cis_csc_v8: ["8.2"]
-      cis_csc_v7: ["6.2", "6.3"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -2976,9 +2701,6 @@ checks:
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside its operational boundary."
     remediation: 'Should there be any active log server configuration found in the auditing section, modify those files and remove the specific lines highlighted by the audit. Ensure none of the following entries are present in any of /etc/rsyslog.conf or /etc/rsyslog.d/*.conf. New format: module(load="imtcp") input(type="imtcp" port="514") -OR- Old format: $ModLoad imtcp $InputTCPServerRun - Restart the service: # systemctl restart rsyslog.'
     compliance:
-      cis: ["4.2.1.7"]
-      cis_csc_v8: ["4.8", "8.2"]
-      cis_csc_v7: ["6.2", "6.3", "9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -3011,9 +2733,6 @@ checks:
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: "Run the following command to install systemd-journal-remote: # dnf install systemd-journal-remote."
     compliance:
-      cis: ["4.2.2.1.1"]
-      cis_csc_v8: ["8.2"]
-      cis_csc_v7: ["6.2", "6.3"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -3041,9 +2760,6 @@ checks:
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: "Run the following command to enable systemd-journal-remote: # systemctl --now enable systemd-journal-upload.service."
     compliance:
-      cis: ["4.2.2.1.3"]
-      cis_csc_v8: ["8.2"]
-      cis_csc_v7: ["6.2", "6.3"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -3069,9 +2785,6 @@ checks:
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
     remediation: "Run the following command to disable systemd-journal-remote.socket: # systemctl --now mask systemd-journal-remote.socket."
     compliance:
-      cis: ["4.2.2.1.4"]
-      cis_csc_v8: ["4.8", "8.2"]
-      cis_csc_v7: ["6.2", "6.3", "9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -3096,9 +2809,6 @@ checks:
     rationale: "If the systemd-journald service is not enabled to start on boot, the system will not capture logging events."
     remediation: "By default the systemd-journald service does not have an [Install] section and thus cannot be enabled / disabled. It is meant to be referenced as Requires or Wants by other unit files. As such, if the status of systemd-journald is not static, investigate why."
     compliance:
-      cis: ["4.2.2.2"]
-      cis_csc_v8: ["8.2"]
-      cis_csc_v7: ["6.2", "6.3"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -3124,9 +2834,6 @@ checks:
     rationale: "Uncompressed large files may unexpectedly fill a filesystem leading to resource unavailability. Compressing logs prior to write can prevent sudden, unexpected filesystem impacts."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Compress=yes Restart the service: # systemctl restart systemd-journald.service."
     compliance:
-      cis: ["4.2.2.3"]
-      cis_csc_v8: ["8.2", "8.3"]
-      cis_csc_v7: ["6.2", "6.3", "6.4"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -3152,9 +2859,6 @@ checks:
     rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Storage=persistent Restart the service: # systemctl restart systemd-journald.service."
     compliance:
-      cis: ["4.2.2.4"]
-      cis_csc_v8: ["8.2"]
-      cis_csc_v7: ["6.2", "6.3"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -3180,9 +2884,6 @@ checks:
     rationale: "IF journald is the method for capturing logs, all logs of the system should be handled by journald and not forwarded to other logging mechanisms. Note: This recommendation only applies if journald is the chosen method for client side logging. Do not apply this recommendation if rsyslog is used."
     remediation: "Edit the /etc/systemd/journald.conf file and ensure that ForwardToSyslog=yes is removed. Restart the service: # systemctl restart systemd-journald.service."
     compliance:
-      cis: ["4.2.2.5"]
-      cis_csc_v8: ["8.2", "8.9"]
-      cis_csc_v7: ["6.2", "6.3", "6.5"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -3219,7 +2920,6 @@ checks:
     rationale: "While there may not be user jobs that need to be run on the system, the system does have maintenance jobs that may include security monitoring that have to run, and cron is used to execute them."
     remediation: "Run the following command to enable cron : # systemctl --now enable crond."
     compliance:
-      cis: ["5.1.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -3244,9 +2944,6 @@ checks:
     rationale: "This file contains information on what system jobs are run by cron. Write access to this file could provide unprivileged users with the ability to elevate their privileges. Read access to this file could provide users with the ability to gain insight on system jobs that run on the system and could provide them a way to gain unauthorized privileged access."
     remediation: "Run the following commands to set ownership and permissions on /etc/crontab : # chown root:root /etc/crontab # chmod og-rwx /etc/crontab."
     compliance:
-      cis: ["5.1.2"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -3272,9 +2969,6 @@ checks:
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.hourly : # chown root:root /etc/cron.hourly # chmod og-rwx /etc/cron.hourly."
     compliance:
-      cis: ["5.1.3"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -3300,9 +2994,6 @@ checks:
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.daily : # chown root:root /etc/cron.daily # chmod og-rwx /etc/cron.daily."
     compliance:
-      cis: ["5.1.4"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -3328,9 +3019,6 @@ checks:
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.weekly : # chown root:root /etc/cron.weekly # chmod og-rwx /etc/cron.weekly."
     compliance:
-      cis: ["5.1.5"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -3356,9 +3044,6 @@ checks:
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.monthly : # chown root:root /etc/cron.monthly # chmod og-rwx /etc/cron.monthly."
     compliance:
-      cis: ["5.1.6"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -3384,9 +3069,6 @@ checks:
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.d : # chown root:root /etc/cron.d # chmod og-rwx /etc/cron.d."
     compliance:
-      cis: ["5.1.7"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -3418,9 +3100,6 @@ checks:
     rationale: "The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by non-privileged users."
     remediation: "Run the following commands to set ownership and permissions on /etc/ssh/sshd_config: # chown root:root /etc/ssh/sshd_config # chmod u-x,go-rwx /etc/ssh/sshd_config."
     compliance:
-      cis: ["5.2.1"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -3449,9 +3128,6 @@ checks:
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set one or more of the parameters as follows: AllowUsers <userlist> OR AllowGroups <grouplist> OR DenyUsers <userlist> OR DenyGroups <grouplist>."
     compliance:
-      cis: ["5.2.4"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["4.3"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -3480,9 +3156,6 @@ checks:
     references:
       - https://www.ssh.com/ssh/sshd_config/
     compliance:
-      cis: ["5.2.5"]
-      cis_csc_v8: ["8.2"]
-      cis_csc_v7: ["6.2", "6.3"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-7"]
       gdpr: ["32", "33"]
@@ -3510,9 +3183,6 @@ checks:
     impact: "If UsePAM is enabled, you will not be able to run sshd(8) as a non-root user."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: UsePAM yes."
     compliance:
-      cis: ["5.2.6"]
-      cis_csc_v8: ["4.1"]
-      cis_csc_v7: ["5.1"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       fedramp: ["CM-7", "CM-9"]
       gdpr: ["32"]
@@ -3538,9 +3208,6 @@ checks:
     rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo or su. This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no."
     compliance:
-      cis: ["5.2.7"]
-      cis_csc_v8: ["5.4"]
-      cis_csc_v7: ["4.3"]
       cmmc: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
       fedramp: ["AC-6"]
       gdpr: ["32"]
@@ -3567,9 +3234,6 @@ checks:
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no."
     compliance:
-      cis: ["5.2.8"]
-      cis_csc_v8: ["4.1"]
-      cis_csc_v7: ["16.3"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       fedramp: ["CM-7", "CM-9"]
       gdpr: ["32"]
@@ -3595,9 +3259,6 @@ checks:
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no."
     compliance:
-      cis: ["5.2.9"]
-      cis_csc_v8: ["4.1"]
-      cis_csc_v7: ["16.3"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       fedramp: ["CM-7", "CM-9"]
       gdpr: ["32"]
@@ -3623,9 +3284,6 @@ checks:
     rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing trojan'd programs)."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no."
     compliance:
-      cis: ["5.2.10"]
-      cis_csc_v8: ["4.1"]
-      cis_csc_v7: ["5.1"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       fedramp: ["CM-7", "CM-9"]
       gdpr: ["32"]
@@ -3651,9 +3309,6 @@ checks:
     rationale: "Setting this parameter forces users to enter a password when authenticating with ssh."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes."
     compliance:
-      cis: ["5.2.11"]
-      cis_csc_v8: ["4.1"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       fedramp: ["CM-7", "CM-9"]
       gdpr: ["32"]
@@ -3679,9 +3334,6 @@ checks:
     rationale: "Disable X11 forwarding unless there is an operational requirement to use X11 applications directly. There is a small risk that the remote X11 servers of users who are logged in via SSH with X11 forwarding could be compromised by other users on the X11 server. Note that even if X11 forwarding is disabled, users can always install their own forwarders."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: X11Forwarding no."
     compliance:
-      cis: ["5.2.12"]
-      cis_csc_v8: ["4.8"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       fedramp: ["CM-2", "CM-3", "CM-6", "CM-7"]
       gdpr: ["32"]
@@ -3710,9 +3362,6 @@ checks:
     references:
       - https://www.ssh.com/ssh/tunneling/example
     compliance:
-      cis: ["5.2.13"]
-      cis_csc_v8: ["4.1"]
-      cis_csc_v7: ["9.2"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       fedramp: ["CM-7", "CM-9"]
       gdpr: ["32"]
@@ -3738,9 +3387,6 @@ checks:
     rationale: "Over-riding or opting out of the system-wide crypto policy could allow for the use of less secure Ciphers, MACs, KexAlgorithms and GSSAPIKexAlgorithm."
     remediation: "Run the following commands: # sed -ri \"s/^\\s*(CRYPTO_POLICY\\s*=.*)$/# \\1/\" /etc/sysconfig/sshd; # systemctl reload sshd."
     compliance:
-      cis: ["5.2.14"]
-      cis_csc_v8: ["3.10"]
-      cis_csc_v7: ["14.4"]
       cmmc: ["AC.L2-3.1.17", "AC.L2-3.1.13", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.8", "SC.L2-3.13.15"]
       fedramp: ["SC-8"]
       gdpr: ["32", "25", "30"]
@@ -3766,9 +3412,6 @@ checks:
     rationale: "Banners are used to warn connecting users of the particular site's policy regarding connection. Presenting a warning message prior to the normal user login may assist the prosecution of trespassers on the computer system."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: Banner /etc/issue.net."
     compliance:
-      cis: ["5.2.15"]
-      cis_csc_v8: ["4.1"]
-      cis_csc_v7: ["5.1"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       fedramp: ["CM-7", "CM-9"]
       gdpr: ["32"]
@@ -3793,9 +3436,6 @@ checks:
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4."
     compliance:
-      cis: ["5.2.16"]
-      cis_csc_v8: ["8.5"]
-      cis_csc_v7: ["16.13"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-3", "AU-7"]
       gdpr: ["32", "33"]
@@ -3822,9 +3462,6 @@ checks:
     rationale: "To protect a system from denial of service due to a large number of pending authentication connection attempts, use the rate limiting function of MaxStartups to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxStartups 10:30:60."
     compliance:
-      cis: ["5.2.17"]
-      cis_csc_v8: ["4.1"]
-      cis_csc_v7: ["5.1"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       fedramp: ["CM-7", "CM-9"]
       gdpr: ["32"]
@@ -3854,9 +3491,6 @@ checks:
     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 10."
     compliance:
-      cis: ["5.2.18"]
-      cis_csc_v8: ["4.1"]
-      cis_csc_v7: ["5.1"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       fedramp: ["CM-7", "CM-9"]
       gdpr: ["32"]
@@ -3882,7 +3516,6 @@ checks:
     rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections While the recommended setting is 60 seconds (1 Minute), set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60."
     compliance:
-      cis: ["5.2.19"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -3912,7 +3545,6 @@ checks:
       - "https://bugzilla.redhat.com/show_bug.cgi?id=1873547"
       - "https://github.com/openssh/openssh-portable/blob/V_8_9/serverloop.c#L137"
     compliance:
-      cis: ["5.2.20"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -3942,9 +3574,6 @@ checks:
     rationale: "sudo supports a plug-in architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plug-ins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers and any entries in /etc/sudoers.d. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the user's password is not entered within a configurable time limit. This limit is policy-specific."
     remediation: "Run the following command to install sudo. # dnf install sudo."
     compliance:
-      cis: ["5.3.1"]
-      cis_csc_v8: ["5.4"]
-      cis_csc_v7: ["4.3"]
       cmmc: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
       fedramp: ["AC-6"]
       gdpr: ["32"]
@@ -3971,9 +3600,6 @@ checks:
     impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."
     remediation: "Edit the file /etc/sudoers with visudo or a file in /etc/sudoers.d/ with visudo -f <PATH_TO_FILE> and add the following line: Defaults use_pty."
     compliance:
-      cis: ["5.3.2"]
-      cis_csc_v8: ["5.4"]
-      cis_csc_v7: ["5.1"]
       cmmc: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
       fedramp: ["AC-6"]
       gdpr: ["32"]
@@ -4001,9 +3627,6 @@ checks:
     impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files. Creation of additional log files can cause disk space exhaustion if not correctly managed. You should configure logrotate to manage the sudo log in accordance with your local policy."
     remediation: 'Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH TO FILE> and add the following line: Defaults logfile="<PATH TO CUSTOM LOG FILE>" Example: Defaults logfile="/var/log/sudo.log".'
     compliance:
-      cis: ["5.3.3"]
-      cis_csc_v8: ["8.5"]
-      cis_csc_v7: ["6.3"]
       cmmc: ["AU.L2-3.3.1"]
       fedramp: ["AU-3", "AU-7"]
       gdpr: ["32", "33"]
@@ -4031,9 +3654,6 @@ checks:
     impact: "This will prevent automated processes from being able to elevate privileges. To include Ansible and AWS builds."
     remediation: "Based on the outcome of the audit procedure, use visudo -f <PATH TO FILE> to edit the relevant sudoers file. Remove any line with occurrences of NOPASSWD tags in the file."
     compliance:
-      cis: ["5.3.4"]
-      cis_csc_v8: ["5.4"]
-      cis_csc_v7: ["4.3"]
       cmmc: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
       fedramp: ["AC-6"]
       gdpr: ["32"]
@@ -4060,9 +3680,6 @@ checks:
     rationale: "Without re-authentication, users may access resources or perform tasks for which they do not have authorization. When operating systems provide the capability to escalate a functional capability, it is critical the user re-authenticate."
     remediation: "Configure the operating system to require users to reauthenticate for privilege escalation. Based on the outcome of the audit procedure, use visudo -f <PATH TO FILE> to edit the relevant sudoers file. Remove any occurrences of !authenticate tags in the file(s)."
     compliance:
-      cis: ["5.3.5"]
-      cis_csc_v8: ["5.4"]
-      cis_csc_v7: ["4.3"]
       cmmc: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
       fedramp: ["AC-6"]
       gdpr: ["32"]
@@ -4091,9 +3708,6 @@ checks:
     references:
       - https://www.sudo.ws/man/1.9.0/sudoers.man.html
     compliance:
-      cis: ["5.3.6"]
-      cis_csc_v8: ["5.4"]
-      cis_csc_v7: ["4.3"]
       cmmc: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
       fedramp: ["AC-6"]
       gdpr: ["32"]
@@ -4122,9 +3736,6 @@ checks:
     rationale: "Restricting the use of su, and using sudo in its place, provides system administrators better control of the escalation of user privileges to execute privileged commands. The sudo utility also provides a better logging and audit mechanism, as it can log each command executed via sudo, whereas su can only record that a user executed the su program."
     remediation: "Create an empty group that will be specified for use of the su command. The group should be named according to site policy. Example: # groupadd sugroup. Add the following line to the /etc/pam.d/su file, specifying the empty group: auth required pam_wheel.so use_uid group=sugroup."
     compliance:
-      cis: ["5.3.7"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["5.1"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -4153,9 +3764,6 @@ checks:
     rationale: "A custom profile is required to customize many of the pam options. When you deploy a profile, the profile is applied to every user logging into the given host."
     remediation: "Run the following command to create a custom authselect profile: # authselect create-profile <custom-profile name> <options> Example: # authselect create-profile custom-profile -b sssd --symlink-meta Run the following command to select a custom authselect profile: # authselect select custom/<CUSTOM PROFILE NAME> {with-<OPTIONS>} Example: # authselect select custom/custom-profile with-sudo with-faillock without-nullok."
     compliance:
-      cis: ["5.4.1"]
-      cis_csc_v8: ["16.2"]
-      cis_csc_v7: ["16.7"]
       cmmc: ["SI.L2-3.14.1"]
       fedramp: ["CM-3", "RA-5", "CA-8", "SC-7"]
       gdpr: ["25", "32"]
@@ -4182,9 +3790,6 @@ checks:
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
     remediation: "Run the following commands to include the with-faillock option to the current authselect profile: # authselect enable-feature with-faillock # authselect apply-changes."
     compliance:
-      cis: ["5.4.2"]
-      cis_csc_v8: ["4.1"]
-      cis_csc_v7: ["16.7"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       fedramp: ["CM-7", "CM-9"]
       gdpr: ["32"]
@@ -4213,9 +3818,6 @@ checks:
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
     remediation: "Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14 Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy: minclass = 4 OR dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1. Run the following script to update the system-auth and password-auth files: #!/usr/bin/env bash for fn in system-auth password-auth; do file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/$fn\" if ! grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+.*enforce_for_r oot\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+requisite\\s+pam_pwquality.so\\s+)(.*)$/\\1\\2 enforce_for_root/' \"$file\" fi if grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+retry=([4-9]|[1-9][0-9]+)\\b.*$' \"$file\"; then sed -ri '/pwquality/s/retry=\\S+/retry=3/' \"$file\" elif ! grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+retry=\\d+\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+requisite\\s+pam_pwquality.so\\s+)(.*)$/\\1\\2 retry=3/' \"$file\" fi done authselect apply-changes."
     compliance:
-      cis: ["5.5.1"]
-      cis_csc_v8: ["5.2"]
-      cis_csc_v7: ["4.4"]
       cmmc: ["IA.L2-3.5.7"]
       fedramp: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
       gdpr: ["32"]
@@ -4245,9 +3847,6 @@ checks:
     impact: "Use of unlock_time=0 may allow an attacker to cause denial of service to legitimate users."
     remediation: "Set password lockouts and unlock times to conform to site policy. deny should be greater than 0 and no greater than 5. unlock_time should be 0 (never), or 900 seconds or greater. Edit /etc/security/faillock.conf and update or add the following lines: deny = 5 unlock_time = 900."
     compliance:
-      cis: ["5.5.2"]
-      cis_csc_v8: ["6.2"]
-      cis_csc_v7: ["16.7"]
       cmmc: ["AC.L2-3.1.1"]
       fedramp: ["AC-2"]
       gdpr: ["32", "25"]
@@ -4273,9 +3872,6 @@ checks:
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password. Note: These change only apply to accounts configured on the local system."
     remediation: "Set remembered password history to conform to site policy. Run the following script to add or modify the pam_pwhistory.so and pam_unix.so lines to include the remember option: #!/usr/bin/env bash { file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/system-auth\" if ! grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\\n\\r]+\\h+)?remember=([5-9]|[1-9][0-9]+)\\b.*$' \"$file\"; then if grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\\n\\r]+\\h+)?remember=\\d+\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+(requisite|required|sufficient)\\s+pam_pwhistory\\.so\\s+([^#\\n\\r]+\\s+)?)(remember=\\S+\\s*)(\\s+.*)?$/\\1 remember=5 \\5/' $file elif grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\\n\\r]+\\h+)?.*$' \"$file\"; then sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_pwhistory\\.so/ s/$/ remember=5/' $file else sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so/i password required pam_pwhistory.so remember=5 use_authtok' $file fi fi if ! grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_unix\\.so\\h+([^#\\n\\r]+\\h+)?remember=([5-9]|[1-9][0-9]+)\\b.*$' \"$file\"; then if grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_unix\\.so\\h+([^#\\n\\r]+\\h +)?remember=\\d+\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so\\s+([^#\\n\\r] +\\s+)?)(remember=\\S+\\s*)(\\s+.*)?$/\\1 remember=5 \\5/' $file else sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so/ s/$/ remember=5/' $file fi fi authselect apply-changes }."
     compliance:
-      cis: ["5.5.3"]
-      cis_csc_v8: ["5.2"]
-      cis_csc_v7: ["4.4"]
       cmmc: ["IA.L2-3.5.7"]
       fedramp: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
       gdpr: ["32"]
@@ -4302,9 +3898,6 @@ checks:
     rationale: "The SHA-512 algorithm provides stronger hashing than other hashing algorithms used for password hashing with Linux, providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note: These changes only apply to accounts configured on the local system."
     remediation: 'Set password hashing algorithm to sha512. Edit /etc/libuser.conf and edit of add the following line: crypt_style = sha512 Edit /etc/login.defs and edit or add the following line: ENCRYPT_METHOD SHA512 Run the following script to configure pam_unix.so to use the sha512 hashing algorithm: #!/usr/bin/env bash for fn in system-auth password-auth; do file="/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep ''custom/'')/$fn" if ! grep -Pq -- ''^\h*password\h+(requisite|required|sufficient)\h+pam_unix\.so(\h+[^#\n\r]+)? \h+sha512\b.*$'' "$file"; then if grep -Pq -- ''^\h*password\h+(requisite|required|sufficient)\h+pam_unix\.so(\h+[^#\n\r]+)? \h+(md5|blowfish|bigcrypt|sha256)\b.*$'' "$file"; then sed -ri ''s/(md5|blowfish|bigcrypt|sha256)/sha512/'' "$file" else sed -ri ''s/(^\s*password\s+(requisite|required|sufficient)\s+pam_unix.so\s+)(.*)$/\1s ha512 \3/'' $file fi fi done authselect apply-changes Note: This only effects local users and passwords created after updating the files to use sha512. If it is determined that the password algorithm being used is not SHA-512, once it is changed, it is recommended that all user ID''s be immediately expired and forced to change their passwords on next login.'
     compliance:
-      cis: ["5.5.4"]
-      cis_csc_v8: ["3.11"]
-      cis_csc_v7: ["16.4"]
       cmmc: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
       fedramp: ["MP-4", "MP-5", "MP-6", "SC-8", "SC-13", "SC-28"]
       gdpr: ["32", "25", "30"]
@@ -4339,9 +3932,6 @@ checks:
     rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity."
     remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs : PASS_MAX_DAYS 365 Modify user parameters for all users with a password set to match: # chage --maxdays 365 <user>."
     compliance:
-      cis: ["5.6.1.1"]
-      cis_csc_v8: ["4.1"]
-      cis_csc_v7: ["4.4"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       fedramp: ["CM-7", "CM-9"]
       gdpr: ["32"]
@@ -4367,9 +3957,6 @@ checks:
     rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
     remediation: "Set the PASS_MIN_DAYS parameter to 1 in /etc/login.defs: PASS_MIN_DAYS 1 and modify user parameters for all users with a password set to match: # chage --mindays 1 <user>."
     compliance:
-      cis: ["5.6.1.2"]
-      cis_csc_v8: ["5.2"]
-      cis_csc_v7: ["4.4"]
       cmmc: ["IA.L2-3.5.7"]
       fedramp: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
       gdpr: ["32"]
@@ -4397,9 +3984,6 @@ checks:
     rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
     remediation: "Set the PASS_WARN_AGE parameter to 7 in /etc/login.defs: PASS_WARN_AGE 7 and modify user parameters for all users with a password set to match: # chage --warndays 7 <user>."
     compliance:
-      cis: ["5.6.1.3"]
-      cis_csc_v8: ["4.1"]
-      cis_csc_v7: ["4.4"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       fedramp: ["CM-7", "CM-9"]
       gdpr: ["32"]
@@ -4426,9 +4010,6 @@ checks:
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
     remediation: "Run the following command to set the default password inactivity period to 30 days: # useradd -D -f 30 and modify user parameters for all users with a password set to match: chage --inactive 30 <user>."
     compliance:
-      cis: ["5.6.1.4"]
-      cis_csc_v8: ["5.2"]
-      cis_csc_v7: ["4.4"]
       cmmc: ["IA.L2-3.5.7"]
       fedramp: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
       gdpr: ["32"]
@@ -4460,9 +4041,6 @@ checks:
     rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
     remediation: "Run the following command to set the root account default group to GID 0 : # usermod -g 0 root."
     compliance:
-      cis: ["5.6.4"]
-      cis_csc_v8: ["4.1"]
-      cis_csc_v7: ["5.1"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
       fedramp: ["CM-7", "CM-9"]
       gdpr: ["32"]
@@ -4490,9 +4068,6 @@ checks:
     impact: "If there are any automated processes that relies on access to the root account without authentication, they will fail after remediation."
     remediation: "Set the root password with: # passwd root."
     compliance:
-      cis: ["5.6.6"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["14.6"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -4524,9 +4099,6 @@ checks:
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to remove excess permissions, set owner, and set group on /etc/passwd: # chmod u-x,go-wx /etc/passwd # chown root:root /etc/passwd."
     compliance:
-      cis: ["6.1.1"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["16.4"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -4552,9 +4124,6 @@ checks:
     rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to remove excess permissions, set owner, and set group on /etc/passwd-: # chmod u-x,go-wx /etc/passwd- # chown root:root /etc/passwd-."
     compliance:
-      cis: ["6.1.2"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["16.4"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -4580,9 +4149,6 @@ checks:
     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
     remediation: "Run the following commands to remove excess permissions, set owner, and set group on /etc/group: # chmod u-x,go-wx /etc/group # chown root:root /etc/group."
     compliance:
-      cis: ["6.1.3"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["16.4"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -4608,9 +4174,6 @@ checks:
     rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to remove excess permissions, set owner, and set group on /etc/group-: # chmod u-x,go-wx /etc/group- # chown root:root /etc/group-."
     compliance:
-      cis: ["6.1.4"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["16.4"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -4636,9 +4199,6 @@ checks:
     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
     remediation: "Run the following commands to set mode, owner, and group on /etc/shadow: # chown root:root /etc/shadow # chmod 0000 /etc/shadow."
     compliance:
-      cis: ["6.1.5"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["16.4"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -4664,9 +4224,6 @@ checks:
     rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to set mode, owner, and group on /etc/shadow-: # chown root:root /etc/shadow- # chmod 0000 /etc/shadow-."
     compliance:
-      cis: ["6.1.6"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["16.4"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -4692,9 +4249,6 @@ checks:
     rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group."
     remediation: "Run the following commands to set mode, owner, and group on /etc/gshadow: # chown root:root /etc/gshadow # chmod 0000 /etc/gshadow."
     compliance:
-      cis: ["6.1.7"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["16.4"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -4720,9 +4274,6 @@ checks:
     rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to set mode, owner, and group on /etc/gshadow-: # chown root:root /etc/gshadow- # chmod 0000 /etc/gshadow-."
     compliance:
-      cis: ["6.1.8"]
-      cis_csc_v8: ["3.3"]
-      cis_csc_v7: ["16.4"]
       cmmc: ["AC.L2-3.1.1", "AC.L2-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       fedramp: ["AC-5", "AC-6"]
       gdpr: ["32", "25", "30"]
@@ -4759,9 +4310,6 @@ checks:
     rationale: "The /etc/passwd file also contains information like user ID's and group ID's that are used by many system programs. Therefore, the /etc/passwd file must remain world readable. In spite of encoding the password with a randomly-generated one-way hash function, an attacker could still break the system if they got access to the /etc/passwd file. This can be mitigated by using shadowed passwords, thus moving the passwords in the /etc/passwd file to /etc/shadow. The /etc/shadow file is set so only root will be able to read and write. This helps mitigate the risk of an attacker gaining access to the encoded passwords with which to perform a dictionary attack. Note: - All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user. - A user account with an empty second field in /etc/passwd allows the account to be logged into by providing only the username."
     remediation: "Run the following command to set accounts to use shadowed passwords: # sed -e 's/^\\([a-zA-Z0-9_]*\\):[^:]*:/\\1:x:/' -i /etc/passwd Investigate to determine if the account is logged in and what it is being used for, to determine if it needs to be forced off."
     compliance:
-      cis: ["6.2.1"]
-      cis_csc_v8: ["3.11"]
-      cis_csc_v7: ["16.4"]
       cmmc: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
       fedramp: ["MP-4", "MP-5", "MP-6", "SC-8", "SC-13", "SC-28"]
       gdpr: ["32", "25", "30"]
@@ -4787,9 +4335,6 @@ checks:
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
     remediation: "If any accounts in the /etc/shadow file do not have a password, run the following command to lock the account until it can be determined why it does not have a password: # passwd -l <username>. Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off."
     compliance:
-      cis: ["6.2.2"]
-      cis_csc_v8: ["5.2"]
-      cis_csc_v7: ["4.4"]
       cmmc: ["IA.L2-3.5.7"]
       fedramp: ["AC-2", "IA-2", "IA-5", "AC-11", "AC-7", "AU-6"]
       gdpr: ["32"]
@@ -4822,7 +4367,6 @@ checks:
     rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
     remediation: "Remove any users other than root with UID 0 or assign them a new UID if appropriate."
     compliance:
-      cis: ["6.2.9"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]

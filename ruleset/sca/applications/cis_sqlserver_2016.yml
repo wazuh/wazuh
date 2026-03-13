@@ -47,7 +47,6 @@ checks:
         EXECUTE sp_configure 'show advanced options', 0;
         RECONFIGURE;
     compliance:
-      cis: ["2.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -79,7 +78,6 @@ checks:
         EXECUTE sp_configure 'clr enabled', 0;
         RECONFIGURE;
     compliance:
-      cis: ["2.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -119,7 +117,6 @@ checks:
         RECONFIGURE;
         GO
     compliance:
-      cis: ["2.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -158,7 +155,6 @@ checks:
         EXECUTE sp_configure 'show advanced options', 0;
         RECONFIGURE;
     compliance:
-      cis: ["2.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -198,7 +194,6 @@ checks:
         EXECUTE sp_configure 'show advanced options', 0;
         RECONFIGURE;
     compliance:
-      cis: ["2.5"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -237,7 +232,6 @@ checks:
         EXECUTE sp_configure 'show advanced options', 0;
         RECONFIGURE;
     compliance:
-      cis: ["2.6"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -278,7 +272,6 @@ checks:
         RECONFIGURE;
         GO
     compliance:
-      cis: ["2.7"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -319,7 +312,6 @@ checks:
 
       Restart the Database Engine.
     compliance:
-      cis: ["2.8"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -351,7 +343,6 @@ checks:
       Execute the following T-SQL statement against the databases (replace <database_name> below) returned by the Audit Procedure:
         ALTER DATABASE [<database_name>] SET TRUSTWORTHY OFF;
     compliance:
-      cis: ["2.9"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -398,7 +389,6 @@ checks:
       5. In the details pane, right-click SQL Server (<InstanceName>) and then click
       Restart, to stop and restart SQL Server.
     compliance:
-      cis: ["2.11"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -437,7 +427,6 @@ checks:
         EXEC (@tsql)
         GO
     compliance:
-      cis: ["2.13"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -473,7 +462,6 @@ checks:
       Replace the <different_user> value within the below syntax and execute to rename the sa login.
         ALTER LOGIN sa WITH NAME = <different_user>;
     compliance:
-      cis: ["2.14"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -513,7 +501,6 @@ checks:
         EXECUTE sp_configure 'show advanced options', 0;
         RECONFIGURE;
     compliance:
-      cis: ["2.15"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -550,7 +537,6 @@ checks:
       Execute the following T-SQL, replacing <database_name> with each database name found by the Audit Procedure:
         ALTER DATABASE <database_name> SET AUTO_CLOSE OFF;
     compliance:
-      cis: ["2.16"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -594,7 +580,6 @@ checks:
         -- Do NOT drop the login if it is principal_id = 1
         DROP LOGIN sa
     compliance:
-      cis: ["2.17"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -639,7 +624,6 @@ checks:
 
       Restart the SQL Server service for the change to take effect.
     compliance:
-      cis: ["3.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -680,7 +664,6 @@ checks:
         REVOKE <permission_name> FROM public;
         GO
     compliance:
-      cis: ["3.8"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -718,7 +701,6 @@ checks:
         DROP LOGIN [<name>]
         GO
     compliance:
-      cis: ["3.10"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -753,7 +735,6 @@ checks:
       For each <login_name> found by the Audit Procedure, execute the following T-SQL statement:
         ALTER LOGIN [<login_name>] WITH CHECK_EXPIRATION = ON;
     compliance:
-      cis: ["4.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -787,7 +768,6 @@ checks:
 
       Note: In the case of AWS RDS do not perform this remediation for the Master account.
     compliance:
-      cis: ["4.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -841,7 +821,6 @@ checks:
         REG_DWORD,
         <NumberAbove12>;
     compliance:
-      cis: ["5.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -878,7 +857,6 @@ checks:
         EXECUTE sp_configure 'show advanced options', 0;
         RECONFIGURE;
     compliance:
-      cis: ["5.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -920,7 +898,6 @@ checks:
       GO
       ALTER ASSEMBLY <assembly_name> WITH PERMISSION_SET = SAFE;
     compliance:
-      cis: ["6.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]

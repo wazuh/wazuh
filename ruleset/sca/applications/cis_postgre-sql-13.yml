@@ -59,7 +59,6 @@ checks:
       as a "want" of the default systemd target. Multiple instances of PostgreSQL services often
       distinguish themselves using a version number.
     compliance:
-      cis: ["1.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -120,7 +119,6 @@ checks:
 
       (1 row)"
     compliance:
-      cis: ["3.1.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -176,7 +174,6 @@ checks:
 
       Active: active (running) since <date>; 1s ago"
     compliance:
-      cis: ["3.1.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -243,7 +240,6 @@ checks:
       it is a good idea to have the logs outside of your PGDATA directory so that they are not
       included by things like pg_basebackup or pgBackRest."
     compliance:
-      cis: ["3.1.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -295,7 +291,6 @@ checks:
       (1 row)
       Note: In this example, a new logfile will be created for each day (e.g. postgresql20180901.log)"
     compliance:
-      cis: ["3.1.5"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -348,7 +343,6 @@ checks:
       0600
       (1 row)"
     compliance:
-      cis: ["3.1.6"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -409,7 +403,6 @@ checks:
       on
       (1 row)"
     compliance:
-      cis: ["3.1.7"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -448,7 +441,6 @@ checks:
       t
       (1 row)"
     compliance:
-      cis: ["3.1.8"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -488,7 +480,6 @@ checks:
       t
       (1 row)"
     compliance:
-      cis: ["3.1.9"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -529,7 +520,6 @@ checks:
       t
       (1 row)"
     compliance:
-      cis: ["3.1.10"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -574,7 +564,6 @@ checks:
       proddb
       (1 row)"
     compliance:
-      cis: ["3.1.11"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -615,7 +604,6 @@ checks:
       t
       (1 row)
     compliance:
-      cis: ["3.1.12"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -661,7 +649,6 @@ checks:
       t
       (1 row)
     compliance:
-      cis: ["3.1.13"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -702,7 +689,6 @@ checks:
       t
       (1 row)
     compliance:
-      cis: ["3.1.14"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -743,7 +729,6 @@ checks:
       t
       (1 row)
     compliance:
-      cis: ["3.1.15"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -783,7 +768,6 @@ checks:
       t
       (1 row)
     compliance:
-      cis: ["3.1.16"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -822,7 +806,6 @@ checks:
       t
       (1 row)
     compliance:
-      cis: ["3.1.17"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -866,7 +849,6 @@ checks:
       t
       (1 row)
     compliance:
-      cis: ["3.1.18"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -907,7 +889,6 @@ checks:
       t
       (1 row)
     compliance:
-      cis: ["3.1.19"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -945,7 +926,6 @@ checks:
       t
       (1 row)
     compliance:
-      cis: ["3.1.20"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -988,7 +968,6 @@ checks:
       t
       (1 row)
     compliance:
-      cis: ["3.1.21"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1039,7 +1018,6 @@ checks:
       t
       (1 row)
     compliance:
-      cis: ["3.1.22"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1080,7 +1058,6 @@ checks:
       t
       (1 row)
     compliance:
-      cis: ["3.1.23"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1126,7 +1103,6 @@ checks:
       t
       (1 row)
     compliance:
-      cis: ["3.1.24"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1223,8 +1199,6 @@ checks:
       # systemctl status postgresql-13|grep 'ago$'
       Active: active (running) since [date] 10s ago
     compliance:
-      cis: ["3.2"]
-      cis: ["6", "6.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1272,7 +1246,6 @@ checks:
       and then report on differences from that ideal.
 
     compliance:
-      cis: ["4.5"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1310,7 +1283,6 @@ checks:
       this setup.
 
     compliance:
-      cis: ["4.7"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1364,7 +1336,6 @@ checks:
       operating systems, users must obtain or build their own FIPS 140-2 OpenSSL libraries.
 
     compliance:
-      cis: ["6.7"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1397,7 +1368,6 @@ checks:
       compromised in transit.
 
     compliance:
-      cis: ["6.8"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1477,7 +1447,6 @@ checks:
       backup/recovery solution, stringent testing must be conducted. A backup is only good if
       it can be restored successfully.
     compliance:
-      cis: ["8.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]

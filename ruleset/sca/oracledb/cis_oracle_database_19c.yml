@@ -41,7 +41,6 @@ checks:
     rationale: "extproc allows the database to run procedures from OS libraries. These library calls can, in turn, run any OS command."
     remediation: "Remove extproc from the listener.ora file."
     compliance:
-      cis: ["2.1.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -66,7 +65,6 @@ checks:
     rationale: "Blocking  unprivileged  users from  making  alterations of  the listener.ora file,  where remote  data/service  settings  are specified,  will  help  protect data  confidentiality."
     remediation: "Use a text  editor  such  as  vi to set the admin_restrictions_<listener_name> to the value ON"
     compliance:
-      cis: ["2.1.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -94,7 +92,6 @@ checks:
     rationale: "If  the parameter AUDIT_SYS_OPERATIONS is FALSE,  all statements  except  for Startup/Shutdown  and Logon by  SYSDBA/SYSOPER users  are not audited."
     remediation: "To  remediate this  setting,  execute the following SQL statement and restart the instance. ALTER SYSTEM SET AUDIT_SYS_OPERATIONS = TRUE SCOPE=SPFILE;"
     compliance:
-      cis: ["2.2.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -119,7 +116,6 @@ checks:
     rationale: "Enabling  the basic auditing  features  for the Oracle  instance  permits the collection  of  data  to troubleshoot problems, as  well  as  provides  valuable  forensic  logs  in  the case  of  a system breach this  value should  be  set according to  the needs of  the organization."
     remediation: "To  remediate this  setting,  execute one of  the following SQL statements  and restart the instance. ALTER SYSTEM SET AUDIT_TRAIL = DB, EXTENDED SCOPE = SPFILE; ALTER SYSTEM SET AUDIT_TRAIL = OS SCOPE = SPFILE; ALTER SYSTEM SET AUDIT_TRAIL = XML, EXTENDED SCOPE = SPFILE; ALTER SYSTEM SET AUDIT_TRAIL = DB SCOPE = SPFILE; ALTER SYSTEM SET AUDIT_TRAIL = XML SCOPE = SPFILE;"
     compliance:
-      cis: ["2.2.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -144,7 +140,6 @@ checks:
     rationale: "Not requiring database  connections to  match the domain  that  is  being called  remotely could  allow unauthorized  domain  sources to  potentially connect via brute-force tactics."
     remediation: "To  remediate this  setting,  execute the following SQL statement. ALTER SYSTEM SET GLOBAL_NAMES = TRUE SCOPE = SPFILE;"
     compliance:
-      cis: ["2.2.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -170,7 +165,6 @@ checks:
     rationale: "Allowing  the OS  to  use external  groups  for database  management  could cause privilege overlaps  and generally weaken  security."
     remediation: "ALTER SYSTEM SET OS_ROLES = FALSE SCOPE = SPFILE;"
     compliance:
-      cis: ["2.2.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -196,7 +190,6 @@ checks:
     rationale: "Permitting  a remote  listener  for connections to  the database  instance  can allow for the potential spoofing  of  connections and that  could compromise  data  confidentiality and integrity."
     remediation: "ALTER SYSTEM SET REMOTE_LISTENER = '' SCOPE = SPFILE;"
     compliance:
-      cis: ["2.2.5"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -222,7 +215,6 @@ checks:
     rationale: "The use of  this  sort  of  password  login file  could permit  unsecured,  privileged  connections to  the database."
     remediation: "ALTER SYSTEM SET REMOTE_LOGIN_PASSWORDFILE = 'NONE' SCOPE = SPFILE;"
     compliance:
-      cis: ["2.2.6"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -247,7 +239,6 @@ checks:
     rationale: "Permitting  OS roles  for database  connections can allow the spoofing  of  connections and permit  granting  the privileges  of  an  OS  role  to  unauthorized  users to  make  connections, this value should  be  restricted  according to  the needs of  the organization."
     remediation: "ALTER SYSTEM SET REMOTE_OS_AUTHENT = FALSE SCOPE = SPFILE;"
     compliance:
-      cis: ["2.2.7"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -272,7 +263,6 @@ checks:
     rationale: "Allowing  remote  clients OS  roles to  have  permissions for database  management  could cause privilege overlaps  and generally weaken  security"
     remediation: "ALTER SYSTEM SET REMOTE_OS_ROLES = FALSE SCOPE = SPFILE;"
     compliance:
-      cis: ["2.2.8"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -297,7 +287,6 @@ checks:
     rationale: "Oracle  database  password  case-sensitivity  increases the pool  of  characters  that can  be chosen for the passwords,  making  brute-force password  attacks quite difficult."
     remediation: "ALTER SYSTEM SET SEC_CASE_SENSITIVE_LOGON = TRUE SCOPE = SPFILE;"
     compliance:
-      cis: ["2.2.9"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -322,7 +311,6 @@ checks:
     rationale: "Allowing  an  unlimited number  of  login attempts  for a user  connection  can facilitate  both brute-force  login attacks and the occurrence  of  denial-of-service."
     remediation: "ALTER SYSTEM SET SEC_MAX_FAILED_LOGIN_ATTEMPTS = 3 SCOPE = SPFILE;"
     compliance:
-      cis: ["2.2.10"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -347,7 +335,6 @@ checks:
     rationale: "Bad packets received  from  the client  can potentially indicate  packet-based  attacks on  the system, such  as  TCP SYN Flood or  Smurf attacks,  which could result  in  a denial-ofservice  condition,  this  value should  be  set according to  the needs of  the organization."
     remediation: "ALTER SYSTEM SET SEC_PROTOCOL_ERROR_FURTHER_ACTION = '(DROP,3)' SCOPE = SPFILE;"
     compliance:
-      cis: ["2.2.11"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -372,7 +359,6 @@ checks:
     rationale: "Bad packets received  from  the client  can potentially indicate  packet-based  attacks on  the system, which could result  in  a denial-of-service condition."
     remediation: "ALTER SYSTEM SET SEC_PROTOCOL_ERROR_TRACE_ACTION=LOG SCOPE = SPFILE;"
     compliance:
-      cis: ["2.2.12"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -397,7 +383,6 @@ checks:
     rationale: "Allowing  the database  to  return  information about the patch/update  release number  could facilitate  unauthorized  users'  attempts  to  gain  access  based upon  known patch weaknesses."
     remediation: "ALTER SYSTEM SET SEC_RETURN_SERVER_RELEASE_BANNER = FALSE SCOPE = SPFILE;"
     compliance:
-      cis: ["2.2.13"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -422,7 +407,6 @@ checks:
     rationale: "A user  without SELECT privilege  can still infer the value stored  in  a column  by  referring to that column  in  a DELETE or UPDATE statement. This  setting prevents  inadvertent information disclosure  by  ensuring  that  only  users who already have  SELECT privilege  can execute the statements  that  would allow them  to  infer the stored  values."
     remediation: "ALTER SYSTEM SET SQL92_SECURITY = TRUE SCOPE = SPFILE;"
     compliance:
-      cis: ["2.2.14"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -450,7 +434,6 @@ checks:
     rationale: "If  RESOURCE_LIMIT is set to  FALSE,  none  of  the system  resource  limits  that  are set in  any database  profiles  are enforced. If  RESOURCE_LIMIT is set to  TRUE, the limits  set in  database profiles are enforced."
     remediation: "ALTER SYSTEM SET RESOURCE_LIMIT = TRUE SCOPE = SPFILE;"
     compliance:
-      cis: ["2.2.16"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -479,7 +462,6 @@ checks:
     rationale: "Repeated  failed  login attempts  can indicate  the initiation  of  a brute-force login attack, this value  should  be  set according to  the needs of  the organization. (See  the Notes for a warning on  a known bug that  can make  this  security  measure backfire.)"
     remediation: "ALTER PROFILE <profile_name> LIMIT FAILED_LOGIN_ATTEMPTS 5;"
     compliance:
-      cis: ["3.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -505,7 +487,6 @@ checks:
     rationale: "Locking the user  account after repeated  failed  login attempts  can block further brute-force login attacks,  but can create  administrative  headaches as  this  account unlocking process always  requires  DBA intervention."
     remediation: "ALTER PROFILE <profile_name> LIMIT PASSWORD_LOCK_TIME 1;"
     compliance:
-      cis: ["3.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -533,7 +514,6 @@ checks:
     rationale: "Allowing  passwords to  remain  unchanged for long  periods makes the success of  bruteforce  login attacks more  likely."
     remediation: "ALTER PROFILE <profile_name> LIMIT PASSWORD_LIFE_TIME 90;"
     compliance:
-      cis: ["3.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -561,7 +541,6 @@ checks:
     rationale: "Allowing  reuse of  a password  within  a short period  of  time  after the password's  initial use can make  the success of  both  social-engineering  and brute-force password-based  attacks more  likely."
     remediation: "ALTER PROFILE <profile_name> LIMIT PASSWORD_REUSE_MAX 20;"
     compliance:
-      cis: ["3.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -589,7 +568,6 @@ checks:
     rationale: "Reusing the same  password  after only  a short period  of  time  has passed  makes the success of  brute-force login attacks more  likely."
     remediation: "ALTER PROFILE <profile_name> LIMIT PASSWORD_REUSE_TIME 365;"
     compliance:
-      cis: ["3.5"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -617,7 +595,6 @@ checks:
     rationale: "Locking the user  account after the expiration  of  the password  change  requirement's grace period  can help  prevent password-based  attacks against any forgotten or  disused accounts, while still allowing  the account and its information to  be  accessible  by  DBA intervention."
     remediation: "ALTER PROFILE <profile_name> LIMIT PASSWORD_GRACE_TIME 5;"
     compliance:
-      cis: ["3.6"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -645,7 +622,6 @@ checks:
     rationale: "Through Oracle  database  profiles, password  complexity  rules (mixed  cases with  digits  and special characters),  blocking  of  simple  combinations, and enforcing change/history  settings can  potentially thwart  unauthorized  logins  by  an  unauthorized  user."
     remediation: "Create  a custom  password  verification  function  which fulfills  the password  requirements  of the  organization."
     compliance:
-      cis: ["3.7"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -671,7 +647,6 @@ checks:
     rationale: "Limiting  the number  of  the SESSIONS_PER_USER can help  prevent memory  resource exhaustion by  poorly  formed  requests  or  intentional denial-of-service attacks."
     remediation: "ALTER PROFILE <profile_name> LIMIT SESSIONS_PER_USER 10;"
     compliance:
-      cis: ["3.8"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -699,7 +674,6 @@ checks:
     rationale: "Setting 'INACTIVE_ACCOUNT_TIME' can help  with  deactivation  of  inactive  or  unused accounts."
     remediation: "ALTER PROFILE <profile_name> LIMIT INACTIVE_ACCOUNT_TIME 120;"
     compliance:
-      cis: ["3.9"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -730,7 +704,6 @@ checks:
     rationale: "Default passwords should  be  considered  well  known to  attackers.  Consequently, if  default passwords remain  in  place,  any attacker  with  access  to  the database  can authenticate  as  the user  with  that  default password."
     remediation: ""
     compliance:
-      cis: ["4.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -756,7 +729,6 @@ checks:
     rationale: "The sample  schemas are typically not required  for production  operations  of  the database. The default users,  views,  and/or  procedures/functions  created by  sample  schemas could be  used  to  launch  exploits  against production  environments."
     remediation: "$ORACLE_HOME/demo/schema/drop_sch.sql DROP USER SCOTT CASCADE;"
     compliance:
-      cis: ["4.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -782,7 +754,6 @@ checks:
     rationale: "Allowing  remote  OS  authentication  of  a user  to  the database  can potentially allow supposed privileged users to  connect as  authenticated,  even  when  the remote  system  is compromised."
     remediation: "ALTER USER <username> IDENTIFIED BY <password>;"
     compliance:
-      cis: ["4.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -808,7 +779,6 @@ checks:
     rationale: "Users should  be  created with  function-appropriate  profiles. The DEFAULT profile,  being defined by  Oracle, is  subject to  change  at  any time  (e.g. by  patch or  version update).  The DEFAULT profile has unlimited settings  that  are often required  by  the SYS user  when patching;  such  unlimited settings  should  be  tightly reserved  and not applied to unnecessary  users."
     remediation: "ALTER USER <username> PROFILE <appropriate_profile>;"
     compliance:
-      cis: ["4.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -834,7 +804,6 @@ checks:
     rationale: "The table sys.user$mig is not deleted after the migration.  An  attacker  could access  the table containing  the Oracle  password  hashes."
     remediation: "DROP TABLE SYS.USER$MIG;"
     compliance:
-      cis: ["4.5"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -860,7 +829,6 @@ checks:
     rationale: "Using public  database  links in  the database  can allow anyone  with  a connection  to  the database  to  query,  update, insert, delete  data  on  a remote  database  depending on  the userid  that  is  part  of  the link."
     remediation: "DROP PUBLIC DATABASE LINK <DB_LINK>;"
     compliance:
-      cis: ["4.6"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -894,7 +862,6 @@ checks:
     rationale: "As  described below,  Oracle  Database  PL/SQL  packages  - DBMS_LDAP,  UTL_INADDR, UTL_TCP, UTL_MAIL,  UTL_SMTP, UTL_DBWS, UTL_ORAMTS, UTL_HTTP and  type  HTTPURITYPE can be  used  by unauthorized users to  create  specially crafted error messages  or  send  information to external servers.  The PUBLIC should not be  able  to  execute these packages. • The use of  the DBMS_LDAP package can be  used  to  create  specially crafted error messages  or  send  information via DNS to  the outside. • The  UTL_INADDR package  can be  used  to  create  specially crafted error messages  or send information via DNS to the  outside. • The  UTL_TCP package could allow an  unauthorized  user  to  corrupt the TCP stream used to  carry the protocols that  communicate with  the instance's  external communications. • The  UTL_MAIL package  could allow an  unauthorized  user  to  corrupt the SMTP function to  accept  or  generate  junk  mail  that  can result  in  a denial-of-service condition due to  network saturation. • The UTL_SMTP package  could allow an  unauthorized  user  to  corrupt the SMTP function to  accept  or  generate  junk  mail  that  can result  in  a denial-of-service condition due to  network saturation. • The UTL_DBWS package  could allow an  unauthorized  user  to  corrupt the HTTP stream used  to  carry the protocols that  communicate for the instance's  web-based external  communications. • The UTL_ORAMTS package  could be  used  to  send  (sensitive) information to  external websites.  The use of  this  package should  be  restricted  according to  the needs of  the organization. • The UTL_HTTP package  could be  used  to  send  (sensitive) information to  external websites. • The  use of this package should  be  restricted  according to  the needs of  the organization. • The ability to  perform HTTP  requests  could be  used  to  leak  information from  the database  to  an  external  destination."
     remediation: "REVOKE EXECUTE ON DBMS_LDAP FROM PUBLIC; REVOKE EXECUTE ON UTL_INADDR FROM PUBLIC; REVOKE EXECUTE ON UTL_TCP FROM PUBLIC; REVOKE EXECUTE ON UTL_MAIL FROM PUBLIC; REVOKE EXECUTE ON UTL_SMTP FROM PUBLIC; REVOKE EXECUTE ON UTL_DBWS FROM PUBLIC; REVOKE EXECUTE ON UTL_ORAMTS FROM PUBLIC; REVOKE EXECUTE ON UTL_HTTP FROM PUBLIC; REVOKE EXECUTE ON HTTPURITYPE FROM PUBLIC;"
     compliance:
-      cis: ["5.1.1.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -920,7 +887,6 @@ checks:
     rationale: "As  described below,  Oracle  Database  PL/SQL  File  System  packages  - DBMS_ADVISOR, DBMS_LOB and  UTL_FILE – should not be  granted to  PUBLIC. • Use of  the DBMS_ADVISOR package  could allow an  unauthorized  user  to  corrupt operating system  files on  the instance's  host. • Use of  the DBMS_LOB package  could allow an  unauthorized  user  to  manipulate  BLOB's, CLOB's, NCLOB's,  BFILE's,  and temporary LOBs  on  the instance, either  destroying  data or causing a denial-of-service condition due to  corruption  of  disk  space. • Use  of  the UTL_FILE package  could allow a user  to  read  OS  files.  These files could contain sensitive information (e.g. passwords in  .bash_history)"
     remediation: "REVOKE EXECUTE ON DBMS_ADVISOR FROM PUBLIC; REVOKE EXECUTE ON DBMS_LOB FROM PUBLIC; REVOKE EXECUTE ON UTL_FILE FROM PUBLIC;"
     compliance:
-      cis: ["6", "7"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -946,7 +912,6 @@ checks:
     rationale: "As  described below,  Oracle  Database  PL/SQL  Encryption  packages  - DBMS_CRYPTO, DBMS_OBFUSCATION_TOOLKIT and DBMS_RANDOM – should  not be  granted to  PUBLIC. • Execution of  the DBMS_CRYPTO procedures  by  the PUBLIC can  potentially endanger portions of  or  all of  the data  storage. • Allowing the PUBLIC privileges to  access  this  capability  can be  potentially harm  data storage. • Use of  the DBMS_RANDOM package can allow the unauthorized  application of  the random  number-generating function."
     remediation: "REVOKE EXECUTE ON DBMS_CRYPTO FROM PUBLIC; REVOKE EXECUTE ON DBMS_OBFUSCATION_TOOLKIT FROM PUBLIC; REVOKE EXECUTE ON DBMS_RANDOM FROM PUBLIC;"
     compliance:
-      cis: ["5.1.1.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -972,7 +937,6 @@ checks:
     rationale: "As  described below,  Oracle  Database  PL/SQL  Java  packages  - DBMS_JAVA and DBMS_JAVA_TEST – should not be  granted to  PUBLIC. • The DBMS_JAVA package could allow an  attacker  to  run OS  commands  from  the database. • The DBMS_JAVA_TEST package  could allow an  attacker  to  run operating system commands from  the database."
     remediation: "REVOKE EXECUTE ON DBMS_JAVA FROM PUBLIC; REVOKE EXECUTE ON DBMS_JAVA_TEST FROM PUBLIC;"
     compliance:
-      cis: ["5.1.1.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -998,7 +962,6 @@ checks:
     rationale: "As  described below,  Oracle  Database  PL/SQL  Job Scheduler packages  - DBMS_SCHEDULER and  DBMS_JOB – should not be  granted to  the user  PUBLIC. • Use of  the DBMS_SCHEDULER package  could allow an  unauthorized  user  to  run database  or  operating system  jobs. • Use of  the DBMS_JOB package  could allow an  unauthorized  user  to  disable or overload the job queue.  It  has been  superseded  by  the DBMS_SCHEDULER package"
     remediation: "REVOKE EXECUTE ON DBMS_JOB FROM PUBLIC; REVOKE EXECUTE ON DBMS_SCHEDULER FROM PUBLIC;"
     compliance:
-      cis: ["6", "7"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1024,7 +987,6 @@ checks:
     rationale: "As  described below,  Oracle  Database  PL/SQL  SQL Injection Helper  Packages  packages  - DBMS_SQL, DBMS_XMLGEN,  DBMS_XMLQUERY,  DBMS_XLMSTORE,  DBMS_XLMSAVE and 'DBMS_REDACT'  – should  not be  granted to  PUBLIC. • The DBMS_SQL package  could allow privilege escalation  if  input validation  is  not done properly. • The  package DBMS_XMLGEN can be  used  to  search  the entire  database  for sensitive information like  credit  card  numbers • The package DBMS_XMLQUERY can be  used  to  search  the entire  database  for sensitive information like  credit  card  numbers.  Malicious users may be  able  to  exploit this package  as  an  auxiliary inject  function  in  a SQL injection attack. • Malicious users may be  able  to  exploit the DBMS_XLMSTORE package as  an  auxiliary inject  function  in  a SQL injection attack. • Malicious users may be  able  to  exploit the DBMS_XLMSAVE package  as  an  auxiliary inject  function  in  a SQL injection attack. • Malicious users may be  able  to  exploit DBMS_REDACT as  an  auxiliary inject  function in a SQL injection attack."
     remediation: "REVOKE EXECUTE ON DBMS_SQL FROM PUBLIC; REVOKE EXECUTE ON DBMS_XMLGEN FROM PUBLIC; REVOKE EXECUTE ON DBMS_XMLQUERY FROM PUBLIC; REVOKE EXECUTE ON DBMS_XMLSAVE FROM PUBLIC; REVOKE EXECUTE ON DBMS_XMLSTORE FROM PUBLIC; REVOKE EXECUTE ON DBMS_AW FROM PUBLIC;REVOKE EXECUTE ON OWA_UTIL FROM PUBLIC; REVOKE EXECUTE ON DBMS_REDACT FROM PUBLIC;"
     compliance:
-      cis: ["5.1.1.6"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1053,7 +1015,6 @@ checks:
     rationale: "As  described below,  these non-default group of  PL/SQL  packages, which are not granted to  PUBLIC by default,  packages  should  not be  granted to  PUBLIC. • The DBMS_BACKUP_RESTORE package can allow access  to  OS  files. • The  DBMS_FILE_TRANSFER package  could allow to  transfer  files from  one database server to  another without authorization to  do  so. • The DBMS_SYS_SQL package  could allow a user  to  run code  as  a different user without  entering  valid credentials. • The  DBMS_REPCAT_SQL_UTL package could allow an  unauthorized  user  to  run SQL commands  as  user  SYS. • The  INITJVMAUX package  could allow an  unauthorized  user  to  run SQL commands  as user SYS. • The  DBMS_AQADM_SYS package  could allow an  unauthorized  user  to  run SQL commands  as  user  SYS. • The  DBMS_STREAMS_RPC package  could allow an  unauthorized  user  to  run SQL commands  as  user  SYS.102 | P a g e • The DBMS_PRVTAQIM package could allow an  unauthorized  user  to  escalate  privileges because  any SQL statements  could be  executed  as  user SYS. • The LTADM package could allow an  unauthorized  user  to  run any SQL command as user SYS.  It  allows  privilege escalation  if  granted to  unprivileged  users. • The  DBMS_IJOB package could allow an  attacker  to  change  identities  by  using a different username  to  execute a database  job.  It  allows  a user  to  run database  jobs  in the  context of  another user."
     remediation: "REVOKE EXECUTE ON DBMS_BACKUP_RESTORE FROM PUBLIC; REVOKE EXECUTE ON DBMS_FILE_TRANSFER FROM PUBLIC; REVOKE EXECUTE ON DBMS_SYS_SQL FROM PUBLIC; REVOKE EXECUTE ON DBMS_REPCAT_SQL_UTL FROM PUBLIC; REVOKE EXECUTE ON INITJVMAUX FROM PUBLIC; REVOKE EXECUTE ON DBMS_AQADM_SYS FROM PUBLIC; REVOKE EXECUTE ON DBMS_STREAMS_RPC FROM PUBLIC; REVOKE EXECUTE ON DBMS_PRVTAQIM FROM PUBLIC; REVOKE EXECUTE ON LTADM FROM PUBLIC; REVOKE EXECUTE ON DBMS_IJOB FROM PUBLIC; REVOKE EXECUTE ON DBMS_PDB_EXEC_SQL FROM PUBLIC;"
     compliance:
-      cis: ["5.1.2.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1082,7 +1043,6 @@ checks:
     rationale: "Permitting  non-privileged  users the authorization to  manipulate  the SYS.AUD$ table  can allow distortion  of  the audit records,  hiding  unauthorized  activities."
     remediation: "REVOKE ALL ON AUD$ FROM <grantee>;"
     compliance:
-      cis: ["5.1.3.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1108,7 +1068,6 @@ checks:
     rationale: "Permitting  users the authorization to  manipulate  the DBA_ views  can expose  sensitive data."
     remediation: "REVOKE ALL ON <DBA_%> FROM <Non-DBA/SYS grantee>;"
     compliance:
-      cis: ["5.1.3.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1134,7 +1093,6 @@ checks:
     rationale: "Access  to  sensitive information such  as  hashed  passwords may allow unauthorized  users to decrypt  the passwords hashes  which could potentially result  in  complete  compromise  of the  database."
     remediation: "REVOKE ALL ON SYS.CDB_LOCAL_ADMINAUTH$ FROM <grantee>; REVOKE ALL ON SYS.DEFAULT_PWD$ FROM <grantee>; REVOKE ALL ON SYS.ENC$ FROM <grantee>; REVOKE ALL ON SYS.HISTGRM$ FROM <grantee>; REVOKE ALL ON SYS.HIST_HEAD$ FROM <grantee>; REVOKE ALL ON SYS.LINK$ FROM <grantee>; REVOKE ALL ON SYS.PDB_SYNC$ FROM <grantee>; REVOKE ALL ON SYS.SCHEDULER$_CREDENTIAL FROM <grantee>; REVOKE ALL ON SYS.USER$ FROM <grantee>; REVOKE ALL ON SYS.USER_HISTORY$ FROM <grantee>; REVOKE ALL ON SYS.XS$VERIFIERS FROM <grantee>;"
     compliance:
-      cis: ["5.1.3.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1163,7 +1121,6 @@ checks:
     rationale: "Authorization to  use the ANY expansion of  a privilege can allow an  unauthorized  user to potentially change  confidential  data  or  damage  the data  catalog."
     remediation: "REVOKE '<ANY Privilege>' FROM <grantee>;"
     compliance:
-      cis: ["5.2.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1189,7 +1146,6 @@ checks:
     rationale: "Assignment  of  the WITH_ADMIN privilege  can allow the granting  of  a restricted  privilege to an unauthorized  user."
     remediation: "REVOKE <privilege> FROM <grantee>;"
     compliance:
-      cis: ["5.2.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1215,7 +1171,6 @@ checks:
     rationale: "Migrated  OUTLN users have  more  privileges  than  required."
     remediation: "REVOKE EXECUTE ANY PROCEDURE FROM OUTLN;"
     compliance:
-      cis: ["5.2.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1241,7 +1196,6 @@ checks:
     rationale: "Migrated  DBSNMP users  have  more  privileges  than  required."
     remediation: "REVOKE EXECUTE ANY PROCEDURE FROM DBSNMP;"
     compliance:
-      cis: ["5.2.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1267,7 +1221,6 @@ checks:
     rationale: "SELECT ANY DICTIONARY is  a powerful  system  privilege which would allow an unauthorized user  to  gather  information about the database  through data  dictionary objects. Information collected could potentially be  used  to  exploit the database."
     remediation: "REVOKE SELECT ANY DICTIONARY FROM <grantee>;"
     compliance:
-      cis: ["5.2.5"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1293,7 +1246,6 @@ checks:
     rationale: "Assignment  of  the SELECT ANY TABLE privilege  can allow the unauthorized  viewing of sensitive  data."
     remediation: "REVOKE SELECT ANY TABLE FROM <grantee>;"
     compliance:
-      cis: ["5.2.6"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1319,7 +1271,6 @@ checks:
     rationale: "The AUDIT SYSTEM privilege  can allow the unauthorized  alteration  of  system  audit activities, such  as  disabling the creation  of  audit trails."
     remediation: "REVOKE AUDIT SYSTEM FROM <grantee>;"
     compliance:
-      cis: ["5.2.7"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1345,7 +1296,6 @@ checks:
     rationale: "The EXEMPT ACCESS POLICY privilege  can allow an  unauthorized  user  to  potentially access and  change  data."
     remediation: "REVOKE EXEMPT ACCESS POLICY FROM <grantee>;"
     compliance:
-      cis: ["5.2.8"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1371,7 +1321,6 @@ checks:
     rationale: "The BECOME USER privilege can allow the unauthorized  use of  another user's  privileges, this capability should  be  restricted  according to  the needs of  the organization."
     remediation: "REVOKE BECOME USER FROM <grantee>;"
     compliance:
-      cis: ["5.2.9"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1397,7 +1346,6 @@ checks:
     rationale: "The CREATE PROCEDURE privilege  can lead  to  severe  problems  in  unauthorized  hands,  such as rogue procedures  facilitating  data  theft or  denial-of-service by  corrupting  data  tables."
     remediation: "REVOKE CREATE PROCEDURE FROM <grantee>;"
     compliance:
-      cis: ["5.2.10"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1423,7 +1371,6 @@ checks:
     rationale: "The ALTER SYSTEM privilege  can lead  to  severe  problems, such  as  the instance's  session being killed  or  the stopping  of  redo  log recording,  which would make  transactions unrecoverable."
     remediation: "REVOKE ALTER SYSTEM FROM <grantee>;"
     compliance:
-      cis: ["5.2.11"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1449,7 +1396,6 @@ checks:
     rationale: "The CREATE ANY LIBRARY privilege  can allow the creation  of  numerous  library-associated objects  and potentially corrupt the libraries'  integrity."
     remediation: "REVOKE CREATE ANY LIBRARY FROM <grantee>;"
     compliance:
-      cis: ["5.2.12"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1475,7 +1421,6 @@ checks:
     rationale: "The CREATE LIBRARY privilege  can allow the creation  of  numerous  library-associated objects  and potentially corrupt the libraries'  integrity"
     remediation: "REVOKE CREATE LIBRARY FROM <grantee>;"
     compliance:
-      cis: ["5.2.13"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1501,7 +1446,6 @@ checks:
     rationale: "The GRANT ANY OBJECT PRIVILEGE capability can allow an  unauthorized  user  to  potentially access  or  change  confidential  data, or  damage  the data  catalog due to  potential complete instance access."
     remediation: "REVOKE GRANT ANY OBJECT PRIVILEGE FROM <grantee>;"
     compliance:
-      cis: ["5.2.14"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1527,7 +1471,6 @@ checks:
     rationale: "The GRANT ANY ROLE capability can allow an  unauthorized  user  to  potentially access  or change confidential  data  or  damage  the data  catalog due to  potential complete  instance access."
     remediation: "REVOKE GRANT ANY ROLE FROM <grantee>;"
     compliance:
-      cis: ["5.2.15"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1553,7 +1496,6 @@ checks:
     rationale: "The GRANT ANY PRIVILEGE capability  can allow an  unauthorized  user  to  potentially access or change  confidential  data  or  damage  the data  catalog due to  potential complete  instance access."
     remediation: "REVOKE GRANT ANY PRIVILEGE FROM <grantee>;"
     compliance:
-      cis: ["5.2.16"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1582,7 +1524,6 @@ checks:
     rationale: "Permitting  unauthorized  access  to  the SELECT_CATALOG_ROLE can allow the disclosure  of  all dictionary  data."
     remediation: "REVOKE SELECT_CATALOG_ROLE FROM <grantee>;"
     compliance:
-      cis: ["5.3.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1608,7 +1549,6 @@ checks:
     rationale: "Permitting  unauthorized  access  to  the EXECUTE_CATALOG_ROLE can  allow the disruption  of operations by  initialization  of  rogue procedures, this  capability  should  be  restricted according  to  the needs of  the organization."
     remediation: "REVOKE EXECUTE_CATALOG_ROLE FROM <grantee>;"
     compliance:
-      cis: ["5.3.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1634,7 +1574,6 @@ checks:
     rationale: "Assignment  of  the DBA role  to  an  ordinary  user  can provide a great number  of  unnecessary privileges  to  that  user  and open  the door  to  data  breaches, integrity violations, and denialof-service  conditions."
     remediation: "REVOKE DBA FROM <grantee>;"
     compliance:
-      cis: ["5.3.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1666,7 +1605,6 @@ checks:
     rationale: "Any unauthorized  attempts  to  create, drop  or  alter a user  should  cause concern,  whether successful  or  not.  Auditing  can also  be  useful  in  forensics if  an  account is  compromised,  and auditing  is  mandated  by  many  common  security  initiatives.  An  abnormally  high  number  of these  activities  in  a given period  might be  worth investigation.  Any failed  attempt to  drop  a user  or  create  a user  may be  worth further review."
     remediation: "AUDIT USER;"
     compliance:
-      cis: ["6.1.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1692,7 +1630,6 @@ checks:
     rationale: "Roles are a key database  security  infrastructure  component.  Any attempt to  create, drop  or alter  a role  should  be  audited.  This  statement auditing  option  also  audits  attempts, successful  or  not,  to  set a role  in  a session.  Any unauthorized  attempts  to  create, drop  or alter  a role  may be  worthy  of  investigation.  Attempts  to  set a role  by  users without the role privilege  may warrant investigation."
     remediation: "AUDIT ROLE;"
     compliance:
-      cis: ["6.1.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1718,7 +1655,6 @@ checks:
     rationale: "Logging of  all grant and revokes (roles  and system  privileges) can provide forensic evidence about a pattern of  suspect/unauthorized  activities. Any unauthorized  attempt may be  cause for further investigation."
     remediation: "AUDIT SYSTEM GRANT;"
     compliance:
-      cis: ["6.1.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1744,7 +1680,6 @@ checks:
     rationale: "As  profiles  are part  of  the database  security  infrastructure, auditing  the creation, modification, and deletion  of  profiles  is  recommended."
     remediation: "AUDIT PROFILE;"
     compliance:
-      cis: ["6.1.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1770,7 +1705,6 @@ checks:
     rationale: "As  the logging of  user  activities  involving the creation  or  dropping  of  a DATABASE LINK can provide forensic  evidence  about a pattern of  unauthorized  activities, the audit capability should be  enabled."
     remediation: "AUDIT DATABASE LINK;"
     compliance:
-      cis: ["6.1.5"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1796,7 +1730,6 @@ checks:
     rationale: "As  the logging of  user  activities  involving the creation, alteration, or  dropping  of  a PUBLIC DATABASE LINK can  provide forensic  evidence  about a pattern of  unauthorized  activities, the audit capability  should  be  enabled."
     remediation: "AUDIT PUBLIC DATABASE LINK;"
     compliance:
-      cis: ["6.1.6"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1822,7 +1755,6 @@ checks:
     rationale: "As  the logging of  user  activities  involving the creation  or  dropping  of  a PUBLIC SYNONYM can provide  forensic  evidence  about a pattern of  unauthorized  activities, the audit capability should be  enabled."
     remediation: "AUDIT PUBLIC SYNONYM;"
     compliance:
-      cis: ["6.1.7"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1848,7 +1780,6 @@ checks:
     rationale: "As  the logging of  user  activities  involving the creation  or  dropping  of  a SYNONYM can provide forensic  evidence  about a pattern of  suspect/unauthorized  activities, the audit capability should be  enabled."
     remediation: "AUDIT SYNONYM;"
     compliance:
-      cis: ["6.1.8"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1874,7 +1805,6 @@ checks:
     rationale: "As  the logging of  user  activities  involving the creation  or  dropping  of  a DIRECTORY can provide forensic  evidence  about a pattern of  unauthorized  activities, the audit capability should be  enabled."
     remediation: "AUDIT DIRECTORY;"
     compliance:
-      cis: ["6.1.9"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1900,7 +1830,6 @@ checks:
     rationale: "As  the logging of  user  activities  involving the capability  to  access  the description of  all schema  objects in  the database  can provide forensic  evidence  about a pattern of unauthorized activities, the audit capability  should  be  enabled."
     remediation: "AUDIT SELECT ANY DICTIONARY;"
     compliance:
-      cis: ["6.1.10"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1926,7 +1855,6 @@ checks:
     rationale: "Logging of  privilege grants  that  can lead  to  the creation, alteration, or  deletion  of  critical data,  the modification  of  objects,  object  privilege propagation and other such  activities  can be  critical  to  forensic  investigations."
     remediation: "AUDIT GRANT ANY OBJECT PRIVILEGE;"
     compliance:
-      cis: ["6.1.11"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1952,7 +1880,6 @@ checks:
     rationale: "Auditing  the use of  this  privilege is  part  of  a comprehensive auditing  policy  that  can help  in detecting  issues  and can be  useful  in  forensics."
     remediation: "AUDIT GRANT ANY PRIVILEGE;"
     compliance:
-      cis: ["6.1.12"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -1978,7 +1905,6 @@ checks:
     rationale: "Dropping  procedures  of  another user  could be  part  of  a privilege escalation  exploit and should  be  audited."
     remediation: "AUDIT DROP ANY PROCEDURE;"
     compliance:
-      cis: ["6.1.13"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2004,7 +1930,6 @@ checks:
     rationale: "As  the logging of  attempts  to  alter the SYS.AUD$ table  can provide forensic  evidence  of  the initiation  of  a pattern of  unauthorized  activities, this  logging capability  should  be  enabled."
     remediation: "AUDIT ALL ON SYS.AUD$ BY ACCESS;"
     compliance:
-      cis: ["6.1.14"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2029,7 +1954,6 @@ checks:
     rationale: "Any unauthorized  attempts  to  create  or  drop  a procedure in  another's schema  should  cause concern,  whether successful  or  not.  Changes to  critical  stored  code  can dramatically  change the  behavior  of  the application and produce serious security  consequences, including enabling  privilege escalation  and introducing SQL injection vulnerabilities.  Audit records of such changes can be  helpful in  forensics."
     remediation: "AUDIT PROCEDURE;"
     compliance:
-      cis: ["6.1.15"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2055,7 +1979,6 @@ checks:
     rationale: "Any unauthorized  attempt to  alter the system  should  be  cause for concern.  Alterations outside of  some  specified maintenance window  may be  of  concern.  In  forensics,  these audit records could be  quite useful."
     remediation: "AUDIT ALTER SYSTEM;"
     compliance:
-      cis: ["6.1.16"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2081,7 +2004,6 @@ checks:
     rationale: "Triggers  are often part  of  schema  security, data  validation  and other critical  constraints upon  actions and data. A trigger in  another schema  may be  used  to  escalate  privileges, redirect  operations, transform data  and perform other sorts of  perhaps undesired actions. Any  unauthorized  attempt to  create, drop  or  alter a trigger in  another schema  may be  cause for investigation."
     remediation: "AUDIT TRIGGER;"
     compliance:
-      cis: ["6.1.17"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2107,7 +2029,6 @@ checks:
     rationale: "Auditing  attempts  to  connect to  the database  is  basic and mandated  by  most  security initiatives. Any attempt to  logon to  a locked  account,  failed  attempts  to  logon to  default accounts  or  an  unusually high  number  of  failed  logon attempts  of  any sort, for any user, in  a particular  time  period  may indicate  an  intrusion attempt.  In  forensics,  the logon record may  be  first in  a chain of  evidence  and contain information found in  no  other type  of  audit record  for the session.  Logon and logoff  in  the audit trail define  the period  and duration  of the  session."
     remediation: "AUDIT SESSION;"
     compliance:
-      cis: ["6.1.18"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2136,7 +2057,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  create  user  accounts, whether successful  or unsuccessful,  may provide clues and forensic  evidences about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all activities  involving CREATE USER."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS CREATE USER;"
     compliance:
-      cis: ["6.2.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2161,7 +2081,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  alter user  accounts, whether successful  or unsuccessful,  may provide clues and forensic  evidences about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all activities  involving ALTER USER."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALTER USER;"
     compliance:
-      cis: ["6.2.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2186,7 +2105,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  drop  user, whether successful  or  unsuccessful, may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  activities  involving DROP USER."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS DROP USER;"
     compliance:
-      cis: ["6.2.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2211,7 +2129,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  create  roles,  whether successful  or  unsuccessful, may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities  involving CREATE ROLE."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS CREATE ROLE;"
     compliance:
-      cis: ["6.2.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2236,7 +2153,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  alter roles,  whether successful  or  unsuccessful, may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities  involving alteration  of  roles."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALTER ROLE;"
     compliance:
-      cis: ["6.2.5"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2261,7 +2177,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  drop  roles,  whether successful  or  unsuccessful, may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities  involving DROP ROLE."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS DROP ROLE;"
     compliance:
-      cis: ["6.2.6"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2286,7 +2201,6 @@ checks:
     rationale: "With  unauthorized  grants  and permissions,  a malicious user  may be  able  to  change  the security  of  the database, access/update confidential  data, or  compromise  the integrity of the  database. Logging and monitoring  of  all attempts  to  grant system  privileges, object privileges or  roles,  whether successful  or  unsuccessful, may provide forensic  evidence about  potential suspicious/unauthorized activities  as  well  as  privilege escalation  activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization security policies  and industry/government regulations may require logging of  all user activities involving GRANT."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS GRANT;"
     compliance:
-      cis: ["6.2.7"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2311,7 +2225,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  revoke  system  privileges, object  privileges  or roles, whether successful  or  unsuccessful, may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving REVOKE."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS REVOKE;"
     compliance:
-      cis: ["6.2.8"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2336,7 +2249,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  create  profiles, whether successful  or unsuccessful,  may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving creation  of  database  profiles."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS CREATE PROFILE;"
     compliance:
-      cis: ["6.2.9"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2361,7 +2273,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  alter profiles, whether successful  or  unsuccessful, may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security policies and industry/government regulations may require logging of  all user  activities involving  alteration  of  database  profiles."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALTER PROFILE;"
     compliance:
-      cis: ["6.2.10"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2386,7 +2297,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  drop  profiles, whether successful  or unsuccessful,  may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving dropping  database  profiles."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS DROP PROFILE;"
     compliance:
-      cis: ["6.2.11"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2411,7 +2321,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  create  database  links,  whether successful  or unsuccessful,  may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities  involving creation  of  database  links."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS CREATE DATABASE LINK;"
     compliance:
-      cis: ["6.2.12"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2436,7 +2345,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  alter database  links,  whether successful  or unsuccessful,  may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities  involving alteration  of  database  links."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALTER DATABASE LINK;"
     compliance:
-      cis: ["6.2.13"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2461,7 +2369,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  drop  database  links,  whether successful  or unsuccessful,  may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities  involving dropping  database  links."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS DROP DATABASE LINK;"
     compliance:
-      cis: ["6.2.14"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2486,7 +2393,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  create  synonyms, whether successful  or unsuccessful,  may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving creation  of  synonyms  or public synonyms."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS CREATE SYNONYM;"
     compliance:
-      cis: ["6.2.15"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2511,7 +2417,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  alter synonyms, whether successful  or unsuccessful,  may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving alteration  of  synonyms  or public synonyms."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALTER SYNONYM;"
     compliance:
-      cis: ["6.2.16"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2536,7 +2441,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  drop  synonyms, whether successful  or unsuccessful,  may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities involving  dropping  of  synonyms  or  public  synonyms."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS DROP SYNONYM;"
     compliance:
-      cis: ["6.2.17"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2561,7 +2465,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  access  a data  dictionary, whether successful  or unsuccessful,  may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving access  to  the database."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD PRIVILEGES SELECT ANY DICTIONARY;"
     compliance:
-      cis: ["6.2.18"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2586,7 +2489,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  access  the AUDSYS.AUD$UNIFIED, whether successful  or  unsuccessful, may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving access  to  this  table."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALL on AUDSYS.AUD$UNIFIED;"
     compliance:
-      cis: ["6.2.19"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2611,7 +2513,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  create  procedures, functions,  packages  or package  bodies, whether successful  or  unsuccessful, may provide clues and forensic evidence about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving creation  of  procedures, functions,  packages  or  package bodies."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS CREATE PROCEDURE, CREATE FUNCTION, CREATE PACKAGE, CREATE PACKAGE BODY;"
     compliance:
-      cis: ["6.2.20"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2636,7 +2537,6 @@ checks:
     rationale: "Unauthorized  alteration  of  procedures, functions,  packages  or  package bodies  may impact critical business  functions or  compromise  integrity of  the database. Logging and monitoring  of  all attempts, whether successful  or  unsuccessful, to  alter procedures, functions,  packages  or  package bodies  may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving alteration  of  procedures, functions,  packages  or  package bodies."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALTER PROCEDURE, ALTER FUNCTION, ALTER PACKAGE, ALTER PACKAGE BODY;"
     compliance:
-      cis: ["6.2.21"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2661,7 +2561,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts, whether successful  or  unsuccessful, to  drop procedures,  functions,  packages  or  package bodies  may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving dropping  procedures, functions,  packages  or  package bodies."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS DROP PROCEDURE, DROP FUNCTION, DROP PACKAGE, DROP PACKAGE BODY;"
     compliance:
-      cis: ["6.2.22"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2686,7 +2585,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  execute ALTER SYSTEM statements,  whether successful  or  unsuccessful, may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  that  involve ALTER SYSTEM statements."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALTER SYSTEM;"
     compliance:
-      cis: ["6.2.23"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2711,7 +2609,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  create  triggers, whether successful  or unsuccessful,  may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving creation  of  triggers."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS CREATE TRIGGER;"
     compliance:
-      cis: ["6.2.24"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2736,7 +2633,6 @@ checks:
     rationale: "Unauthorized  alteration  of  triggers  may impact  critical  business  functions or  compromise integrity/security of  the database. Logging and monitoring  of  all attempts  to  alter triggers, whether successful  or  unsuccessful, may provide clues and forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of  all user  activities  involving alteration  of  triggers."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS ALTER TRIGGER;"
     compliance:
-      cis: ["6.2.25"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2761,7 +2657,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  drop  triggers, whether successful  or unsuccessful,  may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities  involving dropping  triggers."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS DROP TRIGGER;"
     compliance:
-      cis: ["6.2.26"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -2786,7 +2681,6 @@ checks:
     rationale: "Logging and monitoring  of  all attempts  to  logon to  the database, whether successful  or unsuccessful,  may provide forensic  evidence  about potential suspicious/unauthorized activities. Any such  activities  may be  a cause for further investigation.  In  addition, organization  security  policies  and industry/government regulations may require logging of all  user  activities  involving LOGON and LOGOFF."
     remediation: "ALTER AUDIT POLICY CIS_UNIFIED_AUDIT_POLICY ADD ACTIONS LOGON, LOGOFF;"
     compliance:
-      cis: ["6.2.27"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]

@@ -41,7 +41,6 @@ checks:
     rationale: "Failure to authenticate clients, users, servers can enable unauthorized access to the MongoDB database and can prevent tracing actions back to their sources."
     remediation: "The authentication mechanism should be implemented before anyone accesses the MongoDB Server. To enable the authentication mechanism: Start the MongoDB instance without authentication. Create the system user administrator, ensuring that its password meets organizationally-defined password complexity requirements. Open mongod.conf and change for authorization value to enabled. Restart the MongoDB instance."
     compliance:
-      cis: ["1.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -68,7 +67,6 @@ checks:
     rationale: "Disabling this exception will prevent unauthorized local access to the MongoDB database. It will also ensure the traceability of each database activity to a specific user. Localhost Exception allows direct connect to Mongod’s without any UN/PW."
     remediation: "To disable local authentication on the MongoDB database, type OS Console Command: mongod --setParameter enableLocalhostAuthBypass=0, or manually configure use the setParameter option in the mongo configuration file to set it to false ."
     compliance:
-      cis: ["2.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -95,7 +93,6 @@ checks:
     rationale: "Enforcing a key or certificate on a sharded cluster prevents unauthorized access to the MongoDB database and provides traceability of database activities to a specific user or component. A MongoDB sharded cluster can enforce user authentication as well as internal authentication of its components to secure against unauthorized access."
     remediation: "To authenticate to servers, clients can use x.509 certificates instead of usernames and passwords. MongoDB supports x.509 certificate authentication for use with a secure TLS/SSL connection. The x.509 client authentication allows clients to authenticate to servers with certificates rather than with a username and password."
     compliance:
-      cis: ["2.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -131,7 +128,6 @@ checks:
     rationale: "This configuration blocks connections from untrusted networks, leaving only systems on authorized and trusted networks able to attempt to connect to the MongoDB. If not configured, this may lead to unauthorized connections from untrusted networks to MongoDB."
     remediation: "Configure the MongoDB configuration file to limit its exposure to only the network interfaces on which MongoDB instances should listen for incoming connections."
     compliance:
-      cis: ["3.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -160,7 +156,6 @@ checks:
     rationale: "Using a non-privileged, dedicated service account restricts the database from accessing the critical areas of the operating system which are not required by MongoDB. This will also mitigate the potential for unauthorized access via a compromised, privileged account on the operating system. Anyone who has been a victim of viruses, worms, and other malicious software (malware) will appreciate the security principle of “least privilege.” If all processes ran with the minial set of privileges needed to perform the user's tasks, it would be more difficult for malware to infect a machine and propagate to other machines."
     remediation: "1. Create a user which is only used for running Mongodb and directly related processes. This user must not have administrative rights to the system. Steps to create user. 2. Set the Database data files, the keyfile, and the SSL private key files to only be readable by the mongod/mongos user and then set ownership to mongodb user only. 3. Set the log files to only be writable by the mongod/mongos user and readable only by root."
     compliance:
-      cis: ["3.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -200,7 +195,6 @@ checks:
     rationale: "This prevents sniffing of cleartext traffic between MongoDB components or performing a man-in-the-middle attack for MongoDB."
     remediation: "Configure MongoDB servers to require the use of SSL or TLS to encrypt all MongoDB network communications. To implement SSL or TLS to encrypt all MongoDB network communication, perform the following steps: For mongod (“Primary daemon process for the MongoDB system”) In the configuration file /etc/mongod.conf , set the PEMKeyFile option to the certificate file’s path and then start the component"
     compliance:
-      cis: ["4.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -231,7 +225,6 @@ checks:
     rationale: "FIPS is an industry standard which dictates how data should be encrypted at rest and during transmission."
     remediation: "Configuring FIPS mode, ensure that your certificate is FIPS compliant. Run mongod or mongos instance in FIPS mode. Make changes to configuration file, to configure your mongod or mongos instance to use FIPS mode, shut down the instance and update the configuration file"
     compliance:
-      cis: ["4.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -263,7 +256,6 @@ checks:
     rationale: "System level logs can be handy while troubleshooting an operational problem or handling a security incident."
     remediation: "Set the value of auditLog.destination to the appropriate value"
     compliance:
-      cis: ["5.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -290,7 +282,6 @@ checks:
     rationale: "All operations carried out on the database are logged. This helps in backtracking and tracing any incident that occurs."
     remediation: "Set the audit filters based on the organization’s requirements."
     compliance:
-      cis: ["5.2"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -318,7 +309,6 @@ checks:
     rationale: "The use of SystemLog.quiet makes troubleshooting problems and investigating possible security incidents much more difficult."
     remediation: "Set SystemLog.quiet to false in the /etc/mongod.conf file to disable it."
     compliance:
-      cis: ["5.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -345,7 +335,6 @@ checks:
     rationale: "Allowing old entries to be overwritten by new entries instead of appending new entries to the end of the log may destroy old log data that is needed for a variety of purposes."
     remediation: "Set systemLog.logAppend to true in the /etc/mongod.conf file."
     compliance:
-      cis: ["5.4"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -373,7 +362,6 @@ checks:
     rationale: "Standard ports are used in automated attacks and by attackers to verify which applications are running on a server."
     remediation: "Change the port for MongoDB server to a number other than 27017."
     compliance:
-      cis: ["6.1"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
@@ -404,7 +392,6 @@ checks:
     rationale: "If server-side scripting is not needed and is not disabled, this introduces unnecessary risk which may allow an attacker to take advantage of insecure coding."
     remediation: "If server-side scripting is not required, disable it by using the --noscripting option on the command line."
     compliance:
-      cis: ["6.3"]
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
       gdpr: ["30", "32"]
