@@ -778,9 +778,6 @@ void test_wdb_parse_global_update_agent_data_success(void **state)
 
     will_return(__wrap_wdb_global_update_agent_version, OS_SUCCESS);
 
-    expect_value(__wrap_wdb_global_del_agent_labels, id, 1);
-    will_return(__wrap_wdb_global_del_agent_labels, OS_SUCCESS);
-
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
     will_return(__wrap_gettimeofday, NULL);
@@ -797,107 +794,6 @@ void test_wdb_parse_global_update_agent_data_success(void **state)
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
-}
-
-/* Tests wdb_parse_global_get_agent_labels */
-
-void test_wdb_parse_global_get_agent_labels_syntax_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-labels";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-labels");
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for get-labels.");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: get-labels");
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_open_time);
-    expect_function_call(__wrap_w_inc_global_labels_get_labels);
-
-    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
-    will_return(__wrap_w_is_file, 1);
-    expect_function_call(__wrap_wdb_pool_leave);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Invalid DB query syntax, near 'get-labels'");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_get_agent_labels_query_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-labels 1";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-labels 1");
-    expect_value(__wrap_wdb_global_get_agent_labels, id, 1);
-    will_return(__wrap_wdb_global_get_agent_labels, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent labels from global.db.");
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_open_time);
-    expect_function_call(__wrap_w_inc_global_labels_get_labels);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_labels_get_labels_time);
-
-    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
-    will_return(__wrap_w_is_file, 1);
-    expect_function_call(__wrap_wdb_pool_leave);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Error getting agent labels from global.db.");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_get_agent_labels_success(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-labels 1";
-    cJSON *root = NULL;
-    cJSON *j_object = NULL;
-
-    root = cJSON_CreateArray();
-    j_object = cJSON_CreateObject();
-    cJSON_AddNumberToObject(j_object, "id", 1);
-    cJSON_AddStringToObject(j_object, "key", "test_key");
-    cJSON_AddStringToObject(j_object, "value", "test_value");
-    cJSON_AddItemToArray(root, j_object);
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-labels 1");
-    expect_value(__wrap_wdb_global_get_agent_labels, id, 1);
-    will_return(__wrap_wdb_global_get_agent_labels, root);
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_open_time);
-    expect_function_call(__wrap_w_inc_global_labels_get_labels);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_labels_get_labels_time);
-
-    expect_function_call(__wrap_wdb_pool_leave);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "ok [{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]");
-    assert_int_equal(ret, OS_SUCCESS);
-
 }
 
 /* Tests wdb_parse_global_update_agent_keepalive */
@@ -2647,132 +2543,13 @@ void test_wdb_parse_global_sync_agent_info_set_query_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global sync-agent-info-set [{\"id\":1,\"name\":\"test_name\",\
-     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]";
+    char query[OS_BUFFER_SIZE] = "global sync-agent-info-set [{\"id\":1,\"name\":\"test_name\"}]";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-set [{\"id\":1,\"name\":\"test_name\",\
-     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-set [{\"id\":1,\"name\":\"test_name\"}]");
     expect_string(__wrap_wdb_global_sync_agent_info_set, str_agent,
-     "{\"id\":1,\"name\":\"test_name\",\"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}");
+     "{\"id\":1,\"name\":\"test_name\"}");
     will_return(__wrap_wdb_global_sync_agent_info_set, OS_INVALID);
-    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_open_time);
-    expect_function_call(__wrap_w_inc_global_agent_sync_agent_info_set);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_agent_sync_agent_info_set_time);
-
-    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
-    will_return(__wrap_w_is_file, 1);
-    expect_function_call(__wrap_wdb_pool_leave);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_sync_agent_info_set_id_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global sync-agent-info-set [{\"id\":null,\"name\":\"test_name\",\
-     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-set [{\"id\":null,\"name\":\"test_name\",\
-     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]");
-    expect_string(__wrap_wdb_global_sync_agent_info_set, str_agent,
-     "{\"id\":null,\"name\":\"test_name\",\"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}");
-    will_return(__wrap_wdb_global_sync_agent_info_set, OS_SUCCESS);
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; incorrect agent id in labels array.");
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_open_time);
-    expect_function_call(__wrap_w_inc_global_agent_sync_agent_info_set);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_agent_sync_agent_info_set_time);
-
-    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
-    will_return(__wrap_w_is_file, 1);
-    expect_function_call(__wrap_wdb_pool_leave);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Cannot update labels due to invalid id.");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_sync_agent_info_set_del_label_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global sync-agent-info-set [{\"id\":1,\"name\":\"test_name\",\
-     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-set [{\"id\":1,\"name\":\"test_name\",\
-     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]");
-    expect_string(__wrap_wdb_global_sync_agent_info_set, str_agent,
-     "{\"id\":1,\"name\":\"test_name\",\"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}");
-    will_return(__wrap_wdb_global_sync_agent_info_set, OS_SUCCESS);
-
-    expect_value(__wrap_wdb_global_del_agent_labels, id, 1);
-    will_return(__wrap_wdb_global_del_agent_labels, OS_INVALID);
-    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_open_time);
-    expect_function_call(__wrap_w_inc_global_agent_sync_agent_info_set);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_agent_sync_agent_info_set_time);
-
-    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
-    will_return(__wrap_w_is_file, 1);
-    expect_function_call(__wrap_wdb_pool_leave);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_sync_agent_info_set_set_label_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global sync-agent-info-set [{\"id\":1,\"name\":\"test_name\",\
-     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-set [{\"id\":1,\"name\":\"test_name\",\
-     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]");
-    expect_string(__wrap_wdb_global_sync_agent_info_set, str_agent,
-     "{\"id\":1,\"name\":\"test_name\",\"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}");
-    will_return(__wrap_wdb_global_sync_agent_info_set, OS_SUCCESS);
-    expect_value(__wrap_wdb_global_del_agent_labels, id, 1);
-    will_return(__wrap_wdb_global_del_agent_labels, OS_SUCCESS);
-
-    expect_value(__wrap_wdb_global_set_agent_label, id, 1);
-    expect_string(__wrap_wdb_global_set_agent_label, key, "test_key");
-    expect_string(__wrap_wdb_global_set_agent_label, value, "test_value");
-    will_return(__wrap_wdb_global_set_agent_label, OS_INVALID);
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
@@ -2800,22 +2577,13 @@ void test_wdb_parse_global_sync_agent_info_set_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global sync-agent-info-set [{\"id\":1,\"name\":\"test_name\",\
-     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]";
+    char query[OS_BUFFER_SIZE] = "global sync-agent-info-set [{\"id\":1,\"name\":\"test_name\"}]";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-set [{\"id\":1,\"name\":\"test_name\",\
-     \"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}]");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-set [{\"id\":1,\"name\":\"test_name\"}]");
     expect_string(__wrap_wdb_global_sync_agent_info_set, str_agent,
-     "{\"id\":1,\"name\":\"test_name\",\"labels\":[{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]}");
+     "{\"id\":1,\"name\":\"test_name\"}");
     will_return(__wrap_wdb_global_sync_agent_info_set, OS_SUCCESS);
-    expect_value(__wrap_wdb_global_del_agent_labels, id, 1);
-    will_return(__wrap_wdb_global_del_agent_labels, OS_SUCCESS);
-
-    expect_value(__wrap_wdb_global_set_agent_label, id, 1);
-    expect_string(__wrap_wdb_global_set_agent_label, key, "test_key");
-    expect_string(__wrap_wdb_global_set_agent_label, value, "test_value");
-    will_return(__wrap_wdb_global_set_agent_label, OS_SUCCESS);
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
@@ -5226,10 +4994,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_data_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_data_invalid_data, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_data_success, test_setup, test_teardown),
-        /* Tests wdb_parse_global_get_agent_labels */
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_labels_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_labels_query_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_labels_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_update_agent_keepalive */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_keepalive_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_agent_keepalive_invalid_json, test_setup, test_teardown),
@@ -5300,9 +5064,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_invalid_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_query_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_id_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_del_label_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_set_label_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_set_agent_groups */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_syntax_error, test_setup, test_teardown),

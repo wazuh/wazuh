@@ -201,8 +201,7 @@ class TestWazuhDBHTTPClient:
                     'connection_status': 'active',
                     'disconnection_time': 0,
                     'group_config_status': 'synced',
-                    'status_code': 0,
-                    'labels': []
+                    'status_code': 0
                 }
             ],
             'syncreq_keepalive': [],
@@ -237,8 +236,7 @@ class TestWazuhDBHTTPClient:
                     'connection_status': 'active',
                     'disconnection_time': 0,
                     'group_config_status': 'synced',
-                    'status_code': 0,
-                    'labels': []
+                    'status_code': 0
                 }
             ],
             'syncreq_keepalive': [],

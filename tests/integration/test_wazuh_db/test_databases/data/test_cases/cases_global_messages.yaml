@@ -64,7 +64,7 @@
     - input: global update-agent-name {"id":1,"name":"TestName2"}
       output: ok
       stage: global update-agent-name success
-    - input: global update-agent-data {"id":1,"os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_codename":"TestOsCodeName","os_platform":"TestOsPlatfor","os_build":"TestOsBuild","os_uname":"TestOsUname","os_arch":"TestOsArch","version":"TestVersion","config_sum":"TestConfigSum","merged_sum":"TestMergedSum","manager_host":"TestManagerHost","node_name":"TestNodeName","agent_ip":"0.0.0.1","sync_status":"syncreq","group_config_status":"not synced","connection_status":"never_connected","labels":"TestKey1:TestLabel1"}
+    - input: global update-agent-data {"id":1,"os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_codename":"TestOsCodeName","os_platform":"TestOsPlatfor","os_build":"TestOsBuild","os_uname":"TestOsUname","os_arch":"TestOsArch","version":"TestVersion","config_sum":"TestConfigSum","merged_sum":"TestMergedSum","manager_host":"TestManagerHost","node_name":"TestNodeName","agent_ip":"0.0.0.1","sync_status":"syncreq","group_config_status":"not synced","connection_status":"never_connected"}
       output: ok
       stage: global update-agent-data success
     - input: global update-connection-status {"id":1,"connection_status":"pending","sync_status":"syncreq","status_code":1}
@@ -102,15 +102,6 @@
       output: ok [{"id":1,"name":"TestName2","ip":"0.0.0.1","register_ip":"0.0.0.1","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_codename":"TestOsCodeName","os_build":"TestOsBuild","os_platform":"TestOsPlatfor","os_uname":"TestOsUname","os_arch":"TestOsArch","version":"TestVersion","config_sum":"TestConfigSum","merged_sum":"TestMergedSum","manager_host":"TestManagerHost","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":*,"group":"TestGroup1","group_sync_status":"synced","sync_status":"syncreq","connection_status":"active","disconnection_time":0,"group_config_status":"not synced","status_code":0}]
       stage: global get-agent-info success after updates
       use_regex: "yes"
-
-- name: Labels commands
-  description: Check success use cases for labels table commands on global DB
-  configuration_parameters:
-  metadata:
-    test_case:
-    - input: global get-labels 1
-      output: ok [{"id":1,"key":"TestKey1","value":"TestLabel1"}]
-      stage: global get-labels success
 
 - name: Select commands
   description: Check success use cases for select commands on global DB
