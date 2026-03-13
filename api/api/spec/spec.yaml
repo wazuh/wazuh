@@ -2907,10 +2907,6 @@ components:
           type: object
         labels:
           type: object
-        localfile:
-          type: array
-          items:
-            type: object
         logging:
           type: object
         remote:

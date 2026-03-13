@@ -17,7 +17,6 @@ static const char *XML_THREADS = "threads";
 static const char *XML_QUEUE_SIZE = "queue_size";
 static const char *XML_EXEC_PATH = "exec_path";
 static const char *XML_SOCKET = "socket";
-static const char *XML_FORCE_INSERT = "force_insert";
 static const char *KREQUEST_NAME = "key-request";
 
 static short eval_bool(const char *str) { return !str ? OS_INVALID : !strcmp(str, "yes") ? 1 : !strcmp(str, "no") ? 0 : OS_INVALID; }
@@ -107,11 +106,9 @@ int authd_read_key_request(xml_node **nodes, void *config) {
                 merror("Invalid queue size at module '%s'", KREQUEST_NAME);
                 return OS_INVALID;
             }
-        // Deprecated "force-insert" function from older Agent Key Polling module
-        } else if (!strcmp(nodes[i]->element, XML_FORCE_INSERT)) {
-            mwarn("Deprecated option. This parameter is now inherited from Authd configuration.");
         } else {
-            mwarn("No such tag <%s> at module '%s'", nodes[i]->element, KREQUEST_NAME);
+            merror(XML_INVELEM, nodes[i]->element);
+            return OS_INVALID;
         }
     }
 
