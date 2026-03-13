@@ -17,6 +17,8 @@
 /* Prototypes */
 static int read_sys_file(const char *file_name, int do_read);
 static int read_sys_dir(const char *dir_name, int do_read);
+static void rc_build_path(char *buf, size_t len,
+                          const char *dir, const char *name);
 #ifndef WIN32
 static void rc_emit_hidden_alert(const char *file_name);
 static int rc_collect_suspect(char ***suspects, size_t *count,
@@ -191,6 +193,18 @@ static int read_sys_file(const char *file_name, int do_read)
     return (0);
 }
 
+/* Build a full path from a directory and a file name.
+ * Handles the root directory ("/") as a special case to avoid "//name". */
+static void rc_build_path(char *buf, size_t len,
+                          const char *dir, const char *name)
+{
+    if (strlen(dir) == 1 && *dir == PATH_SEP) {
+        snprintf(buf, len, "%c%s", PATH_SEP, name);
+    } else {
+        snprintf(buf, len, "%s%c%s", dir, PATH_SEP, name);
+    }
+}
+
 #ifndef WIN32
 /* Emit the "Hidden from stats" rootkit alert for a given file */
 static void rc_emit_hidden_alert(const char *file_name)
@@ -264,13 +278,7 @@ static void rc_verify_suspects(const char *dir_name, char **suspects,
                         strcmp(suspects[s], entry->d_name) == 0) {
                     char full_path[PATH_MAX + 2];
 
-                    if (strlen(dir_name) == 1 && *dir_name == PATH_SEP) {
-                        snprintf(full_path, PATH_MAX + 1, "%c%s",
-                                 PATH_SEP, suspects[s]);
-                    } else {
-                        snprintf(full_path, PATH_MAX + 1, "%s%c%s",
-                                 dir_name, PATH_SEP, suspects[s]);
-                    }
+                    rc_build_path(full_path, PATH_MAX + 1, dir_name, suspects[s]);
 
                     mtdebug2(ARGV0, "File '%s' still listed in readdir "
                              "after lstat ENOENT. Alerting.", full_path);
@@ -300,13 +308,7 @@ static void rc_verify_suspects(const char *dir_name, char **suspects,
             if (suspects[s] != NULL) {
                 char full_path[PATH_MAX + 2];
 
-                if (strlen(dir_name) == 1 && *dir_name == PATH_SEP) {
-                    snprintf(full_path, PATH_MAX + 1, "%c%s",
-                             PATH_SEP, suspects[s]);
-                } else {
-                    snprintf(full_path, PATH_MAX + 1, "%s%c%s",
-                             dir_name, PATH_SEP, suspects[s]);
-                }
+                rc_build_path(full_path, PATH_MAX + 1, dir_name, suspects[s]);
 
                 rc_emit_hidden_alert(full_path);
                 _sys_errors++;
@@ -419,11 +421,7 @@ static int read_sys_dir(const char *dir_name, int do_read)
         }
 
         /* Create new file + path string */
-        if (strlen(dir_name) == 1 && *dir_name == PATH_SEP) {
-            snprintf(f_name, PATH_MAX + 1, "%c%s", PATH_SEP, entry->d_name);
-        } else {
-            snprintf(f_name, PATH_MAX + 1, "%s%c%s", dir_name, PATH_SEP, entry->d_name);
-        }
+        rc_build_path(f_name, PATH_MAX + 1, dir_name, entry->d_name);
 
         /* Check if file is a directory */
         if (lstat(f_name, &statbuf_local) == 0) {
