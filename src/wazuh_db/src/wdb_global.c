@@ -234,90 +234,6 @@ int wdb_global_update_agent_version(wdb_t *wdb,
     return wdb_exec_stmt_silent(stmt);
 }
 
-cJSON* wdb_global_get_agent_labels(wdb_t *wdb, int id) {
-    sqlite3_stmt *stmt = NULL;
-    cJSON * result = NULL;
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("Cannot begin transaction");
-        return NULL;
-    }
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_LABELS_GET) < 0) {
-        mdebug1("Cannot cache statement");
-        return NULL;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_GLOBAL_LABELS_GET];
-
-    if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return NULL;
-    }
-
-    result = wdb_exec_stmt(stmt);
-
-    if (!result) {
-        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
-    }
-
-    return result;
-}
-
-int wdb_global_del_agent_labels(wdb_t *wdb, int id) {
-    sqlite3_stmt *stmt = NULL;
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("Cannot begin transaction");
-        return OS_INVALID;
-    }
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_LABELS_DEL) < 0) {
-        mdebug1("Cannot cache statement");
-        return OS_INVALID;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_GLOBAL_LABELS_DEL];
-
-    if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-
-    return wdb_exec_stmt_silent(stmt);
-}
-
-int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value) {
-    sqlite3_stmt *stmt = NULL;
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("Cannot begin transaction");
-        return OS_INVALID;
-    }
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_LABELS_SET) < 0) {
-        mdebug1("Cannot cache statement");
-        return OS_INVALID;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_GLOBAL_LABELS_SET];
-
-    if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-    if (sqlite3_bind_text(stmt, 2, key, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-    if (sqlite3_bind_text(stmt, 3, value, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-
-    return wdb_exec_stmt_silent(stmt);
-}
-
 int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection_status, const char* sync_status) {
     sqlite3_stmt *stmt = NULL;
 
@@ -1078,19 +994,6 @@ wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char 
                 if (cJSON_IsNumber(json_id)) {
                     //Get ID
                     int agent_id = json_id->valueint;
-
-                    if (stmt_id == WDB_STMT_GLOBAL_SYNC_REQ_FULL_GET) {
-                        //Get labels if any
-                        cJSON* json_labels = wdb_global_get_agent_labels(wdb, agent_id);
-                        if (json_labels) {
-                            if (json_labels->child) {
-                                cJSON_AddItemToObject(json_agent, "labels", json_labels);
-                            }
-                            else {
-                                cJSON_Delete(json_labels);
-                            }
-                        }
-                    }
 
                     //Print Agent info
                     char *agent_str = cJSON_PrintUnformatted(json_agent);

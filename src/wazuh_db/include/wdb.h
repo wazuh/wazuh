@@ -71,9 +71,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_UPDATE_AGENT_NAME,
     WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION,
     WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP,
-    WDB_STMT_GLOBAL_LABELS_GET,
-    WDB_STMT_GLOBAL_LABELS_DEL,
-    WDB_STMT_GLOBAL_LABELS_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE,
@@ -516,17 +513,6 @@ int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output)
 int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the labels request for a particular agent.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with 'agent_id'.
- * @param [out] output Response of the query in JSON format.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output);
-
-/**
  * @brief Function to get the groups integrity information in global.db.
  *
  * @param wdb The global struct database.
@@ -557,17 +543,6 @@ int wdb_parse_global_recalculate_agent_group_hashes(wdb_t* wdb, char* output);
  * @retval -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_get_agent_info(wdb_t * wdb, char * input, char * output);
-
-/**
- * @brief Function to parse string with agent's labels and set them in labels table in global database.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with 'agent_id labels_string'.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse the update agent keepalive request.
@@ -1078,35 +1053,6 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *connection_status,
                                     const char *sync_status,
                                     const char *group_config_status);
-
-/**
- * @brief Function to get the labels of a particular agent.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id Agent id.
- * @return JSON with labels on success. NULL on error.
- */
-cJSON* wdb_global_get_agent_labels(wdb_t *wdb, int id);
-
-/**
- * @brief Function to delete the labels of a particular agent.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id Agent id.
- * @return 0 On success. -1 On error.
- */
-int wdb_global_del_agent_labels(wdb_t *wdb, int id);
-
-/**
- * @brief Function to insert a label of a particular agent.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id The agent ID
- * @param [in] key A string with the label key.
- * @param [in] value A string with the label value.
- * @return 0 On success. -1 On error.
- */
-int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
 
 /**
  * @brief Function to update an agent keepalive and the synchronization status.

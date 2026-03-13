@@ -210,306 +210,6 @@ void create_wdb_global_set_agent_group_context_success_call(int agent_id, char* 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 }
 
-/* Tests wdb_global_get_agent_labels */
-
-void test_wdb_global_get_agent_labels_transaction_fail(void **state)
-{
-    cJSON *output = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_begin2, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
-
-    output = wdb_global_get_agent_labels(data->wdb, 1);
-    assert_null(output);
-}
-
-void test_wdb_global_get_agent_labels_cache_fail(void **state)
-{
-    cJSON *output = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
-
-    output = wdb_global_get_agent_labels(data->wdb, 1);
-    assert_null(output);
-}
-
-void test_wdb_global_get_agent_labels_bind_fail(void **state)
-{
-    cJSON *output = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-
-    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
-
-    output = wdb_global_get_agent_labels(data->wdb, 1);
-    assert_null(output);
-}
-
-void test_wdb_global_get_agent_labels_exec_fail(void **state)
-{
-    cJSON *output = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_any_always(__wrap_sqlite3_bind_int, index);
-    expect_any_always(__wrap_sqlite3_bind_int, value);
-    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    will_return(__wrap_wdb_exec_stmt, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
-
-    output = wdb_global_get_agent_labels(data->wdb, 1);
-    assert_null(output);
-}
-
-void test_wdb_global_get_agent_labels_success(void **state)
-{
-    cJSON *output = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_any_always(__wrap_sqlite3_bind_int, index);
-    expect_any_always(__wrap_sqlite3_bind_int, value);
-    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt, (cJSON*)1);
-
-    output = wdb_global_get_agent_labels(data->wdb, 1);
-    assert_ptr_equal(output, (cJSON*)1);
-}
-
-/* Tests wdb_global_del_agent_labels */
-
-void test_wdb_global_del_agent_labels_transaction_fail(void **state)
-{
-    int result = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_begin2, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
-
-    result = wdb_global_del_agent_labels(data->wdb, 1);
-    assert_int_equal(result, OS_INVALID);
-}
-
-void test_wdb_global_del_agent_labels_cache_fail(void **state)
-{
-    int result = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
-
-    result = wdb_global_del_agent_labels(data->wdb, 1);
-    assert_int_equal(result, OS_INVALID);
-}
-
-void test_wdb_global_del_agent_labels_bind_fail(void **state)
-{
-    int result = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
-
-    result = wdb_global_del_agent_labels(data->wdb, 1);
-    assert_int_equal(result, OS_INVALID);
-}
-
-void test_wdb_global_del_agent_labels_step_fail(void **state)
-{
-    int result = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
-
-    result = wdb_global_del_agent_labels(data->wdb, 1);
-    assert_int_equal(result, OS_INVALID);
-}
-
-void test_wdb_global_del_agent_labels_success(void **state)
-{
-    int result = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
-
-    result = wdb_global_del_agent_labels(data->wdb, 1);
-    assert_int_equal(result, OS_SUCCESS);
-}
-
-/* Tests wdb_global_set_agent_label */
-
-void test_wdb_global_set_agent_label_transaction_fail(void **state)
-{
-    int result = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char key[] = "test_key";
-    char value[] = "test_value";
-
-    will_return(__wrap_wdb_begin2, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
-
-    result = wdb_global_set_agent_label(data->wdb, 1, key, value);
-    assert_int_equal(result, OS_INVALID);
-}
-
-void test_wdb_global_set_agent_label_cache_fail(void **state)
-{
-    int result = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char key[] = "test_key";
-    char value[] = "test_value";
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
-
-    result = wdb_global_set_agent_label(data->wdb, 1, key, value);
-    assert_int_equal(result, OS_INVALID);
-}
-
-void test_wdb_global_set_agent_label_bind1_fail(void **state)
-{
-    int result = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char key[] = "test_key";
-    char value[] = "test_value";
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
-
-    result = wdb_global_set_agent_label(data->wdb, 1, key, value);
-    assert_int_equal(result, OS_INVALID);
-}
-
-void test_wdb_global_set_agent_label_bind2_fail(void **state)
-{
-    int result = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char key[] = "test_key";
-    char value[] = "test_value";
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "test_key");
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
-
-    result = wdb_global_set_agent_label(data->wdb, 1, key, value);
-    assert_int_equal(result, OS_INVALID);
-}
-
-void test_wdb_global_set_agent_label_bind3_fail(void **state)
-{
-    int result = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char key[] = "test_key";
-    char value[] = "test_value";
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "test_key");
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 3);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "test_value");
-    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
-
-    result = wdb_global_set_agent_label(data->wdb, 1, key, value);
-    assert_int_equal(result, OS_INVALID);
-}
-
-void test_wdb_global_set_agent_label_step_fail(void **state)
-{
-    int result = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char key[] = "test_key";
-    char value[] = "test_value";
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "test_key");
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 3);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "test_value");
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
-
-    result = wdb_global_set_agent_label(data->wdb, 1, key, value);
-    assert_int_equal(result, OS_INVALID);
-}
-
-void test_wdb_global_set_agent_label_success(void **state)
-{
-    int result = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char key[] = "test_key";
-    char value[] = "test_value";
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "test_key");
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 3);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "test_value");
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
-
-    result = wdb_global_set_agent_label(data->wdb, 1, key, value);
-    assert_int_equal(result, OS_SUCCESS);
-}
-
 /* Tests wdb_global_set_sync_status */
 
 void test_wdb_global_set_sync_status_transaction_fail(void **state)
@@ -1207,11 +907,8 @@ void test_wdb_global_sync_agent_info_get_success(void **state)
     int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char *output = NULL;
-    cJSON *json_output = NULL;
     cJSON *root = NULL;
     cJSON *json_agent = NULL;
-    cJSON *json_labels = NULL;
-    cJSON *json_label = NULL;
     int agent_id = 10;
 
     root = __real_cJSON_CreateArray();
@@ -1227,11 +924,6 @@ void test_wdb_global_sync_agent_info_get_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    // Required for wdb_get_agent_labels()
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-
     // Required for wdb_global_set_sync_status()
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
@@ -1240,25 +932,17 @@ void test_wdb_global_sync_agent_info_get_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-
     // Mocking one valid agent
     will_return(__wrap_wdb_exec_stmt, root);
     expect_function_call_any(__wrap_cJSON_Delete);
 
-    // Required for wdb_get_agent_labels()
-    json_labels = __real_cJSON_CreateArray();
-    json_label = cJSON_CreateObject();
-    cJSON_AddNumberToObject(json_label, "id", agent_id);
-    cJSON_AddStringToObject(json_label,"key", "test_key");
-    cJSON_AddStringToObject(json_label,"value", "test_value");
-    cJSON_AddItemToArray(json_labels, json_label);
-    will_return(__wrap_wdb_exec_stmt, json_labels);
-
     // Required for wdb_global_set_sync_status()
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+
+    // FULL_GET second iteration (last_agent_id updated to agent_id)
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
     // No more agents
     will_return(__wrap_wdb_exec_stmt, NULL);
@@ -1271,9 +955,8 @@ void test_wdb_global_sync_agent_info_get_success(void **state)
 
     result = wdb_global_sync_agent_info_get(data->wdb, &last_agent_id, &output);
 
-    assert_string_equal(output, "[{\"id\":10,\"test_field\":\"test_value\",\"labels\":[{\"id\":10,\"key\":\"test_key\",\"value\":\"test_value\"}]}]");
+    assert_string_equal(output, "[{\"id\":10,\"test_field\":\"test_value\"}]");
     os_free(output);
-    __real_cJSON_Delete(json_output);
     __real_cJSON_Delete(root);
     assert_int_equal(result, WDBC_OK);
 }
@@ -1286,7 +969,6 @@ void test_wdb_global_sync_agent_info_get_sync_fail(void **state)
     char *output = NULL;
     cJSON *root = NULL;
     cJSON *json_agent = NULL;
-    cJSON *json_labels = NULL;
     int agent_id = 10;
 
     root = __real_cJSON_CreateArray();
@@ -1300,11 +982,6 @@ void test_wdb_global_sync_agent_info_get_sync_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    // Required for wdb_get_agent_labels()
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-
     // Required for wdb_global_set_sync_status()
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
@@ -1317,10 +994,6 @@ void test_wdb_global_sync_agent_info_get_sync_fail(void **state)
     will_return(__wrap_wdb_exec_stmt, root);
     expect_function_call_any(__wrap_cJSON_Delete);
 
-    // Required for wdb_get_agent_labels()
-    json_labels = __real_cJSON_CreateArray();
-    will_return(__wrap_wdb_exec_stmt, json_labels);
-
     // Required for wdb_global_set_sync_status()
     will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
     expect_string(__wrap__merror, formatted_msg, "Cannot set sync_status for agent 10");
@@ -1330,7 +1003,6 @@ void test_wdb_global_sync_agent_info_get_sync_fail(void **state)
     assert_string_equal(output, "Cannot set sync_status for agent 10");
     os_free(output);
     __real_cJSON_Delete(root);
-    __real_cJSON_Delete(json_labels);
     assert_int_equal(result, WDBC_ERROR);
 }
 
@@ -1342,15 +1014,15 @@ void test_wdb_global_sync_agent_info_get_full(void **state)
     char *output = NULL;
     cJSON *root = NULL;
     cJSON *json_agent = NULL;
-    cJSON *json_labels = NULL;
-    cJSON *json_label = NULL;
     int agent_id = 10;
 
     root = __real_cJSON_CreateArray();
     json_agent = cJSON_CreateObject();
     cJSON_AddNumberToObject(json_agent, "id", agent_id);
-    // Creating a cJSON array bigger than WDB_MAX_RESPONSE_SIZE
-    for(int i = 0; i < 2500; i++){
+    // Creating a cJSON object bigger than WDB_MAX_RESPONSE_SIZE (65024 bytes).
+    // Each "test_field":"test_value" entry is ~25 bytes; 2600 entries ~= 65635 bytes > 65024.
+    // 2500 entries (~65009 bytes) no longer overflow.
+    for(int i = 0; i < 2600; i++){
         cJSON_AddStringToObject(json_agent,"test_field", "test_value");
     }
     cJSON_AddItemToArray(root, json_agent);
@@ -1362,23 +1034,9 @@ void test_wdb_global_sync_agent_info_get_full(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    // Required for wdb_get_agent_labels()
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-
     // Mocking one valid agent
     will_return(__wrap_wdb_exec_stmt, root);
     expect_function_call_any(__wrap_cJSON_Delete);
-
-    // Required for wdb_get_agent_labels()
-    json_labels = __real_cJSON_CreateArray();
-    json_label = cJSON_CreateObject();
-    cJSON_AddNumberToObject(json_label, "id", 1);
-    cJSON_AddStringToObject(json_label,"key", "test_key");
-    cJSON_AddStringToObject(json_label,"value", "test_value");
-    cJSON_AddItemToArray(json_labels, json_label);
-    will_return(__wrap_wdb_exec_stmt, json_labels);
 
     result = wdb_global_sync_agent_info_get(data->wdb, &last_agent_id, &output);
 
@@ -1394,7 +1052,6 @@ void test_wdb_global_sync_agent_info_get_size_limit(void **state)
     int last_agent_id = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char *output = NULL;
-    cJSON *json_output = NULL;
     cJSON *root = NULL;
     cJSON *json_agent = NULL;
     int agent_id = 10000;
@@ -1415,11 +1072,6 @@ void test_wdb_global_sync_agent_info_get_size_limit(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    // Required for wdb_get_agent_labels()
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-
     // Required for wdb_global_set_sync_status()
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
@@ -1432,16 +1084,13 @@ void test_wdb_global_sync_agent_info_get_size_limit(void **state)
     will_return(__wrap_wdb_exec_stmt, root);
     expect_function_call_any(__wrap_cJSON_Delete);
 
-    // Required for wdb_get_agent_labels()
+    // Required for wdb_global_set_sync_status()
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+
+    // FULL_GET second iteration (last_agent_id updated to agent_id)
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt, NULL);
-    will_return(__wrap_sqlite3_errmsg, "SQL MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): SQL MESSAGE");
-
-    // Required for wdb_global_set_sync_status()
-    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
     // No more agents
     will_return(__wrap_wdb_exec_stmt, NULL);
@@ -1456,7 +1105,6 @@ void test_wdb_global_sync_agent_info_get_size_limit(void **state)
     assert_int_equal(result, WDBC_OK);
 
     os_free(output);
-    __real_cJSON_Delete(json_output);
     __real_cJSON_Delete(root);
 }
 
@@ -10071,26 +9719,6 @@ void test_wdb_global_assign_agent_group_agent_not_exists_insert_fail(void **stat
 int main()
 {
     const struct CMUnitTest tests[] = {
-        /* Tests wdb_global_get_agent_labels */
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_labels_transaction_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_labels_cache_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_labels_bind_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_labels_exec_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_labels_success, test_setup, test_teardown),
-        /* Tests wdb_global_del_agent_labels */
-        cmocka_unit_test_setup_teardown(test_wdb_global_del_agent_labels_transaction_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_del_agent_labels_cache_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_del_agent_labels_bind_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_del_agent_labels_step_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_del_agent_labels_success, test_setup, test_teardown),
-        /* Tests wdb_global_set_agent_label */
-        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_label_transaction_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_label_cache_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_label_bind1_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_label_bind2_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_label_bind3_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_label_step_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_label_success, test_setup, test_teardown),
         /* Tests wdb_global_set_sync_status */
         cmocka_unit_test_setup_teardown(test_wdb_global_set_sync_status_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_sync_status_cache_fail, test_setup, test_teardown),

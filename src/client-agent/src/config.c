@@ -57,7 +57,6 @@ int ClientConf(const char *cfgfile)
     atc->package_uninstallation = false;
 #endif
 
-    os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;
 
     w_enrollment_cert *cert_cfg = w_enrollment_cert_init();
@@ -68,13 +67,13 @@ int ClientConf(const char *cfgfile)
     agt->enrollment_cfg->recv_timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
 
     if (ReadConfig(modules, cfgfile, agt, NULL) < 0 ||
-        ReadConfig(CLABELS | CBUFFER, cfgfile, &agt->labels, agt) < 0) {
+        ReadConfig(CBUFFER, cfgfile, NULL, agt) < 0) {
         return (OS_INVALID);
     }
 
     if(agt->flags.remote_conf = getDefine_Int("agent", "remote_conf", 0, 1), agt->flags.remote_conf) {
         remote_conf = agt->flags.remote_conf;
-        ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &agt->labels, agt);
+        ReadConfig(CBUFFER | CAGENT_CONFIG, AGENTCONFIG, NULL, agt);
         ReadConfig(CCLIENT | CAGENT_CONFIG, AGENTCONFIG, agt, NULL);
     } else {
         remote_conf = 0;
@@ -184,30 +183,6 @@ cJSON *getBufferConfig(void) {
 }
 
 
-cJSON *getLabelsConfig(void) {
-
-    if (!agt) {
-        return NULL;
-    }
-
-    cJSON *root = cJSON_CreateObject();
-    cJSON *labels = cJSON_CreateArray();
-
-    if (agt->labels) {
-        unsigned int i;
-        for (i=0; agt->labels[i].key; i++) {
-            cJSON *label = cJSON_CreateObject();
-            cJSON_AddStringToObject(label, "value", agt->labels[i].value);
-            cJSON_AddStringToObject(label, "key", agt->labels[i].key);
-            cJSON_AddStringToObject(label, "hidden", agt->labels[i].flags.hidden ? "yes" : "no");
-            cJSON_AddItemToObject(labels, "", label);
-        }
-    }
-
-    cJSON_AddItemToObject(root, "labels", labels);
-
-    return root;
-}
 
 #ifndef WIN32
 cJSON *getAntiTamperingConfig(void) {

@@ -572,7 +572,6 @@ void Free_Client(agent * config){
         }
 
         free(config->profile);
-        labels_free(config->labels);
     }
 }
 

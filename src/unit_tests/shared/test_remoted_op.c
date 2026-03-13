@@ -493,37 +493,6 @@ merged.mg\n#\"_agent_ip\":192.168.0.164\n";
     wdb_free_agent_info_data(agent_data);
 }
 
-void test_parse_agent_update_msg_ok_labels(void **state)
-{
-    char *msg = "Linux |debian10 |4.19.0-9-amd64 |#1 SMP Debian 4.19.118-2+deb10u1 (2020-06-07) |x86_64 \
-[Debian GNU/Linux|debian: 10 (buster)] - Wazuh v3.13.0 / ab73af41699f13fdd81903b5f23d8d00\
-\n\"key1\":value1\n\"key2\":value2\n!\"hkey1\":hvalue1\n!\"hkey2\":hvalue2\
-\nfd756ba04d9c32c8848d4608bec41251 merged.mg\n#\"_agent_ip\":192.168.0.143\n";
-
-    agent_info_data *agent_data = NULL;
-    os_calloc(1, sizeof(agent_info_data), agent_data);
-
-    int result = parse_agent_update_msg(msg, agent_data);
-
-    assert_int_equal(OS_SUCCESS, result);
-    assert_string_equal("Wazuh v3.13.0", agent_data->version);
-    assert_string_equal("Debian GNU/Linux", agent_data->osd->os_name);
-    assert_string_equal("10", agent_data->osd->os_major);
-    assert_null(agent_data->osd->os_minor);
-    assert_null(agent_data->osd->os_build);
-    assert_string_equal("10", agent_data->osd->os_version);
-    assert_string_equal("buster", agent_data->osd->os_codename);
-    assert_string_equal("debian", agent_data->osd->os_platform);
-    assert_string_equal("x86_64", agent_data->osd->os_arch);
-    assert_string_equal("Linux |debian10 |4.19.0-9-amd64 |#1 SMP Debian 4.19.118-2+deb10u1 (2020-06-07) |x86_64", agent_data->osd->os_uname);
-    assert_string_equal("ab73af41699f13fdd81903b5f23d8d00", agent_data->config_sum);
-    assert_string_equal("fd756ba04d9c32c8848d4608bec41251", agent_data->merged_sum);
-    assert_string_equal("192.168.0.143", agent_data->agent_ip);
-    assert_string_equal("\"key1\":value1\n\"key2\":value2\n!\"hkey1\":hvalue1\n!\"hkey2\":hvalue2", agent_data->labels);
-
-    wdb_free_agent_info_data(agent_data);
-}
-
 /* Tests parse_json_keepalive */
 
 void test_parse_json_keepalive_invalid_json(void **state)
@@ -559,8 +528,7 @@ void test_parse_json_keepalive_linux_complete(void **state)
     char* json = "{\"version\":\"1.0\",\"agent\":{\"id\":\"001\",\"name\":\"agent1\",\"version\":\"v5.0.0\",\
 \"config_sum\":\"ab73af41699f13fdd81903b5f23d8d00\",\"merged_sum\":\"fd756ba04d9c32c8848d4608bec41251\",\
 \"ip\":\"192.168.1.100\",\
-\"uname\":\"Linux |ubuntu-test |5.4.0-42-generic |#46-Ubuntu SMP Fri Jul 10 00:24:02 UTC 2020 |x86_64 [Ubuntu 20.04|ubuntu: 20.04 (focal)]\",\
-\"labels\":\"key1:value1\\nkey2:value2\"},\
+\"uname\":\"Linux |ubuntu-test |5.4.0-42-generic |#46-Ubuntu SMP Fri Jul 10 00:24:02 UTC 2020 |x86_64 [Ubuntu 20.04|ubuntu: 20.04 (focal)]\"},\
 \"host\":{\"hostname\":\"ubuntu-test\",\"architecture\":\"x86_64\",\
 \"os\":{\"name\":\"Ubuntu\",\"version\":\"20.04\",\"platform\":\"ubuntu\",\"type\":\"linux\"}}}";
 
@@ -574,7 +542,6 @@ void test_parse_json_keepalive_linux_complete(void **state)
     assert_string_equal("ab73af41699f13fdd81903b5f23d8d00", agent_data->config_sum);
     assert_string_equal("fd756ba04d9c32c8848d4608bec41251", agent_data->merged_sum);
     assert_string_equal("192.168.1.100", agent_data->agent_ip);
-    assert_string_equal("key1:value1\nkey2:value2", agent_data->labels);
     assert_string_equal("Ubuntu", agent_data->osd->os_name);
     assert_string_equal("20.04", agent_data->osd->os_version);
     assert_string_equal("ubuntu", agent_data->osd->os_platform);
@@ -662,7 +629,6 @@ void test_parse_json_keepalive_minimal(void **state)
     assert_null(agent_data->config_sum);
     assert_null(agent_data->merged_sum);
     assert_null(agent_data->agent_ip);
-    assert_null(agent_data->labels);
     assert_non_null(agent_data->osd);
 
     wdb_free_agent_info_data(agent_data);
@@ -1065,7 +1031,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_archlinux, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_macos, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_windows, setup_remoted_op, teardown_remoted_op),
-        cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_labels, setup_remoted_op, teardown_remoted_op),
         // Tests parse_json_keepalive
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_invalid_json, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_missing_agent, setup_remoted_op, teardown_remoted_op),

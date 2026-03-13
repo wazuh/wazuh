@@ -81,11 +81,6 @@ public:
                                  "?, group_config_status = ?, status_code= ?, "
                                  "sync_status = 'synced' WHERE id = ?;");
 
-                DBStatement stmtDeleteLabels(db, "DELETE FROM labels WHERE id = ?;"); // LCOV_EXCL_LINE
-
-                DBStatement stmtInsertLabels(db, // LCOV_EXCL_LINE
-                                             "INSERT INTO labels (id, key, value) VALUES (?, ?, ?);");
-
                 const auto& syncReq = jsonBody.at("syncreq");
                 for (const auto& agent : syncReq)
                 {
@@ -114,31 +109,6 @@ public:
                     stmt.bind(22, idAgent);
                     stmt.step();
                     stmt.reset();
-
-                    stmtDeleteLabels.bind(1, idAgent);
-                    stmtDeleteLabels.step();
-                    stmtDeleteLabels.reset();
-
-                    if (agent.contains("labels"))
-                    {
-                        for (const auto& label : agent.at("labels"))
-                        {
-                            stmtInsertLabels.reset();
-                            stmtInsertLabels.bind(1, idAgent);
-                            stmtInsertLabels.bind(2, value<std::string_view>(label, "key"));
-                            stmtInsertLabels.bind(3, value<std::string_view>(label, "value"));
-                            try
-                            {
-                                stmtInsertLabels.step();
-                            }
-                            catch (const std::exception& e)
-                            {
-                                logMessage(modules_log_level_t::LOG_WARNING,
-                                           "Cannot set label for agent: " + std::to_string(idAgent) + ", " + e.what());
-                                break;
-                            }
-                        }
-                    }
                 }
             }
         }
