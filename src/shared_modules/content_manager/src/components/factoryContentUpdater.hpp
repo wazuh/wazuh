@@ -12,12 +12,9 @@
 #ifndef _FACTORY_CONTENT_UPDATER_HPP
 #define _FACTORY_CONTENT_UPDATER_HPP
 
-#include "factoryCleaner.hpp"
-#include "factoryDecompressor.hpp"
-#include "factoryDownloader.hpp"
-#include "factoryVersionUpdater.hpp"
-#include "pubSubPublisher.hpp"
+#include "IndexerDownloader.hpp"
 #include "sharedDefs.hpp"
+#include "updateIndexerCursor.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <memory>
@@ -43,22 +40,11 @@ public:
     {
         logDebug1(WM_CONTENTUPDATER, "FactoryContentUpdater - Starting process");
 
-        auto factoryDownloader {FactoryDownloader::create(config)};
-        auto factoryDecompressor {FactoryDecompressor::create(config)};
-        auto factoryPublisher {std::make_shared<PubSubPublisher>()};
-        auto factoryVersionUpdater {FactoryVersionUpdater::create(config)};
-        auto factoryCleaner {FactoryCleaner::create(config)};
+        auto indexerDownloader = std::make_shared<IndexerDownloader>(config);
+        auto cursorUpdater = std::make_shared<UpdateIndexerCursor>();
 
-        // Set the first step of the updater chain.
-        auto const& updaterChain {factoryDownloader};
-
-        // If there is new content to process, create the updater chain.
-        updaterChain->setNext(factoryDecompressor)
-            ->setNext(factoryPublisher)
-            ->setNext(factoryVersionUpdater)
-            ->setNext(factoryCleaner);
-
-        return updaterChain;
+        indexerDownloader->setNext(cursorUpdater);
+        return indexerDownloader;
     }
 };
 
