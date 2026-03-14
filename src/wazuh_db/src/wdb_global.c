@@ -513,52 +513,6 @@ int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_s
     return wdb_exec_stmt_silent(stmt);
 }
 
-int wdb_global_adjust_v4(wdb_t* wdb) {
-    int step_result = -1;
-    int update_result = OS_SUCCESS;
-    int result = OS_INVALID;
-    int agent_id = -1;
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("Cannot begin transaction");
-        return OS_INVALID;
-    }
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS) < 0) {
-        mdebug1("Cannot cache statement");
-        return OS_INVALID;
-    }
-
-    sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS];
-
-    if (sqlite3_bind_int(stmt, 1, 0) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-
-    do {
-        step_result = wdb_step(stmt);
-        switch (step_result) {
-        case SQLITE_ROW:
-            agent_id = sqlite3_column_int(stmt, 0);
-            update_result = wdb_global_update_agent_groups_hash(wdb, agent_id, NULL);
-            break;
-        case SQLITE_DONE:
-            result = OS_SUCCESS;
-            break;
-        default:
-            mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-            result = OS_INVALID;
-        }
-    } while(step_result == SQLITE_ROW && update_result == OS_SUCCESS);
-
-    if (result == OS_SUCCESS && wdb_commit2(wdb) < 0) {
-        merror("DB(%s) The commit statement could not be executed.", wdb->id);
-        return -1;
-    }
-
-    return result;
-}
 
 cJSON* wdb_global_find_group(wdb_t *wdb, char* group_name) {
     sqlite3_stmt *stmt = NULL;
