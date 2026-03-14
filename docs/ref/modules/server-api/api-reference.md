@@ -248,19 +248,6 @@ curl -k -X PUT "https://localhost:55000/active-response?agents_list=001,002&pret
 
 ---
 
-### Events
-
-**`POST /events`** — Ingest events into analysisd. Limited to **30 req/min** and **100 events/request**.
-
-```bash
-curl -k -X POST "https://localhost:55000/events?pretty=true" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"events": ["Failed login from 192.168.1.50", "{\"action\": \"block\", \"srcip\": \"10.0.0.99\"}"]}'
-```
-
----
-
 ### Security
 
 #### List users
@@ -470,7 +457,6 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 ### Events, Overview & Tasks
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/events` | Ingest events |
 | GET | `/overview/agents` | Agent overview |
 | GET | `/tasks/status` | Task status |
 

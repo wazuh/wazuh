@@ -534,18 +534,6 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - GET /tasks/status
-      event:ingest:
-        description: "Ingest events"
-        resources:
-          - '*:*'
-        example:
-          actions:
-            - event:ingest
-          resources:
-            - "*:*:*"
-          effect: "allow"
-        related_endpoints:
-          - POST /events
 
 get_rbac_resources:
   - params:

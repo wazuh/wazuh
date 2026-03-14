@@ -93,7 +93,7 @@ def test_middlewares_check_rate_limit(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("endpoint", ['/agents', '/events'])
+@pytest.mark.parametrize("endpoint", ['/agents'])
 async def test_check_rate_limits_middleware(endpoint, mock_req):
     """Test limits middleware."""
     response = MagicMock()
@@ -109,22 +109,14 @@ async def test_check_rate_limits_middleware(endpoint, mock_req):
         patch('api.middlewares.check_rate_limit', return_value=0) as mock_check, \
         patch('api.middlewares.configuration.api_conf', new=api_conf):
         await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
-        if endpoint == '/events':
-            mock_check.assert_has_calls([
-                call('general_request_counter', 'general_current_time', rq_x_min, 6001),
-                call('events_request_counter', 'events_current_time', MAX_REQUESTS_EVENTS_DEFAULT, 6005),
-            ], any_order=False)
-        else:
-            mock_check.assert_called_once_with(
-                'general_request_counter', 'general_current_time', rq_x_min, 6001)
+        mock_check.assert_called_once_with(
+            'general_request_counter', 'general_current_time', rq_x_min, 6001)
         dispatch_mock.assert_awaited()
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("endpoint, return_code_general, return_code_events", [
     ('/agents', 6001, 0),
-    ('/events', 0, 6005),
-    ('/events', 6001, 6005),
 ])
 async def test_check_rate_limits_middleware_ko(
     endpoint, return_code_general, return_code_events, mock_req):
