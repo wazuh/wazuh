@@ -277,6 +277,12 @@ char* wm_read_http_header_element(char *header, char *regex) {
 
     os_strdup(os_regex.d_sub_strings[0], element);
 
+    // Trim at \r or \n to prevent matching across HTTP header boundaries
+    char *cr = strchr(element, '\r');
+    char *lf = strchr(element, '\n');
+    if (cr) *cr = '\0';
+    if (lf) *lf = '\0';
+
     OSRegex_FreePattern(&os_regex);
     return element;
 }

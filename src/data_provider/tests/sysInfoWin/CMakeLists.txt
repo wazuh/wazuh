@@ -18,6 +18,10 @@ target_link_libraries(
   sysInfoWindows_unit_test
   wbemuuid
   wuguid
+  psapi
+  iphlpapi
+  ws2_32
+  shell32
   debug
   gtestd
   debug

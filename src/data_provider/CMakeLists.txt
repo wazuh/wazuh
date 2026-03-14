@@ -181,6 +181,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
             uuid
             ole32
             oleaut32
+            shell32
+            ntdll
             groups
             users
             services

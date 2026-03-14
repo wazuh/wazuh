@@ -23,7 +23,7 @@ integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
 
 def _expand_resource(resource: str) -> set:
     """Expand a specified resource depending on its type.
-    
+
     Parameters
     ----------
     resource : str
@@ -70,7 +70,7 @@ def _expand_resource(resource: str) -> set:
     else:
         if resource_type == 'agent:group':
             return expand_group(value)
-    
+
         # We return the value casted to set
         return {value}
 
@@ -497,7 +497,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
             else:
                 return post_proc_func(result, original=original_kwargs, allowed=allow, target=target_params,
                                       add_denied=add_denied, **post_proc_kwargs)
-
+        wrapper.__wazuh_exposed__ = True
         return wrapper
 
     return decorator
@@ -598,7 +598,7 @@ def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
                 # Never break the endpoint if masking fails for any reason
                 pass
             return result
-        
+
         return wrapper
-    
+
     return decorator
