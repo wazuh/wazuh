@@ -7,6 +7,8 @@
 
 #include <fmt/format.h>
 
+#include <schemf/ivalidator.hpp>
+
 namespace hlp::logpar::parser
 {
 parsec::Parser<char> pChar(std::string chars)
@@ -284,17 +286,17 @@ parsec::Parser<std::list<ParserInfo>> pLogpar()
 namespace hlp::logpar
 {
 Logpar::Logpar(const json::Json& fieldParserOverrides,
-               const std::shared_ptr<schemf::ISchema>& schema,
+               const std::shared_ptr<schemf::IValidator>& schemaValidator,
                size_t maxGroupRecursion,
                size_t debugLvl)
     : m_maxGroupRecursion(maxGroupRecursion)
     , m_debugLvl(debugLvl)
 {
-    if (!schema)
+    if (!schemaValidator)
     {
         throw std::runtime_error("Schema must not be null");
     }
-    m_schema = schema;
+    m_schemaValidator = schemaValidator;
 
     // Load field parser overrides
     if (!fieldParserOverrides.isObject())
@@ -316,7 +318,7 @@ Logpar::Logpar(const json::Json& fieldParserOverrides,
     auto asObj = fieldParserOverrides.getObject("/fields").value();
     for (const auto& [key, value] : asObj)
     {
-        if (!schema->hasField(key))
+        if (!schemaValidator->hasField(key))
         {
             throw std::runtime_error(fmt::format("Field parser override '{}' not found in schema", key));
         }
@@ -397,8 +399,23 @@ Logpar::Hlp Logpar::buildFieldParser(const parser::Field& field, const std::vect
     // Get type of the parser to be built
     ParserType type;
     std::vector<std::string> args(field.args.begin(), field.args.end());
+    const auto schema = getSchema();
+    auto isSchemaField = false;
+
+    // Keep parse target validation consistent with builders that validate target fields.
+    if (field.name.value != std::string {syntax::EXPR_WILDCARD})
+    {
+        auto resp = schema->validateTargetField(DotPath {field.name.value});
+        if (base::isError(resp))
+        {
+            throw std::runtime_error(base::getError(resp).message);
+        }
+
+        isSchemaField = base::getResponse(resp) == schemf::TargetFieldKind::SCHEMA;
+    }
+
     // Custom field
-    if (!getSchema()->hasField(field.name.value))
+    if (!isSchemaField)
     {
         // Custom fields use specified parser in args or text parser by default
         if (args.empty())

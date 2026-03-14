@@ -98,6 +98,11 @@ public:
     void load(const json::Json& json);
 
     /**
+     * @copydoc IValidator::validateTargetField
+     */
+    base::RespOrError<TargetFieldKind> validateTargetField(const DotPath& name) const override;
+
+    /**
      * @copydoc IValidator::validate
      */
     base::RespOrError<ValidationResult> validate(const DotPath& name, const ValidationToken& token) const override;

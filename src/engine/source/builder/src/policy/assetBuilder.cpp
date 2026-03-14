@@ -217,31 +217,18 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
         const auto integrationName = newContext->context().integrationName;
         const auto integrationCategory = newContext->context().integrationCategory;
 
-        auto automapping =
-            base::Term<base::EngineOp>::create("Automapping",
-                                               [integrationCategory, integrationName, assetName = newContext->context().assetName](auto e)
-                                               {
-                                                   {
-                                                       e->setString(integrationCategory, syntax::asset::CATEGORY_PATH);
-                                                       e->setString(integrationName, syntax::asset::INTEGRATION_PATH);
-                                                       e->appendString(assetName, syntax::asset::DECODERS_PATH);
-                                                   }
-                                                   return base::result::makeSuccess(e, "");
-                                               });
+        auto automapping = base::Term<base::EngineOp>::create(
+            "Automapping",
+            [integrationCategory, integrationName, assetName = newContext->context().assetName](auto e)
+            {
+                {
+                    e->setString(integrationCategory, syntax::asset::CATEGORY_PATH);
+                    e->setString(integrationName, syntax::asset::INTEGRATION_PATH);
+                    e->appendString(assetName, syntax::asset::DECODERS_PATH);
+                }
+                return base::result::makeSuccess(e, "");
+            });
         consequenceExpressions.emplace_back(std::move(automapping));
-
-        // Delete variables from the event when asset is executed (TODO: Find a better way to manage variables)
-        auto ifVar = [](const std::string& attr) -> bool
-        {
-            return !attr.empty() && attr[0] == syntax::field::VAR_ANCHOR;
-        };
-        auto deleteVariables = base::Term<base::EngineOp>::create("DeleteVariables",
-                                                                  [ifVar](auto e)
-                                                                  {
-                                                                      e->eraseIfKey(ifVar);
-                                                                      return base::result::makeSuccess(e, "");
-                                                                  });
-        consequenceExpressions.emplace_back(std::move(deleteVariables));
     }
 
     consequence = base::And::create(syntax::asset::CONSEQUENCE_NAME, std::move(consequenceExpressions));

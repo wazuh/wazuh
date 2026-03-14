@@ -85,6 +85,14 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
             m_assets.insert(base::Name(traceable));
         }
 
+        // Cleanup decoder temporary variables (enabled/disabled according to policy)
+        {
+            auto [cleanupVars, traceable] =
+                builders::enrichment::getCleanupDecoderVariables(policyData.shouldCleanupDecoderVariables(), trace);
+            preEnrichmentOps.push_back(cleanupVars);
+            m_assets.insert(base::Name(traceable));
+        }
+
         // Use And instead of Chain to ensure failure propagates correctly
         return base::And::create("preEnrichment", std::move(preEnrichmentOps));
     }();

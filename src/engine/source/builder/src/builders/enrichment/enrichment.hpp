@@ -82,7 +82,19 @@ EnrichmentBuilder getIocEnrichmentBuilder(const std::shared_ptr<ioc::kvdb::IKVDB
  * @param trace Enable tracing in the filter expression.
  * @return std::pair<base::Expression, std::string> The built filter expression and its traceable name.
  */
-std::pair<base::Expression, std::string> getDiscardedEventsFilter(const cm::store::dataType::Policy& policy, bool trace);
+std::pair<base::Expression, std::string> getDiscardedEventsFilter(const cm::store::dataType::Policy& policy,
+                                                                  bool trace);
+
+/**
+ * @brief Get the cleanup expression to remove temporary decoder variables.
+ *
+ * This cleanup removes root keys prefixed with "_".
+ *
+ * @param enabled Enable cleanup behavior.
+ * @param trace Enable tracing in the cleanup expression.
+ * @return std::pair<base::Expression, std::string> The built cleanup expression and its traceable name.
+ */
+std::pair<base::Expression, std::string> getCleanupDecoderVariables(bool enabled, bool trace);
 
 } // namespace builder::builders::enrichment
 
