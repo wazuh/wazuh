@@ -18,6 +18,7 @@ include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)
 file(GLOB SYSCOLLECTOR_IMP_UNIT_TEST_SRC "*.cpp")
 
 file(GLOB SYSCOLLECTOR_IMP_SRC
+     "${SRC_FOLDER}/wazuh_modules/syscollector/src/disabledCollectorsCleanupService.cpp"
      "${SRC_FOLDER}/wazuh_modules/syscollector/src/syscollectorImp.cpp"
      "${SRC_FOLDER}/wazuh_modules/syscollector/src/syscollectorNormalizer.cpp")
 

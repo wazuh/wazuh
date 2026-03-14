@@ -10,6 +10,7 @@
  */
 #include "syscollector.h"
 #include "syscollector.hpp"
+#include "disabledCollectorsCleanupService.hpp"
 #include "json.hpp"
 #include "stringHelper.h"
 #include "hashHelper.h"
@@ -461,6 +462,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_reportDiffFunction = std::move(reportDiffFunction);
     m_persistDiffFunction = std::move(persistDiffFunction);
     m_logFunction = std::move(logFunction);
+    m_disabledCollectorsCleanup = std::make_shared<DisabledCollectorsCleanupService>(m_logFunction);
     m_intervalValue = interval;
     m_scanOnStart = scanOnStart;
     m_hardware = hardware;
@@ -718,6 +720,7 @@ void Syscollector::destroy()
     m_spNormalizer.reset();
     m_spSyncProtocol.reset();
     m_spSyncProtocolVD.reset();
+    m_disabledCollectorsCleanup.reset();
     m_spInfo.reset();
 }
 
@@ -3767,210 +3770,51 @@ void Syscollector::promoteItemsAfterScan()
 }
 
 
-bool Syscollector::hasDataInTable(const std::string& tableName)
-{
-    if (!m_spDBSync)
-    {
-        return false;
-    }
-
-    try
-    {
-        int count = 0;
-        auto selectQuery = SelectQuery::builder()
-                           .table(tableName)
-                           .columnList({"COUNT(*) AS count"})
-                           .build();
-
-        const auto callback = [&count](ReturnTypeCallback returnType, const nlohmann::json & resultData)
-        {
-            if (returnType == SELECTED && resultData.contains("count"))
-            {
-                if (resultData["count"].is_number())
-                {
-                    count = resultData["count"].get<int>();
-                }
-            }
-        };
-
-        m_spDBSync->selectRows(selectQuery.query(), callback);
-        return count > 0;
-    }
-    // LCOV_EXCL_START
-    catch (const std::exception& ex)
-    {
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_ERROR, "Error checking data in table " + tableName + ": " + std::string(ex.what()));
-        }
-
-        return false;
-    }
-
-    // LCOV_EXCL_STOP
-}
-
 void Syscollector::checkDisabledCollectorsIndicesWithData()
 {
-    m_disabledCollectorsIndicesWithData.clear();
-    bool already_included_vd = false;
-
-    if (!m_hardware && hasDataInTable(HW_TABLE))
+    if (!m_disabledCollectorsCleanup)
     {
-        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_HARDWARE);
+        return;
     }
 
-    if (!m_os && hasDataInTable(OS_TABLE))
+    const DisabledCollectorsCleanupService::CollectorSelection collectors
     {
-        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_SYSTEM);
+        m_hardware,
+        m_os,
+        m_network,
+        m_packages,
+        m_ports,
+        m_processes,
+        m_hotfixes,
+        m_groups,
+        m_users,
+        m_services,
+        m_browserExtensions
+    };
 
-        if (!already_included_vd)
-        {
-            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_VULNERABILITIES);
-            already_included_vd = true;
-        }
-    }
-
-    if (!m_packages && hasDataInTable(PACKAGES_TABLE))
-    {
-        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_PACKAGES);
-
-        if (!already_included_vd)
-        {
-            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_VULNERABILITIES);
-            already_included_vd = true;
-        }
-    }
-
-    if (!m_hotfixes && hasDataInTable(HOTFIXES_TABLE))
-    {
-        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
-
-        if (!already_included_vd)
-        {
-            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_VULNERABILITIES);
-        }
-    }
-
-    if (!m_processes && hasDataInTable(PROCESSES_TABLE))
-    {
-        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_PROCESSES);
-    }
-
-    if (!m_ports && hasDataInTable(PORTS_TABLE))
-    {
-        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_PORTS);
-    }
-
-    if (!m_users && hasDataInTable(USERS_TABLE))
-    {
-        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_USERS);
-    }
-
-    if (!m_groups && hasDataInTable(GROUPS_TABLE))
-    {
-        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_GROUPS);
-    }
-
-    if (!m_services && hasDataInTable(SERVICES_TABLE))
-    {
-        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_SERVICES);
-    }
-
-    if (!m_browserExtensions && hasDataInTable(BROWSER_EXTENSIONS_TABLE))
-    {
-        m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS);
-    }
-
-    if (!m_network)
-    {
-        if (hasDataInTable(NET_IFACE_TABLE))
-        {
-            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_INTERFACES);
-        }
-
-        if (hasDataInTable(NET_PROTOCOL_TABLE))
-        {
-            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_PROTOCOLS);
-        }
-
-        if (hasDataInTable(NET_ADDRESS_TABLE))
-        {
-            m_disabledCollectorsIndicesWithData.push_back(SYSCOLLECTOR_SYNC_INDEX_NETWORKS);
-        }
-    }
-
-    if (!m_disabledCollectorsIndicesWithData.empty() && m_logFunction)
-    {
-        std::string indices;
-
-        for (const auto& idx : m_disabledCollectorsIndicesWithData)
-        {
-            if (!indices.empty())
-            {
-                indices += ", ";
-            }
-
-            indices += idx;
-        }
-
-        m_logFunction(LOG_INFO, "Disabled collectors indices with data detected: " + indices);
-    }
+    m_disabledCollectorsCleanup->refreshDisabledIndices(collectors, m_spDBSync.get());
 }
 
 bool Syscollector::notifyDisableCollectorsDataClean()
 {
-    if (m_disabledCollectorsIndicesWithData.empty())
+    if (!m_disabledCollectorsCleanup)
     {
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_DEBUG, "No disabled collectors indices with data to notify for cleanup");
-        }
-
         return true;
     }
 
-    if (!m_spSyncProtocol)
-    {
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean");
-        }
-
-        return false;
-    }
-
-    // LCOV_EXCL_START
-    if (m_logFunction)
-    {
-        std::string indices;
-
-        for (const auto& idx : m_disabledCollectorsIndicesWithData)
-        {
-            if (!indices.empty())
-            {
-                indices += ", ";
-            }
-
-            indices += idx;
-        }
-
-        m_logFunction(LOG_DEBUG, "Notifying DataClean for disabled collectors indices: " + indices);
-    }
-
-    return m_spSyncProtocol->notifyDataClean(m_disabledCollectorsIndicesWithData);
-    // LCOV_EXCL_STOP
+    return m_disabledCollectorsCleanup->notifyDataClean(m_spSyncProtocol.get());
 }
 
 void Syscollector::deleteDisableCollectorsData()
 {
-    if (m_disabledCollectorsIndicesWithData.empty())
+    if (!m_disabledCollectorsCleanup)
     {
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_DEBUG, "No disabled collectors indices with data to delete");
-        }
+        return;
+    }
 
+    if (!m_disabledCollectorsCleanup->hasDisabledData())
+    {
+        m_disabledCollectorsCleanup->deleteDisabledData(m_spDBSync.get());
         return;
     }
 
@@ -3984,104 +3828,12 @@ void Syscollector::deleteDisableCollectorsData()
         }
 
         deleteDatabase();
-        m_disabledCollectorsIndicesWithData.clear();
+        m_disabledCollectorsCleanup->clearTrackedIndices();
         return;
         // LCOV_EXCL_STOP
     }
 
-    // Only some collectors are disabled, delete specific tables
-    if (m_logFunction)
-    {
-        std::string indices;
-
-        for (const auto& idx : m_disabledCollectorsIndicesWithData)
-        {
-            if (!indices.empty())
-            {
-                indices += ", ";
-            }
-
-            indices += idx;
-        }
-
-        m_logFunction(LOG_INFO, "Deleting data for disabled collectors indices: " + indices);
-    }
-
-    clearTablesForIndices(m_disabledCollectorsIndicesWithData);
-    m_disabledCollectorsIndicesWithData.clear();
-}
-
-void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices)
-{
-    if (!m_spDBSync)
-    {
-        return;
-    }
-
-    auto dbHandle = m_spDBSync->handle();
-
-    if (dbHandle == nullptr)
-    {
-        return;
-    }
-
-    for (const auto& index : indices)
-    {
-        std::string tableName;
-
-        for (const auto& [table, idx] : INDEX_MAP)
-        {
-            if (idx == index)
-            {
-                tableName = table;
-                break;
-            }
-        }
-
-        if (!tableName.empty())
-        {
-            try
-            {
-                // Callback for delete operations (no-op, we don't need to process deleted rows)
-                const auto deleteCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
-
-                // Create transaction for this table - commits automatically on destruction
-                DBSyncTxn txn
-                {
-                    dbHandle,
-                    nlohmann::json {tableName},
-                    0,
-                    QUEUE_SIZE,
-                    deleteCallback
-                };
-
-                // Sync with empty data to mark all existing rows as deleted
-                nlohmann::json emptyInput;
-                emptyInput["table"] = tableName;
-                emptyInput["data"] = nlohmann::json::array();
-
-                txn.syncTxnRow(emptyInput);
-                txn.getDeletedRows(deleteCallback);
-
-                // Transaction commits here when txn goes out of scope
-
-                if (m_logFunction)
-                {
-                    m_logFunction(LOG_DEBUG, "Cleared table " + tableName);
-                }
-            }
-            // LCOV_EXCL_START
-            catch (const std::exception& ex)
-            {
-                if (m_logFunction)
-                {
-                    m_logFunction(LOG_ERROR, "Error clearing table " + tableName + ": " + std::string(ex.what()));
-                }
-            }
-
-            // LCOV_EXCL_STOP
-        }
-    }
+    m_disabledCollectorsCleanup->deleteDisabledData(m_spDBSync.get());
 }
 
 // LCOV_EXCL_START
