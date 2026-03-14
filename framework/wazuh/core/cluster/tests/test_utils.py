@@ -268,6 +268,38 @@ def test_manager_restart():
                                 assert WazuhResult({'message': 'Restart request sent'}) == status
 
 
+def test_manager_reload():
+    """Verify that manager_reload sends the reload request to the manager."""
+    with patch('wazuh.core.cluster.utils.open', side_effect=None):
+        with patch('fcntl.lockf', side_effect=None):
+            # Socket path does not exist
+            with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
+                utils.manager_reload()
+
+            with patch('os.path.exists', return_value=True):
+                # Socket connection error
+                with pytest.raises(WazuhInternalError, match='.* 1902 .*'):
+                    utils.manager_reload()
+
+                with patch('socket.socket.connect', side_effect=None):
+                    # send/recv fails (socket error)
+                    with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
+                        utils.manager_reload()
+
+                    with patch('socket.socket.send', side_effect=None):
+                        # Response doesn't start with 'ok'
+                        with patch('socket.socket.recv', return_value=b'error: invalid command\n'):
+                            with patch('socket.socket.close', side_effect=None):
+                                with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
+                                    utils.manager_reload()
+
+                        # Successful reload (response starts with 'ok')
+                        with patch('socket.socket.recv', return_value=b'ok\n'):
+                            with patch('socket.socket.close', side_effect=None):
+                                result = utils.manager_reload()
+                                assert WazuhResult({'message': 'Reload request sent'}) == result
+
+
 def test_get_cluster_items():
     """Verify the cluster files information."""
     utils.get_cluster_items.cache_clear()

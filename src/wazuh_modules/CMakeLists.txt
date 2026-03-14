@@ -110,6 +110,7 @@ else()
   file(GLOB WAZUH_MODULES_SRC "${SRC_FOLDER}/wazuh_modules/src/*.c"
        "${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/*.c"
        "${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent/*.c")
+  list(REMOVE_ITEM WAZUH_MODULES_SRC "${SRC_FOLDER}/wazuh_modules/src/wm_control.c")
 endif()
 
 # Build static library (without main.c)

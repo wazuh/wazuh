@@ -26,7 +26,7 @@ if(${TARGET} STREQUAL "agent")
   add_subdirectory(ms_graph)
 endif()
 
-if(NOT ${TARGET} STREQUAL "winagent")
+if(${TARGET} STREQUAL "manager")
   add_subdirectory(control)
 endif()
 

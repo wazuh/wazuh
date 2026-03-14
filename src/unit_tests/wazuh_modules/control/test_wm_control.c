@@ -1,4 +1,5 @@
 /*
+ * Wazuh Module for Agent control - Unit Tests
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
@@ -12,299 +13,356 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdio.h>
-#include "../../wrappers/wazuh/data_provider/sysInfo_wrappers.h"
-#include "../../../data_provider/include/sysInfo.h"
+#include <stdbool.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+
+#include "../../wrappers/common.h"
+#include "../../wrappers/libc/stdio_wrappers.h"
+#include "../../wrappers/posix/unistd_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wm_control_wrappers.h"
 #include "wm_control.h"
 
-extern sysinfo_networks_func sysinfo_network_ptr;
-extern sysinfo_free_result_func sysinfo_free_result_ptr;
-
-#ifdef TEST_SERVER
+/* WM_CONTROL_LOGTAG expands to ARGV0 ":control".
+ * For the manager build ARGV0 is "wazuh-manager-modulesd". */
 #define WM_CONTROL_TEST_LOGTAG "wazuh-manager-modulesd:control"
-#else
-#define WM_CONTROL_TEST_LOGTAG "wazuh-modulesd:control"
-#endif
 
-static void test_wm_control_getPrimaryIP_no_sysinfo_network(void ** state) {
-    sysinfo_network_ptr = NULL;
+/* ------------------------------------------------------------------ */
+/* Setup / teardown                                                     */
+/* ------------------------------------------------------------------ */
 
-    char * ip = getPrimaryIP();
-
-    assert_null(ip);
+static int setup_test_mode(void **state) {
+    test_mode = 1;
+    return 0;
 }
 
-static void test_wm_control_getPrimaryIP_no_sysinfo_free(void ** state) {
-    sysinfo_network_ptr = (int (*)(cJSON **)) 1;
-    sysinfo_free_result_ptr = NULL;
-
-    char * ip = getPrimaryIP();
-
-    assert_null(ip);
+static int teardown_test_mode(void **state) {
+    test_mode = 0;
+    return 0;
 }
 
-static void test_wm_control_getPrimaryIP_sysinfo_network_return_error(void ** state) {
-    sysinfo_network_ptr = __wrap_sysinfo_networks;
-    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = NULL;
+static void expect_check_systemd_not_available(void) {
+    expect_string(__wrap_access, __name, "/run/systemd/system");
+    expect_value(__wrap_access, __type, F_OK);
+    will_return(__wrap_access, -1);
+}
 
-    will_return(__wrap_sysinfo_networks, networks);
-    will_return(__wrap_sysinfo_networks, 1234);
+static void expect_check_systemd_available(void) {
+    FILE *fp = (FILE *)1;
+
+    expect_string(__wrap_access, __name, "/run/systemd/system");
+    expect_value(__wrap_access, __type, F_OK);
+    will_return(__wrap_access, 0);
+
+    expect_string(__wrap_fopen, path, "/proc/1/comm");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, fp);
+
+    will_return(__wrap_fgets, "systemd\n");
+    expect_value(__wrap_fgets, __stream, fp);
+
+    expect_value(__wrap_fclose, _File, fp);
+    will_return(__wrap_fclose, 0);
+}
+
+/* ------------------------------------------------------------------ */
+/* wm_control_dispatch tests                                            */
+/* ------------------------------------------------------------------ */
+
+static void test_dispatch_restart(void **state) {
+    char command[] = "restart";
+    char *output = NULL;
+
+    expect_string(__wrap__mtdebug2, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Dispatching command: 'restart'");
+    expect_check_systemd_not_available();
+    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on manager using wazuh-control");
+    will_return(__wrap_fork, 1234);
+
+    size_t ret = wm_control_dispatch(command, &output);
+
+    assert_non_null(output);
+    assert_string_equal(output, "ok ");
+    assert_int_equal(ret, strlen("ok "));
+
+    free(output);
+}
+
+static void test_dispatch_reload(void **state) {
+    char command[] = "reload";
+    char *output = NULL;
+
+    expect_string(__wrap__mtdebug2, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Dispatching command: 'reload'");
+    expect_check_systemd_not_available();
+    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'reload' on manager using wazuh-control");
+    will_return(__wrap_fork, 5678);
+
+    size_t ret = wm_control_dispatch(command, &output);
+
+    assert_non_null(output);
+    assert_string_equal(output, "ok ");
+    assert_int_equal(ret, strlen("ok "));
+
+    free(output);
+}
+
+static void test_dispatch_restart_with_args(void **state) {
+    /* Arguments after a space must be stripped before dispatch */
+    char command[] = "restart somearg";
+    char *output = NULL;
+
+    expect_string(__wrap__mtdebug2, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Dispatching command: 'restart'");
+    expect_check_systemd_not_available();
+    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on manager using wazuh-control");
+    will_return(__wrap_fork, 1234);
+
+    size_t ret = wm_control_dispatch(command, &output);
+
+    assert_non_null(output);
+    assert_string_equal(output, "ok ");
+    assert_int_equal(ret, strlen("ok "));
+
+    free(output);
+}
+
+static void test_dispatch_unknown_command(void **state) {
+    char command[] = "unknowncmd";
+    char *output = NULL;
+
+    expect_string(__wrap__mtdebug2, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Dispatching command: 'unknowncmd'");
+
     expect_string(__wrap__mterror, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mterror, formatted_msg, "Unable to get system network information. Error code: 1234.");
+    expect_string(__wrap__mterror, formatted_msg, "Unknown command: 'unknowncmd'");
 
-    char * ip = getPrimaryIP();
+    size_t ret = wm_control_dispatch(command, &output);
 
-    assert_null(ip);
-}
-static void test_wm_control_getPrimaryIP_sysinfo_network_no_object(void ** state) {
-    sysinfo_network_ptr = __wrap_sysinfo_networks;
-    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = NULL;
+    assert_non_null(output);
+    assert_string_equal(output, "Err");
+    assert_int_equal(ret, strlen("Err"));
 
-    will_return(__wrap_sysinfo_networks, networks);
-    will_return(__wrap_sysinfo_networks, 0);
-
-    char * ip = getPrimaryIP();
-
-    assert_null(ip);
+    free(output);
 }
 
-static void test_wm_control_getPrimaryIP_sysinfo_network_no_iface(void ** state) {
-    sysinfo_network_ptr = __wrap_sysinfo_networks;
-    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{}");
+/* ------------------------------------------------------------------ */
+/* wm_control_execute_action tests                                      */
+/* ------------------------------------------------------------------ */
 
-    will_return(__wrap_sysinfo_networks, networks);
-    will_return(__wrap_sysinfo_networks, 0);
-    will_return(__wrap_sysinfo_free_result, networks);
+static void test_execute_action_fork_fails(void **state) {
+    char *output = NULL;
 
-    char * ip = getPrimaryIP();
+    expect_check_systemd_not_available();
+    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on manager using wazuh-control");
 
-    assert_null(ip);
+    will_return(__wrap_fork, -1);
+    expect_string(__wrap__mterror, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "Cannot fork for restart");
 
-    cJSON_Delete(networks);
+    size_t ret = wm_control_execute_action("restart", &output);
+
+    assert_non_null(output);
+    assert_string_equal(output, "err Cannot fork");
+    assert_int_equal(ret, strlen("err Cannot fork"));
+
+    free(output);
 }
 
-static void test_wm_control_getPrimaryIP_sysinfo_network_no_iface_array(void ** state) {
-    sysinfo_network_ptr = __wrap_sysinfo_networks;
-    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":{}}");
+static void test_execute_action_restart_no_systemd(void **state) {
+    char *output = NULL;
 
-    will_return(__wrap_sysinfo_networks, networks);
-    will_return(__wrap_sysinfo_networks, 0);
-    will_return(__wrap_sysinfo_free_result, networks);
+    expect_check_systemd_not_available();
+    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on manager using wazuh-control");
 
-    char * ip = getPrimaryIP();
+    will_return(__wrap_fork, 1234); /* Simulate parent process */
 
-    assert_null(ip);
+    size_t ret = wm_control_execute_action("restart", &output);
 
-    cJSON_Delete(networks);
-}
-static void test_wm_control_getPrimaryIP_sysinfo_network_iface_empty_array(void ** state) {
-    sysinfo_network_ptr = __wrap_sysinfo_networks;
-    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":[]}");
+    assert_non_null(output);
+    assert_string_equal(output, "ok ");
+    assert_int_equal(ret, strlen("ok "));
 
-    will_return(__wrap_sysinfo_networks, networks);
-    will_return(__wrap_sysinfo_networks, 0);
-    will_return(__wrap_sysinfo_free_result, networks);
-
-    char * ip = getPrimaryIP();
-
-    assert_null(ip);
-
-    cJSON_Delete(networks);
+    free(output);
 }
 
-static void test_wm_control_getPrimaryIP_sysinfo_network_iface_no_gateway(void ** state) {
-    sysinfo_network_ptr = __wrap_sysinfo_networks;
-    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\"}]}");
+static void test_execute_action_restart_systemd(void **state) {
+    char *output = NULL;
 
-    will_return(__wrap_sysinfo_networks, networks);
-    will_return(__wrap_sysinfo_networks, 0);
-    will_return(__wrap_sysinfo_free_result, networks);
+    expect_check_systemd_available();
+    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on manager using systemctl");
 
-    char * ip = getPrimaryIP();
+    will_return(__wrap_fork, 1234); /* Simulate parent process */
 
-    assert_null(ip);
+    size_t ret = wm_control_execute_action("restart", &output);
 
-    cJSON_Delete(networks);
+    assert_non_null(output);
+    assert_string_equal(output, "ok ");
+    assert_int_equal(ret, strlen("ok "));
+
+    free(output);
 }
 
-static void test_wm_control_getPrimaryIP_sysinfo_network_iface_invalid_gateway_type(void ** state) {
-    sysinfo_network_ptr = __wrap_sysinfo_networks;
-    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":1234}]}");
+static void test_execute_action_reload_no_systemd(void **state) {
+    char *output = NULL;
 
-    will_return(__wrap_sysinfo_networks, networks);
-    will_return(__wrap_sysinfo_networks, 0);
-    will_return(__wrap_sysinfo_free_result, networks);
+    expect_check_systemd_not_available();
+    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'reload' on manager using wazuh-control");
 
-    char * ip = getPrimaryIP();
+    will_return(__wrap_fork, 5678); /* Simulate parent process */
 
-    assert_null(ip);
+    size_t ret = wm_control_execute_action("reload", &output);
 
-    cJSON_Delete(networks);
+    assert_non_null(output);
+    assert_string_equal(output, "ok ");
+    assert_int_equal(ret, strlen("ok "));
+
+    free(output);
 }
 
-static void test_wm_control_getPrimaryIP_sysinfo_network_iface_empty_gateway(void ** state) {
-    sysinfo_network_ptr = __wrap_sysinfo_networks;
-    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\" \"}]}");
+static void test_execute_action_reload_systemd(void **state) {
+    char *output = NULL;
 
-    will_return(__wrap_sysinfo_networks, networks);
-    will_return(__wrap_sysinfo_networks, 0);
-    will_return(__wrap_sysinfo_free_result, networks);
+    expect_check_systemd_available();
+    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'reload' on manager using systemctl");
 
-    char * ip = getPrimaryIP();
+    will_return(__wrap_fork, 5678); /* Simulate parent process */
 
-    assert_null(ip);
+    size_t ret = wm_control_execute_action("reload", &output);
 
-    cJSON_Delete(networks);
+    assert_non_null(output);
+    assert_string_equal(output, "ok ");
+    assert_int_equal(ret, strlen("ok "));
+
+    free(output);
 }
 
-static void test_wm_control_getPrimaryIP_sysinfo_network_iface_ipv6_gateway_ipv6_address(void ** state) {
-    sysinfo_network_ptr = __wrap_sysinfo_networks;
-    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"fe80::\",\"IPv6\":[{\"address\":"
-                                   "\"fe80::a00:27ff:fee0:d046\"}]}]}");
+/* ------------------------------------------------------------------ */
+/* wm_control_check_systemd tests                                       */
+/* ------------------------------------------------------------------ */
 
-    will_return(__wrap_sysinfo_networks, networks);
-    will_return(__wrap_sysinfo_networks, 0);
-    will_return(__wrap_sysinfo_free_result, networks);
+static void test_check_systemd_no_run_dir(void **state) {
+    expect_string(__wrap_access, __name, "/run/systemd/system");
+    expect_value(__wrap_access, __type, F_OK);
+    will_return(__wrap_access, -1);
 
-    char * ip = getPrimaryIP();
+    bool result = __real_wm_control_check_systemd();
 
-    assert_string_equal(ip, "FE80:0000:0000:0000:0A00:27FF:FEE0:D046");
-
-    os_free(ip);
-    cJSON_Delete(networks);
+    assert_false(result);
 }
 
-static void test_wm_control_getPrimaryIP_sysinfo_network_iface_ipv6_gateway_ipv4_address(void ** state) {
-    sysinfo_network_ptr = __wrap_sysinfo_networks;
-    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse(
-        "{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"fe80::\",\"IPv4\":[{\"address\":\"192.168.1.10\"}]}]}");
+static void test_check_systemd_fopen_fails(void **state) {
+    expect_string(__wrap_access, __name, "/run/systemd/system");
+    expect_value(__wrap_access, __type, F_OK);
+    will_return(__wrap_access, 0);
 
-    will_return(__wrap_sysinfo_networks, networks);
-    will_return(__wrap_sysinfo_networks, 0);
-    will_return(__wrap_sysinfo_free_result, networks);
+    expect_string(__wrap_fopen, path, "/proc/1/comm");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, NULL);
 
-    char * ip = getPrimaryIP();
+    bool result = __real_wm_control_check_systemd();
 
-    assert_string_equal(ip, "192.168.1.10");
-
-    os_free(ip);
-    cJSON_Delete(networks);
+    assert_false(result);
 }
 
-static void test_wm_control_getPrimaryIP_sysinfo_network_iface_ipv4_gateway_ipv6_address(void ** state) {
-    sysinfo_network_ptr = __wrap_sysinfo_networks;
-    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\",\"IPv6\":[{\"address\":"
-                                   "\"fe80::a00:27ff:fee0:d046\"}]}]}");
+static void test_check_systemd_is_systemd(void **state) {
+    FILE *fp = (FILE *)1;
 
-    will_return(__wrap_sysinfo_networks, networks);
-    will_return(__wrap_sysinfo_networks, 0);
-    will_return(__wrap_sysinfo_free_result, networks);
+    expect_string(__wrap_access, __name, "/run/systemd/system");
+    expect_value(__wrap_access, __type, F_OK);
+    will_return(__wrap_access, 0);
 
-    char * ip = getPrimaryIP();
+    expect_string(__wrap_fopen, path, "/proc/1/comm");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, fp);
 
-    assert_string_equal(ip, "FE80:0000:0000:0000:0A00:27FF:FEE0:D046");
+    will_return(__wrap_fgets, "systemd\n");
+    expect_value(__wrap_fgets, __stream, fp);
 
-    os_free(ip);
-    cJSON_Delete(networks);
+    expect_value(__wrap_fclose, _File, fp);
+    will_return(__wrap_fclose, 0);
+
+    bool result = __real_wm_control_check_systemd();
+
+    assert_true(result);
 }
 
-static void test_wm_control_getPrimaryIP_sysinfo_network_iface_ipv4_gateway_ipv4_address(void ** state) {
-    sysinfo_network_ptr = __wrap_sysinfo_networks;
-    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse(
-        "{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\",\"IPv4\":[{\"address\":\"192.168.1.10\"}]}]}");
+static void test_check_systemd_not_systemd(void **state) {
+    FILE *fp = (FILE *)1;
 
-    will_return(__wrap_sysinfo_networks, networks);
-    will_return(__wrap_sysinfo_networks, 0);
-    will_return(__wrap_sysinfo_free_result, networks);
+    expect_string(__wrap_access, __name, "/run/systemd/system");
+    expect_value(__wrap_access, __type, F_OK);
+    will_return(__wrap_access, 0);
 
-    char * ip = getPrimaryIP();
+    expect_string(__wrap_fopen, path, "/proc/1/comm");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, fp);
 
-    assert_string_equal(ip, "192.168.1.10");
+    will_return(__wrap_fgets, "init\n");
+    expect_value(__wrap_fgets, __stream, fp);
 
-    os_free(ip);
-    cJSON_Delete(networks);
+    expect_value(__wrap_fclose, _File, fp);
+    will_return(__wrap_fclose, 0);
+
+    bool result = __real_wm_control_check_systemd();
+
+    assert_false(result);
 }
 
-static void test_wm_control_getPrimaryIP_sysinfo_network_iface_valid_gateway_no_address_array(void ** state) {
-    sysinfo_network_ptr = __wrap_sysinfo_networks;
-    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\"}]}");
+static void test_check_systemd_fgets_null(void **state) {
+    FILE *fp = (FILE *)1;
 
-    will_return(__wrap_sysinfo_networks, networks);
-    will_return(__wrap_sysinfo_networks, 0);
-    will_return(__wrap_sysinfo_free_result, networks);
+    expect_string(__wrap_access, __name, "/run/systemd/system");
+    expect_value(__wrap_access, __type, F_OK);
+    will_return(__wrap_access, 0);
 
-    char * ip = getPrimaryIP();
+    expect_string(__wrap_fopen, path, "/proc/1/comm");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, fp);
 
-    assert_null(ip);
+    will_return(__wrap_fgets, NULL);
+    expect_value(__wrap_fgets, __stream, fp);
 
-    cJSON_Delete(networks);
+    expect_value(__wrap_fclose, _File, fp);
+    will_return(__wrap_fclose, 0);
+
+    bool result = __real_wm_control_check_systemd();
+
+    assert_false(result);
 }
 
-static void test_wm_control_getPrimaryIP_sysinfo_network_iface_valid_gateway_address_invalid_type(void ** state) {
-    sysinfo_network_ptr = __wrap_sysinfo_networks;
-    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks =
-        cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\",\"IPv4\":[{\"address\":1234}]}]}");
-
-    will_return(__wrap_sysinfo_networks, networks);
-    will_return(__wrap_sysinfo_networks, 0);
-    will_return(__wrap_sysinfo_free_result, networks);
-
-    char * ip = getPrimaryIP();
-
-    assert_null(ip);
-
-    cJSON_Delete(networks);
-}
-
-static void test_wm_control_getPrimaryIP_sysinfo_network_iface_valid_gateway_multiple_address_array(void ** state) {
-    sysinfo_network_ptr = __wrap_sysinfo_networks;
-    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\",\"IPv4\":[{\"address\":"
-                                   "\"192.168.1.10\"},{\"address\":\"192.168.1.11\"}]}]}");
-
-    will_return(__wrap_sysinfo_networks, networks);
-    will_return(__wrap_sysinfo_networks, 0);
-    will_return(__wrap_sysinfo_free_result, networks);
-
-    char * ip = getPrimaryIP();
-
-    assert_string_equal(ip, "192.168.1.10");
-
-    os_free(ip);
-    cJSON_Delete(networks);
-}
+/* ------------------------------------------------------------------ */
+/* main                                                                 */
+/* ------------------------------------------------------------------ */
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_wm_control_getPrimaryIP_no_sysinfo_network),
-        cmocka_unit_test(test_wm_control_getPrimaryIP_no_sysinfo_free),
-        cmocka_unit_test(test_wm_control_getPrimaryIP_sysinfo_network_return_error),
-        cmocka_unit_test(test_wm_control_getPrimaryIP_sysinfo_network_no_object),
-        cmocka_unit_test(test_wm_control_getPrimaryIP_sysinfo_network_no_iface),
-        cmocka_unit_test(test_wm_control_getPrimaryIP_sysinfo_network_no_iface_array),
-        cmocka_unit_test(test_wm_control_getPrimaryIP_sysinfo_network_iface_empty_array),
-        cmocka_unit_test(test_wm_control_getPrimaryIP_sysinfo_network_iface_no_gateway),
-        cmocka_unit_test(test_wm_control_getPrimaryIP_sysinfo_network_iface_invalid_gateway_type),
-        cmocka_unit_test(test_wm_control_getPrimaryIP_sysinfo_network_iface_empty_gateway),
-        cmocka_unit_test(test_wm_control_getPrimaryIP_sysinfo_network_iface_ipv6_gateway_ipv6_address),
-        cmocka_unit_test(test_wm_control_getPrimaryIP_sysinfo_network_iface_ipv6_gateway_ipv4_address),
-        cmocka_unit_test(test_wm_control_getPrimaryIP_sysinfo_network_iface_ipv4_gateway_ipv6_address),
-        cmocka_unit_test(test_wm_control_getPrimaryIP_sysinfo_network_iface_ipv4_gateway_ipv4_address),
-        cmocka_unit_test(test_wm_control_getPrimaryIP_sysinfo_network_iface_valid_gateway_no_address_array),
-        cmocka_unit_test(test_wm_control_getPrimaryIP_sysinfo_network_iface_valid_gateway_address_invalid_type),
-        cmocka_unit_test(test_wm_control_getPrimaryIP_sysinfo_network_iface_valid_gateway_multiple_address_array)};
+        /* wm_control_dispatch */
+        cmocka_unit_test_setup_teardown(test_dispatch_restart,            setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_dispatch_reload,             setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_dispatch_restart_with_args,  setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_dispatch_unknown_command,    setup_test_mode, teardown_test_mode),
+        /* wm_control_execute_action */
+        cmocka_unit_test_setup_teardown(test_execute_action_fork_fails,          setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_execute_action_restart_no_systemd,   setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_execute_action_restart_systemd,      setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_execute_action_reload_no_systemd,    setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_execute_action_reload_systemd,       setup_test_mode, teardown_test_mode),
+        /* wm_control_check_systemd */
+        cmocka_unit_test_setup_teardown(test_check_systemd_no_run_dir,    setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_check_systemd_fopen_fails,   setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_check_systemd_is_systemd,    setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_check_systemd_not_systemd,   setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_check_systemd_fgets_null,    setup_test_mode, teardown_test_mode),
+    };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

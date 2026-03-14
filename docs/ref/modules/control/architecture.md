@@ -4,32 +4,34 @@
 
 The Control Module (`wm_control`) is a lightweight module within `wazuh-modulesd` that provides manager control operations. It implements a Unix domain socket server that accepts control commands and executes system-level operations.
 
+This module is enabled in manager builds (`TARGET=manager`) on Unix-like systems.
+
 ## Component Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      wazuh-modulesd                         │
 │                                                             │
-│  ┌───────────────────────────────────────────────────────┐ │
-│  │              wm_control Module                        │ │
-│  │                                                       │ │
-│  │  ┌──────────────┐      ┌───────────────────────┐   │ │
-│  │  │   Socket     │      │   Command Dispatcher  │   │ │
-│  │  │   Listener   │─────▶│   wm_control_dispatch │   │ │
-│  │  │   send_ip()  │      └───────┬───────────────┘   │ │
-│  │  └──────────────┘              │                    │ │
-│  │                                 │                    │ │
-│  │                    ┌────────────┴────────────┐      │ │
-│  │                    │                         │      │ │
-│  │         ┌──────────▼─────────┐    ┌─────────▼─────┐│ │
-│  │         │ Restart/Reload     │    │  Get Primary  ││ │
-│  │         │ wm_control_execute │    │  IP Address   ││ │
-│  │         │ _action()          │    │  getPrimaryIP ││ │
-│  │         └────────────────────┘    └───────────────┘│ │
-│  └───────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │              wm_control Module                        │  │
+│  │                                                       │  │
+│  │  ┌──────────────┐      ┌───────────────────────┐      │  │
+│  │  │   Socket     │      │   Command Dispatcher  │      │  │
+│  │  │   Listener   │─────▶│   wm_control_dispatch │      │  │
+│  │  │   send_ip()  │      └───────┬───────────────┘      │  │
+│  │  └──────────────┘              │                      │  │
+│  │                                │                      │  │
+│  │                                │                      │  │
+│  │                                │                      │  │
+│  │                     ┌──────────▼─────────┐            │  │
+│  │                     │ Restart/Reload     │            │  │
+│  │                     │ wm_control_execute │            │  │
+│  │                     │ _action()          │            │  │
+│  │                     └────────────────────┘            │  │
+│  └───────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
          │                                           ▲
-         │ fork + execv                             │ socket connect
+         │ fork + execv                              │ socket connect
          ▼                                           │
 ┌──────────────────────┐                  ┌─────────────────────┐
 │  systemctl/          │                  │   API / Framework   │
@@ -92,8 +94,8 @@ size_t wm_control_dispatch(char *command, char **output) {
         return wm_control_execute_action("reload", output);
     }
     else {
-        // Default: return IP for backward compatibility
-        *output = getPrimaryIP();
+        mterror(WM_CONTROL_LOGTAG, "Unknown command: '%s'", command);
+        os_strdup("Err", *output);
         return strlen(*output);
     }
 }
@@ -136,11 +138,16 @@ static bool wm_control_check_systemd() {
 
     // Check if PID 1 is systemd
     FILE *fp = fopen("/proc/1/comm", "r");
-    char init_name[256];
-    if (fgets(init_name, sizeof(init_name), fp)) {
-        if (strcmp(init_name, "systemd\n") == 0) {
-            return true;
+    if (fp) {
+        char init_name[256];
+        if (fgets(init_name, sizeof(init_name), fp)) {
+            init_name[strcspn(init_name, "\n")] = 0;
+            if (strcmp(init_name, "systemd") == 0) {
+                fclose(fp);
+                return true;
+            }
         }
+        fclose(fp);
     }
     return false;
 }
@@ -199,18 +206,13 @@ static bool wm_control_wait_for_service_active() {
 }
 ```
 
-### 5. Primary IP Detection (`getPrimaryIP()`)
+### 5. Unknown Command Handling
 
-Retrieves the manager's primary network interface IP address.
+`wm_control` only accepts `restart` and `reload`.
+Any other command:
 
-**Strategy**:
-1. Query system network information via sysinfo library
-2. Find interface with default gateway
-3. Prefer IPv6 if gateway is IPv6, otherwise IPv4
-4. Return first available IP address
-5. Expand IPv6 addresses to full format
-
-**Use Case**: Backward compatibility with legacy code that expects IP address response from control socket.
+1. Is logged as an error (`Unknown command`)
+2. Returns `Err` to the client
 
 ## Data Flow
 
@@ -241,7 +243,6 @@ Retrieves the manager's primary network interface IP address.
 ## Thread Model
 
 **Main Thread**: Module initialization (`wm_control_main()`)
-- Loads sysinfo library for network detection
 - Calls `send_ip()` to start socket server
 - Never returns (runs forever)
 
@@ -286,7 +287,7 @@ Retrieves the manager's primary network interface IP address.
 **Attack Surface**:
 - Local socket only (no network exposure)
 - Simple command protocol (minimal parsing)
-- Limited command set (restart, reload, getip)
+- Limited command set (restart, reload)
 - No arbitrary command execution
 
 ## Migration from wazuh-execd
@@ -306,7 +307,7 @@ Retrieves the manager's primary network interface IP address.
 
 **Component**: `wm_control` module (within modulesd)
 - **Socket**: `/var/ossec/queue/sockets/control`
-- **Commands**: restart, reload, getip
+- **Commands**: restart, reload
 - **Responsibilities**:
   - Manager control only
   - No Active Response (agent-only feature)
@@ -319,7 +320,7 @@ Retrieves the manager's primary network interface IP address.
 |---------|--------------|-------------------|-------|
 | Manager restart | ✓ wcom socket | ✓ control socket | Migrated |
 | Manager reload | ✓ wcom socket | ✓ control socket | Migrated |
-| Get primary IP | ✓ wcom socket | ✓ control socket | Migrated |
+| Get primary IP | ✓ wcom socket | ✗ Removed | No longer handled by control socket |
 | Configuration serving | ✓ wcom socket | ✗ File-based | Changed approach |
 | Config validation | ✓ wcom socket | ✗ File-based | Changed approach |
 | File unmerge | ✓ wcom socket | ✗ Removed | Deprecated |

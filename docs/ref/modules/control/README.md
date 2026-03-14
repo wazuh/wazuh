@@ -6,9 +6,9 @@ The **Control Module** (`wm_control`) provides manager control operations for th
 
 - **Manager Restart**: Graceful manager restart via systemctl or wazuh-control
 - **Manager Reload**: Configuration reload without full restart
-- **Primary IP Detection**: Retrieves the manager's primary network interface IP
 - **Systemd Integration**: Automatic detection and use of systemd when available
 - **Socket-Based Control**: Unix domain socket for inter-process communication
+- **Strict Command Validation**: Unknown commands are rejected with `Err`
 
 ## Overview
 
@@ -18,6 +18,8 @@ The control module serves as the manager's control plane for operational command
 2. **Receives control commands** from API, framework, or other components
 3. **Executes system operations** (restart/reload) via systemctl or wazuh-control
 4. **Returns operation status** to the caller
+
+This module is enabled for manager builds (`TARGET=manager`) on Unix-like systems.
 
 ## Socket Interface
 
@@ -31,8 +33,7 @@ The control module serves as the manager's control plane for operational command
 |---------|-------------|----------|
 | `restart` | Restart the Wazuh manager | `ok ` (immediate) |
 | `reload` | Reload manager configuration | `ok ` (immediate) |
-| `getip` | Get primary network interface IP | IP address string |
-| *(other)* | Any unrecognized command | IP address (backward compatibility) |
+| *(other)* | Any unrecognized command | `Err` |
 
 ## How It Works
 
@@ -42,7 +43,7 @@ The control module serves as the manager's control plane for operational command
 2. **Systemd Detection**: Module checks if systemd is available
 3. **Command Selection**:
    - **With systemd**: `systemctl restart/reload wazuh-manager`
-   - **Without systemd**: `/var/ossec/bin/wazuh-control restart/reload`
+   - **Without systemd**: `bin/wazuh-control restart/reload`
 4. **Fork and Execute**: Spawns child process to execute command
 5. **Immediate Response**: Returns success immediately (non-blocking)
 
@@ -102,7 +103,7 @@ result = send_control_command('restart')  # Returns: "ok "
 **Current Architecture (v5.0)**:
 - Control functionality in `wm_control` module (within modulesd)
 - Socket: `/var/ossec/queue/sockets/control`
-- Focused commands: restart, reload, getip
+- Focused commands: restart, reload
 - Configuration reading now done directly from file (no socket needed)
 
 ## Security Considerations

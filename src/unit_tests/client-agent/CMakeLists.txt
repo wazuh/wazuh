@@ -57,14 +57,14 @@ endif()
 
 list(APPEND client-agent_names "test_notify")
 if(${TARGET} STREQUAL "winagent")
-list(APPEND client-agent_flags "-Wl,--wrap,control_check_connection,--wrap,OS_SendUnix,--wrap,OS_RecvUnix \
+list(APPEND client-agent_flags "-Wl,--wrap,OS_SendUnix,--wrap,OS_RecvUnix \
                                 -Wl,--wrap,strftime -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
                                 -Wl,--wrap=_imp__dbsync_initialize \
                                 -Wl,--wrap=getsockname -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string \
                                 -Wl,--wrap,sleep,--wrap,w_rotate_log,--wrap,getpid,--wrap,time -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 else()
-list(APPEND client-agent_flags "-Wl,--wrap,control_check_connection,--wrap,OS_SendUnix,--wrap,OS_RecvUnix \
+list(APPEND client-agent_flags "-Wl,--wrap,OS_SendUnix,--wrap,OS_RecvUnix \
                                 -Wl,--wrap=getsockname -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string \
                                 -Wl,--wrap,sleep,--wrap,w_rotate_log,--wrap,getpid,--wrap,time ${DEBUG_OP_WRAPPERS}")
 endif()

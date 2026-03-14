@@ -18,8 +18,6 @@
 
 #if defined (__linux__) || defined (__MACH__) || defined(FreeBSD) || defined(OpenBSD)
 #include "wm_control.h"
-#include "sysInfo.h"
-#include "sym_load.h"
 #include <cJSON.h>
 #include "file_op.h"
 #include "os_net.h"
@@ -36,115 +34,15 @@ const wm_context WM_CONTROL_CONTEXT = {
     .stop = NULL,
     .query = NULL,
 };
-STATIC void *sysinfo_module = NULL;
-STATIC sysinfo_networks_func sysinfo_network_ptr = NULL;
-STATIC sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
-
-/**
- * @brief Get the Primary IP address
- *
- * Resolve the host's IP as the IP address of the default route interface,
- * or the first non-loopback available interface.
- *
- * @return Pointer to a string holding the host's IP.
- * @post The user must free the returned pointer.
- */
-char* getPrimaryIP(){
-     /* Get Primary IP */
-    char * agent_ip = NULL;
-
-#if defined __linux__ || defined __MACH__ || defined(FreeBSD) || defined(OpenBSD)
-    cJSON *object;
-    if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
-        const int error_code = sysinfo_network_ptr(&object);
-        if (error_code == 0) {
-            if (object) {
-                const cJSON *iface = cJSON_GetObjectItem(object, "iface");
-                if (iface) {
-                    const int size_ids = cJSON_GetArraySize(iface);
-                    for (int i = 0; i < size_ids; i++){
-                        const cJSON *element = cJSON_GetArrayItem(iface, i);
-                        if(!element) {
-                            continue;
-                        }
-                        cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
-                        if (gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring," ")) {
-
-                            const char * primaryIpType = NULL;
-                            const char * secondaryIpType = NULL;
-
-                            if (strchr(gateway->valuestring, ':') != NULL) {
-                                //Assume gateway is IPv6. IPv6 IP will be prioritary
-                                primaryIpType = "IPv6";
-                                secondaryIpType = "IPv4";
-                            } else {
-                                //Assume gateway is IPv4. IPv4 IP will be prioritary
-                                primaryIpType = "IPv4";
-                                secondaryIpType = "IPv6";
-                            }
-
-                            const cJSON * ip = cJSON_GetObjectItem(element, primaryIpType);
-                            if (NULL == ip) {
-                                ip = cJSON_GetObjectItem(element, secondaryIpType);
-                                if (NULL == ip) {
-                                    continue;
-                                }
-                            }
-                            const int size_proto_interfaces = cJSON_GetArraySize(ip);
-                            for (int j = 0; j < size_proto_interfaces; ++j) {
-                                const cJSON *element_ip = cJSON_GetArrayItem(ip, j);
-                                if(!element_ip) {
-                                    continue;
-                                }
-                                cJSON *address = cJSON_GetObjectItem(element_ip, "address");
-                                if (address && cJSON_GetStringValue(address))
-                                {
-                                    os_strdup(address->valuestring, agent_ip);
-                                    break;
-                                }
-                            }
-                            if (agent_ip) {
-                                break;
-                            }
-                        }
-                    }
-                }
-                sysinfo_free_result_ptr(&object);
-            }
-        }
-        else {
-            mterror(WM_CONTROL_LOGTAG, "Unable to get system network information. Error code: %d.", error_code);
-        }
-    }
-
-#endif
-
-    if (agent_ip && (strchr(agent_ip, ':') != NULL)) {
-        os_realloc(agent_ip, IPSIZE + 1, agent_ip);
-        OS_ExpandIPv6(agent_ip, IPSIZE);
-    }
-
-    return agent_ip;
-}
 
 
 void *wm_control_main(){
     mtinfo(WM_CONTROL_LOGTAG, "Starting control thread.");
-    if (sysinfo_module = so_get_module_handle("sysinfo"), sysinfo_module)
-    {
-        sysinfo_free_result_ptr = so_get_function_sym(sysinfo_module, "sysinfo_free_result");
-        sysinfo_network_ptr = so_get_function_sym(sysinfo_module, "sysinfo_networks");
-    }
-
     send_ip();
-
     return NULL;
 }
 
 void wm_control_destroy(){
-    if (sysinfo_module){
-        so_free_library(sysinfo_module);
-    }
 }
 
 wmodule *wm_control_read(){
@@ -255,11 +153,8 @@ size_t wm_control_dispatch(char *command, char **output) {
         return wm_control_execute_action("reload", output);
 
     } else {
-        // Default: return IP for backward compatibility (getip, host_ip, or any other message)
-        *output = getPrimaryIP();
-        if (!*output) {
-            os_strdup("Err", *output);
-        }
+        mterror(WM_CONTROL_LOGTAG, "Unknown command: '%s'", command);
+        os_strdup("Err", *output);
         return strlen(*output);
     }
 }

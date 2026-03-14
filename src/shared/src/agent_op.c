@@ -15,6 +15,8 @@
 #include "authd-config.h"
 #include "auth.h"
 #include "wazuhdb_queries_op.h"
+#include "sysInfo.h"
+#include "sym_load.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
@@ -798,15 +800,85 @@ cJSON* w_force_options_to_json(authd_force_options_t *force_options){
     return j_force_options;
 }
 
-/* Connect to the control socket if available */
-#if defined (__linux__) || defined (__MACH__) || defined(sun) || defined(FreeBSD) || defined(OpenBSD)
-int control_check_connection() {
-    int sock = OS_ConnectUnixDomain(CONTROL_SOCK, SOCK_STREAM, OS_SIZE_128);
+/* Get primary IP address using sysinfo */
+#if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
+static void *sysinfo_module_handle = NULL;
+sysinfo_networks_func sysinfo_network_ptr = NULL;
+sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 
-    if (sock < 0) {
-        return -1;
-    } else {
-        return sock;
+char* getPrimaryIP(void) {
+    char * agent_ip = NULL;
+    cJSON *object;
+
+    if (!sysinfo_module_handle) {
+        if (sysinfo_module_handle = so_get_module_handle("sysinfo"), sysinfo_module_handle) {
+            sysinfo_free_result_ptr = so_get_function_sym(sysinfo_module_handle, "sysinfo_free_result");
+            sysinfo_network_ptr = so_get_function_sym(sysinfo_module_handle, "sysinfo_networks");
+        }
     }
+
+    if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
+        const int error_code = sysinfo_network_ptr(&object);
+        if (error_code == 0) {
+            if (object) {
+                const cJSON *iface = cJSON_GetObjectItem(object, "iface");
+                if (iface) {
+                    const int size_ids = cJSON_GetArraySize(iface);
+                    for (int i = 0; i < size_ids; i++) {
+                        const cJSON *element = cJSON_GetArrayItem(iface, i);
+                        if (!element) {
+                            continue;
+                        }
+                        cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
+                        if (gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring, " ")) {
+                            const char *primaryIpType = NULL;
+                            const char *secondaryIpType = NULL;
+
+                            if (strchr(gateway->valuestring, ':') != NULL) {
+                                primaryIpType = "IPv6";
+                                secondaryIpType = "IPv4";
+                            } else {
+                                primaryIpType = "IPv4";
+                                secondaryIpType = "IPv6";
+                            }
+
+                            const cJSON *ip = cJSON_GetObjectItem(element, primaryIpType);
+                            if (NULL == ip) {
+                                ip = cJSON_GetObjectItem(element, secondaryIpType);
+                                if (NULL == ip) {
+                                    continue;
+                                }
+                            }
+                            const int size_proto_interfaces = cJSON_GetArraySize(ip);
+                            for (int j = 0; j < size_proto_interfaces; ++j) {
+                                const cJSON *element_ip = cJSON_GetArrayItem(ip, j);
+                                if (!element_ip) {
+                                    continue;
+                                }
+                                cJSON *address = cJSON_GetObjectItem(element_ip, "address");
+                                if (address && cJSON_GetStringValue(address)) {
+                                    os_strdup(address->valuestring, agent_ip);
+                                    break;
+                                }
+                            }
+                            if (agent_ip) {
+                                break;
+                            }
+                        }
+                    }
+                }
+                sysinfo_free_result_ptr(&object);
+            }
+        } else {
+            mdebug1("Unable to get system network information. Error code: %d.", error_code);
+        }
+    }
+
+    if (agent_ip && (strchr(agent_ip, ':') != NULL)) {
+        os_realloc(agent_ip, IPSIZE + 1, agent_ip);
+        OS_ExpandIPv6(agent_ip, IPSIZE);
+    }
+
+    return agent_ip;
 }
 #endif
