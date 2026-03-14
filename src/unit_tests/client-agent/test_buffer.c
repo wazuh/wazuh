@@ -44,11 +44,13 @@ static int teardown_group(void **state) {
 }
 
 // The mock function for getDefine_Int
+#ifndef TEST_WINAGENT
 int __wrap_getDefine_Int(const char *category, const char *name, int min, int max) {
     function_called();
 
     return mock_type(int);
 }
+#endif
 
 void __wrap__minfo(const char *file, int line, const char *func, const char *format, ...) {
         function_called();

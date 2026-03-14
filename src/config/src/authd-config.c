@@ -42,12 +42,9 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     static const char *xml_port = "port";
     static const char *xml_ipv6 = "ipv6";
     static const char *xml_use_source_ip = "use_source_ip";
-    static const char *xml_force_insert = "force_insert";       // Deprecated since 4.3.0
-    static const char *xml_force_time = "force_time";           // Deprecated since 4.3.0
     static const char *xml_force = "force";
     static const char *xml_purge = "purge";
     static const char *xml_use_password = "use_password";
-    static const char *xml_limit_maxagents = "limit_maxagents";
     static const char *xml_ciphers = "ciphers";
     static const char *xml_ssl_agent_ca = "ssl_agent_ca";
     static const char *xml_ssl_verify_host = "ssl_verify_host";
@@ -89,10 +86,6 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     config->force_options.disconnected_time_enabled = true;
     config->force_options.disconnected_time = 3600;
     config->force_options.after_registration_time = 3600;
-
-    short legacy_force_insert = -1;
-    int legacy_force_time = -1;
-    bool new_force_read = false;
 
     if (!node)
         return 0;
@@ -138,26 +131,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
 
             config->flags.use_source_ip = b;
-        } else if (!strcmp(node[i]->element, xml_force_insert)) {
-            mwarn("The <%s> tag is deprecated. Use <%s> instead.", xml_force_insert, xml_force);
-            short b = eval_bool(node[i]->content);
-            if (b < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return OS_INVALID;
-            }
-            legacy_force_insert = b;
-        } else if (!strcmp(node[i]->element, xml_force_time)) {
-            mwarn("The <%s> tag is deprecated. Use <%s> instead.", xml_force_time, xml_force);
-            char *end;
-            int b = strtol(node[i]->content, &end, 10);
-            if (b < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return OS_INVALID;
-            }
-            legacy_force_time = b;
         } else if (!strcmp(node[i]->element, xml_force)) {
-            new_force_read = true;
-
             xml_node **chld_node = NULL;
 
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
@@ -208,8 +182,6 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             authd_read_key_request(children, config);
             OS_ClearNode(children);
 #endif
-        } else if (!strcmp(node[i]->element, xml_limit_maxagents)) {
-            mdebug1("The <%s> tag is deprecated since version 4.1.0.", xml_limit_maxagents);
         } else if (!strcmp(node[i]->element, xml_ciphers)) {
             free(config->ciphers);
             config->ciphers = strdup(node[i]->content);
@@ -254,28 +226,6 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             merror(XML_INVELEM, node[i]->element);
             return OS_INVALID;
         }
-    }
-
-    if (!new_force_read) {
-        if (legacy_force_insert != -1) {
-            config->force_options.enabled = legacy_force_insert;
-
-            mdebug1("Setting <force><enabled> tag to %s to comply with the legacy <%s> option found.",
-                    legacy_force_insert ? "'yes'" : "'no'", xml_force_insert);
-        }
-        if (legacy_force_time != -1) {
-            if (legacy_force_time == 0) {
-                config->force_options.disconnected_time_enabled = false;
-            }
-            config->force_options.disconnected_time = legacy_force_time;
-
-            mdebug1("Setting <force><disconnected_time> tag to '%d' to comply with the legacy <%s> option found.",
-                legacy_force_time, xml_force_time);
-        }
-        mdebug1("The tag <force><after_registration_time> is not defined. Applied default value: '%ld'",
-                config->force_options.after_registration_time);
-        mdebug1("The tag <force><key_mismatch> is not defined. Applied default value: '%s'",
-                config->force_options.key_mismatch ? "true" : "false");
     }
 
     return 0;

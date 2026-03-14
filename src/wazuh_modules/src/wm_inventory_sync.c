@@ -82,7 +82,7 @@
              os_free(manager_node_name);
 
              // Add max sessions from internal_options (inventory_sync specific)
-             int max_sessions = getDefine_Int("wazuh_modules", "max_sessions", 1, 100000);
+             int max_sessions = getDefine_Int_default("wazuh_modules", "max_sessions", 1, 100000, 1000);
              cJSON_AddNumberToObject(config_json, "maxSessions", max_sessions);
 
              wm_inventory_sync_log_config(config_json);

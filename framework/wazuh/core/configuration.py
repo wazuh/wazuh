@@ -804,15 +804,15 @@ def parse_internal_options(high_name: str, low_name: str) -> str:
 
         return config
 
-    if not os_path.exists(common.INTERNAL_OPTIONS_CONF):
-        raise WazuhInternalError(1107)
-
     # Check if the option exists at local internal options
     if os_path.exists(common.LOCAL_INTERNAL_OPTIONS_CONF):
         try:
             return get_config(common.LOCAL_INTERNAL_OPTIONS_CONF).get('root', f'{high_name}.{low_name}')
         except NoOptionError:
             pass
+
+    if not os_path.exists(common.INTERNAL_OPTIONS_CONF):
+        raise WazuhInternalError(1107)
 
     try:
         return get_config(common.INTERNAL_OPTIONS_CONF).get('root', f'{high_name}.{low_name}')

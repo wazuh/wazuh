@@ -25,6 +25,19 @@ int __wrap_getDefine_Int(__attribute__((unused)) const char *high_name,
     return mock();
 }
 
+int __wrap_getDefine_Int_default(__attribute__((unused)) const char *high_name,
+                                 __attribute__((unused)) const char *low_name,
+                                 __attribute__((unused)) int min,
+                                 __attribute__((unused)) int max,
+                                 __attribute__((unused)) int default_val) {
+    // For SCA
+    if (!strcmp(low_name, "commands_timeout")) {
+        return 300;
+    }
+
+    return mock();
+}
+
 int __wrap_OS_IsValidIP(const char *ip_address, os_ip *final_ip) {
     check_expected(ip_address);
     check_expected(final_ip);

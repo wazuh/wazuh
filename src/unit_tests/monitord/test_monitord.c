@@ -381,7 +381,7 @@ void test_MonitordConfig_success(void **state) {
     int no_agents = 0;
     short day_wait = -1;
 
-    will_return_count(__wrap_getDefine_Int, 1, -1);
+    will_return_count(__wrap_getDefine_Int_default, 1, -1);
 
     expect_value(__wrap_ReadConfig, modules, CGLOBAL);
     expect_string(__wrap_ReadConfig, cfgfile, cfg);
@@ -411,7 +411,7 @@ void test_MonitordConfig_fail(void **state) {
     int no_agents = 0;
     short day_wait = -1;
 
-    will_return_count(__wrap_getDefine_Int, 1, -1);
+    will_return_count(__wrap_getDefine_Int_default, 1, -1);
 
     expect_value(__wrap_ReadConfig, modules, CGLOBAL);
     expect_string(__wrap_ReadConfig, cfgfile, cfg);

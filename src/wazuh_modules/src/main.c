@@ -41,7 +41,7 @@ int main(int argc, char **argv)
     }
 
     wmodule *cur_module;
-    wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
+    wm_debug_level = getDefine_Int_default("wazuh_modules", "debug", 0, 2, 0);
 
     // Get command line options
 
@@ -81,7 +81,7 @@ int main(int argc, char **argv)
     mdebug1(WAZUH_HOMEDIR, home_path);
     os_free(home_path);
 
-    int nofile = getDefine_Int("wazuh_modules", "rlimit_nofile", 8192, 1048576);
+    int nofile = getDefine_Int_default("wazuh_modules", "rlimit_nofile", 8192, 1048576, 8192);
     struct rlimit rlimit = { .rlim_cur=(rlim_t)nofile, .rlim_max=(rlim_t)nofile };
 
     if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {

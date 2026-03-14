@@ -580,8 +580,8 @@ void * wm_sca_main(wm_sca_t * data) {
         pthread_exit(NULL);
     }
 
-    data->commands_timeout = getDefine_Int("sca", "commands_timeout", 1, 300);
-    data->remote_commands = getDefine_Int("sca", "remote_commands", 0, 1);
+    data->commands_timeout = getDefine_Int_default("sca", "commands_timeout", 1, 300, 30);
+    data->remote_commands = getDefine_Int_default("sca", "remote_commands", 0, 1, 0);
 
     if (sca_init_ptr) {
         sca_init_ptr();
