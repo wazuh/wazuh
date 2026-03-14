@@ -43,10 +43,6 @@ CONF_SECTIONS = MappingProxyType({
         'type': 'merge',
         'list_options': ['white_list']
     },
-    'cis-cat': {
-        'type': 'merge',
-        'list_options': ['content']
-    },
     'syscollector': {
         'type': 'merge',
         'list_options': []
@@ -75,10 +71,6 @@ CONF_SECTIONS = MappingProxyType({
     'osquery': {
         'type': 'merge',
         'list_options': ['pack']
-    },
-    'labels': {
-        'type': 'duplicate',
-        'list_options': ['label']
     },
     'sca': {
         'type': 'merge',
@@ -200,6 +192,10 @@ def _read_option(section_name: str, opt: str) -> tuple:
                 json_path = json_attribs.copy()
                 json_path['path'] = path.strip()
                 opt_value.append(json_path)
+    elif section_name == 'labels' and opt_name == 'label':
+        opt_value = {'value': opt.text}
+        for a in opt.attrib:
+            opt_value[a] = opt.attrib[a]
     elif (section_name == 'syscheck' and opt_name in ('synchronization', 'whodata')) or \
         (section_name == 'cluster' and opt_name == 'haproxy_helper'):
         opt_value = {}
@@ -211,10 +207,6 @@ def _read_option(section_name: str, opt: str) -> tuple:
             (section_name == 'sca' and opt_name == 'policies') or \
             (section_name == 'indexer' and opt_name == 'hosts')    :
         opt_value = [child.text for child in opt]
-    elif section_name == 'labels' and opt_name == 'label':
-        opt_value = {'value': opt.text}
-        for a in opt.attrib:
-            opt_value[a] = opt.attrib[a]
     elif section_name == 'localfile' and opt_name == 'query':
         # Remove new lines, empty spaces and backslashes
         regex = rf'<{opt_name}>(.*)</{opt_name}>'

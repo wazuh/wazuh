@@ -55,7 +55,6 @@ def test_insert(json_dst, section_name, option, value):
 
 
 @pytest.mark.parametrize("json_dst, section_name, section_data", [
-    ({'labels': []}, 'labels', ['label']),
     ({'global': {'label': 5}}, 'global', {'label': 4}),
     ({'global': {'white_list': []}}, 'global', {'white_list': [4], 'label2': 5}),
     ({'cluster': {'label': 5}}, 'cluster', {'label': 4})
