@@ -1,0 +1,17 @@
+{
+  "query": {
+    "range": {
+      "offset": {
+        "gt": 1001
+      }
+    }
+  },
+  "sort": [
+    {
+      "offset": "asc"
+    },
+    {
+      "_id": "asc"
+    }
+  ]
+}

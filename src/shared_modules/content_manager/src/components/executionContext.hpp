@@ -217,6 +217,9 @@ public:
     {
         logDebug1(WM_CONTENTUPDATER, "ExecutionContext - Starting process");
 
+        const bool isIndexerContentSource =
+            context->configData.value("contentSource", std::string {}) == "indexer";
+
         // Check if the database path is given and not empty.
         if (context->configData.contains("databasePath") &&
             !context->configData.at("databasePath").get<std::string>().empty())
@@ -224,7 +227,11 @@ public:
             createRocksDB(*context);
         }
 
-        createOutputFolder(*context);
+        if (!isIndexerContentSource)
+        {
+            createOutputFolder(*context);
+        }
+
         setHttpUserAgent(*context);
 
         return AbstractHandler<std::shared_ptr<UpdaterBaseContext>>::handleRequest(std::move(context));

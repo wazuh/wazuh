@@ -1,0 +1,36 @@
+{
+  "offset": 1003,
+  "document": {
+    "dataType": "CVE_RECORD",
+    "dataVersion": "5.0",
+    "cveMetadata": {
+      "cveId": "CVE-2024-9999",
+      "assignerOrgId": "f16605f4-842c-4b52-a98e-05e09d1b3e7b",
+      "assignerShortName": "linux",
+      "datePublished": "2024-03-01T00:00:00",
+      "dateUpdated": "2024-03-05T00:00:00",
+      "state": "REJECTED"
+    },
+    "containers": {
+      "cna": {
+        "providerMetadata": {
+          "orgId": "f16605f4-842c-4b52-a98e-05e09d1b3e7b",
+          "shortName": "linux",
+          "dateUpdated": "2024-03-05T00:00:00"
+        },
+        "descriptions": [
+          {
+            "lang": "en",
+            "value": "Rejected: duplicate of CVE-2024-1234."
+          }
+        ],
+        "rejectedReasons": [
+          {
+            "lang": "en",
+            "value": "This CVE ID has been rejected or withdrawn by its CVE Numbering Authority."
+          }
+        ]
+      }
+    }
+  }
+}
