@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -90,17 +91,24 @@ func main() {
 		log.Fatalf("No events loaded from %s", cfg.InputDir)
 	}
 
+	// Shuffle events so they are not sent in file-read order
+	rand.Shuffle(len(events), func(i, j int) {
+		events[i], events[j] = events[j], events[i]
+	})
+	fmt.Printf("  Events shuffled.\n")
+
 	// Truncate output file if requested
 	if cfg.Truncate {
 		truncateFile(cfg.OutputFile)
 	}
 
-	initialLines := safeLineCount(cfg.OutputFile)
+	watcher := NewLineWatcher(cfg.OutputFile)
+	initialLines := watcher.Count()
 	client := unixHTTPClient(SocketPath)
 
 	printHeader(cfg, len(events), initialLines)
 
-	report := run(cfg, client, events, initialLines)
+	report := run(cfg, client, events, initialLines, watcher)
 	printReport(report)
 
 	if cfg.CSVFile != "" {
@@ -139,7 +147,7 @@ func validateConfig(c Config) {
 // Benchmark core
 // ---------------------------------------------------------------------------
 
-func run(cfg Config, client *http.Client, events []string, initialLines int) Report {
+func run(cfg Config, client *http.Client, events []string, initialLines int, watcher *LineWatcher) Report {
 	report := Report{
 		Cfg:          cfg,
 		EventsLoaded: len(events),
@@ -210,7 +218,7 @@ func run(cfg Config, client *http.Client, events []string, initialLines int) Rep
 		<-ticker.C
 		second++
 
-		cur := safeLineCount(cfg.OutputFile)
+		cur := watcher.Count() // incremental: reads only new bytes
 		pSec := cur - prevProcessed
 		sSec := int(sentThisSec.Swap(0))
 		prevProcessed = cur
@@ -247,7 +255,7 @@ func run(cfg Config, client *http.Client, events []string, initialLines int) Rep
 
 	report.EndTime = time.Now()
 	report.TotalSent = int(totalSent.Load())
-	report.TotalProcessed = safeLineCount(cfg.OutputFile) - initialLines
+	report.TotalProcessed = watcher.Count() - initialLines
 
 	mu.Lock()
 	report.History = history
@@ -373,21 +381,69 @@ func readLines(path string) []string {
 // File utilities
 // ---------------------------------------------------------------------------
 
-func safeLineCount(name string) int {
+// LineWatcher tracks the byte offset of a file so that successive calls to
+// Count() only read *new* bytes appended since the last call.  This avoids
+// re-reading the entire (potentially multi-GB) output file every second,
+// which was the root cause of ticker-drop and inflated per-second values.
+type LineWatcher struct {
+	path   string
+	offset int64
+	count  int
+}
+
+// NewLineWatcher creates a watcher starting from the current end of *path*.
+// The initial line count is computed once (full read), and from that point
+// on, Count() only reads new data.
+func NewLineWatcher(path string) *LineWatcher {
+	w := &LineWatcher{path: path}
+	w.count = fullLineCount(path)
+	if info, err := os.Stat(path); err == nil {
+		w.offset = info.Size()
+	}
+	return w
+}
+
+// Count returns the current total line count by reading only bytes appended
+// since the previous call.
+func (w *LineWatcher) Count() int {
+	f, err := os.Open(w.path)
+	if err != nil {
+		return w.count
+	}
+	defer f.Close()
+
+	if _, err := f.Seek(w.offset, io.SeekStart); err != nil {
+		return w.count
+	}
+
+	buf := make([]byte, 64*1024)
+	sep := []byte{'\n'}
+	for {
+		n, err := f.Read(buf)
+		w.count += bytes.Count(buf[:n], sep)
+		w.offset += int64(n)
+		if err == io.EOF {
+			return w.count
+		}
+		if err != nil {
+			return w.count
+		}
+	}
+}
+
+// fullLineCount reads the entire file and counts newlines.  Used only once
+// at startup to establish the baseline.
+func fullLineCount(name string) int {
 	if _, err := os.Stat(name); os.IsNotExist(err) {
 		return 0
 	}
-	return lineCount(name)
-}
-
-func lineCount(name string) int {
 	f, err := os.Open(name)
 	if err != nil {
 		return 0
 	}
 	defer f.Close()
 
-	buf := make([]byte, 32*1024)
+	buf := make([]byte, 64*1024)
 	sep := []byte{'\n'}
 	count := 0
 	for {
