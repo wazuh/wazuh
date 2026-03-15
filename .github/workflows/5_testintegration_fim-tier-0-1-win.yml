@@ -47,9 +47,55 @@ jobs:
         with:
           name: winagent
           path: src/winagent
+  package:
+    needs: build
+    runs-on: windows-2025
+    name: Build wazuh installer
+    outputs:
+      package-artifact-name: ${{ steps.package-metadata.outputs.package_artifact_name }}
+      package-file-name: ${{ steps.package-metadata.outputs.package_file_name }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Add WiX toolkit to PATH
+        shell: bash
+        run: echo "${WIX}bin" >> $GITHUB_PATH
+      # Download the compressed winagent build.
+      - name: Download Artifact winagent
+        uses: actions/download-artifact@v4
+        with:
+          name: winagent
+          path: C:\winagent\
+      # Decompress the winagent files.
+      - name: Decompress wazuh
+        run: |
+          Expand-Archive -LiteralPath C:\winagent\wazuh.zip -DestinationPath C:\
+      - name: Set package metadata
+        id: package-metadata
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw VERSION.json | ConvertFrom-Json).version
+          $revision = "0"
+          $packageFileName = "wazuh-agent-$version-$revision.msi"
+          $packageArtifactName = "winagent-package-$version-$revision"
+
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "revision=$revision" >> $env:GITHUB_OUTPUT
+          "package_file_name=$packageFileName" >> $env:GITHUB_OUTPUT
+          "package_artifact_name=$packageArtifactName" >> $env:GITHUB_OUTPUT
+      # Build the winagent installer once and reuse it across shards.
+      - name: Build wazuh installer
+        run: |
+          cd  C:\wazuh\src\win32
+          .\wazuh-installer-build-msi.bat "${{ steps.package-metadata.outputs.version }}" "${{ steps.package-metadata.outputs.revision }}"
+      - name: Upload Artifact wazuh package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package-metadata.outputs.package_artifact_name }}
+          path: C:\wazuh\src\win32\${{ steps.package-metadata.outputs.package_file_name }}
   # Execute the tests on windows.
   run-test:
-    needs: build
+    needs: package
     strategy:
       fail-fast: false
       matrix:
@@ -71,29 +117,16 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      - name: Add WiX toolkit to PATH
-        shell: bash
-        run: echo "${WIX}bin" >> $GITHUB_PATH
-      # Download the compressed winagent build.
-      - name: Download Artifact winagent
+      - name: Download Artifact wazuh package
         uses: actions/download-artifact@v4
         with:
-          name: winagent
-          path: C:\winagent\
-      # Decompress the winagent files.
-      - name: Decompress wazuh
-        run: |
-          Expand-Archive -LiteralPath C:\winagent\wazuh.zip -DestinationPath C:\
-      # Build the winagent installer.
-      - name: Build wazuh installer
-        run: |
-          cd  C:\wazuh\src\win32
-          .\wazuh-installer-build-msi.bat
+          name: ${{ needs.package.outputs.package-artifact-name }}
+          path: C:\wazuh-package\
       # Install the windows agent.
       - name: Install wazuh agent
         run: |
-          cd  C:\wazuh\src\win32
-          .\wazuh-agent--.msi /q WAZUH_MANAGER="127.0.0.1"
+          cd  C:\wazuh-package
+          .\${{ needs.package.outputs.package-file-name }} /q WAZUH_MANAGER="127.0.0.1"
       # Download and install integration tests framework.
       - name: Download and install qa-integration-framework
         shell: pwsh
