@@ -11,7 +11,9 @@
 - The `run-test` job was split into a **2-shard matrix**:
   - `tier-0` → `pytest --tier 0`
   - `tier-1` → `pytest --tier 1`
-- Kept a **single build job** and in-workflow artifact handoff.
+- Added a **single package job** that builds the MSI once and shares it across both shards.
+- Kept the package handoff **inside the same workflow run**, so the test shards install the artifact built from that exact execution.
+- Resolved the MSI name from `VERSION.json` before packaging, removing the dependency on the placeholder `wazuh-agent--.msi` path.
 - Updated failed-results artifact naming to include shard and avoid collisions.
 
 ### Baseline evidence (before changes)
@@ -42,9 +44,9 @@ Initial assessment:
 ### Provisional decision
 - **Tier 0-1 parallelization:** Implemented, pending runtime confirmation from post-change runs.
 - **Tier 2 parallelization:** Pending additional measurements.
-- **Builder artifact reuse:** Pending; likely discard unless strong measurable gain is demonstrated.
+- **Builder artifact reuse:** Pending; the workflow already avoids rebuilding the MSI per shard, so cross-workflow reuse should only be added if it shows a clear extra gain.
 
 ### Trade-offs
 - Expected lower wall-clock execution time for tier 0-1.
 - Increased concurrent runner usage and slightly higher workflow complexity.
-- Risk managed by keeping build stage unchanged and using simple tier-based split.
+- Risk managed by packaging once per workflow run and using a simple tier-based split for the test stage.
