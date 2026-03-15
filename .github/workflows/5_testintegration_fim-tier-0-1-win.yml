@@ -153,7 +153,7 @@ jobs:
       - name: Run fim integration tests
         run: |
           NET START wazuh
-          cd C:\wazuh\tests\integration
+          cd $env:GITHUB_WORKSPACE\tests\integration
           $env:GITHUB_SHA="${{ github.sha }}"; $env:GITHUB_REF_NAME="$env:BRANCH_NAME"; python -m pytest ${{ matrix.pytest_tier_args }} test_fim\ --html=results.html --self-contained-html
       # Upload the tests result html as an artifact
       - name: Upload failed test results
@@ -161,5 +161,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: fim-tier-0-1-win-${{ matrix.shard_name }}-test-results-${{ github.run_id }}
-          path: C:\wazuh\tests\integration\results.html
+          path: ${{ github.workspace }}\tests\integration\results.html
           retention-days: 7
