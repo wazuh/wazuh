@@ -503,10 +503,6 @@ rm -fr %{buildroot}
 /usr/lib/systemd/system/wazuh-manager.service
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}
 %attr(440, root, wazuh-manager) %{_localstatedir}/VERSION.json
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/active-response
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/active-response/bin
-%attr(750, root, wazuh-manager) %{_localstatedir}/active-response/bin/kaspersky.py
-%attr(750, root, wazuh-manager) %{_localstatedir}/active-response/bin/restart.sh
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/api
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/api/configuration
 %attr(660, root, wazuh-manager) %config(noreplace) %{_localstatedir}/api/configuration/api.yaml
