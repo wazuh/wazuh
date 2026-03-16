@@ -284,7 +284,26 @@ public:
     {
         logDebug1(WM_CONTENTUPDATER, "IndexerDownloader - Starting process");
 
-        const auto lastCursor = getStoredCursor(*context);
+        auto lastCursor = getStoredCursor(*context);
+
+        // Validate that the stored cursor is a valid integer before using it for an
+        // incremental range query. A corrupt RocksDB entry could cause std::stoull to
+        // throw std::invalid_argument, which would loop on every scheduler cycle.
+        // In that case, discard the cursor and fall back to a full initial load.
+        if (!lastCursor.empty())
+        {
+            try
+            {
+                std::stoull(lastCursor);
+            }
+            catch (const std::exception&)
+            {
+                logWarn(WM_CONTENTUPDATER,
+                        "IndexerDownloader: stored cursor '%s' is not a valid integer — falling back to initial load.",
+                        lastCursor.c_str());
+                lastCursor.clear();
+            }
+        }
 
         if (lastCursor.empty())
         {
