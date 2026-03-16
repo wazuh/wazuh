@@ -234,7 +234,6 @@ TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'task')
 WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
 WDB_HTTP_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wdb-http')
 WMODULES_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wmodules')
-QUEUE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'queue')
 KEY_STORE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'keystore')
 
 # ========================================== INSTALLATION UID PATH ====================================================

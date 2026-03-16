@@ -11,9 +11,6 @@ from pythonjsonlogger import jsonlogger
 from api.configuration import api_conf
 from api.api_exception import APIError
 
-# Compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
-request_pattern = re.compile(r'\[.+]|\s+\*\s+')
-
 logger = logging.getLogger('wazuh-api')
 
 # Variable used to specify an unknown user
