@@ -36,13 +36,13 @@
 #define REALTIME_EVENT_BUFFER   (2048 * (REALTIME_EVENT_SIZE + 16))
 
 int realtime_start() {
-    OSListNode *node_it;
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
 
     syscheck.realtime->dirtb = OSHash_Create();
     if (syscheck.realtime->dirtb == NULL) {
         merror(MEM_ERROR, errno, strerror(errno));
-        goto error;
+        os_free(syscheck.realtime);
+        return -1;
     }
 
     OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free);
@@ -50,23 +50,12 @@ int realtime_start() {
     syscheck.realtime->fd = inotify_init();
     if (syscheck.realtime->fd < 0) {
         merror(FIM_ERROR_INOTIFY_INITIALIZE);
-        goto error;
+        OSHash_Free(syscheck.realtime->dirtb);
+        os_free(syscheck.realtime);
+        return -1;
     }
 
     return (0);
-
-error:
-    w_rwlock_wrlock(&syscheck.directories_lock);
-    OSList_foreach(node_it, syscheck.directories) {
-        directory_t *dir_it = node_it->data;
-
-        if (dir_it->options & REALTIME_ACTIVE) {
-            dir_it->options &= ~ REALTIME_ACTIVE;
-            dir_it->options |= SCHEDULED_ACTIVE;
-        }
-    }
-    w_rwlock_unlock(&syscheck.directories_lock);
-    return -1;
 }
 
 /* Add a directory to real time checking */
@@ -558,19 +547,8 @@ int realtime_start() {
 
     syscheck.realtime->dirtb = OSHash_Create();
     if (syscheck.realtime->dirtb == NULL) {
-        OSListNode *node_it;
-
         merror(MEM_ERROR, errno, strerror(errno));
-
-        w_rwlock_wrlock(&syscheck.directories_lock);
-        OSList_foreach(node_it, syscheck.directories) {
-            directory_t *dir_it = (directory_t *)node_it->data;
-            if (dir_it->options & REALTIME_ACTIVE) {
-                dir_it->options &= ~ REALTIME_ACTIVE;
-                dir_it->options |= SCHEDULED_ACTIVE;
-            }
-        }
-        w_rwlock_unlock(&syscheck.directories_lock);
+        os_free(syscheck.realtime);
         return(-1);
     }
     OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free_win32rtfim_data);

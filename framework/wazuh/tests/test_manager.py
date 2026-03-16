@@ -400,3 +400,23 @@ def test_update_ossec_conf_ko(validate_conf_mock, write_mock, validate_xml_mock,
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1125
     move_mock.assert_called_once()
+
+@pytest.mark.asyncio
+@patch('wazuh.manager.query_update_check_service_core')
+async def test_query_update_check_service(query_update_check_service_core):
+    """Test query_update_check_service() function works as expected."""
+    mock_response = {
+        'uuid': '71e94127-3823-4568-a0be-d96202bc2a3e',
+        'last_check_date': '2026-03-12T14:10:04.575816+00:00',
+        'current_version': 'v4.14.4',
+        'update_check': 'true',
+        'last_available_major': {},
+        'last_available_minor': {},
+        'last_available_patch': {},
+        'error': 0
+    }
+
+    query_update_check_service_core.return_value = mock_response
+    result = await query_update_check_service(installation_uid='71e94127-3823-4568-a0be-d96202bc2a3e')
+    query_update_check_service_core.assert_called_once()
+    assert result == mock_response

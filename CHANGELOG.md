@@ -5,7 +5,39 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.5]
 
+### Agent
+
+#### Fixed
+
+- Fixed rootcheck false positive for /dev/.blkid.tab. ([34734](https://github.com/wazuh/wazuh/pull/34734))
+- Fixed ORDER_REVERSAL deadlocks in FIM. ([34735](https://github.com/wazuh/wazuh/pull/34735))
+- Fixed Roundcube decoder regex to prevent srcip truncation in "Failed login ... in session" logs. ([34793](https://github.com/wazuh/wazuh/pull/34793))
+
+#### Changed
+
+- Changed RHEL init script with SUSE variant on SLES 11. ([34563](https://github.com/wazuh/wazuh/pull/34563))
+- Changed service check from WMI to sc.exe. ([34543](https://github.com/wazuh/wazuh/pull/34543))
+- Changed windows syscollector to include command arguments. ([34727](https://github.com/wazuh/wazuh/pull/34727))
+
+### RESTful API
+
+#### Fixed
+
+- Fixed `allow_higher_versions` validation in API `upload_configuration`. ([34905](https://github.com/wazuh/wazuh/pull/34905))
+
+### Other
+
+#### Changed
+
+- Updated dependencies `cryptography` to 46.0.5, `Werkzeug` to 3.1.6, `pip` to 26.0.1 and `wheel` to 0.46.3. ([#34907](https://github.com/wazuh/wazuh/pull/34907))
+
 ## [v4.14.4]
+
+### Manager
+
+#### Fixed
+
+- Fixed heap-based null WRITE Buffer Underflows. ([34658](https://github.com/wazuh/wazuh/pull/34658))
 
 ### Agent
 
@@ -18,6 +50,14 @@ All notable changes to this project will be documented in this file.
 - Retained MSI installer log after Windows agent upgrade to improve troubleshooting visibility. ([#34517](https://github.com/wazuh/wazuh/pull/34517))
 - Fixed incorrect Windows 11 edition detection after upgrading the agent to version 4.14.3. ([#34530](https://github.com/wazuh/wazuh/pull/34530))
 - Fixed macOS agent crash during syscollector reload caused by invalid `pthread_cond_destroy()` usage. ([#34274](https://github.com/wazuh/wazuh/pull/34274))
+- Fixed Windows OS edition detection. ([34540](https://github.com/wazuh/wazuh/pull/34540))
+- Fix pthread_mutex_destroy invalid argument error on AIX in syscollector. ([#34900](https://github.com/wazuh/wazuh/pull/34900))
+
+#### Changed
+
+- Changed msi_output extension from txt to log. ([34541](https://github.com/wazuh/wazuh/pull/34541))
+- Changed to unsigned char in print_hex_string. ([34602](https://github.com/wazuh/wazuh/pull/34602))
+- Changed sync primitive disposal to stop and soften teardown failures. ([34552](https://github.com/wazuh/wazuh/pull/34552))
 
 ### RESTful API
 
@@ -25,6 +65,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixed timestamps in the `/agents/upgrade_result` endpoint to return accurate UTC time. ([#34176](https://github.com/wazuh/wazuh/pull/34176))
 - Improved cluster file synchronization path handling by adding safe path joins. ([#34464](https://github.com/wazuh/wazuh/pull/34464))
+- Fixed API login race condition- ([34459](https://github.com/wazuh/wazuh/pull/34459))
 
 ### Other
 
