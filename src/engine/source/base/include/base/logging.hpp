@@ -183,6 +183,16 @@ struct LoggingConfig
     const uint32_t dedicatedThreads {DEFAULT_LOG_THREADS};     ///< Number of dedicated threads.
     const uint32_t queueSize {DEFAULT_LOG_THREADS_QUEUE_SIZE}; ///< Size of the log queue for dedicated threads.
     bool truncate {false}; ///< If true, the log file will be deleted for each start of the engine.
+
+    // Rotation configuration (when enableRotation = true)
+    bool enableRotation {false};         ///< Enable file rotation (combines time and size-based policies)
+    std::size_t maxFileSize {134217728}; ///< Max file size before rotation (default: 128 MB)
+    int rotationHour {0};                ///< Hour of day for time-based rotation (0-23, default: midnight)
+    int rotationMinute {0};              ///< Minute of hour for time-based rotation (0-59)
+    uint16_t maxFiles {7};               ///< Maximum number of rotated files to keep (0 = unlimited, default: 7 days)
+    std::size_t maxAccumulatedSize {
+        2147483648}; ///< Max accumulated size of all rotated files (default: 2 GB, 0 = unlimited)
+                     ///< When exceeded, oldest files are deleted (Log4j2 IfAccumulatedFileSize)
 };
 
 /**
@@ -214,6 +224,31 @@ void start(const LoggingConfig& cfg);
  * @brief Stops logging.
  */
 void stop();
+
+/**
+ * @brief Get logging configuration from environment variables for standalone mode.
+ *
+ * This function reads environment variables to configure logging. The configuration
+ * is cached using a static variable pattern (similar to process::isStandaloneModeEnable()).
+ *
+ * The configuration mimics Log4j2's RollingFile appender behavior with TimeBasedTriggeringPolicy,
+ * SizeBasedTriggeringPolicy, and DefaultRolloverStrategy.
+ *
+ * Supported environment variables (Log4j2-compatible defaults):
+ *   - WAZUH_STANDALONE_LOG_LEVEL                (default: "info")
+ *   - WAZUH_STANDALONE_LOG_FILE_PATH            (default: /var/log/wazuh-indexer/wazuh-engine.log)
+ *   - WAZUH_STANDALONE_LOG_ROTATION_ENABLED     (default: true)
+ *   - WAZUH_STANDALONE_LOG_MAX_FILE_SIZE        (default: 134217728 = 128 MB, Log4j2: SizeBasedTriggeringPolicy)
+ *   - WAZUH_STANDALONE_LOG_ROTATION_HOUR        (default: 0 = midnight, Log4j2: TimeBasedTriggeringPolicy)
+ *   - WAZUH_STANDALONE_LOG_ROTATION_MINUTE      (default: 0, Log4j2: TimeBasedTriggeringPolicy)
+ *   - WAZUH_STANDALONE_LOG_MAX_FILES            (default: 7, Log4j2: DefaultRolloverStrategy max)
+ *   - WAZUH_STANDALONE_LOG_MAX_ACCUMULATED_SIZE (default: 2147483648 = 2 GB, Log4j2: IfAccumulatedFileSize)
+ *
+ * See implementation for detailed Log4j2 policy mapping table.
+ *
+ * @return LoggingConfig Configuration loaded from environment variables
+ */
+LoggingConfig getStandaloneLoggingConfig();
 
 /**
  * @brief Initializes the logger for testing purposes.
