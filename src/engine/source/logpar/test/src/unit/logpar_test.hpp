@@ -13,6 +13,7 @@
 #include <schemf/mockSchema.hpp>
 
 using namespace schemf::mocks;
+
 namespace logpar_test
 {
 
@@ -43,12 +44,40 @@ protected:
         auto config = getConfig();
 
         schema = std::make_shared<MockSchema>();
+
         ON_CALL(*schema, hasField(::testing::_))
             .WillByDefault(::testing::Invoke(
                 [](const auto& param)
                 {
                     return param == "text" || param == "long" || param == "literal" || param == TEXT_FIELD_OVERRIDE
                            || param == LONG_FIELD_OVERRIDE || param == "array";
+                }));
+
+        auto weakSchema = std::weak_ptr<MockSchema>(schema);
+        ON_CALL(*schema, validateTargetField(::testing::_))
+            .WillByDefault(::testing::Invoke(
+                [weakSchema](const DotPath& name) -> base::RespOrError<schemf::TargetFieldKind>
+                {
+                    if (name.isRoot())
+                    {
+                        return schemf::TargetFieldKind::SCHEMA;
+                    }
+
+                    auto schema = weakSchema.lock();
+                    if (schema && schema->hasField(name))
+                    {
+                        return schemf::TargetFieldKind::SCHEMA;
+                    }
+
+                    const auto& root = name.parts().front();
+                    if (!root.empty() && root.front() == '_')
+                    {
+                        return schemf::TargetFieldKind::TEMPORARY;
+                    }
+
+                    return base::Error {fmt::format("Field '{}' is not defined in WCS schema and is not a temporary "
+                                                    "field (root must start with '_')",
+                                                    name)};
                 }));
 
         ON_CALL(*schema, getType(::testing::_))

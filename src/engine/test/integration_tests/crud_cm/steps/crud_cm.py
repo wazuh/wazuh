@@ -134,21 +134,20 @@ check: contains($event.original, "test-pattern")
 
 parse|event.original:
   - |-
-    <_tmp_value.metric> <test.metric.value/long>
+    <_tmp_value.metric> <_test.metric.value/long>
   - |-
-    <_tmp_other.metric> <test.metric.other/long>
+    <_tmp_other.metric> <_test.metric.other/long>
 
 normalize:
   - map:
-    - event.category: array_append(test)
+    - event.category: array_append(_test)
     - event.kind: metric
     - event.type: array_append(info)
-    - wazuh.decoders: array_append(test-decoder)
-    - test.value: to_int($_tmp_value.metric, 'truncate')
+    - _test.value: to_int($_tmp_value.metric, 'truncate')
 
   - check: $_tmp_other.metric > 0
     map:
-    - test.other.is_positive: true
+    - _test.other.is_positive: true
 """
 
 
@@ -161,11 +160,11 @@ check: contains($event.original, "test-pattern")
 enabled: true
 parse|event.original:
   - |-
-    <_tmp_value.metric> <test.metric.value/long>
+    <_tmp_value.metric> <_test.metric.value/long>
 
 normalize:
   - map:
-    - event.category: array_append(test)
+    - event.category: array_append(_test)
 """
 
 
@@ -180,11 +179,11 @@ check: contains($event.original, "test-pattern")
 
 parse|event.original:
   - |-
-    <_tmp_value.metric> <test.metric.value/long>
+    <_tmp_value.metric> <_test.metric.value/long>
 
 normalize:
   - map:
-    - event.category: array_append(test)
+    - event.category: array_append(_test)
 """
 
 
@@ -201,13 +200,13 @@ check: contains($event.original, "test-pattern")
 
 parse|event.original:
   - |-
-    <_tmp_value.metric> <test.metric.value/long>
+    <_tmp_value.metric> <_test.metric.value/long>
 
 normalize:
   - map:
-    - event.category: array_append(test)
-    - test.value: to_int($_tmp_value.metric, 'truncate')
-    - test.updated: true
+    - event.category: array_append(_test)
+    - _test.value: to_int($_tmp_value.metric, 'truncate')
+    - _test.updated: true
 """
     else:
         return f"""\
@@ -219,11 +218,11 @@ check: contains($event.original, "test-pattern")
 
 parse|event.original:
   - |-
-    <_tmp_value.metric> <test.metric.value/long>
+    <_tmp_value.metric> <_test.metric.value/long>
 
 normalize:
   - map:
-    - event.category: array_append(test)
+    - event.category: array_append(_test)
 """
 
 

@@ -66,6 +66,8 @@ public:
         registerCompatibles();
     }
 
+    base::RespOrError<TargetFieldKind> validateTargetField(const DotPath& name) const;
+
     /**
      * @brief Validate a field against a validation token (dispatch to typed overloads).
      *

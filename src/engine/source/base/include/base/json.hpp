@@ -916,6 +916,18 @@ public:
     bool eraseIfKey(const std::function<bool(const std::string&)>&, bool recursive = false, const std::string& = "");
 
     /**
+     * @brief Erase root object members whose key starts with the given prefix.
+     *
+     * This is a convenience method for the common case of erasing members from the root object based on a key prefix.
+     *
+     * @param prefix Prefix used to match root keys.
+     *
+     * @throws std::runtime_error if prefix is empty.
+     * @throws std::runtime_error if the current document root is not an object.
+     */
+    void eraseRootKeysByPrefix(std::string_view prefix);
+
+    /**
      * @brief In-place transformation of JSON keys and/or string values at a node selected by a RapidJSON Pointer.
      *
      * @tparam Transform Callable with signature `void(std::string_view in, std::string& out)` used to produce

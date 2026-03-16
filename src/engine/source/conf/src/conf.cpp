@@ -52,7 +52,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<std::string>(key::GEO_DB_PATH, "WAZUH_GEO_DB_PATH", (wazuhRoot / "engine/mmdb").c_str());
     addUnit<std::string>(key::GEO_MANIFEST_URL,
                          "WAZUH_GEO_MANIFEST_URL",
-                         "https://cti-web-components-dev.s3.us-east-1.amazonaws.com/maxmind_geoip/manifest.json");
+                         "https://wazuh-cloud-cti-web-components-dev.s3.us-east-2.amazonaws.com/maxmind_geoip/manifest.json");
 
     // Indexer connector
     addUnit<std::vector<std::string>>(key::INDEXER_HOST, "WAZUH_INDEXER_HOSTS", {"http://localhost:9200"});

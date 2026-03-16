@@ -53,8 +53,11 @@ checks:
     rationale: "Changing the default port you may reduce the number of successful attacks from zombie bots."
     remediation: "Change the Port option value in the sshd_config file."
     compliance:
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      pci_dss: ["2.2.4"]
+      nist_800_53: ["CM.1"]
+    mitre:
+      tactic: ["TA0008"]
+      technique: ["T1021"]
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^# && r:Port && !r:\s*\t*22$'
@@ -137,14 +140,29 @@ Checks define what actions the agent performs and how results are evaluated.
 | description | No        | String                    | Any string            |
 | rationale   | No        | String                    | Any string            |
 | remediation | No        | String                    | Any string            |
-| compliance  | No        | Array of arrays of string | Any string            |
+| compliance  | No        | Object                    | See [Compliance keys](#compliance-keys) |
+| mitre       | No        | Object                    | See [MITRE keys](#mitre-keys) |
 | references  | No        | Array of strings          | Any string            |
 | condition   | Yes       | String                    | all, any, none        |
 | rules       | Yes       | Array of strings          | Any string            |
 | regex_type  | No        | String                    | pcre2, osregex        |
 
-> **Note**  
+> **Note**
 > A `regex_type` defined at the check level overrides the policy-level regex engine.
+
+#### Compliance keys
+
+The `compliance` field is an object that maps compliance framework keys to arrays of identifier strings. Only the following keys are allowed:
+
+`cmmc`, `fedramp`, `gdpr`, `hipaa`, `iso_27001`, `nis2`, `nist_800_171`, `nist_800_53`, `pci_dss`, `tsc`
+
+Unknown keys are rejected with a warning and excluded from the check.
+
+#### MITRE keys
+
+The `mitre` field is an object that maps MITRE ATT&CK categories to arrays of identifier strings. The following keys are supported:
+
+`tactic`, `technique`, `subtechnique`, `mitigation`
 
 ---
 

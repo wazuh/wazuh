@@ -27,10 +27,7 @@ public:
      *
      * @return std::shared_ptr<BaseToken>
      */
-    [[nodiscard]] static std::shared_ptr<BaseToken> create()
-    {
-        return std::shared_ptr<BaseToken>(new BaseToken());
-    }
+    [[nodiscard]] static std::shared_ptr<BaseToken> create() { return std::shared_ptr<BaseToken>(new BaseToken()); }
 
     virtual ~BaseToken() = default;
 
@@ -220,6 +217,15 @@ public:
 };
 
 /**
+ * @brief Classification of a target field after structural validation.
+ */
+enum class TargetFieldKind
+{
+    SCHEMA,    ///< Field exists in schema.
+    TEMPORARY, ///< Field does not exist in schema but is a valid temporary field (root starts with '_').
+};
+
+/**
  * @brief Interface for a schema validator.
  *
  */
@@ -227,6 +233,19 @@ class IValidator : public ISchema
 {
 public:
     virtual ~IValidator() = default;
+
+    /**
+     * @brief Validate and classify a target field path.
+     *
+     * Rules:
+     * - Root target is allowed.
+     * - Schema fields are valid.
+     * - Non-schema fields are only valid when rooted at '_'.
+     *
+     * @param name Name of the field.
+     * @return base::RespOrError<TargetFieldKind> Classification if valid, error otherwise.
+     */
+    virtual base::RespOrError<TargetFieldKind> validateTargetField(const DotPath& name) const = 0;
 
     /**
      * @brief Check if an operation is valid for a field.

@@ -330,6 +330,11 @@ nlohmann::json SCAPolicyLoader::NormalizeData(nlohmann::json data) const
         {
             entry["compliance"] = entry["compliance"].dump();
         }
+
+        if (entry.contains("mitre"))
+        {
+            entry["mitre"] = entry["mitre"].dump();
+        }
     }
 
     return data;

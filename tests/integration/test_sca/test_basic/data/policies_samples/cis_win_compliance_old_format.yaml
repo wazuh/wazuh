@@ -1,0 +1,30 @@
+policy:
+  id: "cis_win_compliance_old_format"
+  file: "cis_win_compliance_old_format.yaml"
+  name: "Test Compliance Old Format Policy (Windows)"
+  description: "Test policy to validate that old array-of-objects compliance format is rejected"
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+  regex_type: pcre2
+
+requirements:
+  title: "Check Windows family platform."
+  description: "Requirements for running the SCA scan against Windows family"
+  condition: any
+  rules:
+    - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows'
+
+checks:
+
+  - id: 99020
+    title: "Test check with old compliance format"
+    description: "This check uses the old array-of-objects compliance format."
+    rationale: "Validates that old compliance format is detected and stripped."
+    remediation: "No remediation needed."
+    compliance:
+      - cis: [1.7.5]
+      - pci_dss: [10.2.5]
+      - nist_800_53: [AU.14, AC.7]
+    condition: any
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:.'
