@@ -295,6 +295,23 @@ public:
             incrementalUpdate(*context, lastCursor);
         }
 
+        // Signal completion to DatabaseFeedManager so it can reload global maps and trigger
+        // a full agent rescan exactly once — after all pages have been processed.
+        // The "indexer_complete" type is handled by processMessage as a no-op (no documents
+        // to store), but the fileProcessingCallback will call reloadGlobalMaps() +
+        // postUpdateCallback() for this non-"indexer" message type.
+        const auto cursor = context->data.value("cursor", std::string {});
+        nlohmann::json finalMsg;
+        finalMsg["type"]   = "indexer_complete";
+        finalMsg["cursor"] = cursor;
+        finalMsg["data"]   = nlohmann::json::array();
+        const auto result = context->spUpdaterBaseContext->fileProcessingCallback(finalMsg.dump());
+        if (!std::get<2>(result))
+        {
+            logWarn(WM_CONTENTUPDATER,
+                    "IndexerDownloader: post-download reload/rescan signal returned failure (non-fatal).");
+        }
+
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
     }
 };
