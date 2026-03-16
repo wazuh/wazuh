@@ -443,11 +443,13 @@ if [ $1 = 0 ];then
   rm -rf %{_localstatedir}/queue/
   rm -rf %{_localstatedir}/framework/
   rm -rf %{_localstatedir}/api/
+  rm -rf %{_localstatedir}/active-response/
   rm -rf %{_localstatedir}/stats/
   rm -rf %{_localstatedir}/var/
   rm -rf %{_localstatedir}/bin/
   rm -rf %{_localstatedir}/logs/
   rm -rf %{_localstatedir}/tmp
+  rm -rf %{_localstatedir}/wodles/
   rm -rf %{_localstatedir}/engine
 
   # Delete audisp wazuh plugin if exists

@@ -197,10 +197,6 @@ EOF
             rm -rf ${DIR}/queue/agent-info/* > /dev/null 2>&1
         fi
 
-        if [ -d ${DIR}/queue/rootcheck ]; then
-            rm -rf ${DIR}/queue/rootcheck/* > /dev/null 2>&1
-        fi
-
         # Remove groups backup content if exists
         if [ -d ${DIR}/backup/groups ]; then
             rm -rf ${DIR}/backup/groups/* > /dev/null 2>&1
