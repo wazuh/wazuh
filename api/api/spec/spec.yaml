@@ -8499,8 +8499,8 @@ paths:
     put:
       tags:
         - Cluster
-      summary: "Reload nodes configuration"
-      description: "Reload configuration in all nodes in the cluster or a list of them"
+      summary: "Reload Wazuh manager"
+      description: "Restart Wazuh manager daemons in all nodes in the cluster or a list of them, keeping active agent connections"
       operationId: api.controllers.cluster_controller.put_reload
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'

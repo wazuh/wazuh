@@ -299,10 +299,13 @@ def get_cluster_status() -> typing.Dict:
     return cluster_status
 
 
-def manager_restart() -> WazuhResult:
-    """Restart Wazuh manager.
+def _send_control_command(msg: str) -> None:
+    """Send a command to the Wazuh manager control socket.
 
-    Send 'restart' command to common.CONTROL_SOCKET socket.
+    Parameters
+    ----------
+    msg : str
+        Command to send ('restart' or 'reload').
 
     Raises
     ------
@@ -312,20 +315,11 @@ def manager_restart() -> WazuhResult:
         If there is a socket connection error.
     WazuhInternalError(1014)
         If there is a socket communication error.
-
-    Returns
-    -------
-    WazuhResult
-        Confirmation message.
     """
     lock_file = open(api_operation_lockfile, 'a+')
     fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
-        # control socket path
         socket_path = common.CONTROL_SOCKET
-        # command for restarting Wazuh manager
-        msg = 'restart'
-        # initialize socket
         if os.path.exists(socket_path):
             try:
                 conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -349,6 +343,27 @@ def manager_restart() -> WazuhResult:
         lock_file.close()
         read_config.cache_clear()
 
+
+def manager_restart() -> WazuhResult:
+    """Restart Wazuh manager.
+
+    Send 'restart' command to common.CONTROL_SOCKET socket.
+
+    Raises
+    ------
+    WazuhInternalError(1901)
+        If the socket path doesn't exist.
+    WazuhInternalError(1902)
+        If there is a socket connection error.
+    WazuhInternalError(1014)
+        If there is a socket communication error.
+
+    Returns
+    -------
+    WazuhResult
+        Confirmation message.
+    """
+    _send_control_command('restart')
     return WazuhResult({'message': 'Restart request sent'})
 
 
@@ -371,37 +386,7 @@ def manager_reload() -> WazuhResult:
     WazuhResult
         Confirmation message.
     """
-    lock_file = open(api_operation_lockfile, 'a+')
-    fcntl.lockf(lock_file, fcntl.LOCK_EX)
-    try:
-        # control socket path
-        socket_path = common.CONTROL_SOCKET
-        # command for reloading Wazuh manager
-        msg = 'reload'
-        # initialize socket
-        if os.path.exists(socket_path):
-            try:
-                conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                conn.connect(socket_path)
-            except socket.error:
-                raise WazuhInternalError(1902)
-        else:
-            raise WazuhInternalError(1901)
-
-        try:
-            conn.send(msg.encode())
-            response = conn.recv(1024).decode().strip()
-            conn.close()
-
-            if not response.startswith('ok'):
-                raise WazuhInternalError(1014, extra_message=response)
-        except socket.error as e:
-            raise WazuhInternalError(1014, extra_message=str(e))
-    finally:
-        fcntl.lockf(lock_file, fcntl.LOCK_UN)
-        lock_file.close()
-        read_config.cache_clear()
-
+    _send_control_command('reload')
     return WazuhResult({'message': 'Reload request sent'})
 
 

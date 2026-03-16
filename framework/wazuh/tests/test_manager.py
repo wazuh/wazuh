@@ -215,30 +215,18 @@ def test_restart_ko_socket(mock_exists, mock_fcntl, mock_open):
 @patch('wazuh.core.cluster.utils.fcntl')
 @patch('wazuh.core.cluster.utils.open')
 @patch('os.path.exists', return_value=True)
-@patch('wazuh.manager.validate_ossec_conf', return_value={'status': 'OK'})
-def test_reload_ok(mock_validate, mock_exists, mock_path, mock_fcntl, mock_socket):
-    """Tests reloading a manager with valid configuration."""
+def test_reload_ok(mock_exists, mock_path, mock_fcntl, mock_socket):
+    """Tests reloading a manager."""
     result = reload()
 
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['total_failed_items'] == 0
 
 
-@patch('wazuh.manager.validate_ossec_conf', return_value={'status': 'KO', 'error': 'Bad config'})
-def test_reload_ko_invalid_config(mock_validate):
-    """Tests that reload() fails when configuration is invalid."""
-    result = reload()
-
-    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-    assert result.render()['data']['total_failed_items'] == 1
-    assert result.render()['data']['total_affected_items'] == 0
-
-
 @patch('wazuh.core.cluster.utils.open')
 @patch('wazuh.core.cluster.utils.fcntl')
 @patch('os.path.exists', return_value=False)
-@patch('wazuh.manager.validate_ossec_conf', return_value={'status': 'OK'})
-def test_reload_ko_socket(mock_validate, mock_exists, mock_fcntl, mock_open):
+def test_reload_ko_socket(mock_exists, mock_fcntl, mock_open):
     """Tests reload() exceptions related to socket errors.
 
     Unlike restart(), reload() catches WazuhInternalError internally, so socket

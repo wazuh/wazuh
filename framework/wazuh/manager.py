@@ -214,10 +214,6 @@ def reload() -> AffectedItemsWazuhResult:
     """
     result = AffectedItemsWazuhResult(**_reload_default_result_kwargs)
     try:
-        # Validate the current configuration before reloading
-        is_valid = validate_ossec_conf()
-        if is_valid.get('status') != 'OK':
-            raise WazuhError(1125)
         manager_reload()
         result.affected_items.append(node_id)
     except (WazuhError, WazuhInternalError) as e:
