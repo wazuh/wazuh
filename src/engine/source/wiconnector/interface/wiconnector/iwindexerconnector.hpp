@@ -135,6 +135,16 @@ public:
      * @throws std::exception on transport, not-found, or payload validation errors.
      */
     virtual json::Json getEngineRemoteConfig() = 0;
+
+    /**
+     * @brief Gets the current size of the indexer queue.
+     *
+     * Returns the number of events pending to be sent to the indexer.
+     * This includes events that were persisted from previous sessions.
+     *
+     * @return The number of events in the queue
+     */
+    virtual uint64_t getQueueSize() = 0;
 };
 
 } // namespace wiconnector

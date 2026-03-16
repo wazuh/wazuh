@@ -247,6 +247,8 @@ std::string Config::toJson() const
         config["ssl"] = sslJson;
     }
 
+    config["max_queue_size"] = maxQueueSize;
+
     return config.dump();
 }
 
@@ -287,6 +289,16 @@ void WIndexerConnector::shutdown()
 {
     std::unique_lock lock(m_mutex);
     m_indexerConnectorAsync.reset();
+}
+
+uint64_t WIndexerConnector::getQueueSize()
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        return 0;
+    }
+    return m_indexerConnectorAsync->getQueueSize();
 }
 
 void WIndexerConnector::index(std::string_view index, std::string_view data)
