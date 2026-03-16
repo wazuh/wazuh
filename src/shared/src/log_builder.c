@@ -15,6 +15,7 @@
 
 #include "shared.h"
 #include "agentd.h"
+#include "agent_op.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -267,21 +268,13 @@ int log_builder_update_host_ip(log_builder_t * builder) {
         }
 
 #elif defined __linux__ || defined __MACH__ || defined sun || defined FreeBSD || defined OpenBSD
-        const char * REQUEST = "host_ip";
-        int sock = control_check_connection();
-
-        if (sock == -1) {
-            mdebug1("Cannot update host IP: The control module is not available: %s (%d)", strerror(errno), errno);
-            last_update = 0;
+        char *primary_ip = getPrimaryIP();
+        if (primary_ip) {
+            strncpy(host_ip, primary_ip, IPSIZE - 1);
+            os_free(primary_ip);
         } else {
-            if (send(sock, REQUEST, strlen(REQUEST), 0) > 0) {
-                if (recv(sock, host_ip, IPSIZE - 1, 0) < 0) {
-                    mdebug1("The control module did not respond: %s (%d).", strerror(errno), errno);
-                    *host_ip = '\0';
-                }
-            }
-
-            close(sock);
+            mdebug1("Cannot update host IP.");
+            *host_ip = '\0';
         }
 #endif
     }

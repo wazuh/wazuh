@@ -211,6 +211,48 @@ def test_restart_ko_socket(mock_exists, mock_fcntl, mock_open):
                     restart()
 
 
+@patch('socket.socket')
+@patch('wazuh.core.cluster.utils.fcntl')
+@patch('wazuh.core.cluster.utils.open')
+@patch('os.path.exists', return_value=True)
+def test_reload_ok(mock_exists, mock_path, mock_fcntl, mock_socket):
+    """Tests reloading a manager."""
+    result = reload()
+
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['total_failed_items'] == 0
+
+
+@patch('wazuh.core.cluster.utils.open')
+@patch('wazuh.core.cluster.utils.fcntl')
+@patch('os.path.exists', return_value=False)
+def test_reload_ko_socket(mock_exists, mock_fcntl, mock_open):
+    """Tests reload() exceptions related to socket errors.
+
+    Unlike restart(), reload() catches WazuhInternalError internally, so socket
+    errors are surfaced as failed_items rather than raised exceptions.
+    """
+    # Socket path not exists -> WazuhInternalError(1901) caught, added to failed_items
+    result = reload()
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.render()['data']['total_failed_items'] == 1
+    assert result.render()['data']['total_affected_items'] == 0
+
+    # Socket connection error -> WazuhInternalError(1902) caught, added to failed_items
+    with patch('os.path.exists', return_value=True):
+        with patch('socket.socket', side_effect=socket.error):
+            result = reload()
+            assert result.render()['data']['total_failed_items'] == 1
+            assert result.render()['data']['total_affected_items'] == 0
+
+        # Send error -> WazuhInternalError(1014) caught, added to failed_items
+        with patch('socket.socket.connect'):
+            with patch('socket.socket.send', side_effect=socket.error):
+                result = reload()
+                assert result.render()['data']['total_failed_items'] == 1
+                assert result.render()['data']['total_affected_items'] == 0
+
+
 @pytest.mark.parametrize('error_flag, error_msg', [
     (0, ""),
     (1, "2019/02/27 11:30:07 wazuh-manager-clusterd: ERROR: [Cluster] [Main] Error 3004 - Error in cluster configuration: "
