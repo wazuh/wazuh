@@ -161,13 +161,6 @@ typedef enum wdb_backup_db {
 
 extern char *schema_global_sql;
 extern char *schema_task_manager_sql;
-extern char *schema_global_upgrade_v1_sql;
-extern char *schema_global_upgrade_v2_sql;
-extern char *schema_global_upgrade_v3_sql;
-extern char *schema_global_upgrade_v4_sql;
-extern char *schema_global_upgrade_v5_sql;
-extern char *schema_global_upgrade_v6_sql;
-extern char *schema_global_upgrade_v7_sql;
 extern _Config gconfig;
 
 /**
@@ -257,18 +250,13 @@ wdbc_result wdb_parse_chunk_to_rbtree(char* input, rb_tree** output, const char*
  */
 sqlite3_stmt* wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index);
 
-/* Get value data in output variable. Returns 0 if doesn't found, 1 on success or -1 on error. */
-int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
-
 /**
- * @brief Gets the count of the tables that match the provided name
- *
- * @param[in] wdb Database to query for the table existence.
- * @param[in] key Name of the table to find.
- * @param[in] returns the count
- * @return function success.
+ * @brief Reads the SQLite PRAGMA user_version from the database header.
+ * @param wdb Database connection.
+ * @param[out] version The current user_version value.
+ * @return OS_SUCCESS or OS_INVALID.
  */
- int wdb_count_tables_with_name(wdb_t * wdb, const char * key, int* count);
+int wdb_user_version_get(wdb_t *wdb, int *version);
 
 /* Prepare SQL query with availability waiting */
 int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, const char **pzTail);
@@ -336,9 +324,6 @@ int wdb_get_db_free_pages_percentage(wdb_t * wdb);
  * @return Returns OS_SUCCES on success or OS_INVALID on error.
  */
 int wdb_update_last_vacuum_data(wdb_t* wdb, const char *last_vacuum_time, const char *last_vacuum_value);
-
-/* Insert key-value pair into info table */
-int wdb_insert_info(const char *key, const char *value);
 
 wdb_t * wdb_init(const char * id);
 
@@ -944,28 +929,6 @@ int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, os_sha1 hexdig
 wdb_t * wdb_upgrade_global(wdb_t *wdb);
 
 /**
- * @brief Function to recreate Global DB in case of an upgrading an old version.
- *
- * @param [in] wdb The global.db database to backup.
- * @return wdb The new empty global.db database on success or NULL on error
- */
-wdb_t * wdb_recreate_global(wdb_t *wdb);
-
-/**
- * @brief Check if the db version is older than 3.10
- *
- * This is a hacky way to check if the database version is older than 3.10
- * For newer versions of the db the table "agent" must have a tuple with id=0(manager) and last_keepalive=9999/12/31 23:59:59 UTC.
- * If this value is missing it means that the db is older than 3.10 or is corrupt
- *
- * @return Db version is older than 3.10.
- * @retval 1 the db is older than 3.10
- * @retval 0 the db is newer than 3.10.
- * @retval 0 The table "agent" is missing or an error occurred.
- */
-bool wdb_is_older_than_v310(wdb_t *wdb);
-
-/**
  * @brief Set the database journal mode to write-ahead logging
  *
  * @param [in] db Pointer to an open database.
@@ -1144,15 +1107,6 @@ cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_string);
-
-/**
- * @brief Function to update the agent's groups_hash column for all agents. It gets all agents and calls
- *        wdb_global_update_agent_groups_hash() for each one.
- *
- * @param [in] wdb The Global struct database.
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_global_adjust_v4(wdb_t* wdb);
 
 /**
  * @brief Function to get a group id using the group name.
