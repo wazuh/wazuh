@@ -105,7 +105,7 @@ public:
            std::string_view hash,
            bool indexUnclassifiedEvents,
            bool indexDiscardedEvents,
-           bool cleanupDecoderVariables = true)
+           bool cleanupDecoderVariables)
         : m_title(policyTitle)
         , m_enabled(enabled)
         , m_rootDecoder(rootDecoder)
@@ -290,8 +290,7 @@ public:
             auto indexOpt = policyJson.getBool(jsonpolicy::PATH_KEY_INDEX_UNCLASSIFIED_EVENTS);
             if (!indexOpt.has_value())
             {
-                throw std::runtime_error(
-                    "Policy JSON must have a boolean 'index_unclassified_events' field");
+                throw std::runtime_error("Policy JSON must have a boolean 'index_unclassified_events' field");
             }
             return indexOpt.value();
         }();
@@ -301,8 +300,7 @@ public:
             auto indexDiscardedOpt = policyJson.getBool(jsonpolicy::PATH_KEY_INDEX_DISCARDED_EVENTS);
             if (!indexDiscardedOpt.has_value())
             {
-                throw std::runtime_error(
-                    "Policy JSON must have a boolean 'index_discarded_events' field");
+                throw std::runtime_error("Policy JSON must have a boolean 'index_discarded_events' field");
             }
             return indexDiscardedOpt.value_or(false);
         }();
