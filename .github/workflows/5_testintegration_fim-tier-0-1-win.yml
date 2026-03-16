@@ -149,11 +149,16 @@ jobs:
           git clone -b $QA_BRANCH --single-branch https://github.com/wazuh/qa-integration-framework.git
           pip install qa-integration-framework/
           Remove-Item qa-integration-framework -Recurse -Force
+      - name: Copy integration tests to C:\wazuh
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path C:\wazuh\tests | Out-Null
+          Copy-Item -Path "$env:GITHUB_WORKSPACE\tests\*" -Destination C:\wazuh\tests -Recurse -Force
       # Run fim integration tests.
       - name: Run fim integration tests
         run: |
           NET START wazuh
-          cd $env:GITHUB_WORKSPACE\tests\integration
+          cd C:\wazuh\tests\integration
           $env:GITHUB_SHA="${{ github.sha }}"; $env:GITHUB_REF_NAME="$env:BRANCH_NAME"; python -m pytest ${{ matrix.pytest_tier_args }} test_fim\ --html=results.html --self-contained-html
       # Upload the tests result html as an artifact
       - name: Upload failed test results
@@ -161,5 +166,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: fim-tier-0-1-win-${{ matrix.shard_name }}-test-results-${{ github.run_id }}
-          path: ${{ github.workspace }}\tests\integration\results.html
+          path: C:\wazuh\tests\integration\results.html
           retention-days: 7
