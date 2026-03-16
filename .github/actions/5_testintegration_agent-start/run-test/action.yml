@@ -1,0 +1,204 @@
+name: 'Run agent startup smoke test'
+description: 'Installs the Wazuh agent package and verifies it starts correctly'
+
+inputs:
+  platform:
+    description: 'Platform identifier (linux-deb, linux-rpm, windows, macos)'
+    required: true
+  packages-path:
+    description: 'Path where the package artifact was downloaded'
+    required: true
+  ghcr-token:
+    description: 'GitHub Container Registry token (required when platform is linux-deb or linux-rpm)'
+    required: false
+  actor:
+    description: 'GitHub actor used to pull the Docker image (required when platform is linux-deb or linux-rpm)'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+
+    # ── Linux ──────────────────────────────────────────────────────────────────
+
+    - name: Prepare Linux package and Docker environment
+      if: inputs.platform == 'linux-deb' || inputs.platform == 'linux-rpm'
+      shell: bash
+      run: |
+        if [ "${{ inputs.platform }}" == "linux-deb" ]; then
+          PACKAGE=$(find "${{ inputs.packages-path }}" -type f -name "wazuh-agent*amd64*.deb" ! -name "*dbg*" -exec basename {} \; | head -n1)
+          echo "CONTAINER_NAME=pkg_deb_agent_builder_amd64" >> "$GITHUB_ENV"
+        else
+          PACKAGE=$(find "${{ inputs.packages-path }}" -type f -name "wazuh-agent*x86_64*.rpm" ! -name "*dbg*" ! -name "*debug*" ! -name "*debuginfo*" -exec basename {} \; | head -n1)
+          echo "CONTAINER_NAME=pkg_rpm_agent_builder_amd64" >> "$GITHUB_ENV"
+        fi
+        if [ -z "$PACKAGE" ]; then
+          echo "ERROR: No package found in ${{ inputs.packages-path }}"
+          exit 1
+        fi
+        echo "Found package: $PACKAGE"
+        VERSION=$(echo "$PACKAGE" | grep -oP '\d+\.\d+\.\d+' | head -n 1)
+        if [ -z "$VERSION" ]; then
+          echo "ERROR: Could not extract version from package filename: $PACKAGE"
+          exit 1
+        fi
+        echo "TAG=$VERSION" >> "$GITHUB_ENV"
+
+    - name: Pull Docker image
+      if: inputs.platform == 'linux-deb' || inputs.platform == 'linux-rpm'
+      shell: bash
+      run: |
+        bash ${{ github.workspace }}/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh \
+          ${{ inputs.ghcr-token }} ${{ inputs.actor }} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+
+    - name: Run smoke test in Docker
+      if: inputs.platform == 'linux-deb' || inputs.platform == 'linux-rpm'
+      shell: bash
+      run: |
+        TESTS_PATH="${{ github.workspace }}/.github/actions/5_testintegration_agent-start/"
+        docker run --rm \
+          -v "$TESTS_PATH:/tests" \
+          -v "${{ inputs.packages-path }}:/packages" \
+          --entrypoint '/tests/smoke_startup_test.sh' \
+          ${{ env.CONTAINER_NAME }}:${{ env.TAG }}
+
+    # ── Windows ────────────────────────────────────────────────────────────────
+
+    - name: Get Windows package path
+      if: inputs.platform == 'windows'
+      shell: pwsh
+      run: |
+        $PACKAGE = Get-ChildItem -Path "${{ inputs.packages-path }}" -Filter "wazuh-agent*windows*.msi" -File -Recurse `
+          | Where-Object { $_.Name -notmatch 'debug' } `
+          | Select-Object -First 1 -ExpandProperty FullName
+        if (-not $PACKAGE) {
+          Write-Host "ERROR: No MSI package found in ${{ inputs.packages-path }}"
+          Get-ChildItem -Path "${{ inputs.packages-path }}" -Recurse | Format-Table Name, FullName
+          exit 1
+        }
+        Write-Host "Found package: $PACKAGE"
+        echo "PACKAGE_PATH=$PACKAGE" >> $env:GITHUB_ENV
+
+    - name: Install Windows agent
+      if: inputs.platform == 'windows'
+      shell: pwsh
+      run: |
+        $arguments = @(
+          "/i"
+          "`"${{ env.PACKAGE_PATH }}`""
+          "/q"
+          "WAZUH_MANAGER=`"1.2.3.4`""
+          "/l installer.log"
+        )
+        Start-Process msiexec.exe -ArgumentList $arguments -Wait -NoNewWindow
+        $installerfile = Get-Content installer.log
+        if ($installerfile -match "Wazuh Agent -- Installation completed successfully") {
+          Write-Output "Installation successfully."
+        } else {
+          Write-Output "The installation could not be completed."
+          exit 1
+        }
+
+    - name: Start Windows agent service
+      if: inputs.platform == 'windows'
+      shell: pwsh
+      run: Start-Service wazuhsvc
+
+    - name: Wait for Windows agent to initialize
+      if: inputs.platform == 'windows'
+      shell: pwsh
+      run: Start-Sleep -Seconds 10
+
+    - name: Verify Windows agent is running
+      if: inputs.platform == 'windows'
+      shell: pwsh
+      run: |
+        $service = Get-Service wazuhsvc
+        if ($service.Status -ne 'Running') {
+          Write-Host "ERROR: Service is not running. Status: $($service.Status)"
+          exit 1
+        }
+        Write-Host "Agent service is running"
+
+    - name: Stop Windows agent service
+      if: inputs.platform == 'windows'
+      shell: pwsh
+      run: |
+        Stop-Service -Name wazuhsvc
+        $service = Get-Service -Name wazuhsvc
+        if ($service.Status -ne 'Stopped') {
+          Write-Host "WARNING: Service did not stop cleanly. Status: $($service.Status)"
+          exit 1
+        } else {
+          Write-Host "Agent service stopped successfully"
+        }
+
+    # ── macOS ──────────────────────────────────────────────────────────────────
+
+    - name: Get macOS package path
+      if: inputs.platform == 'macos'
+      shell: bash
+      run: |
+        PACKAGE=$(find "${{ inputs.packages-path }}" -type f -name "wazuh-agent*.pkg" ! -name "*dbg*" ! -name "*debug*" | head -n1)
+        if [ -z "$PACKAGE" ]; then
+          echo "ERROR: No PKG package found in ${{ inputs.packages-path }}"
+          exit 1
+        fi
+        echo "Found package: $PACKAGE"
+        echo "PACKAGE_PATH=$PACKAGE" >> $GITHUB_ENV
+
+    - name: Install macOS agent
+      if: inputs.platform == 'macos'
+      shell: bash
+      run: |
+        echo "WAZUH_MANAGER='1.2.3.4'" > /tmp/wazuh_envs
+        set -o pipefail
+        sudo installer -pkg "${{ env.PACKAGE_PATH }}" -target / | sudo tee installer.log
+        if grep -q "The install was successful" "installer.log"; then
+          echo "Installation successfully."
+        else
+          echo "The installation could not be completed."
+          exit 1
+        fi
+
+    - name: Test macOS daemons with -t flag
+      if: inputs.platform == 'macos'
+      shell: bash
+      run: |
+        DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-execd"
+        echo "Testing daemons with -t flag..."
+        for daemon in $DAEMONS; do
+          echo "Testing ${daemon}..."
+          if ! sudo /Library/Ossec/bin/${daemon} -t; then
+            echo "ERROR: ${daemon} -t failed with exit code $?"
+            exit 1
+          fi
+          echo "${daemon} -t passed"
+        done
+
+    - name: Start macOS agent
+      if: inputs.platform == 'macos'
+      shell: bash
+      run: sudo /Library/Ossec/bin/wazuh-control start
+
+    - name: Wait for macOS agent to initialize
+      if: inputs.platform == 'macos'
+      shell: bash
+      run: sleep 10
+
+    - name: Verify macOS agent is running
+      if: inputs.platform == 'macos'
+      shell: bash
+      run: |
+        if ! sudo /Library/Ossec/bin/wazuh-control status; then
+          echo "ERROR: Agent status check failed"
+          exit 1
+        fi
+        echo "Agent is running"
+
+    - name: Stop macOS agent
+      if: inputs.platform == 'macos'
+      shell: bash
+      run: |
+        sudo /Library/Ossec/bin/wazuh-control stop
+        echo "Agent stopped successfully"
