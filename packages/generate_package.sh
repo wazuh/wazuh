@@ -61,6 +61,7 @@ build_pkg() {
     # Copy the necessary files
     cp ${CURRENT_PATH}/build.sh ${DOCKERFILE_PATH}
     cp ${CURRENT_PATH}/${SYSTEM}s/utils/* ${DOCKERFILE_PATH}
+    cp ${WAZUH_PATH}/.github/scripts/run_with_retry.sh ${DOCKERFILE_PATH}/retry.sh
 
     # Build the Docker image
     if [[ ${BUILD_DOCKER} == "yes" ]]; then

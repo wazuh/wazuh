@@ -1,9 +1,13 @@
 FROM centos:7
 
+ADD retry.sh /usr/local/bin/retry.sh
+RUN chmod +x /usr/local/bin/retry.sh
+
 # Install all the necessary tools to build the packages
 RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
 RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
-RUN yum install -y gcc make wget git \
+RUN /usr/local/bin/retry.sh --attempts 5 --delay 10 --backoff 2 --max-delay 40 --timeout 1200 -- \
+    yum --setopt=retries=5 --setopt=timeout=30 install -y gcc make wget git \
     openssh-clients sudo gnupg file-devel\
     automake autoconf libtool policycoreutils-python \
     yum-utils system-rpm-config rpm-devel \
@@ -24,19 +28,22 @@ RUN yum install -y gcc make wget git \
     valgrind-devel python-rpm-macros python3
 
 # Install Perl 5.10
-RUN curl -OL http://packages.wazuh.com/utils/perl/perl-5.10.1.tar.gz && \
+RUN /usr/local/bin/retry.sh --attempts 5 --delay 5 --backoff 2 --max-delay 30 --timeout 360 -- \
+    curl -fsSL --connect-timeout 20 --max-time 300 -o perl-5.10.1.tar.gz http://packages.wazuh.com/utils/perl/perl-5.10.1.tar.gz && \
     gunzip perl-5.10.1.tar.gz && tar -xf perl*.tar && \
     cd /perl-5.10.1 && ./Configure -des -Dcc='gcc' -Dusethreads && \
     make -j2 && make install && ln -fs /usr/local/bin/perl /bin/perl && \
     cd / && rm -rf /perl-5.10.1*
 
 # Update rpmbuild, rpm and autoconf
-RUN curl -O http://packages.wazuh.com/utils/autoconf/autoconf-2.69.tar.gz && \
+RUN /usr/local/bin/retry.sh --attempts 5 --delay 5 --backoff 2 --max-delay 30 --timeout 360 -- \
+    curl -fsSL --connect-timeout 20 --max-time 300 -o autoconf-2.69.tar.gz http://packages.wazuh.com/utils/autoconf/autoconf-2.69.tar.gz && \
     gunzip autoconf-2.69.tar.gz && tar xvf autoconf-2.69.tar && \
     cd autoconf-2.69 && ./configure && make -j$(nproc) && \
     make install && cd / && rm -rf autoconf-*
 
-RUN curl -O http://packages.wazuh.com/utils/rpm/rpm-4.15.1.tar.bz2 && \
+RUN /usr/local/bin/retry.sh --attempts 5 --delay 5 --backoff 2 --max-delay 30 --timeout 360 -- \
+    curl -fsSL --connect-timeout 20 --max-time 300 -o rpm-4.15.1.tar.bz2 http://packages.wazuh.com/utils/rpm/rpm-4.15.1.tar.bz2 && \
     tar -xjf rpm-4.15.1.tar.bz2 && cd rpm-4.15.1 && \
     ./configure --without-lua && make -j$(nproc) && make install && cd / && rm -rf rpm-*
 
@@ -44,7 +51,9 @@ RUN mkdir -p /usr/local/var/lib/rpm && \
     cp /var/lib/rpm/Packages /usr/local/var/lib/rpm/Packages && \
     /usr/local/bin/rpm --rebuilddb && rm -rf /root/rpmbuild
 
-ADD https://packages.wazuh.com/utils/gcc/gcc-14.3-1.x86_64.rpm /tmp/gcc-14.3-1.x86_64.rpm
+RUN /usr/local/bin/retry.sh --attempts 5 --delay 5 --backoff 2 --max-delay 30 --timeout 360 -- \
+    curl -fsSL --connect-timeout 20 --max-time 300 -o /tmp/gcc-14.3-1.x86_64.rpm \
+    https://packages.wazuh.com/utils/gcc/gcc-14.3-1.x86_64.rpm
 RUN rpm -i /tmp/gcc-14.3-1.x86_64.rpm && \
     ln -fs /opt/gcc-14/bin/g++ /usr/bin/c++ && \
     ln -fs /opt/gcc-14/bin/g++ /usr/bin/g++ && \
@@ -54,12 +63,16 @@ ENV CPLUS_INCLUDE_PATH "/opt/gcc-14/include/c++/14.3.0/"
 ENV LD_LIBRARY_PATH "/opt/gcc-14/lib64:${LD_LIBRARY_PATH}"
 ENV PATH "/opt/gcc-14/bin:${PATH}"
 
-ADD https://packages.wazuh.com/utils/binutils/binutils-2.38-1.x86_64.rpm /tmp/binutils-2.38-1.x86_64.rpm
+RUN /usr/local/bin/retry.sh --attempts 5 --delay 5 --backoff 2 --max-delay 30 --timeout 360 -- \
+    curl -fsSL --connect-timeout 20 --max-time 300 -o /tmp/binutils-2.38-1.x86_64.rpm \
+    https://packages.wazuh.com/utils/binutils/binutils-2.38-1.x86_64.rpm
 RUN rpm -i /tmp/binutils-2.38-1.x86_64.rpm
 
 ENV PATH "/opt/binutils-2/bin:${PATH}"
 
-ADD https://github.com/Kitware/CMake/releases/download/v3.30.4/cmake-3.30.4-linux-x86_64.sh /tmp/cmake-3.30.4-linux-x86_64.sh
+RUN /usr/local/bin/retry.sh --attempts 5 --delay 5 --backoff 2 --max-delay 30 --timeout 360 -- \
+    curl -fsSL --connect-timeout 20 --max-time 300 -o /tmp/cmake-3.30.4-linux-x86_64.sh \
+    https://github.com/Kitware/CMake/releases/download/v3.30.4/cmake-3.30.4-linux-x86_64.sh
 
 RUN mkdir -p /opt/cmake
 RUN sh /tmp/cmake-3.30.4-linux-x86_64.sh --prefix=/opt/cmake --skip-license
