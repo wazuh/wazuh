@@ -73,9 +73,15 @@ int wm_config() {
 
     // Get defined values from internal_options
 
+#ifdef CLIENT
+    wm_task_nice = getDefine_Int("wazuh_modules", "task_nice", -20, 19);
+    wm_max_eps = getDefine_Int("wazuh_modules", "max_eps", 1, 1000);
+    wm_kill_timeout = getDefine_Int("wazuh_modules", "kill_timeout", 0, 3600);
+#else
     wm_task_nice = getDefine_Int_default("wazuh_modules", "task_nice", -20, 19, 10);
     wm_max_eps = getDefine_Int_default("wazuh_modules", "max_eps", 1, 1000, 100);
     wm_kill_timeout = getDefine_Int_default("wazuh_modules", "kill_timeout", 0, 3600, 10);
+#endif
 
     if(wm_initialize_default_modules(&wmodules) < 0) {
         return OS_INVALID;

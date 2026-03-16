@@ -65,7 +65,7 @@ int main(int argc, char **argv)
     const char *cfg = OSSECCONF;
     gid_t gid;
     const char *group = GROUPGLOBAL;
-    lc_debug_level = getDefine_Int_default("logcollector", "debug", 0, 2, 0);
+    lc_debug_level = getDefine_Int("logcollector", "debug", 0, 2);
 
     /* Setup random */
     srandom_init();
