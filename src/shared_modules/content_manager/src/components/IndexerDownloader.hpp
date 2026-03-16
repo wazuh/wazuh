@@ -16,6 +16,7 @@
 #include "sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
+#include "utils/timeHelper.h"
 #include <memory>
 #include <string>
 #include <tuple>
@@ -54,6 +55,25 @@ class IndexerDownloader final : public AbstractHandler<std::shared_ptr<UpdaterCo
 {
 private:
     nlohmann::json m_config;
+
+    /**
+     * @brief Persists the cursor to RocksDB after each page so that a restart can resume
+     *        from the last successfully processed page instead of from the beginning.
+     *
+     * Uses the same key/column scheme as UpdateIndexerCursor so that getStoredCursor
+     * picks it up correctly on the next run via getLastKeyValue(CURRENT_OFFSET).
+     */
+    void persistCursor(const UpdaterContext& context, const std::string& cursor) const
+    {
+        if (!context.spUpdaterBaseContext->spRocksDB || cursor.empty())
+        {
+            return;
+        }
+        context.spUpdaterBaseContext->spRocksDB->put(
+            Utils::getCompactTimestamp(std::time(nullptr)),
+            cursor,
+            Components::Columns::CURRENT_OFFSET);
+    }
 
     /**
      * @brief Returns the last cursor persisted in RocksDB, or empty string on first run.
@@ -194,6 +214,7 @@ private:
 
                 processPage(context, hits, lastCursor);
                 totalProcessed += hits.size();
+                persistCursor(context, lastCursor);
 
                 logDebug2(WM_CONTENTUPDATER,
                           "IndexerDownloader: Initial load — %zu documents processed so far",
@@ -254,6 +275,7 @@ private:
 
                 processPage(context, hits, newCursor);
                 totalProcessed += hits.size();
+                persistCursor(context, newCursor);
             });
 
         context.data["cursor"] = newCursor;
