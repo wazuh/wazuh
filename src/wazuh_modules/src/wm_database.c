@@ -32,7 +32,6 @@ static pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 int inotify_fd;
 
 int wd_agents = -2;
-int wd_groups = -2;
 int wd_shared_groups = -2;
 
 /* Get current inotify queued events limit */
@@ -112,10 +111,6 @@ void* wm_database_main(wm_database *data) {
 
     // Groups synchronization with the database
     wdb_update_groups(SHAREDCFG_DIR, &wdb_wmdb_sock);
-
-    // Legacy agent-group files need to be synchronized with the database
-    // and then removed in case an upgrade has just been performed.
-    wm_sync_legacy_groups_files();
 
 #ifdef INOTIFY_ENABLED
     if (data->real_time) {
@@ -380,102 +375,6 @@ void sync_keys_with_wdb(keystore *keys) {
 
     free_strarray(ids);
     rbtree_destroy(agents);
-}
-
-void wm_sync_legacy_groups_files() {
-    DIR *dir = wopendir(GROUPS_DIR);
-
-    if (!dir) {
-        mtdebug1(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", GROUPS_DIR, strerror(errno));
-        return;
-    }
-
-    mtdebug1(WM_DATABASE_LOGTAG, "Scanning directory '%s'.", GROUPS_DIR);
-
-    struct dirent *dir_entry = NULL;
-    int sync_result = OS_INVALID;
-    char group_file_path[OS_SIZE_512] = {0};
-    bool is_dir_empty = true;
-
-    while ((dir_entry = readdir(dir)) != NULL) {
-        if (dir_entry->d_name[0] != '.') {
-            snprintf(group_file_path, OS_SIZE_512, "%s/%s", GROUPS_DIR, dir_entry->d_name);
-
-            if (is_worker) {
-                mtdebug1(WM_DATABASE_LOGTAG, "Group file '%s' won't be synced in a worker node, removing.", group_file_path);
-                unlink(group_file_path);
-            } else {
-                sync_result = wm_sync_group_file(dir_entry->d_name, group_file_path);
-
-                if (OS_SUCCESS == sync_result) {
-                    mtdebug1(WM_DATABASE_LOGTAG, "Group file '%s' successfully synced, removing.", group_file_path);
-                    unlink(group_file_path);
-                } else {
-                    merror("Failed during the groups file '%s' syncronization.", group_file_path);
-                    is_dir_empty = false;
-                }
-            }
-        }
-    }
-    closedir(dir);
-
-    if (is_dir_empty) {
-        if (rmdir_ex(GROUPS_DIR)) {
-            mtdebug1(WM_DATABASE_LOGTAG, "Unable to remove directory '%s': '%s' (%d)", GROUPS_DIR, strerror(errno), errno);
-        }
-    }
-}
-
-int wm_sync_group_file(const char* group_file, const char* group_file_path) {
-    int id_agent = atoi(group_file);
-
-    if (id_agent <= 0) {
-        mtdebug1(WM_DATABASE_LOGTAG, "Couldn't extract agent ID from file '%s'.", group_file_path);
-        return OS_INVALID;
-    }
-
-    FILE *fp = wfopen(group_file_path, "r");
-
-    if (!fp) {
-        mtdebug1(WM_DATABASE_LOGTAG, "Groups file '%s' could not be opened for syncronization.", group_file_path);
-        return OS_INVALID;
-    }
-
-    char *groups_csv = NULL;
-    os_calloc(OS_SIZE_65536 + 1, sizeof(char), groups_csv);
-    int result = OS_INVALID;
-
-    if (fgets(groups_csv, OS_SIZE_65536, fp)) {
-        char *endl = strchr(groups_csv, '\n');
-        if (endl) {
-            *endl = '\0';
-        }
-
-        char** groups_array = w_string_split(groups_csv, ",", 0);
-        size_t groups_array_size = strarray_size(groups_array);
-        char** truncated_groups_array = NULL;
-        if (groups_array_size > MAX_GROUPS_PER_MULTIGROUP) {
-            truncated_groups_array = groups_array + (groups_array_size - MAX_GROUPS_PER_MULTIGROUP);
-        }
-        else {
-            truncated_groups_array = groups_array;
-        }
-        result = wdb_set_agent_groups(id_agent,
-                                      truncated_groups_array,
-                                      "override",
-                                      w_is_single_node(NULL) ? "synced" : "syncreq",
-                                      &wdb_wmdb_sock);
-
-        free_strarray(groups_array);
-    } else {
-        mtdebug1(WM_DATABASE_LOGTAG, "Empty group file '%s'.", group_file_path);
-        result = OS_SUCCESS;
-    }
-
-    fclose(fp);
-    os_free(groups_csv);
-
-    return result;
 }
 
 int wm_sync_shared_group(const char *fname) {
