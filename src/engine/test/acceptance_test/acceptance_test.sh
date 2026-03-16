@@ -429,7 +429,18 @@ for T in "${THREADS[@]}"; do
     log "Grace period (${GRACE_SECS}s) before benchmark..."
     sleep "${GRACE_SECS}"
 
-    # Step 6: Run benchmark
+    # Step 6a: Warmup run (results discarded)
+    log "Running warmup benchmark (run 1/2)..."
+    if ! run_benchmark "${T}"; then
+        log "WARNING: Warmup benchmark failed for ${T} thread(s). Cleaning up and continuing..."
+    fi
+
+    # Grace period between runs
+    log "Grace period (${GRACE_SECS}s) between benchmark runs..."
+    sleep "${GRACE_SECS}"
+
+    # Step 6b: Actual benchmark run (results kept)
+    log "Running measured benchmark (run 2/2)..."
     if ! run_benchmark "${T}"; then
         log "WARNING: Benchmark failed for ${T} thread(s). Cleaning up and continuing..."
     fi
