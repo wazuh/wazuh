@@ -16,7 +16,7 @@ from connexion.exceptions import ProblemException, OAuthProblem
 
 from freezegun import freeze_time
 
-from api.middlewares import check_rate_limit, check_blocked_ip, MAX_REQUESTS_EVENTS_DEFAULT, UNKNOWN_USER_STRING, \
+from api.middlewares import check_rate_limit, check_blocked_ip, UNKNOWN_USER_STRING, \
     LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, CheckRateLimitsMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, \
     SecureHeadersMiddleware, CheckExpectHeaderMiddleware, secure_headers, access_log
 from api.api_exception import ExpectFailedException
@@ -73,9 +73,7 @@ async def test_middlewares_check_blocked_ip_ko(mock_req):
 
 @freeze_time(datetime(1970, 1, 1))
 @pytest.mark.parametrize("current_time,max_requests,current_time_key, current_counter_key,expected_error_code", [
-    (-80, 300, 'events_current_time', 'events_request_counter', 0),
     (-80, 300, 'general_current_time', 'general_request_counter', 0),
-    (0, 0, 'events_current_time', 'events_request_counter', 6005),
     (0, 0, 'general_current_time', 'general_request_counter', 6001),
 ])
 def test_middlewares_check_rate_limit(
@@ -93,8 +91,7 @@ def test_middlewares_check_rate_limit(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("endpoint", ['/agents'])
-async def test_check_rate_limits_middleware(endpoint, mock_req):
+async def test_check_rate_limits_middleware(mock_req):
     """Test limits middleware."""
     response = MagicMock()
     dispatch_mock = AsyncMock(return_value=response)
@@ -102,7 +99,7 @@ async def test_check_rate_limits_middleware(endpoint, mock_req):
     operation = MagicMock(name="operation")
     operation.method = "post"
     mock_req.url = MagicMock()
-    mock_req.url.path = endpoint
+    mock_req.url.path = "/agents"
     rq_x_min = 10000
     api_conf = {'access': { 'max_request_per_minute': rq_x_min }}
     with TestContext(operation=operation), \
@@ -115,13 +112,9 @@ async def test_check_rate_limits_middleware(endpoint, mock_req):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("endpoint, return_code_general, return_code_events", [
-    ('/agents', 6001, 0),
-])
-async def test_check_rate_limits_middleware_ko(
-    endpoint, return_code_general, return_code_events, mock_req):
+async def test_check_rate_limits_middleware_ko(mock_req):
     """Test limits middleware."""
-    return_value_sequence = [return_code_general, return_code_events]
+    return_value_sequence = [6001, 0]
     def check_rate_limit_side_effect(*_):
         """Side effect function."""
         return return_value_sequence.pop(0)
@@ -131,7 +124,7 @@ async def test_check_rate_limits_middleware_ko(
     operation = MagicMock(name="operation")
     operation.method = "post"
     mock_req.url = MagicMock()
-    mock_req.url.path = endpoint
+    mock_req.url.path = "/agents"
     rq_x_min = 10000
     api_conf = {'access': { 'max_request_per_minute': rq_x_min }}
     with TestContext(operation=operation), \
@@ -145,7 +138,7 @@ async def test_check_rate_limits_middleware_ko(
         dispatch_mock.assert_not_awaited()
         assert exc_info.value.status == 429
         assert exc_info.value.title == "Permission Denied"
-        assert exc_info.value.detail == return_code_general if endpoint == 'event' else return_code_events
+        assert exc_info.value.detail == 6001
         assert exc_info.ext == mock_req
 
 

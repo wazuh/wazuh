@@ -29,9 +29,6 @@ from api.authentication import generate_keypair, JWT_ALGORITHM
 from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
 from api.configuration import default_api_configuration
 
-# Default of the max event requests allowed per minute
-MAX_REQUESTS_EVENTS_DEFAULT = 30
-
 # Variable used to specify an unknown user
 UNKNOWN_USER_STRING = "unknown_user"
 
@@ -56,8 +53,6 @@ ip_block = set()
 ip_lock = asyncio.Lock()
 general_request_counter = 0
 general_current_time = None
-events_request_counter = 0
-events_current_time = None
 
 
 async def access_log(request: ConnexionRequest, response: Response, prev_time: time):
