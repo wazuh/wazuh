@@ -125,11 +125,17 @@ runs:
 
           functionsCoverage=$(awk -F: '/^FNH:/{h+=$2}/^FNF:/{f+=$2}END{if(f>0)printf "%.1f",h/f*100;else print "0.0"}' coverage.info)
           echo "Functions coverage is: $functionsCoverage %"
-          if ! (( $(echo "$functionsCoverage > ${{ inputs.threshold }}" | bc -l) )); then
-            echo "---------------------------------------------"
-            echo "FAILED: Functions coverage is lower than ${{ inputs.threshold }}%"
-            echo "--------------------------------------------"
-            exit 1
+          if [[ "${{ inputs.validate_function_coverage }}" == "true" ]]; then
+            if ! (( $(echo "$functionsCoverage > ${{ inputs.threshold }}" | bc -l) )); then
+              echo "---------------------------------------------"
+              echo "FAILED: Functions coverage is lower than ${{ inputs.threshold }}%"
+              echo "--------------------------------------------"
+              exit 1
+            else
+              echo "----------------------------------------------"
+              echo "PASSED: Functions coverage is greater than ${{ inputs.threshold }}%"
+              echo "----------------------------------------------"
+            fi
           else
             echo "----------------------------------------------"
             echo "SKIPPED: Function coverage validation is disabled"
