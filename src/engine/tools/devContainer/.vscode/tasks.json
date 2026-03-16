@@ -52,7 +52,7 @@
             "problemMatcher": []
         },
         {
-            "label": "Scripts: Purge wazuh-manager",
+            "label": "Scripts: Purge Wazuh installation",
             "type": "shell",
             "command": "${env:WAZUH_REPO}/tools/purge_wazuh.sh",
             "args": [],

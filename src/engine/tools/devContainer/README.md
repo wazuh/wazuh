@@ -132,7 +132,7 @@ Deploys generated certificates to an existing wazuh-manager installation:
 ### purge_wazuh.sh
 Use the repo-level `tools/purge_wazuh.sh` script before re-running the E2E setup if you need to reset a local Wazuh installation completely.
 
-**VS Code Task:** Available as "Scripts: Purge wazuh-manager" in the task menu
+**VS Code Task:** Available as "Scripts: Purge Wazuh installation" in the task menu
 
 
 ## Additional Resources
