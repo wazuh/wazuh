@@ -20,7 +20,6 @@ relationships:
         - syscheck_run
         - mitre_read
         - task_status
-        - events_ingest
       rule_ids:
         - wui_elastic_admin
         - wui_opensearch_admin
