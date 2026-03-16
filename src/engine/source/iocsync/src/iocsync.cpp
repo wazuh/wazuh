@@ -23,7 +23,6 @@ namespace
 {
 
 const base::Name STORE_NAME_IOCSYNC {"iocsync/status/0"}; ///< Name of the internal store document
-constexpr std::size_t IOC_SYNC_BATCH_SIZE {1000};         ///< Documents per search page for IOC sync
 constexpr std::string_view COMPONENT_NAME = "IOCSync";    ///< Component name for logging
 
 void ensureTargetDbExists(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocPtr, std::string_view targetDBName)
@@ -123,14 +122,23 @@ public:
 
 IocSync::IocSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
                  const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocManagerPtr,
-                 const std::shared_ptr<::store::IStore>& storePtr)
+                 const std::shared_ptr<::store::IStore>& storePtr,
+                 const size_t maxRetries,
+                 const size_t retryIntervalSeconds,
+                 const size_t iocSyncBatchSize)
     : m_indexerPtr(indexerPtr)
     , m_kvdbiocManagerPtr(kvdbiocManagerPtr)
     , m_store(storePtr)
     , m_mutex()
-    , m_attempts(3)
-    , m_waitSeconds(5)
+    , m_attempts(maxRetries)
+    , m_iocSyncBatchSize(iocSyncBatchSize)
 {
+    if (retryIntervalSeconds == 0)
+    {
+        throw std::invalid_argument("Retry interval seconds must be greater than 0");
+    }
+    m_waitSeconds = retryIntervalSeconds;
+
     // Check if is the first setup
     if (storePtr->existsDoc(STORE_NAME_IOCSYNC))
     {
@@ -176,7 +184,6 @@ void IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string&
 {
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
     auto kvdbiocPtr = base::utils::lockWeakPtr(m_kvdbiocManagerPtr, "KVDBIOCManager");
-    ;
 
     // Create the database
     kvdbiocPtr->add(dbName);
@@ -188,7 +195,7 @@ void IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string&
 
         processedDocs = indexerPtr->streamIocsByType(
             iocType,
-            IOC_SYNC_BATCH_SIZE,
+            m_iocSyncBatchSize,
             [&stored, &kvdbiocPtr, &dbName](const std::string& key, const std::string& value)
             {
                 // Normalize key to lowercase for case-insensitive matching

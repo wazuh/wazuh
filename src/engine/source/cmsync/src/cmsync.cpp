@@ -143,14 +143,16 @@ public:
 CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
                const std::shared_ptr<cm::crud::ICrudService>& cmcrudPt,
                const std::shared_ptr<::store::IStore>& storePtr,
-               const std::shared_ptr<router::IRouterAPI>& routerPtr)
+               const std::shared_ptr<router::IRouterAPI>& routerPtr,
+               const size_t attemps,
+               const size_t waitSeconds)
     : m_indexerPtr(indexerPtr)
     , m_cmcrudPtr(cmcrudPt)
     , m_store(storePtr)
     , m_router(routerPtr)
     , m_mutex()
-    , m_attemps(3)
-    , m_waitSeconds(5)
+    , m_attemps(attemps)
+    , m_waitSeconds(waitSeconds)
 {
     // Check if is the first setup
     if (storePtr->existsDoc(STORE_NAME_CMSYNC))
