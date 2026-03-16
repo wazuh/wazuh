@@ -51,6 +51,7 @@
  *   <standard IndexerConnector SSL/auth config>
  * }
  */
+template<typename TIndexerConnectorSync = IndexerConnectorSync>
 class IndexerDownloader final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
 {
 private:
@@ -181,7 +182,7 @@ private:
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
         const size_t pageSize = m_config.at("indexer").value("pageSize", 1000u);
 
-        IndexerConnectorSync syncConnector(m_config.at("indexer"));
+        TIndexerConnectorSync syncConnector(m_config.at("indexer"));
 
         nlohmann::json query;
         query["query"]["match_all"] = nlohmann::json::object();
@@ -242,7 +243,7 @@ private:
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
         const size_t pageSize = m_config.at("indexer").value("pageSize", 1000u);
 
-        IndexerConnectorSync syncConnector(m_config.at("indexer"));
+        TIndexerConnectorSync syncConnector(m_config.at("indexer"));
 
         nlohmann::json query;
         query["query"]["range"]["offset"]["gt"] = std::stoull(lastCursor);
