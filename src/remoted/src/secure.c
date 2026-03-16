@@ -83,24 +83,6 @@ STATIC void *current_timestamp(void *none);
 
 STATIC void * close_fp_main(void * args);
 
-/* Status of key-request feature */
-static char key_request_available = 0;
-
-/* Decode hostinfo input queue */
-static w_queue_t * key_request_queue;
-
-/* Remote key request thread */
-void * key_request_thread(__attribute__((unused)) void * args);
-
-/* Push key request */
-static void _push_request(const char *request,const char *type);
-#define push_request(x, y) if (key_request_available) _push_request(x, y);
-
-/* Connect to key-request feature */
-#define KEY_RECONNECT_INTERVAL 300 // 5 minutes
-static int key_request_connect();
-static int key_request_reconnect();
-
 /* Family address reference */
 #define FAMILY_ADDRESS_SIZE 46
 char *str_family_address[FAMILY_ADDRESS_SIZE] = {
@@ -254,11 +236,6 @@ void HandleSecure()
 
     // Create State writer thread
     w_create_thread(rem_state_main, NULL);
-
-    key_request_queue = queue_init(1024);
-
-    // Create key request thread
-    w_create_thread(key_request_thread, NULL);
 
     /* Create wait_for_msgs threads */
     {
@@ -582,7 +559,6 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     char buffer[OS_MAXSTR + 1] = "";
     char *tmp_msg;
     size_t msg_length;
-    char ip_found = 0;
     int r;
     int recv_b = message->size;
     int sock_idle = -1;
@@ -657,12 +633,6 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
             mwarn(ENC_IP_ERROR, buffer + 1, srcip, agname);
 
-            // Send key request by id
-            push_request(buffer + 1, "id");
-            if (message->sock >= 0) {
-                _close_sock(&keys, message->sock);
-            }
-
             rem_inc_recv_unknown();
             return;
         } else {
@@ -720,12 +690,6 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
             mwarn(DENYIP_WARN " Source agent ID is unknown.", srcip);
 
-            // Send key request by ip
-            push_request(srcip, "ip");
-            if (message->sock >= 0) {
-                _close_sock(&keys, message->sock);
-            }
-
             rem_inc_recv_unknown();
             return;
         } else {
@@ -753,7 +717,6 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 }
             }
 
-            ip_found = 1;
             w_mutex_unlock(&keys.keyentries[agentid]->mutex);
         }
 
@@ -779,14 +742,6 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     if (r = ReadSecMSG(&keys, tmp_msg, cleartext_msg, agentid, recv_b - 1, &msg_length, srcip, &tmp_msg), r != KS_VALID) {
         /* If duplicated, a warning was already generated */
         key_unlock();
-
-        if (r == KS_ENCKEY) {
-            if (ip_found) {
-                push_request(srcip, "ip");
-            } else {
-                push_request(buffer + 1, "id");
-            }
-        }
 
         if (message->sock >= 0) {
             mwarn("Decrypt the message fail, socket %d", message->sock);
@@ -1175,79 +1130,6 @@ int _close_sock(keystore * keys, int sock) {
     mdebug1("TCP peer disconnected [%d]", sock);
 
     return retval;
-}
-
-int key_request_connect() {
-    return OS_ConnectUnixDomain(KEY_REQUEST_SOCK, SOCK_DGRAM, OS_MAXSTR);
-}
-
-static int send_key_request(int socket,const char *msg) {
-    return OS_SendUnix(socket,msg,strlen(msg));
-}
-
-static void _push_request(const char *request,const char *type) {
-    char *msg = NULL;
-
-    os_calloc(OS_MAXSTR, sizeof(char), msg);
-    snprintf(msg, OS_MAXSTR, "%s:%s", type, request);
-
-    if(queue_push_ex(key_request_queue, msg) < 0) {
-        os_free(msg);
-    }
-}
-
-int key_request_reconnect() {
-    int socket;
-    static int max_attempts = 4;
-    int attempts;
-
-    while (1) {
-        for (attempts = 0; attempts < max_attempts; attempts++) {
-            if (socket = key_request_connect(), socket < 0) {
-                sleep(1);
-            } else {
-                if(OS_SetSendTimeout(socket, 5) < 0){
-                    close(socket);
-                    continue;
-                }
-                key_request_available = 1;
-                return socket;
-            }
-        }
-        mdebug1("Key-request feature is not available. Retrying connection in %d seconds.", KEY_RECONNECT_INTERVAL);
-        sleep(KEY_RECONNECT_INTERVAL);
-    }
-}
-
-void * key_request_thread(__attribute__((unused)) void * args) {
-    char * msg = NULL;
-    int socket = -1;
-
-    while(1) {
-        if (socket < 0) {
-            socket = key_request_reconnect();
-        }
-
-        if (msg || (msg = queue_pop_ex(key_request_queue))) {
-            int rc;
-
-            if ((rc = send_key_request(socket, msg)) < 0) {
-                if (rc == OS_SOCKBUSY) {
-                    mdebug1("Key request socket busy.");
-                    sleep(1);
-                } else {
-                    merror("Could not communicate with key request queue (%d). Is the module running?", rc);
-                    if (socket >= 0) {
-                        key_request_available = 0;
-                        close(socket);
-                        socket = -1;
-                    }
-                }
-            } else {
-                os_free(msg);
-            }
-        }
-    }
 }
 
 /* Get current timestamp */
