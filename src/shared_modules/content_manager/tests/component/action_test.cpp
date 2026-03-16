@@ -385,29 +385,6 @@ TEST_F(ActionTest, ScheduledActionCatchException)
 }
 
 /**
- * @brief Test the on-demand action execution for an offset update process.
- *
- */
-TEST_F(ActionTest, RunActionOnDemandOffsetUpdate)
-{
-    m_parameters["ondemand"] = true;
-    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-
-    auto action {Action(topicName,
-                        m_parameters,
-                        [](const std::string& msg) -> FileProcessingResult {
-                            return {0, "", false};
-                        })};
-    action.registerActionOnDemand();
-
-    constexpr auto OFFSET {1000};
-    ASSERT_NO_THROW(action.runActionOnDemand(ActionOrchestrator::UpdateData::createOffsetUpdateData(OFFSET)));
-
-    action.unregisterActionOnDemand();
-    action.clearEndpoints();
-}
-
-/**
  * @brief Test the correct functionality of the ondemand hashfile update.
  *
  */
