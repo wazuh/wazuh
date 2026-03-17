@@ -148,7 +148,7 @@ Rule IDs `550` and `554` correspond to FIM alerts for file integrity changes.
 
 ### Create detection rules
 
-Add custom rules on the Wazuh manager to process YARA scan output. Create or edit `/var/ossec/etc/rules/local_rules.xml`:
+Add custom rules on the Wazuh manager to process YARA scan output. Create or edit `/var/wazuh-manager/etc/rules/local_rules.xml`:
 
 ```xml
 <group name="yara,">
@@ -168,7 +168,7 @@ Add custom rules on the Wazuh manager to process YARA scan output. Create or edi
 
 ### Create decoder
 
-Add a custom decoder on the Wazuh manager. Create or edit `/var/ossec/etc/decoders/local_decoder.xml`:
+Add a custom decoder on the Wazuh manager. Create or edit `/var/wazuh-manager/etc/decoders/local_decoder.xml`:
 
 ```xml
 <decoder name="yara_decoder">

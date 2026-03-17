@@ -1,5 +1,7 @@
 # Modules
 
+- [Agent Management](agent-management/) - Centralized configuration and group management for agents
+- [Integrations](integrations/) - Cloud services and third-party platform integrations
 - [Control](control/) - Manager control operations (restart, reload) via wm_control module
 - [Syscollector](syscollector/) - System inventory collection and monitoring
 - [Logcollector](logcollector/) - Log ingestion

@@ -116,7 +116,7 @@ systemctl restart wazuh-manager
 Check the module logs:
 
 ```bash
-grep "ms-graph" /var/ossec/logs/ossec.log
+grep "ms-graph" /var/wazuh-manager/logs/ossec.log
 ```
 
 Microsoft Graph security events generate alerts with the `ms-graph` data field populated.

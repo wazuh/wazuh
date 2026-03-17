@@ -37,7 +37,7 @@ Configure the Office 365 module in the Wazuh manager `ossec.conf` file:
     <api_auth>
       <tenant_id>YOUR_TENANT_ID</tenant_id>
       <client_id>YOUR_CLIENT_ID</client_id>
-      <client_secret_path>/var/ossec/etc/office365_secret</client_secret_path>
+      <client_secret_path>/var/wazuh-manager/etc/office365_secret</client_secret_path>
     </api_auth>
     <subscriptions>
       <subscription>Audit.AzureActiveDirectory</subscription>
@@ -84,7 +84,7 @@ For US Government Cloud environments, set the `api_type` option:
 <api_auth>
   <tenant_id>YOUR_TENANT_ID</tenant_id>
   <client_id>YOUR_CLIENT_ID</client_id>
-  <client_secret_path>/var/ossec/etc/office365_secret</client_secret_path>
+  <client_secret_path>/var/wazuh-manager/etc/office365_secret</client_secret_path>
   <api_type>gcc-high</api_type>
 </api_auth>
 ```
@@ -100,7 +100,7 @@ systemctl restart wazuh-manager
 Check the module logs:
 
 ```bash
-grep "office365" /var/ossec/logs/ossec.log
+grep "office365" /var/wazuh-manager/logs/ossec.log
 ```
 
 Office 365 audit events generate alerts with the `office365` data field populated.

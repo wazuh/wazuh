@@ -18,7 +18,7 @@ Configuration values defined in `agent.conf` take precedence over the local `oss
 On the Wazuh manager, the centralized configuration files are located in the shared directory for each group:
 
 ```
-/var/ossec/etc/shared/<GROUP_NAME>/agent.conf
+/var/wazuh-manager/etc/shared/<GROUP_NAME>/agent.conf
 ```
 
 The default group is named `default`. All agents belong to the `default` group unless explicitly assigned to another group.
@@ -107,7 +107,7 @@ The following configuration sections can be distributed via `agent.conf`:
 After editing `agent.conf`, verify the configuration syntax on the manager:
 
 ```bash
-/var/ossec/bin/verify-agent-conf
+/var/wazuh-manager/bin/verify-agent-conf
 ```
 
 If the configuration is valid, the output confirms success. If there are syntax errors, they are reported with line numbers.

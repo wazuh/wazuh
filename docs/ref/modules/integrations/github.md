@@ -97,7 +97,7 @@ systemctl restart wazuh-manager
 Check the module logs:
 
 ```bash
-grep "github" /var/ossec/logs/ossec.log
+grep "github" /var/wazuh-manager/logs/ossec.log
 ```
 
 GitHub audit events generate alerts with the `github` data field populated.

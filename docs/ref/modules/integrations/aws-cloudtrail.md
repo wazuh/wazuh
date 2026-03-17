@@ -121,7 +121,7 @@ systemctl restart wazuh-manager
 Check the module logs:
 
 ```bash
-grep "aws-s3" /var/ossec/logs/ossec.log
+grep "aws-s3" /var/wazuh-manager/logs/ossec.log
 ```
 
 CloudTrail events generate alerts with the `aws` data field containing the original event information.

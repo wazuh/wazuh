@@ -18,7 +18,7 @@ All agents belong to the `default` group by default. Agents can be assigned to o
 Each group has a dedicated directory under the manager's shared configuration path:
 
 ```
-/var/ossec/etc/shared/
+/var/wazuh-manager/etc/shared/
 ├── default/
 │   └── agent.conf
 ├── web-servers/
@@ -75,25 +75,25 @@ DELETE /groups?groups_list=<GROUP_NAME>
 ### List agent groups
 
 ```bash
-/var/ossec/bin/agent_groups -l
+/var/wazuh-manager/bin/agent_groups -l
 ```
 
 ### Create a group
 
 ```bash
-/var/ossec/bin/agent_groups -a -g <GROUP_NAME>
+/var/wazuh-manager/bin/agent_groups -a -g <GROUP_NAME>
 ```
 
 ### Assign an agent to a group
 
 ```bash
-/var/ossec/bin/agent_groups -a -i <AGENT_ID> -g <GROUP_NAME>
+/var/wazuh-manager/bin/agent_groups -a -i <AGENT_ID> -g <GROUP_NAME>
 ```
 
 ### Remove an agent from a group
 
 ```bash
-/var/ossec/bin/agent_groups -r -i <AGENT_ID> -g <GROUP_NAME>
+/var/wazuh-manager/bin/agent_groups -r -i <AGENT_ID> -g <GROUP_NAME>
 ```
 
 ## Multi-group agents

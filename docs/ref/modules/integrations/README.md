@@ -17,4 +17,4 @@ This section describes the Wazuh integrations with cloud services and third-part
 ## Threat intelligence and detection
 
 - [YARA](yara.md) – Detect malware using YARA rules with active response.
-- [MITRE ATT&CK](../mitre-attack.md) – Map alerts to the MITRE ATT&CK framework.
+- [MITRE ATT&CK](../../mitre-attack.md) – Map alerts to the MITRE ATT&CK framework.

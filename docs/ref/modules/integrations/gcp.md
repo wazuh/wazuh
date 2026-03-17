@@ -28,7 +28,7 @@ The GCP module is configured inside the `<ossec_config>` block of the Wazuh mana
     <enabled>yes</enabled>
     <project_id>my-gcp-project</project_id>
     <subscription_name>wazuh-subscription</subscription_name>
-    <credentials_file>/var/ossec/etc/credentials.json</credentials_file>
+    <credentials_file>/var/wazuh-manager/etc/credentials.json</credentials_file>
     <max_messages>100</max_messages>
     <num_threads>1</num_threads>
     <pull_on_start>yes</pull_on_start>
@@ -60,7 +60,7 @@ The GCP module is configured inside the `<ossec_config>` block of the Wazuh mana
     <interval>1h</interval>
     <bucket type="access_logs">
       <name>my-gcp-bucket</name>
-      <credentials_file>/var/ossec/etc/credentials.json</credentials_file>
+      <credentials_file>/var/wazuh-manager/etc/credentials.json</credentials_file>
       <path>logs/</path>
       <only_logs_after>2024-01-01</only_logs_after>
       <remove_from_bucket>no</remove_from_bucket>
@@ -111,7 +111,7 @@ systemctl restart wazuh-manager
 Check the Wazuh manager logs for GCP module activity:
 
 ```bash
-grep "gcp" /var/ossec/logs/ossec.log
+grep "gcp" /var/wazuh-manager/logs/ossec.log
 ```
 
 GCP events appear in the Wazuh alerts with the `gcp` data field populated.
