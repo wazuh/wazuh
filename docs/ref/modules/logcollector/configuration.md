@@ -67,9 +67,9 @@ Example for `file-23-06-15.log`:
 ```
 
 !!! note
-    - `23` → year  
-    - `06` → month  
-    - `15` → day  
+    - `23` → year
+    - `06` → month
+    - `15` → day
 
 Restart the agent after applying the configuration.
 
@@ -273,10 +273,7 @@ You can filter by subsystem and category to narrow the collected logs:
 <localfile>
   <location>macos</location>
   <log_format>macos</log_format>
-  <query type="log" level="info">
-    (subsystem == "com.apple.securityd") or
-    (subsystem == "com.apple.opendirectoryd")
-  </query>
+  <query type="log" level="info">(subsystem == "com.apple.securityd") or (subsystem == "com.apple.opendirectoryd")</query>
 </localfile>
 ```
 
@@ -288,12 +285,7 @@ To monitor authentication events on macOS:
 <localfile>
   <location>macos</location>
   <log_format>macos</log_format>
-  <query type="log,trace" level="info">
-    (process == "sshd") or
-    (process == "sudo") or
-    (process == "loginwindow" and eventMessage contains "Authentication") or
-    (process == "screensharingd")
-  </query>
+  <query type="trace,log,activity" level="info">(process == "sudo") or (process == "sessionlogoutd" and message contains "logout is complete.") or (process == "sshd") or (process == "tccd" and message contains "Update Access Record") or (message contains "SessionAgentNotificationCenter") or (process == "screensharingd" and message contains "Authentication") or (process == "securityd" and eventMessage contains "Session" and subsystem == "com.apple.securityd")</query>
 </localfile>
 ```
 
@@ -424,14 +416,12 @@ systemctl restart wazuh-agent
 Wazuh also includes a Docker listener module that monitors Docker events (container start, stop, create, destroy) through the Docker socket. This module is configured separately from log collection:
 
 ```xml
-<ossec_config>
   <wodle name="docker-listener">
     <disabled>no</disabled>
     <run_on_start>yes</run_on_start>
     <interval>1m</interval>
     <attempts>5</attempts>
   </wodle>
-</ossec_config>
 ```
 
 | Option | Default | Description |

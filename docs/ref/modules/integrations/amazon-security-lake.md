@@ -18,7 +18,6 @@ Wazuh subscribes to an SQS queue that receives notifications when new data is av
 Configure the AWS module in the Wazuh agent `ossec.conf` file using the `subscriber` element with `type="security_lake"`:
 
 ```xml
-<ossec_config>
   <wodle name="aws-s3">
     <disabled>no</disabled>
     <interval>5m</interval>
@@ -30,13 +29,11 @@ Configure the AWS module in the Wazuh agent `ossec.conf` file using the `subscri
       <iam_role_arn>arn:aws:iam::123456789012:role/WazuhSecurityLakeRole</iam_role_arn>
     </subscriber>
   </wodle>
-</ossec_config>
 ```
 
 Alternatively, Security Lake data can be accessed via the S3 bucket type:
 
 ```xml
-<ossec_config>
   <wodle name="aws-s3">
     <disabled>no</disabled>
     <interval>10m</interval>
@@ -48,7 +45,6 @@ Alternatively, Security Lake data can be accessed via the S3 bucket type:
       <regions>us-east-1</regions>
     </bucket>
   </wodle>
-</ossec_config>
 ```
 
 ### Subscriber configuration options

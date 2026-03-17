@@ -17,7 +17,6 @@ Wazuh retrieves CloudTrail logs from S3, analyzes them using the Wazuh rule engi
 Configure the AWS module in the Wazuh agent `ossec.conf` file:
 
 ```xml
-<ossec_config>
   <wodle name="aws-s3">
     <disabled>no</disabled>
     <interval>10m</interval>
@@ -33,7 +32,6 @@ Configure the AWS module in the Wazuh agent `ossec.conf` file:
       <remove_from_bucket>no</remove_from_bucket>
     </bucket>
   </wodle>
-</ossec_config>
 ```
 
 ### Configuration options

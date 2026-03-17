@@ -28,7 +28,6 @@ The module runs on the Wazuh agent and periodically queries the Microsoft Graph 
 Configure the Microsoft Graph module in the Wazuh agent `ossec.conf` file:
 
 ```xml
-<ossec_config>
   <ms-graph>
     <enabled>yes</enabled>
     <only_future_events>yes</only_future_events>
@@ -47,7 +46,6 @@ Configure the Microsoft Graph module in the Wazuh agent `ossec.conf` file:
       <relationship>alerts_v2</relationship>
     </resource>
   </ms-graph>
-</ossec_config>
 ```
 
 ### Configuration options

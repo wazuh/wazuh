@@ -28,7 +28,6 @@ The module runs on the Wazuh agent and periodically queries the Office 365 API f
 Configure the Office 365 module in the Wazuh agent `ossec.conf` file:
 
 ```xml
-<ossec_config>
   <office365>
     <enabled>yes</enabled>
     <only_future_events>yes</only_future_events>
@@ -46,7 +45,6 @@ Configure the Office 365 module in the Wazuh agent `ossec.conf` file:
       <subscription>Audit.General</subscription>
     </subscriptions>
   </office365>
-</ossec_config>
 ```
 
 ### Configuration options

@@ -129,7 +129,6 @@ Configure FIM on the agent to monitor directories where you want to detect malwa
 On the Wazuh manager, configure the active response to trigger the YARA script on FIM events. Add the following to the manager's `ossec.conf`:
 
 ```xml
-<ossec_config>
   <command>
     <name>yara_scan</name>
     <executable>yara.sh</executable>
@@ -141,7 +140,6 @@ On the Wazuh manager, configure the active response to trigger the YARA script o
     <location>local</location>
     <rules_id>550,554</rules_id>
   </active-response>
-</ossec_config>
 ```
 
 Rule IDs `550` and `554` correspond to FIM alerts for file integrity changes.

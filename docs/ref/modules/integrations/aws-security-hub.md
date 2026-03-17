@@ -18,7 +18,6 @@ Wazuh subscribes to an SQS queue that receives Security Hub findings notificatio
 Configure the AWS module in the Wazuh agent `ossec.conf` file using the `subscriber` element with `type="security_hub"`:
 
 ```xml
-<ossec_config>
   <wodle name="aws-s3">
     <disabled>no</disabled>
     <interval>5m</interval>
@@ -30,7 +29,6 @@ Configure the AWS module in the Wazuh agent `ossec.conf` file using the `subscri
       <iam_role_arn>arn:aws:iam::123456789012:role/WazuhRole</iam_role_arn>
     </subscriber>
   </wodle>
-</ossec_config>
 ```
 
 ### Configuration options

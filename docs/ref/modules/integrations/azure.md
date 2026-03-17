@@ -23,7 +23,6 @@ The Azure module is configured inside the `<ossec_config>` block of the Wazuh ag
 ### Log Analytics configuration
 
 ```xml
-<ossec_config>
   <wodle name="azure-logs">
     <disabled>no</disabled>
     <run_on_start>yes</run_on_start>
@@ -39,13 +38,11 @@ The Azure module is configured inside the `<ossec_config>` block of the Wazuh ag
       </request>
     </log_analytics>
   </wodle>
-</ossec_config>
 ```
 
 ### Microsoft Graph configuration
 
 ```xml
-<ossec_config>
   <wodle name="azure-logs">
     <disabled>no</disabled>
     <run_on_start>yes</run_on_start>
@@ -60,13 +57,11 @@ The Azure module is configured inside the `<ossec_config>` block of the Wazuh ag
       </request>
     </graph>
   </wodle>
-</ossec_config>
 ```
 
 ### Azure Storage configuration
 
 ```xml
-<ossec_config>
   <wodle name="azure-logs">
     <disabled>no</disabled>
     <run_on_start>yes</run_on_start>
@@ -81,7 +76,6 @@ The Azure module is configured inside the `<ossec_config>` block of the Wazuh ag
       </container>
     </storage>
   </wodle>
-</ossec_config>
 ```
 
 ### Configuration options

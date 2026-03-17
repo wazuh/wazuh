@@ -17,7 +17,6 @@ Wazuh connects to the CloudWatch Logs API to pull log events from specified log 
 Configure the AWS module in the Wazuh agent `ossec.conf` file using the `service` element with `type="cloudwatchlogs"`:
 
 ```xml
-<ossec_config>
   <wodle name="aws-s3">
     <disabled>no</disabled>
     <interval>5m</interval>
@@ -32,7 +31,6 @@ Configure the AWS module in the Wazuh agent `ossec.conf` file using the `service
       <remove_log_streams>no</remove_log_streams>
     </service>
   </wodle>
-</ossec_config>
 ```
 
 ### Configuration options

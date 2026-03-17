@@ -25,7 +25,6 @@ The module runs on the Wazuh agent and periodically queries the GitHub API for n
 Configure the GitHub module in the Wazuh agent `ossec.conf` file:
 
 ```xml
-<ossec_config>
   <github>
     <enabled>yes</enabled>
     <only_future_events>yes</only_future_events>
@@ -40,7 +39,6 @@ Configure the GitHub module in the Wazuh agent `ossec.conf` file:
       <event_type>all</event_type>
     </api_parameters>
   </github>
-</ossec_config>
 ```
 
 ### Configuration options
