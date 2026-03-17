@@ -10,11 +10,11 @@ Wazuh retrieves CloudTrail logs from S3, analyzes them using the Wazuh rule engi
 
 - An AWS account with CloudTrail enabled and configured to deliver logs to an S3 bucket.
 - AWS credentials (access key and secret key) or an IAM role with permissions to read from the S3 bucket.
-- Python 3 and the `boto3` library installed on the Wazuh manager.
+- Python 3 and the `boto3` library installed on the Wazuh agent.
 
 ## Configuration
 
-Configure the AWS module in the Wazuh manager `ossec.conf` file:
+Configure the AWS module in the Wazuh agent `ossec.conf` file:
 
 ```xml
 <ossec_config>
@@ -112,16 +112,16 @@ If using `remove_from_bucket`, add the `s3:DeleteObject` permission.
 
 ## Verify the integration
 
-Restart the Wazuh manager after applying the configuration:
+Restart the Wazuh agent after applying the configuration:
 
 ```bash
-systemctl restart wazuh-manager
+systemctl restart wazuh-agent
 ```
 
 Check the module logs:
 
 ```bash
-grep "aws-s3" /var/wazuh-manager/logs/ossec.log
+grep "aws-s3" /var/ossec/logs/ossec.log
 ```
 
 CloudTrail events generate alerts with the `aws` data field containing the original event information.

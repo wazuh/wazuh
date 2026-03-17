@@ -4,7 +4,7 @@
 
 The Wazuh Microsoft Graph module retrieves security alerts and events from the Microsoft Graph Security API. This provides access to security data from multiple Microsoft security products, including Microsoft Defender for Endpoint, Microsoft Defender for Identity, Microsoft Defender for Cloud Apps, and Azure AD Identity Protection.
 
-The module runs on the Wazuh manager and periodically queries the Microsoft Graph Security API for new alerts and events. It supports multiple API resources and relationships for comprehensive security monitoring.
+The module runs on the Wazuh agent and periodically queries the Microsoft Graph Security API for new alerts and events. It supports multiple API resources and relationships for comprehensive security monitoring.
 
 ## Prerequisites
 
@@ -25,7 +25,7 @@ The module runs on the Wazuh manager and periodically queries the Microsoft Grap
 
 ## Configuration
 
-Configure the Microsoft Graph module in the Wazuh manager `ossec.conf` file:
+Configure the Microsoft Graph module in the Wazuh agent `ossec.conf` file:
 
 ```xml
 <ossec_config>
@@ -107,16 +107,16 @@ Configure the Microsoft Graph module in the Wazuh manager `ossec.conf` file:
 
 ## Verify the integration
 
-Restart the Wazuh manager after applying the configuration:
+Restart the Wazuh agent after applying the configuration:
 
 ```bash
-systemctl restart wazuh-manager
+systemctl restart wazuh-agent
 ```
 
 Check the module logs:
 
 ```bash
-grep "ms-graph" /var/wazuh-manager/logs/ossec.log
+grep "ms-graph" /var/ossec/logs/ossec.log
 ```
 
 Microsoft Graph security events generate alerts with the `ms-graph` data field populated.

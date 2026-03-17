@@ -11,11 +11,11 @@ Wazuh subscribes to an SQS queue that receives Security Hub findings notificatio
 - An AWS account with Security Hub enabled.
 - An SQS queue configured to receive Security Hub findings (via EventBridge or direct integration).
 - AWS credentials (access key and secret key) or an IAM role with permissions to read from the SQS queue and associated S3 buckets.
-- Python 3 and the `boto3` library installed on the Wazuh manager.
+- Python 3 and the `boto3` library installed on the Wazuh agent.
 
 ## Configuration
 
-Configure the AWS module in the Wazuh manager `ossec.conf` file using the `subscriber` element with `type="security_hub"`:
+Configure the AWS module in the Wazuh agent `ossec.conf` file using the `subscriber` element with `type="security_hub"`:
 
 ```xml
 <ossec_config>
@@ -90,16 +90,16 @@ The IAM user or role needs the following permissions:
 
 ## Verify the integration
 
-Restart the Wazuh manager after applying the configuration:
+Restart the Wazuh agent after applying the configuration:
 
 ```bash
-systemctl restart wazuh-manager
+systemctl restart wazuh-agent
 ```
 
 Check the module logs:
 
 ```bash
-grep "aws-s3" /var/wazuh-manager/logs/ossec.log
+grep "aws-s3" /var/ossec/logs/ossec.log
 ```
 
 Security Hub findings generate alerts with the `aws` data field containing the original finding information.

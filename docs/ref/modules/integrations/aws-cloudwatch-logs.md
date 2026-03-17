@@ -10,11 +10,11 @@ Wazuh connects to the CloudWatch Logs API to pull log events from specified log 
 
 - An AWS account with CloudWatch Logs enabled and log groups configured.
 - AWS credentials (access key and secret key) or an IAM role with permissions to read CloudWatch log groups.
-- Python 3 and the `boto3` library installed on the Wazuh manager.
+- Python 3 and the `boto3` library installed on the Wazuh agent.
 
 ## Configuration
 
-Configure the AWS module in the Wazuh manager `ossec.conf` file using the `service` element with `type="cloudwatchlogs"`:
+Configure the AWS module in the Wazuh agent `ossec.conf` file using the `service` element with `type="cloudwatchlogs"`:
 
 ```xml
 <ossec_config>
@@ -97,16 +97,16 @@ If using `remove_log_streams`, add the `logs:DeleteLogStream` permission.
 
 ## Verify the integration
 
-Restart the Wazuh manager after applying the configuration:
+Restart the Wazuh agent after applying the configuration:
 
 ```bash
-systemctl restart wazuh-manager
+systemctl restart wazuh-agent
 ```
 
 Check the module logs:
 
 ```bash
-grep "aws-s3" /var/wazuh-manager/logs/ossec.log
+grep "aws-s3" /var/ossec/logs/ossec.log
 ```
 
 CloudWatch log events generate alerts with the `aws` data field.

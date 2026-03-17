@@ -4,7 +4,7 @@
 
 The Wazuh Office 365 module retrieves audit logs from the Microsoft Office 365 Management Activity API. This enables monitoring of user and administrator activity across Office 365 services, including Exchange Online, SharePoint Online, Azure Active Directory, and Microsoft Teams.
 
-The module runs on the Wazuh manager and periodically queries the Office 365 API for new audit events. Events are processed by the Wazuh rule engine to generate alerts for suspicious activity such as unauthorized access, mail forwarding rule changes, and privilege escalation.
+The module runs on the Wazuh agent and periodically queries the Office 365 API for new audit events. Events are processed by the Wazuh rule engine to generate alerts for suspicious activity such as unauthorized access, mail forwarding rule changes, and privilege escalation.
 
 ## Prerequisites
 
@@ -25,7 +25,7 @@ The module runs on the Wazuh manager and periodically queries the Office 365 API
 
 ## Configuration
 
-Configure the Office 365 module in the Wazuh manager `ossec.conf` file:
+Configure the Office 365 module in the Wazuh agent `ossec.conf` file:
 
 ```xml
 <ossec_config>
@@ -37,7 +37,7 @@ Configure the Office 365 module in the Wazuh manager `ossec.conf` file:
     <api_auth>
       <tenant_id>YOUR_TENANT_ID</tenant_id>
       <client_id>YOUR_CLIENT_ID</client_id>
-      <client_secret_path>/var/wazuh-manager/etc/office365_secret</client_secret_path>
+      <client_secret_path>/var/ossec/etc/office365_secret</client_secret_path>
     </api_auth>
     <subscriptions>
       <subscription>Audit.AzureActiveDirectory</subscription>
@@ -84,23 +84,23 @@ For US Government Cloud environments, set the `api_type` option:
 <api_auth>
   <tenant_id>YOUR_TENANT_ID</tenant_id>
   <client_id>YOUR_CLIENT_ID</client_id>
-  <client_secret_path>/var/wazuh-manager/etc/office365_secret</client_secret_path>
+  <client_secret_path>/var/ossec/etc/office365_secret</client_secret_path>
   <api_type>gcc-high</api_type>
 </api_auth>
 ```
 
 ## Verify the integration
 
-Restart the Wazuh manager after applying the configuration:
+Restart the Wazuh agent after applying the configuration:
 
 ```bash
-systemctl restart wazuh-manager
+systemctl restart wazuh-agent
 ```
 
 Check the module logs:
 
 ```bash
-grep "office365" /var/wazuh-manager/logs/ossec.log
+grep "office365" /var/ossec/logs/ossec.log
 ```
 
 Office 365 audit events generate alerts with the `office365` data field populated.

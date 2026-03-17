@@ -2,23 +2,23 @@
 
 ## Introduction
 
-The Wazuh Azure module retrieves logs from Microsoft Azure services and forwards them to the Wazuh manager for analysis. The module supports three data sources:
+The Wazuh Azure module retrieves logs from Microsoft Azure services and forwards them for analysis. The module supports three data sources:
 
 - **Log Analytics**: Queries Azure Log Analytics workspaces using Kusto Query Language (KQL).
 - **Microsoft Graph**: Retrieves directory and security data from the Microsoft Graph API.
 - **Azure Storage**: Reads logs from Azure Blob Storage containers.
 
-The module runs as a Wazuh wodle on the Wazuh manager. It invokes the `wodles/azure/azure-logs` Python script to connect to Azure services.
+The module runs as a Wazuh wodle on the Wazuh agent. It invokes the `wodles/azure/azure-logs` Python script to connect to Azure services.
 
 ## Prerequisites
 
 - An Azure subscription with the required services enabled.
 - An Azure AD application registered with appropriate API permissions.
-- Python 3 and the required Azure Python libraries installed on the Wazuh manager.
+- Python 3 and the required Azure Python libraries installed on the Wazuh agent.
 
 ## Configuration
 
-The Azure module is configured inside the `<ossec_config>` block of the Wazuh manager configuration file (`ossec.conf`).
+The Azure module is configured inside the `<ossec_config>` block of the Wazuh agent configuration file (`ossec.conf`).
 
 ### Log Analytics configuration
 
@@ -29,7 +29,7 @@ The Azure module is configured inside the `<ossec_config>` block of the Wazuh ma
     <run_on_start>yes</run_on_start>
     <interval>1h</interval>
     <log_analytics>
-      <auth_path>/var/wazuh-manager/etc/azure_auth.json</auth_path>
+      <auth_path>/var/ossec/etc/azure_auth.json</auth_path>
       <tenantdomain>my-tenant.onmicrosoft.com</tenantdomain>
       <request>
         <tag>azure-activity</tag>
@@ -51,7 +51,7 @@ The Azure module is configured inside the `<ossec_config>` block of the Wazuh ma
     <run_on_start>yes</run_on_start>
     <interval>1h</interval>
     <graph>
-      <auth_path>/var/wazuh-manager/etc/azure_auth.json</auth_path>
+      <auth_path>/var/ossec/etc/azure_auth.json</auth_path>
       <tenantdomain>my-tenant.onmicrosoft.com</tenantdomain>
       <request>
         <tag>azure-graph</tag>
@@ -72,7 +72,7 @@ The Azure module is configured inside the `<ossec_config>` block of the Wazuh ma
     <run_on_start>yes</run_on_start>
     <interval>1h</interval>
     <storage>
-      <auth_path>/var/wazuh-manager/etc/azure_storage_auth.json</auth_path>
+      <auth_path>/var/ossec/etc/azure_storage_auth.json</auth_path>
       <tag>azure-storage</tag>
       <container name="insights-logs-networksecuritygroupflowevent">
         <blobs>.json</blobs>
@@ -160,16 +160,16 @@ For Storage:
 
 ## Verify the integration
 
-Restart the Wazuh manager after applying the configuration:
+Restart the Wazuh agent after applying the configuration:
 
 ```bash
-systemctl restart wazuh-manager
+systemctl restart wazuh-agent
 ```
 
 Check the module logs:
 
 ```bash
-grep "azure" /var/wazuh-manager/logs/ossec.log
+grep "azure" /var/ossec/logs/ossec.log
 ```
 
 Azure events generate alerts with the `azure` data field populated.

@@ -4,7 +4,7 @@
 
 The Wazuh GitHub module retrieves audit log events from GitHub organizations using the GitHub Audit Log API. This enables monitoring of organization activity, including repository management, team changes, member access, and other administrative actions.
 
-The module runs on the Wazuh manager and periodically queries the GitHub API for new audit events. Events are processed by the Wazuh rule engine to generate alerts for suspicious activity such as unauthorized repository access, permission changes, and authentication events.
+The module runs on the Wazuh agent and periodically queries the GitHub API for new audit events. Events are processed by the Wazuh rule engine to generate alerts for suspicious activity such as unauthorized repository access, permission changes, and authentication events.
 
 ## Prerequisites
 
@@ -22,7 +22,7 @@ The module runs on the Wazuh manager and periodically queries the GitHub API for
 
 ## Configuration
 
-Configure the GitHub module in the Wazuh manager `ossec.conf` file:
+Configure the GitHub module in the Wazuh agent `ossec.conf` file:
 
 ```xml
 <ossec_config>
@@ -88,16 +88,16 @@ Configure the GitHub module in the Wazuh manager `ossec.conf` file:
 
 ## Verify the integration
 
-Restart the Wazuh manager after applying the configuration:
+Restart the Wazuh agent after applying the configuration:
 
 ```bash
-systemctl restart wazuh-manager
+systemctl restart wazuh-agent
 ```
 
 Check the module logs:
 
 ```bash
-grep "github" /var/wazuh-manager/logs/ossec.log
+grep "github" /var/ossec/logs/ossec.log
 ```
 
 GitHub audit events generate alerts with the `github` data field populated.

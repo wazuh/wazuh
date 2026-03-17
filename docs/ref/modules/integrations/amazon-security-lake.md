@@ -11,11 +11,11 @@ Wazuh subscribes to an SQS queue that receives notifications when new data is av
 - An AWS account with Amazon Security Lake enabled.
 - An SQS queue configured as a subscriber source for Security Lake.
 - AWS credentials or an IAM role with permissions to read from the SQS queue and the Security Lake S3 bucket.
-- Python 3 and the `boto3` library installed on the Wazuh manager.
+- Python 3 and the `boto3` library installed on the Wazuh agent.
 
 ## Configuration
 
-Configure the AWS module in the Wazuh manager `ossec.conf` file using the `subscriber` element with `type="security_lake"`:
+Configure the AWS module in the Wazuh agent `ossec.conf` file using the `subscriber` element with `type="security_lake"`:
 
 ```xml
 <ossec_config>
@@ -112,16 +112,16 @@ The IAM user or role needs the following permissions:
 
 ## Verify the integration
 
-Restart the Wazuh manager after applying the configuration:
+Restart the Wazuh agent after applying the configuration:
 
 ```bash
-systemctl restart wazuh-manager
+systemctl restart wazuh-agent
 ```
 
 Check the module logs:
 
 ```bash
-grep "aws-s3" /var/wazuh-manager/logs/ossec.log
+grep "aws-s3" /var/ossec/logs/ossec.log
 ```
 
 Security Lake events generate alerts with the `aws` data field containing the OCSF-formatted event data.

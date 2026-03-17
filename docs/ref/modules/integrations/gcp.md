@@ -2,23 +2,23 @@
 
 ## Introduction
 
-The Wazuh GCP (Google Cloud Platform) module retrieves logs from Google Cloud services and forwards them to the Wazuh manager for analysis. The module supports two collection methods:
+The Wazuh GCP (Google Cloud Platform) module retrieves logs from Google Cloud services and forwards them to the Wazuh analysis engine. The module supports two collection methods:
 
 - **Pub/Sub**: Subscribes to a Google Cloud Pub/Sub topic to receive log messages in real time.
 - **Cloud Storage buckets**: Reads logs stored in Google Cloud Storage buckets (for example, access logs).
 
-The GCP module runs as a Wazuh wodle on the Wazuh manager. It invokes the `wodles/gcloud/gcloud` Python script to connect to Google Cloud services using a service account credentials file.
+The GCP module runs as a Wazuh wodle on the Wazuh agent. It invokes the `wodles/gcloud/gcloud` Python script to connect to Google Cloud services using a service account credentials file.
 
 ## Prerequisites
 
 - A Google Cloud project with the required APIs enabled (Pub/Sub API or Cloud Storage API).
 - A service account with appropriate permissions and a downloaded JSON credentials file.
-- The credentials file must be accessible to the Wazuh manager.
-- Python 3 and the required Google Cloud Python libraries installed on the Wazuh manager.
+- The credentials file must be accessible to the Wazuh agent.
+- Python 3 and the required Google Cloud Python libraries installed on the Wazuh agent.
 
 ## Configuration
 
-The GCP module is configured inside the `<ossec_config>` block of the Wazuh manager configuration file (`ossec.conf`).
+The GCP module is configured inside the `<ossec_config>` block of the Wazuh agent configuration file (`ossec.conf`).
 
 ### Pub/Sub configuration
 
@@ -28,7 +28,7 @@ The GCP module is configured inside the `<ossec_config>` block of the Wazuh mana
     <enabled>yes</enabled>
     <project_id>my-gcp-project</project_id>
     <subscription_name>wazuh-subscription</subscription_name>
-    <credentials_file>/var/wazuh-manager/etc/credentials.json</credentials_file>
+    <credentials_file>/var/ossec/etc/credentials.json</credentials_file>
     <max_messages>100</max_messages>
     <num_threads>1</num_threads>
     <pull_on_start>yes</pull_on_start>
@@ -60,7 +60,7 @@ The GCP module is configured inside the `<ossec_config>` block of the Wazuh mana
     <interval>1h</interval>
     <bucket type="access_logs">
       <name>my-gcp-bucket</name>
-      <credentials_file>/var/wazuh-manager/etc/credentials.json</credentials_file>
+      <credentials_file>/var/ossec/etc/credentials.json</credentials_file>
       <path>logs/</path>
       <only_logs_after>2024-01-01</only_logs_after>
       <remove_from_bucket>no</remove_from_bucket>
@@ -98,20 +98,20 @@ The GCP module is configured inside the `<ossec_config>` block of the Wazuh mana
 2. Create a new service account with the following roles:
    - `Pub/Sub Subscriber` (for Pub/Sub integration)
    - `Storage Object Viewer` (for bucket integration)
-3. Generate a JSON key and download it to the Wazuh manager.
+3. Generate a JSON key and download it to the Wazuh agent.
 
 ## Verify the integration
 
-After configuring the module, restart the Wazuh manager:
+After configuring the module, restart the Wazuh agent:
 
 ```bash
-systemctl restart wazuh-manager
+systemctl restart wazuh-agent
 ```
 
-Check the Wazuh manager logs for GCP module activity:
+Check the Wazuh agent logs for GCP module activity:
 
 ```bash
-grep "gcp" /var/wazuh-manager/logs/ossec.log
+grep "gcp" /var/ossec/logs/ossec.log
 ```
 
 GCP events appear in the Wazuh alerts with the `gcp` data field populated.
