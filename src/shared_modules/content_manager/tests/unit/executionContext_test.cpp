@@ -317,3 +317,25 @@ TEST_F(ExecutionContextTest, DefaultHttpUserAgentSet)
     m_spUpdaterBaseContext->configData.erase("consumerName");
     EXPECT_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext), std::invalid_argument);
 }
+
+/**
+ * @brief When contentSource is "indexer", output folders are NOT created, but RocksDB and httpUserAgent still
+ * initialized.
+ */
+TEST_F(ExecutionContextTest, IndexerSourceSkipsOutputFolder)
+{
+    m_spUpdaterBaseContext->configData["contentSource"] = "indexer";
+    m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath.string();
+    m_spUpdaterBaseContext->configData["offset"] = 0;
+
+    EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
+
+    // RocksDB should be initialized.
+    EXPECT_NE(m_spUpdaterBaseContext->spRocksDB, nullptr);
+
+    // HTTP user agent should be set.
+    EXPECT_FALSE(m_spUpdaterBaseContext->httpUserAgent.empty());
+
+    // Output folder should NOT have been created.
+    EXPECT_FALSE(std::filesystem::exists(m_outputFolder));
+}

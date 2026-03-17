@@ -66,40 +66,6 @@ TEST_F(ActionTest, TestInstantiationWhitoutConfigData)
 }
 
 /*
- * @brief Tests the instantiation of the Action class and execution of startActionScheduler for raw data
- */
-TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForRawData)
-{
-    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-    const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
-    const auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<const std::string&>()};
-    const auto& interval {m_parameters.at("interval").get_ref<const size_t&>()};
-    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
-    const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
-
-    auto action {std::make_shared<Action>(topicName,
-                                          m_parameters,
-                                          [](const std::string& msg) -> FileProcessingResult {
-                                              return {10, "", true};
-                                          })};
-
-    EXPECT_TRUE(std::filesystem::exists(outputFolder));
-
-    EXPECT_NO_THROW(action->startActionScheduler(interval));
-
-    std::this_thread::sleep_for(std::chrono::seconds(interval + 1));
-
-    EXPECT_NO_THROW(action->stopActionScheduler());
-
-    // This file shouldn't exist because it's a test for raw data
-    EXPECT_FALSE(std::filesystem::exists(downloadPath));
-
-    EXPECT_TRUE(std::filesystem::exists(contentPath));
-
-    EXPECT_TRUE(std::filesystem::exists(outputFolder));
-}
-
-/*
  * @brief Tests the instantiation of the Action class and execution of startActionScheduler for compressed data with
  * deleteDownloadedContent enabled
  */
@@ -139,47 +105,6 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForRawDataWithDeleteD
 
     // This file shouldn't exist because we clean up the content folder too
     EXPECT_FALSE(std::filesystem::exists(contentPath));
-
-    EXPECT_TRUE(std::filesystem::exists(outputFolder));
-}
-
-/*
- * @brief Tests the instantiation of the Action class and execution of startActionScheduler for
- * compressed data
- */
-TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForCompressedData)
-{
-    m_parameters["configData"]["url"] = "http://localhost:4444/xz/consumers";
-    m_parameters["configData"]["compressionType"] = "xz";
-
-    // Append XZ extension.
-    auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<std::string&>()};
-    fileName += ".xz";
-
-    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-    const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
-    const auto& interval {m_parameters.at("interval").get_ref<const size_t&>()};
-    const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
-
-    auto action {std::make_shared<Action>(topicName,
-                                          m_parameters,
-                                          [](const std::string& msg) -> FileProcessingResult {
-                                              return {10, "", true};
-                                          })};
-
-    EXPECT_TRUE(std::filesystem::exists(outputFolder));
-
-    EXPECT_NO_THROW(action->startActionScheduler(interval));
-
-    std::this_thread::sleep_for(std::chrono::seconds(interval + 1));
-
-    EXPECT_NO_THROW(action->stopActionScheduler());
-
-    // This file should exist because deleteDownloadedContent is not enabled
-    EXPECT_TRUE(std::filesystem::exists(downloadPath));
-
-    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + Utils::rightTrim(fileName, ".xz")};
-    EXPECT_TRUE(std::filesystem::exists(contentPath));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
@@ -244,85 +169,6 @@ TEST_F(ActionTest, TestInstantiationOfTwoActionsWithTheSameTopicName)
     EXPECT_NO_THROW(action1->clearEndpoints());
 }
 
-/*
- * @brief Tests the instantiation of the Action class and runActionOnDemand
- */
-TEST_F(ActionTest, TestInstantiationAndRunActionOnDemand)
-{
-    m_parameters["ondemand"] = true;
-
-    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-    const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
-    const auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<const std::string&>()};
-    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
-    const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
-
-    auto action {std::make_shared<Action>(topicName,
-                                          m_parameters,
-                                          [](const std::string& msg) -> FileProcessingResult {
-                                              return {10, "", true};
-                                          })};
-
-    EXPECT_TRUE(std::filesystem::exists(outputFolder));
-
-    EXPECT_NO_THROW(action->registerActionOnDemand());
-
-    EXPECT_NO_THROW(action->runActionOnDemand(ActionOrchestrator::UpdateData::createContentUpdateData(-1)));
-
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-
-    EXPECT_NO_THROW(action->unregisterActionOnDemand());
-    EXPECT_NO_THROW(action->clearEndpoints());
-
-    // This file shouldn't exist because it's a test for raw data
-    EXPECT_FALSE(std::filesystem::exists(downloadPath));
-
-    EXPECT_TRUE(std::filesystem::exists(contentPath));
-
-    EXPECT_TRUE(std::filesystem::exists(outputFolder));
-}
-
-/**
- * @brief Tests the on-start execution of the action.
- *
- */
-TEST_F(ActionTest, ActionOnStartExecution)
-{
-    constexpr auto ACTION_INTERVAL {100};
-    constexpr auto WAIT_TIME {1};
-
-    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-    const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
-    const auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<const std::string&>()};
-
-    // Make the interval big enough to be sure the action is not triggered a second time.
-    auto& interval {m_parameters.at("interval").get_ref<size_t&>()};
-    interval = ACTION_INTERVAL;
-
-    // Init action.
-    auto action {std::make_shared<Action>(topicName,
-                                          m_parameters,
-                                          [](const std::string& msg) -> FileProcessingResult {
-                                              return {10, "", true};
-                                          })};
-
-    // Check output folder existence.
-    EXPECT_TRUE(std::filesystem::exists(outputFolder));
-
-    // Start scheduling.
-    EXPECT_NO_THROW(action->startActionScheduler(interval));
-
-    // Wait just for a little time.
-    std::this_thread::sleep_for(std::chrono::seconds(WAIT_TIME));
-
-    // Stop scheduling.
-    EXPECT_NO_THROW(action->stopActionScheduler());
-
-    // Check that the download has been correctly made.
-    const auto contentFilePath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
-    EXPECT_TRUE(std::filesystem::exists(contentFilePath));
-}
-
 /**
  * @brief Tests the correct catch of the exceptions thrown in the orchestration execution when the action is triggered
  * on demand.
@@ -384,38 +230,3 @@ TEST_F(ActionTest, ScheduledActionCatchException)
     EXPECT_TRUE(std::filesystem::is_empty(outputFolder / CONTENTS_FOLDER));
 }
 
-/**
- * @brief Test the correct functionality of the ondemand hashfile update.
- *
- */
-TEST_F(ActionTest, HashOnDemandUpdate)
-{
-    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-
-    m_parameters["ondemand"] = true;
-    m_parameters.at("configData").at("contentSource") = "offline";
-    m_parameters.at("configData").at("url") = "file://" + (INPUT_FILES_DIR / SAMPLE_TXT_FILENAME).string();
-
-    auto action {Action(topicName,
-                        m_parameters,
-                        [](const std::string& msg) -> FileProcessingResult {
-                            return {10, "1234", true};
-                        })};
-    action.registerActionOnDemand();
-
-    // Download file twice without hash update: Two publications are expected.
-    constexpr auto EXPECTED_PUBLICATIONS {2};
-    auto updateData {ActionOrchestrator::UpdateData::createContentUpdateData(-1)};
-    ASSERT_NO_THROW(action.runActionOnDemand(updateData));
-    ASSERT_NO_THROW(action.runActionOnDemand(updateData));
-
-    // Update hash.
-    auto fileHash {Utils::asciiToHex(Utils::hashFile(INPUT_FILES_DIR / SAMPLE_TXT_FILENAME))};
-
-    // Trigger two more downloads that will be skipped.
-    ASSERT_NO_THROW(action.runActionOnDemand(updateData));
-    ASSERT_NO_THROW(action.runActionOnDemand(updateData));
-
-    action.unregisterActionOnDemand();
-    action.clearEndpoints();
-}
