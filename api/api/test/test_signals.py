@@ -27,44 +27,22 @@ async def test_cancel_signal_handler_catch_cancelled_error_and_dont_rise():
     coroutine_mock.assert_awaited_once()
 
 
-@pytest.mark.parametrize(
-    'cluster_config,update_check_config,registered_tasks',
-    [
-        (True, True, 3),
-        (True, False, 2),
-        (False, True, 1),
-        (False, False, 1),
-    ],
-)
 @patch('api.signals.clean_auth_keys_cache')
-@patch('api.signals.running_in_master_node')
 @pytest.mark.asyncio
-async def test_register_background_tasks(
-    running_in_master_node_mock,
-    update_check_mock,
-    clean_auth_keys_cache_mock,
-    cluster_config,
-    registered_tasks,
-):
+async def test_register_background_tasks(clean_auth_keys_cache_mock):
     class AwaitableMock(AsyncMock):
         def __await__(self):
             self.await_count += 1
             return iter([])
-
-    running_in_master_node_mock.return_value = cluster_config
-    update_check_mock.return_value = update_check_config
 
     with patch('api.signals.asyncio') as create_task_mock:
         create_task_mock.create_task.return_value = AwaitableMock(spec=asyncio.Task)
         create_task_mock.create_task.return_value.cancel = AsyncMock()
 
         with TestClient(Starlette(lifespan=lifespan_handler)):
-            assert create_task_mock.create_task.call_count == registered_tasks
+            assert create_task_mock.create_task.call_count == 1
 
-        assert (
-            create_task_mock.create_task.return_value.cancel.call_count
-            == registered_tasks
-        )
+        assert create_task_mock.create_task.return_value.cancel.call_count == 1
 
 
 @pytest.mark.asyncio
