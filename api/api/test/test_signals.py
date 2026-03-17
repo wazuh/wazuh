@@ -2,7 +2,6 @@ import asyncio
 import os
 from pathlib import PosixPath
 from unittest.mock import AsyncMock, patch
-from uuid import uuid4
 
 from asyncinotify import Mask
 import pytest
@@ -38,7 +37,6 @@ async def test_cancel_signal_handler_catch_cancelled_error_and_dont_rise():
     ],
 )
 @patch('api.signals.clean_auth_keys_cache')
-@patch('api.signals.update_check_is_enabled')
 @patch('api.signals.running_in_master_node')
 @pytest.mark.asyncio
 async def test_register_background_tasks(
@@ -46,7 +44,6 @@ async def test_register_background_tasks(
     update_check_mock,
     clean_auth_keys_cache_mock,
     cluster_config,
-    update_check_config,
     registered_tasks,
 ):
     class AwaitableMock(AsyncMock):

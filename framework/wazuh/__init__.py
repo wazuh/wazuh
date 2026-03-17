@@ -9,7 +9,6 @@ from time import strftime
 from wazuh.core import common
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
-from wazuh.core.common import get_installation_uid
 
 """
 Wazuh HIDS Python package
