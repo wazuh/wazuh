@@ -2,6 +2,9 @@ import asyncio
 import logging
 from wazuh.core.agent import WazuhDBQueryAgents
 
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.stats import get_daemons_stats
+
 
 class MetricsSnapshotTasks:
     DEFAULT_METRICS_FREQUENCY = 600
@@ -60,6 +63,60 @@ class MetricsSnapshotTasks:
             agent["wazuh.cluster.node_type"] = node_type
 
         return agents_data
+
+    async def _collect_comms_all_nodes(self, timestamp: str) -> list:
+        """Collect wazuh-remoted stats from all cluster nodes via DAPI fan-out.
+
+        Parameters
+        ----------
+        timestamp : str
+            ISO 8601 timestamp to inject into each document as ``@timestamp``.
+
+        Returns
+        -------
+        list of dict
+            Documents ready for bulk indexing into ``wazuh-metrics-comms``.
+            Each document contains the remoted stats fields plus the metadata
+            fields ``@timestamp``, ``wazuh.cluster.node_name``, and
+            ``wazuh.cluster.node_type``.
+        """
+        local_node_name = self.server.configuration.get("node_name", "unknown")
+        local_node_type = self.server.configuration.get("node_type", "master")
+
+        all_nodes = {local_node_name: local_node_type}
+        for worker_name, worker_handler in self.server.clients.items():
+            worker_type = worker_handler.get_node().get("type", "worker")
+            all_nodes[worker_name] = worker_type
+
+        comms_data = []
+        for node_name, node_type in all_nodes.items():
+            try:
+                result = await DistributedAPI(
+                    f=get_daemons_stats,
+                    f_kwargs={
+                        "daemons_list": ["wazuh-manager-remoted"],
+                        "node_list": [node_name],
+                    },
+                    logger=self.logger,
+                    request_type="distributed_master",
+                    is_async=False,
+                    wait_for_complete=True,
+                ).distribute_function()
+
+                for item in getattr(result, "affected_items", []):
+                    doc = {
+                        "@timestamp": timestamp,
+                        "wazuh.cluster.node_name": node_name,
+                        "wazuh.cluster.node_type": node_type,
+                    }
+                    doc.update(item)
+                    comms_data.append(doc)
+            except Exception:
+                self.logger.exception(
+                    "Failed to collect comms stats from node '%s'", node_name
+                )
+
+        return comms_data
 
     async def _collect_and_index(self):
         pass  # TODO:
