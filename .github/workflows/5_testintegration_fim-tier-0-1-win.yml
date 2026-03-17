@@ -43,9 +43,9 @@ jobs:
         run: |
           import json
           import os
+          import re
           import sys
           import time
-          import urllib.parse
           import urllib.request
 
           # Only wait when triggered by a PR
@@ -57,6 +57,7 @@ jobs:
           sha = os.environ['PR_HEAD_SHA']
           branch = os.environ['BRANCH_NAME']
           workflow = os.environ['BUILD_WORKFLOW']
+          artifact_regex = re.compile(os.environ['AGENT_PACKAGE_REGEXP'])
           token = os.environ['GITHUB_TOKEN']
 
           url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/runs?head_sha={sha}&per_page=20"
@@ -70,6 +71,7 @@ jobs:
 
           deadline = time.time() + 90 * 60
           dispatched = False
+            poll_seconds = 15
 
           while time.time() < deadline:
               try:
@@ -77,7 +79,7 @@ jobs:
                       runs = json.loads(resp.read().decode()).get('workflow_runs', [])
               except Exception as e:
                   print(f"API query failed: {e}")
-                  time.sleep(30)
+                time.sleep(poll_seconds)
                   continue
 
               # Dispatch builder if no runs exist yet
@@ -93,25 +95,39 @@ jobs:
                       except Exception as e:
                           print(f"Dispatch failed: {e}", file=sys.stderr)
                           sys.exit(1)
-                  print("No builder runs yet. Retrying in 30s...")
-                  time.sleep(30)
+                        print("No builder runs yet. Retrying...")
+                        time.sleep(poll_seconds)
                   continue
 
-              # Check for success or failure
-              completed = [r for r in runs if r.get('status') == 'completed']
-              success = [r for r in completed if r.get('conclusion') == 'success']
-              if success:
-                  print(f"Builder succeeded for {sha[:10]}")
+                      # Use the newest run for this commit and proceed as soon as MSI artifact exists.
+                      selected_run = runs[0]
+                      run_id = selected_run['id']
+                      artifacts_url = f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/artifacts?per_page=100"
+
+                      try:
+                        with urllib.request.urlopen(urllib.request.Request(artifacts_url, headers=headers)) as resp:
+                          artifacts = json.loads(resp.read().decode()).get('artifacts', [])
+                      except Exception as e:
+                        print(f"Artifacts query failed for run {run_id}: {e}")
+                        time.sleep(poll_seconds)
+                        continue
+
+                      matching = [a for a in artifacts if artifact_regex.search(a.get('name', '')) and not a.get('expired', False)]
+                      if matching:
+                        print(f"MSI artifact is ready in builder run {run_id}. Releasing tier jobs.")
                   sys.exit(0)
 
-              failed = [r for r in completed if r.get('conclusion') in ('failure', 'cancelled', 'timed_out', 'action_required')]
-              if failed:
-                  r = max(failed, key=lambda x: x.get('updated_at', ''))
-                  print(f"Builder failed: {r.get('conclusion')} - {r.get('html_url')}", file=sys.stderr)
+                      # If the selected run already finished without producing artifact, fail early.
+                      if selected_run.get('status') == 'completed' and selected_run.get('conclusion') in ('failure', 'cancelled', 'timed_out', 'action_required'):
+                        print(
+                          f"Builder run {run_id} finished as {selected_run.get('conclusion')} before publishing MSI artifact. "
+                          f"URL: {selected_run.get('html_url')}",
+                          file=sys.stderr,
+                        )
                   sys.exit(1)
 
-              print(f"Builder running... (attempt {len(runs)} run(s) found)")
-              time.sleep(30)
+                      print(f"Builder run {run_id} is {selected_run.get('status')} ({selected_run.get('conclusion')}); waiting for MSI artifact...")
+                      time.sleep(poll_seconds)
 
           print('Timeout waiting for builder.', file=sys.stderr)
           sys.exit(1)
@@ -147,7 +163,6 @@ jobs:
         uses: dawidd6/action-download-artifact@v6
         with:
           workflow: ${{ env.BUILD_WORKFLOW }}
-          workflow_conclusion: success
           commit: ${{ env.PR_HEAD_SHA }}
           name_is_regexp: true
           name: ${{ env.AGENT_PACKAGE_REGEXP }}
