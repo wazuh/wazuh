@@ -24,6 +24,7 @@
 #include <cmsync/cmsync.hpp>
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
+#include <confremote/confremotemanager.hpp>
 #include <defs/defs.hpp>
 #include <eMessages/eMessage.h>
 #include <fastqueue/cqueue.hpp>
@@ -39,7 +40,6 @@
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
 #include <rawevtindexer/raweventindexer.hpp>
-#include <confremote/confremotemanager.hpp>
 #include <router/orchestrator.hpp>
 #include <scheduler/scheduler.hpp>
 #include <schemf/schema.hpp>
@@ -678,7 +678,8 @@ int main(int argc, char* argv[])
             LOG_DEBUG("Router API registered.");
 
             // Tester
-            api::tester::handlers::registerHandlers(orchestrator, cmStore, apiServer);
+            api::tester::handlers::registerHandlers(
+                orchestrator, cmStore, std::static_pointer_cast<schemf::IValidator>(schemaValidator), apiServer);
             LOG_DEBUG("Tester API registered.");
 
             // Archiver

@@ -97,7 +97,8 @@ auto mergeTargetObjectSchemaExpected(const std::string& ref)
         EXPECT_CALL(*mocks.ctx, validator()).Times(AtLeast(1));
         EXPECT_CALL(*mocks.validator, hasField(DotPath(ref))).WillOnce(testing::Return(true));
         EXPECT_CALL(*mocks.validator, getType(DotPath(ref))).WillOnce(testing::Return(schemf::Type::OBJECT));
-        EXPECT_CALL(*mocks.validator, validate(DotPath(ref), _)).WillOnce(testing::Return(schemf::ValidationResult()));
+        EXPECT_CALL(*mocks.validator, validate(DotPath(ref), testing::Matcher<const schemf::ValidationToken&>(_)))
+            .WillOnce(testing::Return(schemf::ValidationResult()));
         return None {};
     };
 }
@@ -272,7 +273,8 @@ auto kvdbGetArrayTargetSchemaExpected(const std::string& ref)
     return [=](const BuildersMocks& mocks)
     {
         EXPECT_CALL(*mocks.ctx, validator()).Times(AtLeast(1));
-        EXPECT_CALL(*mocks.validator, validate(DotPath(ref), _)).WillOnce(testing::Return(schemf::ValidationResult()));
+        EXPECT_CALL(*mocks.validator, validate(DotPath(ref), testing::Matcher<const schemf::ValidationToken&>(_)))
+            .WillOnce(testing::Return(schemf::ValidationResult()));
 
         return None {};
     };

@@ -17,6 +17,7 @@ target_link_libraries(api_tester
     router::irouter
     cmstore::icmstore
     api::event
+    schemf::ischema
 
     PRIVATE
     api::shared
@@ -41,6 +42,7 @@ if(ENGINE_BUILD_TEST)
         router::mocks
         api::adapter::test
         cmstore::mocks
+        schemf::mocks
     )
     gtest_discover_tests(api_tester_utest)
 endif()

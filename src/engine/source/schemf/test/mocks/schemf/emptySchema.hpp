@@ -51,6 +51,17 @@ public:
         return ValidationResult();
     }
 
+    base::RespOrError<ValidationResult> validate(const DotPath& name, const json::Json&) const override
+    {
+        auto res = validateTargetField(name);
+        if (base::isError(res))
+        {
+            return base::getError(res);
+        }
+
+        return ValidationResult();
+    }
+
     // TODO DELETE THIS
     static std::shared_ptr<EmptySchema> create() { return std::make_shared<EmptySchema>(); }
 };

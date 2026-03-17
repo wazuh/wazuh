@@ -9,6 +9,7 @@
 #include <api/adapter/helpers.hpp>
 #include <api/shared/constants.hpp>
 #include <api/tester/handlers.hpp>
+#include <base/dotPath.hpp>
 
 namespace api::tester::handlers
 {
@@ -82,6 +83,96 @@ eTester::Result fromOutput(const ::router::test::Output& output)
     }
 
     return result;
+}
+
+base::RespOrError<std::pair<json::Json, json::Json>>
+parseAndValidatePublicMetadata(const google::protobuf::Struct& protoMetadata)
+{
+    auto metadataOrError = eMessage::eStructToJson(protoMetadata);
+    if (std::holds_alternative<base::Error>(metadataOrError))
+    {
+        return base::Error {
+            fmt::format("Error converting metadata to JSON: {}", std::get<base::Error>(metadataOrError).message)};
+    }
+
+    const auto& metadata = std::get<json::Json>(metadataOrError);
+    if (!metadata.isObject() || metadata.isEmpty())
+    {
+        return base::Error {"Metadata must be a non-empty JSON object"};
+    }
+
+    if (metadata.size() != 1)
+    {
+        return base::Error {"Metadata must contain only 'wazuh' as the top-level key"};
+    }
+
+    auto wazuhMetadataObject = metadata.getJson("/wazuh");
+    auto wazuhRootObjectOpt = wazuhMetadataObject ? wazuhMetadataObject->getJson() : std::nullopt;
+    if (!wazuhMetadataObject.has_value() || !wazuhMetadataObject->isObject() || !wazuhRootObjectOpt.has_value()
+        || wazuhRootObjectOpt->isEmpty())
+    {
+        return base::Error {"Metadata should contain 'wazuh' as root"};
+    }
+
+    return std::make_pair(std::move(metadata), std::move(wazuhMetadataObject.value()));
+}
+
+bool validateMetadataLeaves(const json::Json& node,
+                            const std::shared_ptr<schemf::IValidator>& schemaValidator,
+                            std::string& currentPath,
+                            std::string& error)
+{
+    if (node.isObject())
+    {
+        auto objOpt = node.getObject();
+        if (!objOpt.has_value())
+        {
+            return true;
+        }
+        else if (objOpt.value().empty())
+        {
+            error = fmt::format("Metadata field '{}' is an empty object, which is not allowed", currentPath);
+            return false;
+        }
+
+        for (const auto& [key, value] : objOpt.value())
+        {
+            const auto originalSize = currentPath.size();
+            if (!currentPath.empty())
+            {
+                currentPath.push_back('.');
+            }
+            currentPath.append(key);
+
+            if (!validateMetadataLeaves(value, schemaValidator, currentPath, error))
+            {
+                return false;
+            }
+
+            currentPath.resize(originalSize);
+        }
+
+        return true;
+    }
+
+    try
+    {
+        const auto& dotPath = DotPath(currentPath);
+        if (base::isError(schemaValidator->validate(dotPath, node)))
+        {
+            error =
+                fmt::format("Metadata field '{}' doesn't exist or doesn't match the expected one from the schema",
+                            dotPath.str());
+            return false;
+        }
+    }
+    catch (const std::exception& e)
+    {
+        error = fmt::format("Error validating metadata path '{}': {}", currentPath, e.what());
+        return false;
+    }
+
+    return true;
 }
 
 } // namespace
@@ -406,9 +497,12 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
 }
 
 adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>& tester,
-                                    const base::eventParsers::PublicProtocolHandler& protocolHandler)
+                                    const base::eventParsers::PublicProtocolHandler& protocolHandler,
+                                    const std::shared_ptr<schemf::IValidator>& schemaValidator)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), protocolHandler](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
+            protocolHandler,
+            wSchemaValidator = std::weak_ptr<schemf::IValidator>(schemaValidator)](const auto& req, auto& res)
     {
         using RequestType = eTester::PublicRunPost_Request;
         using ResponseType = eTester::RunPost_Response;
@@ -448,31 +542,34 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
             return;
         }
 
-        if (!protoReq.has_agent_metadata())
+        if (!protoReq.has_metadata())
         {
-            res = adapter::userErrorResponse<ResponseType>("agent_metadata is required and must be a JSON object");
+            res = adapter::userErrorResponse<ResponseType>("Metadata is required and must be a JSON object");
             return;
         }
 
-        auto jsonOrErr = eMessage::eMessageToJson(protoReq.agent_metadata(), /*printPrimitiveFields=*/true);
-        if (std::holds_alternative<base::Error>(jsonOrErr))
+        // Ensure schemaValidator is available
+        auto schemaValidatorLocked = wSchemaValidator.lock();
+        if (!schemaValidatorLocked)
         {
-            res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Error converting agent_metadata to JSON: {}", std::get<base::Error>(jsonOrErr).message));
+            res = adapter::userErrorResponse<ResponseType>("Schema is not available");
             return;
         }
 
-        const auto& agentMetadataStr = std::get<std::string>(jsonOrErr);
-
-        json::Json agentMetadata;
-        try
+        auto metadataOrError = parseAndValidatePublicMetadata(protoReq.metadata());
+        if (base::isError(metadataOrError))
         {
-            agentMetadata = json::Json(agentMetadataStr.c_str());
+            res = adapter::userErrorResponse<ResponseType>(base::getError(metadataOrError).message);
+            return;
         }
-        catch (const std::exception& e)
+
+        auto [metadata, wazuhMetadataObject] = base::getResponse(metadataOrError);
+
+        std::string badFieldMsg {};
+        std::string metadataPath {"wazuh"};
+        if (!validateMetadataLeaves(wazuhMetadataObject, schemaValidatorLocked, metadataPath, badFieldMsg))
         {
-            res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Error parsing agent_metadata JSON: {}", e.what()));
+            res = adapter::userErrorResponse<ResponseType>(badFieldMsg);
             return;
         }
 
@@ -489,7 +586,7 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         auto location = protoReq.location();
         try
         {
-            event = protocolHandler(queue, location, eventStr, agentMetadata);
+            event = protocolHandler(queue, location, eventStr, metadata);
         }
         catch (const std::exception& e)
         {
