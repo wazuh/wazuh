@@ -29,6 +29,7 @@ jobs:
   wait-for-builder:
     runs-on: ubuntu-latest
     env:
+      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BUILD_WORKFLOW: 5_builderpackage_agent-windows.yml
       # For pull_request events GITHUB_SHA is the merge commit SHA, not the PR
       # head commit. The builder's head_sha is the PR head SHA, so we must use
@@ -50,12 +51,14 @@ jobs:
 
           repo     = os.environ['GITHUB_REPOSITORY']
           sha      = os.environ['PR_HEAD_SHA']
+            branch   = os.environ['BRANCH_NAME']
           workflow = os.environ['BUILD_WORKFLOW']
           token    = os.environ['GITHUB_TOKEN']
 
           base_url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/runs"
-          params   = urllib.parse.urlencode({'head_sha': sha, 'event': 'pull_request', 'per_page': 20})
+            params   = urllib.parse.urlencode({'head_sha': sha, 'per_page': 20})
           url      = f"{base_url}?{params}"
+            dispatch_url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/dispatches"
           headers  = {
               'Accept': 'application/vnd.github+json',
               'Authorization': f'Bearer {token}',
@@ -63,12 +66,30 @@ jobs:
           }
 
           deadline = time.time() + 90 * 60
+            dispatched = False
 
           while time.time() < deadline:
               with urllib.request.urlopen(urllib.request.Request(url, headers=headers)) as resp:
                   runs = json.loads(resp.read().decode()).get('workflow_runs', [])
 
               if not runs:
+                if not dispatched:
+                  payload = json.dumps({'ref': branch}).encode()
+                  dispatch_req = urllib.request.Request(
+                    dispatch_url,
+                    data=payload,
+                    headers={**headers, 'Content-Type': 'application/json'},
+                    method='POST'
+                  )
+                  try:
+                    with urllib.request.urlopen(dispatch_req):
+                      pass
+                    dispatched = True
+                    print(f"No builder run found for {sha[:10]}. Dispatched '{workflow}' on ref '{branch}'.")
+                  except Exception as exc:
+                    print(f"No builder run found and dispatch failed: {exc}", file=sys.stderr)
+                    sys.exit(1)
+                else:
                   print('No builder runs found for this commit yet. Retrying in 30s...')
                   time.sleep(30)
                   continue
