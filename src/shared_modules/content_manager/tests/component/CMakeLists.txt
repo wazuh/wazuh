@@ -31,6 +31,11 @@ target_link_libraries(
   rocksdb
   pthread)
 
+# The pre-compiled rocksdb dependency (packages.wazuh.com) was built with GCC 14,
+# which emits references to std::ios_base_library_init() not present in GCC 11's
+# libstdc++ (Ubuntu 22). This flag suppresses the link-time check for undefined
+# symbols in shared libraries; the symbol is harmlessly absent at runtime.
+target_link_options(${PROJECT_NAME} PRIVATE -Wl,--allow-shlib-undefined)
 target_link_libraries(${PROJECT_NAME} content_manager indexer_connector)
 
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
