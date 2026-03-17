@@ -10,6 +10,7 @@ def run(args):
     try:
         client = APIClient(api_socket)
         req = tester.LogtestDelete_Request()
+        req.space = args['space']
         error, response = client.send(req, engine.GenericStatus_Response())
 
         if error:
@@ -24,4 +25,5 @@ def run(args):
 
 def configure(subparsers):
     parser = subparsers.add_parser("cleanup", help="Cleanup logtest session + namespace")
+    parser.add_argument('-n', '--space', type=str, required=True, help='Target space/session name to clean up')
     parser.set_defaults(func=run)

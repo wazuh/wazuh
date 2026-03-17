@@ -20,6 +20,7 @@ def run(args):
     data = json.loads(content)
     json_format.ParseDict(data, req.full_policy)
     req.load_in_tester = args['load_in_tester']
+    req.space = args['space']
 
     # Create the api request
     try:
@@ -38,5 +39,6 @@ def run(args):
 def configure(subparsers):
     parser = subparsers.add_parser('policy-validate', help='Validate a policy')
     parser.add_argument('-c', '--full-policy', type=str, help='JSON content for the namespace', default='')
+    parser.add_argument('-n', '--space', type=str, required=True, help='Target space/session name (e.g. test, standard)')
     parser.add_argument('--load-in-tester', action='store_true', help='Force testing load', default=False)
     parser.set_defaults(func=run)

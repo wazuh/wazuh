@@ -1551,9 +1551,24 @@ class policyValidate_Request final :
   // accessors -------------------------------------------------------
 
   enum : int {
+    kSpaceFieldNumber = 3,
     kFullPolicyFieldNumber = 2,
     kLoadInTesterFieldNumber = 1,
   };
+  // string space = 3;
+  void clear_space();
+  const std::string& space() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_space(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_space();
+  PROTOBUF_NODISCARD std::string* release_space();
+  void set_allocated_space(std::string* space);
+  private:
+  const std::string& _internal_space() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_space(const std::string& value);
+  std::string* _internal_mutable_space();
+  public:
+
   // .google.protobuf.Struct full_policy = 2;
   bool has_full_policy() const;
   private:
@@ -1589,6 +1604,7 @@ class policyValidate_Request final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr space_;
     ::PROTOBUF_NAMESPACE_ID::Struct* full_policy_;
     bool load_in_tester_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
@@ -3670,6 +3686,56 @@ inline void policyValidate_Request::set_allocated_full_policy(::PROTOBUF_NAMESPA
   }
   _impl_.full_policy_ = full_policy;
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.policyValidate_Request.full_policy)
+}
+
+// string space = 3;
+inline void policyValidate_Request::clear_space() {
+  _impl_.space_.ClearToEmpty();
+}
+inline const std::string& policyValidate_Request::space() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.content.policyValidate_Request.space)
+  return _internal_space();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void policyValidate_Request::set_space(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.space_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.content.policyValidate_Request.space)
+}
+inline std::string* policyValidate_Request::mutable_space() {
+  std::string* _s = _internal_mutable_space();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.content.policyValidate_Request.space)
+  return _s;
+}
+inline const std::string& policyValidate_Request::_internal_space() const {
+  return _impl_.space_.Get();
+}
+inline void policyValidate_Request::_internal_set_space(const std::string& value) {
+  
+  _impl_.space_.Set(value, GetArenaForAllocation());
+}
+inline std::string* policyValidate_Request::_internal_mutable_space() {
+  
+  return _impl_.space_.Mutable(GetArenaForAllocation());
+}
+inline std::string* policyValidate_Request::release_space() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.content.policyValidate_Request.space)
+  return _impl_.space_.Release();
+}
+inline void policyValidate_Request::set_allocated_space(std::string* space) {
+  if (space != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.space_.SetAllocated(space, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.space_.IsDefault()) {
+    _impl_.space_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.policyValidate_Request.space)
 }
 
 // -------------------------------------------------------------------
