@@ -199,45 +199,22 @@ const char* get_command_from_json(const cJSON *input) {
 }
 
 const cJSON* get_alert_from_json(const cJSON *input) {
-    cJSON *parameters_json = NULL;
-    cJSON *alert_json = NULL;
-
-    // Detect parameters
-    parameters_json = cJSON_GetObjectItem(input, "parameters");
-    if (!cJSON_IsObject(parameters_json)) {
+    // WCS format: the entire root JSON contains the alert data
+    // This includes wazuh, event, source, user, etc. at the root level
+    if (!cJSON_IsObject(input)) {
         return NULL;
     }
 
-    // Detect alert
-    alert_json = cJSON_GetObjectItem(parameters_json, "alert");
-    if (!cJSON_IsObject(alert_json)) {
-        return NULL;
-    }
-
-    return alert_json;
+    return input;
 }
 
 const char* get_srcip_from_json(const cJSON *input) {
-    cJSON *parameters_json = NULL;
-    cJSON *alert_json = NULL;
     cJSON *source_json = NULL;
     cJSON *srcip_json = NULL;
 
-    // Extract parameters object
-    parameters_json = cJSON_GetObjectItem(input, "parameters");
-    if (!cJSON_IsObject(parameters_json)) {
-        return NULL;
-    }
-
-    // Extract alert object from parameters
-    alert_json = cJSON_GetObjectItem(parameters_json, "alert");
-    if (!cJSON_IsObject(alert_json)) {
-        return NULL;
-    }
-
-    // Extract source IP from WCS path: alert.source.ip
+    // Extract source IP from WCS path: source.ip (at root level)
     // This follows the ECS (Elastic Common Schema) standard for network source fields
-    source_json = cJSON_GetObjectItem(alert_json, "source");
+    source_json = cJSON_GetObjectItem(input, "source");
     if (!cJSON_IsObject(source_json)) {
         return NULL;
     }
@@ -252,26 +229,12 @@ const char* get_srcip_from_json(const cJSON *input) {
 
 
 const char* get_username_from_json(const cJSON *input) {
-    cJSON *parameters_json = NULL;
-    cJSON *alert_json = NULL;
     cJSON *user_json = NULL;
     cJSON *username_json = NULL;
 
-    // Extract parameters object
-    parameters_json = cJSON_GetObjectItem(input, "parameters");
-    if (!cJSON_IsObject(parameters_json)) {
-        return NULL;
-    }
-
-    // Extract alert object from parameters
-    alert_json = cJSON_GetObjectItem(parameters_json, "alert");
-    if (!cJSON_IsObject(alert_json)) {
-        return NULL;
-    }
-
-    // Extract username from WCS path: alert.user.name
+    // Extract username from WCS path: user.name (at root level)
     // This follows the ECS (Elastic Common Schema) standard for user fields
-    user_json = cJSON_GetObjectItem(alert_json, "user");
+    user_json = cJSON_GetObjectItem(input, "user");
     if (!cJSON_IsObject(user_json)) {
         return NULL;
     }

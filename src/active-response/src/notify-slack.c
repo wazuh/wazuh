@@ -61,7 +61,7 @@ int main (int argc, char **argv) {
     // Get alert
     const cJSON *alert_json = get_alert_from_json(input_json);
     if (!alert_json) {
-        write_debug_file(argv[0], "Cannot read 'alert' from data");
+        write_debug_file(argv[0], "Cannot read alert data from input");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
@@ -69,7 +69,7 @@ int main (int argc, char **argv) {
     // Get extra_args
     site_url = get_extra_args_from_json(input_json);
     if (!site_url) {
-        write_debug_file(argv[0], "Cannot read 'extra_args' from data");
+        write_debug_file(argv[0], "Cannot read 'extra_args' from parameters");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }

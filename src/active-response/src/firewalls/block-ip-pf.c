@@ -47,7 +47,7 @@ int main (int argc, char **argv) {
     // Get srcip
     const char *srcip = get_srcip_from_json(input_json);
     if (!srcip) {
-        write_debug_file(argv[0], "Cannot read 'source.ip' from alert");
+        write_debug_file(argv[0], "Cannot read 'source.ip' from data");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }

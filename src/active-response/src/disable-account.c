@@ -26,7 +26,7 @@ int main (int argc, char **argv) {
     // Detect username
     const char *user = get_username_from_json(input_json);
     if (!user) {
-        write_debug_file(argv[0], "Cannot read 'user.name' from alert");
+        write_debug_file(argv[0], "Cannot read 'user.name' from data");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
