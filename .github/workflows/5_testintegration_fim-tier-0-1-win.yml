@@ -68,7 +68,7 @@ jobs:
 
           deadline = time.time() + 90 * 60
           dispatched = False
-            poll_seconds = 15
+          poll_seconds = 15
 
           while time.time() < deadline:
               try:
@@ -76,7 +76,7 @@ jobs:
                       runs = json.loads(resp.read().decode()).get('workflow_runs', [])
               except Exception as e:
                   print(f"API query failed: {e}")
-                time.sleep(poll_seconds)
+                  time.sleep(poll_seconds)
                   continue
 
               # Dispatch builder if no runs exist yet
@@ -92,39 +92,40 @@ jobs:
                       except Exception as e:
                           print(f"Dispatch failed: {e}", file=sys.stderr)
                           sys.exit(1)
-                        print("No builder runs yet. Retrying...")
-                        time.sleep(poll_seconds)
+
+                  print("No builder runs yet. Retrying...")
+                  time.sleep(poll_seconds)
                   continue
 
-                      # Use the newest run for this commit and proceed as soon as MSI artifact exists.
-                      selected_run = runs[0]
-                      run_id = selected_run['id']
-                      artifacts_url = f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/artifacts?per_page=100"
+              # Use the newest run for this commit and proceed as soon as MSI artifact exists.
+              selected_run = runs[0]
+              run_id = selected_run['id']
+              artifacts_url = f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/artifacts?per_page=100"
 
-                      try:
-                        with urllib.request.urlopen(urllib.request.Request(artifacts_url, headers=headers)) as resp:
-                          artifacts = json.loads(resp.read().decode()).get('artifacts', [])
-                      except Exception as e:
-                        print(f"Artifacts query failed for run {run_id}: {e}")
-                        time.sleep(poll_seconds)
-                        continue
+              try:
+                  with urllib.request.urlopen(urllib.request.Request(artifacts_url, headers=headers)) as resp:
+                      artifacts = json.loads(resp.read().decode()).get('artifacts', [])
+              except Exception as e:
+                  print(f"Artifacts query failed for run {run_id}: {e}")
+                  time.sleep(poll_seconds)
+                  continue
 
-                      matching = [a for a in artifacts if artifact_regex.search(a.get('name', '')) and not a.get('expired', False)]
-                      if matching:
-                        print(f"MSI artifact is ready in builder run {run_id}. Releasing tier jobs.")
+              matching = [a for a in artifacts if artifact_regex.search(a.get('name', '')) and not a.get('expired', False)]
+              if matching:
+                  print(f"MSI artifact is ready in builder run {run_id}. Releasing tier jobs.")
                   sys.exit(0)
 
-                      # If the selected run already finished without producing artifact, fail early.
-                      if selected_run.get('status') == 'completed' and selected_run.get('conclusion') in ('failure', 'cancelled', 'timed_out', 'action_required'):
-                        print(
-                          f"Builder run {run_id} finished as {selected_run.get('conclusion')} before publishing MSI artifact. "
-                          f"URL: {selected_run.get('html_url')}",
-                          file=sys.stderr,
-                        )
+              # If the selected run already finished without producing artifact, fail early.
+              if selected_run.get('status') == 'completed' and selected_run.get('conclusion') in ('failure', 'cancelled', 'timed_out', 'action_required'):
+                  print(
+                      f"Builder run {run_id} finished as {selected_run.get('conclusion')} before publishing MSI artifact. "
+                      f"URL: {selected_run.get('html_url')}",
+                      file=sys.stderr,
+                  )
                   sys.exit(1)
 
-                      print(f"Builder run {run_id} is {selected_run.get('status')} ({selected_run.get('conclusion')}); waiting for MSI artifact...")
-                      time.sleep(poll_seconds)
+              print(f"Builder run {run_id} is {selected_run.get('status')} ({selected_run.get('conclusion')}); waiting for MSI artifact...")
+              time.sleep(poll_seconds)
 
           print('Timeout waiting for builder.', file=sys.stderr)
           sys.exit(1)
