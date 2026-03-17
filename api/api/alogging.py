@@ -11,9 +11,6 @@ from pythonjsonlogger import jsonlogger
 from api.configuration import api_conf
 from api.api_exception import APIError
 
-# Compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
-request_pattern = re.compile(r'\[.+]|\s+\*\s+')
-
 logger = logging.getLogger('wazuh-api')
 
 # Variable used to specify an unknown user
@@ -256,13 +253,6 @@ def custom_logging(user, remote, method, path, query,
     else:
         log_info = f'{user} ({hash_auth_context}) {remote} "{method} {path}" '
         json_info['hash_auth_context'] = hash_auth_context
-
-    if path == '/events' and logger.level >= 20:
-        # If log level is info simplify the messages for the /events requests.
-        if isinstance(body, dict):
-            events = body.get('events', [])
-            body = {'events': len(events)}
-            json_info['body'] = body
 
     log_info += f'with parameters {json.dumps(query)} and body '\
                 f'{json.dumps(body)} done in {elapsed_time:.3f}s: {status}'

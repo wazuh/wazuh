@@ -50,7 +50,6 @@ The API exposes endpoints for agent management, security configuration, cluster 
 ## Related Modules
 
 - **wazuh-db**: Stores agent, group, and security data queried by the framework
-- **analysisd**: Receives events ingested through the `/events` endpoint
 - **authd**: Handles agent registration triggered via `/agents` endpoints
 - **remoted**: Agent communication managed through the API
 - **Wazuh Dashboard**: Consumes the same Server API for its UI

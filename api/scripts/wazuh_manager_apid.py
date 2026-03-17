@@ -142,10 +142,6 @@ def start(params: dict):
             initializer=partial(pyDaemonModule.spawn_process_pool_worker, pyDaemonModule.API_LOCAL_REQUEST_PROCESS)
         )})
 
-        pools.update({'events_pool': ProcessPoolExecutor(
-            max_workers=1,
-            initializer=partial(pyDaemonModule.spawn_process_pool_worker, pyDaemonModule.API_SECURITY_EVENTS_PROCESS)
-        )})
     # Handle exception when the user running Wazuh cannot access /dev/shm.
     except (FileNotFoundError, PermissionError):
         pools.update({'thread_pool': ThreadPoolExecutor(max_workers=1)})

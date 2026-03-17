@@ -54,7 +54,6 @@ It **must not** contain business logic.
 | `mitre.py` | MITRE ATT&CK mappings | `/mitre` |
 | `stats.py` | Manager statistics | `/manager/stats` |
 | `task.py` | Async task handling | `/tasks` |
-| `event.py` | Event ingestion into analysisd | `/events` |
 
 ---
 
@@ -119,7 +118,6 @@ Each controller wraps framework calls in the **DAPI (Distributed API)** layer to
 | `rootcheck_controller.py` | Rootcheck/SCA results |
 | `mitre_controller.py` | MITRE ATT&CK mappings |
 | `task_controller.py` | Async task queries |
-| `event_controller.py` | Event ingestion to analysisd |
 | `overview_controller.py` | Agent overview/summary |
 | `default_controller.py` | Basic API info (version, hostname, timestamp) |
 

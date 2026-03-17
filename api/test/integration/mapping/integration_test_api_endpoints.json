@@ -191,15 +191,6 @@
                 ]
             },
             {
-                "name": "event_controller.py",
-                "tag": "event",
-                "tests": [
-                    "test_event_endpoints.tavern.yaml",
-                    "test_rbac_black_event_endpoints.tavern.yaml",
-                    "test_rbac_white_event_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "logtest_controller.py",
                 "tag": "logtest",
                 "tests": [
@@ -374,15 +365,6 @@
                 ]
             },
             {
-                "name": "event_ingest_model.py",
-                "tag": "event",
-                "tests": [
-                    "test_event_endpoints.tavern.yaml",
-                    "test_rbac_black_event_endpoints.tavern.yaml",
-                    "test_rbac_white_event_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "logtest_model.py",
                 "tag": "logtest",
                 "tests": [
@@ -473,15 +455,6 @@
                     "test_decoder_endpoints.tavern.yaml",
                     "test_rbac_black_decoder_endpoints.tavern.yaml",
                     "test_rbac_white_decoder_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "event.py",
-                "tag": "event",
-                "tests": [
-                    "test_event_endpoints.tavern.yaml",
-                    "test_rbac_black_event_endpoints.tavern.yaml",
-                    "test_rbac_white_event_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -2189,25 +2162,6 @@
                 "tag": "white",
                 "tests": [
                     "test_rbac_white_decoder_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
-        "path": "api/test/integration/env/configurations/rbac/event",
-        "files": [
-            {
-                "name": "black_config.yaml",
-                "tag": "black",
-                "tests": [
-                    "test_rbac_black_event_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "white_config.yaml",
-                "tag": "white",
-                "tests": [
-                    "test_rbac_white_event_endpoints.tavern.yaml"
                 ]
             }
         ]
