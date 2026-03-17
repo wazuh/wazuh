@@ -121,10 +121,10 @@ TEST_F(RawEventIndexerUnitTest, OnRemoteConfigEnablesAndDisablesIndexer)
 {
     raweventindexer::RawEventIndexer indexer(m_connector, "custom-raw-index");
 
-    EXPECT_NO_THROW(indexer.onRemoteConfig(json::Json("true")));
+    EXPECT_NO_THROW(indexer.hotReloadConf(json::Json("true")));
     EXPECT_TRUE(indexer.isEnabled());
 
-    EXPECT_NO_THROW(indexer.onRemoteConfig(json::Json("false")));
+    EXPECT_NO_THROW(indexer.hotReloadConf(json::Json("false")));
     EXPECT_FALSE(indexer.isEnabled());
 }
 
@@ -132,6 +132,6 @@ TEST_F(RawEventIndexerUnitTest, OnRemoteConfigRejectsNonBooleanPayload)
 {
     raweventindexer::RawEventIndexer indexer(m_connector, "custom-raw-index");
 
-    EXPECT_THROW(indexer.onRemoteConfig(json::Json("\"true\"")), std::invalid_argument);
+    EXPECT_THROW(indexer.hotReloadConf(json::Json("\"true\"")), std::invalid_argument);
     EXPECT_FALSE(indexer.isEnabled());
 }

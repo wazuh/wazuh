@@ -63,9 +63,9 @@ public:
     bool isEnabled() const override;
 
     /**
-     * @copydoc IRawEventIndexer::onRemoteConfig
+     * @copydoc IRawEventIndexer::hotReloadConf
      */
-    void onRemoteConfig(const json::Json& value) override;
+    void hotReloadConf(const json::Json& value) override;
 
     ~RawEventIndexer() override = default;
 };

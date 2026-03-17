@@ -107,7 +107,7 @@ bool RawEventIndexer::isEnabled() const
     return m_enabled.load(std::memory_order_acquire);
 }
 
-void RawEventIndexer::onRemoteConfig(const json::Json& value)
+void RawEventIndexer::hotReloadConf(const json::Json& value)
 {
     if (!value.isBool())
     {

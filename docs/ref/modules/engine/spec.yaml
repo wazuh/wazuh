@@ -18,7 +18,7 @@ tags:
   - name: Archiver
     description: "Operations for managing the archives. By default a file 'archives.json' is created at '/var/lib/wazuh-server/archives.json' where all events received by the Engine are stored."
   - name: Raw Event Indexer
-    description: "Operations for enabling, disabling, and checking status of raw event indexing."
+    description: "Operations for checking the status of raw event indexing."
   - name: Content
     description: "Operations for management content."
   - name: Logtest

@@ -84,6 +84,19 @@ TEST(ConfRemoteManagerUnitTest, AddTriggerReturnsPersistedValueWhenStoreHasCache
     EXPECT_EQ(result, json::Json("true"));
 }
 
+TEST(ConfRemoteManagerUnitTest, AddTriggerThrowsWhenKeyIsAlreadyRegistered)
+{
+    auto store = makeEmptyStore();
+    auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
+    confremote::ConfRemoteManager manager(connector, store);
+
+    manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) {}, json::Json("false"));
+
+    EXPECT_THROW(
+        manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) {}, json::Json("false")),
+        std::invalid_argument);
+}
+
 TEST(ConfRemoteManagerUnitTest, SynchronizeSkipsCallbackWhenValueDoesNotChange)
 {
     // lastConfig loaded from store = false; remote also returns false -> no callback, no persist

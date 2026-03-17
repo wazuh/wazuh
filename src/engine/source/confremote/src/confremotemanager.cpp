@@ -109,6 +109,11 @@ json::Json ConfRemoteManager::addTrigger(std::string_view key,
     std::unique_lock lock(m_mutex);
 
     auto [it, inserted] = m_settings.try_emplace(std::string(key));
+    if (!inserted && it->second.onConfigChange)
+    {
+        throw std::invalid_argument(fmt::format("Remote setting '{}' is already registered.", key));
+    }
+
     it->second.onConfigChange = std::move(onConfigChange);
 
     return it->second.lastConfig.has_value() ? it->second.lastConfig.value() : defaultValue;

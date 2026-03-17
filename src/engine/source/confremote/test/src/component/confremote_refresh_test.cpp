@@ -112,9 +112,9 @@ TEST(ConfRemoteRefreshComponentTest, FreshInstallKeepsRawEventIndexerDisabled)
     confremote::ConfRemoteManager manager(connector, store);
     const auto initialValue = manager.addTrigger(
         REMOTE_INDEX_RAW_EVENTS,
-        [rawIndexer](const json::Json& v) { rawIndexer->onRemoteConfig(v); },
+        [rawIndexer](const json::Json& v) { rawIndexer->hotReloadConf(v); },
         json::Json("false"));
-    rawIndexer->onRemoteConfig(initialValue);
+    rawIndexer->hotReloadConf(initialValue);
 
     manager.synchronize();
 
@@ -135,9 +135,9 @@ TEST(ConfRemoteRefreshComponentTest, RestartWithCachedSettingsWhenRemoteUnavaila
     confremote::ConfRemoteManager manager(connector, store);
     const auto initialValue = manager.addTrigger(
         REMOTE_INDEX_RAW_EVENTS,
-        [rawIndexer](const json::Json& v) { rawIndexer->onRemoteConfig(v); },
+        [rawIndexer](const json::Json& v) { rawIndexer->hotReloadConf(v); },
         json::Json("false"));
-    rawIndexer->onRemoteConfig(initialValue);
+    rawIndexer->hotReloadConf(initialValue);
 
     manager.synchronize();
 
@@ -161,9 +161,9 @@ TEST(ConfRemoteRefreshComponentTest, SynchronizeTogglesRawEventIndexer)
     confremote::ConfRemoteManager manager(connector, store);
     const auto initialValue = manager.addTrigger(
         REMOTE_INDEX_RAW_EVENTS,
-        [rawIndexer](const json::Json& v) { rawIndexer->onRemoteConfig(v); },
+        [rawIndexer](const json::Json& v) { rawIndexer->hotReloadConf(v); },
         json::Json("false"));
-    rawIndexer->onRemoteConfig(initialValue);
+    rawIndexer->hotReloadConf(initialValue);
 
     manager.synchronize();
     EXPECT_FALSE(rawIndexer->isEnabled());

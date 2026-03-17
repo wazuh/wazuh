@@ -58,7 +58,7 @@ public:
      * @param value Candidate remote value for this module.
      * @throws std::invalid_argument if the value is not a valid boolean.
      */
-    virtual void onRemoteConfig(const json::Json& value) = 0;
+    virtual void hotReloadConf(const json::Json& value) = 0;
 };
 
 } // namespace raweventindexer
