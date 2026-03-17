@@ -2625,6 +2625,7 @@ class PublicRunPost_Request final :
     kLocationFieldNumber = 2,
     kEventFieldNumber = 4,
     kTraceLevelFieldNumber = 5,
+    kSpaceFieldNumber = 6,
     kMetadataFieldNumber = 3,
     kQueueFieldNumber = 1,
   };
@@ -2670,6 +2671,20 @@ class PublicRunPost_Request final :
   std::string* _internal_mutable_trace_level();
   public:
 
+  // string space = 6;
+  void clear_space();
+  const std::string& space() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_space(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_space();
+  PROTOBUF_NODISCARD std::string* release_space();
+  void set_allocated_space(std::string* space);
+  private:
+  const std::string& _internal_space() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_space(const std::string& value);
+  std::string* _internal_mutable_space();
+  public:
+
   // .google.protobuf.Struct metadata = 3;
   bool has_metadata() const;
   private:
@@ -2708,6 +2723,7 @@ class PublicRunPost_Request final :
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr location_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr event_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr trace_level_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr space_;
     ::PROTOBUF_NAMESPACE_ID::Struct* metadata_;
     uint32_t queue_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;

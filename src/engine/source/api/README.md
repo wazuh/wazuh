@@ -47,9 +47,6 @@ api/
 │   └── test/include/api/adapter/
 │       └── baseHandler_test.hpp                # GTest base fixture for handler tests
 │
-├── shared/                                     # Shared constants (header-only)
-│   └── include/api/shared/constants.hpp
-│
 ├── router/                                     # Router route management handlers
 │   ├── include/api/router/handlers.hpp
 │   ├── src/handlers.cpp
@@ -176,7 +173,7 @@ adapter::RouteHandler activateArchiver(const std::shared_ptr<::archiver::IArchiv
 ### 4. Build Structure
 
 - The root `CMakeLists.txt` creates an **INTERFACE** target `api` that links all sub-modules.
-- Each sub-module is a **STATIC** library (except `adapter` and `shared` which are INTERFACE/header-only).
+- Each sub-module is a **STATIC** library (except `adapter`, which is INTERFACE/header-only).
 - Each sub-module links `api::adapter` and its domain interface library (e.g., `archiver::iface`).
 - Test targets link the module + `GTest::gtest_main` + `api::adapter::test` + domain mocks.
 

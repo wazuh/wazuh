@@ -224,6 +224,7 @@ PROTOBUF_CONSTEXPR PublicRunPost_Request::PublicRunPost_Request(
     /*decltype(_impl_.location_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.event_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.trace_level_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.space_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.metadata_)*/nullptr
   , /*decltype(_impl_.queue_)*/0u
   , /*decltype(_impl_._cached_size_)*/{}} {}
@@ -484,14 +485,14 @@ const char descriptor_table_protodef_tester_2eproto[] PROTOBUF_SECTION_VARIABLE(
   "wazuh.api.engine.ReturnStatus\022\022\n\005error\030\002"
   " \001(\tH\000\210\001\001\0228\n\006result\030\003 \001(\0132#.com.wazuh.ap"
   "i.engine.tester.ResultH\001\210\001\001B\010\n\006_errorB\t\n"
-  "\007_result\"\207\001\n\025PublicRunPost_Request\022\r\n\005qu"
+  "\007_result\"\226\001\n\025PublicRunPost_Request\022\r\n\005qu"
   "eue\030\001 \001(\r\022\020\n\010location\030\002 \001(\t\022)\n\010metadata\030"
   "\003 \001(\0132\027.google.protobuf.Struct\022\r\n\005event\030"
-  "\004 \001(\t\022\023\n\013trace_level\030\005 \001(\t\"\027\n\025LogtestDel"
-  "ete_Request*5\n\005State\022\021\n\rSTATE_UNKNOWN\020\000\022"
-  "\014\n\010DISABLED\020\001\022\013\n\007ENABLED\020\002*/\n\nTraceLevel"
-  "\022\010\n\004NONE\020\000\022\016\n\nASSET_ONLY\020\001\022\007\n\003ALL\020\002b\006pro"
-  "to3"
+  "\004 \001(\t\022\023\n\013trace_level\030\005 \001(\t\022\r\n\005space\030\006 \001("
+  "\t\"&\n\025LogtestDelete_Request\022\r\n\005space\030\001 \001("
+  "\t*5\n\005State\022\021\n\rSTATE_UNKNOWN\020\000\022\014\n\010DISABLE"
+  "D\020\001\022\013\n\007ENABLED\020\002*/\n\nTraceLevel\022\010\n\004NONE\020\000"
+  "\022\016\n\nASSET_ONLY\020\001\022\007\n\003ALL\020\002b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_tester_2eproto_deps[2] = {
   &::descriptor_table_engine_2eproto,
@@ -499,7 +500,7 @@ static const ::_pbi::DescriptorTable* const descriptor_table_tester_2eproto_deps
 };
 static ::_pbi::once_flag descriptor_table_tester_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_tester_2eproto = {
-    false, false, 1763, descriptor_table_protodef_tester_2eproto,
+    false, false, 1793, descriptor_table_protodef_tester_2eproto,
     "tester.proto",
     &descriptor_table_tester_2eproto_once, descriptor_table_tester_2eproto_deps, 2, 15,
     schemas, file_default_instances, TableStruct_tester_2eproto::offsets,
@@ -3943,6 +3944,7 @@ PublicRunPost_Request::PublicRunPost_Request(const PublicRunPost_Request& from)
       decltype(_impl_.location_){}
     , decltype(_impl_.event_){}
     , decltype(_impl_.trace_level_){}
+    , decltype(_impl_.space_){}
     , decltype(_impl_.metadata_){nullptr}
     , decltype(_impl_.queue_){}
     , /*decltype(_impl_._cached_size_)*/{}};
@@ -3972,6 +3974,14 @@ PublicRunPost_Request::PublicRunPost_Request(const PublicRunPost_Request& from)
     _this->_impl_.trace_level_.Set(from._internal_trace_level(), 
       _this->GetArenaForAllocation());
   }
+  _impl_.space_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.space_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_space().empty()) {
+    _this->_impl_.space_.Set(from._internal_space(), 
+      _this->GetArenaForAllocation());
+  }
   if (from._internal_has_metadata()) {
     _this->_impl_.metadata_ = new ::PROTOBUF_NAMESPACE_ID::Struct(*from._impl_.metadata_);
   }
@@ -3987,6 +3997,7 @@ inline void PublicRunPost_Request::SharedCtor(
       decltype(_impl_.location_){}
     , decltype(_impl_.event_){}
     , decltype(_impl_.trace_level_){}
+    , decltype(_impl_.space_){}
     , decltype(_impl_.metadata_){nullptr}
     , decltype(_impl_.queue_){0u}
     , /*decltype(_impl_._cached_size_)*/{}
@@ -4023,6 +4034,7 @@ inline void PublicRunPost_Request::SharedDtor() {
   _impl_.location_.Destroy();
   _impl_.event_.Destroy();
   _impl_.trace_level_.Destroy();
+  _impl_.space_.Destroy();
   if (this != internal_default_instance()) delete _impl_.metadata_;
 }
 
@@ -4039,6 +4051,7 @@ void PublicRunPost_Request::Clear() {
   _impl_.location_.ClearToEmpty();
   _impl_.event_.ClearToEmpty();
   _impl_.trace_level_.ClearToEmpty();
+  _impl_.space_.ClearToEmpty();
   if (GetArenaForAllocation() == nullptr && _impl_.metadata_ != nullptr) {
     delete _impl_.metadata_;
   }
@@ -4228,6 +4241,13 @@ size_t PublicRunPost_Request::ByteSizeLong() const {
         this->_internal_trace_level());
   }
 
+  // string space = 6;
+  if (!this->_internal_space().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_space());
+  }
+
   // .google.protobuf.Struct metadata = 3;
   if (this->_internal_has_metadata()) {
     total_size += 1 +
@@ -4266,6 +4286,9 @@ void PublicRunPost_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, 
   }
   if (!from._internal_trace_level().empty()) {
     _this->_internal_set_trace_level(from._internal_trace_level());
+  }
+  if (!from._internal_space().empty()) {
+    _this->_internal_set_space(from._internal_space());
   }
   if (from._internal_has_metadata()) {
     _this->_internal_mutable_metadata()->::PROTOBUF_NAMESPACE_ID::Struct::MergeFrom(

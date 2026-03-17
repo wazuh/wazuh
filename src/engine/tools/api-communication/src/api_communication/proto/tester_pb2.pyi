@@ -21,7 +21,7 @@ class LogtestDelete_Request(_message.Message):
     def __init__(self, space: _Optional[str] = ...) -> None: ...
 
 class PublicRunPost_Request(_message.Message):
-    __slots__ = ["event", "location", "metadata", "queue", "trace_level"]
+    __slots__ = ["event", "location", "metadata", "queue", "space", "trace_level"]
     EVENT_FIELD_NUMBER: _ClassVar[int]
     LOCATION_FIELD_NUMBER: _ClassVar[int]
     METADATA_FIELD_NUMBER: _ClassVar[int]
@@ -34,7 +34,7 @@ class PublicRunPost_Request(_message.Message):
     queue: int
     space: str
     trace_level: str
-    def __init__(self, queue: _Optional[int] = ..., location: _Optional[str] = ..., metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., event: _Optional[str] = ..., trace_level: _Optional[str] = ...) -> None: ...
+    def __init__(self, queue: _Optional[int] = ..., location: _Optional[str] = ..., metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., event: _Optional[str] = ..., trace_level: _Optional[str] = ..., space: _Optional[str] = ...) -> None: ...
 
 class Result(_message.Message):
     __slots__ = ["asset_traces", "output"]

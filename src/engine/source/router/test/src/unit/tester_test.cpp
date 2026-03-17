@@ -98,7 +98,7 @@ TEST_F(TesterTest, AddEntryRepeatdly)
     error = m_test->addEntry(entryPost, /*ignoreFail=*/false);
     stopControllerCall();
 
-    EXPECT_STREQ(error.value().message.c_str(), "The name of the testing environment already exist");
+    EXPECT_STREQ(error.value().message.c_str(), "The 'Test' environment already exists.");
 }
 
 TEST_F(TesterTest, AddEntrySuccess)
@@ -163,7 +163,7 @@ TEST_F(TesterTest, FailedRemovingEnvironment)
 
     EXPECT_TRUE(error.has_value());
 
-    EXPECT_STREQ(error.value().message.c_str(), "The testing environment not exist");
+    EXPECT_STREQ(error.value().message.c_str(), "The 'Test' environment does not exist.");
 }
 
 TEST_F(TesterTest, SuccessRemovingEnvironment)
@@ -188,7 +188,7 @@ TEST_F(TesterTest, FaildedRebuildingEnvironment)
 
     EXPECT_TRUE(error.has_value());
 
-    EXPECT_STREQ(error.value().message.c_str(), "The testing environment not exist");
+    EXPECT_STREQ(error.value().message.c_str(), "The 'Test' environment does not exist.");
 }
 
 TEST_F(TesterTest, FaildedRebuildingEnvironmentMakeControllerError)
@@ -206,7 +206,7 @@ TEST_F(TesterTest, FaildedRebuildingEnvironmentMakeControllerError)
     auto error = m_test->rebuildEntry(ENVIRONMENT_NAME);
 
     EXPECT_TRUE(error.has_value());
-    EXPECT_STREQ(error.value().message.c_str(), "Failed to create the testing environment: Policy was not building");
+    EXPECT_STREQ(error.value().message.c_str(), "Failed to create the 'Test' environment: Policy was not building");
 }
 
 TEST_F(TesterTest, SuccessRebuildingEnvironment)
@@ -232,7 +232,7 @@ TEST_F(TesterTest, FailedEnableEntry)
 
     EXPECT_TRUE(error.has_value());
 
-    EXPECT_STREQ(error.value().message.c_str(), "The testing environment not exist");
+    EXPECT_STREQ(error.value().message.c_str(), "The 'Test' environment does not exist.");
 }
 
 TEST_F(TesterTest, SuccessEnableEntry)
@@ -277,7 +277,7 @@ TEST_F(TesterTest, FailtureGetEntry)
 
     EXPECT_TRUE(std::holds_alternative<base::Error>(error));
 
-    EXPECT_STREQ(std::get<base::Error>(error).message.c_str(), "The testing environment not exist");
+    EXPECT_STREQ(std::get<base::Error>(error).message.c_str(), "The 'Test' environment does not exist.");
 }
 
 TEST_F(TesterTest, SuccessGetEntry)
@@ -385,7 +385,7 @@ TEST_F(TesterTest, FailtureGetAssetsNameNotExist)
 
     EXPECT_TRUE(std::holds_alternative<base::Error>(error));
 
-    EXPECT_STREQ(std::get<base::Error>(error).message.c_str(), "The testing environment not exist");
+    EXPECT_STREQ(std::get<base::Error>(error).message.c_str(), "The 'Test' environment does not exist.");
 }
 
 TEST_F(TesterTest, FailtureGetAssetsNameNotEnabled)
@@ -402,7 +402,7 @@ TEST_F(TesterTest, FailtureGetAssetsNameNotEnabled)
 
     EXPECT_TRUE(std::holds_alternative<base::Error>(error));
 
-    EXPECT_STREQ(std::get<base::Error>(error).message.c_str(), "The testing environment is not builded");
+    EXPECT_STREQ(std::get<base::Error>(error).message.c_str(), "The 'Test' environment is not builded");
 
     stopControllerCall();
 }
