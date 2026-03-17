@@ -1711,8 +1711,7 @@ def test_asyncio_exception_handler(format_tb, mock_loop, mock_logging):
 @patch('wazuh.core.common.os.chmod')
 @patch('wazuh.core.common.os.chown')
 @patch('wazuh.core.common.wazuh_gid', return_value=0)
-@patch('wazuh.core.common.wazuh_uid', return_value=0)
-def test_wazuh_json_encoder_default(mock_chmod, mock_chown, mock_gid):
+def test_wazuh_json_encoder_default(mock_gid, mock_chown, mock_chmod):
     """Test if a special JSON encoder is defined for Wazuh."""
 
     wazuh_encoder = cluster_common.WazuhJSONEncoder()
@@ -1774,8 +1773,7 @@ def test_wazuh_json_encoder_default(mock_chmod, mock_chown, mock_gid):
 @patch('wazuh.core.common.os.chmod')
 @patch('wazuh.core.common.os.chown')
 @patch('wazuh.core.common.wazuh_gid', return_value=0)
-@patch('wazuh.core.common.wazuh_uid', return_value=0)
-def test_as_wazuh_object_ok(mock_chmod, mock_chown, mock_gid):
+def test_as_wazuh_object_ok(mock_gid, mock_chown, mock_chmod):
     """Test the different outputs taking into account the input values."""
 
     # Test the first condition - Wazuh methods without @dapi_allower must be blocked
@@ -1855,7 +1853,6 @@ def test_as_wazuh_object_ok(mock_chmod, mock_chown, mock_gid):
 @patch('wazuh.core.common.os.chmod')
 @patch('wazuh.core.common.os.chown')
 @patch('wazuh.core.common.wazuh_gid', return_value=0)
-@patch('wazuh.core.common.wazuh_uid', return_value=0)
 def test_as_wazuh_object_ko(mock_chmod, mock_chown, mock_gid):
     """Test if the exceptions are correctly raised."""
 
