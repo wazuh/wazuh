@@ -49,7 +49,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python - <<'PY'
+          $waitScript = @'
           import json
           import os
           import time
@@ -66,44 +66,48 @@ jobs:
           url = f"{base_url}?{params}"
 
           headers = {
-              'Accept': 'application/vnd.github+json',
-              'Authorization': f'Bearer {token}',
-              'User-Agent': 'wazuh-fim-win-wait-builder'
+            'Accept': 'application/vnd.github+json',
+            'Authorization': f'Bearer {token}',
+            'User-Agent': 'wazuh-fim-win-wait-builder'
           }
 
           deadline = time.time() + (90 * 60)
 
           while time.time() < deadline:
-              req = urllib.request.Request(url, headers=headers)
-              with urllib.request.urlopen(req) as response:
-                  data = json.loads(response.read().decode())
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req) as response:
+              data = json.loads(response.read().decode())
 
-              runs = data.get('workflow_runs', [])
-              if not runs:
-                  print('No builder runs found for this commit yet. Retrying in 30 seconds...')
-                  time.sleep(30)
-                  continue
-
-              completed = [r for r in runs if r.get('status') == 'completed']
-              success = [r for r in completed if r.get('conclusion') == 'success']
-
-              if success:
-                  print(f"Builder workflow succeeded for commit {sha}.")
-                  break
-
-              failed = [r for r in completed if r.get('conclusion') in ('failure', 'cancelled', 'timed_out', 'action_required')]
-              if failed:
-                  last = sorted(failed, key=lambda r: r.get('updated_at', ''), reverse=True)[0]
-                  raise SystemExit(
-                      f"Builder workflow finished with conclusion '{last.get('conclusion')}' for this commit. "
-                      f"Run URL: {last.get('html_url')}"
-                  )
-
-              print('Builder workflow is still running. Retrying in 30 seconds...')
+            runs = data.get('workflow_runs', [])
+            if not runs:
+              print('No builder runs found for this commit yet. Retrying in 30 seconds...')
               time.sleep(30)
+              continue
+
+            completed = [r for r in runs if r.get('status') == 'completed']
+            success = [r for r in completed if r.get('conclusion') == 'success']
+
+            if success:
+              print(f"Builder workflow succeeded for commit {sha}.")
+              break
+
+            failed = [r for r in completed if r.get('conclusion') in ('failure', 'cancelled', 'timed_out', 'action_required')]
+            if failed:
+              last = sorted(failed, key=lambda r: r.get('updated_at', ''), reverse=True)[0]
+              raise SystemExit(
+                f"Builder workflow finished with conclusion '{last.get('conclusion')}' for this commit. "
+                f"Run URL: {last.get('html_url')}"
+              )
+
+            print('Builder workflow is still running. Retrying in 30 seconds...')
+            time.sleep(30)
           else:
-              raise SystemExit('Timeout waiting for successful Windows builder workflow.')
-          PY
+            raise SystemExit('Timeout waiting for successful Windows builder workflow.')
+          '@
+
+          $scriptPath = Join-Path $env:RUNNER_TEMP 'wait_builder.py'
+          Set-Content -Path $scriptPath -Value $waitScript -Encoding UTF8
+          python $scriptPath
       - name: Download MSI package artifact
         uses: dawidd6/action-download-artifact@v6
         with:
