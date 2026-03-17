@@ -7,7 +7,6 @@
 
 #include <api/adapter/adapter.hpp>
 #include <api/adapter/helpers.hpp>
-#include <api/shared/constants.hpp>
 #include <api/tester/handlers.hpp>
 #include <base/dotPath.hpp>
 
@@ -581,6 +580,13 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
             return;
         }
 
+        const std::string sessionName = protoReq.space();
+        if (sessionName.empty())
+        {
+            res = adapter::userErrorResponse<ResponseType>("space is required and cannot be empty");
+            return;
+        }
+
         // Create The event to test
         base::Event event;
         auto location = protoReq.location();
@@ -599,7 +605,7 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         if (traceLevel != OTraceLavel::NONE)
         {
             // Get the assets of the policy filtered by namespaces
-            auto resPolicyAssets = tester->getAssets(api::shared::constants::SESSION_NAME);
+            auto resPolicyAssets = tester->getAssets(sessionName);
             if (base::isError(resPolicyAssets))
             {
                 res = adapter::userErrorResponse<ResponseType>(base::getError(resPolicyAssets).message);
@@ -611,7 +617,7 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         }
 
         // Run the test
-        auto opt = ::router::test::Options(traceLevel, assetToTrace, api::shared::constants::SESSION_NAME);
+        auto opt = ::router::test::Options(traceLevel, assetToTrace, sessionName);
 
         auto futureResult = tester->ingestTest(std::move(event), opt);
         event = nullptr;
@@ -653,7 +659,13 @@ adapter::RouteHandler logtestDelete(const std::shared_ptr<::router::ITesterAPI>&
         }
 
         auto [tester, protoReq] = adapter::getRes(result);
-        (void)protoReq;
+
+        const std::string sessionName = protoReq.space();
+        if (sessionName.empty())
+        {
+            res = adapter::userErrorResponse<ResponseType>("space is required and cannot be empty");
+            return;
+        }
 
         auto storeLocked = wStore.lock();
         if (!storeLocked)
@@ -661,8 +673,6 @@ adapter::RouteHandler logtestDelete(const std::shared_ptr<::router::ITesterAPI>&
             res = adapter::userErrorResponse<ResponseType>("CMStore is not available");
             return;
         }
-
-        const std::string sessionName = api::shared::constants::SESSION_NAME;
 
         auto cleanupSession = [&](const std::string& name) -> base::OptError
         {

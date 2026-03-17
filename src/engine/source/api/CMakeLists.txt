@@ -7,7 +7,6 @@ add_subdirectory(rawevtindexer)
 add_subdirectory(event)
 add_subdirectory(cmcrud)
 add_subdirectory(ioccrud)
-add_subdirectory(shared)
 
 add_library(api INTERFACE)
 target_include_directories(api INTERFACE
