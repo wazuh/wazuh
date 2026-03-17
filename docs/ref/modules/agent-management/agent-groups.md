@@ -117,7 +117,6 @@ An agent assigned to groups `database-servers` and `web-servers`:
 In addition to `agent.conf`, the group shared directory can contain other files that are distributed to agents in the group:
 
 - CIS benchmark files for SCA
-- Custom decoder files
 - Rootcheck policy files
 - Any other files needed by the agent
 

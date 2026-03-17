@@ -35,8 +35,6 @@
     - [GitHub](ref/modules/integrations/github.md)
     - [Azure](ref/modules/integrations/azure.md)
     - [Microsoft Graph Security API](ref/modules/integrations/microsoft-graph.md)
-    - [YARA](ref/modules/integrations/yara.md)
-    - [MITRE ATT&CK](ref/modules/integrations/mitre-attack.md)
   - [Engine](ref/modules/engine/README.md)
     - [Architecture](ref/modules/engine/architecture.md)
     - [API Reference](ref/modules/engine/api-reference.md)

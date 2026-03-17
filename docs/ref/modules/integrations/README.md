@@ -13,8 +13,3 @@ This section describes the Wazuh integrations with cloud services and third-part
 - [GitHub](github.md) – Monitor GitHub organization audit logs.
 - [Azure](azure.md) – Integrate with Azure Log Analytics, Storage, and Graph API.
 - [Microsoft Graph Security API](microsoft-graph.md) – Retrieve security alerts and events from Microsoft Graph.
-
-## Threat intelligence and detection
-
-- [YARA](yara.md) – Detect malware using YARA rules with active response.
-- [MITRE ATT&CK](mitre-attack.md) – Map alerts to the MITRE ATT&CK framework.
