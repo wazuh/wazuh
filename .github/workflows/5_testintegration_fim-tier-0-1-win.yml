@@ -7,9 +7,9 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
-  workflow_run:
-    workflows: ["5.X - Build Wazuh agent Windows (MSI)"]
-    types: [completed]
+      head_sha:
+        description: 'PR head SHA to download artifacts'
+        required: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -18,7 +18,6 @@ concurrency:
 jobs:
   # Execute the tests on windows.
   run-test:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     strategy:
       fail-fast: false
       matrix:
@@ -28,23 +27,14 @@ jobs:
           - shard_name: tier-1
             pytest_tier_args: "--tier 1"
     env:
-      BRANCH_NAME: ${{ github.event.workflow_run.head_branch || github.head_ref || github.ref_name }}
+      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
       BUILD_WORKFLOW: 5_builderpackage_agent-windows.yml
       AGENT_PACKAGE_REGEXP: wazuh-agent.*windows.*\.msi
-      PR_HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
+      PR_HEAD_SHA: ${{ inputs.head_sha || github.event.pull_request.head.sha || github.sha }}
     runs-on: windows-2025
     name: Run FIM integration tests (${{ matrix.shard_name }})
     steps:
-      - name: Ensure builder workflow succeeded
-        if: ${{ github.event_name == 'workflow_run' }}
-        shell: pwsh
-        run: |
-          if ("${{ github.event.workflow_run.conclusion }}" -ne "success") {
-            Write-Host "Builder workflow did not succeed: ${{ github.event.workflow_run.conclusion }}"
-            exit 1
-          }
-
       - name: Checkout Repo
         uses: actions/checkout@v3
         with:
