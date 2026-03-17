@@ -389,6 +389,24 @@ if(${TARGET} STREQUAL "winagent")
   endforeach()
 endif()
 
+if(NOT ${TARGET} STREQUAL "winagent")
+  set(CHECK_RC_SYS_FLAGS "-Wl,--wrap,lstat \
+                           -Wl,--wrap,notify_rk \
+                           -Wl,--wrap,wopendir \
+                           -Wl,--wrap,wfopen \
+                           -Wl,--wrap,readdir \
+                           -Wl,--wrap,closedir \
+                           -Wl,--wrap,check_ignore \
+                           -Wl,--wrap,skipFS \
+                           -Wl,--wrap,IsNFS \
+                           ${DEBUG_OP_WRAPPERS}")
+
+  add_executable(test_check_rc_sys test_check_rc_sys.c)
+  target_include_directories(test_check_rc_sys PRIVATE ${SRC_FOLDER}/rootcheck/include)
+  target_link_libraries(test_check_rc_sys SYSCHECK_O ${TEST_DEPS} "${CHECK_RC_SYS_FLAGS}")
+  add_test(NAME test_check_rc_sys COMMAND test_check_rc_sys)
+endif()
+
 # fim_scan.c tests
 add_executable(test_fim_scan test_fim_scan.c)
 
