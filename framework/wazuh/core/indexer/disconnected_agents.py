@@ -15,7 +15,7 @@ from wazuh.core.exception import (
     WazuhInternalError,
     WazuhResourceNotFound,
 )
-from wazuh.core.indexer.indexer import get_indexer_client
+from wazuh.core.indexer.indexer import IndexerUnavailableError, get_indexer_client
 from wazuh.core.results import AffectedItemsWazuhResult
 
 
@@ -108,6 +108,57 @@ class DisconnectedAgentSyncTasks:
         # Flag to ensure cluster-name sync runs only once per process lifecycle
         self._cluster_name_sync_done = False
 
+        # Seconds to wait between retries when the indexer is unavailable
+        self._indexer_wait_interval = master_interval.get(
+            "sync_disconnected_agent_indexer_wait_interval", 30
+        )
+
+    async def check_indexer(self) -> None:
+        """
+        Verify the indexer's availability before proceeding.
+
+        This method performs a connectivity check using ``client.info()``.
+        It relies on the internal retry mechanism of `get_indexer_client`.
+        If a client override is present (e.g., for testing or dependency
+        injection), the check is bypassed entirely.
+
+        Returns
+        -------
+        None
+            Returns execution flow once the indexer connection is successful.
+
+        Raises
+        ------
+        IndexerUnavailableError
+            If the indexer remains unreachable after all internal retry
+            attempts are exhausted.
+        Exception
+            Any unexpected error encountered during the connection process
+            that is not handled by the client's internal logic.
+
+        Notes
+        -----
+        Failed connection attempts are logged at the `DEBUG` level to prevent
+        log pollution in environments where the indexer might start later
+        than the main service.
+        """
+        if self._indexer_client_override is not None:
+            self.logger.debug(
+                "Indexer client override in use; skipping availability check"
+            )
+            return
+
+        try:
+            async with get_indexer_client() as client:
+                await client.healthcheck()
+            self.logger.debug("Indexer is available")
+        except IndexerUnavailableError:
+            self.logger.debug(
+                f"Indexer not available after retries. "
+                f"Check interval was {self._indexer_wait_interval}s"
+            )
+            raise
+
     async def run_agent_groups_sync(self) -> None:
         """
         Main task loop for non-connected agent group synchronization.
@@ -115,6 +166,13 @@ class DisconnectedAgentSyncTasks:
         This method runs indefinitely, executing the synchronization logic
         at the defined interval.
         """
+        try:
+            await self.check_indexer()
+        except IndexerUnavailableError as e:
+            self.logger.warning(
+                f"Indexer is not available – group sync skipped this cycle. "
+                f"Reason: {e}"
+            )
         self.logger.info(
             f"Starting non-connected agent group synchronization task "
             f"(interval: {self.sync_interval}s, batch_size: {self.batch_size})"
@@ -144,6 +202,8 @@ class DisconnectedAgentSyncTasks:
                         batch_result = await self._sync_agent_batch(batch)
                         processed_agents += batch_result.get("processed", 0)
                         failed_agents += batch_result.get("failed", 0)
+                    except IndexerUnavailableError:
+                        raise
                     except Exception as e:
                         self.logger.error(
                             f"Error syncing batch of agents: {e}", exc_info=True
@@ -158,12 +218,20 @@ class DisconnectedAgentSyncTasks:
                     f"{failed_agents} agents failed."
                 )
 
+            except IndexerUnavailableError as e:
+                self.logger.warning(
+                    f"Indexer is not available – group sync skipped this cycle. "
+                    f"Reason: {e}"
+                )
+                await asyncio.sleep(self.sync_interval)
+                continue
             except Exception as e:
                 self.logger.error(
-                    f"Error in disconnected agent sync task: {e}", exc_info=True
+                    f"Unexpected error in group synchronization cycle: {e}",
+                    exc_info=True,
                 )
-            finally:
                 await asyncio.sleep(self.sync_interval)
+                continue
 
     async def _get_disconnected_agents_filter_by_time(self) -> List[dict]:
         """
@@ -294,6 +362,8 @@ class DisconnectedAgentSyncTasks:
             else:
                 raise Exception("Failed query to wazuh-indexer")
 
+        except IndexerUnavailableError:
+            raise
         except Exception as e:
             self.logger.exception(
                 f"Failed to query max versions for batch of {len(agent_ids)} agents: {e}"
@@ -416,6 +486,7 @@ class DisconnectedAgentSyncTasks:
             return
 
         try:
+            await self.check_indexer()
             self.logger.info(
                 f"Waiting {self.initial_delay}s before running disconnected cluster-name sync"
             )
@@ -499,8 +570,18 @@ class DisconnectedAgentSyncTasks:
                 f"({len(agents_to_update)} agents updated)"
             )
 
-        except Exception:
-            self.logger.exception("Unexpected error in run_cluster_name_sync")
+        except IndexerUnavailableError as e:
+            self.logger.warning(
+                f"Indexer is not available – cluster-name sync aborted. "
+                f"Reason: {e}"
+            )
+            return
+        except Exception as e:
+            self.logger.error(
+                f"Unexpected error in cluster-name synchronization: {e}",
+                exc_info=True,
+            )
+            return
         finally:
             self._cluster_name_sync_done = True
 
@@ -724,6 +805,8 @@ class DisconnectedAgentSyncTasks:
             )
             return agent_cluster_map
 
+        except IndexerUnavailableError:
+            raise
         except Exception:
             self.logger.exception(
                 f"Failed to resolve cluster names for agents: {agent_ids}"
