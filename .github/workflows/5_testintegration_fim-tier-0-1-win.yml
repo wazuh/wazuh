@@ -27,6 +27,7 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BUILD_WORKFLOW: 5_builderpackage_agent-windows.yml
+      AGENT_PACKAGE_REGEXP: wazuh-agent.*windows.*\.msi
       # For pull_request events GITHUB_SHA is the merge commit SHA, not the PR
       # head commit. The builder's head_sha is the PR head SHA, so we must use
       # that to locate the builder run and its artifacts.
