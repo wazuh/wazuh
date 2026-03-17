@@ -19,6 +19,7 @@ add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 target_link_libraries(
   ${PROJECT_NAME}
   content_manager
+  indexer_connector
   debug
   gtestd
   debug
