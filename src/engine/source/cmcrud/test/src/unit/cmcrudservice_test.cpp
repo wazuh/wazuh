@@ -34,7 +34,8 @@ using cm::store::ResourceType;
 // Integration example (YAML version of the JSON payload)
 static constexpr const char* kIntegrationYAML = R"(
 id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
-title: "windows"
+metadata:
+  title: "windows"
 enabled: true
 category: "security"
 default_parent: "3f086ce2-32a4-42b0-be7e-40dcfb9c6160"
@@ -50,7 +51,8 @@ kvdbs: []
 static constexpr const char* kKVDBYAML = R"(
 id: "82e215c4-988a-4f64-8d15-b98b2fc03a4f"
 date: "2025-10-06T13:32:19Z"
-title: "windows_kerberos_status_code_to_code_name"
+metadata:
+  title: "windows_kerberos_status_code_to_code_name"
 author: "Wazuh Inc."
 content:
   "0x0": "KDC_ERR_NONE"
@@ -416,7 +418,9 @@ TEST(CrudService_Unit, GetResourceByUUID_KVDB)
     json::Json kvdbJson {R"(
     {
       "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
-      "title": "windows_kerberos_status_code_to_code_name",
+      "metadata": {
+        "title": "windows_kerberos_status_code_to_code_name"
+      },
       "content": {
         "0x0": "KDC_ERR_NONE",
         "0x1": "KDC_ERR_NAME_EXP"
@@ -738,7 +742,9 @@ TEST(CrudService_Unit, ValidateResource_KVDB_SuccessDoesNotTouchValidator)
     static constexpr const char* kKvdbJsonStr = R"(
     {
       "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
-      "title": "windows_kerberos_status_code_to_code_name",
+      "metadata": {
+        "title": "windows_kerberos_status_code_to_code_name"
+      },
       "content": {
         "0x0": "KDC_ERR_NONE",
         "0x1": "KDC_ERR_NAME_EXP"
@@ -765,7 +771,9 @@ TEST(CrudService_Unit, ValidateResource_KVDB_MissingId_Throws)
 
     static constexpr const char* kKvdbMissingIdStr = R"(
     {
-      "title": "windows_kerberos_status_code_to_code_name",
+      "metadata": {
+        "title": "windows_kerberos_status_code_to_code_name"
+      },
       "content": { "0x0": "KDC_ERR_NONE" },
       "enabled": true
     })";
@@ -793,7 +801,9 @@ TEST(CrudService_Unit, ValidateResource_KVDB_ContentNotObject_Throws)
     static constexpr const char* kKvdbBadContentStr = R"(
     {
       "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
-      "title": "windows_kerberos_status_code_to_code_name",
+      "metadata": {
+        "title": "windows_kerberos_status_code_to_code_name"
+      },
       "content": "not-an-object",
       "enabled": true
     })";
@@ -821,7 +831,9 @@ TEST(CrudService_Unit, ValidateResource_KVDB_MissingEnabled_Throws)
     static constexpr const char* kKvdbMissingEnabledStr = R"(
     {
       "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
-      "title": "windows_kerberos_status_code_to_code_name",
+      "metadata": {
+        "title": "windows_kerberos_status_code_to_code_name"
+      },
       "content": { "0x0": "KDC_ERR_NONE" }
     })";
 
