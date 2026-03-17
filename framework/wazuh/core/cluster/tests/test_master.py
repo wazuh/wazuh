@@ -1883,9 +1883,10 @@ async def test_disconnected_agent_group_sync_task_get_disconnected_agents_filter
 
 @pytest.mark.asyncio
 @patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
+@patch('wazuh.core.cluster.master.DisconnectedAgentSyncTasks.check_indexer', new_callable=AsyncMock)
 @patch('wazuh.core.cluster.master.DisconnectedAgentSyncTasks._get_disconnected_agents_filter_by_time')
 @patch('wazuh.core.cluster.master.AsyncWazuhDBConnection')
-async def test_disconnected_agent_group_sync_task_run_with_disabled_task(mock_wdb_conn, mock_get_disconnected, get_ossec_conf_mock):
+async def test_disconnected_agent_group_sync_task_run_with_disabled_task(mock_wdb_conn, mock_get_disconnected, mock_check_indexer, get_ossec_conf_mock):
     """Test DisconnectedAgentSyncTasks run method when disabled."""
 
     cluster_items_with_sync = cluster_items.copy()

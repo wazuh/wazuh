@@ -762,3 +762,10 @@ class WazuhNotAcceptable(WazuhError):
     """
     _default_type = "about:blank"
     _default_title = "Not Acceptable"
+
+class IndexerUnavailableError(WazuhIndexerError):
+    """
+    Raised when the indexer is temporarily unavailable after exhausting retries
+    """
+    _default_type = "about:blank"
+    _default_title = "Wazuh Indexer Unavailable"
