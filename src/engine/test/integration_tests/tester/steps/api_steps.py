@@ -96,7 +96,8 @@ def build_policy_yaml(default_parent: str, root_decoder: str, integration_uuids)
     return f"""\
 type: policy
 enabled: true
-title: Development 0.0.1
+metadata:
+  title: Development 0.0.1
 hash: "tester-test-hash"
 enrichments: []
 filters: []
@@ -281,7 +282,7 @@ def step_impl(context, policy_name: str):
 def step_impl(context):
     full_policy = {
         "policy": {
-            "title": "test",
+            "metadata": {"title": "test"},
             "enabled": True,
             "root_decoder": LOGTEST_DECODER_UUID,
             "integrations": [LOGTEST_INTEG_UUID],
@@ -304,7 +305,7 @@ def step_impl(context):
             "integrations": [
                 {
                     "id": LOGTEST_INTEG_UUID,
-                    "title": "integrations_test",
+                    "metadata": {"title": "integrations_test"},
                     "enabled": True,
                     "category": "security",
                     "decoders": [LOGTEST_DECODER_UUID],

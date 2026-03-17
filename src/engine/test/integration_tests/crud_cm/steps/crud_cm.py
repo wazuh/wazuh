@@ -255,7 +255,8 @@ def build_valid_policy_yaml() -> str:
     handler/namespace errors (focus on 'integrations' array).
     """
     return """\
-title: bar
+metadata:
+  title: bar
 enabled: true
 hash: "crud-cm-test-hash"
 root_decoder: "00000000-0000-0000-0000-000000000001"
@@ -273,7 +274,8 @@ def build_policy_yaml_missing_integrations() -> str:
     Policy YAML without 'integrations' key.
     """
     return """\
-title: bar
+metadata:
+  title: bar
 enabled: true
 hash: "crud-cm-test-hash"
 root_decoder: "00000000-0000-0000-0000-000000000001"
@@ -289,7 +291,8 @@ def build_policy_yaml_with_unexists_root_decoder() -> str:
     Policy YAML with an empty 'integrations' array.
     """
     return """\
-title: bar
+metadata:
+  title: bar
 enabled: true
 hash: "crud-cm-test-hash"
 root_decoder: "00000000-0000-0000-0000-000000000001"
@@ -319,7 +322,8 @@ def build_full_valid_policy_yaml(default_parent: str,
     return f"""\
 type: policy
 enabled: true
-title: Development 0.0.1
+metadata:
+  title: Development 0.0.1
 hash: "crud-cm-test-hash"
 default_parent: {default_parent}
 root_decoder: {root_decoder}
@@ -351,7 +355,8 @@ def build_integration_yaml_for_policy(name: str,
     """
     return f"""\
 id: {integ_uuid}
-title: {name}
+metadata:
+  title: {name}
 enabled: true
 enrichments: []
 filters: []
