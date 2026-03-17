@@ -7,114 +7,18 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
-  pull_request:
-    paths:
-        - ".github/workflows/5_testintegration_fim-tier-0-1-win.yml"
-        - ".github/workflows/5_builderpackage_agent-windows.yml"
-        - "src/config/src/syscheck-config.c"
-        - "src/config/include/syscheck-config.h"
-        - "src/syscheckd/**"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_fim/**"
+  workflow_run:
+    workflows: ["5.X - Build Wazuh agent Windows (MSI)"]
+    types: [completed]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  # Wait for the Windows builder workflow to produce the MSI on a cheap Linux
-  # runner. The Windows shards only start once this job succeeds, preventing
-  # idle Windows runner minutes while the builder is still working.
-  wait-for-builder:
-    runs-on: ubuntu-latest
-    env:
-      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-      BUILD_WORKFLOW: 5_builderpackage_agent-windows.yml
-      AGENT_PACKAGE_REGEXP: wazuh-agent.*windows.*\.msi
-      # For pull_request events GITHUB_SHA is the merge commit SHA, not the PR
-      # head commit. The builder's head_sha is the PR head SHA, so we must use
-      # that to locate the builder run and its artifacts.
-      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-    steps:
-      - name: Wait for Windows builder workflow
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: python
-        run: |
-          import json
-          import os
-          import sys
-          import time
-          import urllib.request
-
-          # Only wait when triggered by a PR
-          if os.environ.get('GITHUB_EVENT_NAME') != 'pull_request':
-              print(f"Event is '{os.environ.get('GITHUB_EVENT_NAME')}', skipping builder wait.")
-              sys.exit(0)
-
-          repo = os.environ['GITHUB_REPOSITORY']
-          sha = os.environ['PR_HEAD_SHA']
-          branch = os.environ['BRANCH_NAME']
-          workflow = os.environ['BUILD_WORKFLOW']
-          token = os.environ['GITHUB_TOKEN']
-
-          url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/runs?head_sha={sha}&per_page=20"
-          dispatch_url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/dispatches"
-          headers = {
-              'Accept': 'application/vnd.github+json',
-              'Authorization': f'Bearer {token}',
-              'User-Agent': 'wazuh-fim-win-wait-builder',
-              'Content-Type': 'application/json',
-          }
-
-          deadline = time.time() + 90 * 60
-          dispatched = False
-          poll_seconds = 60
-
-          while time.time() < deadline:
-              try:
-                  with urllib.request.urlopen(urllib.request.Request(url, headers=headers)) as resp:
-                      runs = json.loads(resp.read().decode()).get('workflow_runs', [])
-              except Exception as e:
-                  print(f"API query failed: {e}")
-                  time.sleep(poll_seconds)
-                  continue
-
-              # Dispatch builder if no runs exist yet
-              if not runs:
-                  print("No builder run found for this commit yet.")
-                  time.sleep(poll_seconds)
-                  continue
-
-              # Check the most recent builder run for successful completion.
-              selected_run = runs[0]
-              run_id = selected_run['id']
-
-              status = selected_run.get('status')
-              conclusion = selected_run.get('conclusion')
-
-              if status == 'completed' and conclusion == 'success':
-                  print(f"Builder run {run_id} succeeded. Releasing tier jobs.")
-                  sys.exit(0)
-
-              if status == 'completed' and conclusion in ('failure', 'cancelled', 'timed_out', 'action_required'):
-                  print(
-                      f"Builder run {run_id} finished with conclusion '{conclusion}'. "
-                      f"URL: {selected_run.get('html_url')}",
-                      file=sys.stderr,
-                  )
-                  sys.exit(1)
-
-              print(f"Builder run {run_id} is {status}; waiting for completion...")
-              time.sleep(poll_seconds)
-
-          print('Timeout waiting for builder.', file=sys.stderr)
-          sys.exit(1)
-
   # Execute the tests on windows.
   run-test:
-    needs: [wait-for-builder]
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     strategy:
       fail-fast: false
       matrix:
@@ -124,16 +28,27 @@ jobs:
           - shard_name: tier-1
             pytest_tier_args: "--tier 1"
     env:
-      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      BRANCH_NAME: ${{ github.event.workflow_run.head_branch || github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
       BUILD_WORKFLOW: 5_builderpackage_agent-windows.yml
       AGENT_PACKAGE_REGEXP: wazuh-agent.*windows.*\.msi
-      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      PR_HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
     runs-on: windows-2025
     name: Run FIM integration tests (${{ matrix.shard_name }})
     steps:
+      - name: Ensure builder workflow succeeded
+        if: ${{ github.event_name == 'workflow_run' }}
+        shell: pwsh
+        run: |
+          if ("${{ github.event.workflow_run.conclusion }}" -ne "success") {
+            Write-Host "Builder workflow did not succeed: ${{ github.event.workflow_run.conclusion }}"
+            exit 1
+          }
+
       - name: Checkout Repo
         uses: actions/checkout@v3
+        with:
+          ref: ${{ env.PR_HEAD_SHA }}
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
