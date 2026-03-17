@@ -211,8 +211,10 @@ stop_monitor() {
 
 run_benchmark() {
     local threads="$1"
-    local bench_csv="${RESULTS_DIR}/bench-${threads}T.csv"
-    local bench_log="${RESULTS_DIR}/bench-${threads}T.log"
+    local tag="${2:-}"  # optional suffix, e.g. "warmup"
+    local suffix="${threads}T${tag:+-${tag}}"
+    local bench_csv="${RESULTS_DIR}/bench-${suffix}.csv"
+    local bench_log="${RESULTS_DIR}/bench-${suffix}.log"
 
     log "Running benchmark: rate=${BT_RATE} time=${BT_TIME}s batch=${BT_BATCH} input=${BT_INPUT}"
     log "  output watched: ${BT_OUTPUT}"
@@ -429,9 +431,9 @@ for T in "${THREADS[@]}"; do
     log "Grace period (${GRACE_SECS}s) before benchmark..."
     sleep "${GRACE_SECS}"
 
-    # Step 6a: Warmup run (results discarded)
+    # Step 6a: Warmup run
     log "Running warmup benchmark (run 1/2)..."
-    if ! run_benchmark "${T}"; then
+    if ! run_benchmark "${T}" warmup; then
         log "WARNING: Warmup benchmark failed for ${T} thread(s). Cleaning up and continuing..."
     fi
 
@@ -439,7 +441,7 @@ for T in "${THREADS[@]}"; do
     log "Grace period (${GRACE_SECS}s) between benchmark runs..."
     sleep "${GRACE_SECS}"
 
-    # Step 6b: Actual benchmark run (results kept)
+    # Step 6b: Measured run
     log "Running measured benchmark (run 2/2)..."
     if ! run_benchmark "${T}"; then
         log "WARNING: Benchmark failed for ${T} thread(s). Cleaning up and continuing..."
