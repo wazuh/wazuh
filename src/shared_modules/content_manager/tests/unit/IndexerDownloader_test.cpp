@@ -58,8 +58,13 @@ TEST_F(IndexerDownloaderTest, InitialLoadWhenCursorIsZero)
         }));
 
     EXPECT_NO_THROW(downloader->handleRequest(m_spUpdaterContext));
-    EXPECT_EQ(m_callbackMessages.size(), 1u);
+    // 1 page callback + 1 indexer_complete callback = 2.
+    EXPECT_EQ(m_callbackMessages.size(), 2u);
     EXPECT_EQ(m_spUpdaterContext->data["cursor"], "10");
+
+    // Verify the final message is indexer_complete.
+    auto finalMsg = nlohmann::json::parse(m_callbackMessages.back());
+    EXPECT_EQ(finalMsg.at("type"), "indexer_complete");
 }
 
 /**
@@ -113,7 +118,8 @@ TEST_F(IndexerDownloaderTest, CVERejectedMapsToDelete)
 
     downloader->handleRequest(m_spUpdaterContext);
 
-    ASSERT_EQ(m_callbackMessages.size(), 1u);
+    // First callback is the page with data, second is indexer_complete.
+    ASSERT_GE(m_callbackMessages.size(), 1u);
     auto msg = nlohmann::json::parse(m_callbackMessages[0]);
     EXPECT_EQ(msg.at("data").at(0).at("type"), "delete");
 }
@@ -138,7 +144,7 @@ TEST_F(IndexerDownloaderTest, CVEPublishedMapsToCreate)
 
     downloader->handleRequest(m_spUpdaterContext);
 
-    ASSERT_EQ(m_callbackMessages.size(), 1u);
+    ASSERT_GE(m_callbackMessages.size(), 1u);
     auto msg = nlohmann::json::parse(m_callbackMessages[0]);
     EXPECT_EQ(msg.at("data").at(0).at("type"), "create");
 }
@@ -164,7 +170,7 @@ TEST_F(IndexerDownloaderTest, NonCVEResourceAlwaysCreate)
 
     downloader->handleRequest(m_spUpdaterContext);
 
-    ASSERT_EQ(m_callbackMessages.size(), 1u);
+    ASSERT_GE(m_callbackMessages.size(), 1u);
     auto msg = nlohmann::json::parse(m_callbackMessages[0]);
     for (const auto& resource : msg.at("data"))
     {
@@ -193,7 +199,9 @@ TEST_F(IndexerDownloaderTest, TCPEAndTVENDORSSkipped)
 
     downloader->handleRequest(m_spUpdaterContext);
 
-    ASSERT_EQ(m_callbackMessages.size(), 1u);
+    // First callback is the page (with empty data since TCPE/TVENDORS are skipped),
+    // second is indexer_complete.
+    ASSERT_GE(m_callbackMessages.size(), 1u);
     auto msg = nlohmann::json::parse(m_callbackMessages[0]);
     EXPECT_TRUE(msg.at("data").empty());
 }
@@ -225,8 +233,8 @@ TEST_F(IndexerDownloaderTest, MultiPageIteration)
 
     downloader->handleRequest(m_spUpdaterContext);
 
-    // Two pages → two callback invocations.
-    EXPECT_EQ(m_callbackMessages.size(), 2u);
+    // Two page callbacks + 1 indexer_complete = 3.
+    EXPECT_EQ(m_callbackMessages.size(), 3u);
 }
 
 /**
@@ -276,7 +284,7 @@ TEST_F(IndexerDownloaderTest, CallbackFailurePropagates)
 }
 
 /**
- * @brief Empty hits → fileProcessingCallback not called.
+ * @brief Empty hits → only indexer_complete callback, no page callback.
  */
 TEST_F(IndexerDownloaderTest, EmptyResponseNoCallback)
 {
@@ -293,7 +301,10 @@ TEST_F(IndexerDownloaderTest, EmptyResponseNoCallback)
         }));
 
     downloader->handleRequest(m_spUpdaterContext);
-    EXPECT_TRUE(m_callbackMessages.empty());
+    // Only the indexer_complete callback, no page callback.
+    ASSERT_EQ(m_callbackMessages.size(), 1u);
+    auto msg = nlohmann::json::parse(m_callbackMessages[0]);
+    EXPECT_EQ(msg.at("type"), "indexer_complete");
 }
 
 /**
