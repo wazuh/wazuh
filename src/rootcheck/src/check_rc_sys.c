@@ -10,10 +10,22 @@
 
 #include "shared.h"
 #include "rootcheck.h"
+#include <errno.h>
+
+#define RC_ENOENT_SUSPECT (-2)
 
 /* Prototypes */
 static int read_sys_file(const char *file_name, int do_read);
 static int read_sys_dir(const char *dir_name, int do_read);
+static void rc_build_path(char *buf, size_t len,
+                          const char *dir, const char *name);
+#ifndef WIN32
+static void rc_emit_hidden_alert(const char *file_name);
+static int rc_collect_suspect(char ***suspects, size_t *count,
+                              size_t *capacity, const char *name);
+static void rc_verify_suspects(const char *dir_name, char **suspects,
+                               size_t suspect_count);
+#endif
 
 /* Global variables */
 static int   _sys_errors;
@@ -36,24 +48,13 @@ static int read_sys_file(const char *file_name, int do_read)
 #endif
     if (lstat(file_name, &statbuf) < 0) {
 #ifndef WIN32
-        const char op_msg_fmt[] = "Anomaly detected in file '%*s'. Hidden from stats, but showing up on readdir. Possible kernel level rootkit.";
-        char op_msg[OS_SIZE_1024 + 1];
-
-        const int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
-
-        if (size >= 0) {
-            if ((size_t)size < sizeof(op_msg)) {
-                snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
-            } else {
-                const unsigned int surplus = size - sizeof(op_msg) + 1;
-                snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(strlen(file_name) - surplus), file_name);
-            }
-
-            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
-        } else {
-            mtdebug2(ARGV0, "Error %d (%s) with snprintf with file %s", errno, strerror(errno), file_name);
+        if (errno == ENOENT) {
+            mtdebug2(ARGV0, "File '%s' not found by lstat (ENOENT). "
+                     "Deferring for readdir verification.", file_name);
+            return (RC_ENOENT_SUSPECT);
         }
 
+        rc_emit_hidden_alert(file_name);
         _sys_errors++;
 #endif
         return (-1);
@@ -192,11 +193,141 @@ static int read_sys_file(const char *file_name, int do_read)
     return (0);
 }
 
+/* Build a full path from a directory and a file name.
+ * Handles the root directory ("/") as a special case to avoid "//name". */
+static void rc_build_path(char *buf, size_t len,
+                          const char *dir, const char *name)
+{
+    if (strlen(dir) == 1 && *dir == PATH_SEP) {
+        snprintf(buf, len, "%c%s", PATH_SEP, name);
+    } else {
+        snprintf(buf, len, "%s%c%s", dir, PATH_SEP, name);
+    }
+}
+
+#ifndef WIN32
+/* Emit the "Hidden from stats" rootkit alert for a given file */
+static void rc_emit_hidden_alert(const char *file_name)
+{
+    const char op_msg_fmt[] = "Anomaly detected in file '%*s'. "
+        "Hidden from stats, but showing up on readdir. "
+        "Possible kernel level rootkit.";
+    char op_msg[OS_SIZE_1024 + 1];
+
+    const int size = snprintf(NULL, 0, op_msg_fmt,
+                              (int)strlen(file_name), file_name);
+
+    if (size >= 0) {
+        if ((size_t)size < sizeof(op_msg)) {
+            snprintf(op_msg, sizeof(op_msg), op_msg_fmt,
+                     (int)strlen(file_name), file_name);
+        } else {
+            const size_t name_len = strlen(file_name);
+            const size_t surplus = (size_t)size - sizeof(op_msg) + 1;
+            const int trimmed = (surplus < name_len) ? (int)(name_len - surplus) : 0;
+            snprintf(op_msg, sizeof(op_msg), op_msg_fmt, trimmed, file_name);
+        }
+
+        notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+    } else {
+        mtdebug2(ARGV0, "Error %d (%s) with snprintf with file %s",
+                 errno, strerror(errno), file_name);
+    }
+}
+
+static int rc_collect_suspect(char ***suspects, size_t *count,
+                              size_t *capacity, const char *name)
+{
+    if (*count >= *capacity) {
+        size_t new_capacity = (*capacity == 0) ? 32 : *capacity * 2;
+        char **new_suspects = realloc(*suspects, new_capacity * sizeof(char *));
+
+        if (new_suspects == NULL) {
+            mterror(ARGV0, "Out of memory collecting ENOENT suspects.");
+            return (-1);
+        }
+
+        *suspects = new_suspects;
+        *capacity = new_capacity;
+    }
+
+    (*suspects)[*count] = strdup(name);
+
+    if ((*suspects)[*count] == NULL) {
+        mterror(ARGV0, "Out of memory duplicating suspect name.");
+        return (-1);
+    }
+
+    (*count)++;
+
+    return (0);
+}
+
+static void rc_verify_suspects(const char *dir_name, char **suspects,
+                               size_t suspect_count)
+{
+    DIR *dp = wopendir(dir_name);
+    size_t s;
+
+    if (dp != NULL) {
+        struct dirent *entry = NULL;
+
+        while ((entry = readdir(dp)) != NULL) {
+            for (s = 0; s < suspect_count; s++) {
+                if (suspects[s] != NULL &&
+                        strcmp(suspects[s], entry->d_name) == 0) {
+                    char full_path[PATH_MAX + 2];
+
+                    rc_build_path(full_path, PATH_MAX + 1, dir_name, suspects[s]);
+
+                    mtdebug2(ARGV0, "File '%s' still listed in readdir "
+                             "after lstat ENOENT. Alerting.", full_path);
+                    rc_emit_hidden_alert(full_path);
+                    _sys_errors++;
+
+                    os_free(suspects[s]);
+                    suspects[s] = NULL;
+                    break;
+                }
+            }
+        }
+
+        closedir(dp);
+
+        for (s = 0; s < suspect_count; s++) {
+            if (suspects[s] != NULL) {
+                mtdebug2(ARGV0, "File '%s/%s' no longer in readdir listing. "
+                         "Skipping rootkit alert (deleted between scans).",
+                         dir_name, suspects[s]);
+            }
+        }
+    } else {
+        mtwarn(ARGV0, "Could not reopen '%s' for readdir verification. "
+               "Alerting all %zu suspects.", dir_name, suspect_count);
+        for (s = 0; s < suspect_count; s++) {
+            if (suspects[s] != NULL) {
+                char full_path[PATH_MAX + 2];
+
+                rc_build_path(full_path, PATH_MAX + 1, dir_name, suspects[s]);
+
+                rc_emit_hidden_alert(full_path);
+                _sys_errors++;
+            }
+        }
+    }
+
+    for (s = 0; s < suspect_count; s++) {
+        os_free(suspects[s]);
+    }
+
+    os_free(suspects);
+}
+#endif /* WIN32 */
+
 static int read_sys_dir(const char *dir_name, int do_read)
 {
     int i = 0;
     unsigned int entry_count = 0;
-    int did_changed = 0;
     DIR *dp;
     struct dirent *entry = NULL;
     struct stat statbuf;
@@ -204,10 +335,17 @@ static int read_sys_dir(const char *dir_name, int do_read)
     short skip_fs;
 
 #ifndef WIN32
+    int did_changed = 0;
+    char **suspects = NULL;
+    size_t suspect_count = 0;
+    size_t suspect_capacity = 0;
+
     const char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin",
                                        "/usr/sbin", "/dev", "/etc",
                                        "/boot", NULL
                                      };
+#else
+    (void)do_read;
 #endif
 
     if ((dir_name == NULL) || (strlen(dir_name) > PATH_MAX)) {
@@ -236,9 +374,11 @@ static int read_sys_dir(const char *dir_name, int do_read)
 
     /* Current device id */
     if (did != statbuf.st_dev) {
+#ifndef WIN32
         if (did != 0) {
             did_changed = 1;
         }
+#endif
         did = statbuf.st_dev;
     }
 
@@ -255,8 +395,6 @@ static int read_sys_dir(const char *dir_name, int do_read)
         }
         i++;
     }
-#else
-    do_read = 0;
 #endif
 
     /* Open the directory */
@@ -283,11 +421,7 @@ static int read_sys_dir(const char *dir_name, int do_read)
         }
 
         /* Create new file + path string */
-        if (strlen(dir_name) == 1 && *dir_name == PATH_SEP) {
-            snprintf(f_name, PATH_MAX + 1, "%c%s", PATH_SEP, entry->d_name);
-        } else {
-            snprintf(f_name, PATH_MAX + 1, "%s%c%s", dir_name, PATH_SEP, entry->d_name);
-        }
+        rc_build_path(f_name, PATH_MAX + 1, dir_name, entry->d_name);
 
         /* Check if file is a directory */
         if (lstat(f_name, &statbuf_local) == 0) {
@@ -299,11 +433,10 @@ static int read_sys_dir(const char *dir_name, int do_read)
 #else
             if (S_ISDIR(statbuf_local.st_mode) ||
                     S_ISREG(statbuf_local.st_mode)
-            /* No S_ISLNK on Windows */
 #ifndef WIN32
-		    || S_ISLNK(statbuf_local.st_mode)
+                    || S_ISLNK(statbuf_local.st_mode)
 #endif
-		    )
+               )
 #endif
             {
                 entry_count++;
@@ -333,8 +466,33 @@ static int read_sys_dir(const char *dir_name, int do_read)
             }
         }
 
-        read_sys_file(f_name, do_read);
+#ifndef WIN32
+        {
+            int rc = read_sys_file(f_name, do_read);
+
+            if (rc == RC_ENOENT_SUSPECT) {
+                if (rc_collect_suspect(&suspects, &suspect_count,
+                                       &suspect_capacity, entry->d_name) < 0) {
+                    size_t k;
+                    for (k = 0; k < suspect_count; k++) {
+                        os_free(suspects[k]);
+                    }
+                    os_free(suspects);
+                    closedir(dp);
+                    return (-1);
+                }
+            }
+        }
+#else
+        read_sys_file(f_name, 0);
+#endif
     }
+
+#ifndef WIN32
+    if (suspect_count > 0) {
+        rc_verify_suspects(dir_name, suspects, suspect_count);
+    }
+#endif /* WIN32 */
 
     /* skip further test because the FS cant deliver the stats (btrfs link count always is 1) */
     skip_fs = skipFS(dir_name);
@@ -345,12 +503,12 @@ static int read_sys_dir(const char *dir_name, int do_read)
         return(0);
     }
 
+#ifndef WIN32
     /* Entry count for directory different than the actual
      * link count from stats
      */
     if ((entry_count != (unsigned) statbuf.st_nlink) &&
             ((did_changed == 0) || ((entry_count + 1) != (unsigned) statbuf.st_nlink))) {
-#ifndef WIN32
         struct stat statbuf2;
         char op_msg[OS_SIZE_1024 + 1];
 
@@ -374,8 +532,8 @@ static int read_sys_dir(const char *dir_name, int do_read)
 
 #endif
         }
-#endif /* WIN32 */
     }
+#endif /* WIN32 */
 
     closedir(dp);
 
