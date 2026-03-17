@@ -10,7 +10,7 @@ from wazuh.core.agent import Agent, get_agents_info, get_rbac_filters, WazuhDBQu
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.exception import WazuhException
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.stats import get_daemons_stats_, get_daemons_stats_socket, hourly_, totals_, weekly_
+from wazuh.core.stats import get_daemons_stats_socket, hourly_, totals_, weekly_
 from wazuh.rbac.decorators import expose_resources
 
 node_id = get_node().get('node')

@@ -21,7 +21,7 @@ with patch('wazuh.common.wazuh_uid'):
             get_node_config, get_stats_hourly_node, get_daemon_stats_node,
             get_stats_node, get_stats_weekly_node,
             get_status, get_status_node, put_restart, put_reload, update_configuration)
-        from wazuh import cluster, common, manager, stats
+        from wazuh import cluster, manager, stats
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser

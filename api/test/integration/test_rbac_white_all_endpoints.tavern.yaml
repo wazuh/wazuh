@@ -744,7 +744,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *permission_denied
-
 ---
 test_name: GET /cluster/{node_id}/logs
 
