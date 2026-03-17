@@ -6,7 +6,6 @@ import contextlib
 import datetime
 import json
 import os
-import re
 from typing import Union
 
 from wazuh.core import common, utils
@@ -183,40 +182,6 @@ def get_daemons_stats_socket(socket: str, agents_list: Union[list[int], str] = N
                 agent['uptime'] = utils.get_date_from_timestamp(agent['uptime'])
 
     return response
-
-
-def get_daemons_stats_(filename: str) -> list:
-    """Get daemons stats from an input file.
-
-    Parameters
-    ----------
-    filename : str
-        Full path of the file to get information.
-
-    Returns
-    -------
-    list
-        Stats of the input file.
-
-    Raises
-    ------
-    WazuhError
-        Raised if file does not exist.
-    """
-    try:
-        items = {}
-        with open(filename, mode='r') as f:
-            daemons_data = f.read()
-        try:
-            kv_regex = re.compile(r'(^\w*)=(.*)', re.MULTILINE)
-            for key, value in kv_regex.findall(daemons_data):
-                items[key] = float(value[1:-1])
-        except Exception as e:
-            raise WazuhInternalError(1104, extra_message=str(e))
-    except IOError:
-        raise WazuhError(1308, extra_message=filename)
-
-    return [items]
 
 
 def get_stats_socket_path(agent_id: Union[str, int], daemon: str) -> str:
