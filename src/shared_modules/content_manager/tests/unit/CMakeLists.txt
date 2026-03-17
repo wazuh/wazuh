@@ -16,11 +16,10 @@ file(GLOB PROJECT_SOURCES *.cpp)
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 
-target_link_options(${PROJECT_NAME} PRIVATE -Wl,--allow-shlib-undefined)
-
 target_link_libraries(
   ${PROJECT_NAME}
   content_manager
+  -Wl,--allow-shlib-undefined
   debug
   gtestd
   debug
