@@ -154,6 +154,10 @@ void* wm_sys_main(wm_sys_t *sys) {
 
     sys->flags.running = true;
 
+    w_cond_init(&sys_stop_condition, NULL);
+    w_mutex_init(&sys_stop_mutex, NULL);
+    w_mutex_init(&sys_reconnect_mutex, NULL);
+
     if (!sys->flags.enabled) {
         mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting...");
         pthread_exit(NULL);
