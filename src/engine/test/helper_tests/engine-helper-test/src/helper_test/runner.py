@@ -449,7 +449,8 @@ def create_helpers_integration(api_client: APIClient):
     """
     integration_yaml = f"""\
 id: {HELPERS_INTEG_UUID}
-title: helpers-test
+metadata:
+  title: helpers-test
 enabled: true
 category: other
 default_parent: {HELPERS_DECODER_UUID}
@@ -477,7 +478,8 @@ def create_policy(api_client: APIClient):
     policy_yaml = f"""\
 type: policy
 enabled: true
-title: Helpers Testing Policy
+metadata:
+  title: Helpers Testing Policy
 hash: "helpers-test-hash"
 enrichments: []
 filters: []
@@ -533,7 +535,7 @@ def create_kvdb_resource(api_client: APIClient):
     kvdb_json = {
         "id": KVDB_RESOURCE_UUID,
         "date": "2025-10-06T13:32:19Z",
-        "title": "windows_kerberos_status_code_to_code_name",
+        "metadata": {"title": "windows_kerberos_status_code_to_code_name"},
         "author": "Wazuh Inc.",
         "content": {
 

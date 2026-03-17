@@ -70,7 +70,8 @@ def build_policy_yaml(default_parent: str, root_decoder: str, integration_uuids)
     return f"""\
 type: policy
 enabled: true
-title: Development 0.0.1
+metadata:
+  title: Development 0.0.1
 hash: "router-test-hash"
 enrichments: []
 filters: []

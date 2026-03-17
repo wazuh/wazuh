@@ -244,7 +244,8 @@ def build_integration_yaml(
     """
     return f"""\
 id: {integ_uuid}
-title: {integ_title}
+metadata:
+  title: {integ_title}
 enabled: true
 category: {category}
 default_parent: {default_parent}

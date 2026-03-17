@@ -51,7 +51,8 @@ index_discarded_events: false
 
 static constexpr const char* kIntegrationYAML = R"(
 id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
-title: "windows"
+metadata:
+  title: "windows"
 enabled: true
 category: "security"
 default_parent: "3f086ce2-32a4-42b0-be7e-40dcfb9c6160"
@@ -66,7 +67,8 @@ kvdbs: []
 static constexpr const char* kKVDBYAML = R"(
 id: "82e215c4-988a-4f64-8d15-b98b2fc03a4f"
 date: "2025-10-06T13:32:19Z"
-title: "windows_kerberos_status_code_to_code_name"
+metadata:
+  title: "windows_kerberos_status_code_to_code_name"
 author: "Wazuh Inc."
 content:
   "0x0": "KDC_ERR_NONE"
@@ -374,7 +376,8 @@ TEST(CrudService_Component, UpsertKVDB_ContentNotObject_Throws_NoMutation)
 
     static constexpr const char* kBadKvdbYaml = R"(
     id: "82e215c4-988a-4f64-8d15-b98b2fc03a4f"
-    title: "windows_kerberos_status_code_to_code_name"
+    metadata:
+      title: "windows_kerberos_status_code_to_code_name"
     content: [ "0x0", "0x1" ]   # <-- invalid: must be an object
     enabled: true
     )";
@@ -410,7 +413,8 @@ TEST(CrudService_Component, UpsertKVDB_InvalidUUID_Throws_NoMutation)
 
     static constexpr const char* kBadKvdbUuidYaml = R"(
     id: "not-a-uuid"
-    title: "windows_kerberos_status_code_to_code_name"
+    metadata:
+      title: "windows_kerberos_status_code_to_code_name"
     content:
       "0x0": "KDC_ERR_NONE"
     enabled: true
@@ -448,7 +452,8 @@ TEST(CrudService_Component, UpsertIntegration_InvalidCategory_Throws_NoValidator
 
     static constexpr const char* kBadCategoryIntegrationYaml = R"(
     id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
-    title: "windows"
+    metadata:
+      title: "windows"
     enabled: true
     category: "ossec"  # <-- invalid
     decoders: []
@@ -484,7 +489,8 @@ TEST(CrudService_Component, UpsertIntegration_InvalidDecoderUUID_Throws_NoValida
 
     static constexpr const char* kBadDecoderUuidIntegrationYaml = R"(
     id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
-    title: "windows"
+    metadata:
+      title: "windows"
     enabled: true
     category: "security"
     decoders:
@@ -520,7 +526,8 @@ TEST(CrudService_Component, UpsertIntegration_InvalidKVDBUUID_Throws_NoValidator
 
     static constexpr const char* kBadKvdbUuidIntegrationYaml = R"(
     id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
-    title: "windows"
+    metadata:
+      title: "windows"
     enabled: true
     category: "security"
     decoders: []

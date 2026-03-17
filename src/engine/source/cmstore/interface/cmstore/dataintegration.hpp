@@ -41,7 +41,7 @@ namespace cm::store::dataType
 namespace jsonintegration
 {
 constexpr std::string_view PATH_KEY_ID = "/id";
-constexpr std::string_view PATH_KEY_NAME = "/title";
+constexpr std::string_view PATH_KEY_NAME = "/metadata/title";
 constexpr std::string_view PATH_KEY_ENABLED = "/enabled";
 constexpr std::string_view PATH_KEY_CATEGORY = "/category";
 constexpr std::string_view PATH_KEY_DEFAULT_PARENT = "/default_parent";
