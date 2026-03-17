@@ -90,7 +90,7 @@ void parse_uname_string (char *uname,
                 }
             }
         } else {
-            *(str_tmp + strlen(str_tmp) - 1) = '\0';
+            mwarn("Windows uname missing closing ']' in version field: '%s'", str_tmp);
         }
 
         // Get os_major
@@ -135,14 +135,16 @@ void parse_uname_string (char *uname,
                 *str_tmp = '\0';
                 str_tmp += 2;
                 os_strdup(str_tmp, osd->os_version);
-                *(osd->os_version + strlen(osd->os_version) - 1) = '\0';
+                    size_t ver_len = strlen(osd->os_version);
+                    if (ver_len > 0 && osd->os_version[ver_len - 1] == ']') osd->os_version[ver_len - 1] = '\0';
 
                 // os_major.os_minor (os_codename)
                 if (str_tmp = strstr(osd->os_version, " ("), str_tmp) {
                     *str_tmp = '\0';
                     str_tmp += 2;
                     os_strdup(str_tmp, osd->os_codename);
-                    *(osd->os_codename + strlen(osd->os_codename) - 1) = '\0';
+                        size_t cod_len = strlen(osd->os_codename);
+                        if (cod_len > 0 && osd->os_codename[cod_len - 1] == ')') osd->os_codename[cod_len - 1] = '\0';
                 }
 
                 // Get os_major
@@ -165,7 +167,8 @@ void parse_uname_string (char *uname,
                 }
 
             } else {
-                *(osd->os_name + strlen(osd->os_name) - 1) = '\0';
+                size_t name_len = strlen(osd->os_name);
+                if (name_len > 0 && osd->os_name[name_len - 1] == ']') osd->os_name[name_len - 1] = '\0';
             }
 
             // os_name|os_platform
@@ -213,16 +216,12 @@ int parse_agent_update_msg (char *msg,
 
     for (line = strtok_r(msg_tmp, sdelim, &savedptr); line; line = strtok_r(NULL, sdelim, &savedptr)) {
         switch (*line) {
-        case '#':  // System label
-        case '!':  // Hidden label
-        case '\"': // Regular label
-            // The _agent_ip will not be appended to the labels string.
-            // Instead it will be returned in the agent_ip parameter.
+        case '#':  // Legacy format: prefixed metadata line
+        case '!':
+        case '\"':
+            // Extract agent IP from legacy text keepalive format.
             if (!strncmp(line, agent_ip_label, strlen(agent_ip_label))) {
                 os_strdup(line + strlen(agent_ip_label), agent_data->agent_ip);
-            }
-            else {
-                wm_strcat(&agent_data->labels, line, '\n');
             }
             break;
         default:
@@ -306,12 +305,6 @@ int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char
 
     // Extract agent uname
     cJSON *agent_uname = cJSON_GetObjectItem(agent, "uname");
-
-    // Extract agent labels
-    cJSON *labels = cJSON_GetObjectItem(agent, "labels");
-    if (labels && cJSON_IsString(labels)) {
-        os_strdup(labels->valuestring, agent_data->labels);
-    }
 
     // Allocate os_data structure
     os_calloc(1, sizeof(os_data), agent_data->osd);

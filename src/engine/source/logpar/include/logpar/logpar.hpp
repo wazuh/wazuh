@@ -11,7 +11,7 @@
 #include <base/json.hpp>
 #include <hlp/hlp.hpp>
 #include <parsec/parsec.hpp>
-#include <schemf/ischema.hpp>
+#include <schemf/ivalidator.hpp>
 
 namespace hlp
 {
@@ -175,17 +175,17 @@ namespace logpar
  */
 namespace syntax
 {
-constexpr auto EXPR_BEGIN = '<';                              ///< Start of a field expression.
-constexpr auto EXPR_END = '>';                                ///< End of a field expression.
-constexpr auto EXPR_OPT = '?';                                ///< Optional field marker.
-constexpr auto EXPR_ESCAPE = '\\';                            ///< Escape character.
-constexpr auto EXPR_ARG_SEP = '/';                            ///< Argument separator.
-constexpr auto EXPR_GROUP_BEGIN = '(';                        ///< Start of a group expression.
-constexpr auto EXPR_GROUP_END = ')';                          ///< End of a group expression.
-constexpr auto EXPR_WILDCARD = '~';                           ///< Wildcard character.
-constexpr auto EXPR_FIELD_SEP = '.';                          ///< Field name separator.
-constexpr auto EXPR_FIELD_EXTENDED_CHARS_FIRST = "_@#~";      ///< Extra chars allowed at start of a field name.
-constexpr auto EXPR_FIELD_EXTENDED_CHARS = "_@#";             ///< Extra chars allowed in a field name.
+constexpr auto EXPR_BEGIN = '<';                         ///< Start of a field expression.
+constexpr auto EXPR_END = '>';                           ///< End of a field expression.
+constexpr auto EXPR_OPT = '?';                           ///< Optional field marker.
+constexpr auto EXPR_ESCAPE = '\\';                       ///< Escape character.
+constexpr auto EXPR_ARG_SEP = '/';                       ///< Argument separator.
+constexpr auto EXPR_GROUP_BEGIN = '(';                   ///< Start of a group expression.
+constexpr auto EXPR_GROUP_END = ')';                     ///< End of a group expression.
+constexpr auto EXPR_WILDCARD = '~';                      ///< Wildcard character.
+constexpr auto EXPR_FIELD_SEP = '.';                     ///< Field name separator.
+constexpr auto EXPR_FIELD_EXTENDED_CHARS_FIRST = "_@#~"; ///< Extra chars allowed at start of a field name.
+constexpr auto EXPR_FIELD_EXTENDED_CHARS = "_@#";        ///< Extra chars allowed in a field name.
 }; // namespace syntax
 
 /**
@@ -380,7 +380,7 @@ private:
 
     size_t m_maxGroupRecursion;
     size_t m_debugLvl;
-    std::weak_ptr<schemf::ISchema> m_schema;
+    std::weak_ptr<schemf::IValidator> m_schemaValidator;
     std::unordered_map<schemf::Type, ParserType> m_typeParsers;
     std::unordered_map<ParserType, ParserBuilder> m_parserBuilders;
     std::unordered_map<std::string, ParserType> m_fieldParserOverrides;
@@ -434,18 +434,18 @@ private:
     /**
      * @brief Get the Schema object
      *
-     * @return std::shared_ptr<schemf::ISchema>
+     * @return std::shared_ptr<schemf::IValidator>
      * @throws std::runtime_error if the schema is not available
      */
-    inline std::shared_ptr<schemf::ISchema> getSchema() const
+    inline std::shared_ptr<schemf::IValidator> getSchema() const
     {
-        auto schema = m_schema.lock();
-        if (!schema)
+        auto schemaValidator = m_schemaValidator.lock();
+        if (!schemaValidator)
         {
             throw std::runtime_error("Logpar tried to get schema but it was not available");
         }
 
-        return schema;
+        return schemaValidator;
     }
 
     /**
@@ -465,8 +465,8 @@ private:
         }
 
         // Get the type from the schema table otherwise
-        auto schema = getSchema();
-        auto type = schema->getType(field);
+        auto schemaValidator = getSchema();
+        auto type = schemaValidator->getType(field);
         if (m_typeParsers.count(type) == 0)
         {
             throw std::runtime_error(fmt::format(
@@ -488,14 +488,14 @@ public:
      * @brief Construct a new Logpar object
      *
      * @param fieldParserOverrides a json object with overrides for the field parsers
-     * @param schema the schema to validate the fields
+     * @param schemaValidator the schema validator to validate the fields
      * @param maxGroupRecursion the maximum number of times a group can be nested
      * @param debugLvl the debug level
      *
      * @throws std::runtime_error if errors occur while initializing
      */
     Logpar(const json::Json& fieldParserOverrides,
-           const std::shared_ptr<schemf::ISchema>& schema,
+           const std::shared_ptr<schemf::IValidator>& schemaValidator,
            size_t maxGroupRecursion = 1,
            size_t debugLvl = 0);
 

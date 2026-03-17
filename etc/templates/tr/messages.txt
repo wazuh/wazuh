@@ -4,7 +4,6 @@ no="h"
 yesmatch="e"
 nomatch="h"
 agent="aracı"
-local="yerel"
 server="manager"
 help="yardım"
 
@@ -21,10 +20,9 @@ system="Sistem"
 user="Kullanıcı"
 host="Bilgisayar"
 hitanyorabort="Devam etmek için ENTER veya çıkmak için Ctrl-C ye basın"
-whattoinstall="Ne tür kurulum yapmak istiyorsunuz (sunucu,aracı,yerel veya yardım)?"
+whattoinstall="Ne tür kurulum yapmak istiyorsunuz (sunucu, aracı veya yardım)?"
 serverchose="Manager kurulumu seçildi"
 clientchose="Aracı(istemci) kurulumu seçildi"
-localchose="Yerel kurulum seçildi"
 
 # Part 2
 settingupenv="Kurulum ortamı hazırlanıyor"
@@ -70,11 +68,6 @@ yesfirewall="Uyarı seviyesi >= 6 için firewall-drop etkin kılındı (yerel)"
 defaultwhitelist="Etkin yanıt üretme için öntanımlı beyaz liste:"
 addwhite="Beyaz listeye başka IP adreslerini de eklemek ister misiniz?"
 ipswhite="IPler (boşlukla ayrılmış): "
-
-# Part 3.5/server/local
-syslog="Uzak syslog'un (514 udp) etkin kılınmasını ister misiniz?"
-nosyslog="Uzak syslog etkisiz kılındı"
-yessyslog="Uzak syslog etkin kılındı"
 
 # Part 3.4/3.5
 readlogs="Bu dosyaları incelemek için yapılandırma oluşturuluyor:"

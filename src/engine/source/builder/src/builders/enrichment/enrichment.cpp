@@ -1,5 +1,8 @@
 #include "enrichment.hpp"
 
+#include <exception>
+#include <fmt/format.h>
+
 #include <cmstore/categories.hpp>
 
 namespace
@@ -9,11 +12,15 @@ constexpr std::string_view JPATH_INTEGRATION_CATEGORY = "/wazuh/integration/cate
 const std::string ENRICHMENT_SPACE_TRACEABLE_NAME = "enrichment/OriginSpace";
 const std::string UNCLASSIFIED_FILTER_TRACEABLE_NAME = "filter/UnclassifiedEvents";
 const std::string DISCARDED_EVENTS_FILTER_TRACEABLE_NAME = "filter/DiscardedEvents";
+const std::string CLEANUP_DECODER_VARIABLES_TRACEABLE_NAME = "cleanup/DecoderTemporaryVariables";
 
-constexpr auto POSITIVE_INDEXED_BY_DISCARDED_TRUE = "Discard_event() -> Success: Event will be indexed (index_discarded_events=true)";
+constexpr auto POSITIVE_INDEXED_BY_DISCARDED_TRUE =
+    "Discard_event() -> Success: Event will be indexed (index_discarded_events=true)";
 constexpr auto NEGATIVE_INDEXED_BY_DISCARDED_TRUE_FIELD_FALSE =
-    "Discard_event() -> Failure: Event won't be indexed (wazuh.space.event_discarded=true and index_discarded_events=false)";
-constexpr auto POSITIVE_INDEXED_BY_DISCARDED_FALSE = "Discard_event() -> Success: Event will be indexed (wazuh.space.event_discarded=false)";
+    "Discard_event() -> Failure: Event won't be indexed (wazuh.space.event_discarded=true and "
+    "index_discarded_events=false)";
+constexpr auto POSITIVE_INDEXED_BY_DISCARDED_FALSE =
+    "Discard_event() -> Success: Event will be indexed (wazuh.space.event_discarded=false)";
 
 } // namespace
 namespace builder::builders::enrichment
@@ -99,8 +106,7 @@ std::pair<base::Expression, std::string> getDiscardedEventsFilter(const cm::stor
             {
                 if (trace)
                 {
-                    return base::result::makeSuccess<decltype(event)>(
-                        event, POSITIVE_INDEXED_BY_DISCARDED_TRUE);
+                    return base::result::makeSuccess<decltype(event)>(event, POSITIVE_INDEXED_BY_DISCARDED_TRUE);
                 }
                 return base::result::makeSuccess<decltype(event)>(event);
             }
@@ -111,8 +117,51 @@ std::pair<base::Expression, std::string> getDiscardedEventsFilter(const cm::stor
             {
                 if (trace)
                 {
+                    return base::result::makeFailure<decltype(event)>(event,
+                                                                      NEGATIVE_INDEXED_BY_DISCARDED_TRUE_FIELD_FALSE);
+                }
+                return base::result::makeFailure<decltype(event)>(event);
+            }
+
+            if (trace)
+            {
+                return base::result::makeSuccess<decltype(event)>(event, POSITIVE_INDEXED_BY_DISCARDED_FALSE);
+            }
+            return base::result::makeSuccess<decltype(event)>(event);
+        });
+
+    return std::make_pair(makeTraceableSuccessExpression(op, trace), DISCARDED_EVENTS_FILTER_TRACEABLE_NAME);
+}
+
+std::pair<base::Expression, std::string> getCleanupDecoderVariables(bool enabled, bool trace)
+{
+    auto op = base::Term<base::EngineOp>::create(
+        CLEANUP_DECODER_VARIABLES_TRACEABLE_NAME,
+        [enabled, trace](base::Event event) -> base::result::Result<base::Event>
+        {
+            if (!enabled)
+            {
+                if (trace)
+                {
+                    return base::result::makeSuccess<decltype(event)>(
+                        event, "cleanupDecoderTemporaryVariables() -> Skipped: Cleanup disabled by policy");
+                }
+                return base::result::makeSuccess<decltype(event)>(event);
+            }
+
+            try
+            {
+                event->eraseRootKeysByPrefix("_");
+            }
+            catch (const std::exception& e)
+            {
+                if (trace)
+                {
                     return base::result::makeFailure<decltype(event)>(
-                        event, NEGATIVE_INDEXED_BY_DISCARDED_TRUE_FIELD_FALSE);
+                        event,
+                        fmt::format("cleanupDecoderTemporaryVariables() -> Failure: Could not remove root keys "
+                                    "prefixed with '_' ({})",
+                                    e.what()));
                 }
                 return base::result::makeFailure<decltype(event)>(event);
             }
@@ -120,12 +169,12 @@ std::pair<base::Expression, std::string> getDiscardedEventsFilter(const cm::stor
             if (trace)
             {
                 return base::result::makeSuccess<decltype(event)>(
-                    event, POSITIVE_INDEXED_BY_DISCARDED_FALSE);
+                    event, "cleanupDecoderTemporaryVariables() -> Success: Removed root keys prefixed with '_'");
             }
             return base::result::makeSuccess<decltype(event)>(event);
         });
 
-    return std::make_pair(makeTraceableSuccessExpression(op, trace), DISCARDED_EVENTS_FILTER_TRACEABLE_NAME);
+    return std::make_pair(makeTraceableSuccessExpression(op, trace), CLEANUP_DECODER_VARIABLES_TRACEABLE_NAME);
 }
 
 } // namespace builder::builders::enrichment

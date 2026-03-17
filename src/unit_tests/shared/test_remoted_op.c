@@ -23,6 +23,19 @@ int teardown_remoted_op(void **state) {
     return 0;
 }
 
+static void free_os_data(os_data *osd, char *uname) {
+    os_free(osd->os_name);
+    os_free(osd->os_version);
+    os_free(osd->os_codename);
+    os_free(osd->os_major);
+    os_free(osd->os_minor);
+    os_free(osd->os_build);
+    os_free(osd->os_platform);
+    os_free(osd->os_arch);
+    os_free(osd);
+    os_free(uname);
+}
+
 /* tests */
 
 /* Tests get_os_arch */
@@ -262,6 +275,108 @@ root:xnu-6153.141.1~1/RELEASE_X86_64 |x86_64 [Mac OS X|darwin: 10.15.6 (Catalina
     os_free(uname);
 }
 
+// Tests for heap-based NULL write buffer underflows — empty field variants
+void test_parse_uname_string_empty_fields(void **state)
+{
+    typedef struct {
+        const char *uname;
+        const char *os_name;
+        const char *os_version;
+        const char *os_codename;
+        const char *os_major;
+        const char *os_minor;
+        const char *os_build;
+        const char *os_platform;
+        const char *os_arch;
+    } tc_t;
+
+    static const tc_t cases[] = {
+        /* os_version empty — uname ends with ": "                    */
+        { "Linux x86_64 [Ubuntu: ","Ubuntu","",NULL, NULL, NULL, NULL, NULL,"x86_64" },
+        /* os_codename empty — uname ends with " ("                   */
+        { "Linux x86_64 [Ubuntu|ubuntu: 1 ()", "Ubuntu", "1", "", "1", NULL, NULL, "ubuntu", "x86_64" },
+        /* os_name empty — uname ends with " ["                       */
+        { "Linux x86_64 [","",NULL, NULL, NULL, NULL, NULL, NULL,"x86_64" },
+        /* os_version empty — Arch Linux, no closing ']'              */
+        { "Linux x86_64 [Arch Linux|arch: ","Arch Linux", "",NULL, NULL, NULL, NULL, "arch","x86_64" },
+        /* os_codename empty — closed by ']' with no content          */
+        { "Linux x86_64 [Ubuntu|ubuntu: 20.04 (]", "Ubuntu","20.04","","20", "04", NULL, "ubuntu","x86_64" },
+    };
+
+#define ASSERT_FIELD(exp, got) \
+    do { if (exp) { assert_string_equal(exp, got); } else { assert_null(got); } } while (0)
+
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        char *uname = NULL;
+        os_strdup(cases[i].uname, uname);
+
+        os_data *osd = NULL;
+        os_calloc(1, sizeof(os_data), osd);
+
+        parse_uname_string(uname, osd);
+
+        ASSERT_FIELD(cases[i].os_name,     osd->os_name);
+        ASSERT_FIELD(cases[i].os_version,  osd->os_version);
+        ASSERT_FIELD(cases[i].os_codename, osd->os_codename);
+        ASSERT_FIELD(cases[i].os_major,    osd->os_major);
+        ASSERT_FIELD(cases[i].os_minor,    osd->os_minor);
+        ASSERT_FIELD(cases[i].os_build,    osd->os_build);
+        ASSERT_FIELD(cases[i].os_platform, osd->os_platform);
+        ASSERT_FIELD(cases[i].os_arch,     osd->os_arch);
+
+        free_os_data(osd, uname);
+    }
+
+#undef ASSERT_FIELD
+}
+
+// Windows uname missing closing ']': empty version (vulnerability payload) and non-empty version
+void test_parse_uname_string_windows_missing_bracket(void **state)
+{
+    typedef struct {
+        const char *uname;
+        const char *warn_msg;
+        const char *os_version;
+        const char *os_major;
+        const char *os_minor;
+        const char *os_build;
+    } tc_t;
+
+    static const tc_t cases[] = {
+        /* Empty version field — vulnerability payload                        */
+        { "Windows [Ver: ",
+          "Windows uname missing closing ']' in version field: ''",
+          "", NULL, NULL, NULL },
+        /* Non-empty version, no ']' — mwarn emitted, version stored intact  */
+        { "Windows [Ver: 10.0.19045",
+          "Windows uname missing closing ']' in version field: '10.0.19045'",
+          "10.0.19045", "10", "0", "19045" },
+    };
+
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        char *uname = NULL;
+        os_strdup(cases[i].uname, uname);
+
+        os_data *osd = NULL;
+        os_calloc(1, sizeof(os_data), osd);
+
+        expect_string(__wrap__mwarn, formatted_msg, cases[i].warn_msg);
+
+        parse_uname_string(uname, osd);
+
+        assert_string_equal("Windows",          osd->os_name);
+        assert_string_equal(cases[i].os_version, osd->os_version);
+        assert_string_equal("windows",           osd->os_platform);
+        if (cases[i].os_major) { assert_string_equal(cases[i].os_major, osd->os_major); } else { assert_null(osd->os_major); }
+        if (cases[i].os_minor) { assert_string_equal(cases[i].os_minor, osd->os_minor); } else { assert_null(osd->os_minor); }
+        if (cases[i].os_build) { assert_string_equal(cases[i].os_build, osd->os_build); } else { assert_null(osd->os_build); }
+        assert_null(osd->os_codename);
+        assert_null(osd->os_arch);
+
+        free_os_data(osd, uname);
+    }
+}
+
 /* Tests parse_agent_update_msg */
 
 void test_parse_agent_update_msg_missing_uname(void **state)
@@ -493,37 +608,6 @@ merged.mg\n#\"_agent_ip\":192.168.0.164\n";
     wdb_free_agent_info_data(agent_data);
 }
 
-void test_parse_agent_update_msg_ok_labels(void **state)
-{
-    char *msg = "Linux |debian10 |4.19.0-9-amd64 |#1 SMP Debian 4.19.118-2+deb10u1 (2020-06-07) |x86_64 \
-[Debian GNU/Linux|debian: 10 (buster)] - Wazuh v3.13.0 / ab73af41699f13fdd81903b5f23d8d00\
-\n\"key1\":value1\n\"key2\":value2\n!\"hkey1\":hvalue1\n!\"hkey2\":hvalue2\
-\nfd756ba04d9c32c8848d4608bec41251 merged.mg\n#\"_agent_ip\":192.168.0.143\n";
-
-    agent_info_data *agent_data = NULL;
-    os_calloc(1, sizeof(agent_info_data), agent_data);
-
-    int result = parse_agent_update_msg(msg, agent_data);
-
-    assert_int_equal(OS_SUCCESS, result);
-    assert_string_equal("Wazuh v3.13.0", agent_data->version);
-    assert_string_equal("Debian GNU/Linux", agent_data->osd->os_name);
-    assert_string_equal("10", agent_data->osd->os_major);
-    assert_null(agent_data->osd->os_minor);
-    assert_null(agent_data->osd->os_build);
-    assert_string_equal("10", agent_data->osd->os_version);
-    assert_string_equal("buster", agent_data->osd->os_codename);
-    assert_string_equal("debian", agent_data->osd->os_platform);
-    assert_string_equal("x86_64", agent_data->osd->os_arch);
-    assert_string_equal("Linux |debian10 |4.19.0-9-amd64 |#1 SMP Debian 4.19.118-2+deb10u1 (2020-06-07) |x86_64", agent_data->osd->os_uname);
-    assert_string_equal("ab73af41699f13fdd81903b5f23d8d00", agent_data->config_sum);
-    assert_string_equal("fd756ba04d9c32c8848d4608bec41251", agent_data->merged_sum);
-    assert_string_equal("192.168.0.143", agent_data->agent_ip);
-    assert_string_equal("\"key1\":value1\n\"key2\":value2\n!\"hkey1\":hvalue1\n!\"hkey2\":hvalue2", agent_data->labels);
-
-    wdb_free_agent_info_data(agent_data);
-}
-
 /* Tests parse_json_keepalive */
 
 void test_parse_json_keepalive_invalid_json(void **state)
@@ -559,8 +643,7 @@ void test_parse_json_keepalive_linux_complete(void **state)
     char* json = "{\"version\":\"1.0\",\"agent\":{\"id\":\"001\",\"name\":\"agent1\",\"version\":\"v5.0.0\",\
 \"config_sum\":\"ab73af41699f13fdd81903b5f23d8d00\",\"merged_sum\":\"fd756ba04d9c32c8848d4608bec41251\",\
 \"ip\":\"192.168.1.100\",\
-\"uname\":\"Linux |ubuntu-test |5.4.0-42-generic |#46-Ubuntu SMP Fri Jul 10 00:24:02 UTC 2020 |x86_64 [Ubuntu 20.04|ubuntu: 20.04 (focal)]\",\
-\"labels\":\"key1:value1\\nkey2:value2\"},\
+\"uname\":\"Linux |ubuntu-test |5.4.0-42-generic |#46-Ubuntu SMP Fri Jul 10 00:24:02 UTC 2020 |x86_64 [Ubuntu 20.04|ubuntu: 20.04 (focal)]\"},\
 \"host\":{\"hostname\":\"ubuntu-test\",\"architecture\":\"x86_64\",\
 \"os\":{\"name\":\"Ubuntu\",\"version\":\"20.04\",\"platform\":\"ubuntu\",\"type\":\"linux\"}}}";
 
@@ -574,7 +657,6 @@ void test_parse_json_keepalive_linux_complete(void **state)
     assert_string_equal("ab73af41699f13fdd81903b5f23d8d00", agent_data->config_sum);
     assert_string_equal("fd756ba04d9c32c8848d4608bec41251", agent_data->merged_sum);
     assert_string_equal("192.168.1.100", agent_data->agent_ip);
-    assert_string_equal("key1:value1\nkey2:value2", agent_data->labels);
     assert_string_equal("Ubuntu", agent_data->osd->os_name);
     assert_string_equal("20.04", agent_data->osd->os_version);
     assert_string_equal("ubuntu", agent_data->osd->os_platform);
@@ -662,7 +744,6 @@ void test_parse_json_keepalive_minimal(void **state)
     assert_null(agent_data->config_sum);
     assert_null(agent_data->merged_sum);
     assert_null(agent_data->agent_ip);
-    assert_null(agent_data->labels);
     assert_non_null(agent_data->osd);
 
     wdb_free_agent_info_data(agent_data);
@@ -1058,6 +1139,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_parse_uname_string_windows2, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_uname_string_linux, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_uname_string_macos, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_uname_string_empty_fields, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_uname_string_windows_missing_bracket, setup_remoted_op, teardown_remoted_op),
         // Tests parse_agent_update_msg
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_missing_uname, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_debian, setup_remoted_op, teardown_remoted_op),
@@ -1065,7 +1148,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_archlinux, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_macos, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_windows, setup_remoted_op, teardown_remoted_op),
-        cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_labels, setup_remoted_op, teardown_remoted_op),
         // Tests parse_json_keepalive
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_invalid_json, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_missing_agent, setup_remoted_op, teardown_remoted_op),

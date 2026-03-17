@@ -63,7 +63,7 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # Keep agent daemon name for agent/winagent targets and manager daemon name for
-# server/local/hybrid targets.
+# server targets.
 set(WAZUH_MODULESD_DAEMON_NAME "wazuh-modulesd")
 set(WAZUH_RUNTIME_GROUP "wazuh")
 if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
@@ -110,6 +110,7 @@ else()
   file(GLOB WAZUH_MODULES_SRC "${SRC_FOLDER}/wazuh_modules/src/*.c"
        "${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/*.c"
        "${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent/*.c")
+  list(REMOVE_ITEM WAZUH_MODULES_SRC "${SRC_FOLDER}/wazuh_modules/src/wm_control.c")
 endif()
 
 # Build static library (without main.c)

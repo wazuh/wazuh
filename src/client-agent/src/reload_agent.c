@@ -88,9 +88,6 @@ int verifyRemoteConf(){
     } else if (Test_WModule(configPath) < 0) {
 		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "wazuh-agent", AG_IN_RCON, "wodle");
 		goto fail;
-    } else if (Test_Labels(configPath) < 0) {
-		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "wazuh-agent", AG_IN_RCON, "labels");
-		goto fail;
     }
 
 	return 0;

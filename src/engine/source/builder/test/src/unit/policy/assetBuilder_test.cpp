@@ -16,8 +16,6 @@ using namespace builder::mocks;
 
 auto traceExpr =
     base::Term<base::EngineOp>::create("AcceptAll", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); });
-auto delVarExpr =
-    base::Term<base::EngineOp>::create("DeleteVariables", [](auto e) { return base::result::makeSuccess(e, ""); });
 auto automappingExpr =
     base::Term<base::EngineOp>::create("Automapping", [](auto e) { return base::result::makeSuccess(e, ""); });
 auto assetExpr = base::Implication::create(base::Name("name"),
@@ -317,7 +315,7 @@ INSTANTIATE_TEST_SUITE_P(
                                             { return parseExpr; }));
 
                     auto condition = base::And::create(base::Name("condition"), {parseExpr, traceExpr});
-                    auto consequence = base::And::create(base::Name("stages"), {automappingExpr, delVarExpr});
+                    auto consequence = base::And::create(base::Name("stages"), {automappingExpr});
                     return base::Implication::create(base::Name("decoder/name/0"), condition, consequence);
                 })),
         BuildExprT(
@@ -358,7 +356,7 @@ INSTANTIATE_TEST_SUITE_P(
                                             { return parseExpr; }));
 
                     auto condition = base::And::create(base::Name("condition"), {parseExpr, traceExpr});
-                    auto consequence = base::And::create(base::Name("stages"), {automappingExpr, delVarExpr});
+                    auto consequence = base::And::create(base::Name("stages"), {automappingExpr});
                     return base::Implication::create(base::Name("decoder/name/0"), condition, consequence);
                 })),
         BuildExprT(
@@ -386,7 +384,7 @@ INSTANTIATE_TEST_SUITE_P(
                                             { return parseExpr; }));
 
                     auto condition = base::And::create(base::Name("condition"), {checkExpr, parseExpr, traceExpr});
-                    auto consequence = base::And::create(base::Name("stages"), {automappingExpr, delVarExpr});
+                    auto consequence = base::And::create(base::Name("stages"), {automappingExpr});
                     return base::Implication::create(base::Name("decoder/name/0"), condition, consequence);
                 })),
         BuildExprT(
@@ -457,8 +455,7 @@ INSTANTIATE_TEST_SUITE_P(
                                             { return stageExpr; }));
 
                     auto condition = base::And::create(base::Name("condition"), {checkExpr, parseExpr, traceExpr});
-                    auto consequence =
-                        base::And::create(base::Name("stages"), {stageExpr, automappingExpr, delVarExpr});
+                    auto consequence = base::And::create(base::Name("stages"), {stageExpr, automappingExpr});
                     return base::Implication::create(base::Name("decoder/name/0"), condition, consequence);
                 })),
         BuildExprT(

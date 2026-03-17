@@ -49,8 +49,8 @@ IMBALANCE_TOLERANCE = 'imbalance_tolerance'
 REMOVE_DISCONNECTED_NODE_AFTER = 'remove_disconnected_node_after'
 
 logger = logging.getLogger('wazuh')
-# Lockfile for preventing concurrent API restart operations
-api_restart_lockfile = os.path.join(common.WAZUH_PATH, "var", "run", ".api_restart_lock")
+# Lockfile for preventing concurrent API restart/reload operations
+api_operation_lockfile = os.path.join(common.WAZUH_PATH, "var", "run", ".api_operation_lock")
 
 HELPER_DEFAULTS = {
     HAPROXY_PORT: 5555,
@@ -299,10 +299,13 @@ def get_cluster_status() -> typing.Dict:
     return cluster_status
 
 
-def manager_restart() -> WazuhResult:
-    """Restart Wazuh manager.
+def _send_control_command(msg: str) -> None:
+    """Send a command to the Wazuh manager control socket.
 
-    Send 'restart' command to common.CONTROL_SOCKET socket.
+    Parameters
+    ----------
+    msg : str
+        Command to send ('restart' or 'reload').
 
     Raises
     ------
@@ -312,20 +315,11 @@ def manager_restart() -> WazuhResult:
         If there is a socket connection error.
     WazuhInternalError(1014)
         If there is a socket communication error.
-
-    Returns
-    -------
-    WazuhResult
-        Confirmation message.
     """
-    lock_file = open(api_restart_lockfile, 'a+')
+    lock_file = open(api_operation_lockfile, 'a+')
     fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
-        # control socket path
         socket_path = common.CONTROL_SOCKET
-        # command for restarting Wazuh manager
-        msg = 'restart'
-        # initialize socket
         if os.path.exists(socket_path):
             try:
                 conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -349,7 +343,51 @@ def manager_restart() -> WazuhResult:
         lock_file.close()
         read_config.cache_clear()
 
+
+def manager_restart() -> WazuhResult:
+    """Restart Wazuh manager.
+
+    Send 'restart' command to common.CONTROL_SOCKET socket.
+
+    Raises
+    ------
+    WazuhInternalError(1901)
+        If the socket path doesn't exist.
+    WazuhInternalError(1902)
+        If there is a socket connection error.
+    WazuhInternalError(1014)
+        If there is a socket communication error.
+
+    Returns
+    -------
+    WazuhResult
+        Confirmation message.
+    """
+    _send_control_command('restart')
     return WazuhResult({'message': 'Restart request sent'})
+
+
+def manager_reload() -> WazuhResult:
+    """Reload Wazuh manager.
+
+    Send 'reload' command to common.CONTROL_SOCKET socket.
+
+    Raises
+    ------
+    WazuhInternalError(1901)
+        If the socket path doesn't exist.
+    WazuhInternalError(1902)
+        If there is a socket connection error.
+    WazuhInternalError(1014)
+        If there is a socket communication error.
+
+    Returns
+    -------
+    WazuhResult
+        Confirmation message.
+    """
+    _send_control_command('reload')
+    return WazuhResult({'message': 'Reload request sent'})
 
 
 @lru_cache()

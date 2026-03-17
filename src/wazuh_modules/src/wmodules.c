@@ -111,13 +111,9 @@ int wm_config() {
     if ((module = wm_database_read()))
         wm_add(module);
 
-    // Downloading module
-    if ((module = wm_download_read()))
-        wm_add(module);
-
 #endif
 
-#if defined (__linux__) || (__MACH__) || defined(FreeBSD) || defined(OpenBSD)
+#if !defined(CLIENT) && (defined(__linux__) || defined(__MACH__) || defined(FreeBSD) || defined(OpenBSD))
     wmodule * control_module;
     control_module = wm_control_read();
     wm_add(control_module);
@@ -276,6 +272,12 @@ char* wm_read_http_header_element(char *header, char *regex) {
     }
 
     os_strdup(os_regex.d_sub_strings[0], element);
+
+    // Trim at \r or \n to prevent matching across HTTP header boundaries
+    char *cr = strchr(element, '\r');
+    char *lf = strchr(element, '\n');
+    if (cr) *cr = '\0';
+    if (lf) *lf = '\0';
 
     OSRegex_FreePattern(&os_regex);
     return element;

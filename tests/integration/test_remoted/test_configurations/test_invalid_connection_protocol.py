@@ -90,19 +90,17 @@ def test_invalid_connection_protocol(test_configuration, test_metadata, configur
                                                      replacement={
                                                         "port": test_metadata['port'],
                                                         "protocol_valid_upper": protocol_valid_upper,
-                                                        "connection": test_metadata['connection']}))
+                                                        "connection": "secure"}))
         assert log_monitor.callback_result
 
     else:
         used_protocol = protocols_list_to_str_upper_case
-        if test_metadata['connection'] == 'syslog':
-            used_protocol = 'TCP'
 
         log_monitor.start(callback=generate_callback(patterns.DETECT_REMOTED_STARTED,
                                                      replacement={
                                                         "port": test_metadata['port'],
                                                         "protocol_valid_upper": used_protocol,
-                                                        "connection": test_metadata['connection']}))
+                                                        "connection": "secure"}))
         assert log_monitor.callback_result
 
         real_config_list = get_real_configuration

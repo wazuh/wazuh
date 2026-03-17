@@ -1352,6 +1352,32 @@ bool Json::eraseIfKey(const std::function<bool(const std::string&)>& func, bool 
     return modified;
 }
 
+void Json::eraseRootKeysByPrefix(std::string_view prefix)
+{
+    if (prefix.empty())
+    {
+        throw std::runtime_error("Prefix must not be empty");
+    }
+
+    if (!m_document.IsObject())
+    {
+        throw std::runtime_error("Root JSON value is not an object");
+    }
+
+    for (auto it = m_document.MemberBegin(); it != m_document.MemberEnd();)
+    {
+        const std::string_view key {it->name.GetString(), it->name.GetStringLength()};
+        if (key.size() >= prefix.size() && key.compare(0, prefix.size(), prefix) == 0)
+        {
+            it = m_document.EraseMember(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+}
+
 Json Json::makeObjectJson(const std::string& key, const json::Json& value)
 {
     rapidjson::Document doc(rapidjson::kObjectType);

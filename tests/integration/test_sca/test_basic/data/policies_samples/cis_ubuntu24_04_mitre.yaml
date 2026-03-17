@@ -1,0 +1,34 @@
+policy:
+  id: "cis_ubuntu24_04_mitre"
+  file: "cis_ubuntu24_04_mitre.yml"
+  name: "CIS Ubuntu Linux 24.04 LTS Benchmark v1.0.0."
+  description: "This is a mock file for checking MITRE behaviour on ubuntu systems"
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+  regex_type: pcre2
+
+requirements:
+  title: "Check Linux platform."
+  description: "Requirements for running the SCA scan against Linux systems"
+  condition: any
+  rules:
+    - "f:/etc/os-release -> r:Ubuntu 24\\.04"
+    - "f:/proc/sys/kernel/ostype -> Linux"
+
+checks:
+  - id: 1
+    title: "Test_1"
+    description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A cramfs image can be used without having to first decompress the image."
+    rationale: "Test_1"
+    remediation: "Run the following script to unload and disable the cramfs module."
+    compliance:
+      nist_800_53: ["CM.7"]
+      pci_dss: ["1.3.4"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1005"]
+    condition: all
+    rules:
+      - "c:modprobe -n -v cramfs -> r:install /bin/false|install /bin/true|Module cramfs not found"
+      - "not c:lsmod -> r:cramfs"
+      - 'd:/etc/modprobe.d/ -> r:.*\.conf -> r:^blacklist\s+cramfs'

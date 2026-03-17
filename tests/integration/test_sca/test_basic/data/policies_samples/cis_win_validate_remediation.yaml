@@ -22,7 +22,7 @@ checks:
     rationale: Test_1
     remediation: The user lockout duration should be >= 50. Use net accounts /lockoutduration:100 command to fix duration
     compliance:
-      - cis: [1.8.1.5]
+      pci_dss: ["7.1"]
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Lockout duration \(minutes\):\s+(\d+) compare >= 50'
@@ -34,7 +34,7 @@ checks:
     rationale: Test_2
     remediation: The testfile permissions should be '644'. Use net accounts /lockoutduration:30 command to fix duration
     compliance:
-      - cis: [1.8.1.5]
+      pci_dss: ["7.1"]
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Lockout duration \(minutes\):\s+(\d+) compare < 50'

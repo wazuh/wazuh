@@ -146,8 +146,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 // Database socket
 #define WDB_LOCAL_SOCK "queue/db/wdb"
 
-#define WM_DOWNLOAD_SOCK "queue/sockets/download"
-
 // Tasks socket
 #define WM_UPGRADE_SOCK "queue/tasks/upgrade"
 
@@ -349,12 +347,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define COMSPEC "C:\\Windows\\System32\\cmd.exe"
 
 /* Default ports */
-#ifndef DEFAULT_SECURE
-#define DEFAULT_SECURE 1514 /* Default encrypted */
-#endif
-
-#ifndef DEFAULT_SYSLOG
-#define DEFAULT_SYSLOG 514 /* Default syslog port - udp */
+#ifndef DEFAULT_REMOTE_PORT
+#define DEFAULT_REMOTE_PORT 1514 /* Default encrypted */
 #endif
 
 #ifndef O_CLOEXEC

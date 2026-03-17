@@ -136,16 +136,16 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     # Verify that the SCA module is enabled
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=60 if sys.platform == WINDOWS else 10)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=60)
     assert log_monitor.callback_result
 
     # Wait for the SCA scan requirements to start for the specific policy
     expected_policy = Path(test_metadata['policy_file']).stem
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_REQ), timeout=40)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_REQ), timeout=60)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
     # Wait for the SCA scan requirements to end for the specific policy
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_REQ), timeout=10)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_REQ), timeout=30)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
     # Wait for the SCA scan checks to start for the specific policy

@@ -2154,6 +2154,104 @@ void test_wm_office365_get_content_blobs_400_code_AF20055(void **state) {
     os_free(data->response);
 }
 
+void test_wm_office365_get_content_blobs_next_page_with_multi_line_header(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    size_t max_size = OS_SIZE_8192;
+
+    const char* url = "test_url";
+    const char* token = "test_token";
+    char *next_page_value = NULL;
+    char **next_page = &next_page_value;
+    bool buffer_size_reached = 0;
+    char *error_msg = NULL;
+
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 200;
+    os_strdup("[{\"contentUri\":\"https://example.com/content\"}]", data->response->body);
+    os_strdup("Content-Type: application/json\r\n"
+              "NextPageUri: https://manage.office.com/api/v1.0/tenant/activity/feed/subscriptions/content?contentType=Audit.General&nextPage=abc123\r\n"
+              "X-AspNet-Version: 4.0.30319\r\n", data->response->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_string(__wrap_wurl_http_request, header, "Content-Type: application/json");
+
+    char expHeader[OS_SIZE_8192];
+    snprintf(expHeader, OS_SIZE_8192 -1, "Authorization: Bearer %s", token);
+
+    expect_string(__wrap_wurl_http_request, header, expHeader);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
+
+    cJSON *blob = wm_office365_get_content_blobs(url, token, next_page, max_size, &buffer_size_reached, &error_msg);
+    assert_non_null(blob);
+    assert_null(error_msg);
+    assert_non_null(next_page_value);
+    assert_string_equal(next_page_value, "https://manage.office.com/api/v1.0/tenant/activity/feed/subscriptions/content?contentType=Audit.General&nextPage=abc123");
+
+    cJSON_Delete(blob);
+    os_free(next_page_value);
+    os_free(data->response->body);
+    os_free(data->response->header);
+    os_free(data->response);
+}
+
+void test_wm_office365_get_content_blobs_no_next_page_header(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    size_t max_size = OS_SIZE_8192;
+
+    const char* url = "test_url";
+    const char* token = "test_token";
+    char *next_page_value = NULL;
+    char **next_page = &next_page_value;
+    bool buffer_size_reached = 0;
+    char *error_msg = NULL;
+
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 200;
+    os_strdup("[{\"contentUri\":\"https://example.com/content\"}]", data->response->body);
+    os_strdup("Content-Type: application/json\r\nX-AspNet-Version: 4.0.30319\r\n", data->response->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_string(__wrap_wurl_http_request, header, "Content-Type: application/json");
+
+    char expHeader[OS_SIZE_8192];
+    snprintf(expHeader, OS_SIZE_8192 -1, "Authorization: Bearer %s", token);
+
+    expect_string(__wrap_wurl_http_request, header, expHeader);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
+
+    cJSON *blob = wm_office365_get_content_blobs(url, token, next_page, max_size, &buffer_size_reached, &error_msg);
+    assert_non_null(blob);
+    assert_null(error_msg);
+    assert_null(next_page_value);
+
+    cJSON_Delete(blob);
+    os_free(data->response->body);
+    os_free(data->response->header);
+    os_free(data->response);
+}
+
 void test_wm_office365_scan_failure_action_null(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
@@ -3272,6 +3370,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_office365_get_content_blobs_error_json_response, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_content_blobs_bad_response, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_content_blobs_400_code_AF20055, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_get_content_blobs_next_page_with_multi_line_header, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_get_content_blobs_no_next_page_header, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_scan_failure_action_null, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_scan_failure_action_no_fail, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_scan_failure_action_null_mult_next, setup_conf, teardown_conf),

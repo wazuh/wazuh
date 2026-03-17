@@ -9,6 +9,7 @@
 #include <memory>
 #include <json.hpp>
 #include <sstream>
+#include <unordered_set>
 
 #include "logging_helper.hpp"
 
@@ -19,6 +20,48 @@ namespace
         if (!(value == "any" || value == "none" || value == "all"))
         {
             throw std::invalid_argument("Invalid condition: " + value);
+        }
+    }
+
+    const std::unordered_set<std::string> ALLOWED_COMPLIANCE_KEYS =
+    {
+        "cmmc", "fedramp", "gdpr", "hipaa", "iso_27001",
+        "nis2", "nist_800_171", "nist_800_53", "pci_dss", "tsc"
+    };
+
+    void ValidateComplianceKeys(nlohmann::json& checkJson, const std::string& checkId)
+    {
+        if (!checkJson.contains("compliance"))
+        {
+            return;
+        }
+
+        if (checkJson["compliance"].is_object())
+        {
+            std::vector<std::string> keysToRemove;
+
+            for (const auto& [key, val] : checkJson["compliance"].items())
+            {
+                if (ALLOWED_COMPLIANCE_KEYS.find(key) == ALLOWED_COMPLIANCE_KEYS.end())
+                {
+                    LoggingHelper::getInstance().log(
+                        LOG_WARNING,
+                        "Invalid compliance key '" + key + "' in check " + checkId + ", ignoring");
+                    keysToRemove.push_back(key);
+                }
+            }
+
+            for (const auto& key : keysToRemove)
+            {
+                checkJson["compliance"].erase(key);
+            }
+        }
+        else if (!checkJson["compliance"].is_null())
+        {
+            LoggingHelper::getInstance().log(
+                LOG_WARNING,
+                "Unexpected compliance format in check " + checkId + ", ignoring");
+            checkJson.erase("compliance");
         }
     }
 } // namespace
@@ -211,6 +254,8 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                 }
 
                 LoggingHelper::getInstance().log(LOG_DEBUG, "Check " + check.id.value_or("Invalid id") + " parsed.");
+
+                ValidateComplianceKeys(checkWithValidRules, check.id.value_or("unknown"));
 
                 checks.push_back(std::move(check));
                 checkWithValidRules["policy_id"] = policyId;

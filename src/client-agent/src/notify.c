@@ -81,7 +81,7 @@ void clear_merged_hash_cache() {
 
 /* Build JSON keepalive message from metadata_provider and additional fields */
 static char* build_json_keepalive(const char *agent_ip, const char *config_sum,
-                                   const char *merged_sum, const char *labels) {
+                                   const char *merged_sum) {
     agent_metadata_t metadata = {0};
     bool has_metadata = false;
 
@@ -129,9 +129,7 @@ static char* build_json_keepalive(const char *agent_ip, const char *config_sum,
     if (uname_str) {
         cJSON_AddStringToObject(agent, "uname", uname_str);
     }
-    if (labels && labels[0]) {
-        cJSON_AddStringToObject(agent, "labels", labels);
-    }
+
 
     // Add groups array if available
     if (has_metadata && metadata.groups_count > 0 && metadata.groups) {
@@ -209,8 +207,6 @@ static char* build_json_keepalive(const char *agent_ip, const char *config_sum,
 void run_notify()
 {
     char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 2];
-    static char tmp_labels[OS_MAXSTR - OS_SIZE_2048] = { '\0' };
-    static wlabel_t *last_labels_ptr = NULL;
     os_md5 md5sum = {0};
     time_t curr_time;
     static char agent_ip[IPSIZE + 1] = { '\0' };
@@ -251,17 +247,6 @@ void run_notify()
         merror(MEM_ERROR, errno, strerror(errno));
     }
 
-    /* Format labeled data
-     * Limit maximum size of the labels to avoid truncation of the keep-alive message
-     */
-    if (agt->labels != last_labels_ptr) {
-        tmp_labels[0] = '\0';
-        if (labels_format(agt->labels, tmp_labels, OS_MAXSTR - OS_SIZE_2048) < 0) {
-            mwarn("Too large labeled data. Not all labels will be shown in the keep-alive messages.");
-        }
-        last_labels_ptr = agt->labels;
-    }
-
     /* Get shared files */
     struct stat stat_fd;
     if (!g_shared_mg_file_hash) {
@@ -298,8 +283,7 @@ void run_notify()
     char *json_keepalive = build_json_keepalive(
         agent_ip[0] ? agent_ip : NULL,
         md5sum[0] ? md5sum : NULL,
-        g_shared_mg_file_hash,
-        tmp_labels[0] ? tmp_labels : NULL
+        g_shared_mg_file_hash
     );
     if (!json_keepalive) {
         merror("Failed to build JSON keepalive");

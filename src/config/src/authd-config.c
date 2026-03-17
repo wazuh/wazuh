@@ -206,7 +206,6 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
 
             authd_read_key_request(children, config);
-            config->key_request.compatibility_flag = 1;
             OS_ClearNode(children);
 #endif
         } else if (!strcmp(node[i]->element, xml_limit_maxagents)) {

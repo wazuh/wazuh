@@ -17,7 +17,7 @@ Vendor:      Wazuh <info@wazuh.com>
 Packager:    Wazuh <info@wazuh.com>
 Requires(pre):    /usr/sbin/groupadd /usr/sbin/useradd
 Requires(postun): /usr/sbin/groupdel /usr/sbin/userdel
-Conflicts:   ossec-hids ossec-hids-agent wazuh-local
+Conflicts:   ossec-hids ossec-hids-agent
 Obsoletes: wazuh-api < 4.0.0
 AutoReqProv: no
 
@@ -71,7 +71,8 @@ echo 'USER_INSTALL_TYPE="manager"' >> ./etc/preloaded-vars.conf
 echo 'USER_DIR="%{_localstatedir}"' >> ./etc/preloaded-vars.conf
 echo 'USER_DELETE_DIR="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
-echo 'USER_ENABLE_SYSLOG="y"' >> ./etc/preloaded-vars.conf
+echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
+echo 'USER_WHITE_LIST="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_AUTHD="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_GENERATE_AUTHD_CERT="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
@@ -652,7 +653,7 @@ rm -fr %{buildroot}
 - More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
 * Sat Apr 11 2026 support <info@wazuh.com> - 4.14.5
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-5.html
-* Wed Mar 11 2026 support <info@wazuh.com> - 4.14.4
+* Tue Mar 17 2026 support <info@wazuh.com> - 4.14.4
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-4.html
 * Wed Feb 11 2026 support <info@wazuh.com> - 4.14.3
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-3.html

@@ -69,8 +69,8 @@ def test_invalid_connection_port(test_configuration, test_metadata, configure_lo
     log_monitor.start(callback=generate_callback(regex=INVALID_VALUE_FOR_PORT_NUMBER, replacement={"port": test_metadata['port_number']}))
     assert test_metadata['port_number'] in log_monitor.callback_result
 
-    log_monitor.start(callback=generate_callback(regex=CONFIGURATION_ERROR, replacement={"severity": 'ERROR', "path": "etc/ossec.conf"}))
+    log_monitor.start(callback=generate_callback(regex=CONFIGURATION_ERROR, replacement={"severity": 'ERROR', "path": "etc/wazuh-manager.conf"}))
     assert log_monitor.callback_result
 
-    log_monitor.start(callback=generate_callback(CONFIGURATION_ERROR.replace('{severity}', 'CRITICAL').replace('{path}', "etc/ossec.conf")))
+    log_monitor.start(callback=generate_callback(CONFIGURATION_ERROR.replace('{severity}', 'CRITICAL').replace('{path}', "etc/wazuh-manager.conf")))
     assert log_monitor.callback_result

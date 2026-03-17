@@ -4,7 +4,6 @@ no="n"
 yesmatch="i"
 nomatch="n"
 agent="agent"
-local="lokális"
 server="manager"
 help="segítség"
 
@@ -21,10 +20,9 @@ system="Rendszer"
 user="Felhasználó"
 host="Hoszt"
 hitanyorabort="Nyomjon ENTER-t a folytatáshoz vagy Ctrl-C-t a megszakításhoz."
-whattoinstall="Milyen típusú telepítést szeretne? (manager, agent, lokális vagy segítség)?"
+whattoinstall="Milyen típusú telepítést szeretne? (manager, agent, vagy segítség)?"
 serverchose="Manager telepítés kiválasztva"
 clientchose="Agent(kliens) telepítés kiválasztva"
-localchose="Lokális telepítés kiválasztva"
 
 # Part 2
 settingupenv="A telepítési környezet létrehozása"
@@ -70,11 +68,6 @@ yesfirewall="firewall-drop bekapcsolva (lokális) for levels >= 6"
 defaultwhitelist="Alapértelmezett fehér lista az active response számára:"
 addwhite="Szeretne további IP címeket hozzáadni a fehér listához?"
 ipswhite="IP-k (szóközzel elválasztva): "
-
-# Part 3.5/server/local
-syslog="Be szeretné kapcsolni a távoli rendszernaplózást (port 514 udp)?"
-nosyslog="Távoli rendszernaplózás kikapcsolva"
-yessyslog="Távoli rendszernaplózás bekapcsolva"
 
 # Part 3.4/3.5
 readlogs="A konfiguráció beállítása a következő naplók elemzéséhez:"

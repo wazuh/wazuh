@@ -193,6 +193,36 @@ def restart() -> AffectedItemsWazuhResult:
     return result
 
 
+_reload_default_result_kwargs = {
+    'all_msg': f"Reload request sent to {'all specified nodes' if node_id != 'manager' else ''}",
+    'some_msg': "Could not send reload request to some specified nodes",
+    'none_msg': "Could not send reload request to any node",
+    'sort_casting': ['str']
+}
+
+
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
+@expose_resources(actions=['cluster:restart'], resources=[f'node:id:{node_id}'],
+                  post_proc_kwargs={'default_result_kwargs': _reload_default_result_kwargs})
+def reload() -> AffectedItemsWazuhResult:
+    """Wrapper for 'reload_manager' function due to interdependence with cluster module and permission access.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Affected items.
+    """
+    result = AffectedItemsWazuhResult(**_reload_default_result_kwargs)
+    try:
+        manager_reload()
+        result.affected_items.append(node_id)
+    except (WazuhError, WazuhInternalError) as e:
+        result.add_failed_item(id_=node_id, error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
 _validation_default_result_kwargs = {
     'all_msg': f"Validation was successfully checked{' in all nodes' if node_id != 'manager' else ''}",
     'some_msg': 'Could not check validation in some nodes',
@@ -225,8 +255,8 @@ def validation() -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 @mask_sensitive_config()
+@expose_resources(actions=["cluster:read"], resources=f'node:id:{node_id}')
 def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhResult:
     """Wrapper for get_active_configuration.
 
@@ -260,8 +290,8 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
     return result
 
 
-@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 @mask_sensitive_config()
+@expose_resources(actions=["cluster:read"], resources=f'node:id:{node_id}')
 def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
                     distinct: bool = False) -> AffectedItemsWazuhResult:
     """Wrapper for get_ossec_conf.
@@ -361,10 +391,9 @@ def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
         write_ossec_conf(new_conf)
         is_valid = validate_ossec_conf()
 
-        if not isinstance(is_valid, dict) or ('status' in is_valid and is_valid['status'] != 'OK'):
+        if is_valid.get('status') != 'OK':
             raise WazuhError(1125)
-        else:
-            result.affected_items.append(node_id)
+        result.affected_items.append(node_id)
         exists(backup_file) and remove(backup_file)
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)

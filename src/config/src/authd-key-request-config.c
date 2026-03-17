@@ -27,14 +27,6 @@ int authd_read_key_request(xml_node **nodes, void *config) {
     authd_config_t *authd_config = (authd_config_t *)config;
     authd_key_request_t *key_request = &(authd_config->key_request);
 
-    /*
-    * Mechanism to avoid overwritting configuration settings when both 'key-request'
-    * and 'agent-key-polling' configurations are present
-    */
-    if (key_request->compatibility_flag == 1) {
-        return 0;
-    }
-
     // Default configuration
     key_request->enabled = 1;
     key_request->timeout = 60;

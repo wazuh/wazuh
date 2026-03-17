@@ -200,23 +200,14 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
             mdebug2("Buffer pre-update, enable: %i size: %i ", agt->buffer, current_capacity);
 
-            // Reload labels with a new pointer to force update detection
-            wlabel_t *new_labels = NULL;
-            os_calloc(1, sizeof(wlabel_t), new_labels);
-
-            if (ReadConfig(CLABELS | CBUFFER, cfg, &new_labels, agt) < 0) {
+            if (ReadConfig(CBUFFER, cfg, NULL, agt) < 0) {
                 mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
             }
 
             if (agt->flags.remote_conf) {
-                ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &new_labels, agt);
+                ReadConfig(CBUFFER | CAGENT_CONFIG, AGENTCONFIG, NULL, agt);
                 minfo("Buffer agent.conf updated, enable: %i size: %i ", agt->buffer, agt->buflength);
             }
-
-            // Swap labels and free old ones
-            wlabel_t *old_labels = agt->labels;
-            agt->labels = new_labels;
-            labels_free(old_labels);
 
             //  Buffer was enabled, needs to be disabled
             if (agt->buffer == 0 && current_buffer_flag != 0) {

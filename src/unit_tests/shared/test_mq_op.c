@@ -396,7 +396,7 @@ void test_SendMSGAction_format_error(void ** state){
 void test_SendMSGAction_queue_not_available(void ** state){
     (void)state;
 
-    int ret = SendMSG(-1, "message", "location", SYSLOG_MQ);
+    int ret = SendMSG(-1, "message", "location", LOCALFILE_MQ);
 
     assert_int_equal(ret, -1);
 }
@@ -406,13 +406,13 @@ void test_SendMSGAction_socket_error(void ** state){
     int queue = 0;
 
     expect_value(__wrap_OS_SendUnix, socket, queue);
-    expect_string(__wrap_OS_SendUnix, msg, "2:location:message");
+    expect_string(__wrap_OS_SendUnix, msg, "1:location:message");
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, OS_SOCKTERR);
 
     expect_string(__wrap__mdebug1, formatted_msg, "socketerr (not available).");
 
-    int ret = SendMSG(queue, "message", "location", SYSLOG_MQ);
+    int ret = SendMSG(queue, "message", "location", LOCALFILE_MQ);
 
     assert_int_equal(ret, -1);
 }
@@ -422,14 +422,14 @@ void test_SendMSGAction_socket_busy(void ** state){
     int queue = 0;
 
     expect_value(__wrap_OS_SendUnix, socket, queue);
-    expect_string(__wrap_OS_SendUnix, msg, "2:location:message");
+    expect_string(__wrap_OS_SendUnix, msg, "1:location:message");
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, OS_INVALID);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Socket busy, discarding message.");
     expect_string(__wrap__mwarn, formatted_msg, "Socket busy, discarding message.");
 
-    int ret = SendMSG(queue, "message", "location", SYSLOG_MQ);
+    int ret = SendMSG(queue, "message", "location", LOCALFILE_MQ);
 
     assert_int_equal(ret, 0);
 }
@@ -439,11 +439,11 @@ void test_SendMSGAction_non_secure_msg(void ** state){
     int queue = 0;
 
     expect_value(__wrap_OS_SendUnix, socket, queue);
-    expect_string(__wrap_OS_SendUnix, msg, "2:location:message");
+    expect_string(__wrap_OS_SendUnix, msg, "1:location:message");
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, 1);
 
-    int ret = SendMSG(queue, "message", "location", SYSLOG_MQ);
+    int ret = SendMSG(queue, "message", "location", LOCALFILE_MQ);
 
     assert_int_equal(ret, 0);
 }
@@ -581,11 +581,11 @@ int main(void){
        cmocka_unit_test(test_start_mq_predicated_write_fail),
        // Test test_SendMSGAction
        cmocka_unit_test(test_SendMSGAction_format_error),
+       cmocka_unit_test(test_SendMSGAction_secure_msg),
        cmocka_unit_test(test_SendMSGAction_queue_not_available),
        cmocka_unit_test(test_SendMSGAction_socket_error),
        cmocka_unit_test(test_SendMSGAction_socket_busy),
        cmocka_unit_test(test_SendMSGAction_non_secure_msg),
-       cmocka_unit_test(test_SendMSGAction_secure_msg),
        cmocka_unit_test(test_SendMSGAction_secure_msg_keepalive),
        // Test test_SendBinaryMSG
        cmocka_unit_test(test_SendBinaryMSGAction_secure_mq_not_supported),

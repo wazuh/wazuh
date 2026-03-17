@@ -31,9 +31,9 @@
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
 #include <httpsrv/server.hpp>
-#include <iocsync/iocsync.hpp>
-#include <iockvdb/manager.hpp>
 #include <iockvdb/helpers.hpp>
+#include <iockvdb/manager.hpp>
+#include <iocsync/iocsync.hpp>
 #include <kvdbstore/ikvdbmanager.hpp>
 #include <kvdbstore/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
@@ -120,11 +120,31 @@ int main(int argc, char* argv[])
             return EXIT_SUCCESS;
         }
 
-        logging::LoggingConfig logConfig;
-        logConfig.level = logging::Level::Info; // Default log level
+        // Get logging configuration from environment variables
+        // Configuration is loaded using the same pattern as process::isStandaloneModeEnable()
+        // See logging::getStandaloneLoggingConfig() for details on environment variables
+        auto logConfig = logging::getStandaloneLoggingConfig();
+
         exitHandler.add([]() { logging::stop(); });
         logging::start(logConfig);
-        LOG_INFO("Logging initialized.");
+
+        if (logConfig.enableRotation)
+        {
+            LOG_INFO("Logging initialized in standalone mode with rotation enabled.");
+            LOG_INFO("Log file: {}", logConfig.filePath);
+            LOG_INFO("Rotation policy: Daily at {}:{:02d} OR when file reaches {} MB",
+                     logConfig.rotationHour,
+                     logConfig.rotationMinute,
+                     logConfig.maxFileSize / (1024 * 1024));
+            LOG_INFO("Max files: {}, Max accumulated size: {:.2f} GB",
+                     logConfig.maxFiles,
+                     logConfig.maxAccumulatedSize / (1024.0 * 1024 * 1024));
+        }
+        else
+        {
+            LOG_INFO("Logging initialized in standalone mode (rotation disabled).");
+            LOG_INFO("Log file: {}", logConfig.filePath);
+        }
     }
     else
     {
@@ -180,7 +200,6 @@ int main(int argc, char* argv[])
     }
 
     // Load the configuration
-
     auto confManager = conf::Conf(std::make_shared<conf::FileLoader>());
     try
     {
@@ -224,7 +243,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;
     std::shared_ptr<ioc::kvdb::IKVDBManager> IOCkvdb;
     std::shared_ptr<geo::Manager> geoManager;
-    std::shared_ptr<schemf::Schema> schema;
+    std::shared_ptr<schemf::Schema> schemaValidator;
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
@@ -320,7 +339,7 @@ int main(int argc, char* argv[])
 
         // Schema
         {
-            schema = std::make_shared<schemf::Schema>();
+            schemaValidator = std::make_shared<schemf::Schema>();
             auto result = store->readDoc("schema/engine-schema/0");
             if (std::holds_alternative<base::Error>(result))
             {
@@ -330,7 +349,7 @@ int main(int argc, char* argv[])
             else
             {
                 auto schemaJson = std::get<json::Json>(result);
-                schema->load(schemaJson);
+                schemaValidator->load(schemaJson);
             }
             LOG_INFO("Schema initialized.");
         }
@@ -351,7 +370,8 @@ int main(int argc, char* argv[])
                                                      logparFieldOverrides.fullName(),
                                                      base::getError(res).message));
             }
-            logpar = std::make_shared<hlp::logpar::Logpar>(base::getResponse<store::Doc>(res), schema);
+            logpar = std::make_shared<hlp::logpar::Logpar>(
+                base::getResponse<store::Doc>(res), std::static_pointer_cast<schemf::IValidator>(schemaValidator));
             hlp::registerParsers(logpar);
             LOG_INFO("HLP initialized.");
         }
@@ -479,7 +499,8 @@ int main(int argc, char* argv[])
                     std::make_shared<builder::AllowedFields>(base::getResponse<store::Doc>(allowedFieldsDoc));
             }
 
-            builder = std::make_shared<builder::Builder>(cmStore, schema, defs, allowedFields, builderDeps, store);
+            builder =
+                std::make_shared<builder::Builder>(cmStore, schemaValidator, defs, allowedFields, builderDeps, store);
             LOG_INFO("Builder initialized.");
         }
 

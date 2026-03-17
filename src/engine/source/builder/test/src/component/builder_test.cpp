@@ -10,6 +10,81 @@ using namespace builder::test;
 using namespace cm::store;
 using namespace base::test;
 
+namespace
+{
+bool evalExpression(const base::Expression& expression, const base::Event& event)
+{
+    if (expression == nullptr)
+    {
+        return true;
+    }
+
+    if (expression->isTerm())
+    {
+        auto term = expression->getPtr<base::Term<base::EngineOp>>();
+        return term->getFn()(event).success();
+    }
+
+    if (expression->isAnd())
+    {
+        auto op = expression->getPtr<base::And>();
+        for (auto& operand : op->getOperands())
+        {
+            if (!evalExpression(operand, event))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    if (expression->isOr())
+    {
+        auto op = expression->getPtr<base::Or>();
+        for (auto& operand : op->getOperands())
+        {
+            if (evalExpression(operand, event))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    if (expression->isImplication())
+    {
+        auto op = expression->getPtr<base::Implication>();
+        if (evalExpression(op->getOperands()[0], event))
+        {
+            return evalExpression(op->getOperands()[1], event);
+        }
+        return false;
+    }
+
+    if (expression->isBroadcast())
+    {
+        auto op = expression->getPtr<base::Broadcast>();
+        for (auto& operand : op->getOperands())
+        {
+            evalExpression(operand, event);
+        }
+        return true;
+    }
+
+    if (expression->isChain())
+    {
+        auto op = expression->getPtr<base::Chain>();
+        for (auto& operand : op->getOperands())
+        {
+            evalExpression(operand, event);
+        }
+        return true;
+    }
+
+    throw std::runtime_error("Unsupported expression type");
+}
+} // namespace
+
 namespace builder
 {
 
@@ -381,7 +456,7 @@ TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
                                    {},                                       // filters
                                    {},                                       // enrichments
                                    {},                                       // outputs
-                                   "UNDEFINED",                             // originSpace
+                                   "UNDEFINED",                              // originSpace
                                    "",                                       // hash
                                    false,                                    // indexUnclassifiedEvents
                                    false                                     // indexDiscardedEvents
@@ -417,8 +492,7 @@ TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
     // Create root decoder asset
     auto rootDecoder = json::Json(R"({
         "name": "decoder/root/0",
-        "enabled": true,
-        "parents": ["DecodersTree/Input"]
+        "enabled": true
     })");
 
     // Setup mock expectations
@@ -1039,6 +1113,173 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithOutputs)
     // Verify results
     ASSERT_NE(builtPolicy, nullptr);
     EXPECT_EQ(builtPolicy->name().toStr(), namespaceId.toStr());
+}
+
+TEST_F(BuildPolicyAdvancedTest, ParentTemporaryVariableIsAvailableInChildDecoder)
+{
+    NamespaceId namespaceId("policy_decoder_temp_parent_child");
+
+    auto policy = dataType::Policy("test-policy-temp-parent-child",
+                                   true,
+                                   "550e8400-e29b-41d4-a716-446655440010",
+                                   {"550e8400-e29b-41d4-a716-446655440001"},
+                                   {},
+                                   {},
+                                   {},
+                                   "UNDEFINED",
+                                   "",
+                                   false,
+                                   false);
+
+    auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
+                                             "integration-with-parent-child-temp",
+                                             true,
+                                             "security",
+                                             std::nullopt,
+                                             {},
+                                             {"550e8400-e29b-41d4-a716-446655440010",
+                                              "550e8400-e29b-41d4-a716-446655440011",
+                                              "550e8400-e29b-41d4-a716-446655440012"},
+                                             false);
+
+    auto rootDecoder = json::Json(R"({
+        "name": "decoder/root/0",
+        "enabled": true
+    })");
+
+    auto parentDecoder = json::Json(R"({
+        "name": "decoder/parent/0",
+        "enabled": true,
+        "parents": ["decoder/root/0"],
+        "check": [{"event.code": "PARENT"}],
+        "normalize": [{"map": [{"_tmp.shared": "temp-ok"}]}]
+    })");
+
+    auto childDecoder = json::Json(R"({
+        "name": "decoder/child/0",
+        "enabled": true,
+        "parents": ["decoder/parent/0"],
+        "check": [{"_tmp.shared": "temp-ok"}],
+        "normalize": [{"map": [{"event.reason": "child-hit"}]}]
+    })");
+
+    EXPECT_CALL(*m_mocks->m_spStore, getNSReader(testing::_)).WillRepeatedly(testing::Return(m_mocks->m_spNSReader));
+    EXPECT_CALL(*m_mocks->m_spNSReader, getPolicy()).WillRepeatedly(testing::Return(policy));
+    EXPECT_CALL(*m_mocks->m_spNSReader, getNamespaceId()).WillRepeatedly(testing::ReturnRef(namespaceId));
+    EXPECT_CALL(*m_mocks->m_spNSReader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440001"))
+        .WillRepeatedly(testing::Return(integration));
+
+    EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440010"))
+        .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
+    EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440011"))
+        .WillRepeatedly(testing::Return(std::make_tuple("decoder/parent/0", ResourceType::DECODER)));
+    EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440012"))
+        .WillRepeatedly(testing::Return(std::make_tuple("decoder/child/0", ResourceType::DECODER)));
+
+    EXPECT_CALL(*m_mocks->m_spNSReader, getAssetByUUID(testing::_))
+        .WillRepeatedly(testing::Invoke(
+            [&](const std::string& uuid) -> json::Json
+            {
+                if (uuid == "550e8400-e29b-41d4-a716-446655440010")
+                    return rootDecoder;
+                if (uuid == "550e8400-e29b-41d4-a716-446655440011")
+                    return parentDecoder;
+                if (uuid == "550e8400-e29b-41d4-a716-446655440012")
+                    return childDecoder;
+                return json::Json("{}");
+            }));
+
+    EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
+    EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
+    EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
+        .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
+
+    auto builtPolicy = m_builder->buildPolicy(namespaceId, false, true);
+    ASSERT_NE(builtPolicy, nullptr);
+
+    auto event = std::make_shared<json::Json>(R"({"event": {"code": "PARENT"}})");
+    EXPECT_TRUE(evalExpression(builtPolicy->expression(), event));
+
+    auto reason = event->getString("/event/reason");
+    ASSERT_TRUE(reason.has_value());
+    EXPECT_EQ(reason.value(), "child-hit");
+    EXPECT_FALSE(event->exists("/_tmp"));
+    EXPECT_FALSE(event->exists("/_tmp/shared"));
+}
+
+TEST_F(BuildPolicyAdvancedTest, DecoderTemporaryVariableIsRemovedAtPipelineEnd)
+{
+    NamespaceId namespaceId("policy_decoder_temp_cleanup_end");
+
+    auto policy = dataType::Policy("test-policy-temp-cleanup",
+                                   true,
+                                   "550e8400-e29b-41d4-a716-446655440020",
+                                   {"550e8400-e29b-41d4-a716-446655440001"},
+                                   {},
+                                   {},
+                                   {},
+                                   "UNDEFINED",
+                                   "",
+                                   false,
+                                   false);
+
+    auto integration =
+        dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
+                              "integration-with-temp-cleanup",
+                              true,
+                              "security",
+                              std::nullopt,
+                              {},
+                              {"550e8400-e29b-41d4-a716-446655440020", "550e8400-e29b-41d4-a716-446655440021"},
+                              false);
+
+    auto rootDecoder = json::Json(R"({
+        "name": "decoder/root/0",
+        "enabled": true
+    })");
+
+    auto parentDecoder = json::Json(R"({
+        "name": "decoder/parent/0",
+        "enabled": true,
+        "parents": ["decoder/root/0"],
+        "check": [{"event.code": "PARENT"}],
+        "normalize": [{"map": [{"_tmp.cleanup_only": "temp-value"}]}]
+    })");
+
+    EXPECT_CALL(*m_mocks->m_spStore, getNSReader(testing::_)).WillRepeatedly(testing::Return(m_mocks->m_spNSReader));
+    EXPECT_CALL(*m_mocks->m_spNSReader, getPolicy()).WillRepeatedly(testing::Return(policy));
+    EXPECT_CALL(*m_mocks->m_spNSReader, getNamespaceId()).WillRepeatedly(testing::ReturnRef(namespaceId));
+    EXPECT_CALL(*m_mocks->m_spNSReader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440001"))
+        .WillRepeatedly(testing::Return(integration));
+
+    EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440020"))
+        .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
+    EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440021"))
+        .WillRepeatedly(testing::Return(std::make_tuple("decoder/parent/0", ResourceType::DECODER)));
+
+    EXPECT_CALL(*m_mocks->m_spNSReader, getAssetByUUID(testing::_))
+        .WillRepeatedly(testing::Invoke(
+            [&](const std::string& uuid) -> json::Json
+            {
+                if (uuid == "550e8400-e29b-41d4-a716-446655440020")
+                    return rootDecoder;
+                if (uuid == "550e8400-e29b-41d4-a716-446655440021")
+                    return parentDecoder;
+                return json::Json("{}");
+            }));
+
+    EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
+    EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
+    EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
+        .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
+
+    auto builtPolicy = m_builder->buildPolicy(namespaceId, false, true);
+    ASSERT_NE(builtPolicy, nullptr);
+
+    auto event = std::make_shared<json::Json>(R"({"event": {"code": "PARENT"}})");
+    EXPECT_TRUE(evalExpression(builtPolicy->expression(), event));
+    EXPECT_FALSE(event->exists("/_tmp"));
+    EXPECT_FALSE(event->exists("/_tmp/cleanup_only"));
 }
 
 } // namespace builder

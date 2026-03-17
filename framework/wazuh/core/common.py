@@ -172,7 +172,7 @@ WPK_REPO_URL_4_X = "packages.wazuh.com/4.x/wpk/"
 AGENT_COMPONENT_STATS_REQUIRED_VERSION = {'logcollector': 'v4.2.0', 'agent': 'v4.2.0'}
 # Version variables (legacy, required, etc).
 AR_LEGACY_VERSION = 'Wazuh v4.2.0'
-ACTIVE_CONFIG_VERSION = 'Wazuh v3.7.0'
+ACTIVE_CONFIG_VERSION = 'Wazuh v4.0.0'
 
 
 # ================================================ Wazuh path - Config =================================================
@@ -214,7 +214,6 @@ TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'task')
 WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
 WDB_HTTP_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wdb-http')
 WMODULES_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wmodules')
-QUEUE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'queue')
 KEY_STORE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'keystore')
 
 # ========================================== INSTALLATION UID PATH ====================================================

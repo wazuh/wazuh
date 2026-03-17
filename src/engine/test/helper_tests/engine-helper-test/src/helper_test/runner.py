@@ -485,6 +485,7 @@ index_unclassified_events: false
 index_discarded_events: false
 default_parent: {HELPERS_DECODER_UUID}
 root_decoder: {HELPERS_DECODER_UUID}
+cleanup_decoder_variables: false
 integrations:
   - "{HELPERS_INTEG_UUID}"
 """
@@ -709,11 +710,11 @@ def execute_single_run_test(api_client: APIClient, run_test: dict, result_evalua
         create_session(api_client)
 
         if result_evaluator.helper_type == "map":
-            result_evaluator.tester_run_map(api_client, "helper")
+            result_evaluator.tester_run_map(api_client, "_helper")
         elif result_evaluator.helper_type == "filter":
-            result_evaluator.tester_run_filter(api_client, "verification_field")
+            result_evaluator.tester_run_filter(api_client, "_verification_field")
         elif result_evaluator.helper_type == "transformation":
-            result_evaluator.tester_run_transform(api_client, "target_field")
+            result_evaluator.tester_run_transform(api_client, "_target_field")
         else:
             raise Exception(
                 f"Helper type '{result_evaluator.helper_type}' is not valid"
@@ -741,11 +742,11 @@ def execute_multiple_run_tests(api_client: APIClient, run_test: dict, result_eva
             create_session(api_client)
 
         if result_evaluator.helper_type == "map":
-            result_evaluator.tester_run_map(api_client, "helper")
+            result_evaluator.tester_run_map(api_client, "_helper")
         elif result_evaluator.helper_type == "filter":
-            result_evaluator.tester_run_filter(api_client, "verification_field")
+            result_evaluator.tester_run_filter(api_client, "_verification_field")
         elif result_evaluator.helper_type == "transformation":
-            result_evaluator.tester_run_transform(api_client, "target_field")
+            result_evaluator.tester_run_transform(api_client, "_target_field")
         else:
             raise Exception(
                 f"Helper type '{result_evaluator.helper_type}' is not valid"

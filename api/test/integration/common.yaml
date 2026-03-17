@@ -60,24 +60,18 @@ variables:
     <agent_confi>
 
     <localfile>
-    <log_format>full_command</log_format>
-    <alias>ciscat-java-check</alias>
-    <command>fi</command>
-    <frequency>86400</frequency>
+      <log_format>syslog</log_format>
+      <location>/var/ossec/logs/active-responses.log</location>
     </localfile>
 
     <localfile>
-    <log_format>full_command</log_format>
-    <alias>ciscat-scanner-check</alias>
-    <command>fi</command>
-    <frequency>86400</frequency>
+      <log_format>syslog</log_format>
+      <location>/var/log/messages</location>
     </localfile>
 
     <localfile>
-    <log_format>full_command</log_format>
-    <alias>ciscat-ossec-log</alias>
-    <command>grep 'wazuh-manager-modulesd:ciscat:' /opt/ossec/logs/ossec.log | tail -20</command>
-    <frequency>86400</frequency>
+      <log_format>syslog</log_format>
+      <location>/var/log/auth.log</location>
     </localfile>
 
     </agent_confi>
@@ -137,7 +131,6 @@ variables:
       </logging>
 
       <remote>
-        <connection>secure</connection>
         <port>1514</port>
         <protocol>tcp</protocol>
       </remote>
@@ -166,7 +159,6 @@ variables:
       </logging>
 
       <remote>
-        <connection>secure</connection>
         <port>1514</port>
         <protocol>tcp</protocol>
       </remote>
@@ -207,7 +199,6 @@ variables:
       </logging>
 
       <remote>
-        <connection>secure</connection>
         <port>1514</port>
         <protocol>tcp</protocol>
       </remote>
@@ -231,7 +222,6 @@ variables:
       </logging>
 
       <remote>
-        <connection>secure</connection>
         <port>1514</port>
         <protocol>tcp</protocol>
       </remote>

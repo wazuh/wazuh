@@ -17,7 +17,7 @@ cd "${SCRIPT_DIR}/../.."
 Use()
 {
   echo " USE: ./gen_ossec.sh conf install_type distribution version [installation_path]"
-  echo "   - install_type: manager, agent, local"
+  echo "   - install_type: manager, agent"
   echo "   - distribution: rhel, debian, ubuntu, ..."
   echo "   - version: 6, 7, 16.04, ..."
   echo "   - installation_path (optional): changes the default path '/var/ossec' "
@@ -55,8 +55,6 @@ if [ "$1" = "conf" ] && [ "$#" -ge "4" ]; then
   ACTIVERESPONSE="yes"
   AUTHD="yes"
   SSL_CERT="yes"
-  RLOG="no" # syslog
-  SLOG="yes" # remote
 
   if [ -r "$NEWCONFIG" ]; then
       rm "$NEWCONFIG"
@@ -66,8 +64,6 @@ if [ "$1" = "conf" ] && [ "$#" -ge "4" ]; then
     WriteManager "no_localfiles"
   elif [ "$INSTYPE" = "agent" ]; then
     WriteAgent "no_localfiles"
-  elif [ "$INSTYPE" = "local" ]; then
-    WriteLocal "no_localfiles"
   else
     Use
     exit 1

@@ -40,8 +40,8 @@ char* __wrap_get_agent_id_from_name(__attribute__((unused)) char *agent_name) {
     return mock_type(char*);
 }
 
-int __wrap_control_check_connection() {
-    return mock();
+char* __wrap_getPrimaryIP(void) {
+    return mock_type(char*);
 }
 
 cJSON* __wrap_w_create_sendsync_payload(const char *daemon_name, cJSON *message) {

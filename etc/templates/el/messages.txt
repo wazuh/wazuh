@@ -4,7 +4,6 @@ no="n"
 yesmatch="y"
 nomatch="n"
 agent="agent"
-local="local"
 server="manager"
 help="help"
 
@@ -21,10 +20,9 @@ system="Σύστημα"
 user="Χρήστης"
 host="Υπολογιστής"
 hitanyorabort="Πατήστε ENTER για να συνεχίσετε ή Ctrl-C για ακύρωση."
-whattoinstall="Τι τύπου εγκατάσταση επιθυμείτε (manager, agent, local ή help);"
+whattoinstall="Τι τύπου εγκατάσταση επιθυμείτε (manager, agent, ή help);"
 serverchose="Επιλέχθηκε η εγκατάσταση manager"
 clientchose="Επιλέχθηκε η εγκατάσταση πελάτη (agent)"
-localchose="Επιλέχθηκε η τοπική (local) εγκατάσταση"
 
 # Part 2
 settingupenv="Ρυθμίζεται το περιβάλλον εγκατάστασης"
@@ -70,11 +68,6 @@ yesfirewall="Η αντίδραση firewall-drop ενεργοποιήθηκε (l
 defaultwhitelist="Προεπιλεγμένη white list για την ενεργή αντίδραση (active response):"
 addwhite="Θέλετε να προσθέσετε περισσότερες IPs στην white list;"
 ipswhite="Διευθύνσεις IPs (χωρισμένες με κενό): "
-
-# Part 3.5/server/local
-syslog="Θέλετε να ενεργοποιήσετε την καταγραφή συμβάντων σε απομακρυσμένο syslog διακομιστή (port 514 udp);"
-nosyslog="Η απομακρυσμένη καταγραφή συμβάντων απενεργοποιήθηκε"
-yessyslog="Η απομακρυσμένη καταγραφή συμβάντων ενεργοποιήθηκε"
 
 # Part 3.4/3.5
 readlogs="Ρυθμίζοντας το αρχείο ρυθμίσεων για να αναλυθούν τα παρακάτω αρχεία καταγραφής (logs):"

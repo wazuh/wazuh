@@ -68,10 +68,6 @@ typedef struct __Config {
     socket_forwarder *socket_list;
 
 
-    wlabel_t *labels; /* null-ended label set */
-    int label_cache_maxage;
-    int show_hidden_labels;
-
     // Cluster configuration
     char *cluster_name;
     char *node_name;

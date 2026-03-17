@@ -4,7 +4,6 @@ no="n"
 yesmatch="y"
 nomatch="n"
 agent="agent"
-local="local"
 server="manager"
 help="help"
 
@@ -21,10 +20,9 @@ system="System"
 user="User"
 host="Host"
 hitanyorabort="Press ENTER to continue or Ctrl-C to abort."
-whattoinstall="What kind of installation do you want (manager, agent, local, hybrid or help)?"
+whattoinstall="What kind of installation do you want (manager, agent, or help)?"
 serverchose="Manager installation chosen"
 clientchose="Agent (client) installation chosen"
-localchose="Local installation chosen"
 
 # Part 2
 settingupenv="Setting up the installation environment"
@@ -73,11 +71,6 @@ yesfirewall="firewall-drop enabled (local) for levels >= 6"
 defaultwhitelist="Default white list for the active response:"
 addwhite="Do you want to add more IPs to the white list?"
 ipswhite="IPs (space separated): "
-
-# Part 3.5/server/local
-syslog="Do you want to enable remote syslog (port 514 udp)?"
-nosyslog="Remote syslog disabled"
-yessyslog="Remote syslog enabled"
 
 # Part 3.4/3.5
 readlogs="Setting the configuration to analyze the following logs:"

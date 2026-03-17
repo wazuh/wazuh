@@ -163,13 +163,40 @@ TEST_F(SCARecoveryUtilsTest, NormalizeCheckConvertRefs)
 
 TEST_F(SCARecoveryUtilsTest, NormalizeCheckConvertCompliance)
 {
-    nlohmann::json check = {{"compliance", "cis,pci"}, {"id", "123"}};
+    nlohmann::json check = {{"compliance", R"({"pci_dss":["7.1"]})"}, {"id", "123"}};
     sca::recovery::normalizeCheckForStateful(check);
 
     EXPECT_TRUE(check.contains("compliance"));
-    EXPECT_EQ(check["compliance"].size(), 2);
-    EXPECT_EQ(check["compliance"][0], "cis");
-    EXPECT_EQ(check["compliance"][1], "pci");
+    EXPECT_TRUE(check["compliance"].is_object());
+    EXPECT_EQ(check["compliance"]["pci_dss"], nlohmann::json({"7.1"}));
+}
+
+TEST_F(SCARecoveryUtilsTest, NormalizeCheckInvalidComplianceJson)
+{
+    nlohmann::json check = {{"compliance", "not valid json"}, {"id", "123"}};
+    sca::recovery::normalizeCheckForStateful(check);
+
+    EXPECT_FALSE(check.contains("compliance"));
+}
+
+TEST_F(SCARecoveryUtilsTest, NormalizeCheckConvertMitre)
+{
+    nlohmann::json check = {{"mitre", R"({"tactic":["TA0005"],"technique":["T1548"],"subtechnique":["T1548.001"]})"}, {"id", "123"}};
+    sca::recovery::normalizeCheckForStateful(check);
+
+    EXPECT_TRUE(check.contains("mitre"));
+    EXPECT_TRUE(check["mitre"].is_object());
+    EXPECT_EQ(check["mitre"]["tactic"], nlohmann::json({"TA0005"}));
+    EXPECT_EQ(check["mitre"]["technique"], nlohmann::json({"T1548"}));
+    EXPECT_EQ(check["mitre"]["subtechnique"], nlohmann::json({"T1548.001"}));
+}
+
+TEST_F(SCARecoveryUtilsTest, NormalizeCheckInvalidMitreJson)
+{
+    nlohmann::json check = {{"mitre", "not valid json"}, {"id", "123"}};
+    sca::recovery::normalizeCheckForStateful(check);
+
+    EXPECT_FALSE(check.contains("mitre"));
 }
 
 TEST_F(SCARecoveryUtilsTest, NormalizeCheckConvertRules)
@@ -194,7 +221,8 @@ TEST_F(SCARecoveryUtilsTest, NormalizeCheckAllTransformations)
     nlohmann::json check =
     {
         {"refs", "ref1,ref2"},
-        {"compliance", "cis"},
+        {"compliance", R"({"pci_dss":["7.1"]})"},
+        {"mitre", R"({"tactic":["TA0005"],"technique":["T1548"],"subtechnique":["T1548.001"]})"},
         {"rules", "rule1"},
         {"policy_id", "policy1"},
         {"id", "123"},
@@ -207,6 +235,8 @@ TEST_F(SCARecoveryUtilsTest, NormalizeCheckAllTransformations)
     EXPECT_FALSE(check.contains("policy_id"));
     EXPECT_TRUE(check.contains("id"));
     EXPECT_TRUE(check.contains("name"));
+    EXPECT_TRUE(check["compliance"].is_object());
+    EXPECT_TRUE(check["mitre"].is_object());
 }
 
 // Tests for normalizePolicyForStateful
@@ -322,7 +352,8 @@ TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageWithNormalization)
         {"checksum", "abc123"},
         {"version", 1},
         {"refs", "ref1,ref2"},
-        {"compliance", "cis,pci"},
+        {"compliance", R"({"pci_dss":["7.1"]})"},
+        {"mitre", R"({"tactic":["TA0005"],"technique":["T1548"]})"},
         {"rules", "rule1"},
         {"policy_id", "policy1"}
     };
@@ -338,6 +369,9 @@ TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageWithNormalization)
     EXPECT_FALSE(result["check"].contains("refs"));
     EXPECT_TRUE(result["check"].contains("references"));
     EXPECT_FALSE(result["check"].contains("policy_id"));
+    EXPECT_TRUE(result["check"]["mitre"].is_object());
+    EXPECT_EQ(result["check"]["mitre"]["tactic"], nlohmann::json({"TA0005"}));
+    EXPECT_EQ(result["check"]["mitre"]["technique"], nlohmann::json({"T1548"}));
 
     // Verify policy normalization
     EXPECT_FALSE(result["policy"].contains("refs"));

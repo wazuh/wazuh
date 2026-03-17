@@ -127,7 +127,7 @@ Field Schema::get(const DotPath& name) const
 
     if (!target)
     {
-        throw std::runtime_error(fmt::format("Field '{}' does not exist in '{}'", name.str()));
+        throw std::runtime_error(fmt::format("Field '{}' does not exist.", name.str()));
     }
 
     return *target;
@@ -238,5 +238,10 @@ void Schema::load(const json::Json& json)
 base::RespOrError<ValidationResult> Schema::validate(const DotPath& name, const ValidationToken& token) const
 {
     return m_validator->validate(name, token);
+}
+
+base::RespOrError<TargetFieldKind> Schema::validateTargetField(const DotPath& name) const
+{
+    return m_validator->validateTargetField(name);
 }
 } // namespace schemf

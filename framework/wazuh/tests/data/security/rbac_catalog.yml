@@ -281,6 +281,7 @@ get_rbac_actions:
           - GET /cluster/{node_id}/logs
           - GET /cluster/{node_id}/logs/summary
           - PUT /cluster/restart
+          - PUT /cluster/reload
           - GET /cluster/configuration/validation
           - GET /cluster/{node_id}/configuration/{component}/{configuration}
       cluster:status:
@@ -332,6 +333,7 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/restart
+          - PUT /cluster/reload
       mitre:read:
         description: Access information from MITRE database
         resources:
@@ -532,18 +534,6 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - GET /tasks/status
-      event:ingest:
-        description: "Ingest events"
-        resources:
-          - '*:*'
-        example:
-          actions:
-            - event:ingest
-          resources:
-            - "*:*:*"
-          effect: "allow"
-        related_endpoints:
-          - POST /events
 
 get_rbac_resources:
   - params:

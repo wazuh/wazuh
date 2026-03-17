@@ -24,6 +24,7 @@
  *   "origin_space": "space1", -> optional, default value "UNDEFINED"
  *   "index_unclassified_events": true, -> optional, default value false
  *   "index_discarded_events": true, -> optional, default value false
+ *   "cleanup_decoder_variables": true, -> optional, default value true
  *   "filters": [], -->> eash filter has a type [pre-filter|post-filter],
  *   "enrichments": ["file", "domain-name", "ip", "url", "geo"],
  *   "integrations":
@@ -50,11 +51,12 @@ constexpr std::string_view PATH_KEY_FILTERS = "/filters";
 constexpr std::string_view PATH_KEY_ENRICHMENTS = "/enrichments";
 constexpr std::string_view PATH_KEY_INDEX_UNCLASSIFIED_EVENTS = "/index_unclassified_events";
 constexpr std::string_view PATH_KEY_OUTPUTS = "/outputs";
-constexpr std::string_view PATH_KEY_TITLE = "/title";
+constexpr std::string_view PATH_KEY_TITLE = "/metadata/title";
 constexpr std::string_view PATH_KEY_ENABLED = "/enabled";
 constexpr std::string_view PATH_KEY_ORIGIN_SPACE = "/origin_space";
 constexpr std::string_view PATH_KEY_HASH = "/hash";
 constexpr std::string_view PATH_KEY_INDEX_DISCARDED_EVENTS = "/index_discarded_events";
+constexpr std::string_view PATH_KEY_CLEANUP_DECODER_VARIABLES = "/cleanup_decoder_variables";
 
 } // namespace jsonpolicy
 
@@ -83,6 +85,7 @@ private:
     std::string m_hash;             ///< Hash of the policy for integrity verification
     bool m_indexUnclassifiedEvents; ///< Flag indicating whether to index unclassified events
     bool m_indexDiscardedEvents;    ///< Flag to control discarded event indexing
+    bool m_cleanupDecoderVariables; ///< Flag to control cleanup of temporary decoder variables
 
 public:
     ~Policy() = default;
@@ -98,7 +101,8 @@ public:
            std::string_view originSpace,
            std::string_view hash,
            bool indexUnclassifiedEvents,
-           bool indexDiscardedEvents)
+           bool indexDiscardedEvents,
+           bool cleanupDecoderVariables = true)
         : m_title(policyTitle)
         , m_enabled(enabled)
         , m_rootDecoder(rootDecoder)
@@ -110,6 +114,7 @@ public:
         , m_hash(hash)
         , m_indexUnclassifiedEvents(indexUnclassifiedEvents)
         , m_indexDiscardedEvents(indexDiscardedEvents)
+        , m_cleanupDecoderVariables(cleanupDecoderVariables)
     {
         cm::store::detail::findDuplicateOrInvalidUUID(m_integrations, "Integration");
         cm::store::detail::findDuplicateOrInvalidUUID(m_outputs, "Output");
@@ -130,7 +135,7 @@ public:
             auto titleOpt = policyJson.getString(jsonpolicy::PATH_KEY_TITLE);
             if (!titleOpt.has_value() || titleOpt->empty())
             {
-                throw std::runtime_error("Policy JSON must have a non-empty 'title' field");
+                return std::string{"Untitled Policy"};
             }
             return titleOpt.value();
         }();
@@ -299,6 +304,16 @@ public:
             return indexDiscardedOpt.value_or(false);
         }();
 
+        bool cleanupDecoderVariables = [&]() -> bool
+        {
+            auto cleanupDecoderVariablesOpt = policyJson.getBool(jsonpolicy::PATH_KEY_CLEANUP_DECODER_VARIABLES);
+            if (!cleanupDecoderVariablesOpt.has_value())
+            {
+                return true;
+            }
+            return cleanupDecoderVariablesOpt.value();
+        }();
+
         return {title,
                 enabled,
                 rootDecoder,
@@ -309,7 +324,8 @@ public:
                 originSpace,
                 policyHash,
                 indexUnclassifiedEvents,
-                indexDiscardedEvents};
+                indexDiscardedEvents,
+                cleanupDecoderVariables};
     }
 
     json::Json toJson() const
@@ -350,6 +366,8 @@ public:
 
         policyJson.setBool(m_indexDiscardedEvents, jsonpolicy::PATH_KEY_INDEX_DISCARDED_EVENTS);
 
+        policyJson.setBool(m_cleanupDecoderVariables, jsonpolicy::PATH_KEY_CLEANUP_DECODER_VARIABLES);
+
         return policyJson;
     }
 
@@ -369,6 +387,7 @@ public:
     void setOriginSpace(std::string_view originSpace) { m_originSpace = originSpace; }
     bool shouldIndexUnclassifiedEvents() const { return m_indexUnclassifiedEvents; }
     bool shouldIndexDiscardedEvents() const { return m_indexDiscardedEvents; }
+    bool shouldCleanupDecoderVariables() const { return m_cleanupDecoderVariables; }
 };
 
 } // namespace cm::store::dataType

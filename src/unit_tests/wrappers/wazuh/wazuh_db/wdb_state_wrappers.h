@@ -160,10 +160,4 @@ void __wrap_w_inc_global_belongs_get_group_agent();
 
 void __wrap_w_inc_global_belongs_get_group_agent_time(__attribute__((unused)) struct timeval diff);
 
-// Global labels counters
-
-void __wrap_w_inc_global_labels_get_labels();
-
-void __wrap_w_inc_global_labels_get_labels_time(__attribute__((unused)) struct timeval diff);
-
 #endif /* WDB_STATE_WRAPPERS_H */

@@ -2991,3 +2991,37 @@ static const RenameCase kCases[] = {
     {R"("X")", "", true, TK::Empty, true, "{}"}};
 
 INSTANTIATE_TEST_SUITE_P(RenameKeysFast_Matrix, RenameKeysFastTest, ::testing::ValuesIn(kCases));
+
+TEST(JsonTest, eraseRootKeysByPrefixRemovesOnlyRootMatches)
+{
+    Json input {R"({"_tmp":1,"_a":{"x":1},"event":{"_tmp":2},"ok":3})"};
+    Json expected {R"({"event":{"_tmp":2},"ok":3})"};
+
+    ASSERT_NO_THROW(input.eraseRootKeysByPrefix("_"));
+    ASSERT_EQ(input, expected);
+}
+
+TEST(JsonTest, eraseRootKeysByPrefixNoMatchesNoThrow)
+{
+    Json input {R"({"event":1,"ok":2})"};
+    Json expected {R"({"event":1,"ok":2})"};
+
+    ASSERT_NO_THROW(input.eraseRootKeysByPrefix("_"));
+    ASSERT_EQ(input, expected);
+}
+
+TEST(JsonTest, eraseRootKeysByPrefixEmptyPrefixThrows)
+{
+    Json input {R"({"_tmp":1,"ok":2})"};
+
+    ASSERT_THROW(input.eraseRootKeysByPrefix(""), std::runtime_error);
+}
+
+TEST(JsonTest, eraseRootKeysByPrefixAllMatchLeavesEmptyObject)
+{
+    Json input {R"({"_a":1,"_b":2})"};
+    Json expected {R"({})"};
+
+    ASSERT_NO_THROW(input.eraseRootKeysByPrefix("_"));
+    ASSERT_EQ(input, expected);
+}

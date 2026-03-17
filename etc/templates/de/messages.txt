@@ -4,7 +4,6 @@ no="n"
 yesmatch="j"
 nomatch="n"
 agent="agent"
-local="lokal"
 server="manager"
 help="hilfe"
 
@@ -22,10 +21,9 @@ system="System"
 user="User"
 host="Host"
 hitanyorabort="Drücken Sie eine Taste zum fortfahren oder Ctrl-C zum abbrechen"
-whattoinstall="Welche Art der Installation möchten Sie starten (manager, agent, lokal oder hilfe)?"
+whattoinstall="Welche Art der Installation möchten Sie starten (manager, agent, oder hilfe)?"
 serverchose="Manager installation ausgewählt"
 clientchose="Agent (client) installation ausgewählt"
-localchose="Lokale installation ausgewählt"
 
 # Part 2
 settingupenv="Die Installation wird vorbereitet"
@@ -71,12 +69,6 @@ yesfirewall="firewall-drop (local) für level >= 6 eingeschaltet"
 defaultwhitelist="Standard Ausnahmeliste (White-list) für active response:"
 addwhite="Möchten Sie weitere IPs zur White-list hinzufügen?"
 ipswhite="IPs (Durch Leerzeichen getrennt): "
-
-
-# Part 3.5/server/local
-syslog="Möchten Sie Nachrichten von einem remote syslog (514 udp) empfangen?"
-nosyslog="Remote syslog empfang ausgeschaltet"
-yessyslog="Remote syslog empfang eingeschaltet"
 
 # Part 3.4/3.5
 readlogs="Die folgenden Log-Files werden analysiert:"

@@ -533,10 +533,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
     char *end = NULL;
     pending_data_t *data = NULL;
     agent_info_data *agent_data = NULL;
-    const char * agent_ip_label = "#\"_agent_ip\":";
-    const char * manager_label = "#\"_manager_hostname\":";
-    const char * node_label = "#\"_node_name\":";
-    const char * version_label = "#\"_wazuh_version\":";
     int agent_id = 0;
     int result = 0;
 
@@ -689,30 +685,14 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
                 return;
             }
 
-            // Appending system labels
             os_calloc(HOST_NAME_MAX, sizeof(char), agent_data->manager_host);
 
             if (gethostname(agent_data->manager_host, HOST_NAME_MAX) < 0) {
                 mwarn("Unable to get hostname due to: '%s'", strerror(errno));
-            } else {
-                wm_strcat(&agent_data->labels, manager_label, agent_data->labels ? '\n' : 0);
-                wm_strcat(&agent_data->labels, agent_data->manager_host, 0);
-            }
-
-            if (agent_data->agent_ip) {
-                wm_strcat(&agent_data->labels, agent_ip_label, agent_data->labels ? '\n' : 0);
-                wm_strcat(&agent_data->labels, agent_data->agent_ip, 0);
             }
 
             if (node_name) {
-                wm_strcat(&agent_data->labels, node_label, agent_data->labels ? '\n' : 0);
-                wm_strcat(&agent_data->labels, node_name, 0);
                 os_strdup(node_name, agent_data->node_name);
-            }
-
-            if (agent_data->version) {
-                wm_strcat(&agent_data->labels, version_label, agent_data->labels ? '\n' : 0);
-                wm_strcat(&agent_data->labels, agent_data->version, 0);
             }
 
             agent_data->id = atoi(key->id);

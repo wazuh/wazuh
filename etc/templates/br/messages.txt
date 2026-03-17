@@ -5,7 +5,6 @@ yesmatch="s"
 nomatch="n"
 server="manager"
 agent="cliente"
-local="local"
 help="ajuda"
 
 
@@ -22,10 +21,9 @@ system="Sistema"
 user="Usuário"
 host="Host"
 hitanyorabort="Aperte ENTER para continuar ou Ctrl+C para abortar."
-whattoinstall="Que tipo de instalação você deseja (manager, cliente, local ou ajuda)?"
+whattoinstall="Que tipo de instalação você deseja (manager, cliente, ou ajuda)?"
 serverchose="Escolhida instalação manager"
 clientchose="Escolhida instalação cliente"
-localchose="Escolhida instalação local"
 
 # Parte 2
 settingupenv="Configurando o ambiente de instalação"
@@ -71,12 +69,6 @@ yesfirewall="firewall-drop habilitado (local) para níveis >= 6"
 defaultwhitelist="Lista de endereços que não serão bloqueados pela resposta automática:"
 addwhite="Deseja adicionar mais algum endereço a essa lista?"
 ipswhite="Endereços de IP (separados por espaço): "
-
-
-# Parte 3.5/servidor/local
-syslog="Deseja habilitar o syslog remoto (514 udp)?"
-nosyslog="Syslog desabilitado"
-yessyslog="Syslog habilitado"
 
 # Parte 3.4/3.5
 readlogs="Ajustando a configuração para analisar os seguintes logs:"

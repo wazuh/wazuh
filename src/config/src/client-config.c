@@ -22,7 +22,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     int i = 0;
     char f_ip[128] = {'\0'};
     char * rip = NULL;
-    int port = DEFAULT_SECURE;
+    int port = DEFAULT_REMOTE_PORT;
 
     /* XML definitions */
     const char *xml_client_manager = "manager";
@@ -239,7 +239,7 @@ int Read_Client_Server(XML_NODE node, agent * logr)
     char * rip = NULL;
     /* Default values */
     uint32_t network_interface = 0;
-    int port = DEFAULT_SECURE;
+    int port = DEFAULT_REMOTE_PORT;
     int max_retries = DEFAULT_MAX_RETRIES;
     int retry_interval = DEFAULT_RETRY_INTERVAL;
 
@@ -572,7 +572,6 @@ void Free_Client(agent * config){
         }
 
         free(config->profile);
-        labels_free(config->labels);
     }
 }
 

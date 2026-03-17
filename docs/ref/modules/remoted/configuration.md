@@ -11,7 +11,6 @@ File: `/var/wazuh-manager/etc/wazuh-manager.conf`
 ```xml
 <wazuh_config>
   <remote>
-    <connection>secure</connection>
     <port>1514</port>
     <protocol>tcp</protocol>
     <queue_size>131072</queue_size>
@@ -22,7 +21,6 @@ File: `/var/wazuh-manager/etc/wazuh-manager.conf`
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `connection` | `secure` | Connection type: secure (encrypted) or syslog |
 | `port` | `1514` | Listening port |
 | `protocol` | `tcp` | Protocol: tcp, udp, or tcp,udp |
 | `queue_size` | `131072` | Message queue size |

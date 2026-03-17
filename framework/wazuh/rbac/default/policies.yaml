@@ -186,13 +186,3 @@ default_policies:
         resources:
           - '*:*:*'
         effect: allow
-
-  events_ingest:
-    description: Allow ingesting events.
-    policies:
-      resourceless:
-        actions:
-          - event:ingest
-        resources:
-          - '*:*:*'
-        effect: allow

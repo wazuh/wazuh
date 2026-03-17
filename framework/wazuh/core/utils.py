@@ -20,7 +20,6 @@ from itertools import groupby, chain
 from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, path
 import psutil
 from pyexpat import ExpatError
-from requests import get, exceptions
 from shutil import Error, move, copy2
 from signal import signal, alarm, SIGALRM, SIGKILL
 from xml.etree.ElementTree import Element  # nosec B405
@@ -864,7 +863,7 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
 
 
 def check_remote_commands(new_conf: Element, original_conf: Element):
-    """Check if higher version agents are allowed.
+    """Check remote commands are allowed.
 
     Parameters
     ----------
@@ -875,8 +874,8 @@ def check_remote_commands(new_conf: Element, original_conf: Element):
 
     Raises
     ------
-    WazuhError(1127)
-        Raised if the agents allow_higher_versions setting is modified in the configuration to upload.
+    WazuhError(1124)
+        Raised if remote command settings are modified in the configuration to upload.
     """
 
     def _filter_remote_commands(commands: list, exceptions: list) -> list:
@@ -968,14 +967,14 @@ def xml_to_dict(root, section_path: list):
         """Convert an XML element into a nested dictionary."""
         result = {}
 
-        for child in element:
-            if len(child):  # Has children
+        if len(element):
+            for child in element:
                 result[child.tag] = element_to_dict(child)
-            else:
-                result[child.tag] = {
-                    'attrib': child.attrib,
-                    'value': child.text.strip() if child.text else None
-                }
+        else:
+            result = {
+                'attrib': element.attrib,
+                'value': element.text.strip() if element.text else None
+            }
 
         return result
 
@@ -1069,7 +1068,7 @@ def check_agents_allow_higher_versions(new_conf: Element, original_conf: Element
     """
 
     AUTH_HIERARCHY = ['wazuh_config', 'auth', 'allow_higher_versions']
-    REMOTE_HIERARCHY = ['wazuh_config', 'remote', 'allow_higher_versions']
+    REMOTE_HIERARCHY = ['wazuh_config', 'remote', 'agents', 'allow_higher_versions']
     upload_configuration = configuration.api_conf['upload_configuration']
 
     if not upload_configuration['agents']['allow_higher_versions']['allow']:
@@ -2382,5 +2381,3 @@ def get_utc_strptime(date: str, datetime_format: str, date_is_at_utc: bool = Tru
         dt = dt.replace(tzinfo=get_localtime()).astimezone(timezone.utc)
 
     return dt
-
-

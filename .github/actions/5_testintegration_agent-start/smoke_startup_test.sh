@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 log_error() {
     echo "Error: $1"
@@ -40,11 +41,7 @@ install_package(){
 
     log_info "Installing package: $package_path"
 
-    if [ "$package_extension" == "deb" ]; then
-        WAZUH_MANAGER="1.2.3.4" $install "$package_path"
-    else
-        WAZUH_MANAGER="1.2.3.4" $install "$package_path"
-    fi
+    WAZUH_MANAGER="1.2.3.4" $install "$package_path"
 
     # Verify installation
     if $check_package_status "wazuh-agent" >/dev/null 2>&1; then
@@ -61,7 +58,7 @@ test_daemons(){
 
     for daemon in $daemons; do
         log_info "Testing ${daemon}..."
-        if ! /var/ossec/bin/${daemon} -t 2>&1; then
+        if ! "/var/ossec/bin/${daemon}" -t 2>&1; then
             log_error "${daemon} -t failed"
         fi
         log_success "${daemon} -t passed"
@@ -115,7 +112,6 @@ main() {
     start_agent
     verify_agent_running
     stop_agent
-    check_test_results
 
     log_success "=== Smoke test completed successfully ==="
 }

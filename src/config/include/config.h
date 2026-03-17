@@ -22,7 +22,6 @@
 #define CAR           0000001000
 #define CAGENT_CONFIG 0000010000
 #define CWMODULE      0000200000
-#define CLABELS       0000400000
 #define CAUTHD        0001000000
 #define CBUFFER       0002000000
 #define CCLUSTER      0004000000
@@ -36,7 +35,7 @@
                             (modules & CGLOBAL       ) | (modules & CSYSCHECK     ) | (modules & CROOTCHECK    ) |\
                             (modules & CALERTS       ) | (modules & CLOCALFILE    ) | (modules & CREMOTE       ) |\
                             (modules & CCLIENT       ) | (modules & CMAIL         ) | (modules & CAR           ) |\
-                            (modules & CAGENT_CONFIG ) | (modules & CWMODULE      ) | (modules & CLABELS       ) |\
+                            (modules & CAGENT_CONFIG ) | (modules & CWMODULE      ) |\
                             (modules & CAUTHD        ) | (modules & CBUFFER       ) | (modules & CCLUSTER      ) |\
                             (modules & CLGCSOCKET    ) | (modules & WAZUHDB       ) )
 
@@ -92,11 +91,8 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 #ifndef CLIENT
 // Current key-request module
 int authd_read_key_request(xml_node **nodes, void *config);
-// Deprecated agent-key-polling module
-int wm_key_request_read(__attribute__((unused)) xml_node **nodes, __attribute__((unused)) void *module);
 #endif
 #endif
-int Read_Labels(XML_NODE node, void *d1, void *d2);
 int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_LogCollecSocket(XML_NODE node, void *d1, void *d2);
 int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2);
@@ -154,9 +150,6 @@ int Test_ClientBuffer(const char * path);
 
 /* Verifies that the configuration for Wodle is correct. Return 0 on success or -1 on error. */
 int Test_WModule(const char * path);
-
-/* Verifies that the configuration for Labels is correct. Return 0 on success or -1 on error.  */
-int Test_Labels(const char * path);
 
 /**
  * @brief Read the configuration for anti-tampering functionalities
