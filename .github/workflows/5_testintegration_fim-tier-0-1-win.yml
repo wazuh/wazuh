@@ -35,82 +35,82 @@ jobs:
       - name: Wait for Windows builder workflow
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: python
         run: |
-          python3 <<'PY'
-          import json, os, sys, time, urllib.parse, urllib.request
+          import json
+          import os
+          import sys
+          import time
+          import urllib.parse
+          import urllib.request
 
-          # Only wait when triggered by a PR; for workflow_dispatch the caller
-          # is responsible for ensuring the builder has already run.
+          # Only wait when triggered by a PR
           if os.environ.get('GITHUB_EVENT_NAME') != 'pull_request':
               print(f"Event is '{os.environ.get('GITHUB_EVENT_NAME')}', skipping builder wait.")
               sys.exit(0)
 
-          repo     = os.environ['GITHUB_REPOSITORY']
-          sha      = os.environ['PR_HEAD_SHA']
-            branch   = os.environ['BRANCH_NAME']
+          repo = os.environ['GITHUB_REPOSITORY']
+          sha = os.environ['PR_HEAD_SHA']
+          branch = os.environ['BRANCH_NAME']
           workflow = os.environ['BUILD_WORKFLOW']
-          token    = os.environ['GITHUB_TOKEN']
+          token = os.environ['GITHUB_TOKEN']
 
-          base_url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/runs"
-            params   = urllib.parse.urlencode({'head_sha': sha, 'per_page': 20})
-          url      = f"{base_url}?{params}"
-            dispatch_url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/dispatches"
-          headers  = {
+          url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/runs?head_sha={sha}&per_page=20"
+          dispatch_url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/dispatches"
+          headers = {
               'Accept': 'application/vnd.github+json',
               'Authorization': f'Bearer {token}',
               'User-Agent': 'wazuh-fim-win-wait-builder',
+              'Content-Type': 'application/json',
           }
 
           deadline = time.time() + 90 * 60
-            dispatched = False
+          dispatched = False
 
           while time.time() < deadline:
-              with urllib.request.urlopen(urllib.request.Request(url, headers=headers)) as resp:
-                  runs = json.loads(resp.read().decode()).get('workflow_runs', [])
-
-              if not runs:
-                if not dispatched:
-                  payload = json.dumps({'ref': branch}).encode()
-                  dispatch_req = urllib.request.Request(
-                    dispatch_url,
-                    data=payload,
-                    headers={**headers, 'Content-Type': 'application/json'},
-                    method='POST'
-                  )
-                  try:
-                    with urllib.request.urlopen(dispatch_req):
-                      pass
-                    dispatched = True
-                    print(f"No builder run found for {sha[:10]}. Dispatched '{workflow}' on ref '{branch}'.")
-                  except Exception as exc:
-                    print(f"No builder run found and dispatch failed: {exc}", file=sys.stderr)
-                    sys.exit(1)
-                else:
-                  print('No builder runs found for this commit yet. Retrying in 30s...')
+              try:
+                  with urllib.request.urlopen(urllib.request.Request(url, headers=headers)) as resp:
+                      runs = json.loads(resp.read().decode()).get('workflow_runs', [])
+              except Exception as e:
+                  print(f"API query failed: {e}")
                   time.sleep(30)
                   continue
 
+              # Dispatch builder if no runs exist yet
+              if not runs:
+                  if not dispatched:
+                      try:
+                          payload = json.dumps({'ref': branch}).encode()
+                          req = urllib.request.Request(dispatch_url, data=payload, headers=headers, method='POST')
+                          with urllib.request.urlopen(req):
+                              pass
+                          print(f"Dispatched builder for branch {branch}")
+                          dispatched = True
+                      except Exception as e:
+                          print(f"Dispatch failed: {e}", file=sys.stderr)
+                          sys.exit(1)
+                  print("No builder runs yet. Retrying in 30s...")
+                  time.sleep(30)
+                  continue
+
+              # Check for success or failure
               completed = [r for r in runs if r.get('status') == 'completed']
-              if any(r.get('conclusion') == 'success' for r in completed):
-                  print(f"Builder workflow succeeded for commit {sha[:10]}.")
+              success = [r for r in completed if r.get('conclusion') == 'success']
+              if success:
+                  print(f"Builder succeeded for {sha[:10]}")
                   sys.exit(0)
 
-              failed = [r for r in completed if r.get('conclusion') in
-                        ('failure', 'cancelled', 'timed_out', 'action_required')]
+              failed = [r for r in completed if r.get('conclusion') in ('failure', 'cancelled', 'timed_out', 'action_required')]
               if failed:
-                  last = max(failed, key=lambda r: r.get('updated_at', ''))
-                  print(f"Builder failed: {last.get('conclusion')} — {last.get('html_url')}", file=sys.stderr)
+                  r = max(failed, key=lambda x: x.get('updated_at', ''))
+                  print(f"Builder failed: {r.get('conclusion')} - {r.get('html_url')}", file=sys.stderr)
                   sys.exit(1)
 
-              print('Builder still running. Retrying in 30s...')
+              print(f"Builder running... (attempt {len(runs)} run(s) found)")
               time.sleep(30)
 
-          print('Timeout waiting for Windows builder workflow.', file=sys.stderr)
+          print('Timeout waiting for builder.', file=sys.stderr)
           sys.exit(1)
-          PY
-
-  # Execute the tests on windows.
-  run-test:
     needs: [wait-for-builder]
     strategy:
       fail-fast: false
