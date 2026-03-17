@@ -71,11 +71,9 @@ def test_read_option():
     with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options.conf')) as f:
         data = fromstring(f.read())
         assert configuration._read_option('syscheck', data)[0] == 'directories'
-        assert configuration._read_option('labels', data)[0] == 'directories'
 
     with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options1.conf')) as f:
         data = fromstring(f.read())
-        assert configuration._read_option('labels', data)[0] == 'label'
         assert configuration._read_option('test', data) == ('label', {'name': 'first', 'item': 'test'})
 
     with open(os.path.join(parent_directory, tmp_path, 'configuration/default/synchronization.conf')) as f:

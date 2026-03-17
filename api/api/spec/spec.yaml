@@ -1329,10 +1329,6 @@ components:
                                     type: integer
                                     format: int32
                                     description: "Events coming from the ms-graph module (this agent)"
-                                  oscap:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from the OSCAP module (this agent)"
                                   osquery:
                                     type: integer
                                     format: int32
@@ -2830,6 +2826,10 @@ components:
             type: object
         reports:
           type: object
+        vulnerability-detection:
+          type: object
+        indexer:
+          type: object
         socket:
           type: object
         #Wodle sections inside WazuhConfiguration(wazuh configuration file)
@@ -3379,9 +3379,6 @@ components:
         <td>agent</td>
         <td>buffer</td>
         <td><code>&lt;client_buffer&gt;</code></td>
-        </tr>
-        <tr>
-        <td>agent</td>
         </tr>
         <tr>
         <td>agent</td>
@@ -4631,11 +4628,9 @@ paths:
                     config-profile: "ubuntu, ubuntu20, ubuntu20.04"
                     notify_time: 20
                     time-reconnect: 60
-                    force_reconnect_interval: 0
                     ip_update_interval: 0
                     auto_restart: "yes"
                     remote_conf: "yes"
-                    crypto_method: "aes"
                     manager:
                       - address: "nginx-lb/172.25.0.4"
                         port: 1514
@@ -6986,14 +6981,20 @@ paths:
                           max_request_per_minute: 300
                         upload_configuration:
                           remote_commands:
-                            wodle_commands:
-                              enabled: true
+                            localfile:
+                              allow: true
+                              exceptions: []
+                            wodle_command:
+                              allow: true
                               exceptions: []
                           limits:
                             eps:
                               allow: true
                           agents:
-                            allow_higher_versions: true
+                            allow_higher_versions:
+                              allow: true
+                          indexer:
+                            allow: true
                     - node_name: "worker1"
                       node_api_config:
                         host: 0.0.0.0
@@ -7028,15 +7029,20 @@ paths:
                           max_request_per_minute: 300
                         upload_configuration:
                           remote_commands:
-                            wodle_commands:
-                              enabled: true
+                            localfile:
+                              allow: true
+                              exceptions: []
+                            wodle_command:
+                              allow: true
                               exceptions: []
                           limits:
                             eps:
                               allow: true
                           agents:
-                            allow_higher_versions: true
-                          exceptions: []
+                            allow_higher_versions:
+                              allow: true
+                          indexer:
+                            allow: true
                     - node_name: "worker2"
                       node_api_config:
                         host: 0.0.0.0
@@ -7071,14 +7077,20 @@ paths:
                           max_request_per_minute: 300
                         upload_configuration:
                           remote_commands:
-                            wodle_commands:
-                              enabled: true
+                            localfile:
+                              allow: true
+                              exceptions: []
+                            wodle_command:
+                              allow: true
                               exceptions: []
                           limits:
                             eps:
                               allow: true
                           agents:
-                            allow_higher_versions: true
+                            allow_higher_versions:
+                              allow: true
+                          indexer:
+                            allow: true
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []

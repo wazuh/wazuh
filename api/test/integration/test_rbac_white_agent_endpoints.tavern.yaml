@@ -1457,10 +1457,8 @@ stages:
         data:
           affected_items:
             - '004'
-            - '013'
-            - '014'
           failed_items: []
-          total_affected_items: 3
+          total_affected_items: 1
           total_failed_items: 0
     delay_after: !float "{reconnect_delay}"
 
@@ -1556,10 +1554,8 @@ stages:
         data:
           affected_items:
             - '004'
-            - '013'
-            - '014'
           failed_items: []
-          total_affected_items: 3
+          total_affected_items: 1
           total_failed_items: 0
 
 ---

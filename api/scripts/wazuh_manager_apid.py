@@ -12,6 +12,10 @@ import warnings
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from functools import partial
 
+SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
+CACHE_DELETED_MESSAGE = 'The `cache` API configuration option no longer takes effect since {release} and will ' \
+                        'be completely removed in the next major release.'
+
 logger = None
 
 
@@ -53,6 +57,23 @@ def configure_ssl(params):
             generate_self_signed_certificate(private_key, api_conf['https']['cert'])
             logger.info(
                 f"Generated certificate file in WAZUH_PATH/{to_relative_path(api_conf['https']['cert'])}")
+
+        # Load SSL context
+        allowed_ssl_protocols = {
+            'tls': ssl.PROTOCOL_TLS,
+            'tlsv1': ssl.PROTOCOL_TLSv1,
+            'tlsv1.1': ssl.PROTOCOL_TLSv1_1,
+            'tlsv1.2': ssl.PROTOCOL_TLSv1_2,
+            'auto': ssl.PROTOCOL_TLS_SERVER
+        }
+
+        config_ssl_protocol = api_conf['https']['ssl_protocol']
+        ssl_protocol = allowed_ssl_protocols[config_ssl_protocol.lower()]
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            if ssl_protocol in (ssl.PROTOCOL_TLSv1, ssl.PROTOCOL_TLSv1_1):
+                logger.warning(SSL_DEPRECATED_MESSAGE.format(ssl_protocol=config_ssl_protocol))
 
         # Check and assign ownership to wazuh user for manager.key and manager.crt files
         assign_wazuh_ownership(api_conf['https']['key'])
@@ -176,6 +197,10 @@ def start(params: dict):
             allow_headers=api_conf['cors']['allow_headers'],
             allow_credentials=api_conf['cors']['allow_credentials'],
         )
+
+    # Display warning if using deprecated cache API configuration
+    if api_conf.get('cache', {}).get('enabled', {}):
+        logger.warning(CACHE_DELETED_MESSAGE.format(release="4.9.0"))
 
     # Add error handlers to format exceptions
     app.add_error_handler(ExpectFailedException, error_handler.expect_failed_error_handler)

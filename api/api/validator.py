@@ -205,7 +205,7 @@ api_config_schema = {
 
 WAZUH_AGENT_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
     {
-        'agent': {"client", "buffer", "labels", "internal", "anti_tampering"},
+        'agent': {"client", "buffer", "internal", "anti_tampering"},
         'com': {"active-response", "logging", "internal"},
         'logcollector': {"localfile", "socket", "internal"},
         'syscheck': {"syscheck", "rootcheck", "internal"},
