@@ -228,21 +228,28 @@ void ExecdRun(char *exec_msg, int *childcount)
         return;
     }
 
-    /* Get executable name and AR metadata from parameters */
-    cJSON *json_parameters_pre = cJSON_GetObjectItem(json_root, "parameters");
-    if (!cJSON_IsObject(json_parameters_pre)) {
+    /* Get executable name and AR metadata from wazuh.active_response */
+    cJSON *json_wazuh = cJSON_GetObjectItem(json_root, "wazuh");
+    if (!cJSON_IsObject(json_wazuh)) {
         merror(EXEC_INV_CMD, exec_msg);
         cJSON_Delete(json_root);
         return;
     }
 
-    cJSON *json_exec_name = cJSON_GetObjectItem(json_parameters_pre, "executable_name");
-    if (!cJSON_IsString(json_exec_name) || json_exec_name->valuestring[0] == '\0') {
+    cJSON *json_ar = cJSON_GetObjectItem(json_wazuh, "active_response");
+    if (!cJSON_IsObject(json_ar)) {
         merror(EXEC_INV_CMD, exec_msg);
         cJSON_Delete(json_root);
         return;
     }
-    name = json_exec_name->valuestring;
+
+    cJSON *json_executable = cJSON_GetObjectItem(json_ar, "executable");
+    if (!cJSON_IsString(json_executable) || json_executable->valuestring[0] == '\0') {
+        merror(EXEC_INV_CMD, exec_msg);
+        cJSON_Delete(json_root);
+        return;
+    }
+    name = json_executable->valuestring;
 
     /* Directory traversal protection */
     if (w_ref_parent_folder(name)) {
@@ -270,8 +277,8 @@ void ExecdRun(char *exec_msg, int *childcount)
     fclose(exec_fp);
 
     /* Determine timeout from AR type metadata */
-    cJSON *json_ar_type = cJSON_GetObjectItem(json_parameters_pre, "type");
-    cJSON *json_stateful_timeout = cJSON_GetObjectItem(json_parameters_pre, "stateful_timeout");
+    cJSON *json_ar_type = cJSON_GetObjectItem(json_ar, "type");
+    cJSON *json_stateful_timeout = cJSON_GetObjectItem(json_ar, "stateful_timeout");
 
     if (cJSON_IsString(json_ar_type) && strcmp(json_ar_type->valuestring, "stateful") == 0) {
         timeout_value = cJSON_IsNumber(json_stateful_timeout) ? (int)json_stateful_timeout->valuedouble : 0;
@@ -279,12 +286,8 @@ void ExecdRun(char *exec_msg, int *childcount)
         timeout_value = 0;
     }
 
-    /* Command parameters */
-    cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(ADD_ENTRY));
-    cJSON *json_origin = cJSON_GetObjectItem(json_root, "origin");
-    cJSON_ReplaceItemInObject(json_origin, "module", cJSON_CreateString(ARGV0));
-    cJSON *json_parameters = cJSON_GetObjectItem(json_root, "parameters");
-    cJSON_AddItemToObject(json_parameters, "program", cJSON_CreateString(cmd[0]));
+    /* Add command field for AR script protocol compatibility */
+    cJSON_AddStringToObject(json_root, "command", ADD_ENTRY);
     cmd_parameters = cJSON_PrintUnformatted(json_root);
 
     /* Execute command */
@@ -416,8 +419,13 @@ void ExecdRun(char *exec_msg, int *childcount)
 #endif
             /* If it wasn't added before, do it now */
             if (!added_before) {
-                /* Timeout parameters */
-                cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(DELETE_ENTRY));
+                /* Timeout parameters - change command to delete */
+                cJSON *existing_command = cJSON_GetObjectItem(json_root, "command");
+                if (existing_command) {
+                    cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(DELETE_ENTRY));
+                } else {
+                    cJSON_AddStringToObject(json_root, "command", DELETE_ENTRY);
+                }
 
                 /* Create the timeout entry */
                 os_calloc(1, sizeof(timeout_data), timeout_entry);
@@ -452,10 +460,20 @@ void ExecdRun(char *exec_msg, int *childcount)
         /* If it wasn't added before, continue execution */
         if (!added_before) {
             /* Continue command */
-            cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(CONTINUE_ENTRY));
+            cJSON *existing_command = cJSON_GetObjectItem(json_root, "command");
+            if (existing_command) {
+                cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(CONTINUE_ENTRY));
+            } else {
+                cJSON_AddStringToObject(json_root, "command", CONTINUE_ENTRY);
+            }
         } else {
             /* Abort command */
-            cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(ABORT_ENTRY));
+            cJSON *existing_command = cJSON_GetObjectItem(json_root, "command");
+            if (existing_command) {
+                cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(ABORT_ENTRY));
+            } else {
+                cJSON_AddStringToObject(json_root, "command", ABORT_ENTRY);
+            }
         }
 
         os_free(cmd_parameters);
