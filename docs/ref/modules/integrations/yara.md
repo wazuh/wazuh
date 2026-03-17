@@ -148,6 +148,8 @@ Rule IDs `550` and `554` correspond to FIM alerts for file integrity changes.
 
 ### Create detection rules
 
+> **Note:** While the YARA scan runs on the agent, the custom rules and decoders that process the scan results are configured on the Wazuh manager, where the analysis engine runs.
+
 Add custom rules on the Wazuh manager to process YARA scan output. Create or edit `/var/wazuh-manager/etc/rules/local_rules.xml`:
 
 ```xml
