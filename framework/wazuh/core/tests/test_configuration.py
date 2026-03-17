@@ -287,10 +287,8 @@ def test_parse_internal_options():
 
     with patch('wazuh.core.common.INTERNAL_OPTIONS_CONF',
                new=os.path.join(parent_directory, tmp_path, 'configuration/local_internal_options.conf')):
-        with patch('wazuh.core.common.LOCAL_INTERNAL_OPTIONS_CONF',
-                   new=os.path.join(parent_directory, tmp_path, 'configuration/local_internal_options.conf')):
-            with pytest.raises(WazuhInternalError, match=".* 1108 .*"):
-                configuration.parse_internal_options('ossec', 'python')
+        with pytest.raises(WazuhInternalError, match=".* 1108 .*"):
+            configuration.parse_internal_options('ossec', 'python')
 
 
 def test_get_internal_options_value():

@@ -761,7 +761,7 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
 
 
 def parse_internal_options(high_name: str, low_name: str) -> str:
-    """Parse internal_options.conf file.
+    """Parse wazuh-manager-internal-options.conf file.
 
     Parameters
     ----------
@@ -775,12 +775,12 @@ def parse_internal_options(high_name: str, low_name: str) -> str:
     WazuhInternalError(1107)
         Internal options file not found.
     WazuhInternalError(1108)
-        Value not found in internal_options.conf.
+        Value not found in wazuh-manager-internal-options.conf.
 
     Returns
     -------
     str
-        Value of the internal_options.conf option.
+        Value of the wazuh-manager-internal-options.conf option.
     """
 
     def get_config(config_path: str) -> dict:
@@ -804,13 +804,6 @@ def parse_internal_options(high_name: str, low_name: str) -> str:
 
         return config
 
-    # Check if the option exists at local internal options
-    if os_path.exists(common.LOCAL_INTERNAL_OPTIONS_CONF):
-        try:
-            return get_config(common.LOCAL_INTERNAL_OPTIONS_CONF).get('root', f'{high_name}.{low_name}')
-        except NoOptionError:
-            pass
-
     if not os_path.exists(common.INTERNAL_OPTIONS_CONF):
         raise WazuhInternalError(1107)
 
@@ -821,7 +814,7 @@ def parse_internal_options(high_name: str, low_name: str) -> str:
 
 
 def get_internal_options_value(high_name: str, low_name: str, max_: int, min_: int) -> int:
-    """Get value of a specific internal option from internal_options.conf.
+    """Get value of a specific internal option from wazuh-manager-internal-options.conf.
 
     Parameters
     ----------
@@ -844,7 +837,7 @@ def get_internal_options_value(high_name: str, low_name: str, max_: int, min_: i
     Returns
     -------
     int
-        Value of the internal_options.conf option.
+        Value of the wazuh-manager-internal-options.conf option.
     """
     option = parse_internal_options(high_name, low_name)
     if not option.isdigit():
