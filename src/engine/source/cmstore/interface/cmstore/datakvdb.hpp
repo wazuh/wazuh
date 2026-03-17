@@ -15,7 +15,9 @@
  * {
  *   "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
  *   "date": "2025-10-06T13:32:19Z",
- *   "title": "windows_kerberos_status_code_to_code_name",
+ *   "metadata": {
+ *      "title": "windows_kerberos_status_code_to_code_name"
+ *    },
  *   "author": "Wazuh Inc.",
  *   "content": {
  *     "0x0": "KDC_ERR_NONE",
@@ -35,7 +37,7 @@ namespace cm::store::dataType
 namespace jsonkvdb
 {
 constexpr std::string_view PATH_KEY_ID = "/id";
-constexpr std::string_view PATH_KEY_NAME = "/title";
+constexpr std::string_view PATH_KEY_NAME = "/metadata/title";
 constexpr std::string_view PATH_KEY_CONTENT = "/content";
 constexpr std::string_view PATH_KEY_ENABLED = "/enabled";
 } // namespace jsonkvdb

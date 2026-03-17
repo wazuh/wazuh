@@ -19,7 +19,10 @@
  * Expexted JSON format:
  * {
  *   "type": "policy",
- *   "title": "Development 0.0.1",
+ *   "metadata":
+ *   {
+ *     "title": "Development 0.0.1",
+ *   },
  *   "root_decoder": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
  *   "origin_space": "space1", -> optional, default value "UNDEFINED"
  *   "index_unclassified_events": true, -> optional, default value false

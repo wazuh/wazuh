@@ -50,7 +50,9 @@ auto constexpr FILTER_JSON = R"({
     "type": "pre-filter",
     "metadata": {
         "module": "wazuh",
-        "title": "Test filter",
+        "metadata": {
+            "title": "Test filter"
+        },
         "description": "Filter used for unit tests",
         "compatibility": "Wazuh 5.*",
         "versions": ["Wazuh 5.*"],

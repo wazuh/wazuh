@@ -368,7 +368,9 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration)
     json::Json integrationJson {R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
-      "title": "windows",
+      "metadata": {
+        "title": "windows"
+      },
       "enabled": true,
       "category": "security",
       "default_parent": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
@@ -705,7 +707,9 @@ TEST(CrudService_Unit, ValidateResource_Integration_SuccessDoesNotTouchValidator
     static constexpr const char* kIntegrationJsonStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
-      "title": "windows",
+      "metadata": {
+        "title": "windows"
+      },
       "enabled": true,
       "category": "security",
       "default_parent": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
@@ -848,7 +852,9 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidDecoderUUID_Throws)
     static constexpr const char* kIntegrationBadDecoderUUIDStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
-      "title": "windows",
+      "metadata": {
+        "title": "windows"
+      },
       "enabled": true,
       "category": "security",
       "default_parent": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
@@ -879,7 +885,9 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidKVDBUUID_Throws)
     static constexpr const char* kIntegrationBadKVDBUUIDStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
-      "title": "windows",
+      "metadata": {
+        "title": "windows"
+      },
       "enabled": true,
       "category": "security",
       "default_parent": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
@@ -912,7 +920,9 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidCategory_Throws)
     static constexpr const char* kIntegrationBadCategoryStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
-      "title": "windows",
+      "metadata": {
+        "title": "windows"
+      },
       "enabled": true,
       "category": "ossec",
       "default_parent": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
