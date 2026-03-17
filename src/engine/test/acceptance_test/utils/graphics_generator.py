@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 """
 graphics_generator.py – Benchmark results visualizer.
 
@@ -76,17 +77,47 @@ def load_bench(results_dir: str, threads: int) -> pd.DataFrame:
     return df
 
 
+def trim_drain_phase(df: pd.DataFrame) -> pd.DataFrame:
+    """Remove trailing drain rows where sent == 0.
+
+    The benchmark tool appends extra seconds after the sending phase ends
+    (drain phase) where ``sent == 0`` but ``processed`` may still be > 0.
+    Including these rows distorts averages and makes the time-series charts
+    appear to have a long tail of zero-sent data.  This helper trims those
+    trailing rows so that only the active sending window is plotted.
+    """
+    if "sent" not in df.columns:
+        return df
+    # Find last row where sent > 0
+    active = df[df["sent"] > 0]
+    if active.empty:
+        return df
+    last_active_idx = active.index[-1]
+    trimmed = df.loc[: last_active_idx].copy()
+    trimmed["elapsed_s"] = range(len(trimmed))
+    return trimmed
+
+
 def load_all(results_dir: str, thread_counts: list[int]):
-    """Return dicts keyed by thread count: {T: DataFrame}."""
-    monitors, benches = {}, {}
+    """Return dicts keyed by thread count: {T: DataFrame}.
+
+    Bench DataFrames are returned in two flavours:
+      - *benches_full*: raw data including the drain phase.
+      - *benches*: trimmed to the active sending window only.
+    """
+    monitors: dict[int, pd.DataFrame] = {}
+    benches: dict[int, pd.DataFrame] = {}
+    benches_full: dict[int, pd.DataFrame] = {}
     for t in thread_counts:
         mon_path = os.path.join(results_dir, f"monitor-{t}T.csv")
         ben_path = os.path.join(results_dir, f"bench-{t}T.csv")
         if os.path.isfile(mon_path):
             monitors[t] = load_monitor(results_dir, t)
         if os.path.isfile(ben_path):
-            benches[t] = load_bench(results_dir, t)
-    return monitors, benches
+            full = load_bench(results_dir, t)
+            benches_full[t] = full
+            benches[t] = trim_drain_phase(full)
+    return monitors, benches, benches_full
 
 
 # ---------------------------------------------------------------------------
@@ -121,7 +152,7 @@ def plot_timeseries_comparison(
     ax.legend(title="Threads", loc="upper left", bbox_to_anchor=(1.01, 1))
     ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     fig.tight_layout()
-    fig.savefig(out_path, dpi=150)
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"  -> {out_path}")
 
@@ -161,7 +192,7 @@ def plot_bar_summary(
     ax.set_ylabel(ylabel)
     ax.set_title(title, fontsize=14, fontweight="bold")
     fig.tight_layout()
-    fig.savefig(out_path, dpi=150)
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"  -> {out_path}")
 
@@ -175,7 +206,11 @@ def plot_sent_vs_processed(
     out_path: str,
     figsize=(14, 6),
 ):
-    """One subplot per thread count showing sent & processed per second."""
+    """One subplot per thread count showing sent & processed per second.
+
+    Uses line charts instead of bar charts so that long runs (60+ seconds)
+    remain legible.
+    """
     n = len(benches)
     if n == 0:
         return
@@ -186,11 +221,12 @@ def plot_sent_vs_processed(
     for idx, (threads, df) in enumerate(sorted(benches.items())):
         r, c = divmod(idx, cols)
         ax = axes[r][c]
-        w = 0.4
-        ax.bar(df["elapsed_s"] - w / 2, df["sent"], width=w,
-               color=COLORS[0], alpha=0.7, label="Sent")
-        ax.bar(df["elapsed_s"] + w / 2, df["processed"], width=w,
-               color=COLORS[2], alpha=0.7, label="Processed")
+        ax.plot(df["elapsed_s"], df["sent"],
+                color=COLORS[0], linewidth=1.3, alpha=0.85, label="Sent")
+        ax.plot(df["elapsed_s"], df["processed"],
+                color=COLORS[2], linewidth=1.3, alpha=0.85, label="Processed")
+        ax.fill_between(df["elapsed_s"], df["sent"], alpha=0.15, color=COLORS[0])
+        ax.fill_between(df["elapsed_s"], df["processed"], alpha=0.15, color=COLORS[2])
         ax.set_title(f"{threads} Thread(s)", fontsize=12, fontweight="bold")
         ax.set_xlabel("Elapsed (s)")
         ax.set_ylabel("Events / sec")
@@ -320,7 +356,15 @@ def generate_all(results_dir: str, out_dir: str, fmt: str):
         sys.exit(1)
 
     print(f"Thread counts detected: {thread_counts}")
-    monitors, benches = load_all(results_dir, thread_counts)
+    monitors, benches, benches_full = load_all(results_dir, thread_counts)
+
+    # Log trimming information
+    for t in sorted(benches.keys()):
+        full_len = len(benches_full.get(t, pd.DataFrame()))
+        trim_len = len(benches[t])
+        if full_len != trim_len:
+            print(f"  bench-{t}T.csv: {full_len} rows total, "
+                  f"{trim_len} active (trimmed {full_len - trim_len} drain rows)")
 
     # --- Time-series comparison charts (monitor) ---
     if monitors:
@@ -349,10 +393,10 @@ def generate_all(results_dir: str, out_dir: str, fmt: str):
             os.path.join(out_dir, f"ts_processed.{fmt}"),
         )
 
-        # Sent vs processed subplots
+        # Sent vs processed subplots (use full data including drain)
         print("\nSent vs Processed detail:")
         plot_sent_vs_processed(
-            benches, os.path.join(out_dir, f"detail_sent_vs_processed.{fmt}"),
+            benches_full, os.path.join(out_dir, f"detail_sent_vs_processed.{fmt}"),
         )
 
     # --- Scaling summary bar charts ---

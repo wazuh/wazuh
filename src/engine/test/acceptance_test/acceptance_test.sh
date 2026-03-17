@@ -97,7 +97,7 @@ cleanup() {
             sleep 1
             tries=$((tries + 1))
             if [[ $tries -ge 15 ]]; then
-                pkill -9 -x "wazuh-manager-analysisd" 2>/dev/null || true
+                pkill -SIGTERM -f "wazuh-manager-analysisd" 2>/dev/null || true
                 break
             fi
         done
@@ -132,8 +132,13 @@ stop_manager() {
 
     # Clean up stale KVDB lock files left by a previous crash
     if find "${WAZUH_HOME}/engine" -name "LOCK" -type f 2>/dev/null | grep -q .; then
-        log "Removing stale KVDB lock files..."
+        log "Removing stale KVDB lock files from engine..."
         find "${WAZUH_HOME}/engine" -name "LOCK" -type f -delete 2>/dev/null || true
+    fi
+
+    if find "${WAZUH_HOME}/queue" -name "LOCK" -type f 2>/dev/null | grep -q .; then
+        log "Removing stale KVDB lock files from queue..."
+        find "${WAZUH_HOME}/queue" -name "LOCK" -type f -delete 2>/dev/null || true
     fi
 }
 

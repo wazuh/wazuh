@@ -65,22 +65,37 @@ log "Detected OS: ${OS_NAME} (${OS_ID} ${OS_VERSION})"
 install_system_packages() {
     case "${OS_ID}" in
         amzn)
-            log "Using dnf (Amazon Linux)..."
-            dnf install -y \
-                python3 \
-                python3-pip \
-                python3-devel \
-                curl \
-                procps-ng \
-                dmidecode \
-                util-linux \
-                tar \
-                gzip \
-                gcc \
-                gcc-c++ \
-                findutils \
-                grep \
+log "Using dnf (Amazon Linux)..."
+
+            dnf upgrade -y
+
+            # Base packages (including curl) are minimal in Amazon Linux 2023, so we explicitly list them.
+            local packages=(
+                python3
+                python3-pip
+                python3-devel
+                procps-ng
+                dmidecode
+                util-linux
+                tar
+                gzip
+                gcc
+                gcc-c++
+                findutils
+                grep
                 coreutils
+            )
+
+            dnf install -y "${packages[@]}"
+
+            # Same as above, but ensure we have the full curl package (not the minimal one) for better TLS support and features.
+            if ! command -v curl &>/dev/null; then
+                log "curl not found, installing curl-full (replacing minimal)..."
+                dnf swap -y curl-minimal curl-full || \
+                dnf install -y curl --allowerasing
+            else
+                log "curl already available (likely curl-minimal), skipping install."
+            fi
             ;;
         ubuntu|debian)
             log "Using apt (Ubuntu/Debian)..."
