@@ -279,12 +279,6 @@ int wdb_commit2(wdb_t * wdb);
 */
 int wdb_rollback(wdb_t * wdb);
 
-/**
- * @brief Rollback transaction and write status
- * @param[in] wdb Database to query for the table existence.
- * @return 0 when succeed, !=0 otherwise.
-*/
-int wdb_rollback2(wdb_t * wdb);
 
 /* Create global database */
 int wdb_create_global(const char *path);
@@ -928,14 +922,6 @@ int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, os_sha1 hexdig
  */
 wdb_t * wdb_upgrade_global(wdb_t *wdb);
 
-/**
- * @brief Set the database journal mode to write-ahead logging
- *
- * @param [in] db Pointer to an open database.
- * @retval 0 On success.
- * @retval -1 On error.
- */
-int wdb_journal_wal(sqlite3 *db);
 
 /**
  * @brief Enables foreign keys usage into the specified database.
@@ -1096,17 +1082,6 @@ int wdb_global_delete_agent_belong(wdb_t *wdb, int id);
  */
 cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
 
-/**
- * @brief Function to update the agent's groups_hash column. It reads the group column, calculates and stores its hash
- *        but if the group column is NULL, the method returns without modifying groups_hash.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id The agent ID
- * @param [in] groups_string The comma separated groups string to hash and store in groups_hash column. If not set,
- *                           it will be read from 'group' column.
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_string);
 
 /**
  * @brief Function to get a group id using the group name.

@@ -307,9 +307,6 @@ int wdb_rollback(wdb_t * wdb) {
     return wdb_any_transaction(wdb, SQL_ROLLBACK);
 }
 
-int wdb_rollback2(wdb_t * wdb) {
-    return wdb_write_state_transaction(wdb, 0, wdb_rollback);
-}
 
 /* Create global database */
 int wdb_create_global(const char *path) {
@@ -1089,20 +1086,6 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
     return result;
 }
 
-// Set the database journal mode to write-ahead logging
-int wdb_journal_wal(sqlite3 *db) {
-    char *sql_error = NULL;
-
-    sqlite3_exec(db, SQL_STMT[WDB_STMT_PRAGMA_JOURNAL_WAL], NULL, NULL, &sql_error);
-
-    if (sql_error != NULL) {
-        merror("Cannot set database journaling mode to WAL: '%s'", sql_error);
-        sqlite3_free(sql_error);
-        return -1;
-    }
-
-    return 0;
-}
 
 int wdb_enable_foreign_keys(sqlite3 *db) {
     char *sql_error = NULL;
