@@ -67,9 +67,9 @@ Example for `file-23-06-15.log`:
 ```
 
 !!! note
-    - `23` → year  
-    - `06` → month  
-    - `15` → day  
+    - `23` → year
+    - `06` → month
+    - `15` → day
 
 Restart the agent after applying the configuration.
 
@@ -256,6 +256,45 @@ macOS uses the Unified Logging System (ULS), which does not write logs to plain 
 !!! note
     Only one `<localfile>` block with `log_format` set to `macos` is allowed.
 
+### macOS `<query>` attributes
+
+The `<query>` tag accepts the following attributes:
+
+| Attribute | Description | Values |
+|-----------|-------------|--------|
+| `type` | Types of log entries to collect. | Comma-separated list of: `activity`, `log`, `trace` |
+| `level` | Minimum log level to collect. | `default`, `info`, `debug` |
+
+### Collecting specific macOS subsystem logs
+
+You can filter by subsystem and category to narrow the collected logs:
+
+```xml
+<localfile>
+  <location>macos</location>
+  <log_format>macos</log_format>
+  <query type="log" level="info">(subsystem == "com.apple.securityd") or (subsystem == "com.apple.opendirectoryd")</query>
+</localfile>
+```
+
+### Collecting macOS authentication logs
+
+To monitor authentication events on macOS:
+
+```xml
+<localfile>
+  <location>macos</location>
+  <log_format>macos</log_format>
+  <query type="trace,log,activity" level="info">(process == "sudo") or (process == "sessionlogoutd" and message contains "logout is complete.") or (process == "sshd") or (process == "tccd" and message contains "Update Access Record") or (message contains "SessionAgentNotificationCenter") or (process == "screensharingd" and message contains "Authentication") or (process == "securityd" and eventMessage contains "Session" and subsystem == "com.apple.securityd")</query>
+</localfile>
+```
+
+Restart the Wazuh agent to apply the configuration:
+
+```bash
+/Library/Ossec/bin/wazuh-control restart
+```
+
 ---
 
 ## macOS ULS log levels
@@ -304,5 +343,92 @@ macOS uses the Unified Logging System (ULS), which does not write logs to plain 
 - `LIKE`
 - `MATCHES`
 - `IN`
+
+---
+
+## Docker log collection via journald
+
+On Linux systems using systemd, Docker can be configured to send container logs to the journald logging driver. Wazuh can then collect these Docker logs through the journald log format in Logcollector.
+
+### Prerequisites
+
+- Docker configured to use the `journald` logging driver.
+- The Wazuh agent running on the same host as Docker.
+
+### Configure Docker to use the journald logging driver
+
+Edit the Docker daemon configuration file (`/etc/docker/daemon.json`):
+
+```json
+{
+  "log-driver": "journald"
+}
+```
+
+Restart Docker to apply the change:
+
+```bash
+systemctl restart docker
+```
+
+After this change, all new containers send their logs to the systemd journal.
+
+### Configure Wazuh to collect Docker logs from journald
+
+Add the following configuration to the Wazuh agent's `ossec.conf`:
+
+```xml
+<localfile>
+  <location>journald</location>
+  <log_format>journald</log_format>
+  <filter_type>value</filter_type>
+  <filter field="CONTAINER_NAME">my-container</filter>
+</localfile>
+```
+
+This configuration collects journal entries from a specific Docker container. To collect from all Docker containers, filter by the `_TRANSPORT` field:
+
+```xml
+<localfile>
+  <location>journald</location>
+  <log_format>journald</log_format>
+  <filter_type>value</filter_type>
+  <filter field="_TRANSPORT">journal</filter>
+  <filter field="CONTAINER_NAME">.*</filter>
+</localfile>
+```
+
+### Journald filter options
+
+| Option | Description |
+|--------|-------------|
+| `filter_type` | Type of filter matching. Use `value` for exact match. |
+| `filter field` | Journal field to filter by. Docker sets fields such as `CONTAINER_NAME`, `CONTAINER_ID`, `CONTAINER_TAG`, and `IMAGE_NAME`. |
+
+### Restart the agent
+
+```bash
+systemctl restart wazuh-agent
+```
+
+### Docker listener module
+
+Wazuh also includes a Docker listener module that monitors Docker events (container start, stop, create, destroy) through the Docker socket. This module is configured separately from log collection:
+
+```xml
+  <wodle name="docker-listener">
+    <disabled>no</disabled>
+    <run_on_start>yes</run_on_start>
+    <interval>1m</interval>
+    <attempts>5</attempts>
+  </wodle>
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `disabled` | `no` | Disables the Docker listener module when set to `yes`. |
+| `run_on_start` | `yes` | Start listening for Docker events immediately. |
+| `interval` | `1m` | Time interval for reconnection attempts. |
+| `attempts` | `5` | Number of reconnection attempts before giving up. |
 
 ---
