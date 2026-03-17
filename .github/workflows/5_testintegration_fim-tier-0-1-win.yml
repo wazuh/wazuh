@@ -111,6 +111,9 @@ jobs:
 
           print('Timeout waiting for builder.', file=sys.stderr)
           sys.exit(1)
+
+  # Execute the tests on windows.
+  run-test:
     needs: [wait-for-builder]
     strategy:
       fail-fast: false
