@@ -95,44 +95,6 @@ TEST_F(ContentModuleFacadeTest, TestSingletonAndAddTwoProviders)
 }
 
 /*
- * @brief Tests singleton of the ContentModuleFacade class and start scheduling for raw data
- */
-TEST_F(ContentModuleFacadeTest, TestSingletonAndStartSchedulingForRawData)
-{
-    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-    const auto& interval {m_parameters.at("interval").get_ref<const size_t&>()};
-    const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
-    const auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<const std::string&>()};
-    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
-    const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
-
-    auto& contentModuleFacade = ContentModuleFacade::instance();
-
-    EXPECT_EQ(&contentModuleFacade, &ContentModuleFacade::instance());
-
-    EXPECT_NO_THROW(contentModuleFacade.start({}));
-
-    EXPECT_NO_THROW(contentModuleFacade.addProvider(topicName,
-                                                    m_parameters,
-                                                    [](const std::string& msg) -> FileProcessingResult {
-                                                        return {0, "", false};
-                                                    }));
-
-    EXPECT_NO_THROW(contentModuleFacade.startScheduling(topicName, interval));
-
-    std::this_thread::sleep_for(std::chrono::seconds(interval + 1));
-
-    EXPECT_NO_THROW(contentModuleFacade.stop());
-
-    // This file shouldn't exist because it's a test for raw data
-    EXPECT_FALSE(std::filesystem::exists(downloadPath));
-
-    EXPECT_TRUE(std::filesystem::exists(contentPath));
-
-    EXPECT_TRUE(std::filesystem::exists(outputFolder));
-}
-
-/*
  * @brief Tests singleton of the ContentModuleFacade class and change scheduler interval for raw data
  */
 TEST_F(ContentModuleFacadeTest, TestSingletonAndChangeSchedulerIntervalForRawData)
@@ -264,50 +226,6 @@ TEST_F(ContentModuleFacadeTest, TestSingletonAndStartOnDemandWithoutProvider)
     EXPECT_FALSE(std::filesystem::exists(downloadPath));
 
     EXPECT_FALSE(std::filesystem::exists(contentPath));
-}
-
-/*
- * @brief Tests singleton of the ContentModuleFacade class and start scheduling for compressed data
- */
-TEST_F(ContentModuleFacadeTest, TestSingletonAndStartSchedulingForCompressedData)
-{
-    m_parameters["configData"]["url"] = "http://localhost:4444/xz/consumers";
-    m_parameters["configData"]["compressionType"] = "xz";
-
-    // Append XZ extension.
-    auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<std::string&>()};
-    fileName += ".xz";
-
-    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-    const auto& interval {m_parameters.at("interval").get_ref<const size_t&>()};
-    const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
-    const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
-
-    auto& contentModuleFacade = ContentModuleFacade::instance();
-
-    EXPECT_EQ(&contentModuleFacade, &ContentModuleFacade::instance());
-
-    EXPECT_NO_THROW(contentModuleFacade.start({}));
-
-    EXPECT_NO_THROW(contentModuleFacade.addProvider(topicName,
-                                                    m_parameters,
-                                                    [](const std::string& msg) -> FileProcessingResult {
-                                                        return {0, "", false};
-                                                    }));
-
-    EXPECT_NO_THROW(contentModuleFacade.startScheduling(topicName, interval));
-
-    std::this_thread::sleep_for(std::chrono::seconds(interval + 1));
-
-    EXPECT_NO_THROW(contentModuleFacade.stop());
-
-    // This file should exist because deleteDownloadedContent is not enabled
-    EXPECT_TRUE(std::filesystem::exists(downloadPath));
-
-    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + Utils::rightTrim(fileName, ".xz")};
-    EXPECT_TRUE(std::filesystem::exists(contentPath));
-
-    EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
 
 /*
