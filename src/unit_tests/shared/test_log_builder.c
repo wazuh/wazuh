@@ -32,7 +32,7 @@ void test_log_builder(void **state)
     const char * LOCATION = "test";
     const char * EXPECTED_OUTPUT = "location: test, log: Hello \"World\", escaped: Hello \\\"World\\\"";
 
-#ifdef CLIENT
+#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     will_return_always(__wrap_getDefine_Int, 60);
 #else
     will_return_always(__wrap_getDefine_Int_default, 60);
@@ -51,7 +51,7 @@ void test_log_builder(void **state)
 
 void test_log_builder_update(void **state)
 {
-#ifdef CLIENT
+#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     will_return_always(__wrap_getDefine_Int, 1);
 #else
     will_return_always(__wrap_getDefine_Int_default, 1);
@@ -77,7 +77,7 @@ void test_log_builder_update(void **state)
 }
 
 void test_log_builder_not_update(void **state) {
-#ifdef CLIENT
+#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     will_return_always(__wrap_getDefine_Int, 0);
 #else
     will_return_always(__wrap_getDefine_Int_default, 0);

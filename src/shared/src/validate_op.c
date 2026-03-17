@@ -261,11 +261,13 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
 
     /* Try to read from the local define file */
     value = _read_file(high_name, low_name, OSSEC_LDEFINES);
+#ifdef OSSEC_DEFINES
     if (!value) {
         value = _read_file(high_name, low_name, OSSEC_DEFINES);
-        if (!value) {
-            merror_exit(DEF_NOT_FOUND, high_name, low_name);
-        }
+    }
+#endif
+    if (!value) {
+        merror_exit(DEF_NOT_FOUND, high_name, low_name);
     }
 
     ret = parse_define_int_value(high_name, low_name, value, min, max);
@@ -307,11 +309,13 @@ int getDefine_Int_default(const char *high_name, const char *low_name, int min, 
 
     /* Try to read from the local define file */
     value = _read_file(high_name, low_name, OSSEC_LDEFINES);
+#ifdef OSSEC_DEFINES
     if (!value) {
         value = _read_file(high_name, low_name, OSSEC_DEFINES);
-        if (!value) {
-            return default_val;
-        }
+    }
+#endif
+    if (!value) {
+        return default_val;
     }
 
     ret = parse_define_int_value(high_name, low_name, value, min, max);
