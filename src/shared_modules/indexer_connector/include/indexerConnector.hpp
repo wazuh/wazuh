@@ -87,7 +87,8 @@ public:
  *
  */
 
-constexpr auto IC_NAME {"IndexerConnector"};
+constexpr auto IC_NAME_SYNC {"IndexerConnectorSync"};
+constexpr auto IC_NAME_ASYNC {"IndexerConnectorAsync"};
 class EXPORTED IndexerConnectorSync final
 {
 private:
