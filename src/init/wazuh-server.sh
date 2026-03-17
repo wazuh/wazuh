@@ -339,7 +339,7 @@ start_service()
 
     # Delete all files in temporary folder
     TO_DELETE="$DIR/tmp"
-    find $TO_DELETE -mindepth 1 -not -path "$TO_DELETE/vd_*_vd_*.tar" -not -path "$TO_DELETE/vd_*_vd_*.tar.xz" -delete
+    find "$TO_DELETE" -mindepth 1 -delete
 
     # Stop deprecated daemons that could keep alive on updates
     for i in ${DEPRECATED_DAEMONS}; do

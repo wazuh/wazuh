@@ -1122,20 +1122,6 @@ TransferShared()
     find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
 }
 
-checkDownloadContent()
-{
-    VD_FILENAME='vd_1.0.0_vd_4.13.0.tar.xz'
-    VD_FULL_PATH=${INSTALLDIR}/tmp/${VD_FILENAME}
-
-    if [ "X${DOWNLOAD_CONTENT}" = "Xy" ]; then
-        echo "Download ${VD_FILENAME} file"
-        wget -O ${VD_FULL_PATH} http://packages.wazuh.com/deps/vulnerability_model_database/${VD_FILENAME}
-
-        chmod 640 ${VD_FULL_PATH}
-        chown ${WAZUH_USER}:${WAZUH_GROUP} ${VD_FULL_PATH}
-    fi
-}
-
 InstallServer()
 {
 
@@ -1181,9 +1167,6 @@ InstallServer()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librocksdb.so.8
         fi
     fi
-
-    # Check if the content needs to be downloaded.
-    checkDownloadContent
 
     # Install cluster files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/cluster
