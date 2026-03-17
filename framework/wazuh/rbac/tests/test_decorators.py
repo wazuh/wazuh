@@ -134,8 +134,7 @@ def _conf_payload():
     return {
         "auth": {
             "use_password": "yes",
-            "ssl_manager_key": "etc/sslmanager.key",
-            "key_request": {"enabled": "no"}
+            "ssl_manager_key": "etc/sslmanager.key"
         },
         "integration": {
             "secret": "topsecret",

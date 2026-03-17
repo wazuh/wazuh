@@ -60,8 +60,6 @@ from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 # Marks
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
-AUTHD_KEY_REQUEST_TIMEOUT = 10
-
 # Configurations 1
 test_paths_t1 = [Path(TEST_CASES_FOLDER_PATH, 'cases_after_registration_time.yaml'),
                  Path(TEST_CASES_FOLDER_PATH, 'cases_disconnected_time.yaml'),
@@ -109,7 +107,7 @@ def check_options(test_metadata):
         # Reopen socket (socket is closed by manager after sending message with client key)
         authd_sock.open()
         authd_sock.send(create_authd_request(stage['input']), size=False)
-        timeout = time.time() + AUTHD_KEY_REQUEST_TIMEOUT
+        timeout = time.time()
         response = ''
         while response == '':
             response = authd_sock.receive().decode()
