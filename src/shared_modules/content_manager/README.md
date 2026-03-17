@@ -246,7 +246,7 @@ The configuration above will make the Content Manager launch each `10` seconds a
 [DEBUG]: ZipDecompressor - Starting process
 [DEBUG_VERBOSE]: Decompressing '/tmp/output_folder/downloads/230577_1700904966.zip' into '/tmp/output_folder/contents'
 [DEBUG]: PubSubPublisher - Starting process
-[DEBUG_VERBOSE]: Data to be published: '{"paths":["/tmp/output_folder/contents/vd_1.0.0_vd_4.8.0_230577_1700904966.json"],"stageStatus":[{"stage":"CtiSnapshotDownloader","status":"ok"},{"stage":"ZipDecompressor","status":"ok"}],"type":"raw"}'
+[DEBUG_VERBOSE]: Data to be published: '{"paths":["/tmp/output_folder/contents/feed_snapshot_230577_1700904966.json"],"stageStatus":[{"stage":"CtiSnapshotDownloader","status":"ok"},{"stage":"ZipDecompressor","status":"ok"}],"type":"raw"}'
 [INFO]: Data published
 [DEBUG]: SkipStep - Starting process
 [DEBUG]: CleanUpContent - Starting process
@@ -375,7 +375,7 @@ The configuration above will make the Content Manager launch each `5` seconds an
 [DEBUG]: ZipDecompressor - Starting process
 [DEBUG_VERBOSE]: Decompressing '/tmp/output_folder/downloads/230577_1700904966.zip' into '/tmp/output_folder/contents'
 [DEBUG]: PubSubPublisher - Starting process
-[DEBUG_VERBOSE]: Data to be published: '{"paths":["/tmp/output_folder/contents/vd_1.0.0_vd_4.8.0_230577_1700904966.json"],"stageStatus":[{"stage":"FileDownloader","status":"ok"},{"stage":"ZipDecompressor","status":"ok"}],"type":"raw"}'
+[DEBUG_VERBOSE]: Data to be published: '{"paths":["/tmp/output_folder/contents/feed_snapshot_230577_1700904966.json"],"stageStatus":[{"stage":"FileDownloader","status":"ok"},{"stage":"ZipDecompressor","status":"ok"}],"type":"raw"}'
 [INFO]: Data published
 [DEBUG]: SkipStep - Starting process
 [DEBUG]: CleanUpContent - Starting process

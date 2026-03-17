@@ -76,7 +76,6 @@ echo 'USER_ENABLE_AUTHD="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_GENERATE_AUTHD_CERT="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_CREATE_SSL_CERT="n"' >> ./etc/preloaded-vars.conf
-echo 'DOWNLOAD_CONTENT="y"' >> ./etc/preloaded-vars.conf
 ./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
 # Create directories
@@ -304,8 +303,6 @@ if [ $1 = 2 ]; then
   fi
 
 fi
-
-%define _vdfilename vd_1.0.0_vd_4.13.0.tar.xz
 
 # Fresh install code block
 if [ $1 = 1 ]; then
@@ -594,7 +591,6 @@ rm -fr %{buildroot}
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/centos/*
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/rhel
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/rhel/*
-%attr(640, wazuh-manager, wazuh-manager) %missingok %{_localstatedir}/tmp/%{_vdfilename}
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/agents-timestamp
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/alerts

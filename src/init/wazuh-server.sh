@@ -329,7 +329,7 @@ start_service()
 
     # Delete all files in temporary folder
     TO_DELETE="$DIR/tmp"
-    find $TO_DELETE -mindepth 1 -not -path "$TO_DELETE/vd_*_vd_*.tar" -not -path "$TO_DELETE/vd_*_vd_*.tar.xz" -delete
+    find "$TO_DELETE" -mindepth 1 -delete
 
     node_type=$(grep '<node_type>' ${DIR}/etc/${WAZUH_CONF} | sed 's/<node_type>\(.*\)<\/node_type>/\1/' | tr -d ' ');
     if [ -z $node_type ]; then

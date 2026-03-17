@@ -23,7 +23,6 @@ fi
 # Install the engine
 USER_LANGUAGE="en"                   \
 USER_CA_STORE="/path/to/my_cert.pem" \
-DOWNLOAD_CONTENT="y"                 \
 ./install.sh
 
 
