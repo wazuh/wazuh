@@ -67,7 +67,6 @@ class Wazuh:
                 'version': self.version,
                 'type': self.type,
                 'max_agents': self.max_agents,
-                'openssl_support': self.openssl_support,
                 'tz_offset': self.tz_offset,
                 'tz_name': self.tz_name,
                 }
@@ -76,8 +75,6 @@ class Wazuh:
         """
         Calculates all Wazuh installation metadata
         """
-        self.openssl_support = 'yes'
-
         # Timezone info
         try:
             self.tz_offset = strftime("%z")

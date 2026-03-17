@@ -2834,8 +2834,6 @@ components:
           type: string
           minimum: 0
           description: "Maximum number of agents that can be registered."
-        openssl_support:
-          type: string
         tz_offset:
           type: string
         tz_name:
@@ -7408,7 +7406,6 @@ paths:
                       version: v4.3.0
                       type: server
                       max_agents: unlimited
-                      openssl_support: yes
                       tz_offset: +0000
                       tz_name: UTC
                       uuid: c842f85c-c24b-4b39-9508-093ce53482e7
