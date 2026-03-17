@@ -16,9 +16,7 @@ from requests import HTTPError, get
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 
 from azure_utils import (
-    CREDENTIALS_URL,
     DATETIME_MASK,
-    DEPRECATED_MESSAGE,
     get_token,
     offset_to_datetime,
     read_auth_file,
@@ -42,15 +40,6 @@ def start_log_analytics(args):
         client, secret = read_auth_file(
             auth_path=args.la_auth_path, fields=('application_id', 'application_key')
         )
-    elif args.la_id and args.la_key and args.la_tenant_domain:
-        logging.debug(f"Log Analytics: Using id and key from configuration for authentication")
-        logging.warning(
-            DEPRECATED_MESSAGE.format(
-                name='la_id and la_key', release='4.4', url=CREDENTIALS_URL
-            )
-        )
-        client = args.la_id
-        secret = args.la_key
     else:
         logging.error(
             'Log Analytics: No parameters have been provided for authentication.'

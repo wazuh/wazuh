@@ -116,7 +116,6 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                mwarn("-D is deprecated.");
                 break;
             case 'c':
                 if (!optarg) {

@@ -10,11 +10,6 @@ from aws_bucket import AWSBucket, AWSCustomBucket, AWSLogsBucket
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
 
-GUARDDUTY_URL = 'https://documentation.wazuh.com/current/amazon/services/supported-services/guardduty.html'
-GUARDDUTY_DEPRECATED_MESSAGE = 'The functionality to process GuardDuty logs stored in S3 via Kinesis was deprecated ' \
-                               'in {release}. Consider configuring GuardDuty to store its findings directly in an S3 ' \
-                               'bucket instead. Check {url} for more information.'
-
 
 class AWSGuardDutyBucket(AWSCustomBucket):
 
@@ -27,7 +22,8 @@ class AWSGuardDutyBucket(AWSCustomBucket):
             self.type = "GuardDutyNative"
             self.empty_bucket_message_template = AWSBucket.empty_bucket_message_template
         else:
-            self.type = "GuardDutyKinesis"
+            aws_tools.error("Invalid type of bucket")
+            sys.exit(12)
 
     def check_guardduty_type(self):
         try:
@@ -46,24 +42,13 @@ class AWSGuardDutyBucket(AWSCustomBucket):
         return AWSLogsBucket.get_service_prefix(self, account_id)
 
     def get_full_prefix(self, account_id, account_region):
-        if self.type == "GuardDutyNative":
-            return AWSLogsBucket.get_full_prefix(self, account_id, account_region)
-        else:
-            return self.prefix
+        return AWSLogsBucket.get_full_prefix(self, account_id, account_region)
 
     def get_base_prefix(self):
-        if self.type == "GuardDutyNative":
-            return AWSLogsBucket.get_base_prefix(self)
-        else:
-            return self.prefix
+        return AWSLogsBucket.get_base_prefix(self)
 
     def iter_regions_and_accounts(self, account_id, regions):
-        if self.type == "GuardDutyNative":
-            AWSBucket.iter_regions_and_accounts(self, account_id, regions)
-        else:
-            print(GUARDDUTY_DEPRECATED_MESSAGE.format(release="4.5", url=GUARDDUTY_URL))
-            self.check_prefix = True
-            AWSCustomBucket.iter_regions_and_accounts(self, account_id, regions)
+        AWSBucket.iter_regions_and_accounts(self, account_id, regions)
 
     def send_event(self, event):
         # Send the message (splitted if it is necessary)

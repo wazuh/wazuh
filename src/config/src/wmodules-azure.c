@@ -50,7 +50,6 @@ static void wm_clean_storage(wm_azure_storage_t * storage);
 static void wm_clean_container(wm_azure_container_t * container);
 
 static const char *AUTHENTICATION_OPTIONS_URL = "https://documentation.wazuh.com/current/azure/activity-services/prerequisites/credentials.html";
-static const char *DEPRECATED_MESSAGE = "Deprecated tag <%s> found at module '%s'. This tag was deprecated in %s; please use a different authentication method. Check %s for more information.";
 
 // Parse XML
 
@@ -239,16 +238,6 @@ int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_co
             merror(XML_VALUENULL, nodes[i]->element);
             return OS_INVALID;
 
-        } else if (!strcmp(nodes[i]->element, XML_APP_ID)) {
-            if (*nodes[i]->content != '\0') {
-                mwarn(DEPRECATED_MESSAGE, nodes[i]->element, WM_AZURE_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
-                os_strdup(nodes[i]->content, api_config->application_id);
-            }
-        } else if (!strcmp(nodes[i]->element, XML_APP_KEY)) {
-            if (*nodes[i]->content != '\0') {
-                mwarn(DEPRECATED_MESSAGE, nodes[i]->element, WM_AZURE_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
-                os_strdup(nodes[i]->content, api_config->application_key);
-            }
         } else if (!strcmp(nodes[i]->element, XML_AUTH_PATH)) {
             if (*nodes[i]->content != '\0')
                 os_strdup(nodes[i]->content, api_config->auth_path);
@@ -476,13 +465,7 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
             }
 
         } else if (nodes[i]->content != NULL && *nodes[i]->content != '\0') {
-            if (!strcmp(nodes[i]->element, XML_ACCOUNT_NAME)) {
-                mwarn(DEPRECATED_MESSAGE, nodes[i]->element, WM_AZURE_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
-                os_strdup(nodes[i]->content, storage->account_name);
-            } else if (!strcmp(nodes[i]->element, XML_ACCOUNT_KEY)) {
-                mwarn(DEPRECATED_MESSAGE, nodes[i]->element, WM_AZURE_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
-                os_strdup(nodes[i]->content, storage->account_key);
-            } else if (!strcmp(nodes[i]->element, XML_AUTH_PATH)) {
+            if (!strcmp(nodes[i]->element, XML_AUTH_PATH)) {
                 os_strdup(nodes[i]->content, storage->auth_path);
             } else if (!strcmp(nodes[i]->element, XML_TAG)) {
                 os_strdup(nodes[i]->content, storage->tag);

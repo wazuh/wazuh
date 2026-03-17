@@ -96,7 +96,7 @@ def test_read_configuration(mock_open, mock_exists, read_config):
         # Currently we only add SSL path to HTTPS options
         for section, subsection in [('https', 'key'), ('https', 'cert'), ('https', 'ca')]:
             config[section][subsection] = config[section][subsection].replace(f'{api.constants.API_SSL_PATH}/', '')
-        
+
         # SSL paths (key, cert, ca) must preserve their original case
         if 'https' in read_config and 'ca' in read_config['https']:
             assert config['https']['ca'] == read_config['https']['ca']
@@ -165,17 +165,6 @@ def test_read_wrong_configuration(mock_exists, config):
     ({'cache': {'enabled': True}}, True),
     ({'cache': {'enabled': False}}, False)
 ])
-@patch('os.path.exists', return_value=True)
-def test_read_cache_configuration(mock_exists, config, expected_msg):
-    """Verify that expected warning is logged when reading the cace API option configuration"""
-    with patch('api.configuration.yaml.safe_load') as m, patch('logging.Logger.warning') as mock_logger, \
-            patch('builtins.open'):
-        m.return_value = config
-        configuration.read_yaml_config()
-
-        if expected_msg:
-            mock_logger.assert_called_once_with(configuration.CACHE_DEPRECATED_MESSAGE.format(release="4.8.0"))
-
 
 @patch('os.chmod')
 @patch('builtins.open')
