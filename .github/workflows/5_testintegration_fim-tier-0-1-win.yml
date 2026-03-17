@@ -23,8 +23,78 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Wait for the Windows builder workflow to produce the MSI on a cheap Linux
+  # runner. The Windows shards only start once this job succeeds, preventing
+  # idle Windows runner minutes while the builder is still working.
+  wait-for-builder:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_WORKFLOW: 5_builderpackage_agent-windows.yml
+      # For pull_request events GITHUB_SHA is the merge commit SHA, not the PR
+      # head commit. The builder's head_sha is the PR head SHA, so we must use
+      # that to locate the builder run and its artifacts.
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Wait for Windows builder workflow
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 <<'PY'
+          import json, os, sys, time, urllib.parse, urllib.request
+
+          # Only wait when triggered by a PR; for workflow_dispatch the caller
+          # is responsible for ensuring the builder has already run.
+          if os.environ.get('GITHUB_EVENT_NAME') != 'pull_request':
+              print(f"Event is '{os.environ.get('GITHUB_EVENT_NAME')}', skipping builder wait.")
+              sys.exit(0)
+
+          repo     = os.environ['GITHUB_REPOSITORY']
+          sha      = os.environ['PR_HEAD_SHA']
+          workflow = os.environ['BUILD_WORKFLOW']
+          token    = os.environ['GITHUB_TOKEN']
+
+          base_url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/runs"
+          params   = urllib.parse.urlencode({'head_sha': sha, 'event': 'pull_request', 'per_page': 20})
+          url      = f"{base_url}?{params}"
+          headers  = {
+              'Accept': 'application/vnd.github+json',
+              'Authorization': f'Bearer {token}',
+              'User-Agent': 'wazuh-fim-win-wait-builder',
+          }
+
+          deadline = time.time() + 90 * 60
+
+          while time.time() < deadline:
+              with urllib.request.urlopen(urllib.request.Request(url, headers=headers)) as resp:
+                  runs = json.loads(resp.read().decode()).get('workflow_runs', [])
+
+              if not runs:
+                  print('No builder runs found for this commit yet. Retrying in 30s...')
+                  time.sleep(30)
+                  continue
+
+              completed = [r for r in runs if r.get('status') == 'completed']
+              if any(r.get('conclusion') == 'success' for r in completed):
+                  print(f"Builder workflow succeeded for commit {sha[:10]}.")
+                  sys.exit(0)
+
+              failed = [r for r in completed if r.get('conclusion') in
+                        ('failure', 'cancelled', 'timed_out', 'action_required')]
+              if failed:
+                  last = max(failed, key=lambda r: r.get('updated_at', ''))
+                  print(f"Builder failed: {last.get('conclusion')} — {last.get('html_url')}", file=sys.stderr)
+                  sys.exit(1)
+
+              print('Builder still running. Retrying in 30s...')
+              time.sleep(30)
+
+          print('Timeout waiting for Windows builder workflow.', file=sys.stderr)
+          sys.exit(1)
+          PY
+
   # Execute the tests on windows.
   run-test:
+    needs: [wait-for-builder]
     strategy:
       fail-fast: false
       matrix:
@@ -38,9 +108,6 @@ jobs:
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
       BUILD_WORKFLOW: 5_builderpackage_agent-windows.yml
       AGENT_PACKAGE_REGEXP: wazuh-agent.*windows.*\.msi
-      # For pull_request events GITHUB_SHA is the merge commit SHA, not the PR
-      # head commit. The builder workflow run's head_sha is the PR head SHA, so
-      # we must use that to locate the builder run and its artifacts.
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     runs-on: windows-2025
     name: Run FIM integration tests (${{ matrix.shard_name }})
@@ -52,72 +119,6 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      - name: Wait for Windows builder workflow
-        shell: pwsh
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          $waitScript = @'
-          import json
-          import os
-          import time
-          import urllib.parse
-          import urllib.request
-
-          repo = os.environ['GITHUB_REPOSITORY']
-          # PR_HEAD_SHA is the actual branch HEAD; GITHUB_SHA on pull_request
-          # events is the merge commit SHA which won't match the builder's head_sha.
-          sha = os.environ.get('PR_HEAD_SHA') or os.environ['GITHUB_SHA']
-          workflow = '5_builderpackage_agent-windows.yml'
-          token = os.environ['GITHUB_TOKEN']
-
-          base_url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/runs"
-          params = urllib.parse.urlencode({'head_sha': sha, 'event': 'pull_request', 'per_page': 20})
-          url = f"{base_url}?{params}"
-
-          headers = {
-            'Accept': 'application/vnd.github+json',
-            'Authorization': f'Bearer {token}',
-            'User-Agent': 'wazuh-fim-win-wait-builder'
-          }
-
-          deadline = time.time() + (90 * 60)
-
-          while time.time() < deadline:
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req) as response:
-              data = json.loads(response.read().decode())
-
-            runs = data.get('workflow_runs', [])
-            if not runs:
-              print('No builder runs found for this commit yet. Retrying in 30 seconds...')
-              time.sleep(30)
-              continue
-
-            completed = [r for r in runs if r.get('status') == 'completed']
-            success = [r for r in completed if r.get('conclusion') == 'success']
-
-            if success:
-              print(f"Builder workflow succeeded for commit {sha}.")
-              break
-
-            failed = [r for r in completed if r.get('conclusion') in ('failure', 'cancelled', 'timed_out', 'action_required')]
-            if failed:
-              last = sorted(failed, key=lambda r: r.get('updated_at', ''), reverse=True)[0]
-              raise SystemExit(
-                f"Builder workflow finished with conclusion '{last.get('conclusion')}' for this commit. "
-                f"Run URL: {last.get('html_url')}"
-              )
-
-            print('Builder workflow is still running. Retrying in 30 seconds...')
-            time.sleep(30)
-          else:
-            raise SystemExit('Timeout waiting for successful Windows builder workflow.')
-          '@
-
-          $scriptPath = Join-Path $env:RUNNER_TEMP 'wait_builder.py'
-          Set-Content -Path $scriptPath -Value $waitScript -Encoding UTF8
-          python $scriptPath
       - name: Download MSI package artifact
         uses: dawidd6/action-download-artifact@v6
         with:
