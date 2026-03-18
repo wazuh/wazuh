@@ -38,7 +38,7 @@ const wm_context WM_CONTROL_CONTEXT = {
 
 void *wm_control_main(){
     mtinfo(WM_CONTROL_LOGTAG, "Starting control thread.");
-    send_ip();
+    process_control();
     return NULL;
 }
 
@@ -63,7 +63,7 @@ cJSON *wm_control_dump() {
     return root;
 }
 
-void *send_ip(){
+void *process_control(){
     int sock;
     int peer;
     char *buffer = NULL;
@@ -85,7 +85,7 @@ void *send_ip(){
         switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
         case -1:
             if (errno != EINTR) {
-                mterror_exit(WM_CONTROL_LOGTAG, "At send_ip(): select(): %s", strerror(errno));
+                mterror_exit(WM_CONTROL_LOGTAG, "At process_control(): select(): %s", strerror(errno));
             }
 
             continue;
@@ -96,7 +96,7 @@ void *send_ip(){
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if (errno != EINTR) {
-                mterror(WM_CONTROL_LOGTAG, "At send_ip(): accept(): %s", strerror(errno));
+                mterror(WM_CONTROL_LOGTAG, "At process_control(): accept(): %s", strerror(errno));
             }
 
             continue;
@@ -105,7 +105,7 @@ void *send_ip(){
         os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
         switch (length = OS_RecvUnix(peer, OS_MAXSTR, buffer), length) {
         case -1:
-            mterror(WM_CONTROL_LOGTAG, "At send_ip(): OS_RecvUnix(): %s", strerror(errno));
+            mterror(WM_CONTROL_LOGTAG, "At process_control(): OS_RecvUnix(): %s", strerror(errno));
             break;
 
         case 0:
