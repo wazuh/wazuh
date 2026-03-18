@@ -283,7 +283,7 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
                 continue
 
             version = active_agents[agent_id]
-            if not version or version.startswith('Wazuh v4.'):
+            if not version or WazuhVersion(version) < WazuhVersion('v5.0.0'):
                 result.add_failed_item(id_=agent_id, error=WazuhError(1761))
                 continue
 
