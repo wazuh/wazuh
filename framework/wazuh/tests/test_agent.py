@@ -237,8 +237,10 @@ def test_agent_reconnect_agents(socket_mock, send_mock, agents_info_mock, reconn
 
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
-    (['001', '002'], ['001', '002'], None),
-    (['001', '500'], ['001'], 1701)
+    (['010'],        ['010'], None),   # v5.0.0 - succeeds
+    (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
+    (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
+    (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
 ])
 @patch('wazuh.agent.send_restart_command')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
@@ -266,8 +268,10 @@ async def test_agent_restart_agents(socket_mock, send_http_mock, agents_info_moc
 
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
-    (['001', '002'], ['001', '002'], 1703),
-    (['001', '500'], ['001'], 1701)
+    (['010'],        ['010'], None),   # v5.0.0 - succeeds
+    (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
+    (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
+    (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
 ])
 @patch('wazuh.agent.send_restart_command')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
