@@ -15,7 +15,8 @@
 #define SOCKET_LOGCOLLECTOR "logcollector"
 #define SOCKET_SYSCHECK "syscheck"
 #define SOCKET_WMODULES "wmodules"
-#define SOCKET_AGENT "agent"
+#define SOCKET_AGENT    "agent"
+#define SOCKET_WCONTROL "wcontrol"
 
 typedef struct req_node_t {
     int sock;
