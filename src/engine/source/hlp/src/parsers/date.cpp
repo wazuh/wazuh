@@ -215,21 +215,42 @@ void downloadAndInstallTimeZoneDB(const std::string& version)
 } // namespace
 
 void initTZDB(const std::string& path, bool autoUpdate, const std::string& forceVersion)
-
 {
     date::set_install(path);
-
-    std::string rv = date::remote_version();
-    LOG_DEBUG("Remote timezone database version: '{}'", rv);
 
     if (!forceVersion.empty())
     {
         LOG_INFO("Forcing timezone database version: '{}'", forceVersion);
-        rv = forceVersion;
-        autoUpdate= true;
+        if (loadTimeZoneDB(forceVersion, true))
+        {
+            return;
+        }
+        downloadAndInstallTimeZoneDB(forceVersion);
+        const auto& db = date::get_tzdb();
+        LOG_INFO("Timezone database updated to version: '{}'", db.version);
+        return;
     }
 
-    if (loadTimeZoneDB(rv, autoUpdate))
+    if (!autoUpdate)
+    {
+        if (loadTimeZoneDB("", false))
+        {
+            return;
+        }
+        // No local data available, fall back to remote download
+        std::string rv = date::remote_version();
+        LOG_DEBUG("Remote timezone database version: '{}'", rv);
+        downloadAndInstallTimeZoneDB(rv);
+        const auto& db = date::get_tzdb();
+        LOG_INFO("Timezone database initialized to version: '{}'", db.version);
+        return;
+    }
+
+    // autoUpdate=true: always check remote version
+    std::string rv = date::remote_version();
+    LOG_DEBUG("Remote timezone database version: '{}'", rv);
+
+    if (loadTimeZoneDB(rv, true))
     {
         return;
     }

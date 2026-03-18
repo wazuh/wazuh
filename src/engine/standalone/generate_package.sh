@@ -22,6 +22,25 @@ ctrl_c() {
     clean 1
 }
 
+install_tzdb() {
+    local wazuh_path="$1"
+    local temp_dir="$2"
+
+    local tzdb_src_path="${wazuh_path}/src/external/tzdb"
+    local tzdb_dst_dir="${temp_dir}/data/tzdb/iana"
+
+    install -d -m 0770 "${tzdb_dst_dir}"
+
+    if [ ! -f "${tzdb_src_path}/+VERSION" ]; then
+        echo "Warning: Timezone database not found in ${tzdb_src_path}. Standalone will ship without TZDB."
+        return 0
+    fi
+
+    echo "Including timezone database (offline) in standalone package..."
+    cp -r "${tzdb_src_path}/." "${tzdb_dst_dir}/"
+    return 0
+}
+
 install_geoip() {
     local wazuh_path="$1"
     local temp_dir="$2"
@@ -184,7 +203,6 @@ build_standalone() {
     # Create .keep files
     touch ${TEMP_DIR}/bin/lib/.keep
     touch ${TEMP_DIR}/data/kvdb/.keep
-    touch ${TEMP_DIR}/data/tzdb/.keep
     touch ${TEMP_DIR}/data/mmdb/.keep
     touch ${TEMP_DIR}/logs/.keep
     touch ${TEMP_DIR}/sockets/.keep
@@ -202,6 +220,9 @@ build_standalone() {
 
     # Copy geo dbs
     install_geoip "${WAZUH_PATH}" "${TEMP_DIR}"
+
+    # Copy timezone database
+    install_tzdb "${WAZUH_PATH}" "${TEMP_DIR}"
 
     # Copy scripts and README
     cp -r ${WAZUH_PATH}/src/engine/standalone/run_engine.sh ${TEMP_DIR}/

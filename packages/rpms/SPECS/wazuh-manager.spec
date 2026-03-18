@@ -628,7 +628,9 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/indexer
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/router
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/keystore
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/tzdb
+%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data
+%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data/tzdb
+%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data/tzdb/iana
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/etc/ruleset
 %dir %attr(1770, root, wazuh-manager) %{_localstatedir}/tmp
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/var

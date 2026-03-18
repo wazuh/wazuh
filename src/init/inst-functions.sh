@@ -1008,6 +1008,29 @@ EOF
     echo "GeoIP databases installed successfully."
 }
 
+installTZDB()
+{
+    local TZDB_SRC_PATH=./external/tzdb
+    local TZDB_DST_PATH=${INSTALLDIR}/data/tzdb/iana
+
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/data/tzdb
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${TZDB_DST_PATH}
+
+    if [ ! -f "${TZDB_SRC_PATH}/+VERSION" ]; then
+        echo "Warning: Timezone database not found in ${TZDB_SRC_PATH}. Skipping TZDB installation."
+        return 0
+    fi
+
+    echo "Installing timezone database..."
+
+    cp -r "${TZDB_SRC_PATH}/." "${TZDB_DST_PATH}/"
+    chown -R ${WAZUH_USER}:${WAZUH_GROUP} "${TZDB_DST_PATH}"
+    find "${TZDB_DST_PATH}" -type f -exec chmod 0640 {} +
+    find "${TZDB_DST_PATH}" -type d -exec chmod 0750 {} +
+
+    echo "Timezone database installed successfully."
+}
+
 InstallLocal()
 {
 
@@ -1043,7 +1066,7 @@ InstallLocal()
 
     installGeoIP
 
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tzdb
+    installTZDB
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/db
 
