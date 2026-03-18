@@ -691,19 +691,6 @@ components:
                 $ref: '#/components/schemas/GroupID'
         - $ref: '#/components/schemas/AllItemsResponse'
 
-    AllItemsResponseAgentsSynced:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/AgentSynced'
-
     AllItemsResponseAgentsKeys:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -1082,16 +1069,6 @@ components:
               type: integer
               format: int32
               description: "Number of agents with the specified unique fields"
-
-    AgentSynced:
-      type: object
-      properties:
-        id:
-          type: string
-          description: "Agent ID"
-        synced:
-          type: boolean
-          description: "Sync info"
 
     AgentID:
       type: string
