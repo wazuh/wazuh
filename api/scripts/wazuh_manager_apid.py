@@ -8,7 +8,6 @@ import argparse
 import os
 import signal
 import sys
-import warnings
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from functools import partial
 

@@ -82,7 +82,7 @@ int main(int argc, char **argv)
         {NULL, no_argument, NULL, 0}
     };
 
-    while ((c = getopt_long(argc, argv, "Vtdfhu:g:D:c:", long_opts, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "Vtdfhu:g:c:", long_opts, NULL)) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -111,11 +111,6 @@ int main(int argc, char **argv)
                 break;
             case 't':
                 test_config = 1;
-                break;
-            case 'D':
-                if (!optarg) {
-                    merror_exit("-D needs an argument");
-                }
                 break;
             case 'c':
                 if (!optarg) {
