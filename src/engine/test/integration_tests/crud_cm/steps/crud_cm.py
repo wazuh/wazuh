@@ -622,10 +622,29 @@ def step_impl(context, space):
     uuid = getattr(context, "resource_uuid", None)
     assert uuid is not None, "No resource UUID stored in context"
 
-    err, resp = request_resource_get(space, uuid, as_json=False)
+    err, resp = request_resource_get(space, uuid, as_json=True)
     assert err is None, f"{err}"
     assert resp.status == api_engine.OK, f"{resp}"
-    assert "test.updated: true" in resp.content, f"{resp.content}"
+
+    # Parse the JSON content to verify the field exists
+    import json
+    content = json.loads(resp.content)
+
+    # Check that normalize[0].map contains {"_test.updated": true}
+    assert "normalize" in content, f"Missing 'normalize' in response: {resp.content}"
+    assert len(content["normalize"]) > 0, f"Empty 'normalize' array: {resp.content}"
+    assert "map" in content["normalize"][0], f"Missing 'map' in normalize[0]: {resp.content}"
+
+    # Find the _test.updated field in the map array
+    map_items = content["normalize"][0]["map"]
+    found_updated = False
+    for item in map_items:
+        if "_test.updated" in item:
+            assert item["_test.updated"] is True, f"Expected _test.updated to be true, got {item['_test.updated']}"
+            found_updated = True
+            break
+
+    assert found_updated, f"Field '_test.updated' not found in map: {resp.content}"
 
 
 # ============================================================
