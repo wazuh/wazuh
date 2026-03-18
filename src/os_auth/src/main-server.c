@@ -380,8 +380,8 @@ int main(int argc, char **argv)
         }
 
         // Return -1 if not configured
-        if (authd_read_config(OSSECCONF) < 0) {
-            merror_exit(CONFIG_ERROR, OSSECCONF);
+        if (authd_read_config(WAZUHCONF) < 0) {
+            merror_exit(CONFIG_ERROR, WAZUHCONF);
         }
 
         // Overwrite arguments

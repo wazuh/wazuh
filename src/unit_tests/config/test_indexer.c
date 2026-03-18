@@ -92,10 +92,10 @@ void test_success_valid_configuration_host_IP(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_SUCCESS);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_SUCCESS);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
     assert_string_equal(json_result, "{\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{\"certificate_authorities\":[\"cacert1.pem\",\"cacert2.pem\"],\"certificate\":\"cert.pem\",\"key\":\"key.pem\"}}");
     cJSON_free(json_result);
@@ -124,10 +124,10 @@ void test_success_valid_configuration_host_hostname(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_SUCCESS);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_SUCCESS);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
     assert_string_equal(json_result, "{\"hosts\":[\"http://hostname1:9200\",\"https://hostname2:9200\"],\"ssl\":{\"certificate_authorities\":[\"cacert1.pem\",\"cacert2.pem\"],\"certificate\":\"cert.pem\",\"key\":\"key.pem\"}}");
     cJSON_free(json_result);
@@ -154,10 +154,10 @@ void test_success_valid_configuration_missing_certificate_key_settings(void **st
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_SUCCESS);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_SUCCESS);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
     assert_string_equal(json_result, "{\"hosts\":[\"http://hostname1:9200\",\"https://hostname2:9200\"],\"ssl\":{\"certificate_authorities\":[\"cacert1.pem\",\"cacert2.pem\"]}}");
     cJSON_free(json_result);
@@ -187,11 +187,11 @@ void test_fail_invalid_enabled_setting(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
     expect_string(__wrap__merror, formatted_msg, "Invalid element in the configuration: 'indexer.enabled'");
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_INVALID);
     assert_null(indexer_config);
 }
 
@@ -210,11 +210,11 @@ void test_fail_missing_ssl_section(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
     expect_string(__wrap__merror, formatted_msg, "Missing required configuration in module 'indexer'. Check configuration");
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_INVALID);
     assert_null(indexer_config);
 }
 
@@ -237,11 +237,11 @@ void test_fail_missing_hosts_setting(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
     expect_string(__wrap__merror, formatted_msg, "Missing required configuration in module 'indexer'. Check configuration");
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_INVALID);
     assert_null(indexer_config);
 }
 
@@ -259,11 +259,11 @@ void test_fail_invalid_host_setting_value(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
     expect_string(__wrap__merror, formatted_msg, "Invalid host 'https://invalid/hostname:9200' in configuration array 'indexer.hosts' in module 'indexer'. Check configuration");
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_INVALID);
     assert_null(indexer_config);
 }
 
@@ -281,11 +281,11 @@ void test_fail_empty_host_setting_value(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
     expect_string(__wrap__merror, formatted_msg, "Invalid host '' in configuration array 'indexer.hosts' in module 'indexer'. Check configuration");
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_INVALID);
     assert_null(indexer_config);
 }
 
@@ -303,11 +303,11 @@ void test_fail_empty_hostname_setting_value(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
     expect_string(__wrap__merror, formatted_msg, "Invalid host 'http://:9200' in configuration array 'indexer.hosts' in module 'indexer'. Check configuration");
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_INVALID);
     assert_null(indexer_config);
 }
 
@@ -325,11 +325,11 @@ void test_fail_missing_port_setting_value(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
     expect_string(__wrap__merror, formatted_msg, "Invalid host 'http://hostname' in configuration array 'indexer.hosts' in module 'indexer'. Check configuration");
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_INVALID);
     assert_null(indexer_config);
 }
 
@@ -347,11 +347,11 @@ void test_fail_missing_port_setting_value_with_port_separator(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
     expect_string(__wrap__merror, formatted_msg, "Invalid host 'http://hostname:' in configuration array 'indexer.hosts' in module 'indexer'. Check configuration");
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_INVALID);
     assert_null(indexer_config);
 }
 
@@ -369,11 +369,11 @@ void test_fail_invalid_port_setting_value(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
     expect_string(__wrap__merror, formatted_msg, "Invalid host 'http://hostname:port' in configuration array 'indexer.hosts' in module 'indexer'. Check configuration");
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_INVALID);
     assert_null(indexer_config);
 }
 
@@ -391,11 +391,11 @@ void test_fail_missing_protocol_setting_value(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
     expect_string(__wrap__merror, formatted_msg, "Invalid host 'hostname:9200' in configuration array 'indexer.hosts' in module 'indexer'. Check configuration");
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_INVALID);
     assert_null(indexer_config);
 }
 
@@ -420,11 +420,11 @@ void test_fail_empty_certificate_file_path(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
     expect_string(__wrap__merror, formatted_msg, "File '' not found for 'indexer.ssl.certificate_authorities' in module 'indexer'. Check configuration");
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_INVALID);
     assert_null(indexer_config);
 }
 
@@ -450,11 +450,11 @@ void test_fail_non_existent_certificate_file(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
     expect_string(__wrap__merror, formatted_msg, "File '/var/wazuh-manager/cacert1.pem' not found for 'indexer.ssl.certificate_authorities' in module 'indexer'. Check configuration");
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_INVALID);
     assert_null(indexer_config);
 }
 
@@ -495,10 +495,10 @@ void test_success_duplicate_configuration_block(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_SUCCESS);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_SUCCESS);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
     assert_string_equal(json_result, "{\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{\"certificate_authorities\":[\"cacert1.pem\",\"cacert2.pem\"],\"certificate\":\"cert.pem\",\"key\":\"key.pem\"}}");
     cJSON_free(json_result);
@@ -539,10 +539,10 @@ void test_success_multiple_configuration_blocks(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_SUCCESS);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_SUCCESS);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
     assert_string_equal(json_result, "{\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{\"certificate_authorities\":[\"cacert2.pem\"],\"certificate\":\"cert.pem\",\"key\":\"key.pem\"}}");
     cJSON_free(json_result);
@@ -559,11 +559,11 @@ void test_fail_empty_indexer_configuration_block(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
     expect_string(__wrap__merror, formatted_msg, "Empty configuration for module 'indexer'");
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_INVALID);
     assert_null(indexer_config);
 }
 
@@ -590,11 +590,11 @@ void test_fail_empty_key_setting_value(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
     expect_string(__wrap__merror, formatted_msg, "Configuration field 'indexer.ssl.key' has an empty value in module 'indexer'. Check configuration");
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_INVALID);
     assert_null(indexer_config);
 }
 
@@ -619,11 +619,11 @@ void test_fail_host_0_entries(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
     expect_string(__wrap__merror, formatted_msg, "Configuration array 'indexer.hosts' is empty in module 'indexer'. Check configuration");
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_INVALID);
     assert_null(indexer_config);
 }
 
@@ -649,10 +649,10 @@ void test_success_host_1_entry(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_SUCCESS);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_SUCCESS);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
     assert_string_equal(json_result, "{\"hosts\":[\"http://10.2.20.2:9200\"],\"ssl\":{\"certificate_authorities\":[\"cacert1.pem\",\"cacert2.pem\"],\"certificate\":\"cert.pem\",\"key\":\"key.pem\"}}");
     cJSON_free(json_result);
@@ -679,11 +679,11 @@ void test_fail_certificate_authorities_0_entries(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
     expect_string(__wrap__merror, formatted_msg, "Configuration array 'indexer.ssl.certificate_authorities' is empty in module 'indexer'. Check configuration");
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_INVALID);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_INVALID);
     assert_null(indexer_config);
 }
 
@@ -709,10 +709,10 @@ void test_success_certificate_authorities_1_entry(void **state) {
     fwrite(string, 1, strlen(string), output);
     fclose(output);
 
-    expect_string(__wrap_Read_Indexer, config_file, OSSECCONF);
+    expect_string(__wrap_Read_Indexer, config_file, WAZUHCONF);
     expect_string(__wrap_get_indexer_cnf, cnf_file, test_path);
 
-    assert_int_equal(Read_Indexer(OSSECCONF), OS_SUCCESS);
+    assert_int_equal(Read_Indexer(WAZUHCONF), OS_SUCCESS);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
     assert_string_equal(json_result, "{\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{\"certificate_authorities\":[\"cacert1.pem\"],\"certificate\":\"cert.pem\",\"key\":\"key.pem\"}}");
     cJSON_free(json_result);

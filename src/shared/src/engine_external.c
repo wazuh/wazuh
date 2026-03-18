@@ -9,7 +9,7 @@
 #include <shared.h>
 
 // Configuration constants
-static const char* const XML_TAG_WAZUH_CONFIG = OSSECCONFIG;
+static const char* const XML_TAG_WAZUH_CONFIG = WAZUHCONFIG;
 static const char* const XML_TAG_INDEXER = "indexer";
 static const char* const INDEXER_ROOT_PATH = "indexer";
 static const char* const XML_TAG_HOST = "host";
@@ -580,7 +580,7 @@ char* get_indexer_cnf(const char* cnf_file, char* err_buf, size_t err_buf_size)
         return NULL;
     }
 
-    snprintf(err_buf, err_buf_size, "Could not find <%s> element in configuration file %s", OSSECCONFIG, cnf_file);
+    snprintf(err_buf, err_buf_size, "Could not find <%s> element in configuration file %s", WAZUHCONFIG, cnf_file);
     XML_NODE nodes_to_clear[] = {root_nodes};
     cleanup_xml_resources(&xml, nodes_to_clear, 1);
     return NULL;

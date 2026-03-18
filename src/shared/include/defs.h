@@ -311,27 +311,27 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Built-in defines */
 
-#ifndef OSSECCONF
+#ifndef WAZUHCONF
 #ifndef WIN32
 #ifdef CLIENT
-#define OSSECCONF "etc/ossec.conf"
+#define WAZUHCONF "etc/ossec.conf"
 #else
-#define OSSECCONF "etc/wazuh-manager.conf"
+#define WAZUHCONF "etc/wazuh-manager.conf"
 #endif
 #else
-#define OSSECCONF "ossec.conf"
+#define WAZUHCONF "ossec.conf"
 #endif
 #endif
 
-#ifndef OSSECCONFIG
+#ifndef WAZUHCONFIG
 #ifndef WIN32
 #ifdef CLIENT
-#define OSSECCONFIG       "ossec_config"
+#define WAZUHCONFIG       "ossec_config"
 #else
-#define OSSECCONFIG       "wazuh_config"
+#define WAZUHCONFIG       "wazuh_config"
 #endif
 #else
-#define OSSECCONFIG       "ossec_config"
+#define WAZUHCONFIG       "ossec_config"
 #endif
 #endif
 

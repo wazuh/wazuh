@@ -33,9 +33,9 @@ int main(int argc, char **argv)
         return (0);
     }
 
-    /* Check if OSSEC-HIDS was installed already */
-    if (!fileexist(OSSECCONF)) {
-        printf("%s: OSSEC not installed yet. Exiting.\n", argv[0]);
+    /* Check if WAZUH-HIDS was installed already */
+    if (!fileexist(WAZUHCONF)) {
+        printf("%s: WAZUH not installed yet. Exiting.\n", argv[0]);
         return (0);
     }
 
@@ -47,7 +47,7 @@ int main(int argc, char **argv)
     }
 
     /* Write to the config file */
-    if (OS_WriteXML(OSSECCONF, OSSEC_CONFIG_TMP, xml_syscheck_status,
+    if (OS_WriteXML(WAZUHCONF, OSSEC_CONFIG_TMP, xml_syscheck_status,
                     "no", status) != 0) {
         printf("%s: Error writing to the Config file. Exiting.\n", argv[0]);
         return (0);
@@ -55,11 +55,11 @@ int main(int argc, char **argv)
 
     /* Rename config files */
     unlink(OSSECLAST);
-    if (rename(OSSECCONF, OSSECLAST)) {
-        printf(RENAME_ERROR, OSSECCONF, OSSECLAST, errno, strerror(errno));
+    if (rename(WAZUHCONF, OSSECLAST)) {
+        printf(RENAME_ERROR, WAZUHCONF, OSSECLAST, errno, strerror(errno));
     }
-    if (rename(OSSEC_CONFIG_TMP, OSSECCONF)) {
-        printf(RENAME_ERROR, OSSEC_CONFIG_TMP, OSSECCONF, errno, strerror(errno));
+    if (rename(OSSEC_CONFIG_TMP, WAZUHCONF)) {
+        printf(RENAME_ERROR, OSSEC_CONFIG_TMP, WAZUHCONF, errno, strerror(errno));
     }
 
     return (0);
