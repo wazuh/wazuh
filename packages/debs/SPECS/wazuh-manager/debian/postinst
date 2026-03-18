@@ -124,9 +124,9 @@ case "$1" in
     if [ -f ${WAZUH_TMP_DIR}/client.keys ]; then
         mv ${WAZUH_TMP_DIR}/client.keys ${DIR}/etc/client.keys
     fi
-    # Restore local insternal options configuration
-    if [ -f ${WAZUH_TMP_DIR}/local_internal_options.conf ]; then
-        mv ${WAZUH_TMP_DIR}/local_internal_options.conf ${DIR}/etc/local_internal_options.conf
+    # Restore manager internal options configuration
+    if [ -f ${WAZUH_TMP_DIR}/wazuh-manager-internal-options.conf ]; then
+        mv ${WAZUH_TMP_DIR}/wazuh-manager-internal-options.conf ${DIR}/etc/wazuh-manager-internal-options.conf
     fi
 
     # Restore wazuh-manager.conf configuration
@@ -157,9 +157,8 @@ case "$1" in
 
     chown root:${GROUP} ${DIR}/etc/wazuh-manager.conf > /dev/null 2>&1 || true
     chmod 660 ${DIR}/etc/wazuh-manager.conf > /dev/null 2>&1 || true
-    chown root:${GROUP} ${DIR}/etc/internal_options.conf \
-        ${DIR}/etc/local_internal_options.conf > /dev/null 2>&1 || true
-    chmod 640 ${DIR}/etc/internal_options.conf ${DIR}/etc/local_internal_options.conf > /dev/null 2>&1 || true
+    chown root:${GROUP} ${DIR}/etc/wazuh-manager-internal-options.conf > /dev/null 2>&1 || true
+    chmod 640 ${DIR}/etc/wazuh-manager-internal-options.conf > /dev/null 2>&1 || true
     # Restore group files
     if [ -d ${WAZUH_TMP_DIR}/group ]; then
         cp -rfp ${WAZUH_TMP_DIR}/group/* ${DIR}/etc/shared

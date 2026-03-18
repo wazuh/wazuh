@@ -99,7 +99,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
 
     fp = wfopen(defines_file, "r");
     if (!fp) {
-        if (strcmp(defines_file, OSSEC_LDEFINES) != 0) {
+        if (errno != ENOENT) {
             merror(FOPEN_ERROR, defines_file, errno, strerror(errno));
         }
         return (NULL);
@@ -264,11 +264,13 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
 
     /* Try to read from the local define file */
     value = _read_file(high_name, low_name, OSSEC_LDEFINES);
+#ifdef OSSEC_DEFINES
     if (!value) {
         value = _read_file(high_name, low_name, OSSEC_DEFINES);
-        if (!value) {
-            merror_exit(DEF_NOT_FOUND, high_name, low_name);
-        }
+    }
+#endif
+    if (!value) {
+        merror_exit(DEF_NOT_FOUND, high_name, low_name);
     }
 
     ret = parse_define_int_value(high_name, low_name, value, min, max);
@@ -297,6 +299,34 @@ static int parse_define_int_value(const char *high_name, const char *low_name, c
     }
 
     return ret;
+}
+
+/* Get an integer definition with a fallback default value.
+ * Tries the local defines file, then the main defines file.
+ * Returns default_val when the option is absent from both files.
+ */
+int getDefine_Int_default(const char *high_name, const char *low_name, int min, int max, int default_val)
+{
+    int ret;
+    char *value;
+
+    /* Try to read from the local define file */
+    value = _read_file(high_name, low_name, OSSEC_LDEFINES);
+#ifdef OSSEC_DEFINES
+    if (!value) {
+        value = _read_file(high_name, low_name, OSSEC_DEFINES);
+    }
+#endif
+    if (!value) {
+        return default_val;
+    }
+
+    ret = parse_define_int_value(high_name, low_name, value, min, max);
+
+    /* Clear memory */
+    free(value);
+
+    return (ret);
 }
 
 /* Check if IP_address is present at that_IP

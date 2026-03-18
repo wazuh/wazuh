@@ -113,6 +113,11 @@ else()
   list(REMOVE_ITEM WAZUH_MODULES_SRC "${SRC_FOLDER}/wazuh_modules/src/wm_control.c")
 endif()
 
+# Remove agent-only modules from server build
+if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
+  list(REMOVE_ITEM WAZUH_MODULES_SRC "${SRC_FOLDER}/wazuh_modules/src/wm_sca.c")
+endif()
+
 # Build static library (without main.c)
 list(REMOVE_ITEM WAZUH_MODULES_SRC "${SRC_FOLDER}/wazuh_modules/src/main.c")
 add_library(wazuh_modulesd_lib STATIC ${WAZUH_MODULES_SRC})

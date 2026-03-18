@@ -56,7 +56,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,save_controlmsg -Wl,--wrap,validate_control_msg -Wl,--wrap,sleep -Wl,--wrap,stat -Wl,--wrap,time \
                             -Wl,--wrap,agent_meta_from_agent_info -Wl,--wrap,agent_meta_upsert_locked \
                             -Wl,--wrap,batch_queue_enqueue_ex \
-                            -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int \
+                            -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default \
                             -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_evt \
                             -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap,router_provider_send -Wl,--wrap,w_query_agentd ${HASH_OP_WRAPPERS}")
@@ -84,7 +84,7 @@ list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsAllowedID -Wl,--
                             -Wl,--wrap,sendto -Wl,--wrap,fcntl -Wl,--wrap,rem_add_send -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_remote-config")
-list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,ReadConfig -Wl,--wrap,getDefine_Int -Wl,--wrap,get_node_name -Wl,--wrap,get_cluster_name -Wl,--wrap,w_query_agentd")
+list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,ReadConfig -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,get_node_name -Wl,--wrap,get_cluster_name -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_remote-state")
 list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,rem_get_tsize \

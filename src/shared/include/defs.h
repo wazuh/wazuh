@@ -243,8 +243,14 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Internal definitions files */
 #ifndef WIN32
+#ifdef CLIENT
 #define OSSEC_DEFINES  "etc/internal_options.conf"
 #define OSSEC_LDEFINES "etc/local_internal_options.conf"
+#else
+/* Manager: defaults live in code via getDefine_Int_default(); only the
+ * user-overrides file is needed. OSSEC_DEFINES is intentionally not defined. */
+#define OSSEC_LDEFINES "etc/wazuh-manager-internal-options.conf"
+#endif
 #else
 #define OSSEC_DEFINES  "internal_options.conf"
 #define OSSEC_LDEFINES "local_internal_options.conf"

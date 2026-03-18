@@ -90,17 +90,17 @@ int main(int argc, char ** argv)
 
     // Read internal options
 
-    wconfig.worker_pool_size = getDefine_Int("wazuh_db", "worker_pool_size", 1, 32);
-    wconfig.commit_time_min = getDefine_Int("wazuh_db", "commit_time_min", 1, 3600);
-    wconfig.commit_time_max = getDefine_Int("wazuh_db", "commit_time_max", 1, 3600);
-    wconfig.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
-    nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
+    wconfig.worker_pool_size = getDefine_Int_default("wazuh_db", "worker_pool_size", 1, 32, 8);
+    wconfig.commit_time_min = getDefine_Int_default("wazuh_db", "commit_time_min", 1, 3600, 10);
+    wconfig.commit_time_max = getDefine_Int_default("wazuh_db", "commit_time_max", 1, 3600, 60);
+    wconfig.open_db_limit = getDefine_Int_default("wazuh_db", "open_db_limit", 1, 4096, 64);
+    nofile = getDefine_Int_default("wazuh_db", "rlimit_nofile", 1024, 1048576, 458752);
 
-    wconfig.fragmentation_threshold = getDefine_Int("wazuh_db", "fragmentation_threshold", 0, 100);
-    wconfig.fragmentation_delta = getDefine_Int("wazuh_db", "fragmentation_delta", 0, 100);
-    wconfig.free_pages_percentage = getDefine_Int("wazuh_db", "free_pages_percentage", 0, 99);
-    wconfig.max_fragmentation = getDefine_Int("wazuh_db", "max_fragmentation", 0, 100);
-    wconfig.check_fragmentation_interval = getDefine_Int("wazuh_db", "check_fragmentation_interval", 1, 30758400);
+    wconfig.fragmentation_threshold = getDefine_Int_default("wazuh_db", "fragmentation_threshold", 0, 100, 75);
+    wconfig.fragmentation_delta = getDefine_Int_default("wazuh_db", "fragmentation_delta", 0, 100, 5);
+    wconfig.free_pages_percentage = getDefine_Int_default("wazuh_db", "free_pages_percentage", 0, 99, 0);
+    wconfig.max_fragmentation = getDefine_Int_default("wazuh_db", "max_fragmentation", 0, 100, 90);
+    wconfig.check_fragmentation_interval = getDefine_Int_default("wazuh_db", "check_fragmentation_interval", 1, 30758400, 7200);
 
     wconfig.is_worker_node = w_is_worker() == 1;
 
@@ -119,7 +119,7 @@ int main(int argc, char ** argv)
     if (!isDebug()) {
         int debug_level;
 
-        for (debug_level = getDefine_Int("wazuh_db", "debug", 0, 2); debug_level; debug_level--) {
+        for (debug_level = getDefine_Int_default("wazuh_db", "debug", 0, 2, 0); debug_level; debug_level--) {
             nowDebug();
         }
     }

@@ -37,7 +37,7 @@ BOOL wrap_EvtRender(EVT_HANDLE Context,
 EVT_HANDLE wrap_EvtCreateRenderContext(DWORD   ValuePathsCount,
                                        LPCWSTR *ValuePaths,
                                        DWORD   Flags) {
-    check_expected(ValuePathsCount),
+    check_expected(ValuePathsCount);
     check_expected_ptr(ValuePaths);
     check_expected(Flags);
     return mock_type(EVT_HANDLE);
