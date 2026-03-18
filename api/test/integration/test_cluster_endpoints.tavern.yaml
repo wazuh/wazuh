@@ -671,9 +671,6 @@ stages:
 ---
 test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
 
-marks:
-  - xfail
-
 stages:
 
   - name: Show the config of authd/authd on master
