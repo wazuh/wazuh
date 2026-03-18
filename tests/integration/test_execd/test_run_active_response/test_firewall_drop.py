@@ -53,7 +53,7 @@ from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
-from . import CONFIGS_PATH, TEST_CASES_PATH
+from . import CONFIGS_PATH, REPO_ROOT, TEST_CASES_PATH
 
 
 # Set pytest marks.

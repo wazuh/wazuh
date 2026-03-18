@@ -175,7 +175,7 @@ def backup_wazuh_configuration() -> None:
 
 
 @pytest.fixture()
-def set_wazuh_configuration(test_configuration: dict) -> None:
+def set_wazuh_configuration(request: pytest.FixtureRequest, test_configuration: dict) -> None:
     """Set wazuh configuration
 
     Args:
@@ -185,8 +185,22 @@ def set_wazuh_configuration(test_configuration: dict) -> None:
     backup_config = configuration.get_wazuh_conf()
 
     # Configuration for testing
+    template = None
+    template_spec = getattr(request.module, "wazuh_configuration_template", None)
+    use_minimal_template = getattr(request.module, "use_minimal_wazuh_configuration", False)
+
+    if use_minimal_template:
+        template = configuration.get_minimal_configuration()
+    elif template_spec is not None:
+        if template_spec == "minimal":
+            template = configuration.get_minimal_configuration()
+        elif isinstance(template_spec, list):
+            template = template_spec
+        else:
+            template = file.read_file_lines(os.fspath(template_spec))
+
     test_config = configuration.set_section_wazuh_conf(
-        test_configuration.get("sections")
+        test_configuration.get("sections"), template=template
     )
 
     # Set new configuration

@@ -10,7 +10,7 @@ type: integration
 brief: These tests will check if the 'SSL' (Secure Socket Layer) protocol-related settings of
        the 'wazuh-manager-authd' daemon are working correctly. The 'wazuh-manager-authd' daemon can
        automatically add a Wazuh agent to a Wazuh manager and provide the key
-       to the agent. 
+       to the agent.
 
 components:
     - authd
@@ -128,9 +128,6 @@ def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_
     ciphers = test_metadata['ciphers']
     protocol = test_metadata['protocol']
     expect = test_metadata['expect']
-
-    if protocol == 'ssl_tlsv1_1':
-        pytest.skip('TLS 1.1 is deprecated and not working on several pyOpenSSL versions.')
 
 
     address, family, connection_protocol = receiver_sockets_params[0]

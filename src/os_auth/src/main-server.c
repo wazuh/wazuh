@@ -179,10 +179,6 @@ int main(int argc, char **argv)
                     nowDebug();
                     break;
 
-                case 'i':
-                    mwarn(DEPRECATED_OPTION_WARN, "-i", OSSECCONF);
-                    break;
-
                 case 'g':
                     if (!optarg) {
                         merror_exit("-g needs an argument");
@@ -254,14 +250,6 @@ int main(int argc, char **argv)
                         merror_exit("-%c needs an argument", c);
                     }
                     server_key = optarg;
-                    break;
-
-                case 'F':
-                    mwarn(DEPRECATED_OPTION_WARN, "-F", OSSECCONF);
-                    break;
-
-                case 'r':
-                    mwarn(DEPRECATED_OPTION_WARN, "-r", OSSECCONF);
                     break;
 
                 case 'a':

@@ -632,12 +632,6 @@ selectInstallType()
 
 resolveCleanInstallDirectory()
 {
-    # Keep legacy behavior: USER_UPDATE="n" never modifies an existing installation.
-    # USER_SAME_INSTALLDIR is deprecated and ignored.
-    if [ "X${USER_SAME_INSTALLDIR}" != "X" ]; then
-        echo "WARNING: USER_SAME_INSTALLDIR is deprecated and ignored. Use USER_CLEANINSTALL=\"y\" for clean installs."
-    fi
-
     # USER_UPDATE="n" always exits, matching previous install.sh semantics.
     echo ""
     echo "${mustuninstall}"

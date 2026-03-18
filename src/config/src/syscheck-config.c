@@ -1655,9 +1655,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 #ifdef WIN32
     const char *xml_registry_ignore_value = "registry_ignore_value";
 #endif
-    const char *xml_auto_ignore = "auto_ignore"; // TODO: Deprecated since 3.11.0
-    const char *xml_alert_new_files = "alert_new_files"; // TODO: Deprecated since 3.11.0
-    const char *xml_remove_old_diff = "remove_old_diff"; // Deprecated since 3.8.0
     const char *xml_disabled = "disabled";
     const char *xml_skip_nfs = "skip_nfs";
     const char *xml_skip_dev = "skip_dev";
@@ -1865,10 +1862,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             OS_ClearNode(children);
         }
 
-        else if (strcmp(node[i]->element, "scan_on_start") == 0) {
-            mwarn("Deprecated option 'scan_on_start' is not longer available.");
-        }
-
         /* Get if disabled */
         else if (strcmp(node[i]->element, xml_disabled) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {
@@ -2023,25 +2016,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 process_option(&syscheck->nodiff, node[i]);
             }
 
-        } else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
-            /* auto_ignore is not read here */
-        } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
-            /* alert_new_files option is not read here */
-        } else if (strcmp(node[i]->element, "prefilter_cmd") == 0) {
-            mwarn("Deprecated option 'prefilter_cmd' is not longer available.");
-        } else if (strcmp(node[i]->element, xml_remove_old_diff) == 0) {
-            // Deprecated since 3.8.0, aplied by default...
-        } else if (strcmp(node[i]->element, xml_restart_audit) == 0) {
-            // To be deprecated. This field is now read inside the <whodata> block.
-            if(strcmp(node[i]->content, "yes") == 0)
-                syscheck->restart_audit = 1;
-            else if(strcmp(node[i]->content, "no") == 0)
-                syscheck->restart_audit = 0;
-            else
-            {
-                mwarn(XML_VALUEERR,node[i]->element,node[i]->content);
-                return(OS_INVALID);
-            }
         }
         /* Whodata options */
         else if (strcmp(node[i]->element, xml_whodata_options) == 0) {
@@ -2171,9 +2145,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-        }
-        else if (strcmp(node[i]->element, "allow_remote_prefilter_cmd") == 0) {
-            mwarn("Deprecated option 'allow_remote_prefilter_cmd' is not longer available.");
         }
         else if (strcmp(node[i]->element, xml_max_files_per_second) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {

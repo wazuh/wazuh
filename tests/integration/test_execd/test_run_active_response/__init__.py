@@ -8,3 +8,4 @@ from pathlib import Path
 DATA_PATH = Path(Path(__file__).parent, 'data')
 CONFIGS_PATH = Path(DATA_PATH, 'configuration_templates')
 TEST_CASES_PATH = Path(DATA_PATH, 'test_cases')
+REPO_ROOT = Path(__file__).resolve().parents[4]

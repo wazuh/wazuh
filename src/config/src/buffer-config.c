@@ -24,9 +24,6 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
     const char *xml_events_per_second = "events_per_second";
 
     /* Old XML definition */
-    const char *xml_buffer_length = "length";
-    const char *xml_buffer_disable = "disable";
-
     if (!node)
         return 0;
 
@@ -41,7 +38,7 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
         } else if (!node[i]->content) {
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
-        } else if (strcmp(node[i]->element, xml_buffer_disabled) == 0 || strcmp(node[i]->element, xml_buffer_disable) == 0) {
+        } else if (strcmp(node[i]->element, xml_buffer_disabled) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {
                 logr->buffer = 0;
             } else if (strcmp(node[i]->content, "no") == 0) {
@@ -60,7 +57,6 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-
         } else if (strcmp(node[i]->element, xml_events_per_second) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);

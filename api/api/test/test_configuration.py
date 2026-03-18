@@ -173,9 +173,6 @@ def test_read_cache_configuration(mock_exists, config, expected_msg):
         m.return_value = config
         configuration.read_yaml_config()
 
-        if expected_msg:
-            mock_logger.assert_called_once_with(configuration.CACHE_DEPRECATED_MESSAGE.format(release="4.8.0"))
-
 @patch('os.chmod')
 @patch('builtins.open')
 def test_generate_private_key(mock_open, mock_chmod):
