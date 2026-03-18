@@ -99,6 +99,9 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
 
     fp = wfopen(defines_file, "r");
     if (!fp) {
+        if (errno != ENOENT) {
+            merror(FOPEN_ERROR, defines_file, errno, strerror(errno));
+        }
         return (NULL);
     }
     w_file_cloexec(fp);

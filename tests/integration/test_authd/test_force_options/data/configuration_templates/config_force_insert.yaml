@@ -19,16 +19,10 @@
             attributes:
             - enabled: 'no'
             value: '0'
-    - force_insert:
-        value: 'no'
-    - force_time:
-        value: 0
     - purge:
         value: 'yes'
     - use_password:
         value: 'no'
-    - limit_maxagents:
-        value: 'yes'
     - ciphers:
         value: 'HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH'
     - ssl_verify_host:

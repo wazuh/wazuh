@@ -28,7 +28,7 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
  * @param default_val Value returned when the option is not found in any file.
  * @return The option value, or @p default_val when absent.
  */
-int getDefine_Int_default(const char *high_name, const char *low_name, int min, int max, int default_val);
+int getDefine_Int_default(const char *high_name, const char *low_name, int min, int max, int default_val) __attribute__((nonnull(1, 2)));
 
 
 /**
