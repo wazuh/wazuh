@@ -76,10 +76,10 @@ def test_execd_firewall_drop(test_configuration, test_metadata, configure_local_
                              set_wazuh_configuration, remoted_simulator, authd_simulator,
                              daemons_handler, send_execd_message):
     '''
-    description: Check if 'block-ip-iptables' command of 'active response' is executed correctly.
+    description: Check if 'block-ip' command of 'active response' is executed correctly.
                  For this purpose, a simulated agent is used and the 'active response'
-                 is sent to it. This response includes an IP address that must be added
-                 and removed from 'iptables', the Linux firewall.
+                 is sent to it. This response includes an IP address that must be blocked
+                 using the appropriate firewall method for the system.
 
     wazuh_min_version: 4.2.0
 
@@ -111,8 +111,8 @@ def test_execd_firewall_drop(test_configuration, test_metadata, configure_local_
     assertions:
         - Check the expected error is raised when it supposed to fail.
         - Check execd is executed correctly.
-        - Check the block-ip-iptables program is used.
-        - Check the firewall rule is added and deleted with correct scrip.
+        - Check the block-ip program is used.
+        - Check the firewall rule is added and deleted with correct script.
     input_description:
         - The `cases_execd_firewall_drop.yaml` file provides the test cases.
     '''
@@ -122,14 +122,14 @@ def test_execd_firewall_drop(test_configuration, test_metadata, configure_local_
     if error_message := test_metadata.get('expected_error'):
         callback = generate_callback(error_message)
         ar_monitor.start(callback=callback)
-        assert ar_monitor.callback_result, 'AR `block-ip-iptables` did not fail.'
+        assert ar_monitor.callback_result, 'AR `block-ip` did not fail.'
         return
 
     wazuh_log_monitor.start(callback=generate_callback(execd_paterns.EXECD_EXECUTING_COMMAND))
     assert wazuh_log_monitor.callback_result, 'Execd `executing` command log not raised.'
 
     ar_monitor.start(callback=generate_callback(ar_patterns.ACTIVE_RESPONSE_FIREWALL_DROP))
-    assert ar_monitor.callback_result, 'AR `block-ip-iptables` program not used.'
+    assert ar_monitor.callback_result, 'AR `block-ip` program not used.'
 
     ar_monitor.start(callback=generate_callback(ar_patterns.ACTIVE_RESPONSE_ADD_COMMAND))
     assert ar_monitor.callback_result, 'AR `add` command not executed.'

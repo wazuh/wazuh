@@ -72,71 +72,72 @@ function(add_active_response_executable name source)
   endif()
 endfunction()
 
-# Build Unix/Linux/macOS active responses
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  # Build firewall-related active responses
+# Build Unix/Linux/BSD unified block-ip active response
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  # Unified block-ip for Linux, FreeBSD, OpenBSD, NetBSD
   add_active_response_executable(
-    block-ip-iptables
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/firewalls/block-ip-iptables.c)
-  add_active_response_executable(
-    block-ip-pf ${CMAKE_CURRENT_SOURCE_DIR}/src/firewalls/block-ip-pf.c)
-  add_active_response_executable(
-    block-ip-npf ${CMAKE_CURRENT_SOURCE_DIR}/src/firewalls/block-ip-npf.c)
-  add_active_response_executable(
-    block-ip-ipfw ${CMAKE_CURRENT_SOURCE_DIR}/src/firewalls/block-ip-ipfw.c)
+    block-ip
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-unix.c)
 
-  # Build other active response programs
-  add_active_response_executable(
-    block-ip-firewalld ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-firewalld.c)
+  # Add helpers for firewall operations
+  target_sources(block-ip PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/helpers/firewall_helpers.c)
+  target_include_directories(block-ip PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/helpers)
+
+  # Platform-specific compile definitions
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_compile_definitions(block-ip PRIVATE PLATFORM_LINUX=1)
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+    target_compile_definitions(block-ip PRIVATE PLATFORM_FREEBSD=1)
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+    target_compile_definitions(block-ip PRIVATE PLATFORM_OPENBSD=1)
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
+    target_compile_definitions(block-ip PRIVATE PLATFORM_NETBSD=1)
+  endif()
+
+  # Build other Unix/Linux/BSD active response programs
   add_active_response_executable(
     disable-account ${CMAKE_CURRENT_SOURCE_DIR}/src/disable-account.c)
+endif()
+
+# Build macOS-specific block-ip active response
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  # macOS uses separate block-ip binary with pf only
   add_active_response_executable(
-    block-ip-hostsdeny ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-hostsdeny.c)
+    block-ip
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-macos.c)
+
+  # Add helpers for firewall operations
+  target_sources(block-ip PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/helpers/firewall_helpers.c)
+  target_include_directories(block-ip PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/helpers)
+
+  target_compile_definitions(block-ip PRIVATE PLATFORM_MACOS=1)
+
+  # Build other macOS active response programs
   add_active_response_executable(
-    block-ip-custom ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-custom.c)
-  add_active_response_executable(
-    restart-wazuh ${CMAKE_CURRENT_SOURCE_DIR}/src/restart-wazuh.c)
-  add_active_response_executable(
-    block-ip-route ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-route.c)
-  add_active_response_executable(
-    scan-kaspersky ${CMAKE_CURRENT_SOURCE_DIR}/src/scan-kaspersky.c)
-  add_active_response_executable(
-    notify-slack ${CMAKE_CURRENT_SOURCE_DIR}/src/notify-slack.c)
+    disable-account ${CMAKE_CURRENT_SOURCE_DIR}/src/disable-account.c)
 endif()
 
 # Build Windows active responses
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # Windows active responses need win32_stubs and resource files (.rc)
 
-  # restart-wazuh.exe
+  # Unified block-ip.exe (netsh + route fallback)
   add_executable(
-    restart-wazuh
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/restart-wazuh.c
-    $<TARGET_OBJECTS:win32_stubs> ${SRC_FOLDER}/win32/restart-wazuh.rc
+    block-ip
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-windows.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/helpers/firewall_helpers.c
+    $<TARGET_OBJECTS:win32_stubs>
+    ${SRC_FOLDER}/win32/block-ip.rc
     ${RESOURCE_OBJ_APP})
-  target_compile_definitions(restart-wazuh PRIVATE ARGV0="restart-wazuh")
+  target_compile_definitions(block-ip PRIVATE ARGV0="block-ip" PLATFORM_WINDOWS=1)
+  target_include_directories(block-ip PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/helpers)
   set_target_properties(
-    restart-wazuh PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
-                             OUTPUT_NAME restart-wazuh)
-  target_link_libraries(restart-wazuh PRIVATE wazuh ${WAZUH_WINDOWS_LIBS})
-
-  # block-ip-route.exe
-  add_executable(
-    block-ip-route
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-route.c $<TARGET_OBJECTS:win32_stubs>
-    ${SRC_FOLDER}/win32/block-ip-route.rc ${RESOURCE_OBJ_APP})
-  target_compile_definitions(block-ip-route PRIVATE ARGV0="block-ip-route")
-  set_target_properties(
-    block-ip-route PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
-                              OUTPUT_NAME block-ip-route)
-  target_link_libraries(block-ip-route PRIVATE wazuh ${WAZUH_WINDOWS_LIBS})
-
-  # block-ip-netsh.exe
-  add_executable(
-    block-ip-netsh ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-netsh.c
-    $<TARGET_OBJECTS:win32_stubs> ${SRC_FOLDER}/win32/block-ip-netsh.rc ${RESOURCE_OBJ_APP})
-  target_compile_definitions(block-ip-netsh PRIVATE ARGV0="block-ip-netsh")
-  set_target_properties(block-ip-netsh PROPERTIES RUNTIME_OUTPUT_DIRECTORY
-                                         ${SRC_FOLDER}/build/bin OUTPUT_NAME block-ip-netsh)
-  target_link_libraries(block-ip-netsh PRIVATE wazuh ${WAZUH_WINDOWS_LIBS})
+    block-ip PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
+                       OUTPUT_NAME block-ip)
+  target_link_libraries(block-ip PRIVATE wazuh ${WAZUH_WINDOWS_LIBS})
 endif()

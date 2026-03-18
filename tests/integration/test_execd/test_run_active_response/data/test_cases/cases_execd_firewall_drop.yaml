@@ -1,33 +1,33 @@
 - name: Command execution succeed
-  description: Checks the block-ip-iptables5 command succeed
+  description: Checks the block-ip5 command succeed
   configuration_parameters:
   metadata:
-    input: '#!-execd {"version":1,"origin":{"name":"","module":"wazuh-manager-analysisd"},"command":"block-ip-iptables5",
+    input: '#!-execd {"version":1,"origin":{"name":"","module":"wazuh-manager-analysisd"},"command":"block-ip5",
             "parameters":{"extra_args":[],"alert":{"rule":{"level":5,"description":"Test.","id":5715},
             "data":{"dstuser":"Test.","srcip":"3.3.3.3"}}}}'
 
 - name: Command execution fail - missing 'srcip'
-  description: Checks the block-ip-iptables command does not succeed because the 'srcip' is not sent.
+  description: Checks the block-ip command does not succeed because the 'srcip' is not sent.
   configuration_parameters:
   metadata:
-    input: '#!-execd {"version":1,"origin":{"name":"","module":"wazuh-manager-analysisd"},"command":"block-ip-iptables5",
+    input: '#!-execd {"version":1,"origin":{"name":"","module":"wazuh-manager-analysisd"},"command":"block-ip5",
             "parameters":{"extra_args":[],"alert":{"rule":{"level":5,"description":"Test.","id":5715},
             "data":{"dstuser":"Test."}}}}'
     expected_error: .*Cannot read 'srcip' from data
 
 - name: Command execution fail - invalid format no version
-  description: Checks the block-ip-iptables command does not succeed because the input is invalid.
+  description: Checks the block-ip command does not succeed because the input is invalid.
   configuration_parameters:
   metadata:
-    input: '#!-execd {"origin":{"name":"","module":"wazuh-manager-analysisd"},"command":"block-ip-iptables5",
+    input: '#!-execd {"origin":{"name":"","module":"wazuh-manager-analysisd"},"command":"block-ip5",
             "parameters":{"extra_args":[],"alert":{"rule":{"level":5,"description":"Test.","id":5715},
             "data":{"dstuser":"Test."}}}}'
     expected_error: .*Invalid input format
 
 - name: Command execution fail - invalid format no parameters
-  description: Checks the block-ip-iptables command does not succeed because the 'srcip' is not sent.
+  description: Checks the block-ip command does not succeed because the 'srcip' is not sent.
   configuration_parameters:
   metadata:
-    input: '#!-execd {"version":1,"origin":{"name":"","module":"wazuh-manager-analysisd"},"command":"block-ip-iptables5",
+    input: '#!-execd {"version":1,"origin":{"name":"","module":"wazuh-manager-analysisd"},"command":"block-ip5",
             "data":{"dstuser":"Test.","srcip":"3.3.3.3"}}}}'
     expected_error: .*Invalid input format
