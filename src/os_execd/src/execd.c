@@ -282,6 +282,10 @@ void ExecdRun(char *exec_msg, int *childcount)
 
     if (cJSON_IsString(json_ar_type) && strcmp(json_ar_type->valuestring, "stateful") == 0) {
         timeout_value = cJSON_IsNumber(json_stateful_timeout) ? (int)json_stateful_timeout->valuedouble : 0;
+
+        if (timeout_value == 0) {
+            mdebug1("Stateful AR '%s' has timeout value of 0. AR will be treated as stateless.", name);
+        }
     } else {
         timeout_value = 0;
     }
