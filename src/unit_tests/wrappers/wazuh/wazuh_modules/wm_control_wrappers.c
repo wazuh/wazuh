@@ -15,8 +15,9 @@
 #include <cmocka.h>
 #include <string.h>
 
-size_t __wrap_wm_control_execute_action(const char *action, char **output) {
+size_t __wrap_wm_control_execute_action(const char *action, const char *service, char **output) {
     check_expected(action);
+    check_expected(service);
     *output = mock_type(char *);
     return strlen(*output);
 }
