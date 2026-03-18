@@ -167,6 +167,10 @@ private:
      * @brief Full initial load using executeSearchQueryWithPagination with match_all
      *        sorted by offset (IndexerConnectorSync).
      *
+     * Retries every INITIAL_LOAD_RETRY_INTERVAL seconds if the Indexer returns 0 documents
+     * or is temporarily unavailable.  The sleep is interruptible: the retry loop exits
+     * immediately when spStopCondition fires (agent shutdown).
+     *
      * NOTE: PIT (IndexerConnectorAsync) cannot be used here due to an exclusive RocksDB
      * lock conflict on queue/indexer/ with the IndexerConnectorSync instance held by the
      * facade. search_after pagination with a stable sort (offset, _id) is equivalent for
@@ -176,56 +180,106 @@ private:
      */
     void initialLoad(UpdaterContext& context) const
     {
-        logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Starting initial full load");
+        static constexpr std::chrono::seconds INITIAL_LOAD_RETRY_INTERVAL {30};
 
-        const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-        const size_t pageSize = m_config.at("indexer").value("pageSize", 1000u);
+        size_t attempt = 0;
 
-        IndexerConnectorSync syncConnector(m_config.at("indexer"));
-
-        nlohmann::json query;
-        query["query"]["match_all"] = nlohmann::json::object();
-        query["sort"]               = nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
-        query["size"]               = pageSize;
-
-        std::string lastCursor;
-        size_t totalProcessed = 0;
-
-        syncConnector.executeSearchQueryWithPagination(
-            indexName,
-            query,
-            [&](const nlohmann::json& response)
+        while (true)
+        {
+            if (attempt == 0)
             {
-                if (!response.contains("hits") || !response.at("hits").contains("hits"))
-                {
-                    return;
-                }
-                const auto& hits = response.at("hits").at("hits");
-                if (hits.empty())
-                {
-                    return;
-                }
+                logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Starting initial full load");
+            }
+            else
+            {
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Retrying initial full load (attempt %zu) ...",
+                        attempt + 1);
+            }
 
-                const auto& lastHit = hits.back();
-                if (lastHit.contains("_source") && lastHit.at("_source").contains("offset"))
-                {
-                    lastCursor = std::to_string(lastHit.at("_source").at("offset").get<uint64_t>());
-                }
+            const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
+            const size_t pageSize = m_config.at("indexer").value("pageSize", 1000u);
 
-                processPage(context, hits, lastCursor);
-                totalProcessed += hits.size();
-                persistCursor(context, lastCursor);
+            IndexerConnectorSync syncConnector(m_config.at("indexer"));
 
-                logDebug2(WM_CONTENTUPDATER,
-                          "IndexerDownloader: Initial load — %zu documents processed so far",
-                          totalProcessed);
-            });
+            nlohmann::json query;
+            query["query"]["match_all"] = nlohmann::json::object();
+            query["sort"]               = nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
+            query["size"]               = pageSize;
 
-        context.data["cursor"] = lastCursor;
-        logInfo(WM_CONTENTUPDATER,
-                "IndexerDownloader: Initial load complete — %zu documents, cursor: '%s'",
-                totalProcessed,
-                lastCursor.c_str());
+            std::string lastCursor;
+            size_t totalProcessed = 0;
+            bool exceptionOccurred = false;
+
+            try
+            {
+                syncConnector.executeSearchQueryWithPagination(
+                    indexName,
+                    query,
+                    [&](const nlohmann::json& response)
+                    {
+                        if (!response.contains("hits") || !response.at("hits").contains("hits"))
+                        {
+                            return;
+                        }
+                        const auto& hits = response.at("hits").at("hits");
+                        if (hits.empty())
+                        {
+                            return;
+                        }
+
+                        const auto& lastHit = hits.back();
+                        if (lastHit.contains("_source") && lastHit.at("_source").contains("offset"))
+                        {
+                            lastCursor = std::to_string(lastHit.at("_source").at("offset").get<uint64_t>());
+                        }
+
+                        processPage(context, hits, lastCursor);
+                        totalProcessed += hits.size();
+                        persistCursor(context, lastCursor);
+
+                        logDebug2(WM_CONTENTUPDATER,
+                                  "IndexerDownloader: Initial load — %zu documents processed so far",
+                                  totalProcessed);
+                    });
+            }
+            catch (const std::exception& e)
+            {
+                exceptionOccurred = true;
+                logWarn(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Initial load failed (%s) — retrying in %zu s.",
+                        e.what(),
+                        static_cast<size_t>(INITIAL_LOAD_RETRY_INTERVAL.count()));
+            }
+
+            if (totalProcessed > 0)
+            {
+                context.data["cursor"] = lastCursor;
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Initial load complete — %zu documents, cursor: '%s'",
+                        totalProcessed,
+                        lastCursor.c_str());
+                return;
+            }
+
+            if (!exceptionOccurred)
+            {
+                logWarn(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Indexer index not ready (0 documents) — retrying in %zu s.",
+                        static_cast<size_t>(INITIAL_LOAD_RETRY_INTERVAL.count()));
+            }
+
+            ++attempt;
+
+            // waitFor returns true when spStopCondition is set (agent shutdown).
+            if (context.spUpdaterBaseContext->spStopCondition->waitFor(
+                    std::chrono::duration_cast<std::chrono::milliseconds>(INITIAL_LOAD_RETRY_INTERVAL)))
+            {
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Stop requested during initial load retry — aborting.");
+                return;
+            }
+        }
     }
 
     /**
@@ -334,6 +388,13 @@ public:
         else
         {
             incrementalUpdate(*context, lastCursor);
+        }
+
+        // If a shutdown was requested, skip the completion signal — no point reloading
+        // maps or triggering a rescan if the agent is going down.
+        if (context->spUpdaterBaseContext->spStopCondition->check())
+        {
+            return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
         }
 
         // Signal completion to DatabaseFeedManager so it can reload global maps and trigger
