@@ -271,22 +271,26 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
         # Convert list of dictionaries to dictionary
         active_agents = {agent['id']: agent['version'] for agent in active_agents}
 
-        with WazuhQueue(common.AR_SOCKET) as wq:
-            for agent_id in agent_list:
-                # Add non existent and inactive agents to failed_items
-                if agent_id not in system_agents:
-                    result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
-                    continue
+        for agent_id in agent_list:
+            # Add non existent and inactive agents to failed_items
+            if agent_id not in system_agents:
+                result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
+                continue
 
-                if agent_id not in active_agents:
-                    result.add_failed_item(id_=agent_id, error=WazuhError(1707))
-                    continue
+            if agent_id not in active_agents:
+                result.add_failed_item(id_=agent_id, error=WazuhError(1707))
+                continue
 
-                try:
-                    send_restart_command(agent_id, active_agents[agent_id], wq)
-                    result.affected_items.append(agent_id)
-                except WazuhException as e:
-                    result.add_failed_item(id_=agent_id, error=e)
+            version = active_agents[agent_id]
+            if not version or version.startswith('Wazuh v4.'):
+                result.add_failed_item(id_=agent_id, error=WazuhError(1761))
+                continue
+
+            try:
+                send_restart_command(agent_id)
+                result.affected_items.append(agent_id)
+            except WazuhException as e:
+                result.add_failed_item(id_=agent_id, error=e)
 
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)
