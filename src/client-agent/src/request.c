@@ -47,6 +47,7 @@ void req_init() {
     char *socket_sys = NULL;
     char *socket_wodle = NULL;
     char *socket_agent = NULL;
+    char *socket_wcontrol = NULL;
 
     // Get values from internal options
 
@@ -79,14 +80,16 @@ void req_init() {
     socket_sys = strdup(SOCKET_SYSCHECK);
     socket_wodle = strdup(SOCKET_WMODULES);
     socket_agent = strdup(SOCKET_AGENT);
+    socket_wcontrol = strdup(SOCKET_WCONTROL);
 
-    if (!socket_log || !socket_sys || !socket_wodle || !socket_agent) {
+    if (!socket_log || !socket_sys || !socket_wodle || !socket_agent || !socket_wcontrol) {
         merror("At req_init(): failed to allocate socket strings");
         goto ret;
     }
 
     if (OSHash_Add(allowed_sockets, SOCKET_LOGCOLLECTOR, socket_log) != 2 || OSHash_Add(allowed_sockets, SOCKET_SYSCHECK, socket_sys) != 2 || \
-    OSHash_Add(allowed_sockets, SOCKET_WMODULES, socket_wodle) != 2 || OSHash_Add(allowed_sockets, SOCKET_AGENT, socket_agent) != 2) {
+    OSHash_Add(allowed_sockets, SOCKET_WMODULES, socket_wodle) != 2 || OSHash_Add(allowed_sockets, SOCKET_AGENT, socket_agent) != 2 || \
+    OSHash_Add(allowed_sockets, SOCKET_WCONTROL, socket_wcontrol) != 2) {
         merror("At req_init(): failed to add socket strings to hash list");
         goto ret;
     }
@@ -102,6 +105,7 @@ ret:
         if (socket_sys) free(socket_sys);
         if (socket_wodle) free(socket_wodle);
         if (socket_agent) free(socket_agent);
+        if (socket_wcontrol) free(socket_wcontrol);
         exit(1);
     }
 }
