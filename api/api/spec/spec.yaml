@@ -151,6 +151,15 @@ x-rbac-catalog:
         actions: ['agent:restart']
         resources: ['agent:id:050', 'agent:id:049']
         effect: "deny"
+    'agent:reload':
+      description: "Reload agents"
+      resources:
+       - $ref: '#/x-rbac-catalog/resources/agent:id'
+       - $ref: '#/x-rbac-catalog/resources/agent:group'
+      example:
+        actions: ['agent:reload']
+        resources: ['agent:id:050', 'agent:id:049']
+        effect: "deny"
     'agent:uninstall':
       description: "Check user's permission to uninstall agents"
       resources:
@@ -4837,6 +4846,51 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /agents/{agent_id}/reload:
+    put:
+      tags:
+        - Agents
+      summary: "Reload agent"
+      description: "Reload the specified agent"
+      operationId: api.controllers.agent_controller.reload_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:reload'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: "Agent reloaded"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/ItemAffected'
+                example:
+                  data:
+                    affected_items:
+                      - "002"
+                    total_affected_items: 1
+                    total_failed_items: 0
+                    failed_items: []
+                  message: "Reload command was sent to all agents"
+                  error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
   /agents/{agent_id}/daemons/stats:
     get:
       tags:
@@ -5403,6 +5457,55 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /agents/group/{group_id}/reload:
+    put:
+      tags:
+        - Agents
+      summary: 'Reload agents in group'
+      description: 'Reload all agents which belong to a given group'
+      operationId: api.controllers.agent_controller.reload_agents_by_group
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:reload'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/group_id'
+      responses:
+        '200':
+          description: Agents reloaded
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+                example:
+                  data:
+                    affected_items:
+                      - '002'
+                      - '003'
+                      - '005'
+                    total_affected_items: 3
+                    total_failed_items: 0
+                    failed_items: []
+                    message: "Reload command was sent to all agents"
+                    error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
   /agents/insert:
     post:
       tags:
@@ -5631,6 +5734,54 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /agents/node/{node_id}/reload:
+    put:
+      tags:
+        - Agents
+      summary: "Reload agents in node"
+      description: "Reload all agents which belong to a specific given node"
+      operationId: api.controllers.agent_controller.reload_agents_by_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
+        - $ref: '#/x-rbac-catalog/actions/agent:reload'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Agents reloaded'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+              example:
+                data:
+                  affected_items:
+                    - "002"
+                    - "006"
+                    - "008"
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: "Reload command was sent to all agents"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
   /agents/outdated:
     get:
       tags:
@@ -5719,6 +5870,70 @@ paths:
                   failed_items: []
                 message: 'All selected agents information was returned'
                 error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /agents/reload:
+    put:
+      tags:
+        - Agents
+      summary: "Reload agents"
+      description: "Reload all agents or a list of them"
+      operationId: api.controllers.agent_controller.reload_agents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:reload'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agents_list'
+      responses:
+        '200':
+          description: "Agents reloaded"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                          $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+                example:
+                  data:
+                    affected_items:
+                      - '001'
+                      - '002'
+                      - '003'
+                      - '004'
+                      - '005'
+                      - '006'
+                      - '007'
+                      - '008'
+                    total_affected_items: 8
+                    total_failed_items: 3
+                    failed_items:
+                      - error:
+                          code: 1707
+                          message: "Cannot send request, agent is not active"
+                          remediation: "Please, check non-active agents connection and try again.
+                           Visit https://documentation.wazuh.com/5.0/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/5.0/user-manual/agents/agent-connection.html
+                           to obtain more information on registering and connecting agents"
+                        id:
+                          - '009'
+                          - '010'
+                          - '011'
+                  message: "Reload command was not sent to some agents"
+                  error: 2
+
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

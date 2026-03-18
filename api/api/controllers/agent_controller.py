@@ -1351,6 +1351,108 @@ async def get_group_file(group_id: str, file_name: str, raw: bool = False, prett
     return json_response(data, pretty=pretty)
 
 
+async def reload_agents(pretty: bool = False, wait_for_complete: bool = False,
+                        agents_list: str = '*') -> ConnexionResponse:
+    """Reload all agents or a list of them.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agents_list : str
+        List of agents IDs. Default: `*`
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {'agent_list': agents_list}
+
+    dapi = DistributedAPI(f=agent.reload_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=True,
+                          wait_for_complete=wait_for_complete,
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          broadcasting=agents_list == '*',
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
+async def reload_agents_by_node(node_id: str, pretty: bool = False,
+                                wait_for_complete: bool = False) -> ConnexionResponse:
+    """Reload all agents belonging to a node.
+
+    Parameters
+    ----------
+    node_id : str
+        Cluster node name.
+    pretty : bool, optional
+        Show results in human-readable format. Default `False`
+    wait_for_complete : bool, optional
+        Disable timeout response. Default `False`
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    nodes = raise_if_exc(await get_system_nodes())
+
+    f_kwargs = {'node_id': node_id, 'agent_list': '*'}
+
+    dapi = DistributedAPI(f=agent.reload_agents_by_node,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=True,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          nodes=nodes
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
+async def reload_agent(agent_id: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+    """Reload an agent.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agent_id : str
+        Agent ID.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {'agent_list': [agent_id]}
+
+    dapi = DistributedAPI(f=agent.reload_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=True,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
 async def restart_agents_by_group(group_id: str, pretty: bool = False,
                                   wait_for_complete: bool = False) -> ConnexionResponse:
     """Restart all agents from a group.
@@ -1387,6 +1489,55 @@ async def restart_agents_by_group(group_id: str, pretty: bool = False,
 
     f_kwargs = {'agent_list': agent_list}
     dapi = DistributedAPI(f=agent.restart_agents_by_group,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=True,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          )
+
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
+async def reload_agents_by_group(group_id: str, pretty: bool = False,
+                                 wait_for_complete: bool = False) -> ConnexionResponse:
+    """Reload all agents from a group.
+
+    Parameters
+    ----------
+    group_id : str
+        Group name.
+    pretty : bool, optional
+        Show results in human-readable format. Default `False`
+    wait_for_complete : bool, optional
+        Disable timeout response. Default `False`
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {'group_list': [group_id], 'select': ['id'], 'limit': None}
+    dapi = DistributedAPI(f=agent.get_agents_in_group,
+                          f_kwargs=f_kwargs,
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          )
+    agents = raise_if_exc(await dapi.distribute_function())
+
+    agent_list = [a['id'] for a in agents.affected_items]
+    if not agent_list:
+        data = AffectedItemsWazuhResult(none_msg='Reload command was not sent to any agent')
+        return json_response(data, pretty=pretty)
+
+    f_kwargs = {'agent_list': agent_list}
+    dapi = DistributedAPI(f=agent.reload_agents_by_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=True,
