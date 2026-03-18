@@ -104,12 +104,10 @@ class MetricsSnapshotTasks:
                 ).distribute_function()
 
                 for item in getattr(result, "affected_items", []):
-                    doc = {
-                        "@timestamp": timestamp,
-                        "wazuh.cluster.node_name": node_name,
-                        "wazuh.cluster.node_type": node_type,
-                    }
-                    doc.update(item)
+                    doc = dict(item)
+                    doc["@timestamp"] = timestamp
+                    doc["wazuh.cluster.node_name"] = node_name
+                    doc["wazuh.cluster.node_type"] = node_type
                     comms_data.append(doc)
             except Exception:
                 self.logger.exception(
