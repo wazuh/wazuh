@@ -412,7 +412,6 @@ Rootcheck alerts are processed by rules in the 510-550 range:
 
 - Existing rootcheck queries against API return limited data
 - Historical rootcheck data not migrated
-- Configuration remains compatible (deprecated options ignored)
 
 ## Internal Options
 

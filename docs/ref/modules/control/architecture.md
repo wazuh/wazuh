@@ -290,44 +290,6 @@ Any other command:
 - Limited command set (restart, reload)
 - No arbitrary command execution
 
-## Migration from wazuh-execd
-
-### Previous Architecture (v4.x)
-
-**Component**: `wazuh-execd` daemon
-- **Socket**: `/var/ossec/queue/sockets/com`
-- **Commands**: restart, reload, getconfig, check-manager-configuration, unmerge, uncompress, lock_restart
-- **Responsibilities**:
-  - Active Response execution
-  - Configuration serving
-  - File operations
-  - Manager control
-
-### Current Architecture (v5.0)
-
-**Component**: `wm_control` module (within modulesd)
-- **Socket**: `/var/ossec/queue/sockets/control`
-- **Commands**: restart, reload
-- **Responsibilities**:
-  - Manager control only
-  - No Active Response (agent-only feature)
-  - No configuration serving (direct file reading)
-  - No file operations
-
-### Changes
-
-| Feature               | v4.x (execd)   | v5.0 (wm_control) | Notes                               |
-| --------------------- | -------------- | ----------------- | ----------------------------------- |
-| Manager restart       | ✓ wcom socket  | ✓ control socket  | Migrated                            |
-| Manager reload        | ✓ wcom socket  | ✓ control socket  | Migrated                            |
-| Get primary IP        | ✓ wcom socket  | ✗ Removed         | No longer handled by control socket |
-| Configuration serving | ✓ wcom socket  | ✗ File-based      | Changed approach                    |
-| Config validation     | ✓ wcom socket  | ✗ File-based      | Changed approach                    |
-| File unmerge          | ✓ wcom socket  | ✗ Removed         | Deprecated                          |
-| File uncompress       | ✓ wcom socket  | ✗ Removed         | Deprecated                          |
-| Restart locking       | ✓ wcom socket  | ✗ Not migrated    | TBD                                 |
-| Active Response       | ✓ execd daemon | ✗ Agents only     | Intentional removal                 |
-
 ## Performance Characteristics
 
 **Socket Performance**:
