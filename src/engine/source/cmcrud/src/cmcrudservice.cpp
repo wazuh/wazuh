@@ -44,17 +44,6 @@ json::Json yamlToJson(std::string_view document)
     return json::Json {std::move(doc)};
 }
 
-std::string jsonToYaml(const json::Json& jsonDoc)
-{
-    rapidjson::Document doc;
-    doc.Parse(jsonDoc.str().c_str());
-
-    auto ymlNode = yml::Converter::jsonToYaml(doc);
-    YAML::Emitter ymlEmitter;
-    ymlEmitter << ymlNode;
-    return ymlEmitter.c_str();
-}
-
 cm::store::dataType::Policy policyFromDocument(std::string_view policyDocument)
 {
     return cm::store::dataType::Policy::fromJson(yamlToJson(policyDocument));
@@ -269,8 +258,8 @@ cm::store::dataType::Policy CrudService::importNamespace(const cm::store::Namesp
                             }
 
                             const std::string& name = integ.getName();
-                            const std::string yml = jsonToYaml(integ.toJson());
-                            ns->createResource(name, type, yml);
+                            const std::string jsonStr = integ.toJson().str();
+                            ns->createResource(name, type, jsonStr);
                             break;
                         }
 
@@ -279,8 +268,8 @@ cm::store::dataType::Policy CrudService::importNamespace(const cm::store::Namesp
                             auto kvdb = cm::store::dataType::KVDB::fromJson(item, /*requireUUID:*/ true);
 
                             const std::string& name = kvdb.getName();
-                            const std::string yml = jsonToYaml(kvdb.toJson());
-                            ns->createResource(name, type, yml);
+                            const std::string jsonStr = kvdb.toJson().str();
+                            ns->createResource(name, type, jsonStr);
                             break;
                         }
 
@@ -316,9 +305,9 @@ cm::store::dataType::Policy CrudService::importNamespace(const cm::store::Namesp
                                 validateAsset(nsReader, assetJson);
                             }
 
-                            const std::string yml = jsonToYaml(assetJson);
+                            const std::string jsonStr = assetJson.str();
                             const std::string nameStr = name.toStr();
-                            ns->createResource(nameStr, type, yml);
+                            ns->createResource(nameStr, type, jsonStr);
                             break;
                         }
 
@@ -506,21 +495,13 @@ CrudService::getResourceByUUID(const cm::store::NamespaceId& nsId, const std::st
             case cm::store::ResourceType::INTEGRATION:
             {
                 auto integ = nsView->getIntegrationByUUID(uuid);
-                if (asJson)
-                {
-                    return integ.toJson().str();
-                }
-                return jsonToYaml(integ.toJson());
+                return integ.toJson().str();
             }
 
             case cm::store::ResourceType::KVDB:
             {
                 auto kvdb = nsView->getKVDBByUUID(uuid);
-                if (asJson)
-                {
-                    return kvdb.toJson().str();
-                }
-                return jsonToYaml(kvdb.toJson());
+                return kvdb.toJson().str();
             }
 
             case cm::store::ResourceType::DECODER:
@@ -528,11 +509,7 @@ CrudService::getResourceByUUID(const cm::store::NamespaceId& nsId, const std::st
             case cm::store::ResourceType::FILTER:
             {
                 auto assetJson = nsView->getAssetByUUID(uuid);
-                if (asJson)
-                {
-                    return assetJson.str();
-                }
-                return jsonToYaml(assetJson);
+                return assetJson.str();
             }
 
             default: throw std::runtime_error("Unsupported resource type for getResourceByUUID");
