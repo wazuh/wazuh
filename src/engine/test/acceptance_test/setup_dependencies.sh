@@ -116,7 +116,8 @@ log "Using dnf (Amazon Linux)..."
                 g++ \
                 findutils \
                 grep \
-                coreutils
+                coreutils \
+                unzip
             ;;
         *)
             die "Unsupported OS: ${OS_ID}. Supported: amzn (Amazon Linux 2023), ubuntu."
