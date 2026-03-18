@@ -128,7 +128,7 @@ jobs:
           RUN_ID=$(gh run list -L 200 --commit="${{ github.event.pull_request.head.sha }}" --json databaseId,workflowName --jq '.[] | select(.workflowName | test("Package - Build multiple Wazuh Manager Packages")) | .databaseId' | head -1)
           [ -n "$RUN_ID" ] && [ "$RUN_ID" != "null" ] || exit 1
 
-          ARTIFACT_NAME=$(gh api repos/wazuh/wazuh/actions/runs/$RUN_ID/artifacts --jq '.artifacts[] | select(.name | contains("amd64") and contains("wazuh-manager") and endswith(".deb")) | .name' | head -1)
+          ARTIFACT_NAME=$(gh api repos/wazuh/wazuh/actions/runs/$RUN_ID/artifacts --jq '.artifacts[] | select(.name | test("wazuh-manager_.*amd64.*\\.deb$")) | .name' | head -1)
           [ -n "$ARTIFACT_NAME" ] || exit 1
 
           echo "run-id=$RUN_ID" >> $GITHUB_OUTPUT
