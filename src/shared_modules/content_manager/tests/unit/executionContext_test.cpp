@@ -295,7 +295,7 @@ TEST_F(ExecutionContextTest, ReadLastDownloadedFileHash)
 TEST_F(ExecutionContextTest, HttpUserAgentSet)
 {
     m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-    EXPECT_EQ(m_spUpdaterBaseContext->httpUserAgent, m_consumerName + "/" + __ossec_version);
+    EXPECT_EQ(m_spUpdaterBaseContext->httpUserAgent, m_consumerName + "/" + __wazuh_version);
 }
 
 /**

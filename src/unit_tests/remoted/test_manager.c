@@ -4236,7 +4236,7 @@ void test_validate_control_msg_startup_success(void** state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent agent1 sent HC_STARTUP from '192.168.1.1'");
 
-    expect_string(__wrap_compare_wazuh_versions, version1, __ossec_version);
+    expect_string(__wrap_compare_wazuh_versions, version1, __wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, "v4.6.0");
     expect_value(__wrap_compare_wazuh_versions, compare_patch, false);
     will_return(__wrap_compare_wazuh_versions, -1);
@@ -4342,7 +4342,7 @@ void test_validate_control_msg_invalid_agent_version(void** state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent agent1 sent HC_STARTUP from ''");
 
-    expect_string(__wrap_compare_wazuh_versions, version1, __ossec_version);
+    expect_string(__wrap_compare_wazuh_versions, version1, __wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, "v4.6.0");
     expect_value(__wrap_compare_wazuh_versions, compare_patch, false);
     will_return(__wrap_compare_wazuh_versions, -1);
@@ -4416,7 +4416,7 @@ void test_save_controlmsg_agent_invalid_version(void** state)
     keyentry_init(&key, "NEW_AGENT", "001", "192.168.1.1", "test_key");
     memset(&key.peer_info, 0, sizeof(struct sockaddr_storage));
 
-    expect_string(__wrap_compare_wazuh_versions, version1, __ossec_version);
+    expect_string(__wrap_compare_wazuh_versions, version1, __wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, "v4.6.0");
     expect_value(__wrap_compare_wazuh_versions, compare_patch, false);
     will_return(__wrap_compare_wazuh_versions, -1);

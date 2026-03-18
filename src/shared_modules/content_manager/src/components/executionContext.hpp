@@ -203,7 +203,7 @@ private:
         {
             throw std::invalid_argument {"Missing or empty consumerName"};
         }
-        context.httpUserAgent = context.configData.at("consumerName").get<std::string>() + "/" + __ossec_version;
+        context.httpUserAgent = context.configData.at("consumerName").get<std::string>() + "/" + __wazuh_version;
     }
 
 public:

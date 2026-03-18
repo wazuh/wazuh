@@ -174,11 +174,11 @@ update_file_sources() {
     if [[ -n "$new_version" ]]; then
         local defs_file="$DIR_SRC/headers/defs.h"
         local current_defs_version
-        current_defs_version=$(grep -E '^#define __ossec_version' "$defs_file" \
-            | sed -E 's/^#define __ossec_version\s+"v([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
+        current_defs_version=$(grep -E '^#define __wazuh_version' "$defs_file" \
+            | sed -E 's/^#define __wazuh_version\s+"v([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
 
         if [[ "$current_defs_version" != "$new_version" ]]; then
-            sed -i -E "s|(^#define __ossec_version\s+\"v)[0-9]+\.[0-9]+\.[0-9]+(\")|\1${new_version}\2|" "$defs_file"
+            sed -i -E "s|(^#define __wazuh_version\s+\"v)[0-9]+\.[0-9]+\.[0-9]+(\")|\1${new_version}\2|" "$defs_file"
             log_action "Modified $defs_file with new version: $new_version"
         fi
     fi

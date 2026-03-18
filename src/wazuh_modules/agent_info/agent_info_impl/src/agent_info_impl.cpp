@@ -368,7 +368,7 @@ void AgentInfoImpl::populateAgentMetadata()
 
     agentMetadata["agent_id"] = agentId;
     agentMetadata["agent_name"] = agentName;
-    agentMetadata["agent_version"] = __ossec_version;
+    agentMetadata["agent_version"] = __wazuh_version;
 
     // Extract OS information
     if (osInfo.contains("architecture"))

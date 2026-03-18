@@ -23,9 +23,9 @@
             #define recv wrap_recv
     #endif
 
-    // Redefine ossec_version
-    #undef __ossec_version
-    #define __ossec_version "v4.5.0"
+    // Redefine wazuh_version
+    #undef __wazuh_version
+    #define __wazuh_version "v5.0.0"
 #else
     #define STATIC static
 #endif
@@ -447,7 +447,7 @@ void start_agent(int is_startup)
         sleep(agt->server[current_server_id].retry_interval);
 
         /* Wait for server reply */
-        mwarn(AG_WAIT_SERVER, agt->server[current_server_id].rip, __ossec_version);
+        mwarn(AG_WAIT_SERVER, agt->server[current_server_id].rip, __wazuh_version);
 
         /* If there is a next server, try it */
         if (agt->server[current_server_id + 1].rip) {
@@ -597,7 +597,7 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
     char cleartext[OS_MAXSTR + 1] = { '\0' };
 
     cJSON* agent_info = cJSON_CreateObject();
-    cJSON_AddStringToObject(agent_info, "version", __ossec_version);
+    cJSON_AddStringToObject(agent_info, "version", __wazuh_version);
     char *agent_info_string = cJSON_PrintUnformatted(agent_info);
     cJSON_Delete(agent_info);
 

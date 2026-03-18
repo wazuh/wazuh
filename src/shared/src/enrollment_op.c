@@ -18,9 +18,9 @@
     /* Remove static qualifier when unit testing */
     #define static
 
-    // Redefine ossec_version
-    #undef __ossec_version
-    #define __ossec_version "v4.5.0"
+    // Redefine wazuh_version
+    #undef __wazuh_version
+    #define __wazuh_version "v5.0.0"
 
     /* Replace assert with mock_assert */
     extern void mock_assert(const int result, const char* const expression,
@@ -112,7 +112,7 @@ w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_c
     cfg->ssl = NULL;
     cfg->delay_after_enrollment = 20;
     cfg->keys = keys;
-    os_strdup(__ossec_version, cfg->agent_version);
+    os_strdup(__wazuh_version, cfg->agent_version);
     return cfg;
 }
 

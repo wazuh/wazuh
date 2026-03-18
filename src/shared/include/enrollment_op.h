@@ -74,7 +74,7 @@ typedef struct _enrollment_ctx {
     SSL *ssl;                           /**< will hold the connection instance with the manager */
     bool enabled;                       /**< enables / disables auto enrollment */
     time_t delay_after_enrollment;      /**< 20 by default, number of seconds to wait for enrollment */
-    char *agent_version;                /**< will hold the __ossec_version value*/
+    char *agent_version;                /**< will hold the __wazuh_version value*/
     int recv_timeout;                   /**< reception timeout, in seconds */
 } w_enrollment_ctx;
 
