@@ -235,8 +235,10 @@ private:
      * Retries every INITIAL_LOAD_RETRY_INTERVAL seconds if the Indexer returns 0 documents
      * or is temporarily unavailable. The sleep is interruptible: exits immediately when
      * spStopCondition fires (agent shutdown).
+     *
+     * @return Number of documents processed.
      */
-    void initialLoad(UpdaterContext& context) const
+    size_t initialLoad(UpdaterContext& context) const
     {
         static constexpr std::chrono::seconds INITIAL_LOAD_RETRY_INTERVAL {30};
 
@@ -277,7 +279,7 @@ private:
                         "IndexerDownloader: Initial load complete — %zu documents, cursor: '%s'",
                         totalProcessed,
                         context.data.value("cursor", std::string {}).c_str());
-                return;
+                return totalProcessed;
             }
 
             if (!exceptionOccurred)
@@ -294,7 +296,7 @@ private:
                     std::chrono::duration_cast<std::chrono::milliseconds>(INITIAL_LOAD_RETRY_INTERVAL)))
             {
                 logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested during initial load retry — aborting.");
-                return;
+                return 0;
             }
         }
     }
@@ -303,8 +305,9 @@ private:
      * @brief Incremental update using PIT + search_after (offset range query).
      *
      * @param lastCursor String representation of the last persisted integer offset.
+     * @return Number of documents processed.
      */
-    void incrementalUpdate(UpdaterContext& context, const std::string& lastCursor) const
+    size_t incrementalUpdate(UpdaterContext& context, const std::string& lastCursor) const
     {
         logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Starting incremental update from offset %s", lastCursor.c_str());
 
@@ -316,6 +319,7 @@ private:
                 "IndexerDownloader: Incremental update complete — %zu documents, new cursor: '%s'",
                 totalProcessed,
                 context.data.value("cursor", std::string {}).c_str());
+        return totalProcessed;
     }
 
 public:
@@ -360,13 +364,14 @@ public:
             }
         }
 
+        size_t totalProcessed = 0;
         if (lastCursor.empty())
         {
-            initialLoad(*context);
+            totalProcessed = initialLoad(*context);
         }
         else
         {
-            incrementalUpdate(*context, lastCursor);
+            totalProcessed = incrementalUpdate(*context, lastCursor);
         }
 
         // If a shutdown was requested, skip the completion signal — no point reloading
@@ -376,15 +381,16 @@ public:
             return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
         }
 
-        // Signal completion to DatabaseFeedManager so it can reload global maps and trigger
-        // a full agent rescan exactly once — after all pages have been processed.
-        // The "indexer_complete" type is handled by processMessage as a no-op (no documents
-        // to store), but the fileProcessingCallback will call reloadGlobalMaps() +
-        // postUpdateCallback() for this non-"indexer" message type.
+        // Signal completion to DatabaseFeedManager so it can write the feed-complete
+        // sentinel and optionally trigger a rescan.  The "changed" field tells
+        // DatabaseFeedManager whether the feed actually changed: the sentinel is written
+        // regardless, but the agent rescan is only triggered when changed=true so that a
+        // manager restart with no new CVE data does not cause an unnecessary full rescan.
         const auto cursor = context->data.value("cursor", std::string {});
         nlohmann::json finalMsg;
         finalMsg["type"] = "indexer_complete";
         finalMsg["cursor"] = cursor;
+        finalMsg["changed"] = (totalProcessed > 0);
         finalMsg["data"] = nlohmann::json::array();
         const auto result = context->spUpdaterBaseContext->fileProcessingCallback(finalMsg.dump());
         if (!std::get<2>(result))
