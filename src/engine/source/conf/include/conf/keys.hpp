@@ -35,7 +35,7 @@ constexpr std::string_view INDEXER_CONNECTOR_MAX_HITS_PER_REQUEST = "analysisd.i
 
 constexpr std::string_view IOC_INDEXER_CONNECTOR_MAX_RETRIES = "analysisd.ioc_indexer_connector_max_retries";
 constexpr std::string_view IOC_INDEXER_CONNECTOR_RETRY_INTERVAL = "analysisd.ioc_indexer_connector_retry_interval";
-constexpr std::string_view IOC_INDEXER_CONNECTOR_IOC_SYNC_BATCH_SIZE = "analysisd.ioc_indexer_connector_ioc_sync_batch_size";
+constexpr std::string_view IOC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE = "analysisd.ioc_indexer_connector_ioc_sync_batch_size";
 constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES = "analysisd.cmsync_indexer_connector_max_retries";
 constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL = "analysisd.cmsync_indexer_connector_retry_interval";
 constexpr std::string_view REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES = "analysisd.remote_conf_indexer_connector_max_retries";

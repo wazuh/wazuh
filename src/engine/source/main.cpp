@@ -404,10 +404,9 @@ int main(int argc, char* argv[])
                 jsonCnf.setUint64(maxQueueSize, "/max_queue_size");
                 const auto maxHitsPerRequest =
                     confManager.get<std::size_t>(conf::key::INDEXER_CONNECTOR_MAX_HITS_PER_REQUEST);
-                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf, maxHitsPerRequest);
 
                 // Create indexer connector with enhanced configuration
-                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str());
+                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str(), maxHitsPerRequest);
 
                 // Log pending events from previous sessions
                 const auto pendingEvents = indexerConnector->getQueueSize();
@@ -528,7 +527,9 @@ int main(int argc, char* argv[])
         // Remote runtime settings manager
         if (enableProcessing)
         {
-            remoteConf = std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store);
+            auto maxRetries = confManager.get<size_t>(conf::key::REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES);
+            auto retryInterval = confManager.get<size_t>(conf::key::REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL);
+            remoteConf = std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store, maxRetries, retryInterval);
         }
 
         // Raw Event Indexer
@@ -601,7 +602,7 @@ int main(int argc, char* argv[])
             // Create IOC Sync Service
             auto maxRetries = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_MAX_RETRIES);
             auto retryInterval = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_RETRY_INTERVAL);
-            auto iocSyncBatchSize = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_IOC_SYNC_BATCH_SIZE);
+            auto iocSyncBatchSize = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
             iocSyncService = std::make_shared<ioc::sync::IocSync>(
                 indexerConnector, IOCkvdb, store, maxRetries, retryInterval, iocSyncBatchSize);
             LOG_INFO("IOC Sync Service initialized.");
@@ -673,10 +674,6 @@ int main(int argc, char* argv[])
         // Remote runtime settings sync
         if (enableProcessing)
         {
-            auto maxRetries = confManager.get<size_t>(conf::key::REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES);
-            auto retryInterval = confManager.get<size_t>(conf::key::REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL);
-            remoteConf = std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store, maxRetries, retryInterval);
-
             const auto remoteConfSyncInterval = confManager.get<std::size_t>(conf::key::REMOTE_CONF_SYNC_INTERVAL);
             scheduler->scheduleTask("remote-conf-sync",
                                     scheduler::TaskConfig {.interval = remoteConfSyncInterval,

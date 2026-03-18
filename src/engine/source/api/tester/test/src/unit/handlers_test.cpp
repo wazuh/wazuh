@@ -443,7 +443,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
             []()
-            { return userErrorResponse<eEngine::tester::RunPost_Response>("Metadata should contain 'wazuh' as root"); },
+            { return userErrorResponse<eEngine::tester::RunPost_Response>("Metadata must be a non-empty object with 'wazuh' as root"); },
             []() { return makeSchemaValidator(false); },
         },
         LogtestPostCase {

@@ -62,6 +62,20 @@ TEST(ConfRemoteManagerUnitTest, CanConstructWithStoreAndNullConnector)
     EXPECT_NO_THROW((confremote::ConfRemoteManager {connector, store, attempts, waitSeconds}));
 }
 
+TEST(ConfRemoteManagerUnitTest, CanConstructWithZeroAttempts)
+{
+    auto store = makeEmptyStore();
+    std::shared_ptr<wiconnector::IWIndexerConnector> connector;
+    EXPECT_NO_THROW((confremote::ConfRemoteManager {connector, store, 0, waitSeconds}));
+}
+
+TEST(ConfRemoteManagerUnitTest, CanConstructWithZeroWaitSeconds)
+{
+    auto store = makeEmptyStore();
+    std::shared_ptr<wiconnector::IWIndexerConnector> connector;
+    EXPECT_NO_THROW((confremote::ConfRemoteManager {connector, store, attempts, 0}));
+}
+
 TEST(ConfRemoteManagerUnitTest, AddTriggerReturnsDefaultWhenStoreIsEmpty)
 {
     auto store = makeEmptyStore();
@@ -90,7 +104,7 @@ TEST(ConfRemoteManagerUnitTest, AddTriggerThrowsWhenKeyIsAlreadyRegistered)
 {
     auto store = makeEmptyStore();
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
-    confremote::ConfRemoteManager manager(connector, store);
+    confremote::ConfRemoteManager manager(connector, store, attempts, waitSeconds);
 
     manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) {}, json::Json("false"));
 

@@ -131,14 +131,9 @@ IocSync::IocSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexer
     , m_store(storePtr)
     , m_mutex()
     , m_attempts(maxRetries)
+    , m_waitSeconds(retryIntervalSeconds)
     , m_iocSyncBatchSize(iocSyncBatchSize)
 {
-    if (retryIntervalSeconds == 0)
-    {
-        throw std::invalid_argument("Retry interval seconds must be greater than 0");
-    }
-    m_waitSeconds = retryIntervalSeconds;
-
     // Check if is the first setup
     if (storePtr->existsDoc(STORE_NAME_IOCSYNC))
     {

@@ -26,7 +26,7 @@ namespace base::utils
  * @param operation The operation to execute
  * @param componentOperationName Name of the component operation for logging purposes
  * @param message Description of the operation for logging purposes
- * @param maxAttempts Maximum number of retry attempts
+ * @param maxAttempts Maximum number of retry attempts, cannot be zero (will default to 1 attempt)
  * @param waitSeconds Seconds to wait between retries, cannot be zero (will default to 1 second)
  * @return decltype(auto) Result of the operation
  * @throw std::exception if all retry attempts fail
@@ -40,6 +40,8 @@ decltype(auto) executeWithRetry(Func&& operation,
 {
     // Ensure at least 1 second wait to avoid tight loop
     waitSeconds = waitSeconds == 0 ? 1 : waitSeconds;
+    // Ensure at least 1 attempt to execute the operation
+    maxAttempts = maxAttempts == 0 ? 1 : maxAttempts;
     for (std::size_t attempt = 1; attempt <= maxAttempts; ++attempt)
     {
         try
