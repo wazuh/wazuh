@@ -47,7 +47,7 @@ void req_init() {
     char *socket_sys = NULL;
     char *socket_wodle = NULL;
     char *socket_agent = NULL;
-    char *socket_wcontrol = NULL;
+    char *socket_control = NULL;
 
     // Get values from internal options
 
@@ -80,16 +80,16 @@ void req_init() {
     socket_sys = strdup(SOCKET_SYSCHECK);
     socket_wodle = strdup(SOCKET_WMODULES);
     socket_agent = strdup(SOCKET_AGENT);
-    socket_wcontrol = strdup(SOCKET_WCONTROL);
+    socket_control = strdup(SOCKET_CONTROL);
 
-    if (!socket_log || !socket_sys || !socket_wodle || !socket_agent || !socket_wcontrol) {
+    if (!socket_log || !socket_sys || !socket_wodle || !socket_agent || !socket_control) {
         merror("At req_init(): failed to allocate socket strings");
         goto ret;
     }
 
     if (OSHash_Add(allowed_sockets, SOCKET_LOGCOLLECTOR, socket_log) != 2 || OSHash_Add(allowed_sockets, SOCKET_SYSCHECK, socket_sys) != 2 || \
     OSHash_Add(allowed_sockets, SOCKET_WMODULES, socket_wodle) != 2 || OSHash_Add(allowed_sockets, SOCKET_AGENT, socket_agent) != 2 || \
-    OSHash_Add(allowed_sockets, SOCKET_WCONTROL, socket_wcontrol) != 2) {
+    OSHash_Add(allowed_sockets, SOCKET_CONTROL, socket_control) != 2) {
         merror("At req_init(): failed to add socket strings to hash list");
         goto ret;
     }
@@ -105,7 +105,7 @@ ret:
         if (socket_sys) free(socket_sys);
         if (socket_wodle) free(socket_wodle);
         if (socket_agent) free(socket_agent);
-        if (socket_wcontrol) free(socket_wcontrol);
+        if (socket_control) free(socket_control);
         exit(1);
     }
 }
@@ -265,8 +265,8 @@ void * req_receiver(__attribute__((unused)) void * arg) {
             length = wmcom_dispatch(node->buffer, node->length, &buffer);
         } else if (strncmp(node->target, "upgrade", 7) == 0) {
             length = wm_agent_upgrade_process_command(node->buffer, &buffer);
-        } else if (strncmp(node->target, "wcontrol", 8) == 0) {
-            length = wcontrol_dispatch(node->buffer, &buffer);
+        } else if (strncmp(node->target, "control", 7) == 0) {
+            length = control_dispatch(node->buffer, &buffer);
         } else {
             os_strdup("err Could not get requested section", buffer);
             length = strlen(buffer);

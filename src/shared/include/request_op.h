@@ -16,7 +16,7 @@
 #define SOCKET_SYSCHECK "syscheck"
 #define SOCKET_WMODULES "wmodules"
 #define SOCKET_AGENT    "agent"
-#define SOCKET_WCONTROL "wcontrol"
+#define SOCKET_CONTROL  "control"
 
 typedef struct req_node_t {
     int sock;

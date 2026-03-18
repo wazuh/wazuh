@@ -1277,7 +1277,7 @@ def send_restart_command(agent_id: str = '') -> str:
         Response message from the agent.
     """
     with WazuhSocket(common.REMOTED_SOCKET) as s:
-        s.send(f"{agent_id} wcontrol restart".encode())
+        s.send(f"{agent_id} control restart".encode())
         response = s.receive().decode()
 
     if not response.startswith("ok"):
@@ -1300,7 +1300,7 @@ def send_reload_command(agent_id: str = '') -> str:
         Response message from the agent.
     """
     with WazuhSocket(common.REMOTED_SOCKET) as s:
-        s.send(f"{agent_id} wcontrol reload".encode())
+        s.send(f"{agent_id} control reload".encode())
         response = s.receive().decode()
 
     if not response.startswith("ok"):
