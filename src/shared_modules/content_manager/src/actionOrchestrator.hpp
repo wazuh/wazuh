@@ -44,8 +44,8 @@ public:
      */
     struct UpdateData
     {
-        UpdateType type;   ///< Orchestration update type.
-        int offset;        ///< Reserved for interface compatibility; not used by Indexer path.
+        UpdateType type; ///< Orchestration update type.
+        int offset;      ///< Reserved for interface compatibility; not used by Indexer path.
 
         /**
          * @brief Creates an UpdateData struct for content update.
@@ -79,12 +79,11 @@ public:
         try
         {
             m_spBaseContext = std::make_shared<UpdaterBaseContext>(stopActionCondition, fileProcessingCallback);
-            m_spBaseContext->topicName  = parameters.at("topicName");
+            m_spBaseContext->topicName = parameters.at("topicName");
             m_spBaseContext->configData = parameters.at("configData");
 
-            logDebug1(WM_CONTENTUPDATER,
-                      "Creating '%s' Content Updater orchestration",
-                      m_spBaseContext->topicName.c_str());
+            logDebug1(
+                WM_CONTENTUPDATER, "Creating '%s' Content Updater orchestration", m_spBaseContext->topicName.c_str());
 
             auto executionContext {std::make_shared<ExecutionContext>()};
             executionContext->handleRequest(m_spBaseContext);
@@ -147,8 +146,7 @@ private:
      * @param spUpdaterContext Updater context.
      * @param forceFullReload  If true, clears the stored cursor to trigger a full reload.
      */
-    void runContentUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext,
-                          const bool forceFullReload) const
+    void runContentUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, const bool forceFullReload) const
     {
         logDebug2(WM_CONTENTUPDATER,
                   "Running '%s' content update (forceFullReload=%s)",
@@ -162,9 +160,7 @@ private:
                       "Clearing stored cursor for '%s' to force full reload",
                       spUpdaterContext->spUpdaterBaseContext->topicName.c_str());
             spUpdaterContext->spUpdaterBaseContext->spRocksDB->put(
-                Utils::getCompactTimestamp(std::time(nullptr)),
-                "0",
-                Components::Columns::CURRENT_OFFSET);
+                Utils::getCompactTimestamp(std::time(nullptr)), "0", Components::Columns::CURRENT_OFFSET);
         }
 
         m_spUpdaterOrchestration->handleRequest(spUpdaterContext);

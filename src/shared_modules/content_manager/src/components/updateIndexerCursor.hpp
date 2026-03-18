@@ -52,25 +52,21 @@ private:
 
         if (!context.data.contains("cursor"))
         {
-            logDebug2(WM_CONTENTUPDATER,
-                      "UpdateIndexerCursor: No cursor in context data, skipping persistence");
+            logDebug2(WM_CONTENTUPDATER, "UpdateIndexerCursor: No cursor in context data, skipping persistence");
             return;
         }
 
         const auto cursor = context.data.at("cursor").get<std::string>();
         if (cursor.empty())
         {
-            logDebug2(WM_CONTENTUPDATER,
-                      "UpdateIndexerCursor: Cursor is empty, skipping persistence");
+            logDebug2(WM_CONTENTUPDATER, "UpdateIndexerCursor: Cursor is empty, skipping persistence");
             return;
         }
 
         logDebug2(WM_CONTENTUPDATER, "UpdateIndexerCursor: Persisting cursor '%s'", cursor.c_str());
 
         context.spUpdaterBaseContext->spRocksDB->put(
-            Utils::getCompactTimestamp(std::time(nullptr)),
-            cursor,
-            Components::Columns::CURRENT_OFFSET);
+            Utils::getCompactTimestamp(std::time(nullptr)), cursor, Components::Columns::CURRENT_OFFSET);
     }
 
 public:

@@ -46,13 +46,12 @@ public:
      * @return std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>>
      *         Head of the pipeline chain (IndexerDownloader).
      */
-    static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(
-        nlohmann::json& config)
+    static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(nlohmann::json& config)
     {
         logDebug1(WM_CONTENTUPDATER, "FactoryContentUpdater - Starting process");
 
         auto indexerDownloader = std::make_shared<IndexerDownloader>(config);
-        auto cursorUpdater     = std::make_shared<UpdateIndexerCursor>();
+        auto cursorUpdater = std::make_shared<UpdateIndexerCursor>();
 
         indexerDownloader->setNext(cursorUpdater);
 

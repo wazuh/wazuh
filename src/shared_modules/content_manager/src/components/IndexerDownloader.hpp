@@ -70,9 +70,7 @@ private:
             return;
         }
         context.spUpdaterBaseContext->spRocksDB->put(
-            Utils::getCompactTimestamp(std::time(nullptr)),
-            cursor,
-            Components::Columns::CURRENT_OFFSET);
+            Utils::getCompactTimestamp(std::time(nullptr)), cursor, Components::Columns::CURRENT_OFFSET);
     }
 
     /**
@@ -87,8 +85,7 @@ private:
         try
         {
             const auto value =
-                context.spUpdaterBaseContext->spRocksDB
-                    ->getLastKeyValue(Components::Columns::CURRENT_OFFSET)
+                context.spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET)
                     .second.ToString();
             // ExecutionContext writes "0" on the very first run — treat it as no cursor.
             return (value == "0") ? "" : value;
@@ -112,19 +109,17 @@ private:
      * @param hits     Array of Indexer hit objects from a search response.
      * @param cursor   String representation of the highest offset seen in this page.
      */
-    void processPage(UpdaterContext& context,
-                     const nlohmann::json& hits,
-                     const std::string& cursor) const
+    void processPage(UpdaterContext& context, const nlohmann::json& hits, const std::string& cursor) const
     {
         nlohmann::json message;
-        message["type"]   = "indexer";
+        message["type"] = "indexer";
         message["cursor"] = cursor;
-        message["data"]   = nlohmann::json::array();
+        message["data"] = nlohmann::json::array();
 
         for (const auto& hit : hits)
         {
-            const auto& source  = hit.value("_source", hit);
-            const auto  docType = source.value("type", std::string {});
+            const auto& source = hit.value("_source", hit);
+            const auto docType = source.value("type", std::string {});
 
             // TCPE and TVENDORS are Indexer-only types not consumed by VD scan — skip silently.
             if (docType == "TCPE" || docType == "TVENDORS")
@@ -139,7 +134,7 @@ private:
             // "FEED-GLOBAL", "TID-xxx"). EventDecoder identifies the resource type
             // by key prefix (startsWith "CVE-", "TID-", "FEED-GLOBAL", etc.).
             resource["resource"] = hit.value("_id", std::string {});
-            resource["payload"]  = source.value("document", nlohmann::json::object());
+            resource["payload"] = source.value("document", nlohmann::json::object());
 
             if (docType == "CVE")
             {
@@ -192,9 +187,8 @@ private:
             }
             else
             {
-                logInfo(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Retrying initial full load (attempt %zu) ...",
-                        attempt + 1);
+                logInfo(
+                    WM_CONTENTUPDATER, "IndexerDownloader: Retrying initial full load (attempt %zu) ...", attempt + 1);
             }
 
             const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
@@ -204,8 +198,9 @@ private:
 
             nlohmann::json query;
             query["query"]["match_all"] = nlohmann::json::object();
-            query["sort"]               = nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
-            query["size"]               = pageSize;
+            query["sort"] =
+                nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
+            query["size"] = pageSize;
 
             std::string lastCursor;
             size_t totalProcessed = 0;
@@ -275,8 +270,7 @@ private:
             if (context.spUpdaterBaseContext->spStopCondition->waitFor(
                     std::chrono::duration_cast<std::chrono::milliseconds>(INITIAL_LOAD_RETRY_INTERVAL)))
             {
-                logInfo(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Stop requested during initial load retry — aborting.");
+                logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested during initial load retry — aborting.");
                 return;
             }
         }
@@ -289,9 +283,7 @@ private:
      */
     void incrementalUpdate(UpdaterContext& context, const std::string& lastCursor) const
     {
-        logInfo(WM_CONTENTUPDATER,
-                "IndexerDownloader: Starting incremental update from offset %s",
-                lastCursor.c_str());
+        logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Starting incremental update from offset %s", lastCursor.c_str());
 
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
         const size_t pageSize = m_config.at("indexer").value("pageSize", 1000u);
@@ -300,11 +292,11 @@ private:
 
         nlohmann::json query;
         query["query"]["range"]["offset"]["gt"] = std::stoull(lastCursor);
-        query["sort"]                           = nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
-        query["size"]                           = pageSize;
+        query["sort"] = nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
+        query["size"] = pageSize;
 
-        std::string newCursor  = lastCursor;
-        size_t totalProcessed  = 0;
+        std::string newCursor = lastCursor;
+        size_t totalProcessed = 0;
 
         syncConnector.executeSearchQueryWithPagination(
             indexName,
@@ -404,9 +396,9 @@ public:
         // postUpdateCallback() for this non-"indexer" message type.
         const auto cursor = context->data.value("cursor", std::string {});
         nlohmann::json finalMsg;
-        finalMsg["type"]   = "indexer_complete";
+        finalMsg["type"] = "indexer_complete";
         finalMsg["cursor"] = cursor;
-        finalMsg["data"]   = nlohmann::json::array();
+        finalMsg["data"] = nlohmann::json::array();
         const auto result = context->spUpdaterBaseContext->fileProcessingCallback(finalMsg.dump());
         if (!std::get<2>(result))
         {
