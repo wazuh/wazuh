@@ -13,24 +13,6 @@ from wazuh.core.utils import WazuhVersion
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 
-
-def get_commands() -> list:
-    """Get the available commands.
-
-    Returns
-    -------
-    list
-        List with the available commands.
-    """
-    commands = list()
-    with open(common.AR_CONF) as f:
-        for line in f:
-            cmd = line.split(" - ")[0]
-            commands.append(cmd)
-
-    return commands
-
-
 def shell_escape(command: str) -> str:
     """Escape some characters in the command before sending it.
 
@@ -70,7 +52,7 @@ class ARMessageBuilder:
         """
         raise NotImplementedError
 
-    def create_message(self, command: str = '', arguments: list = None, alert: dict = None) -> str:
+    def create_message(self, command: str = '', arguments: list = None, alert: dict = None, command_config: dict = None) -> str:
         """Create the message with the Active Response format that will be sent to the socket.
 
         Parameters
@@ -82,6 +64,8 @@ class ARMessageBuilder:
             Command arguments.
         alert : dict
             Alert data that will be sent with the AR command.
+        command_config : dict
+            Command metadata to include in the JSON active response payload.
 
         Returns
         -------
@@ -116,7 +100,7 @@ class ARMessageBuilder:
 
         raise WazuhError(1000, "No suitable message builder found for agent version: {}".format(agent_version))
 
-    def validate_command(self, command: str):
+    def validate_command(self, command: str, command_config: dict = None):
         """Validate the command for Active Response.
 
         Parameters
@@ -124,21 +108,21 @@ class ARMessageBuilder:
         command : str
             Command running in the agent. If this value starts with !, then it refers to a script name instead of a command
             name.
+        command_config : dict
+            Command metadata associated with the active response command.
 
         Raises
         ------
         WazuhError(1650)
             If the command is not specified.
         WazuhError(1652)
-            If the command is not custom and the command is not one of the available commands.
+            If the command is invalid.
         """
         if not command:
             raise WazuhError(1650)
 
-        if not command.startswith('!'):
-            commands = get_commands()
-            if command not in commands:
-                raise WazuhError(1652)
+        if command[0] != '!' and not command_config:
+            raise WazuhError(1652, command)
 
 
 class ARStrMessage(ARMessageBuilder):
@@ -158,7 +142,7 @@ class ARStrMessage(ARMessageBuilder):
         """
         return WazuhVersion(agent_version) < WazuhVersion(common.AR_LEGACY_VERSION)
 
-    def create_message(self, command: str = '', arguments: list = None, alert: dict = None) -> str:
+    def create_message(self, command: str = '', arguments: list = None, alert: dict = None, command_config: dict = None) -> str:
         """Create the message with the Active Response format that will be sent to the socket.
 
         Parameters
@@ -170,13 +154,8 @@ class ARStrMessage(ARMessageBuilder):
             Command arguments.
         alert : dict
             Alert data that will be sent with the AR command.
-
-        Raises
-        ------
-        WazuhError(1650)
-            If the command is not specified.
-        WazuhError(1652)
-            If the command is not custom and the command is not one of the available commands.
+        command_config : dict
+            Ignored for legacy string active response messages.
 
         Returns
         -------
@@ -208,7 +187,7 @@ class ARJsonMessage(ARMessageBuilder):
         """
         return WazuhVersion(agent_version) >= WazuhVersion(common.AR_LEGACY_VERSION)
 
-    def create_message(self, command: str = '', arguments: list = None, alert: dict = None) -> str:
+    def create_message(self, command: str = '', arguments: list = None, alert: dict = None, command_config: dict = None) -> str:
         """Create the message with the Active Response format that will be sent to the socket.
 
         Parameters
@@ -220,34 +199,36 @@ class ARJsonMessage(ARMessageBuilder):
             Command arguments.
         alert : dict
             Alert data that will be sent with the AR command.
-
-        Raises
-        ------
-        WazuhError(1650)
-            If the command is not specified.
-        WazuhError(1652)
-            If the command is not custom and the command is not one of the available commands.
+        command_config : dict
+            Command metadata to include in the JSON active response payload.
 
         Returns
         -------
         str
             Message that will be sent to the socket.
         """
-        self.validate_command(command)
+        self.validate_command(command, command_config)
+        cluster_enabled = not read_cluster_config()['disabled']
+        node_name = get_node().get('node') if cluster_enabled else None
 
-        node_name = get_node().get('node')
+        parameters = {
+            'extra_args': arguments if arguments else [],
+            'alert': alert if alert else {}
+        }
+
+        if command_config:
+            parameters['command'] = command_config
 
         msg_queue = json.dumps(
             create_wazuh_socket_message(origin={'name': node_name, 'module': common.origin_module.get()},
                                         command=command,
-                                        parameters={'extra_args': arguments if arguments else [],
-                                                    'alert': alert if alert else {}}))
+                                        parameters=parameters))
 
         return msg_queue
 
 
 def send_ar_message(agent_id: str = '', agent_version = '', wq: WazuhQueue = None, command: str = '',
-                    arguments: list = None, alert: dict = None) -> None:
+                    arguments: list = None, alert: dict = None, command_config: dict = None) -> None:
     """Send the active response message to the agent.
 
     Parameters
@@ -265,9 +246,13 @@ def send_ar_message(agent_id: str = '', agent_version = '', wq: WazuhQueue = Non
         Command arguments.
     alert : dict
         Alert information depending on the AR executed.
+    command_config : dict
+        Command metadata to include in the JSON active response payload.
 
     Raises
     ------
+    WazuhError(1650)
+        If the command is not specified.
     WazuhError(1750)
         If active response is disabled in the specified agent.
     """
@@ -278,6 +263,11 @@ def send_ar_message(agent_id: str = '', agent_version = '', wq: WazuhQueue = Non
 
     # Create classic msg or JSON msg depending on the agent version
     message_builder = ARMessageBuilder.choose_builder(agent_version)
-    msg_queue = message_builder.create_message(command=command, arguments=arguments, alert=alert)
+    msg_queue = message_builder.create_message(
+        command=command,
+        arguments=arguments,
+        alert=alert,
+        command_config=command_config
+    )
 
     wq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=WazuhQueue.AR_TYPE)

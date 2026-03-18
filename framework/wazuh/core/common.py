@@ -198,7 +198,8 @@ ACTIVE_CONFIG_VERSION = 'Wazuh v4.0.0'
 # ================================================ Wazuh path - Config =================================================
 OSSEC_CONF = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager.conf')
 INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager-internal-options.conf')
-AR_CONF = os.path.join(WAZUH_PATH, 'etc', 'shared', 'ar.conf')
+INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'internal_options.conf')
+LOCAL_INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'local_internal_options.conf')
 CLIENT_KEYS = os.path.join(WAZUH_PATH, 'etc', 'client.keys')
 SHARED_PATH = os.path.join(WAZUH_PATH, 'etc', 'shared')
 

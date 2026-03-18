@@ -24,7 +24,6 @@ chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db
 chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/shared
 chmod --reference=/var/wazuh-manager/etc/shared/default /var/wazuh-manager/etc/shared/group*
 cd /var/wazuh-manager/etc/shared && find -name merged.mg -exec chown wazuh-manager:wazuh-manager {} \; && cd /
-chown root:wazuh-manager /var/wazuh-manager/etc/shared/ar.conf
 
 sleep 1
 

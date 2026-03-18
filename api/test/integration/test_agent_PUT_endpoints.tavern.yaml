@@ -56,7 +56,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: "001"
-        group_id: 'ar.conf'
     response:
       <<: *resource_not_found_group
 

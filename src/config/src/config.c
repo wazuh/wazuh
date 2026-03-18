@@ -112,14 +112,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CBUFFER) && (Read_ClientBuffer(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, oscommand) == 0)) {
-            if ((modules & CAR) && (ReadActiveCommands(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, osactive_response) == 0)) {
-            if ((modules & CAR) && (ReadActiveResponses(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
         }
         else if (strcmp(node[i]->element, oswmodule) == 0) {
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {

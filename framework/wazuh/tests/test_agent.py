@@ -567,13 +567,13 @@ def test_agent_get_group_files(group_list):
         List of groups to get their files.
     """
     result = get_group_files(group_list=group_list)
-    # Assert 'items' contains agent.conf, merged.mg and ar.conf and 'hash' is not empty
+    # Assert 'items' contains agent.conf and merged.mg and 'hash' is not empty
     if result.total_failed_items != 0:
         assert list(result.failed_items.keys())[0].code == 1710
     else:
-        assert result.total_affected_items == 3
+        assert result.total_affected_items == 2
         assert set(item['filename'] for item in result.affected_items).difference(
-            set(['agent.conf', 'merged.mg', 'ar.conf'])) == set()
+            set(['agent.conf', 'merged.mg'])) == set()
         for item in result.affected_items:
             assert item['hash']
 
@@ -653,7 +653,6 @@ def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
     ('group-1', WazuhError, 1711),
     ('invalid!', WazuhError, 1722),
     ('delete-me', WazuhInternalError, 1005),
-    ('ar.conf', WazuhError, 1713),
     ('agent-template.conf', WazuhError, 1713)
 ])
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)

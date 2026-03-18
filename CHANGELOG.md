@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v5.0.0]
 
+### Manager
+
+#### Fixed
+
+- Removed the manager dependency on `ar.conf` for active response handling and sent command configuration, including `arguments`, through the event payload.
+
 ## [v4.14.5]
 
 ### Agent

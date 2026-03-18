@@ -19,7 +19,6 @@
 #define CREMOTE       0000000100
 #define CCLIENT       0000000200
 #define CMAIL         0000000400
-#define CAR           0000001000
 #define CAGENT_CONFIG 0000010000
 #define CWMODULE      0000200000
 #define CAUTHD        0001000000
@@ -34,7 +33,7 @@
 #define BITMASK(modules)   (\
                             (modules & CGLOBAL       ) | (modules & CSYSCHECK     ) | (modules & CROOTCHECK    ) |\
                             (modules & CALERTS       ) | (modules & CLOCALFILE    ) | (modules & CREMOTE       ) |\
-                            (modules & CCLIENT       ) | (modules & CMAIL         ) | (modules & CAR           ) |\
+                            (modules & CCLIENT       ) | (modules & CMAIL         ) |\
                             (modules & CAGENT_CONFIG ) | (modules & CWMODULE      ) |\
                             (modules & CAUTHD        ) | (modules & CBUFFER       ) | (modules & CCLUSTER      ) |\
                             (modules & CLGCSOCKET    ) | (modules & WAZUHDB       ) )
@@ -57,8 +56,6 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2);
 int Read_Remote(const OS_XML *xml,XML_NODE node, void *d1, void *d2);
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_ClientBuffer(XML_NODE node, void *d1, void *d2);
-int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
-int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);
 int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);

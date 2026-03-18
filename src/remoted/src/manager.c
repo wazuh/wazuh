@@ -891,20 +891,6 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
             fprintf(finalfp, "#%s\n", group);
         }
 
-        // Merge ar.conf always
-        if (w_stat(DEFAULTAR, &attrib) == 0) {
-            if (create_merged) {
-                if (merged_ok = MergeAppendFile(finalfp, DEFAULTAR, -1), merged_ok == 0) {
-                    fclose(finalfp);
-                    os_free(finalbuf);
-                    return;
-                }
-            }
-            if (!is_multigroup) {
-                ftime_add(_f_time, DEFAULTAR_FILE, attrib.st_mtime);
-            }
-        }
-
         snprintf(group_path, PATH_MAX + 1, "%s/%s", sharedcfg_dir, group);
 
         merged_ok = validate_shared_files(group_path, finalfp, _f_time, create_merged, is_multigroup, -1);

@@ -818,10 +818,6 @@ void test_c_group_no_changes(void **state)
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
-
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, NULL);
@@ -886,10 +882,6 @@ void test_c_group_no_changes_disk(void **state)
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -958,10 +950,6 @@ void test_c_group_changes(void **state)
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -1032,10 +1020,6 @@ void test_c_group_changes_disk(void **state)
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
-
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, NULL);
@@ -1099,10 +1083,6 @@ void test_c_group_fail(void **state)
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -1168,10 +1148,6 @@ void test_c_group_fail_disk(void **state)
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -1417,10 +1393,6 @@ void test_c_group_no_create_shared_file(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
-
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, NULL);
@@ -1481,21 +1453,6 @@ void test_c_group_invalid_share_file(void **state)
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
 
-    struct stat stat_buf = { .st_mtime = 123456788 };
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, &stat_buf);
-    will_return(__wrap_stat, 0);
-
-    expect_value(__wrap_MergeAppendFile, finalfp, (FILE *)1);
-    expect_value(__wrap_MergeAppendFile, path_offset, -1);
-    will_return(__wrap_MergeAppendFile, 1);
-
-    OSHash_Add_ex_check_data = 0;
-    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
-    expect_string(__wrap_OSHash_Add_ex, key, "ar.conf");
-    will_return(__wrap_OSHash_Add_ex, 1);
-
-    expect_string(__wrap__merror, formatted_msg, "Couldn't add file 'ar.conf' to group hash table.");
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -1569,21 +1526,6 @@ void test_c_group_append_file_error(void **state)
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
 
-    struct stat stat_buf = { .st_mtime = 123456788 };
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, &stat_buf);
-    will_return(__wrap_stat, 0);
-
-    expect_value(__wrap_MergeAppendFile, finalfp, (FILE *)1);
-    expect_value(__wrap_MergeAppendFile, path_offset, -1);
-    will_return(__wrap_MergeAppendFile, 1);
-
-    OSHash_Add_ex_check_data = 0;
-    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
-    expect_string(__wrap_OSHash_Add_ex, key, "ar.conf");
-    will_return(__wrap_OSHash_Add_ex, 0);
-
-    expect_string(__wrap__merror, formatted_msg, "Couldn't add file 'ar.conf' to group hash table.");
 
     // Start validate_shared_files function
     char ** files = NULL;
@@ -1661,18 +1603,6 @@ void test_c_group_append_ar_error(void **state)
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
-
-    struct stat stat_buf = { .st_mtime = 123456788 };
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, &stat_buf);
-    will_return(__wrap_stat, 0);
-
-    expect_value(__wrap_MergeAppendFile, finalfp, (FILE *)1);
-    expect_value(__wrap_MergeAppendFile, path_offset, -1);
-    will_return(__wrap_MergeAppendFile, 0);
-
-    expect_value(__wrap_fclose, _File, (FILE *)1);
-    will_return(__wrap_fclose, 0);
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
 
@@ -2737,9 +2667,6 @@ void test_process_groups_find_group_null(void **state)
     expect_string(__wrap_fprintf, formatted_msg, "#test\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test");
@@ -2808,9 +2735,6 @@ void test_process_groups_find_group_changed(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -2849,10 +2773,6 @@ void test_process_groups_find_group_changed(void **state)
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -2928,10 +2848,6 @@ void test_process_groups_find_group_not_changed(void **state)
     // Start c_group function
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
