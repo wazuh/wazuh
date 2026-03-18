@@ -14,7 +14,7 @@
 #include "sha1_op.h"
 
 
-void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_it) {
+void *read_wazuhalert(logreader *lf, __attribute__((unused)) int *rc, int drop_it) {
     alert_data *al_data;
     char user_msg[256];
     char srcip_msg[256];

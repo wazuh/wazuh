@@ -1236,8 +1236,8 @@ void set_read(logreader *current, int i, int j) {
         current->read = read_snortfull;
     }
 #ifndef WIN32
-    if (strcmp("ossecalert", current->logformat) == 0) {
-        current->read = read_ossecalert;
+    if (strcmp("wazuhalert", current->logformat) == 0) {
+        current->read = read_wazuhalert;
     }
 #endif
     else if (strcmp("nmapg", current->logformat) == 0) {
