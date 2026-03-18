@@ -225,7 +225,7 @@ size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
 
 #ifdef WIN32
-size_t wcontrol_dispatch(char *command, char **output);
+size_t control_dispatch(char *command, char **output);
 int os_start_service();
 int os_stop_service();
 #endif

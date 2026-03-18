@@ -66,8 +66,8 @@ static void *send_agent_control() {
     ssize_t length;
     fd_set fdset;
 
-    if (sock = OS_BindUnixDomainWithPerms(AGENT_CONTROL_SOCK, SOCK_STREAM, OS_MAXSTR, getuid(), wm_getGroupID(), 0660), sock < 0) {
-        mterror(WM_CONTROL_LOGTAG, "Unable to bind to socket '%s': (%d) %s.", AGENT_CONTROL_SOCK, errno, strerror(errno));
+    if (sock = OS_BindUnixDomainWithPerms(CONTROL_SOCK, SOCK_STREAM, OS_MAXSTR, getuid(), wm_getGroupID(), 0660), sock < 0) {
+        mterror(WM_CONTROL_LOGTAG, "Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
         return NULL;
     }
 

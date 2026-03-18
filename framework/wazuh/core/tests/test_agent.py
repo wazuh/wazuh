@@ -1253,7 +1253,7 @@ def test_send_restart_command(mock_socket_cls, agent_id, mock_response, should_r
     else:
         result = send_restart_command(agent_id)
         mock_socket_cls.assert_called_with(common.REMOTED_SOCKET)
-        mock_instance.send.assert_called_with(f"{agent_id} wcontrol restart".encode())
+        mock_instance.send.assert_called_with(f"{agent_id} control restart".encode())
         assert result == mock_response.decode()
 
 
@@ -1287,7 +1287,7 @@ def test_send_reload_command(mock_socket_cls, agent_id, mock_response, should_ra
     else:
         result = send_reload_command(agent_id)
         mock_socket_cls.assert_called_with(common.REMOTED_SOCKET)
-        mock_instance.send.assert_called_with(f"{agent_id} wcontrol reload".encode())
+        mock_instance.send.assert_called_with(f"{agent_id} control reload".encode())
         assert result == mock_response.decode()
 
 
