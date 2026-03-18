@@ -223,6 +223,12 @@ bool startup_gate_is_ready(void);
 
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
+
+#ifdef WIN32
+size_t wcontrol_dispatch(char *command, char **output);
+int os_start_service();
+int os_stop_service();
+#endif
 size_t agcom_gethandshake(char ** output);
 size_t agcom_getstartupgate(char **output);
 cJSON *getDocumentLimits(const char *module);

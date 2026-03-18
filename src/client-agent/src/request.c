@@ -265,6 +265,8 @@ void * req_receiver(__attribute__((unused)) void * arg) {
             length = wmcom_dispatch(node->buffer, node->length, &buffer);
         } else if (strncmp(node->target, "upgrade", 7) == 0) {
             length = wm_agent_upgrade_process_command(node->buffer, &buffer);
+        } else if (strncmp(node->target, "wcontrol", 8) == 0) {
+            length = wcontrol_dispatch(node->buffer, &buffer);
         } else {
             os_strdup("err Could not get requested section", buffer);
             length = strlen(buffer);
