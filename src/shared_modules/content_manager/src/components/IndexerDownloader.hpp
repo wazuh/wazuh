@@ -31,14 +31,11 @@
  *
  * Behaviour:
  *  - Initial load  (stored cursor is empty / "0"):
- *      Uses executeSearchQueryWithPagination with match_all sorted by offset.
- *      PIT (IndexerConnectorAsync) is not used because both connector types compete for
- *      an exclusive RocksDB lock on queue/indexer/, and the facade already holds one via
- *      its IndexerConnectorSync instance. search_after with a stable sort (offset, _id)
- *      is equivalent for this feed because the index is only updated in scheduled batches.
+ *      Opens a PIT on the index, then paginates with match_all sorted by (offset, _id)
+ *      using search_after.  Retries every 30 s while the index returns 0 documents.
  *  - Incremental update (stored cursor is an integer offset):
- *      Uses an offset range query via IndexerConnectorSync::executeSearchQueryWithPagination.
- *      Fetches all documents whose offset field is greater than the stored value.
+ *      Opens a PIT and fetches all documents whose offset is greater than the stored
+ *      cursor, paginated with the same (offset, _id) sort and search_after.
  *
  * For each page the downloader constructs a message of type "indexer" and invokes
  * fileProcessingCallback synchronously. The highest offset seen is stored in
@@ -159,24 +156,91 @@ private:
     }
 
     /**
-     * @brief Full initial load using executeSearchQueryWithPagination with match_all
-     *        sorted by offset (IndexerConnectorSync).
+     * @brief Paginate through the index using PIT + search_after, calling processPage for
+     *        each page and updating the cursor.
+     *
+     * Shared by initialLoad and incrementalUpdate — the only difference is the query.
+     *
+     * @param context   Updater context.
+     * @param query     Elasticsearch query object (match_all or range).
+     * @param startCursor  Starting cursor value (empty for initial load, lastCursor for incremental).
+     * @return Number of documents processed.
+     */
+    size_t fetchWithPit(UpdaterContext& context, const nlohmann::json& query, const std::string& startCursor) const
+    {
+        static constexpr std::string_view PIT_KEEP_ALIVE {"5m"};
+
+        const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
+        const size_t pageSize = m_config.at("indexer").value("pageSize", 1000u);
+
+        const nlohmann::json sort =
+            nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
+
+        IndexerConnectorSync syncConnector(m_config.at("indexer"));
+
+        auto pit = syncConnector.createPointInTime({indexName}, PIT_KEEP_ALIVE);
+        auto pitGuard = std::unique_ptr<PointInTime, std::function<void(PointInTime*)>>(
+            &pit,
+            [&syncConnector](auto* p)
+            {
+                try
+                {
+                    syncConnector.deletePointInTime(*p);
+                }
+                catch (const IndexerConnectorException& e)
+                {
+                    logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                }
+            });
+
+        std::string currentCursor = startCursor;
+        std::optional<nlohmann::json> searchAfter = std::nullopt;
+        size_t totalProcessed = 0;
+
+        while (true)
+        {
+            const auto hitsObj = syncConnector.search(pit, pageSize, query, sort, searchAfter);
+            const auto& hitArray = hitsObj.at("hits");
+
+            if (!hitArray.is_array() || hitArray.empty())
+            {
+                break;
+            }
+
+            const auto& lastHit = hitArray.back();
+            if (lastHit.contains("_source") && lastHit.at("_source").contains("offset"))
+            {
+                currentCursor = std::to_string(lastHit.at("_source").at("offset").get<uint64_t>());
+            }
+
+            processPage(context, hitArray, currentCursor);
+            totalProcessed += hitArray.size();
+            persistCursor(context, currentCursor);
+
+            if (hitArray.size() < pageSize)
+            {
+                break;
+            }
+
+            searchAfter = lastHit.at("sort");
+        }
+
+        context.data["cursor"] = currentCursor;
+        return totalProcessed;
+    }
+
+    /**
+     * @brief Full initial load using PIT + search_after (match_all, sorted by offset).
      *
      * Retries every INITIAL_LOAD_RETRY_INTERVAL seconds if the Indexer returns 0 documents
-     * or is temporarily unavailable.  The sleep is interruptible: the retry loop exits
-     * immediately when spStopCondition fires (agent shutdown).
-     *
-     * NOTE: PIT (IndexerConnectorAsync) cannot be used here due to an exclusive RocksDB
-     * lock conflict on queue/indexer/ with the IndexerConnectorSync instance held by the
-     * facade. search_after pagination with a stable sort (offset, _id) is equivalent for
-     * this feed because the index is only updated in scheduled batches, not continuously.
-     * Resolving this to use PIT would require the connector layer to support shared access
-     * or separate RocksDB paths for sync and async connectors.
+     * or is temporarily unavailable. The sleep is interruptible: exits immediately when
+     * spStopCondition fires (agent shutdown).
      */
     void initialLoad(UpdaterContext& context) const
     {
         static constexpr std::chrono::seconds INITIAL_LOAD_RETRY_INTERVAL {30};
 
+        const nlohmann::json query = {{"match_all", nlohmann::json::object()}};
         size_t attempt = 0;
 
         while (true)
@@ -191,52 +255,12 @@ private:
                     WM_CONTENTUPDATER, "IndexerDownloader: Retrying initial full load (attempt %zu) ...", attempt + 1);
             }
 
-            const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-            const size_t pageSize = m_config.at("indexer").value("pageSize", 1000u);
-
-            IndexerConnectorSync syncConnector(m_config.at("indexer"));
-
-            nlohmann::json query;
-            query["query"]["match_all"] = nlohmann::json::object();
-            query["sort"] =
-                nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
-            query["size"] = pageSize;
-
-            std::string lastCursor;
             size_t totalProcessed = 0;
             bool exceptionOccurred = false;
 
             try
             {
-                syncConnector.executeSearchQueryWithPagination(
-                    indexName,
-                    query,
-                    [&](const nlohmann::json& response)
-                    {
-                        if (!response.contains("hits") || !response.at("hits").contains("hits"))
-                        {
-                            return;
-                        }
-                        const auto& hits = response.at("hits").at("hits");
-                        if (hits.empty())
-                        {
-                            return;
-                        }
-
-                        const auto& lastHit = hits.back();
-                        if (lastHit.contains("_source") && lastHit.at("_source").contains("offset"))
-                        {
-                            lastCursor = std::to_string(lastHit.at("_source").at("offset").get<uint64_t>());
-                        }
-
-                        processPage(context, hits, lastCursor);
-                        totalProcessed += hits.size();
-                        persistCursor(context, lastCursor);
-
-                        logDebug2(WM_CONTENTUPDATER,
-                                  "IndexerDownloader: Initial load — %zu documents processed so far",
-                                  totalProcessed);
-                    });
+                totalProcessed = fetchWithPit(context, query, "");
             }
             catch (const std::exception& e)
             {
@@ -249,11 +273,10 @@ private:
 
             if (totalProcessed > 0)
             {
-                context.data["cursor"] = lastCursor;
                 logInfo(WM_CONTENTUPDATER,
                         "IndexerDownloader: Initial load complete — %zu documents, cursor: '%s'",
                         totalProcessed,
-                        lastCursor.c_str());
+                        context.data.value("cursor", std::string {}).c_str());
                 return;
             }
 
@@ -277,7 +300,7 @@ private:
     }
 
     /**
-     * @brief Incremental update using offset range query (IndexerConnectorSync).
+     * @brief Incremental update using PIT + search_after (offset range query).
      *
      * @param lastCursor String representation of the last persisted integer offset.
      */
@@ -285,50 +308,14 @@ private:
     {
         logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Starting incremental update from offset %s", lastCursor.c_str());
 
-        const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-        const size_t pageSize = m_config.at("indexer").value("pageSize", 1000u);
+        const nlohmann::json query = {{"range", {{"offset", {{"gt", std::stoull(lastCursor)}}}}}};
 
-        IndexerConnectorSync syncConnector(m_config.at("indexer"));
+        const size_t totalProcessed = fetchWithPit(context, query, lastCursor);
 
-        nlohmann::json query;
-        query["query"]["range"]["offset"]["gt"] = std::stoull(lastCursor);
-        query["sort"] = nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
-        query["size"] = pageSize;
-
-        std::string newCursor = lastCursor;
-        size_t totalProcessed = 0;
-
-        syncConnector.executeSearchQueryWithPagination(
-            indexName,
-            query,
-            [&](const nlohmann::json& response)
-            {
-                if (!response.contains("hits") || !response.at("hits").contains("hits"))
-                {
-                    return;
-                }
-                const auto& hits = response.at("hits").at("hits");
-                if (hits.empty())
-                {
-                    return;
-                }
-
-                const auto& lastHit = hits.back();
-                if (lastHit.contains("_source") && lastHit.at("_source").contains("offset"))
-                {
-                    newCursor = std::to_string(lastHit.at("_source").at("offset").get<uint64_t>());
-                }
-
-                processPage(context, hits, newCursor);
-                totalProcessed += hits.size();
-                persistCursor(context, newCursor);
-            });
-
-        context.data["cursor"] = newCursor;
         logInfo(WM_CONTENTUPDATER,
                 "IndexerDownloader: Incremental update complete — %zu documents, new cursor: '%s'",
                 totalProcessed,
-                newCursor.c_str());
+                context.data.value("cursor", std::string {}).c_str());
     }
 
 public:

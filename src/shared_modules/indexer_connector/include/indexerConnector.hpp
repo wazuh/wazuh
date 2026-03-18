@@ -168,6 +168,46 @@ public:
                                           std::function<void(const nlohmann::json&)> onResponse);
 
     /**
+     * @brief Create a Point In Time (PIT) for the specified indices.
+     *
+     * @param indices List of index names to include in the PIT.
+     * @param keepAlive Time to keep the PIT alive (e.g., "5m").
+     * @param expandWildcards If true, expands wildcard patterns to match indices.
+     * @return A PointInTime object containing the PIT ID and creation time.
+     * @throws IndexerConnectorException if the PIT creation fails.
+     */
+    PointInTime createPointInTime(const std::vector<std::string>& indices,
+                                  std::string_view keepAlive,
+                                  bool expandWildcards = false);
+
+    /**
+     * @brief Delete a Point In Time (PIT) on the server.
+     *
+     * @param pit The PointInTime object to delete.
+     * @throws IndexerConnectorException if the PIT deletion fails.
+     */
+    void deletePointInTime(const PointInTime& pit);
+
+    /**
+     * @brief Execute a search query using Point In Time for consistent pagination.
+     *
+     * @param pit The PointInTime object to use for the search.
+     * @param size Maximum number of documents to return per page.
+     * @param query The query object.
+     * @param sort The sort array.
+     * @param searchAfter Optional search_after array for pagination.
+     * @param source Optional source filtering configuration.
+     * @return The hits object from the search response.
+     * @throws IndexerConnectorException if the search fails.
+     */
+    nlohmann::json search(const PointInTime& pit,
+                          std::size_t size,
+                          const nlohmann::json& query,
+                          const nlohmann::json& sort,
+                          const std::optional<nlohmann::json>& searchAfter = std::nullopt,
+                          const std::optional<nlohmann::json>& source = std::nullopt);
+
+    /**
      * @brief Bulk delete.
      *
      * @param id ID.
