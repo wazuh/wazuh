@@ -68,13 +68,12 @@ test_configuration = load_configuration_template(config_path, test_configuration
 # Test internal options and configurations.
 local_internal_options = {EXECD_DEBUG: '2'}
 daemons_handler_configuration = {'all_daemons': True}
-ar_conf = 'firewall-drop5 - firewall-drop - 5'
 
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_execd_firewall_drop(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
-                             set_wazuh_configuration, configure_ar_conf, remoted_simulator, authd_simulator,
+                             set_wazuh_configuration, remoted_simulator, authd_simulator,
                              daemons_handler, send_execd_message):
     '''
     description: Check if 'firewall-drop' command of 'active response' is executed correctly.
@@ -96,9 +95,6 @@ def test_execd_firewall_drop(test_configuration, test_metadata, configure_local_
         - configure_local_internal_options:
             type: fixture
             brief: Configure the Wazuh local internal options.
-        - configure_ar_conf:
-            type: fixture
-            brief: Set the Active Response configuration.
         - remoted_simulator:
             type: fixture
             brief: Starts an RemotedSimulator instance for the test function.

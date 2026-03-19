@@ -6630,8 +6630,6 @@ paths:
                   affected_items:
                     - filename: agent.conf
                       hash: ab73af41699f13fdd81903b5f23d8d00
-                    - filename: ar.conf
-                      hash: 76d8be9b97d8eae4c239e530ee7e71c8
                     - filename: merged.mg
                       hash: f8d49771911ed9d5c45b03a40babd065
                     - filename: system_audit_rcl.txt

@@ -149,14 +149,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WM_TASK_MODULE_SOCK "queue/tasks/task"
 
 /* Active Response files */
-#define DEFAULTAR_FILE "ar.conf"
 #define AR_BINDIR      "active-response/bin"
 #ifndef WIN32
-#define DEFAULTAR    "etc/shared/" DEFAULTAR_FILE
 #define AGENTCONFIG  "etc/shared/agent.conf"
 #define DEF_CA_STORE "etc/wpk_root.pem"
 #else
-#define DEFAULTAR    "shared/" DEFAULTAR_FILE
 #define AGENTCONFIG  "shared/agent.conf"
 #define DEF_CA_STORE "wpk_root.pem"
 #endif

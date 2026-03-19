@@ -196,10 +196,6 @@ case "$1" in
     # Set merged.mg permissions to new ones
     find ${DIR}/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
 
-    if [ -f ${DIR}/etc/shared/ar.conf ]; then
-        chown root:${GROUP} ${DIR}/etc/shared/ar.conf
-    fi
-
     # Check if SELinux is installed and enabled
     if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&1; then
         if [ $(getenforce) !=  "Disabled" ]; then

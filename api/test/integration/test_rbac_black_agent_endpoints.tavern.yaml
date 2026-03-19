@@ -445,9 +445,7 @@ stages:
          affected_items:
            - filename: agent.conf
              hash: !anystr
-           - filename: ar.conf
-             hash: !anystr
-         total_affected_items: 3
+         total_affected_items: 2
          total_failed_items: 0
          failed_items: []
 

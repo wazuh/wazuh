@@ -340,7 +340,6 @@ if [ ! -f "%{_localstatedir}/etc/sslmanager.key" ] && [ ! -f "%{_localstatedir}/
   chmod 640 %{_localstatedir}/etc/sslmanager.cert
 fi
 
-rm -f %{_localstatedir}/etc/shared/ar.conf  >/dev/null 2>&1
 rm -f %{_localstatedir}/etc/shared/merged.mg  >/dev/null 2>&1
 
 # Set merged.mg permissions to new ones

@@ -14,23 +14,6 @@ from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 
 
-def get_commands() -> list:
-    """Get the available commands.
-
-    Returns
-    -------
-    list
-        List with the available commands.
-    """
-    commands = list()
-    with open(common.AR_CONF) as f:
-        for line in f:
-            cmd = line.split(" - ")[0]
-            commands.append(cmd)
-
-    return commands
-
-
 def shell_escape(command: str) -> str:
     """Escape some characters in the command before sending it.
 
@@ -134,11 +117,6 @@ class ARMessageBuilder:
         """
         if not command:
             raise WazuhError(1650)
-
-        if not command.startswith('!'):
-            commands = get_commands()
-            if command not in commands:
-                raise WazuhError(1652)
 
 
 class ARStrMessage(ARMessageBuilder):

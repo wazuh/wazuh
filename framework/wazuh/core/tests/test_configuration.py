@@ -177,9 +177,8 @@ def test_merged_mg2json():
     item = configuration._merged_mg2json(file_path=os.path.join(
         parent_directory, tmp_path, 'configuration/default/merged.mg'))[0]
 
-    assert item['file_name'] == 'ar.conf'
-    assert item['file_size'] == 77
-    assert item['file_content'] == 'restart-ossec0 - restart-ossec.sh - 0\nrestart-ossec0 - restart-ossec.cmd - 0\n'
+    assert item['file_name'] == 'agent.conf'
+    assert item['file_size'] == 76
 
 
 def test_get_ossec_conf():
@@ -268,10 +267,6 @@ def test_get_file_conf():
                           dict)
         assert isinstance(configuration.get_file_conf(filename='agent.conf', group_id='default',
                                                       raw=True), str)
-        ar_list = ['restart-ossec0 - restart-ossec.sh - 0', 'restart-ossec0 - restart-ossec.cmd - 0',
-                   'restart-wazuh0 - restart-ossec.sh - 0', 'restart-wazuh0 - restart-ossec.cmd - 0',
-                   'restart-wazuh0 - restart-wazuh - 0', 'restart-wazuh0 - restart-wazuh.exe - 0']
-        assert configuration.get_file_conf(filename='ar.conf', group_id='default') == ar_list
         rcl = {'vars': {}, 'controls': [{}, {'name': 'NEW_ELEMENT', 'cis': [], 'pci': [], 'condition': 'FOR',
                                              'reference': 'TESTING', 'checks': []}]}
         assert configuration.get_file_conf(filename='rcl.conf', group_id='default') == rcl

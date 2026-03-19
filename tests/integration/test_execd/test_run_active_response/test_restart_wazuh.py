@@ -75,13 +75,12 @@ test_configuration = load_configuration_template(config_path, test_configuration
 # Test internal options and configurations.
 local_internal_options = {AGENTD_WINDOWS_DEBUG if sys.platform == WINDOWS else EXECD_DEBUG: '2'}
 daemons_handler_configuration = {'all_daemons': True}
-ar_conf = 'restart-wazuh0 - restart-wazuh - 0\nrestart-wazuh0 - restart-wazuh.exe - 0'
 
 
 # Test Function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_execd_restart(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
-                       set_wazuh_configuration, configure_ar_conf, remoted_simulator, authd_simulator,
+                       set_wazuh_configuration, remoted_simulator, authd_simulator,
                        daemons_handler, send_execd_message):
     '''
     description: Check if 'restart-wazuh' command of 'active response' is executed correctly.
@@ -103,9 +102,6 @@ def test_execd_restart(test_configuration, test_metadata, configure_local_intern
         - configure_local_internal_options:
             type: fixture
             brief: Configure the Wazuh local internal options.
-        - configure_ar_conf:
-            type: fixture
-            brief: Set the Active Response configuration.
         - remoted_simulator:
             type: fixture
             brief: Starts an RemotedSimulator instance for the test function.

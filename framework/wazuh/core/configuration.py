@@ -445,24 +445,6 @@ def _rcl2json(filepath: str) -> dict:
     return data
 
 
-def _ar_conf2json(file_path: str) -> dict:
-    """Return the lines of the ar.conf file.
-
-    Parameters
-    ----------
-    file_path : str
-        Path to the ar.conf file.
-
-    Returns
-    -------
-    dict
-        ar.conf file as dictionary.
-    """
-    with open(file_path) as f:
-        data = [line.strip('\n') for line in f.readlines()]
-    return data
-
-
 def _merged_mg2json(file_path: str) -> List[dict]:
     """Parse the merged.mg file.
 
@@ -719,7 +701,7 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
 
-    file_path = os_path.join(common.SHARED_PATH, group_id if not filename == 'ar.conf' else '', filename)
+    file_path = os_path.join(common.SHARED_PATH, group_id, filename)
 
     if not os_path.exists(file_path):
         raise WazuhError(1006, file_path)
@@ -745,8 +727,6 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
     else:
         if filename == 'agent.conf':
             data = get_agent_conf(group_id, limit=None, filename=filename, raw=raw)
-        elif filename == 'ar.conf':
-            data = _ar_conf2json(file_path)
         elif filename == 'merged.mg':
             data = _merged_mg2json(file_path)
         else:
