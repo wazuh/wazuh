@@ -99,8 +99,6 @@ CONF_SECTIONS = MappingProxyType({
 })
 
 GETCONFIG_COMMAND = "getconfig"
-GLOBAL_KEY = 'global'
-YES_VALUE = 'yes'
 
 
 def _insert(json_dst: dict, section_name: str, option: str, value: str):

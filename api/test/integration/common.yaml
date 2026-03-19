@@ -123,35 +123,6 @@ variables:
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>
         <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
-        <update_check>no</update_check>
-      </global>
-
-      <logging>
-        <log_format>plain</log_format>
-      </logging>
-
-      <remote>
-        <port>1514</port>
-        <protocol>tcp</protocol>
-      </remote>
-
-      <syscheck>
-        <disabled>yes</disabled>
-      </syscheck>
-
-      <vulnerability-detection>
-        <enabled>no</enabled>
-        <feed-update-interval>60m</feed-update-interval>
-      </vulnerability-detection>
-    </wazuh_config>
-
-  valid_wazuh_conf_with_update_check_enabled:
-    <wazuh_config>
-      <global>
-        <agents_disconnection_time>20s</agents_disconnection_time>
-        <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
-        <update_check>yes</update_check>
-        <cti-url>http://cti:4041</cti-url>
       </global>
 
       <logging>
@@ -191,7 +162,6 @@ variables:
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>
         <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
-        <update_checkkk>no</update_checkkk>
       </global>
 
       <logging>
@@ -206,32 +176,4 @@ variables:
       <syscheck>
         <disabled>yes</disabled>
       </syscheck>
-    </wazuh_config>
-
-  wazuh_conf_with_invalid_cti_url:
-    <wazuh_config>
-      <global>
-        <agents_disconnection_time>20s</agents_disconnection_time>
-        <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
-        <update_check>yes</update_check>
-        <cti-url>http://localhost:4041</cti-url>
-      </global>
-
-      <logging>
-        <log_format>plain</log_format>
-      </logging>
-
-      <remote>
-        <port>1514</port>
-        <protocol>tcp</protocol>
-      </remote>
-
-      <syscheck>
-        <disabled>yes</disabled>
-      </syscheck>
-
-      <vulnerability-detection>
-        <enabled>no</enabled>
-        <feed-update-interval>60m</feed-update-interval>
-      </vulnerability-detection>
     </wazuh_config>

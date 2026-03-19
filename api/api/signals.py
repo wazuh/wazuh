@@ -15,8 +15,6 @@ from api import configuration
 from api.constants import (SECURITY_PATH)
 from api.authentication import generate_keypair, _private_key_path, _public_key_path
 
-ONE_DAY_SLEEP = 60*60*24
-
 logger = logging.getLogger('wazuh-api')
 
 def cancel_signal_handler(func: Callable) -> Callable:

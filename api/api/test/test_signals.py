@@ -10,7 +10,6 @@ from starlette.testclient import TestClient
 
 from api.constants import SECURITY_PATH
 from api.signals import (
-    ONE_DAY_SLEEP,
     cancel_signal_handler,
     clean_auth_keys_cache,
     lifespan_handler,

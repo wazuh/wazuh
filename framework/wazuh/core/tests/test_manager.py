@@ -7,7 +7,6 @@ import os
 from datetime import timezone, datetime
 from unittest.mock import patch
 
-import httpx
 import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -32,12 +31,6 @@ def test_manager():
     # Set up
     test_manager = InitManager()
     return test_manager
-
-
-@pytest.fixture
-def client_session_get_mock():
-    with patch('httpx.AsyncClient.get') as get_mock:
-        yield get_mock
 
 
 def get_logs(json_log: bool = False):
