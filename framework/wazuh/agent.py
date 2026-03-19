@@ -398,7 +398,7 @@ async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'],
+@expose_resources(actions=['cluster:read', 'agent:reload'], resources=[f'node:id:{node_id}', 'agent:id:{agent_list}'],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True},
                   post_proc_func=async_list_handler)
 async def reload_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhResult:
@@ -417,7 +417,7 @@ async def reload_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhRe
     return await reload_agents(agent_list=agent_list)
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
+@expose_resources(actions=["agent:reload"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True},
                   post_proc_func=async_list_handler)
 async def reload_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult:

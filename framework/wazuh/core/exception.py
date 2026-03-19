@@ -253,7 +253,7 @@ class WazuhException(Exception):
                },
         1760: {'message': 'Feature only available for older agent versions, it doesn\'t apply for more recent ones.'
                },
-        1761: {'message': 'Could not send restart command. Restart via API requires agent version 5.0 or higher'
+        1761: {'message': 'Could not send restart/reload command. This operation via API requires agent version 5.0 or higher.'
                },
 
         # Manager:
