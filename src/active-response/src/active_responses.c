@@ -144,10 +144,8 @@ int send_keys_and_check_message(char **argv, char **keys) {
 
 cJSON* get_json_from_input(const char *input) {
     cJSON *input_json = NULL;
-    cJSON *version_json = NULL;
-    cJSON *origin_json = NULL;
+    cJSON *wazuh_json = NULL;
     cJSON *command_json = NULL;
-    cJSON *parameters_json = NULL;
     const char *json_err;
 
     // Parsing input
@@ -155,30 +153,16 @@ cJSON* get_json_from_input(const char *input) {
         return NULL;
     }
 
-    // Detect version
-    version_json = cJSON_GetObjectItem(input_json, "version");
-    if (!cJSON_IsNumber(version_json)) {
-        cJSON_Delete(input_json);
-        return NULL;
-    }
-
-    // Detect origin
-    origin_json = cJSON_GetObjectItem(input_json, "origin");
-    if (!cJSON_IsObject(origin_json)) {
-        cJSON_Delete(input_json);
-        return NULL;
-    }
-
-    // Detect command
+    // Detect command (added by execd)
     command_json = cJSON_GetObjectItem(input_json, "command");
     if (!cJSON_IsString(command_json)) {
         cJSON_Delete(input_json);
         return NULL;
     }
 
-    // Detect parameters
-    parameters_json = cJSON_GetObjectItem(input_json, "parameters");
-    if (!cJSON_IsObject(parameters_json)) {
+    // Detect wazuh metadata (WCS format)
+    wazuh_json = cJSON_GetObjectItem(input_json, "wazuh");
+    if (!cJSON_IsObject(wazuh_json)) {
         cJSON_Delete(input_json);
         return NULL;
     }
