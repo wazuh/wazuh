@@ -108,12 +108,16 @@ function ExtractDebugSymbols(){
 		Write-Host "Extracting dbg symbols from" $file.FullName
         & ".\cv2pdb.exe" $file.FullName $file.FullName "$($file.BaseName).pdb"
         if ($LASTEXITCODE -ne 0) {
-            throw "cv2pdb failed for $($file.FullName) with exit code $LASTEXITCODE"
+            Write-Warning "Skipping debug symbol extraction for $($file.FullName); cv2pdb exited with code $LASTEXITCODE"
         }
 	}
 
   #compress every pdb file in current folder
 	$pdbFiles = Get-ChildItem -Filter ".\*.pdb"
+    if ($pdbFiles.Count -eq 0) {
+        Write-Warning "No debug symbols were extracted. Skipping debug symbols archive generation."
+        return
+    }
 
     $ZIP_NAME = $MSI_NAME -replace 'wazuh-agent', 'wazuh-agent-debug-symbols' -replace '\.msi$', '.zip'
 
