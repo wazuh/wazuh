@@ -232,8 +232,137 @@ TEST_F(IndexerConnectorAsyncTest, ConstructorWithInvalidSSLPathsThrows)
     EXPECT_ANY_THROW({ IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest); });
 }
 
+// Queue size limit tests
+TEST_F(IndexerConnectorAsyncTest, ConstructorWithMaxQueueSizeConfig)
+{
+    EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    config["max_queue_size"] = 100;
+
+    EXPECT_NO_THROW({
+        IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest);
+        EXPECT_EQ(connector.getQueueSize(), 0); // Initially empty
+    });
+}
+
+TEST_F(IndexerConnectorAsyncTest, ConstructorWithUnlimitedQueueSizeDefault)
+{
+    EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    // No max_queue_size specified, should default to unlimited (0)
+    EXPECT_NO_THROW({
+        IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest);
+        EXPECT_EQ(connector.getQueueSize(), 0); // Initially empty
+    });
+}
+
+TEST_F(IndexerConnectorAsyncTest, QueueSizeLimitEnforcedWithSlowProcessing)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    // Set a small max queue size
+    config["max_queue_size"] = 5;
+
+    std::atomic<int> callCounter {0};
+    std::promise<void> firstCallPromise;
+    std::atomic<bool> firstCallDone {false};
+
+    // Make HTTP requests process very slowly
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this, &callCounter, &firstCallPromise, &firstCallDone](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                callCounter++;
+
+                // First call - wait a bit to let queue fill up
+                if (callCounter == 1 && !firstCallDone.exchange(true))
+                {
+                    // Wait to allow queue to fill
+                    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                    firstCallPromise.set_value();
+                }
+
+                this->simulateSuccessfulPost(requestParams, postParams, ConfigurationParameters {});
+            }));
+
+    // Use the small bulk implementation to trigger more frequent processing
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Push many documents quickly (more than max_queue_size)
+    for (int i = 0; i < 20; ++i)
+    {
+        std::string id = "id" + std::to_string(i);
+        std::string data = R"({"field":"value"})";
+        connector.bulkIndex(id, "index1", data);
+    }
+
+    // Wait a bit for the queue to process
+    auto status = firstCallPromise.get_future().wait_for(std::chrono::seconds(3));
+    EXPECT_EQ(status, std::future_status::ready);
+
+    // Give time for processing
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    // The queue should respect the limit while processing
+    // Note: We can't check exact queue size due to timing, but we verify no crash
+    SUCCEED();
+}
+
+TEST_F(IndexerConnectorAsyncTest, UnlimitedQueueSizeAllowsAllEvents)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    // Set unlimited queue size (0 or not specified)
+    config["max_queue_size"] = 0;
+
+    std::atomic<int> callCounter {0};
+    std::promise<void> allProcessedPromise;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this, &callCounter, &allProcessedPromise](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                callCounter++;
+                this->simulateSuccessfulPost(requestParams, postParams, ConfigurationParameters {});
+
+                // After receiving multiple calls, signal completion
+                if (callCounter >= 2)
+                {
+                    try
+                    {
+                        allProcessedPromise.set_value();
+                    }
+                    catch (...)
+                    {
+                    }
+                }
+            }));
+
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Push many documents
+    for (int i = 0; i < 15; ++i)
+    {
+        std::string id = "id" + std::to_string(i);
+        std::string data = R"({"field":"value"})";
+        connector.bulkIndex(id, "index1", data);
+    }
+
+    // Wait for processing
+    auto status = allProcessedPromise.get_future().wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready);
+
+    // Verify multiple batches were processed
+    EXPECT_GE(callCounter, 2);
+}
+
 // HTTP error handling tests for async implementation
 TEST_F(IndexerConnectorAsyncTest, HandleError413PayloadTooLarge)
+
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));

@@ -11,6 +11,7 @@
 #include <api/handlers.hpp>
 #include <archiver/archiver.hpp>
 #include <base/eventParser.hpp>
+#include <base/json.hpp>
 #include <base/libwazuhshared.hpp>
 #include <base/logging.hpp>
 #include <base/process.hpp>
@@ -400,11 +401,30 @@ int main(int argc, char* argv[])
 
             try
             {
-                const auto jsonCnf = base::process::isStandaloneModeEnable()
-                                         ? standAloneConfig()
-                                         : base::libwazuhshared::getJsonIndexerCnf();
-                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf);
-                LOG_INFO("Indexer Connector initialized.");
+                // Get base configuration (from standalone or wazuh-manager.conf)
+                const auto baseJsonCnf = base::process::isStandaloneModeEnable()
+                                             ? standAloneConfig()
+                                             : base::libwazuhshared::getJsonIndexerCnf();
+
+                // Parse JSON and add max_queue_size from engine configuration
+                json::Json jsonCnf(baseJsonCnf);
+                const auto maxQueueSize = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_EVENTS);
+                jsonCnf.setUint64(maxQueueSize, "/max_queue_size");
+
+                // Create indexer connector with enhanced configuration
+                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str());
+
+                // Log pending events from previous sessions
+                const auto pendingEvents = indexerConnector->getQueueSize();
+                if (pendingEvents > 0)
+                {
+                    LOG_INFO("Indexer Connector initialized with {} pending events from previous session.",
+                             pendingEvents);
+                }
+                else
+                {
+                    LOG_INFO("Indexer Connector initialized.");
+                }
             }
             catch (const std::exception& e)
             {

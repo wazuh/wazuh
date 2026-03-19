@@ -117,6 +117,7 @@ class IndexerConnectorAsyncImpl final
     const std::string m_queueId;
     bool m_error413Logged {false};
     size_t m_successCount {0};
+    size_t m_maxQueueSize {0};
     std::unique_ptr<ThreadDispatchQueue> m_dispatcher;
 
 public:
@@ -201,6 +202,11 @@ public:
 
         m_selector =
             selector ? std::move(selector) : std::make_unique<TSelector>(config.at("hosts"), 10, m_secureCommunication);
+
+        // Read max queue size from config, default to unlimited if not specified
+        m_maxQueueSize = config.contains("max_queue_size") && config.at("max_queue_size").is_number_unsigned()
+                             ? config.at("max_queue_size").get<size_t>()
+                             : 0; // 0 means unlimited
 
         m_loggerProcessor = std::make_unique<ThreadLoggerQueue>(
             [this](const IndexerResponse& data)
@@ -470,7 +476,7 @@ public:
             },
             DATABASE_BASE_PATH + m_queueId,
             ElementsPerBulk,
-            UNLIMITED_QUEUE_SIZE,
+            m_maxQueueSize,
             RetryDelay,
             FlushInterval);
     }

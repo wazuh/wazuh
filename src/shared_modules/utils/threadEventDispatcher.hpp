@@ -13,6 +13,7 @@
 #define _THREAD_EVENT_DISPATCHER_HPP
 
 #include <atomic>
+#include <chrono>
 #include <thread>
 
 #include "commonDefs.h"
@@ -81,6 +82,52 @@ public:
             if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size() < m_maxQueueSize))
             {
                 m_queue->push(value);
+                // If we were previously discarding, log that we're accepting again
+                if (m_discardedCount.load() > 0)
+                {
+                    logInfo(LOGGER_DEFAULT_TAG,
+                            "Queue size normalized. Resuming event acceptance after %zu discarded events.",
+                            m_discardedCount.load());
+                    m_discardedCount = 0;
+                    m_firstDiscardLogged = false;
+                }
+            }
+            else if (m_running)
+            {
+                // Increment discard counter
+                const auto discarded = ++m_discardedCount;
+                const auto now = std::chrono::steady_clock::now();
+
+                // Log the first discard immediately
+                if (!m_firstDiscardLogged.exchange(true))
+                {
+                    logWarn(LOGGER_DEFAULT_TAG,
+                            "Queue is full (size: %zu, max: %zu). Starting to discard events. "
+                            "Periodic summaries will be logged every %zu seconds.",
+                            m_queue->size(),
+                            m_maxQueueSize,
+                            m_summaryInterval);
+                    m_lastSummaryLog = now;
+                }
+                // Log periodic summary
+                else
+                {
+                    const auto elapsed =
+                        std::chrono::duration_cast<std::chrono::seconds>(now - m_lastSummaryLog).count();
+                    if (elapsed >= m_summaryInterval)
+                    {
+                        logWarn(LOGGER_DEFAULT_TAG,
+                                "Queue overflow continues: %zu events discarded in the last %lld seconds "
+                                "(queue size: %zu, max: %zu, total discarded: %zu).",
+                                discarded - m_lastDiscardedCount.load(),
+                                elapsed,
+                                m_queue->size(),
+                                m_maxQueueSize,
+                                discarded);
+                        m_lastSummaryLog = now;
+                        m_lastDiscardedCount = discarded;
+                    }
+                }
             }
         }
         else
@@ -98,6 +145,58 @@ public:
             if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size(prefix) < m_maxQueueSize))
             {
                 m_queue->push(prefix, value);
+                // If we were previously discarding, log that we're accepting again
+                if (m_discardedCount.load() > 0)
+                {
+                    logInfo(LOGGER_DEFAULT_TAG,
+                            "Queue '%.*s' size normalized. Resuming event acceptance after %zu discarded events.",
+                            static_cast<int>(prefix.size()),
+                            prefix.data(),
+                            m_discardedCount.load());
+                    m_discardedCount = 0;
+                    m_firstDiscardLogged = false;
+                }
+            }
+            else if (m_running)
+            {
+                // Increment discard counter
+                const auto discarded = ++m_discardedCount;
+                const auto now = std::chrono::steady_clock::now();
+
+                // Log the first discard immediately
+                if (!m_firstDiscardLogged.exchange(true))
+                {
+                    logWarn(LOGGER_DEFAULT_TAG,
+                            "Queue '%.*s' is full (size: %zu, max: %zu). Starting to discard events. "
+                            "Periodic summaries will be logged every %zu seconds.",
+                            static_cast<int>(prefix.size()),
+                            prefix.data(),
+                            m_queue->size(prefix),
+                            m_maxQueueSize,
+                            m_summaryInterval);
+                    m_lastSummaryLog = now;
+                }
+                // Log periodic summary
+                else
+                {
+                    const auto elapsed =
+                        std::chrono::duration_cast<std::chrono::seconds>(now - m_lastSummaryLog).count();
+                    if (elapsed >= m_summaryInterval)
+                    {
+                        logWarn(LOGGER_DEFAULT_TAG,
+                                "Queue '%.*s' overflow continues: %zu events discarded in the last %lld seconds "
+                                "(queue size: %zu, max: %zu, total discarded: %zu).",
+                                static_cast<int>(prefix.size()),
+                                prefix.data(),
+                                discarded - m_lastDiscardedCount.load(),
+                                elapsed,
+                                m_queue->size(prefix),
+                                m_maxQueueSize,
+                                discarded);
+                        m_lastSummaryLog = now;
+                        m_lastDiscardedCount = discarded;
+                    }
+                }
             }
         }
         else
@@ -254,6 +353,13 @@ private:
     std::atomic_bool m_running = true;
     const size_t m_retryDelay;
     const size_t m_flushInterval;
+
+    // Rate limiting for discard warnings
+    std::atomic<size_t> m_discardedCount {0};
+    std::atomic<size_t> m_lastDiscardedCount {0};
+    std::atomic_bool m_firstDiscardLogged {false};
+    std::chrono::steady_clock::time_point m_lastSummaryLog;
+    const size_t m_summaryInterval {30}; // Log summary every 30 seconds
 };
 
 template<typename Type, typename Functor>

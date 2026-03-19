@@ -26,6 +26,7 @@ struct Config
     std::vector<std::string> hosts; ///< The list of hosts to connect to. i.e. ["https://localhost:9200"]
     std::string username;           ///< The username to authenticate with OpenSearch, admin by default.
     std::string password;           ///< The password to authenticate with OpenSearch, admin by default.
+    size_t maxQueueSize {0};        ///< Maximum number of events in the indexer queue. 0 means unlimited.
 
     struct
     {
@@ -132,6 +133,11 @@ public:
      * @throws std::exception on connector/search failures or invalid payload shape.
      */
     json::Json getEngineRemoteConfig() override;
+
+    /**
+     * @copydoc IWIndexerConnector::getQueueSize
+     */
+    uint64_t getQueueSize() override;
 
     /**
      * @brief Shuts down the indexer connector, releasing resources and stopping operations.
