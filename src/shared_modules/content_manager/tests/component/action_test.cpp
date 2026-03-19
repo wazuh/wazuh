@@ -36,8 +36,11 @@ TEST_F(ActionTest, TestInstantiation)
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
 
-    EXPECT_NO_THROW(std::make_shared<Action>(
-        topicName, m_parameters, [](const std::string& msg) -> FileProcessingResult { return {10, "", true}; }));
+    EXPECT_NO_THROW(std::make_shared<Action>(topicName,
+                                             m_parameters,
+                                             [](const std::string& msg) -> FileProcessingResult {
+                                                 return {10, "", true};
+                                             }));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
@@ -54,10 +57,12 @@ TEST_F(ActionTest, TestInstantiationWhitoutConfigData)
 
     parameters.erase("configData");
 
-    EXPECT_THROW(
-        std::make_shared<Action>(
-            topicName, parameters, [](const std::string& msg) -> FileProcessingResult { return {0, "", false}; }),
-        std::invalid_argument);
+    EXPECT_THROW(std::make_shared<Action>(topicName,
+                                          parameters,
+                                          [](const std::string& msg) -> FileProcessingResult {
+                                              return {0, "", false};
+                                          }),
+                 std::invalid_argument);
 }
 
 /*
@@ -79,8 +84,11 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForRawDataWithDeleteD
     const auto& interval {m_parameters.at("interval").get_ref<const size_t&>()};
     const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
 
-    auto action {std::make_shared<Action>(
-        topicName, m_parameters, [](const std::string& msg) -> FileProcessingResult { return {10, "", true}; })};
+    auto action {std::make_shared<Action>(topicName,
+                                          m_parameters,
+                                          [](const std::string& msg) -> FileProcessingResult {
+                                              return {10, "", true};
+                                          })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -111,8 +119,11 @@ TEST_F(ActionTest, TestInstantiationAndRegisterActionOnDemandForRawData)
 
     m_parameters["ondemand"] = true;
 
-    auto action {std::make_shared<Action>(
-        topicName, m_parameters, [](const std::string& msg) -> FileProcessingResult { return {10, "", true}; })};
+    auto action {std::make_shared<Action>(topicName,
+                                          m_parameters,
+                                          [](const std::string& msg) -> FileProcessingResult {
+                                              return {10, "", true};
+                                          })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -137,12 +148,16 @@ TEST_F(ActionTest, TestInstantiationOfTwoActionsWithTheSameTopicName)
 
     m_parameters["ondemand"] = true;
 
-    auto action1 {std::make_shared<Action>(
-        topicName, m_parameters, [](const std::string& msg) -> FileProcessingResult { return {10, "", true}; })};
+    auto action1 {std::make_shared<Action>(topicName,
+                                           m_parameters,
+                                           [](const std::string& msg) -> FileProcessingResult {
+                                               return {10, "", true};
+                                           })};
     auto action2 {std::make_shared<Action>(topicName,
                                            parametersWithoutDatabasePath,
-                                           [](const std::string& msg) -> FileProcessingResult
-                                           { return {20, "", true}; })};
+                                           [](const std::string& msg) -> FileProcessingResult {
+                                               return {20, "", true};
+                                           })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -166,8 +181,11 @@ TEST_F(ActionTest, OnDemandActionCatchException)
 
     // Init action.
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-    auto action {std::make_shared<Action>(
-        topicName, m_parameters, [](const std::string& msg) -> FileProcessingResult { return {0, "", false}; })};
+    auto action {std::make_shared<Action>(topicName,
+                                          m_parameters,
+                                          [](const std::string& msg) -> FileProcessingResult {
+                                              return {0, "", false};
+                                          })};
 
     // Trigger action. No exceptions are expected despite the error.
     ASSERT_NO_THROW(action->runActionOnDemand(ActionOrchestrator::UpdateData::createContentUpdateData(-1)));
@@ -191,8 +209,11 @@ TEST_F(ActionTest, ScheduledActionCatchException)
 
     // Init action.
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-    auto action {std::make_shared<Action>(
-        topicName, m_parameters, [](const std::string& msg) -> FileProcessingResult { return {0, "", false}; })};
+    auto action {std::make_shared<Action>(topicName,
+                                          m_parameters,
+                                          [](const std::string& msg) -> FileProcessingResult {
+                                              return {0, "", false};
+                                          })};
 
     // Start scheduling. First action execution.
     const auto& interval {m_parameters.at("interval").get_ref<size_t&>()};
