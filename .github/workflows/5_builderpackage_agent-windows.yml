@@ -7,8 +7,9 @@ on:
     paths:
       - "src/**"
       - "packages/**"
-      - ".github/workflows/5_builderpackage_agent-windows.yml"
-      - ".github/workflows/5_testintegration_fim-tier-0-1-win.yml"
+      - ".github/workflows/**"
+      - ".github/test-modules-windows.json"
+      - "tests/**"
   workflow_dispatch:
     inputs:
       revision:
@@ -37,8 +38,70 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build matrix from JSON (windows)
+        id: set-matrix
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+          import subprocess
+
+          event_name = os.environ['EVENT_NAME']
+          output_path = os.environ['GITHUB_OUTPUT']
+
+          if event_name != 'pull_request':
+              matrix = []
+          else:
+              base_ref = os.environ['BASE_REF']
+              diff_range = f'origin/{base_ref}...HEAD'
+              changed_files = subprocess.check_output(
+                  ['git', 'diff', '--name-only', diff_range],
+                  text=True,
+              ).splitlines()
+
+              with open('.github/test-modules-windows.json', encoding='utf-8') as stream:
+                  modules = json.load(stream).get('modules', [])
+
+              matrix = []
+              for module in modules:
+                  module_name = module['name']
+                  workflow = module['workflow']
+                  matched_pattern = None
+
+                  for pattern in module.get('paths', []):
+                      if any(pathlib.PurePosixPath(changed).match(pattern) for changed in changed_files):
+                          matched_pattern = pattern
+                          break
+
+                  if matched_pattern is not None:
+                      print(f"Matched {module_name} with pattern {matched_pattern}")
+                      matrix.append({'name': module_name, 'workflow': workflow})
+
+              print(f'Final matrix: {json.dumps(matrix)}')
+
+          with open(output_path, 'a', encoding='utf-8') as stream:
+              stream.write(f"matrix={json.dumps(matrix, separators=(',', ':'))}\n")
+          PY
+
   build-windows-i686:
-    runs-on: wz-linux-amd64
+    needs: detect-changes
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     name: Build Windows agent binaries
     outputs:
@@ -389,17 +452,23 @@ jobs:
       platform: 'windows'
     secrets: inherit
 
-  trigger-fim-tiers:
-    needs: [smoke-test-windows]
-    if: success() && github.event_name == 'pull_request'
+  trigger-tests:
+    needs: [smoke-test-windows, detect-changes]
+    if: success() && github.event_name == 'pull_request' && needs.detect-changes.outputs.matrix != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    name: Trigger FIM tiers workflow
+    name: Trigger Windows integration workflows
     permissions:
       actions: write
       contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        test: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+
     steps:
-      - name: Trigger FIM tier workflow_dispatch
+      - name: Trigger ${{ matrix.test.name }} workflow_dispatch
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -409,10 +478,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "Triggering ${{ matrix.test.name }}"
           curl -sS -X POST \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/$REPO/actions/workflows/5_testintegration_fim-tier-0-1-win.yml/dispatches" \
+            "https://api.github.com/repos/$REPO/actions/workflows/${{ matrix.test.workflow }}/dispatches" \
             -d "{\"ref\":\"$REF_NAME\",\"inputs\":{\"base_branch\":\"$BASE_BRANCH\",\"head_sha\":\"$HEAD_SHA\"}}"
-          echo "Triggered FIM tiers for ref '$REF_NAME' and sha '$HEAD_SHA'"
+          echo "Triggered ${{ matrix.test.name }} for ref '$REF_NAME' and sha '$HEAD_SHA'"
