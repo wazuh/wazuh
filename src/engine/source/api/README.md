@@ -77,7 +77,7 @@ api/
 │   ├── src/handlers.cpp
 │   └── test/src/unit/handlers_test.cpp
 │
-├── rawevtindexer/                              # Raw event indexer enable/disable/status
+├── rawevtindexer/                              # Raw event indexer status
 │   ├── include/api/rawevtindexer/handlers.hpp
 │   ├── src/handlers.cpp
 │   └── test/src/unit/handlers_test.cpp
@@ -200,7 +200,7 @@ add_library(api::archiver ALIAS api_archiver)
 | `tester.proto` | `com.wazuh.api.engine.tester` | Session management, test runs, logtest |
 | `geo.proto` | `com.wazuh.api.engine.geo` | GeoIP database queries |
 | `archiver.proto` | `com.wazuh.api.engine.archiver` | Archive activate/deactivate/status |
-| `rawevtindexer.proto` | `com.wazuh.api.engine.rawevtindexer` | Raw event indexer enable/disable/status |
+| `rawevtindexer.proto` | `com.wazuh.api.engine.rawevtindexer` | Raw event indexer status |
 | `crud.proto` | `com.wazuh.api.engine.content` | Namespace, policy, and resource CRUD |
 | `ioc.proto` | `com.wazuh.api.engine.ioc` | IOC sync: update and state |
 | `metrics.proto` | `com.wazuh.api.engine.metrics` | Metrics dump/get/enable/list (internal only) |
@@ -438,8 +438,6 @@ The spec documents the **public-facing** API endpoints using OpenAPI 3.0.3. It d
 
 | Domain | Path | Method | Request Proto | Response Proto |
 |--------|------|--------|---------------|----------------|
-| **Raw Event Indexer** | `/_internal/raweventindexer/enable` | POST | `RawEvtIndexerEnable_Request` | `GenericStatus_Response` |
-| **Raw Event Indexer** | `/_internal/raweventindexer/disable` | POST | `RawEvtIndexerDisable_Request` | `GenericStatus_Response` |
 | **Raw Event Indexer** | `/_internal/raweventindexer/status` | POST | `RawEvtIndexerStatus_Request` | `RawEvtIndexerStatus_Response` |
 | **Content NS** | `/_internal/content/namespace/list` | POST | `namespaceGet_Request` | `namespaceGet_Response` |
 | **Content NS** | `/_internal/content/namespace/create` | POST | `namespacePost_Request` | `GenericStatus_Response` |

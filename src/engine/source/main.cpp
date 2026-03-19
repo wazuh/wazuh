@@ -510,15 +510,30 @@ int main(int argc, char* argv[])
             LOG_INFO("Content Manager CRUD Service initialized.");
         }
 
+        // Remote runtime settings manager
+        if (enableProcessing)
+        {
+            remoteConf = std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store);
+        }
+
         // Raw Event Indexer
         if (enableProcessing)
         {
-            bool rawIndexerEnabled = confManager.get<bool>(conf::key::RAW_EVENT_INDEXER_ENABLED);
             rawEventIndexer = std::make_shared<raweventindexer::RawEventIndexer>(
-                indexerConnector, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME, rawIndexerEnabled);
-            LOG_INFO("Raw Event Indexer initialized (index: {}, enabled: {}).",
-                     raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME,
-                     rawIndexerEnabled);
+                indexerConnector, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
+            LOG_INFO("Raw Event Indexer initialized (index: {}).",
+                     raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
+
+            if (remoteConf)
+            {
+                const auto onIndexRawEvents = [rawEventIndexer](const json::Json& v)
+                {
+                    rawEventIndexer->hotReloadConf(v);
+                };
+                const auto initialValue =
+                    remoteConf->addTrigger("index_raw_events", onIndexRawEvents, json::Json("false"));
+                rawEventIndexer->hotReloadConf(initialValue);
+            }
         }
 
         // Orchestrator
@@ -631,8 +646,6 @@ int main(int argc, char* argv[])
 
         // Remote runtime settings sync
         {
-            remoteConf = std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store);
-
             const auto remoteConfSyncInterval = confManager.get<std::size_t>(conf::key::REMOTE_CONF_SYNC_INTERVAL);
             scheduler->scheduleTask("remote-conf-sync",
                                     scheduler::TaskConfig {.interval = remoteConfSyncInterval,
