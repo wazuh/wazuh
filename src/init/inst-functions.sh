@@ -897,7 +897,7 @@ generateSchemaFiles()
 
 installEngineStore()
 {
-    DEST_FULL_PATH=${INSTALLDIR}/engine
+    DEST_FULL_PATH=${INSTALLDIR}/data
     ENGINE_SRC_PATH=./engine
 
     # Fallback store installation
@@ -937,22 +937,22 @@ installEngineStore()
 
     echo "Engine store installed successfully."
 
-    # Copy default *. output configuration files TODO: Change this path
-    local OUTPUTS_PATH=${DEST_FULL_PATH}/outputs
+    # Copy default output configuration files
+    local OUTPUTS_PATH=${INSTALLDIR}/etc/outputs
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${OUTPUTS_PATH}
     cp "${ENGINE_SRC_PATH}/ruleset/outputs/"*.yml "${OUTPUTS_PATH}/"
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${OUTPUTS_PATH}
     find ${OUTPUTS_PATH} -type d -exec chmod 770 {} \; -o -type f -exec chmod 660 {} \;
 
-    # Create /var/wazuh-manager/etc/ruleset
-    install -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/ruleset
+    # Create /var/wazuh-manager/data/ruleset
+    install -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/data/ruleset
 
     echo "Engine output configuration files installed successfully."
 }
 
 installGeoIP()
 {
-    DEST_FULL_PATH=${INSTALLDIR}/engine
+    DEST_FULL_PATH=${INSTALLDIR}/data
     GEOIP_SRC_PATH=./external/geo_db
 
     local MMDB_PATH=${DEST_FULL_PATH}/mmdb
@@ -961,6 +961,7 @@ installGeoIP()
 
     # Create directories
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${MMDB_PATH}
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${DEST_FULL_PATH}/store/geo
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${STORE_GEO_PATH}
 
     # Check if GeoIP files exist
@@ -1010,13 +1011,13 @@ EOF
 
 installTZDB()
 {
-    local TZDB_SRC_PATH=./external/tzdb
+    local TZDB_SRC_PATH=./external/tzdata
     local TZDB_DST_PATH=${INSTALLDIR}/data/tzdb/iana
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/data/tzdb
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${TZDB_DST_PATH}
 
-    if [ ! -f "${TZDB_SRC_PATH}/+VERSION" ]; then
+    if [ ! -f "${TZDB_SRC_PATH}/version" ]; then
         echo "Warning: Timezone database not found in ${TZDB_SRC_PATH}. Skipping TZDB installation."
         return 0
     fi
@@ -1062,12 +1063,15 @@ InstallLocal()
 
     generateSchemaFiles
 
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/data
+
     installEngineStore
 
     installGeoIP
 
     installTZDB
 
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/data/kvdb-ioc
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/db
 
     if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then

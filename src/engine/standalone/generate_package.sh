@@ -26,12 +26,12 @@ install_tzdb() {
     local wazuh_path="$1"
     local temp_dir="$2"
 
-    local tzdb_src_path="${wazuh_path}/src/external/tzdb"
+    local tzdb_src_path="${wazuh_path}/src/external/tzdata"
     local tzdb_dst_dir="${temp_dir}/data/tzdb/iana"
 
     install -d -m 0770 "${tzdb_dst_dir}"
 
-    if [ ! -f "${tzdb_src_path}/+VERSION" ]; then
+    if [ ! -f "${tzdb_src_path}/version" ]; then
         echo "Warning: Timezone database not found in ${tzdb_src_path}. Standalone will ship without TZDB."
         return 0
     fi
