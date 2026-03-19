@@ -17,6 +17,12 @@ set -euo pipefail
 GO_VERSION="${GO_VERSION:-1.23.6}"
 
 # ---------------------------------------------------------------------------
+# Python virtual-environment directory (override with VENV_DIR env var)
+# ---------------------------------------------------------------------------
+_SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_DIR="${VENV_DIR:-${_SELF_DIR}/.venv}"
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 log()  { echo "[$(date '+%H:%M:%S')] $*"; }
@@ -173,7 +179,7 @@ GOEOF
 }
 
 # ---------------------------------------------------------------------------
-# Install Python dependencies
+# Install Python dependencies inside a virtual environment
 # ---------------------------------------------------------------------------
 install_python_deps() {
     local script_dir
@@ -185,35 +191,27 @@ install_python_deps() {
         req_file=""
     fi
 
-    # On Ubuntu 24.04, pip installs are blocked outside a virtual env by default
-    # (PEP 668). Use --break-system-packages to allow system-wide install,
-    # which is appropriate for dedicated benchmark VMs.
-    local pip_flags=()
-
-    # Detect if PEP 668 (externally-managed-environment) applies
-    if python3 -c "import sysconfig; p=sysconfig.get_path('stdlib'); exit(0)" 2>/dev/null; then
-        local externally_managed
-        externally_managed="$(python3 -c "
-import sysconfig, os
-stdlib = sysconfig.get_path('stdlib')
-print(os.path.exists(os.path.join(stdlib, 'EXTERNALLY-MANAGED')))" 2>/dev/null || echo "False")"
-        if [[ "${externally_managed}" == "True" ]]; then
-            log "PEP 668 detected: adding --break-system-packages flag."
-            pip_flags+=(--break-system-packages)
-        fi
-    fi
-
-    log "Installing Python dependencies..."
-    if [[ -n "${req_file}" ]]; then
-        python3 -m pip install --upgrade pip "${pip_flags[@]}" 2>/dev/null || true
-        python3 -m pip install "${pip_flags[@]}" -r "${req_file}"
+    # Create the virtual environment (idempotent: skips if it already exists)
+    if [[ ! -d "${VENV_DIR}" ]]; then
+        log "Creating Python virtual environment at ${VENV_DIR}..."
+        python3 -m venv "${VENV_DIR}"
     else
-        python3 -m pip install --upgrade pip "${pip_flags[@]}" 2>/dev/null || true
-        python3 -m pip install "${pip_flags[@]}" \
-            psutil matplotlib seaborn pandas numpy
+        log "Virtual environment already exists at ${VENV_DIR}."
     fi
 
-    log "Python dependencies installed."
+    # Activate the venv for the remainder of this script
+    # shellcheck disable=SC1091
+    source "${VENV_DIR}/bin/activate"
+
+    log "Installing Python dependencies inside venv..."
+    pip install --upgrade pip 2>/dev/null || true
+    if [[ -n "${req_file}" ]]; then
+        pip install -r "${req_file}"
+    else
+        pip install psutil matplotlib seaborn pandas numpy
+    fi
+
+    log "Python dependencies installed inside ${VENV_DIR}."
 }
 
 # ---------------------------------------------------------------------------
@@ -246,9 +244,18 @@ verify() {
 
     log "Verifying installation..."
 
+    # Ensure the venv is active for verification
+    if [[ -f "${VENV_DIR}/bin/activate" ]]; then
+        # shellcheck disable=SC1091
+        source "${VENV_DIR}/bin/activate"
+        log "  [OK] venv active: ${VENV_DIR}"
+    else
+        log "  [FAIL] venv not found at ${VENV_DIR}"; errors=$((errors + 1))
+    fi
+
     # Python 3
     if command -v python3 &>/dev/null; then
-        log "  [OK] python3: $(python3 --version)"
+        log "  [OK] python3: $(python3 --version) ($(command -v python3))"
     else
         log "  [FAIL] python3 not found"; errors=$((errors + 1))
     fi
@@ -325,7 +332,9 @@ main() {
     log ""
     log "============================================================"
     log "  Setup complete!"
+    log "  Virtual environment: ${VENV_DIR}"
     log "  You can now run: ./acceptance_test.sh"
+    log "  (the venv is activated automatically by the scripts)"
     log "============================================================"
 }
 

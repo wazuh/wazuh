@@ -369,6 +369,16 @@ mkdir -p "${RESULTS_DIR}"
 # ---------------------------------------------------------------------------
 log "Pre-flight checks..."
 
+# Activate the Python virtual environment (created by setup_dependencies.sh)
+VENV_DIR="${VENV_DIR:-${SCRIPT_DIR}/.venv}"
+if [[ -f "${VENV_DIR}/bin/activate" ]]; then
+    log "Activating Python venv at ${VENV_DIR}..."
+    # shellcheck disable=SC1091
+    source "${VENV_DIR}/bin/activate"
+else
+    log "WARNING: venv not found at ${VENV_DIR}. Using system Python."
+fi
+
 # Python 3
 command -v python3 >/dev/null 2>&1 || die "python3 not found in PATH."
 
