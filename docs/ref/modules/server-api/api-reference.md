@@ -134,10 +134,51 @@ curl -k -X POST "https://localhost:55000/agents?pretty=true" \
 
 #### Restart agent
 
-**`PUT /agents/{agent_id}/restart`** — Restart a specific agent.
+**`PUT /agents/{agent_id}/restart`** — Restart a specific agent. Requires agent v5.0.0+.
 
 ```bash
 curl -k -X PUT "https://localhost:55000/agents/002/restart?pretty=true" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+#### Reload agent
+
+**`PUT /agents/{agent_id}/reload`** — Reload configuration on a specific agent without a full restart. Requires agent v5.0.0+.
+
+```bash
+curl -k -X PUT "https://localhost:55000/agents/002/reload?pretty=true" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+#### Reload agents
+
+**`PUT /agents/reload`** — Reload configuration on all agents or a specified list. Requires agent v5.0.0+.
+
+```bash
+# Reload all agents
+curl -k -X PUT "https://localhost:55000/agents/reload?pretty=true" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Reload specific agents
+curl -k -X PUT "https://localhost:55000/agents/reload?agents_list=001,002&pretty=true" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+#### Reload agents in group
+
+**`PUT /agents/group/{group_id}/reload`** — Reload configuration on all agents belonging to a group. Requires agent v5.0.0+.
+
+```bash
+curl -k -X PUT "https://localhost:55000/agents/group/web-servers/reload?pretty=true" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+#### Reload agents in node
+
+**`PUT /agents/node/{node_id}/reload`** — Reload configuration on all agents connected to a cluster node. Requires agent v5.0.0+.
+
+```bash
+curl -k -X PUT "https://localhost:55000/agents/node/worker-01/reload?pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -335,7 +376,8 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | DELETE | `/agents` | Delete agents |
 | POST | `/agents/insert` | Insert agent with key |
 | POST | `/agents/insert/quick` | Quick insertion |
-| PUT | `/agents/{agent_id}/restart` | Restart agent |
+| PUT | `/agents/{agent_id}/restart` | Restart agent (v5.0.0+) |
+| PUT | `/agents/{agent_id}/reload` | Reload agent config (v5.0.0+) |
 | GET | `/agents/{agent_id}/key` | Get agent key |
 | DELETE | `/agents/{agent_id}/group` | Remove from all groups |
 | PUT | `/agents/{agent_id}/group/{group_id}` | Assign to group |
@@ -344,12 +386,15 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | GET | `/agents/{agent_id}/config/{component}/{configuration}` | Active config |
 | GET | `/agents/{agent_id}/daemons/stats` | Daemon stats |
 | GET | `/agents/{agent_id}/stats/{component}` | Component stats |
-| PUT | `/agents/restart` | Restart all |
+| PUT | `/agents/restart` | Restart all (v5.0.0+) |
+| PUT | `/agents/reload` | Reload all agents config (v5.0.0+) |
 | PUT | `/agents/reconnect` | Force reconnect |
 | PUT | `/agents/group` | Bulk assign to group |
 | DELETE | `/agents/group` | Bulk remove from group |
-| PUT | `/agents/group/{group_id}/restart` | Restart group |
-| PUT | `/agents/node/{node_id}/restart` | Restart by node |
+| PUT | `/agents/group/{group_id}/restart` | Restart group (v5.0.0+) |
+| PUT | `/agents/group/{group_id}/reload` | Reload group config (v5.0.0+) |
+| PUT | `/agents/node/{node_id}/restart` | Restart by node (v5.0.0+) |
+| PUT | `/agents/node/{node_id}/reload` | Reload node agents config (v5.0.0+) |
 | GET | `/agents/no_group` | Without group |
 | GET | `/agents/outdated` | Outdated agents |
 | PUT | `/agents/upgrade` | Upgrade agents |
