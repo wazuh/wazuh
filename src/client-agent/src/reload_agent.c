@@ -34,12 +34,12 @@ void * reloadAgent() {
 	int sock = -1;
 	char sockname[PATH_MAX + 1];
 
-	strcpy(sockname, COM_LOCAL_SOCK);
+	strcpy(sockname, CONTROL_SOCK);
 
 	if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
 		switch (errno) {
 		case ECONNREFUSED:
-			merror("Could not auto-reload agent. Is Active Response enabled?");
+			merror("Could not auto-reload agent. Could not connect to control socket '%s'.", sockname);
 			break;
 
 		default:
@@ -56,7 +56,7 @@ void * reloadAgent() {
 	#else
 
 	char *output = NULL;
-	wcom_dispatch(req, &output);
+	control_dispatch(req, &output);
 	if (output) free(output);
 
 	#endif
