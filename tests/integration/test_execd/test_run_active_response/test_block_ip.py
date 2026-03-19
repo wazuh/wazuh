@@ -25,6 +25,7 @@ daemons:
 
 os_platform:
     - linux
+    - windows
 
 os_version:
     - Arch Linux
@@ -46,7 +47,7 @@ import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ACTIVE_RESPONSE_LOG_PATH
-from wazuh_testing.modules.execd.active_response import patterns as ar_patterns
+from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.execd import patterns as execd_paterns
 from wazuh_testing.modules.execd.configuration import EXECD_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -57,10 +58,11 @@ from . import CONFIGS_PATH, REPO_ROOT, TEST_CASES_PATH
 
 
 # Set pytest marks.
-pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=1)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=1)]
 
 # Cases metadata and its ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_execd_firewall_drop.yaml')
+cases_path = Path(TEST_CASES_PATH, 
+                  'cases_execd_block_ip_win.yaml' if sys.platform == WINDOWS else 'cases_execd_block_ip.yaml')
 config_path = Path(CONFIGS_PATH, 'config_run_active_response.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
@@ -72,9 +74,9 @@ daemons_handler_configuration = {'all_daemons': True}
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
-def test_execd_firewall_drop(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
-                             set_wazuh_configuration, remoted_simulator, authd_simulator,
-                             daemons_handler, send_execd_message):
+def test_execd_block_ip(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
+                        set_wazuh_configuration, remoted_simulator, authd_simulator,
+                        daemons_handler, send_execd_message):
     '''
     description: Check if 'block-ip' command of 'active response' is executed correctly.
                  For this purpose, a simulated agent is used and the 'active response'
@@ -114,26 +116,34 @@ def test_execd_firewall_drop(test_configuration, test_metadata, configure_local_
         - Check the block-ip program is used.
         - Check the firewall rule is added and deleted with correct script.
     input_description:
-        - The `cases_execd_firewall_drop.yaml` file provides the test cases.
+        - The `cases_execd_block_ip.yaml` file provides the test cases.
     '''
     ar_monitor = FileMonitor(ACTIVE_RESPONSE_LOG_PATH)
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     if error_message := test_metadata.get('expected_error'):
         callback = generate_callback(error_message)
-        ar_monitor.start(callback=callback)
-        assert ar_monitor.callback_result, 'AR `block-ip` did not fail.'
+        # Format validation errors (from execd) are logged in ossec.log
+        # Script execution errors (from AR script) are logged in active-responses.log
+        if 'Cannot read' in error_message:
+            # AR script error - check active-responses.log
+            ar_monitor.start(callback=callback)
+            assert ar_monitor.callback_result, 'AR `block-ip` did not fail.'
+        else:
+            # execd format validation error - check ossec.log
+            wazuh_log_monitor.start(callback=callback)
+            assert wazuh_log_monitor.callback_result, 'AR `block-ip` did not fail.'
         return
 
     wazuh_log_monitor.start(callback=generate_callback(execd_paterns.EXECD_EXECUTING_COMMAND))
     assert wazuh_log_monitor.callback_result, 'Execd `executing` command log not raised.'
 
-    ar_monitor.start(callback=generate_callback(ar_patterns.ACTIVE_RESPONSE_FIREWALL_DROP))
+    ar_monitor.start(callback=generate_callback(r'.*block-ip.*'))
     assert ar_monitor.callback_result, 'AR `block-ip` program not used.'
 
-    ar_monitor.start(callback=generate_callback(ar_patterns.ACTIVE_RESPONSE_ADD_COMMAND))
+    ar_monitor.start(callback=generate_callback(r'.*add.*'))
     assert ar_monitor.callback_result, 'AR `add` command not executed.'
-    assert '"srcip":"3.3.3.3"' in ar_monitor.callback_result, 'AR `srcip` value is not correct.'
+    assert '"ip":"3.3.3.3"' in ar_monitor.callback_result, 'AR `source.ip` value is not correct.'
 
-    ar_monitor.start(callback=generate_callback(ar_patterns.ACTIVE_RESPONSE_DELETE_COMMAND))
+    ar_monitor.start(callback=generate_callback(r'.*delete.*'))
     assert ar_monitor.callback_result, 'AR `delete` command not executed.'

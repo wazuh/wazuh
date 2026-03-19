@@ -86,6 +86,7 @@ int main(int argc, char **argv) {
 
 firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const char *argv0) {
     (void)ip_version;  // netsh handles both IPv4 and IPv6
+    static const char rule_name[] = "name=WAZUH ACTIVE RESPONSE BLOCKED IP";
     char log_msg[OS_MAXSTR];
     char *netsh_path = NULL;
     char *reg_path = NULL;
@@ -143,7 +144,6 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
     }
 
     // Build netsh command
-    char rule_name[] = "WAZUH ACTIVE RESPONSE BLOCKED IP";
     wfd_t *wfd = NULL;
 
     if (action == ADD_COMMAND) {
@@ -158,7 +158,7 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
             "firewall",
             "add",
             "rule",
-            "name=WAZUH ACTIVE RESPONSE BLOCKED IP",
+            rule_name,
             "interface=any",
             "dir=in",
             "action=block",
@@ -188,7 +188,7 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
             "firewall",
             "add",
             "rule",
-            "name=WAZUH ACTIVE RESPONSE BLOCKED IP",
+            rule_name,
             "interface=any",
             "dir=out",
             "action=block",
@@ -213,7 +213,7 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
             "firewall",
             "delete",
             "rule",
-            "name=WAZUH ACTIVE RESPONSE BLOCKED IP",
+            rule_name,
             remote_ip_arg_del,
             NULL
         };

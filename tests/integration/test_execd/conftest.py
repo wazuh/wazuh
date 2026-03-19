@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import pytest
+import time
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.patterns import AGENTD_CONNECTED_TO_SERVER
@@ -32,6 +33,12 @@ def send_execd_message(test_metadata: dict, remoted_simulator: RemotedSimulator)
 
     monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    monitor.start(callback=generate_callback(AGENTD_CONNECTED_TO_SERVER))
+    monitor.start(only_new_events=True, callback=generate_callback(AGENTD_CONNECTED_TO_SERVER), timeout=150)
+    assert monitor.callback_result is not None, 'Agent did not connect to remoted simulator'
+
+    # Give the agent some time to stabilize after connection
+    time.sleep(2)
+
     remoted_simulator.send_custom_message(test_metadata['input'])
-    monitor.start(callback=generate_callback(EXECD_RECEIVED_MESSAGE))
+    monitor.start(only_new_events=True, callback=generate_callback(EXECD_RECEIVED_MESSAGE), timeout=60)
+    assert monitor.callback_result is not None, 'Execd did not receive the message'

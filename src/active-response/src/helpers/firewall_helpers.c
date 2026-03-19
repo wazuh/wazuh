@@ -185,7 +185,6 @@ int execute_firewall_chain(
     int methods_attempted = 0;
     int methods_unavailable = 0;
     int methods_failed = 0;
-    bool any_success = false;
 
     for (int i = 0; methods[i].name != NULL; i++) {
         methods_attempted++;
@@ -203,7 +202,6 @@ int execute_firewall_chain(
 
         switch (result) {
             case FIREWALL_SUCCESS:
-                any_success = true;
                 memset(log_msg, '\0', OS_MAXSTR);
                 snprintf(log_msg, OS_MAXSTR - 1,
                          "IP %s successfully %s",
@@ -234,15 +232,13 @@ int execute_firewall_chain(
     }
 
     // All methods exhausted without success
-    if (!any_success) {
-        memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR - 1,
-                 "WARNING: All %d firewall methods failed or unavailable (%d unavailable, %d execution errors)",
-                 methods_attempted,
-                 methods_unavailable,
-                 methods_failed);
-        write_debug_file(argv0, log_msg);
-    }
+    memset(log_msg, '\0', OS_MAXSTR);
+    snprintf(log_msg, OS_MAXSTR - 1,
+             "WARNING: All %d firewall methods failed or unavailable (%d unavailable, %d execution errors)",
+             methods_attempted,
+             methods_unavailable,
+             methods_failed);
+    write_debug_file(argv0, log_msg);
 
     write_debug_file(argv0, "Ended");
 
