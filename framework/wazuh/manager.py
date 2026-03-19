@@ -256,7 +256,7 @@ def validation() -> AffectedItemsWazuhResult:
 
 
 @mask_sensitive_config()
-@expose_resources(actions=["cluster:read"], resources=f'node:id:{node_id}')
+@expose_resources(actions=["cluster:read"], resources=[f'node:id:{node_id}'])
 def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhResult:
     """Wrapper for get_active_configuration.
 
@@ -291,7 +291,7 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
 
 
 @mask_sensitive_config()
-@expose_resources(actions=["cluster:read"], resources=f'node:id:{node_id}')
+@expose_resources(actions=["cluster:read"], resources=[f'node:id:{node_id}'])
 def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
                     distinct: bool = False) -> AffectedItemsWazuhResult:
     """Wrapper for get_ossec_conf.

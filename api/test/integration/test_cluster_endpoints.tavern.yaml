@@ -911,7 +911,6 @@ stages:
               version: !anystr
               type: !anystr
               max_agents: !anystr
-              openssl_support: !anystr
               tz_offset: !anystr
               tz_name: !anystr
               uuid: !anything

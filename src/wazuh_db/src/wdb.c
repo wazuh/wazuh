@@ -37,7 +37,6 @@ static const char *SQL_SELECT_PAGE_FREE = "SELECT freelist_count FROM pragma_fre
 static const char *SQL_VACUUM = "VACUUM;";
 static const char *SQL_METADATA_UPDATE_FRAGMENTATION_DATA = "INSERT INTO metadata (key, value) VALUES ('last_vacuum_time', ?), ('last_vacuum_value', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value;";
 static const char *SQL_METADATA_GET_FRAGMENTATION_DATA = "SELECT key, value FROM metadata WHERE key in ('last_vacuum_time', 'last_vacuum_value');";
-static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
 static const char *SQL_ROLLBACK = "ROLLBACK;";
@@ -308,18 +307,10 @@ int wdb_rollback(wdb_t * wdb) {
     return wdb_any_transaction(wdb, SQL_ROLLBACK);
 }
 
-int wdb_rollback2(wdb_t * wdb) {
-    return wdb_write_state_transaction(wdb, 0, wdb_rollback);
-}
 
 /* Create global database */
 int wdb_create_global(const char *path) {
-    if (OS_SUCCESS != wdb_create_file(path, schema_global_sql))
-        return OS_INVALID;
-    else if (OS_SUCCESS != wdb_insert_info("openssl_support", "yes"))
-        return OS_INVALID;
-    else
-        return OS_SUCCESS;
+    return wdb_create_file(path, schema_global_sql);
 }
 
 /* Create new database file from SQL script */
@@ -533,36 +524,6 @@ STATIC int wdb_select_from_temp_table(wdb_t * wdb) {
     return result;
 }
 
-/* Insert key-value pair into global.db info table */
-int wdb_insert_info(const char *key, const char *value) {
-    char path[PATH_MAX + 1] = "";
-    sqlite3 *db = NULL;
-    sqlite3_stmt *stmt = NULL;
-    int result = OS_SUCCESS;
-
-    snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-
-    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-        mdebug1("Couldn't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
-        sqlite3_close_v2(db);
-        return OS_INVALID;
-    }
-
-    if (wdb_prepare(db, SQL_INSERT_INFO, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(db));
-        return OS_INVALID;
-    }
-
-    sqlite3_bind_text(stmt, 1, key, -1, NULL);
-    sqlite3_bind_text(stmt, 2, value, -1, NULL);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? OS_SUCCESS : OS_INVALID;
-
-    sqlite3_finalize(stmt);
-    sqlite3_close_v2(db);
-
-    return result;
-}
 
 wdb_t * wdb_init(const char * id) {
     wdb_t * wdb;
@@ -1125,20 +1086,6 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
     return result;
 }
 
-// Set the database journal mode to write-ahead logging
-int wdb_journal_wal(sqlite3 *db) {
-    char *sql_error = NULL;
-
-    sqlite3_exec(db, SQL_STMT[WDB_STMT_PRAGMA_JOURNAL_WAL], NULL, NULL, &sql_error);
-
-    if (sql_error != NULL) {
-        merror("Cannot set database journaling mode to WAL: '%s'", sql_error);
-        sqlite3_free(sql_error);
-        return -1;
-    }
-
-    return 0;
-}
 
 int wdb_enable_foreign_keys(sqlite3 *db) {
     char *sql_error = NULL;
