@@ -107,7 +107,6 @@ int main(int argc, char ** argv)
 
     int modules = 0;
     modules |= WAZUHDB;
-    modules |= CCLUSTER;
 
     // Read wazuh configuration file
     if (ReadConfig(modules, OSSECCONF, &gconfig, NULL) < 0) {

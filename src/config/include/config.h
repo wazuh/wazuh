@@ -14,17 +14,13 @@
 #define CGLOBAL       0000000001
 #define CSYSCHECK     0000000004
 #define CROOTCHECK    0000000010
-#define CALERTS       0000000020
 #define CLOCALFILE    0000000040
 #define CREMOTE       0000000100
 #define CCLIENT       0000000200
-#define CMAIL         0000000400
-#define CAR           0000001000
 #define CAGENT_CONFIG 0000010000
 #define CWMODULE      0000200000
 #define CAUTHD        0001000000
 #define CBUFFER       0002000000
-#define CCLUSTER      0004000000
 #define CLGCSOCKET    0010000000
 #define WAZUHDB       0040000000
 #define ATAMPERING    0200000000
@@ -32,11 +28,11 @@
 #define MAX_NEEDED_TAGS 4
 
 #define BITMASK(modules)   (\
-                            (modules & CGLOBAL       ) | (modules & CSYSCHECK     ) | (modules & CROOTCHECK    ) |\
-                            (modules & CALERTS       ) | (modules & CLOCALFILE    ) | (modules & CREMOTE       ) |\
-                            (modules & CCLIENT       ) | (modules & CMAIL         ) | (modules & CAR           ) |\
+                            (modules & CGLOBAL       ) | (modules & CSYSCHECK     ) |\
+                            (modules & CROOTCHECK    ) | (modules & CLOCALFILE    ) |\
+                            (modules & CREMOTE       ) | (modules & CCLIENT       ) |\
                             (modules & CAGENT_CONFIG ) | (modules & CWMODULE      ) |\
-                            (modules & CAUTHD        ) | (modules & CBUFFER       ) | (modules & CCLUSTER      ) |\
+                            (modules & CAUTHD        ) | (modules & CBUFFER       ) |\
                             (modules & CLGCSOCKET    ) | (modules & WAZUHDB       ) )
 
 
@@ -50,15 +46,12 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
 void PrintErrorAcordingToModules(int modules, const char *cfgfile);
 
 int Read_Global(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
-int Read_GlobalSK(XML_NODE node, void *configp, void *mailp);
 int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
 int Read_Remote(const OS_XML *xml,XML_NODE node, void *d1, void *d2);
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_ClientBuffer(XML_NODE node, void *d1, void *d2);
-int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
-int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);
 int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
@@ -89,9 +82,7 @@ int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1);
 #ifndef WIN32
 int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 #endif
-int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_LogCollecSocket(XML_NODE node, void *d1, void *d2);
-int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2);
 int Read_Vulnerability_Detection(const OS_XML *xml, XML_NODE nodes, void *d1, const bool old_vd);
 int Read_Indexer(const char* config_file);
 int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1);
@@ -122,12 +113,6 @@ int Read_Office365(const OS_XML *xml, xml_node *node, void *d1);
  */
 int Read_MS_Graph(const OS_XML *xml, xml_node *node, void *d1);
 #endif
-
-/**
- * @brief Read the configuration for logtest thread
- * @param node rule_test configuration
- */
-int Read_Logtest(XML_NODE node);
 
 /* Verifies that the configuration for Syscheck is correct. Return 0 on success or -1 on error.  */
 int Test_Syscheck(const char * path);

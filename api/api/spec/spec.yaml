@@ -7357,11 +7357,6 @@ paths:
                         agents_disconnection_time: "10m"
                         agents_disconnection_alert_time: 0
                         update_check: yes
-                        white_list:
-                          - 127.0.0.1
-                          - ^localhost.localdomain$
-                          - 80.58.61.250
-                          - 80.58.61.254
                       alerts:
                         log_alert_level: "3"
                       remote:

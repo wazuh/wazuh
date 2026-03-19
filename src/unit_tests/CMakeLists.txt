@@ -100,9 +100,6 @@ if(NOT TARGET)
 elseif(${TARGET} STREQUAL "manager")
   include("./server.cmake")
   configure_file(
-    "config_files/test_global.conf"
-    "wazuh_modules/vulnerability_detection/test_global.conf" COPYONLY)
-  configure_file(
     "config_files/test_vulnerability_detection_multiple_configuration.conf"
     "wazuh_modules/vulnerability_detection/test_vulnerability_detection_multiple_configuration.conf"
     COPYONLY)
@@ -117,10 +114,6 @@ elseif(${TARGET} STREQUAL "manager")
   configure_file(
     "config_files/test_vulnerability_detection_invalid_index_status_setting.conf"
     "wazuh_modules/vulnerability_detection/test_vulnerability_detection_invalid_index_status_setting.conf"
-    COPYONLY)
-  configure_file(
-    "config_files/test_global_no_cti_url.conf"
-    "wazuh_modules/vulnerability_detection/test_global_no_cti_url.conf"
     COPYONLY)
 elseif(${TARGET} STREQUAL "agent")
   include("./agent.cmake")

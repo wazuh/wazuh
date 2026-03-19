@@ -13,76 +13,11 @@
 
 #include "shared.h"
 
-#define EPS_LIMITS_DEFAULT_TIMEFRAME 10
-#define EPS_LIMITS_MAX_TIMEFRAME 3600
-#define EPS_LIMITS_MIN_TIMEFRAME 1
-#define EPS_LIMITS_MAX_EPS 100000
-#define EPS_LIMITS_MIN_EPS 0
-
-#define CTI_URL_DEFAULT "https://cti.wazuh.com/api/v1/catalog/contexts/vd_1.0.0/consumers/vd_4.8.0"
-
-typedef struct __eps {
-    // EPS limits configuration
-    unsigned int maximum;
-    unsigned int timeframe;
-    bool maximum_found;
-} _eps;
-
 /* Configuration structure */
 typedef struct __Config {
-    u_int8_t integrity;
-    u_int8_t syscheck_auto_ignore;
-    int syscheck_ignore_frequency;
-    int syscheck_ignore_time;
-    u_int8_t syscheck_alert_new;
-    u_int8_t rootcheck;
-    u_int8_t hostinfo;
-    u_int8_t logfw;
-    int decoder_order_size;
-
     /* Agent's disconnection global parameters */
     long agents_disconnection_time;
     long agents_disconnection_alert_time;
-
-    /* Not currently used */
-    u_int8_t keeplogdate;
-
-    /* For the active response */
-    int ar;
-
-
-    /* List of files to ignore (syscheck) */
-    char **syscheck_ignore;
-
-    /* List of ips to never block */
-    os_ip **white_list;
-
-    /* List of hostnames to never block */
-    OSMatch **hostname_white_list;
-
-    /* Vector of targets forwarder */
-    char** forwarders_list;
-
-    /* Vector of socket configuration from wazuh configuration file <socket/> */
-    socket_forwarder *socket_list;
-
-
-    // Cluster configuration
-    char *cluster_name;
-    char *node_name;
-    char *node_type;
-    unsigned char hide_cluster_info;
-
-    long queue_size;
-
-    // EPS limits configuration
-    _eps eps;
-
-    // CTI URL
-    char *cti_url;
 } _Config;
-
-
-void config_free(_Config *config);
 
 #endif /* CCONFIG_H */

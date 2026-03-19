@@ -28,7 +28,6 @@ Alternatively, configure environment variables as described in `etc/preloaded-va
 USER_LANGUAGE="en" \
 USER_INSTALL_TYPE="manager" \
 USER_DIR="/var/wazuh-manager" \
-USER_WHITE_LIST="n" \
 USER_ENABLE_AUTHD="y" \
 USER_UPDATE="y" \
 USER_AUTO_START="n" \

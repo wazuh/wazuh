@@ -41,7 +41,7 @@ CONF_SECTIONS = MappingProxyType({
     'client': {'type': 'merge', 'list_options': []},
     'global': {
         'type': 'merge',
-        'list_options': ['white_list']
+        'list_options': []
     },
     'cis-cat': {
         'type': 'merge',

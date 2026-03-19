@@ -65,15 +65,11 @@ static int read_main_elements(const OS_XML *xml, int modules,
         chld_node = OS_GetElementsbyNode(xml, node[i]);
 
         if (chld_node && (strcmp(node[i]->element, osglobal) == 0)) {
-            if (((modules & CGLOBAL) || (modules & CMAIL))
-                    && (Read_Global(xml, chld_node, d1, d2) < 0)) {
+            if ((modules & CGLOBAL) && (Read_Global(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, ossyscheck) == 0) {
             if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-            if ((modules & CGLOBAL) && (Read_GlobalSK(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, osrootcheck) == 0) {
@@ -181,10 +177,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
 #endif
         } else if (strcmp(node[i]->element, oslogging) == 0) {
-        } else if (chld_node && (strcmp(node[i]->element, oscluster) == 0)) {
-            if ((modules & CCLUSTER) && (Read_Cluster(xml, chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
+        } else if (strcmp(node[i]->element, oscluster) == 0) {
         } else if (chld_node && (strcmp(node[i]->element, ossocket) == 0)) {
             if ((modules & CLGCSOCKET) && (Read_LogCollecSocket(chld_node, d1, d2) < 0)) {
                 goto fail;
