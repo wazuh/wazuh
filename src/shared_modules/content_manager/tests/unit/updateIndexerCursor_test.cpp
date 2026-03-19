@@ -78,7 +78,6 @@ TEST_F(UpdateIndexerCursorTest, OverwritePreviousCursor)
     m_spUpdaterContext->data["cursor"] = "1000";
     EXPECT_NO_THROW(m_spUpdateIndexerCursor->handleRequest(m_spUpdaterContext));
 
-    stored =
-        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString();
+    stored = m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString();
     EXPECT_EQ(stored, "1000");
 }
