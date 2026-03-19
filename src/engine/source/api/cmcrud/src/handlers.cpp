@@ -13,10 +13,6 @@
 #include <api/adapter/helpers.hpp>
 #include <api/cmcrud/handlers.hpp>
 
-namespace
-{
-constexpr std::string_view ORGIN_SPACE_TESTING = "test";
-}
 namespace api::cmcrud::handlers
 {
 
@@ -442,7 +438,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
             // Step 1: Import into temp namespace (validates structure).
             // ============================================================
             const cm::store::dataType::Policy pol =
-                service->importNamespace(tmpNsId, fullPolicyStr, ORGIN_SPACE_TESTING, /*force=*/true);
+                service->importNamespace(tmpNsId, fullPolicyStr, finalSessionName, /*force=*/true);
             guard.namespaceOwned = true;
 
             const bool isEnabled = pol.isEnabled();

@@ -65,7 +65,6 @@ paths:
 
         ## Notes
         - A unique temporary namespace and tester session are generated per request.
-        - Only one `"testing"` session is supported at a time.
         - If the Tester API is not available, the request fails immediately.
       requestBody:
         required: true
