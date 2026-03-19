@@ -31,13 +31,13 @@ const wm_context WM_CONTROL_CONTEXT = {
     .query = NULL,
 };
 
-void *wm_control_main() {
+static void *wm_control_main() {
     mtinfo(WM_CONTROL_LOGTAG, "Starting control thread.");
     w_create_thread(send_agent_control, NULL);
     return NULL;
 }
 
-void wm_control_destroy() {
+static void wm_control_destroy() {
 }
 
 wmodule *wm_control_read() {

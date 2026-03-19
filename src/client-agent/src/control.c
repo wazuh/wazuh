@@ -13,22 +13,20 @@
 #include "agentd.h"
 
 size_t control_dispatch(char *command, char **output) {
-    char *rcv_comm = command;
-    char *rcv_args = NULL;
-
-    if ((rcv_args = strchr(rcv_comm, ' '))) {
-        *rcv_args = '\0';
-        rcv_args++;
+    char *args = strchr(command, ' ');
+    if (args) {
+        *args = '\0';
+        args++;
     }
 
-    if (strcmp(rcv_comm, "restart") == 0) {
+    if (strcmp(command, "restart") == 0) {
         mdebug1("Restarting Wazuh agent service via control.");
         os_stop_service();
         os_start_service();
         os_strdup("ok ", *output);
         return strlen(*output);
 
-    } else if (strcmp(rcv_comm, "reload") == 0) {
+    } else if (strcmp(command, "reload") == 0) {
         mdebug1("Reloading Wazuh agent service via control.");
         os_stop_service();
         os_start_service();
@@ -36,7 +34,7 @@ size_t control_dispatch(char *command, char **output) {
         return strlen(*output);
 
     } else {
-        mdebug1("CONTROL: Unrecognized command '%s'.", rcv_comm);
+        mdebug1("CONTROL: Unrecognized command '%s'.", command);
         os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
