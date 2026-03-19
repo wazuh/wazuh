@@ -52,7 +52,7 @@ jobs:
     steps:
       - uses: actions/setup-python@v5
         with:
-          python-version-file: ".github/workflows/.python-version-it"
+          python-version: "3.11"
           architecture: x64
 
       - name: Add WiX toolkit to PATH

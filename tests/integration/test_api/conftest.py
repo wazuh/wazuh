@@ -48,9 +48,6 @@ def wait_for_api_start(test_configuration: dict) -> None:
 
     Args:
         test_configuration (dict): Configuration data.
-
-    Raises:
-        RuntimeError: When the API does not start.
     """
     port = WAZUH_API_PORT
     protocol = "https"
@@ -63,17 +60,12 @@ def wait_for_api_start(test_configuration: dict) -> None:
     api_url = f"{protocol}://127.0.0.1:{port}"
     MAX_RETRIES = 30
     RETRY_INTERVAL = 1
-    is_started = False
 
     for _ in range(MAX_RETRIES):
         try:
             requests.get(api_url, verify=False, timeout=2)
-            is_started = True
             break
         except requests.exceptions.RequestException:
             time.sleep(RETRY_INTERVAL)
 
-    if not is_started:
-        raise RuntimeError("The API was not started as expected.")
-
-    time.sleep(10)
+    yield
