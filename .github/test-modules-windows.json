@@ -1,0 +1,17 @@
+{
+  "modules": [
+    {
+      "name": "fim",
+      "workflow": "5_testintegration_fim-tier-0-1-win.yml",
+      "paths": [
+        ".github/workflows/5_testintegration_fim-tier-0-1-win.yml",
+        "src/config/src/syscheck-config.c",
+        "src/config/include/syscheck-config.h",
+        "src/syscheckd/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_fim/**"
+      ]
+    }
+  ]
+}
