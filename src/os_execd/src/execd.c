@@ -331,7 +331,7 @@ void ExecdRun(char *exec_msg, int *childcount)
         memset(rkey, '\0', OS_SIZE_4096);
         snprintf(rkey, OS_SIZE_4096 - 1, "%s", basename_ex(cmd_copy));
 
-        keys_json = get_json_from_input(response);
+        keys_json = cJSON_Parse(response);
         if (keys_json != NULL) {
             const char *action = get_command_from_json(keys_json);
             if ((action != NULL) && (strcmp(CHECK_KEYS_ENTRY, action) == 0)) {

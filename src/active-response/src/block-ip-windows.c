@@ -66,17 +66,6 @@ int main(int argc, char **argv) {
         }
     }
 
-    // Validate IP and get version (Windows netsh supports both IPv4 and IPv6)
-    int ip_version = get_ip_version(srcip);
-    if (ip_version == OS_INVALID) {
-        char log_msg[OS_MAXSTR];
-        memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR - 1, "Invalid IP address: '%s'", srcip);
-        write_debug_file(argv[0], log_msg);
-        cJSON_Delete(input_json);
-        return OS_INVALID;
-    }
-
     // Define Windows method chain
     const firewall_method_t methods[] = {
         {"netsh", try_netsh, false},
@@ -85,7 +74,7 @@ int main(int argc, char **argv) {
     };
 
     // Execute firewall chain with fallback
-    int result = execute_firewall_chain(methods, srcip, action, ip_version, argv[0]);
+    int result = execute_firewall_chain(methods, srcip, action, 0, argv[0]);
 
     cJSON_Delete(input_json);
     return result;
