@@ -240,16 +240,16 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Internal definitions files */
 #ifndef WIN32
 #ifdef CLIENT
-#define OSSEC_DEFINES  "etc/internal_options.conf"
-#define OSSEC_LDEFINES "etc/local_internal_options.conf"
+#define WAZUH_DEFINES  "etc/internal_options.conf"
+#define WAZUH_LDEFINES "etc/local_internal_options.conf"
 #else
 /* Manager: defaults live in code via getDefine_Int_default(); only the
- * user-overrides file is needed. OSSEC_DEFINES is intentionally not defined. */
-#define OSSEC_LDEFINES "etc/wazuh-manager-internal-options.conf"
+ * user-overrides file is needed. WAZUH_DEFINES is intentionally not defined. */
+#define WAZUH_LDEFINES "etc/wazuh-manager-internal-options.conf"
 #endif
 #else
-#define OSSEC_DEFINES  "internal_options.conf"
-#define OSSEC_LDEFINES "local_internal_options.conf"
+#define WAZUH_DEFINES  "internal_options.conf"
+#define WAZUH_LDEFINES "local_internal_options.conf"
 #endif
 
 /* Log directories */
@@ -326,17 +326,17 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef WAZUHCONFIG
 #ifndef WIN32
 #ifdef CLIENT
-#define WAZUHCONFIG       "ossec_config"
+#define WAZUHCONFIG "ossec_config"
 #else
-#define WAZUHCONFIG       "wazuh_config"
+#define WAZUHCONFIG "wazuh_config"
 #endif
 #else
-#define WAZUHCONFIG       "ossec_config"
+#define WAZUHCONFIG "ossec_config"
 #endif
 #endif
 
-#define SHAREDCFG_FILE      SHAREDCFG_DIR "/merged.mg"
-#define SHAREDCFG_FILENAME  "merged.mg"
+#define SHAREDCFG_FILE     SHAREDCFG_DIR "/merged.mg"
+#define SHAREDCFG_FILENAME "merged.mg"
 
 #define MAX_QUEUED_EVENTS_PATH "/proc/sys/fs/inotify/max_queued_events"
 

@@ -16,11 +16,11 @@
 #ifdef WAZUH_UNIT_TESTING
 #define static
 
-#undef OSSEC_DEFINES
-#define OSSEC_DEFINES   "./internal_options.conf"
+#undef WAZUH_DEFINES
+#define WAZUH_DEFINES   "./internal_options.conf"
 
-#undef OSSEC_LDEFINES
-#define OSSEC_LDEFINES   "./local_internal_options.conf"
+#undef WAZUH_LDEFINES
+#define WAZUH_LDEFINES   "./local_internal_options.conf"
 #endif
 
 #define DEFAULT_IPV6_PREFIX  128
@@ -263,10 +263,10 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
     char *value;
 
     /* Try to read from the local define file */
-    value = _read_file(high_name, low_name, OSSEC_LDEFINES);
-#ifdef OSSEC_DEFINES
+    value = _read_file(high_name, low_name, WAZUH_LDEFINES);
+#ifdef WAZUH_DEFINES
     if (!value) {
-        value = _read_file(high_name, low_name, OSSEC_DEFINES);
+        value = _read_file(high_name, low_name, WAZUH_DEFINES);
     }
 #endif
     if (!value) {
@@ -311,10 +311,10 @@ int getDefine_Int_default(const char *high_name, const char *low_name, int min, 
     char *value;
 
     /* Try to read from the local define file */
-    value = _read_file(high_name, low_name, OSSEC_LDEFINES);
-#ifdef OSSEC_DEFINES
+    value = _read_file(high_name, low_name, WAZUH_LDEFINES);
+#ifdef WAZUH_DEFINES
     if (!value) {
-        value = _read_file(high_name, low_name, OSSEC_DEFINES);
+        value = _read_file(high_name, low_name, WAZUH_DEFINES);
     }
 #endif
     if (!value) {
