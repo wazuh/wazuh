@@ -45,7 +45,6 @@ default_api_configuration = {
         "cert": "manager.crt",
         "use_ca": False,
         "ca": "ca.crt",
-        "ssl_protocol": "auto",
         "ssl_ciphers": ""
     },
     "logs": {

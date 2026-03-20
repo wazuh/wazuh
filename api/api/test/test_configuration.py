@@ -22,7 +22,6 @@ custom_api_configuration = {
         "cert": "manager.crt",
         "use_ca": False,
         "ca": "rootCA.pem",
-        "ssl_protocol": "auto",
         "ssl_ciphers": ""
     },
     "logs": {
