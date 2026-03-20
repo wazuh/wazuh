@@ -715,14 +715,6 @@ void start_daemon()
             break;
         }
 
-        // Check if syscheck should be restarted
-        run_now = os_check_restart_syscheck();
-
-        // Reset sync protocol stop flag if restart was requested
-        if (run_now && syscheck.sync_handle) {
-            asp_reset(syscheck.sync_handle);
-        }
-
         // Check if a day_time or scan_time is set
         if (syscheck.scan_time || syscheck.scan_day) {
             localtime_r(&curr_time, &tm_result);
@@ -760,6 +752,11 @@ void start_daemon()
                     day_scanned = 1;
                 }
             }
+        }
+
+        // Reset sync protocol stop flag if scheduled scan is triggered
+        if (run_now && syscheck.sync_handle) {
+            asp_reset(syscheck.sync_handle);
         }
 
         // If time elapsed is higher than the syscheck time, run syscheck time

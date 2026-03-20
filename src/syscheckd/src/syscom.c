@@ -572,8 +572,7 @@ size_t syscom_dispatch(char * command, size_t command_len, char ** output){
     }
 
     if (strncmp(command, HC_SK, strlen(HC_SK)) == 0 ||
-               strncmp(command, HC_GETCONFIG, strlen(HC_GETCONFIG)) == 0 ||
-               strncmp(command, HC_RESTART, strlen(HC_RESTART)) == 0) {
+               strncmp(command, HC_GETCONFIG, strlen(HC_GETCONFIG)) == 0) {
         char *rcv_comm = NULL;
         char *rcv_args = NULL;
 
@@ -596,9 +595,6 @@ size_t syscom_dispatch(char * command, size_t command_len, char ** output){
                 return strlen(*output);
             }
             return syscom_getconfig(rcv_args, output);
-        } else if (strcmp(rcv_comm, "restart") == 0) {
-            os_set_restart_syscheck();
-            return 0;
         }
     } else if (strncmp(command, FIM_SYNC_HEADER, strlen(FIM_SYNC_HEADER)) == 0) {
         if (syscheck.enable_synchronization) {

@@ -33,18 +33,11 @@
 
 /* Minimum agent version that supports module limits */
 #define MIN_VERSION_MODULE_LIMITS       "v5.0.0"
-#define HC_SK_DB_COMPLETED              "syscheck-db-completed"
-#define HC_SK_RESTART                   "syscheck restart"
 #define HC_REQUEST                      "req "
-#define HC_FIM_DB_SFS                   "fim-db-start-first-scan"
-#define HC_FIM_DB_EFS                   "fim-db-end-first-scan"
-#define HC_FIM_DB_SS                    "fim-db-start-scan"
-#define HC_FIM_DB_ES                    "fim-db-end-scan"
 #define CFGA_DB_DUMP                    "sca-dump"
 #define HC_SK                           "syscheck "
 #define HC_SYSCOLLECTOR                 "syscollector_"
 #define HC_FORCE_RECONNECT              "force_reconnect"
-#define HC_RESTART                      "restart"
 #define HC_GETCONFIG                    "getconfig"
 #define HC_ERROR                        "err "
 #define HC_INVALID_VERSION_RESPONSE     "Agent version must be lower or equal to manager version"
