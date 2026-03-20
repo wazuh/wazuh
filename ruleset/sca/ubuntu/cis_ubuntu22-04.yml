@@ -3499,9 +3499,9 @@ checks:
     condition: any
     rules:
       - 'f:/etc/security/faillock.conf -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare >= 900'
-      - 'f:/etc/security/faillock.conf -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare = 0'
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare == 0'
       - 'f:/etc/pam.d/common-auth -> !r:^# && r:pam_faillock\.so && n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare >= 900'
-      - 'f:/etc/pam.d/common-auth -> !r:^# && r:pam_faillock\.so && n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare = 0'
+      - 'f:/etc/pam.d/common-auth -> !r:^# && r:pam_faillock\.so && n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare == 0'
       - 'not f:/etc/pam.d/common-auth -> !r:^# && r:pam_faillock\.so && r:^\s*\t*unlock_time\s*\t*='
 
   # 5.3.3.1.3 Ensure password failed attempts lockout includes root account. (Automated)

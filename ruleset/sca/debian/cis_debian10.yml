@@ -4105,7 +4105,7 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
-      - 'f:/etc/security/pwquality.conf -> !r:^# && n:dictcheck\s*\t*=\s*\t*(\d+) compare = 1'
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:dictcheck\s*\t*=\s*\t*(\d+) compare == 1'
 
   # 4.5.2 Ensure system accounts are secured. (Automated) - Not Implemented
 
@@ -4185,7 +4185,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare <= 3'
-      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare =0'
+      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare == 0'
 
   # 5.1.1.1.1 Ensure systemd-journal-remote is installed. (Automated)
   - id: 2657

@@ -759,7 +759,7 @@ checks:
     condition: all
     rules:
       - "f:/etc/dnf/dnf.conf -> r:gpgcheck=1"
-      - 'd:/etc/yum.repos.d/ -> r:. -> n:gpgcheck=(\d+) compare = 1'
+      - 'd:/etc/yum.repos.d/ -> r:. -> n:gpgcheck=(\d+) compare == 1'
 
   # 1.2.3 Ensure package manager repositories are configured. (Manual) - Not Implemented
 
