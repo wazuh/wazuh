@@ -235,19 +235,6 @@ curl -k -X PUT "https://localhost:55000/cluster/restart?pretty=true" \
 
 ---
 
-### Active Response
-
-**`PUT /active-response`** — Execute an active response command on agents.
-
-```bash
-curl -k -X PUT "https://localhost:55000/active-response?agents_list=001,002&pretty=true" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"command": "!firewall-drop", "arguments": ["-srcip", "10.0.0.50"]}'
-```
-
----
-
 ### Security
 
 #### List users
@@ -413,11 +400,6 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | GET | `/security/config` | Security config |
 | PUT | `/security/config` | Update config |
 | DELETE | `/security/config` | Reset config |
-
-### Active Response
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| PUT | `/active-response` | Run AR command |
 
 ### MITRE
 | Method | Endpoint | Description |
