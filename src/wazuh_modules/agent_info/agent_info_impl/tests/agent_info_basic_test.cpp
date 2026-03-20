@@ -222,12 +222,13 @@ TEST_F(AgentInfoImplTest, StartWithIntervalTriggersWaitCondition)
     std::atomic<bool> startedFirstIteration{false};
 
     // Use a thread to stop the agent after the first iteration completes
+    // NOTE: start() has a 5-second initial delay, so we need to wait for that plus the iteration time
     std::thread stopThread([this, &startedFirstIteration]()
     {
-        // Busy-wait for the first iteration to complete
+        // Wait for the first iteration to complete (accounting for 5-second initial delay)
         while (!startedFirstIteration.load(std::memory_order_acquire))
         {
-            std::this_thread::yield();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
 
         // Add a small delay to ensure we're in the wait phase
