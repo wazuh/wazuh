@@ -104,16 +104,16 @@ help()
 
 status()
 {
-    RETVAL=0
     for i in ${DAEMONS}; do
         pstatus ${i};
         if [ $? = 0 ]; then
-            RETVAL=1
             echo "${i} not running..."
         else
             echo "${i} is running..."
         fi
     done
+    # Ensure wazuh-control returns 0 regardless of daemon status
+    RETVAL=0
 }
 
 testconfig()
