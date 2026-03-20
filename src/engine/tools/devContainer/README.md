@@ -48,12 +48,14 @@ Creates the directory structure required for running the engine in standalone mo
 - Copies necessary schema files from the engine source
 
 ### purge_wazuh.sh
-Comprehensive cleanup script that removes Wazuh manager/agent installations:
+Located at `tools/purge_wazuh.sh`, this script provides a comprehensive cleanup for local Wazuh manager/agent installations:
 - Removes Wazuh packages via apt-get or yum
+- Supports `dnf`, `yum`, `zypper`, and `rpm`-based package removal
 - Unmounts proc filesystem if mounted for development
 - Stops and removes Wazuh services
 - Cleans up all Wazuh-related files and directories
 - Removes Wazuh user and group from the system
+- Falls back to a full filesystem cleanup when the installation was created from sources instead of packages
 
 ### mount_wazuh_proc.sh
 Mounts the `/proc` filesystem inside the Wazuh installation directory for development and testing purposes.
@@ -127,10 +129,10 @@ Deploys generated certificates to an existing wazuh-manager installation:
 
 **VS Code Task:** Available as "E2E Scripts: Copy wazuh-manager certs" in the task menu (`Ctrl+Shift+P` → `Tasks: Run Task`)
 
-### purge_wazuh.sh (e2e wrapper)
-Alias to `scripts/purge_wazuh.sh` - provides a convenient cleanup utility from the e2e directory.
+### purge_wazuh.sh
+Use the repo-level `tools/purge_wazuh.sh` script before re-running the E2E setup if you need to reset a local Wazuh installation completely.
 
-**VS Code Task:** Available as "Scripts: Purge wazuh-manager" in the task menu
+**VS Code Task:** Available as "Scripts: Purge Wazuh installation" in the task menu
 
 
 ## Additional Resources

@@ -183,7 +183,6 @@ WazuhUpgrade()
     rm -f $PREINSTALLEDDIR/bin/wazuh-dbd
     rm -f $PREINSTALLEDDIR/bin/wazuh-integratord
     rm -f $PREINSTALLEDDIR/bin/wazuh-maild
-    rm -f $PREINSTALLEDDIR/bin/wazuh-reportd
 
     # Remove existing ruleset version file
 

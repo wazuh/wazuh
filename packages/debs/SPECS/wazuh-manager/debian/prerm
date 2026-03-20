@@ -42,10 +42,6 @@ case "$1" in
         cp -p ${DIR}/etc/wazuh-manager.conf ${DIR}/tmp/conffiles
       fi
 
-      # Save the rootcheck files
-      if [ -d ${DIR}/etc/rootcheck ]; then
-        cp -pr ${DIR}/etc/rootcheck ${DIR}/tmp/conffiles
-      fi
       # Save the agent.conf from the group default
       mkdir -p ${DIR}/tmp/conffiles/shared/default
       if [ -f ${DIR}/etc/shared/default/agent.conf ]; then

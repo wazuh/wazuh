@@ -152,7 +152,6 @@ typedef struct _monitor_time_control {
     int thisyear;
 } monitor_time_control;
 
-// Moved from deprecated reportd
 typedef struct _monitor_config {
     short int day_wait;
     unsigned int compress:1;

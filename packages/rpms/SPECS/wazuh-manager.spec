@@ -443,11 +443,13 @@ if [ $1 = 0 ];then
   rm -rf %{_localstatedir}/queue/
   rm -rf %{_localstatedir}/framework/
   rm -rf %{_localstatedir}/api/
+  rm -rf %{_localstatedir}/active-response/
   rm -rf %{_localstatedir}/stats/
   rm -rf %{_localstatedir}/var/
   rm -rf %{_localstatedir}/bin/
   rm -rf %{_localstatedir}/logs/
   rm -rf %{_localstatedir}/tmp
+  rm -rf %{_localstatedir}/wodles/
   rm -rf %{_localstatedir}/engine
 
   # Delete audisp wazuh plugin if exists
@@ -503,10 +505,6 @@ rm -fr %{buildroot}
 /usr/lib/systemd/system/wazuh-manager.service
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}
 %attr(440, root, wazuh-manager) %{_localstatedir}/VERSION.json
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/active-response
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/active-response/bin
-%attr(750, root, wazuh-manager) %{_localstatedir}/active-response/bin/kaspersky.py
-%attr(750, root, wazuh-manager) %{_localstatedir}/active-response/bin/restart.sh
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/api
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/api/configuration
 %attr(660, root, wazuh-manager) %config(noreplace) %{_localstatedir}/api/configuration/api.yaml

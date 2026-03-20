@@ -875,12 +875,12 @@ InstallCommon()
 
 
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response/bin
-
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/src/*.sh ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/src/*.py ${INSTALLDIR}/active-response/bin/
   if [ "X${INSTYPE}" = "Xagent" ]; then
+    # Active response scripts and helpers are agent runtime assets.
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response/bin
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/src/*.sh ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/src/*.py ${INSTALLDIR}/active-response/bin/
     ./init/fw-check.sh execute
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/firewall-drop ${INSTALLDIR}/active-response/bin/
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/default-firewall-drop ${INSTALLDIR}/active-response/bin/
@@ -1096,7 +1096,7 @@ InstallLocal()
 
     ### Backup old API
     if [ "X${update_only}" = "Xyes" ]; then
-      ${MAKEBIN} --quiet -C ../api backup INSTALLDIR=${INSTALLDIR} REVISION=${REVISION} WAZUH_GROUP=${WAZUH_GROUP}
+      ${MAKEBIN} --quiet -C ../api backup INSTALLDIR=${INSTALLDIR} WAZUH_GROUP=${WAZUH_GROUP}
     fi
 
     ### Install API
@@ -1104,7 +1104,7 @@ InstallLocal()
 
     ### Restore old API
     if [ "X${update_only}" = "Xyes" ]; then
-      ${MAKEBIN} --quiet -C ../api restore INSTALLDIR=${INSTALLDIR} REVISION=${REVISION} WAZUH_GROUP=${WAZUH_GROUP}
+      ${MAKEBIN} --quiet -C ../api restore INSTALLDIR=${INSTALLDIR} WAZUH_GROUP=${WAZUH_GROUP}
     fi
 
     ### Install router library
@@ -1121,8 +1121,8 @@ InstallLocal()
 TransferShared()
 {
     rm -f ${INSTALLDIR}/etc/shared/merged.mg
-    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec cp -pf {} ${INSTALLDIR}/backup/shared \;
-    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
+    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -exec cp -pf {} ${INSTALLDIR}/backup/shared \;
+    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
 }
 
 checkDownloadContent()

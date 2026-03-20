@@ -15,7 +15,6 @@
 #include "cluster_utils.h"
 #include "wazuhdb_queries_op.h"
 #include "os_net.h"
-#include "shared_download.h"
 #include "sha256_op.h"
 #include <pthread.h>
 
@@ -806,7 +805,6 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
     char *finalbuf = NULL;
     size_t finalsize = 0;
     int merged_ok = 1;
-    remote_files_group *r_group = NULL;
 
     if ((*_f_time) = OSHash_Create(), (*_f_time) == NULL) {
         merror_exit("OSHash_Create() failed");
@@ -815,66 +813,7 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, SHAREDCFG_FILENAME);
     snprintf(merged_tmp, PATH_MAX + 1, "%s/%s/%s.tmp", sharedcfg_dir, group, SHAREDCFG_FILENAME);
 
-    if (create_merged && (r_group = w_parser_get_group(group), r_group)) {
-        if (r_group->current_polling_time <= 0) {
-            r_group->current_polling_time = r_group->poll;
-
-            char *file_url;
-            char *file_name;
-            char destination_path[PATH_MAX + 1];
-            char download_path[PATH_MAX + 1];
-            int downloaded;
-
-            // Check if we have merged.mg file in this group
-            if (r_group->merge_file_index >= 0) {
-                file_url = r_group->files[r_group->merge_file_index].url;
-                file_name = SHAREDCFG_FILENAME;
-                snprintf(destination_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
-                mdebug1("Downloading shared file '%s' from '%s'", merged, file_url);
-                downloaded = wurl_request(file_url, destination_path, NULL, NULL, 0);
-                w_download_status(downloaded, file_url, destination_path);
-                r_group->merged_is_downloaded = !downloaded;
-
-                // Validate the file
-                if (r_group->merged_is_downloaded) {
-                    // File is invalid
-                    if (!TestUnmergeFiles(destination_path, OS_TEXT)) {
-                        int fd = unlink(destination_path);
-
-                        merror("The downloaded file '%s' is corrupted.", destination_path);
-
-                        if (fd == -1) {
-                            merror("Failed to delete file '%s'", destination_path);
-                        }
-                        return;
-                    }
-
-                    OS_MoveFile(destination_path, merged);
-                }
-            } else { // Download all files
-                int i;
-
-                if (r_group->files) {
-                    for (i = 0; r_group->files[i].name; i++) {
-                        file_url = r_group->files[i].url;
-                        file_name = r_group->files[i].name;
-                        snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, file_name);
-                        snprintf(download_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
-                        mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
-                        downloaded = wurl_request(file_url, download_path, NULL, NULL, 0);
-
-                        if (!w_download_status(downloaded, file_url, destination_path)) {
-                            OS_MoveFile(download_path, destination_path);
-                        }
-                    }
-                }
-            }
-        } else {
-            r_group->current_polling_time -= poll_interval_time;
-        }
-    }
-
-    if ((!r_group || !r_group->merged_is_downloaded) && (!is_multigroup || create_merged)) {
+    if (!is_multigroup || create_merged) {
         if (create_merged) {
             if (disk_storage) {
                 if (finalfp = wfopen(merged_tmp, "w"), finalfp == NULL) {
@@ -1225,7 +1164,7 @@ STATIC void process_multi_groups() {
                     if (merge_shared) {
                         OSHash_Clean(multigroup->f_time, free_file_time);
                         c_multi_group(key, &multigroup->f_time, &multigroup->merged_sum, data, true);
-                        mwarn("Multigroup '%s' was modified from outside, so it was regenerated.", multigroup->name);
+                        mdebug2("Multigroup '%s' was modified from outside, so it was regenerated.", multigroup->name);
                     } else {
                         mdebug2("Multigroup '%s' was modified from outside.", multigroup->name);
                     }
@@ -1956,12 +1895,6 @@ void *update_shared_files(__attribute__((unused)) void *none)
          */
 
         if ((_ctime - _stime) >= shared_reload_interval) {
-            // Check if the yaml file has changed and reload it
-            if (w_yaml_file_has_changed()) {
-                w_yaml_file_update_structs();
-                w_yaml_create_groups();
-            }
-
             c_files(false);
             _stime = _ctime;
         }
@@ -1995,8 +1928,6 @@ void manager_init()
 
     /* Run initial groups and multigroups scan */
     c_files(true);
-
-    w_yaml_create_groups();
 
     pending_queue = linked_queue_init();
     pending_data = OSHash_Create();

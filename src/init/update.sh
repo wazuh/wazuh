@@ -33,6 +33,8 @@ doUpdatecleanup()
 ##########
 getPreinstalledDirByType()
 {
+    SERVICE_UNIT_PATH=""
+
     # Checking for Systemd
     if hash ps 2>&1 > /dev/null && hash grep 2>&1 > /dev/null && [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
 
@@ -46,8 +48,13 @@ getPreinstalledDirByType()
 
         # Get the unit file and extract the Wazuh home path
         PREINSTALLEDDIR=$(systemctl cat wazuh-${type}.service 2>/dev/null | sed -n "${SED_EXTRACT_PREINSTALLEDDIR}")
-        if [ -n "${PREINSTALLEDDIR}" ] && [ -d "${PREINSTALLEDDIR}" ]; then
-            return 0;
+        if [ -n "${PREINSTALLEDDIR}" ]; then
+            if [ -d "${PREINSTALLEDDIR}" ]; then
+                return 0;
+            else
+                PREINSTALL_DETECTION_ERROR="Detected wazuh-${type}.service metadata pointing to '${PREINSTALLEDDIR}', but that directory does not exist."
+                return 2;
+            fi
         fi
 
         # If fail, find the service file
@@ -64,8 +71,12 @@ getPreinstalledDirByType()
             PREINSTALLEDDIR=$(sed -n "${SED_EXTRACT_PREINSTALLEDDIR}" "${SERVICE_UNIT_PATH}")
             if [ -d "$PREINSTALLEDDIR" ]; then
                 return 0;
+            elif [ -n "${PREINSTALLEDDIR}" ]; then
+                PREINSTALL_DETECTION_ERROR="Detected service file '${SERVICE_UNIT_PATH}' pointing to '${PREINSTALLEDDIR}', but that directory does not exist."
+                return 2;
             else
-                return 1;
+                PREINSTALL_DETECTION_ERROR="Detected service file '${SERVICE_UNIT_PATH}', but no installation directory could be extracted from it."
+                return 2;
             fi
         else
             return 1;
@@ -251,6 +262,12 @@ getPreinstalledType()
     else
         TYPE=`$PREINSTALLEDDIR/bin/wazuh-control info -t`
     fi
+
+    case "$TYPE" in
+        server)
+            TYPE="manager"
+            ;;
+    esac
 
     echo $TYPE
     return 0;

@@ -52,9 +52,9 @@
             "problemMatcher": []
         },
         {
-            "label": "Scripts: Purge wazuh-manger",
+            "label": "Scripts: Purge Wazuh installation",
             "type": "shell",
-            "command": "${env:WAZUH_DEV_SCRIPTS}/purge_wazuh.sh",
+            "command": "${env:WAZUH_REPO}/tools/purge_wazuh.sh",
             "args": [],
             "problemMatcher": []
         },
@@ -66,7 +66,7 @@
             "problemMatcher": []
         },
                 {
-            "label": "E2E Scripts: Copy wazuh-manger certs ",
+            "label": "E2E Scripts: Copy wazuh-manager certs",
             "type": "shell",
             "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/wazuh_copy_certs.sh",
             "args": [],
