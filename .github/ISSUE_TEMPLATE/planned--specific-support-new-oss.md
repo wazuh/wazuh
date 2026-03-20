@@ -39,7 +39,8 @@ assignees: ''
     - [ ] Only FQDN.
     - [ ] IP address, agent name, and group.
 - [ ] Add/Update/Check CI
-  - [ ] Add the new system to the DTT environment files
+  - [ ] Add the new system to the DTT environment configuration files.
+- [ ] Review and update the release testing issue templates.
 - [ ] Add the OS and its supported architectures to the E2E UX Tests spreadsheet (OS sheet).
 -->
 
