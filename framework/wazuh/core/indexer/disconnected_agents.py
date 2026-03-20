@@ -108,39 +108,27 @@ class DisconnectedAgentSyncTasks:
         # Flag to ensure cluster-name sync runs only once per process lifecycle
         self._cluster_name_sync_done = False
 
-        # Seconds to wait between retries when the indexer is unavailable
-        self._indexer_wait_interval = master_interval.get(
-            "sync_disconnected_agent_indexer_wait_interval", 30
-        )
 
     async def check_indexer(self) -> None:
         """
-        Verify the indexer's availability before proceeding.
+        Verify the indexer's availability by performing a health check.
 
-        This method performs a connectivity check using ``client.info()``.
-        It relies on the internal retry mechanism of `get_indexer_client`.
-        If a client override is present (e.g., for testing or dependency
-        injection), the check is bypassed entirely.
+        This method checks whether the indexer service is reachable. If a client
+        override has been set (e.g., for testing or dependency injection), the
+        check is skipped entirely. Otherwise, it obtains an indexer client via
+        ``get_indexer_client()`` and calls its ``healthcheck()`` method. Any
+        failure to connect results in an ``IndexerUnavailableError`` being raised.
 
         Returns
         -------
         None
-            Returns execution flow once the indexer connection is successful.
+            Returns when the indexer is confirmed reachable or when the client
+            override bypasses the check.
 
         Raises
         ------
         IndexerUnavailableError
-            If the indexer remains unreachable after all internal retry
-            attempts are exhausted.
-        Exception
-            Any unexpected error encountered during the connection process
-            that is not handled by the client's internal logic.
-
-        Notes
-        -----
-        Failed connection attempts are logged at the `DEBUG` level to prevent
-        log pollution in environments where the indexer might start later
-        than the main service.
+            If the indexer is not reachable and no client override is present.
         """
         if self._indexer_client_override is not None:
             self.logger.debug(
@@ -153,10 +141,7 @@ class DisconnectedAgentSyncTasks:
                 await client.healthcheck()
             self.logger.debug("Indexer is available")
         except IndexerUnavailableError:
-            self.logger.debug(
-                f"Indexer not available after retries. "
-                f"Check interval was {self._indexer_wait_interval}s"
-            )
+            self.logger.debug("Indexer not available")
             raise
 
     async def run_agent_groups_sync(self) -> None:
@@ -166,13 +151,6 @@ class DisconnectedAgentSyncTasks:
         This method runs indefinitely, executing the synchronization logic
         at the defined interval.
         """
-        try:
-            await self.check_indexer()
-        except IndexerUnavailableError as e:
-            self.logger.warning(
-                f"Indexer is not available – group sync skipped this cycle. "
-                f"Reason: {e}"
-            )
         self.logger.info(
             f"Starting non-connected agent group synchronization task "
             f"(interval: {self.sync_interval}s, batch_size: {self.batch_size})"
@@ -180,6 +158,7 @@ class DisconnectedAgentSyncTasks:
 
         while True:
             try:
+                await self.check_indexer()
                 cycle_start_time = time.time()
                 processed_agents = 0
                 failed_agents = 0
@@ -190,7 +169,6 @@ class DisconnectedAgentSyncTasks:
                 disconnected_agents_count = len(disconnected_agents)
                 if disconnected_agents_count == 0:
                     self.logger.info("No disconnected agents found")
-                    await asyncio.sleep(self.sync_interval)
                     continue
 
                 self.logger.info(
@@ -219,19 +197,16 @@ class DisconnectedAgentSyncTasks:
                 )
 
             except IndexerUnavailableError as e:
-                self.logger.warning(
-                    f"Indexer is not available – group sync skipped this cycle. "
-                    f"Reason: {e}"
-                )
-                await asyncio.sleep(self.sync_interval)
+                self._logging_indexer_not_available(e)
                 continue
             except Exception as e:
                 self.logger.error(
                     f"Unexpected error in group synchronization cycle: {e}",
                     exc_info=True,
                 )
-                await asyncio.sleep(self.sync_interval)
                 continue
+            finally:
+                await asyncio.sleep(self.sync_interval)
 
     async def _get_disconnected_agents_filter_by_time(self) -> List[dict]:
         """
@@ -812,3 +787,21 @@ class DisconnectedAgentSyncTasks:
                 f"Failed to resolve cluster names for agents: {agent_ids}"
             )
             return {}
+
+    def _logging_indexer_not_available(self, error: Exception) -> None:
+        """
+        Log indexer unavailability at DEBUG level.
+
+        This method is used as a callback for indexer connection errors to
+        prevent log pollution in environments where the indexer might start
+        later than the main service.
+
+        Parameters
+        ----------
+        error : Exception
+            The exception that occurred during indexer connection attempts.
+        """
+        self.logger.warning(
+            f"Indexer is not available – group sync skipped this cycle. "
+            f"Reason: {error}"
+        )

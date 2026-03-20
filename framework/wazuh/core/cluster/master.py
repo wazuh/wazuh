@@ -1038,16 +1038,19 @@ class Master(server.AbstractServer):
             _indexer_conf = {}
 
         if _indexer_conf:
-            self.tasks.extend([self.disconnected_agent_sync.run_agent_groups_sync,
-                               self.disconnected_agent_sync.run_cluster_name_sync])
+            self.tasks.append(self.manage_disconnected_sync_task)
         else:
-            self.logger.info(
+            self.logger.warning(
                 "Indexer is not configured in ossec.conf or it is unavailable; "
                 "disconnected agent sync tasks will not be started."
             )
 
         # pending API requests waiting for a response
         self.pending_api_requests = {}
+        # Container to store the tasks in charge of syncing disconnected agents when the indexer is down
+        self._disconnected_sync_tasks = []
+        # Flag to control whether the disconnected agent sync tasks are running or not
+        self.sync_task_running_flag = False
 
     def to_dict(self) -> Dict:
         """Get master's healthcheck information.
@@ -1059,6 +1062,71 @@ class Master(server.AbstractServer):
         """
         return {'info': {'name': self.configuration['node_name'], 'type': self.configuration['node_type'],
                          'version': metadata.__version__, 'ip': self.configuration['nodes'][0]}}
+
+    async def manage_disconnected_sync_task(self) -> None:
+        """
+            Manages the lifecycle of synchronization tasks for disconnected agents.
+
+            This method runs an infinite loop that periodically checks the availability
+            of the indexer. If the indexer is accessible and the synchronization tasks
+            are not already running, it initiates the agent groups and cluster name
+            sync processes.
+
+            If the indexer becomes unavailable, it stops any active sync tasks and
+            implements an exponential backoff strategy for retries.
+
+            Returns
+            -------
+            None
+        """
+        base_delay = 300
+        max_delay = 3600
+        delay = base_delay
+
+        while True:
+            try:
+                self.logger.info("Checking if the indexer is available for disconnected agent synchronization.")
+                await self.disconnected_agent_sync.check_indexer()
+                is_running = any(not t.done() for t in self._disconnected_sync_tasks) if self._disconnected_sync_tasks else False
+
+                if not is_running:
+                    await self._stop_disconnected_sync_tasks()
+                    self.logger.info("Indexer is available. Starting disconnected agent sync tasks.")
+
+                    self._disconnected_sync_tasks = [
+                        asyncio.create_task(self.disconnected_agent_sync.run_agent_groups_sync()),
+                        asyncio.create_task(self.disconnected_agent_sync.run_cluster_name_sync())
+                    ]
+                    self.sync_task_running_flag = True
+
+                delay = base_delay
+                await asyncio.sleep(base_delay)
+
+            except Exception as e:
+                self.logger.warning(f"Indexer is not configured or unavailable:\n{e}.")
+
+                if self.sync_task_running_flag:
+                    await self._stop_disconnected_sync_tasks()
+                    self.sync_task_running_flag = False
+
+                self.logger.info(f"Retrying indexer check in {delay} seconds.")
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, max_delay)
+
+    async def _stop_disconnected_sync_tasks(self) -> None:
+        """Cancel and clean up any running disconnected sync tasks.
+
+        Returns
+        -------
+        None
+        """
+        self.logger.info("Indexer is not available. Stopping disconnected agent sync tasks.")
+        for task in self._disconnected_sync_tasks:
+            if not task.done():
+                task.cancel()
+        if self._disconnected_sync_tasks:
+            await asyncio.gather(*self._disconnected_sync_tasks, return_exceptions=True)
+        self._disconnected_sync_tasks.clear()
 
     async def agent_groups_update(self):
         """Obtain and broadcast agent-groups data periodically.
@@ -1152,8 +1220,8 @@ class Master(server.AbstractServer):
         # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():
             active_agents = Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name}, limit=None,
-                                                      count=True)
-            workers_info[node_name]["info"]["n_active_agents"] = active_agents['totalItems']
+                                                      count=True).get('totalItems', 0)
+            workers_info[node_name]["info"]["n_active_agents"] = active_agents
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(
                     utils.get_date_from_timestamp(workers_info[node_name]['status']['last_keep_alive']
