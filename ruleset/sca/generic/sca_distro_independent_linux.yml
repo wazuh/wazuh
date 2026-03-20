@@ -4270,8 +4270,8 @@ checks:
     condition: any
     rules:
       - 'f:/etc/security/pwquality.conf -> !r:^# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
-      - 'f:/etc/pam.d/system-auth -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality\.so\s*\t*retry=(\d+) compare <=3'
-      - 'f:/etc/pam.d/common-password -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality\.so\s*\t*retry=(\d+) compare <=3'
+      - 'f:/etc/pam.d/system-auth -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality\.so\s*\t*retry=(\d+) compare <= 3'
+      - 'f:/etc/pam.d/common-password -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality\.so\s*\t*retry=(\d+) compare <= 3'
 
   # 5.3.2 Ensure lockout for failed password attempts is configured (Not Scored)
 

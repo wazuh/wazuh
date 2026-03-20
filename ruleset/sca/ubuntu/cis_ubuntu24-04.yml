@@ -4887,7 +4887,7 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
-      - 'f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare <=3'
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare <= 3'
       - 'not f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare =0'
 
   # 5.3.3.2.5 Ensure password maximum sequential characters is configured. (Automated)
@@ -4913,7 +4913,7 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
-      - 'f:/etc/security/pwquality.conf -> !r:^# && n:maxsequence\s*\t*=\s*\t*(\d+) compare <=3'
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:maxsequence\s*\t*=\s*\t*(\d+) compare <= 3'
       - 'not f:/etc/security/pwquality.conf -> !r:^# && n:maxsequence\s*\t*=\s*\t*(\d+) compare =0'
 
   # 5.3.3.2.6 Ensure password dictionary check is enabled. (Automated)

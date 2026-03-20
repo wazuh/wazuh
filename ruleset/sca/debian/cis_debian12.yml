@@ -3167,8 +3167,8 @@ checks:
     condition: all
     rules:
       - 'c:sudo -V -> r:Authentication timestamp timeout:\s*\t*15\.0 minutes'
-      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare <=15'
-      - 'd:/etc/sudoers.d -> r:.* -> n:timestamp_timeout=(\d+) compare <=15'
+      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare <= 15'
+      - 'd:/etc/sudoers.d -> r:.* -> n:timestamp_timeout=(\d+) compare <= 15'
 
   # 5.2.7 Ensure access to the su command is restricted. (Automated)
   - id: 33182
