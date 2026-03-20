@@ -43,7 +43,6 @@ src/ossec-regex
 src/wazuh-regex
 src/parallel-regex
 src/ossec-remoted
-src/ossec-reportd
 src/ossec-syscheckd
 src/ossec-integratord
 src/rootcheck_control
@@ -65,7 +64,6 @@ src/wazuh-logtest-legacy
 src/wazuh-maild
 src/wazuh-monitord
 src/wazuh-remoted
-src/wazuh-reportd
 src/wazuh-syscheckd
 src/wazuh-integratord
 src/wazuh-keystore
