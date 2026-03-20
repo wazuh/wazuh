@@ -9,27 +9,27 @@ This module is enabled in manager builds (`TARGET=manager`) on Unix-like systems
 ## Component Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      wazuh-modulesd                         │
-│                                                             │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │              wm_control Module                        │  │
-│  │                                                       │  │
-│  │  ┌──────────────┐      ┌───────────────────────┐      │  │
-│  │  │   Socket     │      │   Command Dispatcher  │      │  │
-│  │  │   Listener   │─────▶│   wm_control_dispatch │      │  │
-│  │  │   send_ip()  │      └───────┬───────────────┘      │  │
-│  │  └──────────────┘              │                      │  │
-│  │                                │                      │  │
-│  │                                │                      │  │
-│  │                                │                      │  │
-│  │                     ┌──────────▼─────────┐            │  │
-│  │                     │ Restart/Reload     │            │  │
-│  │                     │ wm_control_execute │            │  │
-│  │                     │ _action()          │            │  │
-│  │                     └────────────────────┘            │  │
-│  └───────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                          wazuh-modulesd                             │
+│                                                                     │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │                      wm_control Module                        │  │
+│  │                                                               │  │
+│  │  ┌──────────────────────┐      ┌───────────────────────┐      │  │
+│  │  │   Socket             │      │   Command Dispatcher  │      │  │
+│  │  │   Listener           │─────▶│   wm_control_dispatch │      │  │
+│  │  │   process_control()  │      └───────────┬───────────┘      │  │
+│  │  └──────────────────────┘                  │                  │  │
+│  │                                            │                  │  │
+│  │                                            │                  │  │
+│  │                                            │                  │  │
+│  │                                 ┌──────────▼─────────┐        │  │
+│  │                                 │ Restart/Reload     │        │  │
+│  │                                 │ wm_control_execute │        │  │
+│  │                                 │ _action()          │        │  │
+│  │                                 └────────────────────┘        │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
          │                                           ▲
          │ fork + execv                              │ socket connect
          ▼                                           │
@@ -41,7 +41,7 @@ This module is enabled in manager builds (`TARGET=manager`) on Unix-like systems
 
 ## Core Components
 
-### 1. Socket Listener (`send_ip()`)
+### 1. Socket Listener (`process_control()`)
 
 The socket listener is the main entry point for control commands.
 
@@ -243,10 +243,10 @@ Any other command:
 ## Thread Model
 
 **Main Thread**: Module initialization (`wm_control_main()`)
-- Calls `send_ip()` to start socket server
+- Calls `process_control()` to start socket server
 - Never returns (runs forever)
 
-**Socket Server**: Single-threaded event loop (`send_ip()`)
+**Socket Server**: Single-threaded event loop (`process_control()`)
 - Uses `select()` for socket events
 - Handles one connection at a time
 - Synchronous processing (no concurrency)
@@ -316,17 +316,17 @@ Any other command:
 
 ### Changes
 
-| Feature | v4.x (execd) | v5.0 (wm_control) | Notes |
-|---------|--------------|-------------------|-------|
-| Manager restart | ✓ wcom socket | ✓ control socket | Migrated |
-| Manager reload | ✓ wcom socket | ✓ control socket | Migrated |
-| Get primary IP | ✓ wcom socket | ✗ Removed | No longer handled by control socket |
-| Configuration serving | ✓ wcom socket | ✗ File-based | Changed approach |
-| Config validation | ✓ wcom socket | ✗ File-based | Changed approach |
-| File unmerge | ✓ wcom socket | ✗ Removed | Deprecated |
-| File uncompress | ✓ wcom socket | ✗ Removed | Deprecated |
-| Restart locking | ✓ wcom socket | ✗ Not migrated | TBD |
-| Active Response | ✓ execd daemon | ✗ Agents only | Intentional removal |
+| Feature               | v4.x (execd)   | v5.0 (wm_control) | Notes                               |
+| --------------------- | -------------- | ----------------- | ----------------------------------- |
+| Manager restart       | ✓ wcom socket  | ✓ control socket  | Migrated                            |
+| Manager reload        | ✓ wcom socket  | ✓ control socket  | Migrated                            |
+| Get primary IP        | ✓ wcom socket  | ✗ Removed         | No longer handled by control socket |
+| Configuration serving | ✓ wcom socket  | ✗ File-based      | Changed approach                    |
+| Config validation     | ✓ wcom socket  | ✗ File-based      | Changed approach                    |
+| File unmerge          | ✓ wcom socket  | ✗ Removed         | Deprecated                          |
+| File uncompress       | ✓ wcom socket  | ✗ Removed         | Deprecated                          |
+| Restart locking       | ✓ wcom socket  | ✗ Not migrated    | TBD                                 |
+| Active Response       | ✓ execd daemon | ✗ Agents only     | Intentional removal                 |
 
 ## Performance Characteristics
 

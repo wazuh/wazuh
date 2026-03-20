@@ -34,7 +34,6 @@
         },
 
         "excluded_files": [
-            "ar.conf",
             "wazuh-manager.conf"
         ],
 

@@ -342,7 +342,7 @@ def test_get_cluster_items():
                 "extra_valid": False,
                 "description": "shared configuration files",
             },
-            "excluded_files": ["ar.conf", "wazuh-manager.conf"],
+            "excluded_files": ["wazuh-manager.conf"],
             "excluded_extensions": ["~", ".tmp", ".lock", ".swp"],
         },
         "intervals": {

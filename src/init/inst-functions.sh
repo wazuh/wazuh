@@ -18,9 +18,6 @@
 
 HEADER_TEMPLATE="./etc/templates/config/generic/header-comments.template"
 GLOBAL_TEMPLATE="./etc/templates/config/generic/global.template"
-GLOBAL_AR_TEMPLATE="./etc/templates/config/generic/global-ar.template"
-AR_COMMANDS_TEMPLATE="./etc/templates/config/generic/ar-commands.template"
-AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
 LOGGING_TEMPLATE="./etc/templates/config/generic/logging.template"
 REMOTE_SEC_TEMPLATE="./etc/templates/config/generic/remote-secure.template"
 
@@ -461,38 +458,6 @@ WriteManager()
 
     # Agent upgrade
     cat ${AGENT_UPGRADE_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Active response
-    if [ "$SET_WHITE_LIST"="true" ]; then
-       sed -e "/  <\/global>/d" "${GLOBAL_AR_TEMPLATE}" >> $NEWCONFIG
-      # Nameservers in /etc/resolv.conf
-      for ip in ${NAMESERVERS} ${NAMESERVERS2};
-        do
-          if [ ! "X${ip}" = "X" -a ! "${ip}" = "0.0.0.0" ]; then
-              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
-          fi
-      done
-      # Read string
-      for ip in ${IPS};
-        do
-          if [ ! "X${ip}" = "X" -a ! "${ip}" = "0.0.0.0" ]; then
-            echo $ip | grep -E "^[0-9./]{5,20}$" > /dev/null 2>&1
-            if [ $? = 0 ]; then
-              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
-            fi
-          fi
-        done
-        echo "  </global>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
-    else
-      cat ${GLOBAL_AR_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
-
-    cat ${AR_COMMANDS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-    cat ${AR_DEFINITIONS_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Writting auth configuration
@@ -1121,8 +1086,8 @@ InstallLocal()
 TransferShared()
 {
     rm -f ${INSTALLDIR}/etc/shared/merged.mg
-    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -exec cp -pf {} ${INSTALLDIR}/backup/shared \;
-    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
+    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -exec cp -pf {} ${INSTALLDIR}/backup/shared \;
+    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
 }
 
 checkDownloadContent()

@@ -15,9 +15,6 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core import active_response
         from wazuh.core.agent import Agent
 
-# Variables
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'etc', 'shared', 'ar.conf')
-
 
 # Functions
 
@@ -52,13 +49,9 @@ def test_correct_builder_is_used(agent_version, builder_type):
 
 @pytest.mark.parametrize('expected_exception, command, arguments', [
     (1650, None, []),
-    (1652, 'random', []),
-    (1652, 'invalid_cmd', []),
     (None, 'restart-wazuh0', []),
-    (None, '!restart-wazuh0', []),
     (None, 'restart-wazuh0', ["arg1", "arg2"])
 ])
-@patch('wazuh.core.common.AR_CONF', new=test_data_path)
 def test_create_message(expected_exception, command, arguments):
     """Check if the returned message is correct.
 
@@ -89,11 +82,8 @@ def test_create_message(expected_exception, command, arguments):
 @pytest.mark.parametrize('expected_exception, command, arguments, alert', [
     (1650, None, [], None),
     (None, 'restart-wazuh0', [], None),
-    (None, 'restart-wazuh0', [], None),
-    (None, 'restart-wazuh0', ["arg1", "arg2"], None),
-    (1652, 'custom-ar', ["arg1", "arg2"], {"data": {"srcip": "1.1.1.1"}})
+    (None, 'restart-wazuh0', ["arg1", "arg2"], None)
 ])
-@patch('wazuh.core.common.AR_CONF', new=test_data_path)
 def test_create_json_message(expected_exception, command, arguments, alert):
     """Check if the returned json message is correct.
 
@@ -123,15 +113,6 @@ def test_create_json_message(expected_exception, command, arguments, alert):
             assert (arg in ret["parameters"]["extra_args"] for arg in arguments), f'Arguments not being added'
         if alert:
             assert alert == ret["parameters"]["alert"], f'Alert information not being added'
-
-
-@patch('wazuh.core.common.AR_CONF', new=test_data_path)
-def test_get_commands():
-    """
-    Checks if get_commands method returns a list
-    """
-    ret = active_response.get_commands()
-    assert type(ret) is list, f'Expected type not match'
 
 
 @pytest.mark.parametrize('command, expected_escape', [

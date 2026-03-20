@@ -92,7 +92,7 @@ class WazuhQueue(BaseQueue):
     # Messages
     HC_SK_RESTART = "syscheck restart"  # syscheck restart
     HC_FORCE_RECONNECT = "force_reconnect"  # force reconnect command
-    RESTART_AGENTS = "restart-ossec0"  # Agents
+    RESTART_AGENTS = "restart-wazuh0"  # Agents
     RESTART_AGENTS_JSON = json.dumps(create_wazuh_socket_message(origin={'module': origin_module.get()},
                                                                  command="restart-wazuh0",
                                                                  parameters={"extra_args": [],
@@ -107,8 +107,8 @@ class WazuhQueue(BaseQueue):
         Active-response
           Agents: /var/wazuh-manager/queue/alerts/ar
             - Existing command:
-              - (msg_to_agent) [] NNS 001 restart-ossec0 arg1 arg2 arg3
-              - (msg_to_agent) [] ANN (null) restart-ossec0 arg1 arg2 arg3
+              - (msg_to_agent) [] NNS 001 restart-wazuh0 arg1 arg2 arg3
+              - (msg_to_agent) [] ANN (null) restart-wazuh0 arg1 arg2 arg3
             - Custom command:
               - (msg_to_agent) [] NNS 001 !test.sh arg1 arg2 arg3
               - (msg_to_agent) [] ANN (null) !test.sh arg1 arg2 arg3

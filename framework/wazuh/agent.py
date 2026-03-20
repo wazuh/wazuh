@@ -745,9 +745,6 @@ def get_group_files(group_list: list = None, offset: int = 0, limit: int = None,
             item['hash'] = get_hash(path.join(group_path, entry), hash_algorithm)
             data.append(item)
 
-        # ar.conf
-        ar_path = path.join(common.SHARED_PATH, 'ar.conf')
-        data.append({'filename': "ar.conf", 'hash': get_hash(ar_path, hash_algorithm)})
         data = process_array(data, search_text=search_text, search_in_fields=search_in_fields,
                              complementary_search=complementary_search, sort_by=sort_by,
                              sort_ascending=sort_ascending, offset=offset, limit=limit, q=q, select=select,

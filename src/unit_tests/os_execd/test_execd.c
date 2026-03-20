@@ -870,34 +870,6 @@ static void test_ExecdStart_get_name_err(void **state) {
     int queue = 1;
     int now = 123456789;
     char *message = "{}";
-    char *message2 = "{"
-                        "\"version\":\"1\","
-                        "\"origin\":{"
-                            "\"name\":\"node01\","
-                            "\"module\":\"wazuh-manager-analysisd\""
-                        "},"
-                        "\"command\":\"restart-wazuh0\","
-                        "\"parameters\":{"
-                            "\"extra_args\":[],"
-                            "\"alert\":{"
-                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                "\"rule\":{"
-                                    "\"level\":5,"
-                                    "\"description\":\"File added to the system.\","
-                                    "\"id\":\"554\""
-                                "},"
-                                "\"id\":\"1609860180.513333\","
-                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                "\"syscheck\":{"
-                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                    "\"mode\":\"realtime\","
-                                    "\"event\":\"added\""
-                                "},"
-                                "\"location\":\"syscheck\""
-                            "}"
-                        "}"
-                    "}";
-    int timeout = 0;
 
     will_return(__wrap_time, now);
 
@@ -922,34 +894,6 @@ static void test_ExecdStart_json_err(void **state) {
     int queue = 1;
     int now = 123456789;
     char *message = "unknown";
-    char *message2 = "{"
-                        "\"version\":\"1\","
-                        "\"origin\":{"
-                            "\"name\":\"node01\","
-                            "\"module\":\"wazuh-manager-analysisd\""
-                        "},"
-                        "\"command\":\"restart-wazuh0\","
-                        "\"parameters\":{"
-                            "\"extra_args\":[],"
-                            "\"alert\":{"
-                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                "\"rule\":{"
-                                    "\"level\":5,"
-                                    "\"description\":\"File added to the system.\","
-                                    "\"id\":\"554\""
-                                "},"
-                                "\"id\":\"1609860180.513333\","
-                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                "\"syscheck\":{"
-                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                    "\"mode\":\"realtime\","
-                                    "\"event\":\"added\""
-                                "},"
-                                "\"location\":\"syscheck\""
-                            "}"
-                        "}"
-                    "}";
-    int timeout = 0;
 
     will_return(__wrap_time, now);
 

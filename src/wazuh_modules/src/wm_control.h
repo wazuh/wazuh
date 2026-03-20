@@ -24,7 +24,7 @@ typedef struct wm_control_t {
 } wm_control_t;
 
 wmodule *wm_control_read();
-void *send_ip();
+void *process_control();
 
 /**
  * @brief Dispatch control commands and execute corresponding actions

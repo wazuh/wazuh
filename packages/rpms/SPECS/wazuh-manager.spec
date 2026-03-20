@@ -72,7 +72,6 @@ echo 'USER_DIR="%{_localstatedir}"' >> ./etc/preloaded-vars.conf
 echo 'USER_DELETE_DIR="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
-echo 'USER_WHITE_LIST="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_AUTHD="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_GENERATE_AUTHD_CERT="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
@@ -340,7 +339,6 @@ if [ ! -f "%{_localstatedir}/etc/sslmanager.key" ] && [ ! -f "%{_localstatedir}/
   chmod 640 %{_localstatedir}/etc/sslmanager.cert
 fi
 
-rm -f %{_localstatedir}/etc/shared/ar.conf  >/dev/null 2>&1
 rm -f %{_localstatedir}/etc/shared/merged.mg  >/dev/null 2>&1
 
 # Set merged.mg permissions to new ones

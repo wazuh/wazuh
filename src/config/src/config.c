@@ -29,8 +29,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osremote = "remote";                            /* Agent Config  */
     const char *osclient = "client";                            /* Agent Config  */
     const char *osbuffer = "client_buffer";                     /* Agent Buffer Config  */
-    const char *oscommand = "command";                          /* ? Config      */
-    const char *osactive_response = "active-response";          /* Agent Config  */
+    const char *osactiveresponse = "active-response";           /* Agent Active Response Config  */
     const char *oswmodule = "wodle";                            /* Wodle - Wazuh Module  */
     const char *oslogging = "logging";                          /* Logging Config */
     const char *oscluster = "cluster";                          /* Cluster Config */
@@ -66,15 +65,11 @@ static int read_main_elements(const OS_XML *xml, int modules,
         chld_node = OS_GetElementsbyNode(xml, node[i]);
 
         if (chld_node && (strcmp(node[i]->element, osglobal) == 0)) {
-            if (((modules & CGLOBAL) || (modules & CMAIL))
-                    && (Read_Global(xml, chld_node, d1, d2) < 0)) {
+            if ((modules & CGLOBAL) && (Read_Global(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, ossyscheck) == 0) {
             if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-            if ((modules & CGLOBAL) && (Read_GlobalSK(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, osrootcheck) == 0) {
@@ -110,14 +105,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #endif
         } else if (strcmp(node[i]->element, osbuffer) == 0) {
             if ((modules & CBUFFER) && (Read_ClientBuffer(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, oscommand) == 0)) {
-            if ((modules & CAR) && (ReadActiveCommands(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, osactive_response) == 0)) {
-            if ((modules & CAR) && (ReadActiveResponses(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         }
@@ -190,10 +177,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
 #endif
         } else if (strcmp(node[i]->element, oslogging) == 0) {
-        } else if (chld_node && (strcmp(node[i]->element, oscluster) == 0)) {
-            if ((modules & CCLUSTER) && (Read_Cluster(xml, chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
+        } else if (strcmp(node[i]->element, oscluster) == 0) {
         } else if (chld_node && (strcmp(node[i]->element, ossocket) == 0)) {
             if ((modules & CLGCSOCKET) && (Read_LogCollecSocket(chld_node, d1, d2) < 0)) {
                 goto fail;
@@ -234,7 +218,9 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         }
 #endif
-        else {
+        else if (strcmp(node[i]->element, osactiveresponse) == 0) {
+            /* Active response config is only for agents, parsed by execd */
+        } else {
             merror(XML_INVELEM, node[i]->element);
             goto fail;
         }

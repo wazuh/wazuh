@@ -380,8 +380,6 @@ ConfigureServer()
         done
     fi
 
-    AddWhite
-
     UseSSLCert
 
     # Configure auth daemon, boot behavior, logs, and write config.
@@ -483,57 +481,6 @@ askForDelete()
 }
 
 ##########
-# AddWhite()
-##########
-AddWhite()
-{
-    if [ "X${INSTALLER_BRIEF_FLOW}" = "Xyes" ] && [ "X${USER_WHITE_LIST}" != "X" ]; then
-        ANY=$(normalizeYesNo "${USER_WHITE_LIST}")
-        if [ "X${ANY}" = "Xno" ]; then
-            return 0
-        fi
-
-        SET_WHITE_LIST="true"
-        IPS=${USER_WHITE_LIST}
-        return 0
-    fi
-
-    ANSWER=""
-    IPS=""
-    while :
-    do
-        # If preloaded vars define whitelist behavior, skip prompt.
-        if [ "X${USER_WHITE_LIST}" = "X" ]; then
-            echo ""
-            $ECHO "   - ${addwhite} ($yes/$no)? [$no]: "
-            read ANSWER
-        else
-            ANSWER=${USER_WHITE_LIST}
-        fi
-
-        if [ "X${ANSWER}" = "X" ] ; then
-            ANSWER=$no
-        fi
-
-        ANY=$(normalizeYesNo "${ANSWER}")
-        if [ "X${ANY}" = "Xno" ]; then
-            break;
-        fi
-
-        SET_WHITE_LIST="true"
-        if [ "X${USER_WHITE_LIST}" = "X" ]; then
-            echo ""
-            $ECHO "   - ${ipswhite}"
-            read IPS
-        else
-            IPS=${USER_WHITE_LIST}
-        fi
-
-        break;
-    done
-}
-
-##########
 # AddPFTable()
 ##########
 AddPFTable()
@@ -627,7 +574,6 @@ setDefaultConfigByInstallType()
     setDefaultIfEmpty USER_CA_STORE "n"
 
     if [ "X${INSTYPE}" = "Xmanager" ]; then
-        setDefaultIfEmpty USER_WHITE_LIST "n"
         setDefaultIfEmpty USER_AUTO_START "y"
         setDefaultIfEmpty USER_ENABLE_AUTHD "y"
         setDefaultIfEmpty USER_ENABLE_SYSCHECK "n"

@@ -49,8 +49,6 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_SCA="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_WHITE_LIST="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_UPDATE_CHECK="n"' >> ./etc/preloaded-vars.conf
