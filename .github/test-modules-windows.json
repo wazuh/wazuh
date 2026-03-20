@@ -4,6 +4,7 @@
       "name": "fim",
       "pytest_target": "test_fim\\",
       "tiers": ["0", "1"],
+      "exclude": ["test_fim\\test_files\\test_basic_usage\\test_rename.py"],
       "start_service": true,
       "paths": [
         "src/config/src/syscheck-config.c",

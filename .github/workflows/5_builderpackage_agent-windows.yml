@@ -95,12 +95,15 @@ jobs:
                       for tier in tiers:
                           tier_args = ' '.join(f'--tier {t}' for t in tier.split())
                           shard_name = f"tier-{tier.replace(' ', '-')}"
+                          excludes = module.get('exclude', [])
+                          ignore_args = ' '.join(f'--ignore={e}' for e in excludes)
                           matched.append({
                               'name': module_name,
                               'shard_name': shard_name,
                               'pytest_target': module['pytest_target'],
                               'pytest_extra_args': module.get('pytest_extra_args', ''),
                               'pytest_tier_args': tier_args,
+                              'pytest_ignore_args': ignore_args,
                               'start_service': module.get('start_service', False),
                           })
 
@@ -486,6 +489,7 @@ jobs:
       pytest_target: ${{ matrix.pytest_target }}
       pytest_extra_args: ${{ matrix.pytest_extra_args }}
       pytest_tier_args: ${{ matrix.pytest_tier_args }}
+      pytest_ignore_args: ${{ matrix.pytest_ignore_args }}
       start_service: ${{ matrix.start_service }}
     secrets: inherit
 
