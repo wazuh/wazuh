@@ -45,7 +45,7 @@ set_debug(){
 }
 
 build_deps(){
-    mk-build-deps -ir -t "apt-get -o Debug::pkgProblemResolver=yes -y"
+    mk-build-deps -ir -t "apt-get -o Debug::pkgProblemResolver=yes -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o DPkg::Lock::Timeout=60 -y"
 }
 
 build_package(){

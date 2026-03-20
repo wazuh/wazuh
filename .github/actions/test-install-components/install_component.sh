@@ -12,7 +12,7 @@ fi
 echo "Installing Wazuh $target."
 
 if [ -n "$(command -v yum)" ]; then
-    install="yum install -y --nogpgcheck"
+    install="yum --setopt=retries=5 --setopt=timeout=30 install -y --nogpgcheck"
     installed_log="/var/log/yum.log"
 elif [ -n "$(command -v dpkg)" ]; then
     install="dpkg --install"
