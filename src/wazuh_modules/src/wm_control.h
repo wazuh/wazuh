@@ -24,21 +24,19 @@ typedef struct wm_control_t {
 } wm_control_t;
 
 wmodule *wm_control_read();
-void *process_control();
 
-#ifndef CLIENT
 /**
  * @brief Dispatch control commands and execute corresponding actions
  *
  * Parses incoming commands and routes them to appropriate handlers.
- * Supported commands: restart, reload, getip (or empty for backward compatibility)
+ * On manager builds, acts on "wazuh-manager"; on agent builds, on "wazuh-agent".
+ * Supported commands: restart, reload
  *
  * @param command Command string with optional arguments
  * @param output Pointer to string that will contain the response message
  * @return size_t Length of the output string
  */
 size_t wm_control_dispatch(char *command, char **output);
-#endif /* CLIENT */
 
 /**
  * @brief Check if systemd is available as the init system
@@ -68,7 +66,6 @@ bool wm_control_wait_for_service_active(const char *service);
  * @return size_t Length of the output string
  */
 size_t wm_control_execute_action(const char *action, const char *service, char **output);
-size_t wm_agentcontrol_dispatch(char *command, char **output);
 
 #endif
 #endif

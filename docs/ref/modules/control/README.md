@@ -1,11 +1,11 @@
-# Control Module (wm_control / wm_agent_control)
+# Control Module (wm_control)
 
-The **Control Module** provides control operations for both the Wazuh manager and agents, handling restart and reload requests through a Unix domain socket interface. It consists of two complementary components:
+The **Control Module** provides control operations for both the Wazuh manager and agents, handling restart and reload requests through a Unix domain socket interface. It is implemented in a single source file (`wm_control.c`) that compiles differently depending on the build target:
 
-- **`wm_control`** — runs within `wazuh-modulesd` on the **manager**, handling manager-level restart/reload.
-- **`wm_agent_control`** — runs within `wazuh-modulesd` on **agents** (Unix-like systems), handling agent-level restart/reload commands received from the manager via the remoted socket.
+- **Manager build** (`TARGET=manager`): `process_control()` runs directly in the main thread, binding to the manager control socket. Commands are dispatched to `wm_control_dispatch()` with `"wazuh-manager"` as the service name.
+- **Agent build** (`CLIENT` defined, Unix): `process_control()` is spawned as a thread within `wazuh-modulesd`, binding to the agent control socket. Commands are dispatched to `wm_control_dispatch()` with `"wazuh-agent"` as the service name.
 
-On **Windows agents**, the equivalent logic is implemented in `control_dispatch()` within `client-agent`.
+On **Windows agents**, the equivalent logic is implemented in `control_dispatch()` within `client-agent/src/control.c`. The Windows path is called directly in-process by `request.c` rather than via a separate socket listener.
 
 ## Key Features
 
@@ -13,21 +13,21 @@ On **Windows agents**, the equivalent logic is implemented in `control_dispatch(
 - **Remote Agent Restart/Reload**: Manager can send restart/reload commands to individual agents via the control channel
 - **Systemd Integration**: Automatic detection and use of systemd when available
 - **Socket-Based Control**: Unix domain socket for inter-process communication
-- **Cross-Platform Agent Support**: Unix (`wm_agent_control`) and Windows (`control_dispatch`) implementations
-- **Strict Command Validation**: Unknown commands are rejected with `Err`
+- **Cross-Platform Agent Support**: Unix (`wm_control` with `CLIENT` defined) and Windows (`control_dispatch`) implementations
+- **Strict Command Validation**: Unknown commands are rejected with an error response
 
 ## Overview
 
 The control module serves as the control plane for operational commands. It:
 
-1. **Manager**: Listens on `/var/wazuh-manager/queue/sockets/control`
-2. **Agent**: Listens on `/var/ossec/queue/sockets/control`
+1. **Manager**: Listens on `$WAZUH_HOME/queue/sockets/control` (default: `/var/wazuh-manager/queue/sockets/control`)
+2. **Agent (Unix)**: Listens on `$WAZUH_HOME/queue/sockets/control` (default: `/var/ossec/queue/sockets/control`)
 3. **Receives control commands** from the API, framework, or remoted
 4. **Executes system operations** (restart/reload) via systemctl or wazuh-control
 5. **Returns operation status** to the caller
 
-Manager-side (`wm_control`) is enabled for manager builds (`TARGET=manager`) on Unix-like systems.
-Agent-side (`wm_agent_control`) is enabled for agent builds on Unix-like systems; Windows agents use `control_dispatch()`.
+Manager-side is enabled for manager builds (`TARGET=manager`) on Unix-like systems.
+Agent-side (Unix) is the same `wm_control.c` compiled with `CLIENT` defined; Windows agents use `control_dispatch()` in `client-agent`.
 
 ## Socket Interface
 
@@ -36,10 +36,10 @@ Agent-side (`wm_agent_control`) is enabled for agent builds on Unix-like systems
 
 | Component | Socket Path |
 |-----------|-------------|
-| Manager (`wm_control`) | `/var/wazuh-manager/queue/sockets/control` |
-| Agent Unix (`wm_agent_control`) | `/var/ossec/queue/sockets/control` |
+| Manager | `$WAZUH_HOME/queue/sockets/control` (default: `/var/wazuh-manager/queue/sockets/control`) |
+| Agent (Unix) | `$WAZUH_HOME/queue/sockets/control` (default: `/var/ossec/queue/sockets/control`) |
 
-### Manager-Side Commands (`wm_control`)
+### Manager-Side Commands
 
 | Command | Description | Response |
 |---------|-------------|----------|
@@ -47,17 +47,17 @@ Agent-side (`wm_agent_control`) is enabled for agent builds on Unix-like systems
 | `reload` | Reload manager configuration | `ok ` (immediate) |
 | *(other)* | Any unrecognized command | `Err` |
 
-### Agent-Side Commands (`wm_agent_control` / `control_dispatch`)
+### Agent-Side Commands (Unix: `wm_control_dispatch` / Windows: `control_dispatch`)
 
 | Command | Description | Response |
 |---------|-------------|----------|
 | `restart` | Restart the Wazuh agent | `ok ` (immediate) |
 | `reload` | Reload agent configuration | `ok ` (immediate) |
-| *(other)* | Any unrecognized command | `Err` |
+| *(other)* | Any unrecognized command | `Err` (Unix) / `err Unrecognized command` (Windows) |
 
 ## How It Works
 
-### Manager Control (wm_control)
+### Manager Control
 
 1. **Request Received**: Client (API/framework) sends command to the manager control socket
 2. **Systemd Detection**: Module checks if systemd is available
@@ -67,13 +67,22 @@ Agent-side (`wm_agent_control`) is enabled for agent builds on Unix-like systems
 4. **Fork and Execute**: Spawns child process to execute command
 5. **Immediate Response**: Returns success immediately (non-blocking)
 
-### Remote Agent Control (wm_agent_control)
+### Remote Agent Control (Unix)
 
 1. **API Request**: Client calls `PUT /agents/{agent_id}/restart` or reload equivalent
 2. **Framework**: Sends `"{agent_id} control restart"` or `"{agent_id} control reload"` to the remoted socket
 3. **Remoted**: Forwards the control message to the target agent
-4. **Agent Dispatch**: The agent's request handler routes the `control` socket message to `wm_agentcontrol_dispatch()`
-5. **Execution**: The agent runs restart/reload via systemctl or wazuh-control (Unix); on Windows, `control_run_detached()` spawns a detached copy of `wazuh-agent.exe service-restart` that stops and restarts the service from outside WazuhSvc
+4. **Agent Dispatch**: `wazuh-agentd`'s `request.c` receives the `"control"` target and forwards it to the agent's control Unix socket (`CONTROL_SOCK`)
+5. **wm_control thread**: `process_control()` (running as a thread in `wazuh-modulesd`) receives the command and dispatches to `wm_control_dispatch()` with `"wazuh-agent"` as the service name
+6. **Execution**: The agent runs restart/reload via systemctl or wazuh-control
+
+### Remote Agent Control (Windows)
+
+1. **API Request**: Client calls `PUT /agents/{agent_id}/restart` or reload equivalent
+2. **Framework**: Sends `"{agent_id} control restart"` to the remoted socket
+3. **Remoted**: Forwards the control message to the target agent
+4. **Agent Dispatch**: `wazuh-agentd`'s `request.c` calls `control_dispatch()` in-process
+5. **Execution**: `control_run_detached()` spawns a detached copy of `wazuh-agent.exe service-restart` that stops and restarts the service from outside WazuhSvc
 
 ### Systemd Detection
 
@@ -132,9 +141,9 @@ result = send_control_command('restart')  # Returns: "ok "
 
 ## Related Modules
 
-- **wazuh-modulesd**: Host daemon for wm_control and wm_agent_control
+- **wazuh-modulesd**: Host daemon for `wm_control` (both manager and agent Unix builds)
 - **wazuh-remoted**: Forwards control messages from manager to agents
-- **wazuh-agentd**: Routes incoming control socket messages to wm_agentcontrol_dispatch()
+- **wazuh-agentd**: Routes incoming `"control"` requests — forwards to control socket (Unix) or calls `control_dispatch()` directly (Windows)
 - **wazuh-apid**: Calls control socket/framework for restart and reload API endpoints
 
 ## Architecture Changes
@@ -145,8 +154,9 @@ result = send_control_command('restart')  # Returns: "ok "
 - Agent restart/reload triggered via Active Response scripts (`restart.sh`, `restart-wazuh.exe`)
 
 **Current Architecture (v5.0)**:
-- Manager control in `wm_control` module (within modulesd); socket: `/var/wazuh-manager/queue/sockets/control`
-- Agent control in `wm_agent_control` module (Unix) and `control_dispatch()` (Windows); socket: `/var/ossec/queue/sockets/control`
+- Manager control in `wm_control` (within modulesd); socket: `$WAZUH_HOME/queue/sockets/control`
+- Agent control (Unix): same `wm_control.c` compiled with `CLIENT`, running as a thread in `wazuh-modulesd`; socket: `$WAZUH_HOME/queue/sockets/control`
+- Agent control (Windows): `control_dispatch()` in `client-agent`, called in-process by `request.c`
 - Agent restart/reload via direct control channel — no Active Response scripts required
 - `wcom_restart()` and `wcom_reload()` removed from `wazuh-execd`
 

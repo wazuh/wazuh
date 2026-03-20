@@ -247,108 +247,6 @@ static void test_execute_action_reload_systemd(void **state) {
 }
 
 /* ------------------------------------------------------------------ */
-/* wm_agentcontrol_dispatch tests                                       */
-/* ------------------------------------------------------------------ */
-
-static void test_agentcontrol_dispatch_restart(void **state) {
-    char command[] = "restart";
-    char *output = NULL;
-
-    expect_string(__wrap__mtdebug2, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "Agent control dispatching command: 'restart'");
-    expect_check_systemd_not_available();
-    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on wazuh-agent using wazuh-control");
-    will_return(__wrap_fork, 1234);
-
-    size_t ret = wm_agentcontrol_dispatch(command, &output);
-
-    assert_non_null(output);
-    assert_string_equal(output, "ok ");
-    assert_int_equal(ret, strlen("ok "));
-
-    free(output);
-}
-
-static void test_agentcontrol_dispatch_reload(void **state) {
-    char command[] = "reload";
-    char *output = NULL;
-
-    expect_string(__wrap__mtdebug2, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "Agent control dispatching command: 'reload'");
-    expect_check_systemd_not_available();
-    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'reload' on wazuh-agent using wazuh-control");
-    will_return(__wrap_fork, 5678);
-
-    size_t ret = wm_agentcontrol_dispatch(command, &output);
-
-    assert_non_null(output);
-    assert_string_equal(output, "ok ");
-    assert_int_equal(ret, strlen("ok "));
-
-    free(output);
-}
-
-static void test_agentcontrol_dispatch_restart_systemd(void **state) {
-    char command[] = "restart";
-    char *output = NULL;
-
-    expect_string(__wrap__mtdebug2, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "Agent control dispatching command: 'restart'");
-    expect_check_systemd_available();
-    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on wazuh-agent using systemctl");
-    will_return(__wrap_fork, 1234);
-
-    size_t ret = wm_agentcontrol_dispatch(command, &output);
-
-    assert_non_null(output);
-    assert_string_equal(output, "ok ");
-    assert_int_equal(ret, strlen("ok "));
-
-    free(output);
-}
-
-static void test_agentcontrol_dispatch_restart_with_args(void **state) {
-    char command[] = "restart somearg";
-    char *output = NULL;
-
-    expect_string(__wrap__mtdebug2, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "Agent control dispatching command: 'restart'");
-    expect_check_systemd_not_available();
-    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on wazuh-agent using wazuh-control");
-    will_return(__wrap_fork, 1234);
-
-    size_t ret = wm_agentcontrol_dispatch(command, &output);
-
-    assert_non_null(output);
-    assert_string_equal(output, "ok ");
-    assert_int_equal(ret, strlen("ok "));
-
-    free(output);
-}
-
-static void test_agentcontrol_dispatch_unknown_command(void **state) {
-    char command[] = "unknowncmd";
-    char *output = NULL;
-
-    expect_string(__wrap__mtdebug2, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "Agent control dispatching command: 'unknowncmd'");
-    expect_string(__wrap__mterror, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mterror, formatted_msg, "Agent control unknown command: 'unknowncmd'");
-
-    size_t ret = wm_agentcontrol_dispatch(command, &output);
-
-    assert_non_null(output);
-    assert_string_equal(output, "err Unknown command");
-    assert_int_equal(ret, strlen("err Unknown command"));
-
-    free(output);
-}
-
-/* ------------------------------------------------------------------ */
 /* wm_control_check_systemd tests                                       */
 /* ------------------------------------------------------------------ */
 
@@ -459,12 +357,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_execute_action_restart_systemd,      setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_execute_action_reload_no_systemd,    setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_execute_action_reload_systemd,       setup_test_mode, teardown_test_mode),
-        /* wm_agentcontrol_dispatch */
-        cmocka_unit_test_setup_teardown(test_agentcontrol_dispatch_restart,           setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_agentcontrol_dispatch_reload,            setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_agentcontrol_dispatch_restart_systemd,   setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_agentcontrol_dispatch_restart_with_args, setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_agentcontrol_dispatch_unknown_command,   setup_test_mode, teardown_test_mode),
         /* wm_control_check_systemd */
         cmocka_unit_test_setup_teardown(test_check_systemd_no_run_dir,    setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_check_systemd_fopen_fails,   setup_test_mode, teardown_test_mode),

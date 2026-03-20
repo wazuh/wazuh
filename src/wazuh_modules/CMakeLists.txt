@@ -106,12 +106,10 @@ if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
     "${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/*.c"
     "${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/manager/*.c"
     "${SRC_FOLDER}/wazuh_modules/src/task_manager/*.c")
-  list(REMOVE_ITEM WAZUH_MODULES_SRC "${SRC_FOLDER}/wazuh_modules/src/wm_agent_control.c")
 else()
   file(GLOB WAZUH_MODULES_SRC "${SRC_FOLDER}/wazuh_modules/src/*.c"
        "${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/*.c"
        "${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent/*.c")
-  list(REMOVE_ITEM WAZUH_MODULES_SRC "${SRC_FOLDER}/wazuh_modules/src/wm_control.c")
 endif()
 
 # Remove agent-only modules from server build

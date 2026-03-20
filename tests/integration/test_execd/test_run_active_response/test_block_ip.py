@@ -67,7 +67,7 @@ pytestmark = [
 ]
 
 # Cases metadata and its ids.
-cases_path = Path(TEST_CASES_PATH, 
+cases_path = Path(TEST_CASES_PATH,
                   'cases_execd_block_ip_win.yaml' if sys.platform == WINDOWS else 'cases_execd_block_ip.yaml')
 config_path = Path(CONFIGS_PATH, 'config_run_active_response.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
