@@ -58,6 +58,12 @@ build_pkg() {
     CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
     DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/${TARGET}"
 
+    # Validate architecture
+    if [[ "${ARCHITECTURE}" != "amd64" && "${ARCHITECTURE}" != "arm64" ]]; then
+        echo "Error: Unsupported architecture '${ARCHITECTURE}'. Supported: [amd64, arm64]."
+        return 1
+    fi
+
     # Copy the necessary files
     cp ${CURRENT_PATH}/build.sh ${DOCKERFILE_PATH}
     cp ${CURRENT_PATH}/${SYSTEM}s/utils/* ${DOCKERFILE_PATH}
@@ -97,7 +103,7 @@ help() {
     echo
     echo "    -b, --branch <branch>      [Optional] Select Git branch."
     echo "    -t, --target <target>      [Required] Target package to build: manager or agent."
-    echo "    -a, --architecture <arch>  [Optional] Target architecture of the package [amd64/i386/arm64/armhf]."
+    echo "    -a, --architecture <arch>  [Optional] Target architecture of the package [amd64/arm64]."
     echo "    -j, --jobs <number>        [Optional] Change number of parallel jobs when compiling the manager or agent. By default: 2."
     echo "    -r, --revision <rev>       [Optional] Package revision. By default: 0."
     echo "    -s, --store <path>         [Optional] Set the destination path of package. By default, an output folder will be created."
