@@ -576,8 +576,7 @@ public:
         }
 
         EXPECT_CALL(*routerMock, getEntries())
-            .WillRepeatedly(
-                testing::Return(std::list<prod::Entry> {prod::EntryPost {"test", G_NAMESPACE_ALT, 10}}));
+            .WillRepeatedly(testing::Return(std::list<prod::Entry> {prod::EntryPost {"test", G_NAMESPACE_ALT, 10}}));
     }
 };
 
@@ -880,21 +879,23 @@ TEST_F(OrchestratorTest, entriesGetSuccessRouter)
     EXPECT_FALSE(m_orchestrator->getEntries().empty());
 }
 
-TEST_F(OrchestratorTest, postEventPushFailureStartsContention)
+TEST_F(OrchestratorTest, postEventHighLoadStartsContentionEvenIfPushSucceeds)
 {
     IngestEvent event {std::make_shared<json::Json>(R"({"k":"v"})"), "raw-event"};
 
-    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, push(testing::_)).WillOnce(testing::Return(false));
+    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, push(testing::_)).WillOnce(testing::Return(true));
+    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, size()).WillOnce(testing::Return(90));
+    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, aproxFreeSlots()).WillOnce(testing::Return(10));
 
     m_orchestrator->postEvent(std::move(event));
 
     EXPECT_TRUE(m_orchestrator->isQueueContended());
     EXPECT_GT(m_orchestrator->contentionStartUsec(), 0);
     EXPECT_GT(m_orchestrator->lastContentionWarningUsec(), 0);
-    EXPECT_EQ(m_orchestrator->droppedEventsInContention(), 1U);
+    EXPECT_EQ(m_orchestrator->droppedEventsInContention(), 0U);
 }
 
-TEST_F(OrchestratorTest, postEventPushFailureIncrementsDroppedDuringContention)
+TEST_F(OrchestratorTest, postEventPushFailureIncrementsDroppedDuringHighLoadContention)
 {
     auto nowUsec =
         std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
@@ -904,6 +905,8 @@ TEST_F(OrchestratorTest, postEventPushFailureIncrementsDroppedDuringContention)
 
     IngestEvent event {std::make_shared<json::Json>(R"({"k":"v"})"), "raw-event"};
     EXPECT_CALL(*m_orchestrator->m_mockEventQueue, push(testing::_)).WillOnce(testing::Return(false));
+    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, size()).WillOnce(testing::Return(95));
+    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, aproxFreeSlots()).WillOnce(testing::Return(5));
 
     m_orchestrator->postEvent(std::move(event));
 
@@ -911,12 +914,37 @@ TEST_F(OrchestratorTest, postEventPushFailureIncrementsDroppedDuringContention)
     EXPECT_EQ(m_orchestrator->droppedEventsInContention(), 4U);
 }
 
-TEST_F(OrchestratorTest, postEventPushSuccessResetsContentionState)
+TEST_F(OrchestratorTest, postEventPushSuccessKeepsContentionIfLoadStillHigh)
+{
+    const auto nowUsec =
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
+            .count();
+    const int64_t startUsec = nowUsec;
+    const int64_t lastWarnUsec = nowUsec;
+    const uint64_t droppedCount = 10U;
+    m_orchestrator->setContentionState(true, startUsec, lastWarnUsec, droppedCount);
+
+    IngestEvent event {std::make_shared<json::Json>(R"({"k":"v"})"), "raw-event"};
+    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, push(testing::_)).WillOnce(testing::Return(true));
+    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, size()).WillOnce(testing::Return(92));
+    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, aproxFreeSlots()).WillOnce(testing::Return(8));
+
+    m_orchestrator->postEvent(std::move(event));
+
+    EXPECT_TRUE(m_orchestrator->isQueueContended());
+    EXPECT_EQ(m_orchestrator->contentionStartUsec(), startUsec);
+    EXPECT_EQ(m_orchestrator->lastContentionWarningUsec(), lastWarnUsec);
+    EXPECT_EQ(m_orchestrator->droppedEventsInContention(), droppedCount);
+}
+
+TEST_F(OrchestratorTest, postEventLowLoadResetsContentionState)
 {
     m_orchestrator->setContentionState(true, 123, 456, 10);
 
     IngestEvent event {std::make_shared<json::Json>(R"({"k":"v"})"), "raw-event"};
     EXPECT_CALL(*m_orchestrator->m_mockEventQueue, push(testing::_)).WillOnce(testing::Return(true));
+    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, size()).WillOnce(testing::Return(50));
+    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, aproxFreeSlots()).WillOnce(testing::Return(50));
 
     m_orchestrator->postEvent(std::move(event));
 

@@ -90,7 +90,7 @@ base::OptError Tester::addEntry(const test::EntryPost& entryPost, bool ignoreFai
         std::unique_lock<std::shared_mutex> lock {m_mutex};
         if (m_table.find(entryPost.name()) != m_table.end())
         {
-            return base::Error {"The name of the testing environment already exist"};
+            return base::Error {fmt::format("The '{}' environment already exists.", entryPost.name())};
         }
 
         m_table.emplace(entryPost.name(), std::move(entry));
@@ -105,7 +105,7 @@ base::OptError Tester::removeEntry(const std::string& name)
     auto it = m_table.find(name);
     if (it == m_table.end())
     {
-        return base::Error {"The testing environment not exist"};
+        return base::Error {fmt::format("The '{}' environment does not exist.", name)};
     }
     m_table.erase(it);
     return std::nullopt;
@@ -117,7 +117,7 @@ base::OptError Tester::rebuildEntry(const std::string& name)
     auto it = m_table.find(name);
     if (it == m_table.end())
     {
-        return base::Error {"The testing environment not exist"};
+        return base::Error {fmt::format("The '{}' environment does not exist.", name)};
     }
     auto& entry = it->second;
     try
@@ -128,7 +128,7 @@ base::OptError Tester::rebuildEntry(const std::string& name)
     }
     catch (const std::exception& e)
     {
-        return base::Error {fmt::format("Failed to create the testing environment: {}", e.what())};
+        return base::Error {fmt::format("Failed to create the '{}' environment: {}", name, e.what())};
     }
     return std::nullopt;
 }
@@ -140,12 +140,12 @@ base::OptError Tester::renameEntry(const std::string& from, const std::string& t
     auto it = m_table.find(from);
     if (it == m_table.end())
     {
-        return base::Error {"Error renaming session: The \"from\" testing environment not exist"};
+        return base::Error {fmt::format("Error renaming session: The '{}' environment does not exist", from)};
     }
 
     if (m_table.find(to) != m_table.end())
     {
-        return base::Error {"Error renaming session: The \"to\" testing environment already exist"};
+        return base::Error {fmt::format("Error renaming session: The '{}' environment already exists", to)};
     }
 
     auto node = m_table.extract(it);
@@ -162,12 +162,12 @@ base::OptError Tester::enableEntry(const std::string& name)
     auto it = m_table.find(name);
     if (it == m_table.end())
     {
-        return base::Error {"The testing environment not exist"};
+        return base::Error {fmt::format("The '{}' environment does not exist.", name)};
     }
     auto& entry = it->second;
     if (entry.controller() == nullptr)
     {
-        return base::Error {"The testing environment is not builded"};
+        return base::Error {fmt::format("The '{}' environment is not builded", name)};
     }
     entry.status(env::State::ENABLED);
     return std::nullopt;
@@ -190,7 +190,7 @@ base::RespOrError<test::Entry> Tester::getEntry(const std::string& name) const
     auto it = m_table.find(name);
     if (it == m_table.end())
     {
-        return base::Error {"The testing environment not exist"};
+        return base::Error {fmt::format("The '{}' environment does not exist.", name)};
     }
     return it->second;
 }
@@ -203,13 +203,13 @@ base::RespOrError<test::Output> Tester::ingestTest(base::Event&& event, const te
     auto it = m_table.find(opt.environmentName());
     if (it == m_table.end())
     {
-        return base::Error {"The testing environment not exist"};
+        return base::Error {fmt::format("The '{}' environment does not exist.", opt.environmentName())};
     }
     auto& entry = it->second;
 
     if (entry.status() != env::State::ENABLED || entry.controller() == nullptr)
     {
-        return base::Error {"The testing environment is not enabled"};
+        return base::Error {fmt::format("The '{}' environment is not enabled", opt.environmentName())};
     }
 
     // Configure the environment
@@ -243,12 +243,12 @@ base::RespOrError<std::unordered_set<std::string>> Tester::getAssets(const std::
     auto it = m_table.find(name);
     if (it == m_table.end())
     {
-        return base::Error {"The testing environment not exist"};
+        return base::Error {fmt::format("The '{}' environment does not exist.", name)};
     }
     auto& entry = it->second;
     if (entry.status() != env::State::ENABLED || entry.controller() == nullptr)
     {
-        return base::Error {"The testing environment is not builded"};
+        return base::Error {fmt::format("The '{}' environment is not builded", name)};
     }
     return entry.controller()->getTraceables();
 }

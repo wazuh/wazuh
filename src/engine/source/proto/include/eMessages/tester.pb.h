@@ -2625,6 +2625,7 @@ class PublicRunPost_Request final :
     kLocationFieldNumber = 2,
     kEventFieldNumber = 4,
     kTraceLevelFieldNumber = 5,
+    kSpaceFieldNumber = 6,
     kMetadataFieldNumber = 3,
     kQueueFieldNumber = 1,
   };
@@ -2670,6 +2671,20 @@ class PublicRunPost_Request final :
   std::string* _internal_mutable_trace_level();
   public:
 
+  // string space = 6;
+  void clear_space();
+  const std::string& space() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_space(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_space();
+  PROTOBUF_NODISCARD std::string* release_space();
+  void set_allocated_space(std::string* space);
+  private:
+  const std::string& _internal_space() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_space(const std::string& value);
+  std::string* _internal_mutable_space();
+  public:
+
   // .google.protobuf.Struct metadata = 3;
   bool has_metadata() const;
   private:
@@ -2708,6 +2723,7 @@ class PublicRunPost_Request final :
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr location_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr event_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr trace_level_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr space_;
     ::PROTOBUF_NAMESPACE_ID::Struct* metadata_;
     uint32_t queue_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
@@ -2718,9 +2734,10 @@ class PublicRunPost_Request final :
 // -------------------------------------------------------------------
 
 class LogtestDelete_Request final :
-    public ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.tester.LogtestDelete_Request) */ {
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.tester.LogtestDelete_Request) */ {
  public:
   inline LogtestDelete_Request() : LogtestDelete_Request(nullptr) {}
+  ~LogtestDelete_Request() override;
   explicit PROTOBUF_CONSTEXPR LogtestDelete_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
 
   LogtestDelete_Request(const LogtestDelete_Request& from);
@@ -2793,15 +2810,29 @@ class LogtestDelete_Request final :
   LogtestDelete_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
     return CreateMaybeMessage<LogtestDelete_Request>(arena);
   }
-  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyFrom;
-  inline void CopyFrom(const LogtestDelete_Request& from) {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl(*this, from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const LogtestDelete_Request& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const LogtestDelete_Request& from) {
+    LogtestDelete_Request::MergeImpl(*this, from);
   }
-  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeFrom;
-  void MergeFrom(const LogtestDelete_Request& from) {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl(*this, from);
-  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
   public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(LogtestDelete_Request* other);
 
   private:
   friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
@@ -2822,6 +2853,23 @@ class LogtestDelete_Request final :
 
   // accessors -------------------------------------------------------
 
+  enum : int {
+    kSpaceFieldNumber = 1,
+  };
+  // string space = 1;
+  void clear_space();
+  const std::string& space() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_space(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_space();
+  PROTOBUF_NODISCARD std::string* release_space();
+  void set_allocated_space(std::string* space);
+  private:
+  const std::string& _internal_space() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_space(const std::string& value);
+  std::string* _internal_mutable_space();
+  public:
+
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.tester.LogtestDelete_Request)
  private:
   class _Internal;
@@ -2830,7 +2878,10 @@ class LogtestDelete_Request final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr space_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
+  union { Impl_ _impl_; };
   friend struct ::TableStruct_tester_2eproto;
 };
 // ===================================================================
@@ -4841,9 +4892,109 @@ inline void PublicRunPost_Request::set_allocated_trace_level(std::string* trace_
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.PublicRunPost_Request.trace_level)
 }
 
+// string space = 6;
+inline void PublicRunPost_Request::clear_space() {
+  _impl_.space_.ClearToEmpty();
+}
+inline const std::string& PublicRunPost_Request::space() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.PublicRunPost_Request.space)
+  return _internal_space();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void PublicRunPost_Request::set_space(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.space_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.PublicRunPost_Request.space)
+}
+inline std::string* PublicRunPost_Request::mutable_space() {
+  std::string* _s = _internal_mutable_space();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.PublicRunPost_Request.space)
+  return _s;
+}
+inline const std::string& PublicRunPost_Request::_internal_space() const {
+  return _impl_.space_.Get();
+}
+inline void PublicRunPost_Request::_internal_set_space(const std::string& value) {
+  
+  _impl_.space_.Set(value, GetArenaForAllocation());
+}
+inline std::string* PublicRunPost_Request::_internal_mutable_space() {
+  
+  return _impl_.space_.Mutable(GetArenaForAllocation());
+}
+inline std::string* PublicRunPost_Request::release_space() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.PublicRunPost_Request.space)
+  return _impl_.space_.Release();
+}
+inline void PublicRunPost_Request::set_allocated_space(std::string* space) {
+  if (space != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.space_.SetAllocated(space, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.space_.IsDefault()) {
+    _impl_.space_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.PublicRunPost_Request.space)
+}
+
 // -------------------------------------------------------------------
 
 // LogtestDelete_Request
+
+// string space = 1;
+inline void LogtestDelete_Request::clear_space() {
+  _impl_.space_.ClearToEmpty();
+}
+inline const std::string& LogtestDelete_Request::space() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.LogtestDelete_Request.space)
+  return _internal_space();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LogtestDelete_Request::set_space(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.space_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.LogtestDelete_Request.space)
+}
+inline std::string* LogtestDelete_Request::mutable_space() {
+  std::string* _s = _internal_mutable_space();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.LogtestDelete_Request.space)
+  return _s;
+}
+inline const std::string& LogtestDelete_Request::_internal_space() const {
+  return _impl_.space_.Get();
+}
+inline void LogtestDelete_Request::_internal_set_space(const std::string& value) {
+  
+  _impl_.space_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LogtestDelete_Request::_internal_mutable_space() {
+  
+  return _impl_.space_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LogtestDelete_Request::release_space() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.LogtestDelete_Request.space)
+  return _impl_.space_.Release();
+}
+inline void LogtestDelete_Request::set_allocated_space(std::string* space) {
+  if (space != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.space_.SetAllocated(space, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.space_.IsDefault()) {
+    _impl_.space_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.LogtestDelete_Request.space)
+}
 
 #ifdef __GNUC__
   #pragma GCC diagnostic pop

@@ -15,7 +15,7 @@ import api_communication.proto.engine_pb2 as _engine_pb2
 from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ncrud.proto\x12\x1c\x63om.wazuh.api.engine.content\x1a\x0c\x65ngine.proto\x1a\x1cgoogle/protobuf/struct.proto\"I\n\x0fResourceSummary\x12\x11\n\x04uuid\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\x11\n\x04name\x18\x02 \x01(\tH\x01\x88\x01\x01\x42\x07\n\x05_uuidB\x07\n\x05_name\"\x16\n\x14namespaceGet_Request\"y\n\x15namespaceGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x0e\n\x06spaces\x18\x03 \x03(\tB\x08\n\x06_error\"&\n\x15namespacePost_Request\x12\r\n\x05space\x18\x01 \x01(\t\"(\n\x17namespaceDelete_Request\x12\r\n\x05space\x18\x01 \x01(\t\"L\n\x17namespaceImport_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x13\n\x0bjsonContent\x18\x02 \x01(\t\x12\r\n\x05\x66orce\x18\x03 \x01(\x08\"7\n\x12policyPost_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x12\n\nymlContent\x18\x02 \x01(\t\"%\n\x14policyDelete_Request\x12\r\n\x05space\x18\x01 \x01(\t\"^\n\x16policyValidate_Request\x12\x16\n\x0eload_in_tester\x18\x01 \x01(\x08\x12,\n\x0b\x66ull_policy\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"3\n\x14resourceList_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\"\xab\x01\n\x15resourceList_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12@\n\tresources\x18\x03 \x03(\x0b\x32-.com.wazuh.api.engine.content.ResourceSummaryB\x08\n\x06_error\"R\n\x13resourceGet_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x0c\n\x04uuid\x18\x02 \x01(\t\x12\x13\n\x06\x61sJson\x18\x03 \x01(\x08H\x00\x88\x01\x01\x42\t\n\x07_asJson\"\x8a\x01\n\x14resourceGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x14\n\x07\x63ontent\x18\x03 \x01(\tH\x01\x88\x01\x01\x42\x08\n\x06_errorB\n\n\x08_content\"G\n\x14resourcePost_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x12\n\nymlContent\x18\x03 \x01(\t\"5\n\x16resourceDelete_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x0c\n\x04uuid\x18\x02 \x01(\t\"S\n\x18resourceValidate_Request\x12\x0c\n\x04type\x18\x01 \x01(\t\x12)\n\x08resource\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Structb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ncrud.proto\x12\x1c\x63om.wazuh.api.engine.content\x1a\x0c\x65ngine.proto\x1a\x1cgoogle/protobuf/struct.proto\"I\n\x0fResourceSummary\x12\x11\n\x04uuid\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\x11\n\x04name\x18\x02 \x01(\tH\x01\x88\x01\x01\x42\x07\n\x05_uuidB\x07\n\x05_name\"\x16\n\x14namespaceGet_Request\"y\n\x15namespaceGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x0e\n\x06spaces\x18\x03 \x03(\tB\x08\n\x06_error\"&\n\x15namespacePost_Request\x12\r\n\x05space\x18\x01 \x01(\t\"(\n\x17namespaceDelete_Request\x12\r\n\x05space\x18\x01 \x01(\t\"L\n\x17namespaceImport_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x13\n\x0bjsonContent\x18\x02 \x01(\t\x12\r\n\x05\x66orce\x18\x03 \x01(\x08\"7\n\x12policyPost_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x12\n\nymlContent\x18\x02 \x01(\t\"%\n\x14policyDelete_Request\x12\r\n\x05space\x18\x01 \x01(\t\"m\n\x16policyValidate_Request\x12\x16\n\x0eload_in_tester\x18\x01 \x01(\x08\x12,\n\x0b\x66ull_policy\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\r\n\x05space\x18\x03 \x01(\t\"3\n\x14resourceList_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\"\xab\x01\n\x15resourceList_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12@\n\tresources\x18\x03 \x03(\x0b\x32-.com.wazuh.api.engine.content.ResourceSummaryB\x08\n\x06_error\"R\n\x13resourceGet_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x0c\n\x04uuid\x18\x02 \x01(\t\x12\x13\n\x06\x61sJson\x18\x03 \x01(\x08H\x00\x88\x01\x01\x42\t\n\x07_asJson\"\x8a\x01\n\x14resourceGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x14\n\x07\x63ontent\x18\x03 \x01(\tH\x01\x88\x01\x01\x42\x08\n\x06_errorB\n\n\x08_content\"G\n\x14resourcePost_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x12\n\nymlContent\x18\x03 \x01(\t\"5\n\x16resourceDelete_Request\x12\r\n\x05space\x18\x01 \x01(\t\x12\x0c\n\x04uuid\x18\x02 \x01(\t\"S\n\x18resourceValidate_Request\x12\x0c\n\x04type\x18\x01 \x01(\t\x12)\n\x08resource\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Structb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'crud_pb2', globals())
@@ -39,19 +39,19 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _POLICYDELETE_REQUEST._serialized_start=527
   _POLICYDELETE_REQUEST._serialized_end=564
   _POLICYVALIDATE_REQUEST._serialized_start=566
-  _POLICYVALIDATE_REQUEST._serialized_end=660
-  _RESOURCELIST_REQUEST._serialized_start=662
-  _RESOURCELIST_REQUEST._serialized_end=713
-  _RESOURCELIST_RESPONSE._serialized_start=716
-  _RESOURCELIST_RESPONSE._serialized_end=887
-  _RESOURCEGET_REQUEST._serialized_start=889
-  _RESOURCEGET_REQUEST._serialized_end=971
-  _RESOURCEGET_RESPONSE._serialized_start=974
-  _RESOURCEGET_RESPONSE._serialized_end=1112
-  _RESOURCEPOST_REQUEST._serialized_start=1114
-  _RESOURCEPOST_REQUEST._serialized_end=1185
-  _RESOURCEDELETE_REQUEST._serialized_start=1187
-  _RESOURCEDELETE_REQUEST._serialized_end=1240
-  _RESOURCEVALIDATE_REQUEST._serialized_start=1242
-  _RESOURCEVALIDATE_REQUEST._serialized_end=1325
+  _POLICYVALIDATE_REQUEST._serialized_end=675
+  _RESOURCELIST_REQUEST._serialized_start=677
+  _RESOURCELIST_REQUEST._serialized_end=728
+  _RESOURCELIST_RESPONSE._serialized_start=731
+  _RESOURCELIST_RESPONSE._serialized_end=902
+  _RESOURCEGET_REQUEST._serialized_start=904
+  _RESOURCEGET_REQUEST._serialized_end=986
+  _RESOURCEGET_RESPONSE._serialized_start=989
+  _RESOURCEGET_RESPONSE._serialized_end=1127
+  _RESOURCEPOST_REQUEST._serialized_start=1129
+  _RESOURCEPOST_REQUEST._serialized_end=1200
+  _RESOURCEDELETE_REQUEST._serialized_start=1202
+  _RESOURCEDELETE_REQUEST._serialized_end=1255
+  _RESOURCEVALIDATE_REQUEST._serialized_start=1257
+  _RESOURCEVALIDATE_REQUEST._serialized_end=1340
 # @@protoc_insertion_point(module_scope)

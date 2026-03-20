@@ -15,22 +15,26 @@ NONE: TraceLevel
 STATE_UNKNOWN: State
 
 class LogtestDelete_Request(_message.Message):
-    __slots__ = []
-    def __init__(self) -> None: ...
+    __slots__ = ["space"]
+    SPACE_FIELD_NUMBER: _ClassVar[int]
+    space: str
+    def __init__(self, space: _Optional[str] = ...) -> None: ...
 
 class PublicRunPost_Request(_message.Message):
-    __slots__ = ["event", "location", "metadata", "queue", "trace_level"]
+    __slots__ = ["event", "location", "metadata", "queue", "space", "trace_level"]
     EVENT_FIELD_NUMBER: _ClassVar[int]
     LOCATION_FIELD_NUMBER: _ClassVar[int]
     METADATA_FIELD_NUMBER: _ClassVar[int]
     QUEUE_FIELD_NUMBER: _ClassVar[int]
+    SPACE_FIELD_NUMBER: _ClassVar[int]
     TRACE_LEVEL_FIELD_NUMBER: _ClassVar[int]
     event: str
     location: str
     metadata: _struct_pb2.Struct
     queue: int
+    space: str
     trace_level: str
-    def __init__(self, queue: _Optional[int] = ..., location: _Optional[str] = ..., metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., event: _Optional[str] = ..., trace_level: _Optional[str] = ...) -> None: ...
+    def __init__(self, queue: _Optional[int] = ..., location: _Optional[str] = ..., metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., event: _Optional[str] = ..., trace_level: _Optional[str] = ..., space: _Optional[str] = ...) -> None: ...
 
 class Result(_message.Message):
     __slots__ = ["asset_traces", "output"]

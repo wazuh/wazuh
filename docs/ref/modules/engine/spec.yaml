@@ -65,7 +65,6 @@ paths:
 
         ## Notes
         - A unique temporary namespace and tester session are generated per request.
-        - Only one `"testing"` session is supported at a time.
         - If the Tester API is not available, the request fails immediately.
       requestBody:
         required: true
@@ -77,6 +76,7 @@ paths:
               validate_only:
                 summary: Validate policy (with integrations), no persistent tester session
                 value:
+                  space: "test"
                   load_in_tester: false
                   full_policy:
                     {
@@ -99,6 +99,7 @@ paths:
               validate_no_integrations:
                 summary: Validate policy without integrations (import-only validation)
                 value:
+                  space: "standard"
                   load_in_tester: false
                   full_policy:
                     {
@@ -258,10 +259,10 @@ paths:
 
         This endpoint **does not** validate policies and **does not** create sessions.
         It only validates request parameters, parses/builds the event payload, and runs the test ingestion
-        against the already-loaded session (currently hardcoded as `"testing"`).
+        against the session identified by the `space` field.
 
         If tracing is enabled (trace_level != NONE), the endpoint retrieves the list of policy assets
-        from the active testing session and uses them as the trace filter.
+        from the specified testing session and uses them as the trace filter.
 
         Notes about event parsing:
         - `queue` indicates the queue to which the event will be sent.
@@ -289,6 +290,7 @@ paths:
               basic:
                 summary: Basic run using queue 1
                 value:
+                  space: "test"
                   queue: 1
                   location: "/var/log/auth.log"
                   metadata:
@@ -301,6 +303,7 @@ paths:
               with_trace:
                 summary: Run with tracing enabled
                 value:
+                  space: "test"
                   queue: 1
                   location: "[001] (my-agent) 192.168.1.10->syslog"
                   metadata:
@@ -313,6 +316,7 @@ paths:
               metadata_wazuh_ok:
                 summary: metadata with top-level `wazuh` object
                 value:
+                  space: "test"
                   queue: 1
                   location: "syscheck"
                   metadata:
@@ -325,6 +329,7 @@ paths:
               metadata_wazuh_nested_ok:
                 summary: metadata can provide nested `wazuh` fields accepted by the event schema
                 value:
+                  space: "test"
                   queue: 1
                   location: "syscheck"
                   metadata:
@@ -339,6 +344,7 @@ paths:
               metadata_wazuh_empty_invalid:
                 summary: INVALID - empty wazuh metadata object
                 value:
+                  space: "test"
                   queue: 1
                   location: "syscheck"
                   metadata:
@@ -377,6 +383,7 @@ paths:
               missing_metadata_invalid:
                 summary: INVALID - missing required metadata
                 value:
+                  space: "test"
                   queue: 1
                   location: "syscheck"
                   event: "File /etc/passwd modified"
@@ -478,11 +485,23 @@ paths:
         - Logtest
       summary: Cleanup logtest session and temporary namespace
       description: |
-        Stops and removes the current logtest testing session (if any) and deletes
-        the associated temporary namespace from storage, including all assets.
+        Stops and removes the logtest testing session for the given `space` (if any)
+        and deletes the associated temporary namespace from storage, including all assets.
 
         This operation is safe and idempotent. If there is no active session or
-        namespace to delete, it returns **OK**.
+        namespace to delete for the given space, it returns **OK**.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogtestDelete_Request"
+            examples:
+              cleanup_test:
+                summary: Cleanup the test space
+                value:
+                  space: "test"
 
       responses:
         "200":
@@ -971,17 +990,17 @@ paths:
                   summary: Session name already exists
                   value:
                     status: "ERROR"
-                    error: "The name of the testing environment already exist"
+                    error: "The 'testing' environment already exists"
                 namespace_does_not_exist:
                   summary: Namespace folder does not exist
                   value:
                     status: "ERROR"
-                    error: "Failed to create the testing environment: File Namespace does not exist: testing"
+                    error: "Failed to create the 'testing' environment: File Namespace does not exist: testing"
                 namespace_without_assets:
                   summary: Namespace has no assets
                   value:
                     status: "ERROR"
-                    error: "Failed to create the testing environment: Namespace 'wazuh' has no assets"
+                    error: "Failed to create the 'testing' environment: Namespace 'wazuh' has no assets"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -1017,7 +1036,7 @@ paths:
                   summary: Session does not exist
                   value:
                     status: "ERROR"
-                    error: "The testing environment not exist"
+                    error: "The 'testing' environment does not exist"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -1088,12 +1107,12 @@ paths:
                   summary: Non-existent session
                   value:
                     status: "ERROR"
-                    error: "The testing environment not exist"
+                    error: "The 'testing' environment does not exist"
                 asset_validation_error:
                   summary: Asset validation failure
                   value:
                     status: "ERROR"
-                    error: "Failed to create the testing environment: Expected 'name' key in asset document but got 'n'"
+                    error: "Failed to create the 'testing' environment: Expected 'name' key in asset document but got 'n'"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
@@ -1137,12 +1156,12 @@ paths:
                   summary: Session does not exist
                   value:
                     status: "ERROR"
-                    error: "The testing environment not exist"
+                    error: "The 'testing' environment does not exist"
                 asset_validation_error:
                   summary: Environment not enabled
                   value:
                     status: "ERROR"
-                    error: "The testing environment is not enabled"
+                    error: "The 'testing' environment is not enabled"
                 namespace_missing:
                   summary: Namespace required
                   value:
@@ -1917,8 +1936,11 @@ components:
     #################################
     policyValidate_Request:
       type: object
-      required: [full_policy]
+      required: [full_policy, space]
       properties:
+        space:
+          type: string
+          description: "Target space/session name (e.g. test, standard). Determines which tester session to promote into."
         load_in_tester:
           type: boolean
           description: "If true, load testing policies into the Tester environment."
@@ -2068,8 +2090,11 @@ components:
 
     PublicRunPost_Request:
       type: object
-      required: [queue, location, metadata, event, trace_level]
+      required: [queue, location, metadata, event, trace_level, space]
       properties:
+        space:
+          type: string
+          description: "Target space/session name to run against (e.g. test, standard)"
         queue:
           type: integer
           minimum: 1
@@ -2091,6 +2116,14 @@ components:
             - ASSET_ONLY
             - ALL
           description: "Level of traces"
+
+    LogtestDelete_Request:
+      type: object
+      required: [space]
+      properties:
+        space:
+          type: string
+          description: "Target space/session name to delete (e.g. test, standard)"
 
     TesterTableGet_Response:
       allOf:

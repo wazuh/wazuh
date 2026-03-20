@@ -213,7 +213,7 @@ void Server::start(const std::filesystem::path& socketPath, bool useThread)
         m_thread = std::thread(
             [this, &threadFailed]()
             {
-                base::process::setThreadName("httpsrv");
+                base::process::setThreadName(m_id.c_str());
                 if (!bindAndListen())
                 {
                     threadFailed = true;

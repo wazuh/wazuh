@@ -183,6 +183,9 @@ message PublicRunPost_Request
     // Trace verbosity level (e.g., NONE, ASSET_ONLY, ALL).
     // Recommended: treat it as case-insensitive.
     string trace_level = 5;
+
+    // Target space/session name to run against (e.g. "test", "standard").
+    string space = 6;
 }
 
 /***************************************************
@@ -190,7 +193,11 @@ message PublicRunPost_Request
  *
  * endpoint: DELETE /logtest
  **************************************************/
-message LogtestDelete_Request {}
+message LogtestDelete_Request
+{
+    // Target space/session name to delete (e.g. "test", "standard").
+    string space = 1;
+}
 // message LogtestDelete_Response -> Return a GenericStatus_Response
 
 // MessageTestPost_Response -> returns a RunPost_Response

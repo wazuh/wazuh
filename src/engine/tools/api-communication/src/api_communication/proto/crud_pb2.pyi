@@ -66,12 +66,14 @@ class policyPost_Request(_message.Message):
     def __init__(self, space: _Optional[str] = ..., ymlContent: _Optional[str] = ...) -> None: ...
 
 class policyValidate_Request(_message.Message):
-    __slots__ = ["full_policy", "load_in_tester"]
+    __slots__ = ["full_policy", "load_in_tester", "space"]
     FULL_POLICY_FIELD_NUMBER: _ClassVar[int]
     LOAD_IN_TESTER_FIELD_NUMBER: _ClassVar[int]
+    SPACE_FIELD_NUMBER: _ClassVar[int]
     full_policy: _struct_pb2.Struct
     load_in_tester: bool
-    def __init__(self, load_in_tester: bool = ..., full_policy: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
+    space: str
+    def __init__(self, load_in_tester: bool = ..., full_policy: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., space: _Optional[str] = ...) -> None: ...
 
 class resourceDelete_Request(_message.Message):
     __slots__ = ["space", "uuid"]

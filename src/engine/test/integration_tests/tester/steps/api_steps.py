@@ -35,6 +35,7 @@ INTEG_OTHER_WAZUH_CORE_UUID = "a15bbd77-8cb0-488f-94cd-4783d689a72f"
 
 LOGTEST_DECODER_UUID = "a1f330f4-8012-48ab-9949-c5d76edaf9b1"
 LOGTEST_INTEG_UUID = "a1f330f4-8012-48ab-9949-c5d76edaf9b2"
+LOGTEST_SPACE = "test"
 
 
 # ===================================================================
@@ -319,6 +320,7 @@ def step_impl(context):
 
     req = api_crud.policyValidate_Request()
     req.load_in_tester = True
+    req.space = LOGTEST_SPACE
     req.full_policy.CopyFrom(ParseDict(full_policy, Struct()))
     err, resp, _ = send_recv(req, api_engine.GenericStatus_Response())
     assert err is None, f"{err}"
@@ -328,6 +330,7 @@ def step_impl(context):
 @when("I request logtest cleanup")
 def step_impl(context):
     req = api_tester.LogtestDelete_Request()
+    req.space = LOGTEST_SPACE
     err, resp, _ = send_recv(req, api_engine.GenericStatus_Response())
     assert err is None, f"{err}"
     assert resp.status == api_engine.OK, f"{resp}"
@@ -456,16 +459,17 @@ def step_impl(context, session_name: str):
     req.name = session_name
     err, resp, _ = send_recv(req, api_tester.SessionGet_Response())
     assert err is not None, "Expected session to be missing"
-    assert "not exist" in err, f"Unexpected error: {err}"
+    expected_error = f"The '{session_name}' environment does not exist."
+    assert err == expected_error, f"Unexpected error: {err}"
 
 
-@then('no "policy_validate_" namespaces should exist')
+@then('no "logtest_" namespaces should exist')
 def step_impl(context):
     req = api_crud.namespaceGet_Request()
     err, resp, _ = send_recv(req, api_crud.namespaceGet_Response())
     assert err is None, f"{err}"
     for space in resp.spaces:
-        assert not space.startswith("policy_validate_"), f"Found temp namespace: {space}"
+        assert not space.startswith("logtest_"), f"Found temp namespace: {space}"
 
 
 @then('I should receive a session with sync "{policy_sync}"')

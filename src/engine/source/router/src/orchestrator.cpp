@@ -193,7 +193,18 @@ base::OptError Orchestrator::initTesterWorker(const std::shared_ptr<IWorker<ITes
 // Public
 void Orchestrator::postEvent(IngestEvent&& event)
 {
-    if (m_eventQueue->push(std::move(event)))
+    const auto pushed = m_eventQueue->push(std::move(event));
+    const auto nowUsec =
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
+            .count();
+
+    const auto queueSize = m_eventQueue->size();
+    const auto freeSlots = m_eventQueue->aproxFreeSlots();
+    const auto totalSlots = queueSize + freeSlots;
+
+    const bool isContended = totalSlots > 0 && (queueSize * 100) >= (totalSlots * CONTENTION_LOAD_PERCENT_THRESHOLD);
+
+    if (!isContended)
     {
         if (m_eventQueueContended.exchange(false, std::memory_order_relaxed))
         {
@@ -204,11 +215,10 @@ void Orchestrator::postEvent(IngestEvent&& event)
         return;
     }
 
-    const auto nowUsec =
-        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
-            .count();
-
-    m_droppedEventsInContention.fetch_add(1, std::memory_order_relaxed);
+    if (!pushed)
+    {
+        m_droppedEventsInContention.fetch_add(1, std::memory_order_relaxed);
+    }
 
     bool expected = false;
     if (m_eventQueueContended.compare_exchange_strong(
@@ -233,11 +243,12 @@ void Orchestrator::postEvent(IngestEvent&& event)
 
     m_lastContentionWarningUsec.store(nowUsec, std::memory_order_relaxed);
 
-    LOG_WARNING("Event queue has remained contended for at least 60 seconds. Dropped events during contention: {}. "
+    LOG_WARNING("Event queue has remained contended for at least {} seconds. Dropped events during contention: {}. "
                 "Approx queue size: {}, approx free slots: {}.",
+                CONTENTION_WARNING_INTERVAL_SEC,
                 m_droppedEventsInContention.load(std::memory_order_relaxed),
-                m_eventQueue->size(),
-                m_eventQueue->aproxFreeSlots());
+                queueSize,
+                freeSlots);
 }
 
 void Orchestrator::Options::validate() const

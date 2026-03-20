@@ -50,11 +50,14 @@ protected:
     std::shared_ptr<EnvironmentBuilder> m_envBuilder; ///< The environment builder
 
     // Event queue contention monitoring
-    std::atomic<bool> m_eventQueueContended {false};       ///< True while push failures are ongoing
-    std::atomic<int64_t> m_contentionStartUsec {0};        ///< First push failure timestamp (steady_clock, usec)
+    std::atomic<bool> m_eventQueueContended {false};       ///< True while queue load is above contention threshold
+    std::atomic<int64_t> m_contentionStartUsec {0};        ///< First contention timestamp (steady_clock, usec)
     std::atomic<int64_t> m_lastContentionWarningUsec {0};  ///< Last warning timestamp (steady_clock, usec)
     std::atomic<uint64_t> m_droppedEventsInContention {0}; ///< Failed push count in current contention window
-    static constexpr int64_t CONTENTION_WARNING_INTERVAL_USEC = 60LL * 1000LL * 1000LL; ///< 1 minute
+    static constexpr int64_t CONTENTION_WARNING_INTERVAL_SEC = 600LL; ///< Interval in seconds
+    static constexpr int64_t CONTENTION_WARNING_INTERVAL_USEC =
+        CONTENTION_WARNING_INTERVAL_SEC * 1000LL * 1000LL;               ///< 10 minutes
+    static constexpr std::size_t CONTENTION_LOAD_PERCENT_THRESHOLD = 90; ///< Queue load threshold
 
     // Configuration options
     std::weak_ptr<store::IStore> m_wStore; ///< Read and store configurations

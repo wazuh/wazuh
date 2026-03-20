@@ -155,7 +155,8 @@ INSTANTIATE_TEST_SUITE_P(
                                                      "UNDEFINED",
                                                      "",
                                                      false,
-                                                     false);
+                                                     false,
+                                                     true);
                       auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
                                                                "test-integration",
                                                                true,
@@ -209,7 +210,8 @@ INSTANTIATE_TEST_SUITE_P(
                                                      "UNDEFINED",
                                                      "",
                                                      false,
-                                                     false);
+                                                     false,
+                                                     true);
                       auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
                                                                "disabled-integration",
                                                                false,
@@ -263,7 +265,9 @@ INSTANTIATE_TEST_SUITE_P(
                           "UNDEFINED",
                           "",
                           false,
-                          false);
+                          false,
+                          true);
+
                       auto integration1 =
                           dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
                                                 "integration-one",
@@ -459,7 +463,8 @@ TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
                                    "UNDEFINED",                              // originSpace
                                    "",                                       // hash
                                    false,                                    // indexUnclassifiedEvents
-                                   false                                     // indexDiscardedEvents
+                                   false,                                    // indexDiscardedEvents
+                                   true                                      // cleanupDecoderVariables
     );
 
     // Create a simple integration
@@ -552,7 +557,8 @@ TEST_F(BuildPolicyTest, BuildPolicyWithDisabledIntegration)
                                    "UNDEFINED",
                                    "",
                                    false,
-                                   false);
+                                   false,
+                                   true);
 
     // Create a disabled integration
     auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
@@ -871,7 +877,8 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithMultipleIntegrations)
                                    "UNDEFINED",
                                    "",
                                    false,
-                                   false);
+                                   false,
+                                   true);
 
     // First integration
     auto integration1 = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
@@ -965,7 +972,8 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithKVDB)
                                    "UNDEFINED",
                                    "",
                                    false,
-                                   false);
+                                   false,
+                                   true);
 
     // Integration with KVDB
     auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
@@ -1049,7 +1057,8 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithOutputs)
                                    "UNDEFINED",
                                    "",
                                    false,
-                                   false);
+                                   false,
+                                   true);
 
     // Integration with outputs
     auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
@@ -1129,7 +1138,8 @@ TEST_F(BuildPolicyAdvancedTest, ParentTemporaryVariableIsAvailableInChildDecoder
                                    "UNDEFINED",
                                    "",
                                    false,
-                                   false);
+                                   false,
+                                   true);
 
     auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
                                              "integration-with-parent-child-temp",
@@ -1221,7 +1231,8 @@ TEST_F(BuildPolicyAdvancedTest, DecoderTemporaryVariableIsRemovedAtPipelineEnd)
                                    "UNDEFINED",
                                    "",
                                    false,
-                                   false);
+                                   false,
+                                   true);
 
     auto integration =
         dataType::Integration("550e8400-e29b-41d4-a716-446655440001",

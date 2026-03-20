@@ -683,7 +683,7 @@ int main(int argc, char* argv[])
                 serverApiPayloadMaxBytes = 0;
             }
             apiServer =
-                std::make_shared<httpsrv::Server>("API_SRV", static_cast<size_t>(serverApiPayloadMaxBytes), true);
+                std::make_shared<httpsrv::Server>("API Server", static_cast<size_t>(serverApiPayloadMaxBytes), true);
 
             // API
             exitHandler.add(
@@ -739,7 +739,7 @@ int main(int argc, char* argv[])
         // HTTP enriched events server
         if (enableProcessing)
         {
-            engineRemoteServer = std::make_shared<httpsrv::Server>("ENRICHED_EVENTS_SRV", 0, false);
+            engineRemoteServer = std::make_shared<httpsrv::Server>("Events Server", 0, false);
 
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 

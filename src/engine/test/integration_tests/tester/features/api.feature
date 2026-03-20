@@ -5,7 +5,7 @@ Feature: Tester API Management
     Given I have a policy "testing" that has an integration called "wazuh-core-test" loaded
     And I create a "default" session that points to policy "testing"
     When I send a request to the tester to add a new session called "default" with the data from policy:"testing"
-    Then I should receive a failture response indicating that "The name of the testing environment already exist"
+    Then I should receive a failture response indicating that "The 'default' environment already exists."
 
   Scenario: Add a new session for testing via API
     Given I have a policy "testing" that has an integration called "wazuh-core-test" loaded
@@ -25,7 +25,7 @@ Feature: Tester API Management
     Given I have a policy "testing" that has an integration called "wazuh-core-test" loaded
     And I create a "default" session that points to policy "testing"
     When I send a request to the tester to delete the session "non-existent"
-    Then I should receive a failture response indicating that "The testing environment not exist"
+    Then I should receive a failture response indicating that "The 'non-existent' environment does not exist."
 
   Scenario: Get all sessions via API
     Given I have a policy "testing" that has an integration called "wazuh-core-test" loaded
@@ -96,10 +96,10 @@ Feature: Tester API Management
     Given I have no tester sessions
     When I validate a full policy with load_in_tester enabled
     And I request logtest cleanup
-    Then the "testing" session should not exist
-    And no "policy_validate_" namespaces should exist
+    Then the "test" session should not exist
+    And no "logtest_" namespaces should exist
 
   Scenario: Cleanup logtest is idempotent when nothing exists
     Given I have no tester sessions
     When I request logtest cleanup
-    Then the "testing" session should not exist
+    Then the "test" session should not exist

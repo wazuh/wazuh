@@ -12,12 +12,7 @@
 
 #include <api/adapter/helpers.hpp>
 #include <api/cmcrud/handlers.hpp>
-#include <api/shared/constants.hpp>
 
-namespace
-{
-constexpr std::string_view ORGIN_SPACE_TESTING = "test";
-}
 namespace api::cmcrud::handlers
 {
 
@@ -354,11 +349,18 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
             return;
         }
 
+        const std::string finalSessionName = protoReq.space();
+        if (finalSessionName.empty())
+        {
+            res = adapter::userErrorResponse<ResponseType>("Field /space cannot be empty");
+            return;
+        }
+
         // Generate unique temp namespace and session names to avoid conflicts with concurrent validations.
-        const std::string tmpName = fmt::format("policy_validate_{}", base::utils::generators::randomHexString(6));
+        const auto tmpPrefix = loadInTester ? "logtest_{}" : "tmp_policy_validate_{}";
+        const std::string tmpName = fmt::format(tmpPrefix, base::utils::generators::randomHexString(6));
         const cm::store::NamespaceId tmpNsId {tmpName};
         const std::string& tmpSessionName = tmpName;
-        const std::string finalSessionName = api::shared::constants::SESSION_NAME;
 
         // ---------------------------------------------------------------
         // RAII guard: best-effort cleanup of temp resources on scope exit.
@@ -436,7 +438,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
             // Step 1: Import into temp namespace (validates structure).
             // ============================================================
             const cm::store::dataType::Policy pol =
-                service->importNamespace(tmpNsId, fullPolicyStr, ORGIN_SPACE_TESTING, /*force=*/true);
+                service->importNamespace(tmpNsId, fullPolicyStr, finalSessionName, /*force=*/true);
             guard.namespaceOwned = true;
 
             const bool isEnabled = pol.isEnabled();
@@ -480,7 +482,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
 
             if (shouldPromote)
             {
-                // Promote the temp session → SESSION_NAME, replacing the old one.
+                // Promote the temp session → finalSessionName, replacing the old one.
                 std::optional<std::string> oldNsToDelete;
 
                 auto entry = testerLocked->getTestEntry(finalSessionName);
