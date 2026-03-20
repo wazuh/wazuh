@@ -626,7 +626,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/zypp/zypp.conf -> r:^gpgcheck\s*\t*=\s*\t*1'
-      - 'not d:/etc/zypp/repos.d/ -> r:\.+.repo -> n:^gpgcheck\s*\t*=\s*\t*(\d+) compare \!= 1'
+      - 'not d:/etc/zypp/repos.d/ -> r:\.+.repo -> n:^gpgcheck\s*\t*=\s*\t*(\d+) compare != 1'
 
   # 1.3.1 Ensure sudo is installed. (Automated)
   - id: 40523
