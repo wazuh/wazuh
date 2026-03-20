@@ -1121,8 +1121,8 @@ InstallLocal()
 TransferShared()
 {
     rm -f ${INSTALLDIR}/etc/shared/merged.mg
-    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec cp -pf {} ${INSTALLDIR}/backup/shared \;
-    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
+    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -exec cp -pf {} ${INSTALLDIR}/backup/shared \;
+    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
 }
 
 checkDownloadContent()

@@ -18,7 +18,6 @@
 #include "../wrappers/wazuh/os_crypto/sha256_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/agent_op_wrappers.h"
-#include "../wrappers/wazuh/remoted/shared_download_wrappers.h"
 #include "../wrappers/posix/dirent_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/remoted/request_wrappers.h"
@@ -32,7 +31,6 @@
 
 #include "wdb.h"
 #include "remoted.h"
-#include "shared_download.h"
 #include "module_limits.h"
 #include "manager.c"
 
@@ -807,9 +805,6 @@ void test_c_group_no_changes(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
-
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
     will_return(__wrap_open_memstream, (FILE *)1);
@@ -875,9 +870,6 @@ void test_c_group_no_changes_disk(void **state)
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
 
     expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg.tmp");
     expect_string(__wrap_wfopen, mode, "w");
@@ -947,9 +939,6 @@ void test_c_group_changes(void **state)
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
 
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
@@ -1021,9 +1010,6 @@ void test_c_group_changes_disk(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
-
     expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, (FILE *)1);
@@ -1088,9 +1074,6 @@ void test_c_group_fail(void **state)
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
 
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
@@ -1158,9 +1141,6 @@ void test_c_group_fail_disk(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
-
     expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, (FILE *)1);
@@ -1197,255 +1177,6 @@ void test_c_group_fail_disk(void **state)
     assert_non_null(group->f_time);
 }
 
-void test_c_group_downloaded_file(void **state)
-{
-    group_t *group = (group_t *)state[0];
-
-    const char *group_name = "test_default";
-
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 1;
-
-    expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, r_group);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Downloading shared file 'etc/shared/test_default/merged.mg' from 'r_group->files_url'");
-
-    expect_string(__wrap_wurl_request, url, r_group->files->url);
-    expect_string(__wrap_wurl_request, dest, "var/download/merged.mg");
-    will_return(__wrap_wurl_request, 0);
-
-    expect_string(__wrap_TestUnmergeFiles, finalpath, "var/download/merged.mg");
-    will_return(__wrap_TestUnmergeFiles, 1);
-
-    expect_string(__wrap_OS_MoveFile, src, "var/download/merged.mg");
-    expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test_default/merged.mg");
-    will_return(__wrap_OS_MoveFile, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg'");
-
-    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
-}
-
-void test_c_group_downloaded_file_no_poll(void **state)
-{
-    group_t *group = (group_t *)state[0];
-
-    const char *group_name = "test_default";
-
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 1;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 1;
-
-    expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, r_group);
-
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg'");
-
-    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
-}
-
-void test_c_group_downloaded_file_is_corrupted(void **state)
-{
-    group_t *group = (group_t *)state[0];
-
-    const char *group_name = "test_default";
-
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 1;
-
-    expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, r_group);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Downloading shared file 'etc/shared/test_default/merged.mg' from 'r_group->files_url'");
-
-    expect_string(__wrap_wurl_request, url, r_group->files->url);
-    expect_string(__wrap_wurl_request, dest, "var/download/merged.mg");
-    will_return(__wrap_wurl_request, 0);
-
-    expect_string(__wrap_TestUnmergeFiles, finalpath, "var/download/merged.mg");
-    will_return(__wrap_TestUnmergeFiles, 0);
-
-    expect_string(__wrap_unlink, file, "var/download/merged.mg");
-    will_return(__wrap_unlink, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "The downloaded file 'var/download/merged.mg' is corrupted.");
-    expect_string(__wrap__merror, formatted_msg, "Failed to delete file 'var/download/merged.mg'");
-
-    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
-}
-
-void test_c_group_download_all_files(void **state)
-{
-    group_t *group = (group_t *)state[0];
-
-    const char *group_name = "test_default";
-
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-
-    os_calloc(1, (2) * sizeof(file), r_group->files);
-    r_group->files[0].name = strdup("r_group->files_name");
-    r_group->files[0].url = strdup("r_group->files_url");;
-
-    r_group->files[1].name = NULL;
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = -1;
-    r_group->merged_is_downloaded = 1;
-
-    expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, r_group);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Downloading shared file 'etc/shared/test_default/r_group->files_name' from 'r_group->files_url'");
-
-    expect_string(__wrap_wurl_request, url, r_group->files->url);
-    expect_string(__wrap_wurl_request, dest, "var/download/r_group->files_name");
-    will_return(__wrap_wurl_request, 0);
-
-    expect_string(__wrap_OS_MoveFile, src, "var/download/r_group->files_name");
-    expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test_default/r_group->files_name");
-    will_return(__wrap_OS_MoveFile, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg'");
-
-    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
-}
-
-void test_c_group_no_create_shared_file(void **state)
-{
-    group_t *group = (group_t *)state[0];
-
-    const char *group_name = "test_default";
-
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 0;
-
-    expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
-
-    // Start validate_shared_files function
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
-    will_return(__wrap_wreaddir, NULL);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
-    // End validate_shared_files function
-
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, -1);
-
-    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, false, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
-
-    assert_string_equal(group->name, "test_default");
-    assert_string_equal(group->merged_sum, "");
-    assert_non_null(group->f_time);
-}
-
 void test_c_group_invalid_share_file(void **state)
 {
     disk_storage = 0;
@@ -1454,24 +1185,8 @@ void test_c_group_invalid_share_file(void **state)
 
     const char *group_name = "test_default";
 
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 0;
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
 
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
@@ -1526,12 +1241,6 @@ void test_c_group_invalid_share_file(void **state)
     expect_string(__wrap__merror, formatted_msg, "Unable to open file: 'etc/shared/test_default/merged.mg' due to [(0)-(No such file or directory)].");
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
 }
 
 void test_c_group_append_file_error(void **state)
@@ -1542,24 +1251,8 @@ void test_c_group_append_file_error(void **state)
 
     const char *group_name = "test_default";
 
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 0;
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
 
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
@@ -1619,12 +1312,6 @@ void test_c_group_append_file_error(void **state)
     will_return(__wrap_fclose, 0);
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
 }
 
 void test_c_group_append_ar_error(void **state)
@@ -1635,24 +1322,8 @@ void test_c_group_append_ar_error(void **state)
 
     const char *group_name = "test_default";
 
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 0;
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
 
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
@@ -1675,12 +1346,6 @@ void test_c_group_append_ar_error(void **state)
     will_return(__wrap_fclose, 0);
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
 }
 
 void test_c_group_truncate_error(void **state)
@@ -1691,24 +1356,8 @@ void test_c_group_truncate_error(void **state)
 
     const char *group_name = "test_default";
 
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 0;
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
 
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
@@ -1719,12 +1368,6 @@ void test_c_group_truncate_error(void **state)
     expect_string(__wrap__merror, formatted_msg, "Unable to open memory stream due to [(0)-(No such file or directory)].");
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
 }
 
 void test_c_group_truncate_error_disk(void **state)
@@ -1735,24 +1378,8 @@ void test_c_group_truncate_error_disk(void **state)
 
     const char *group_name = "test_default";
 
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 0;
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
 
     expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg.tmp");
     expect_string(__wrap_wfopen, mode, "w");
@@ -1763,12 +1390,6 @@ void test_c_group_truncate_error_disk(void **state)
     expect_string(__wrap__merror, formatted_msg, "Unable to create merged file: 'etc/shared/test_default/merged.mg.tmp' due to [(0)-(No such file or directory)].");
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
 }
 
 void test_c_multi_group_hash_multigroup_null(void **state)
@@ -2016,9 +1637,6 @@ void test_c_multi_group_call_c_group(void **state)
     // Start c_group function
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, "hash_multi_group_test");
-    will_return(__wrap_w_parser_get_group, NULL);
 
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
@@ -2726,9 +2344,6 @@ void test_process_groups_find_group_null(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_w_parser_get_group, name, "test");
-    will_return(__wrap_w_parser_get_group, NULL);
-
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
     will_return(__wrap_open_memstream, (FILE *)1);
@@ -2838,9 +2453,6 @@ void test_process_groups_find_group_changed(void **state)
     // Start c_group function
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)11);
-
-    expect_string(__wrap_w_parser_get_group, name, "test_default");
-    will_return(__wrap_w_parser_get_group, NULL);
 
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
@@ -3310,7 +2922,7 @@ void test_process_multi_groups_changed_outside(void **state)
     will_return(__wrap_strerror, "No such file or directory");
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
 
-    expect_string(__wrap__mwarn, formatted_msg, "Multigroup 'group1,group2' was modified from outside, so it was regenerated.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Multigroup 'group1,group2' was modified from outside, so it was regenerated.");
 
     expect_value(__wrap_OSHash_Next, self, m_hash);
     will_return(__wrap_OSHash_Next, NULL);
@@ -5776,11 +5388,6 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_c_group_changes_disk, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_fail, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_fail_disk, test_c_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_downloaded_file, test_c_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_downloaded_file_no_poll, test_c_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_downloaded_file_is_corrupted, test_c_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_download_all_files, test_c_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_no_create_shared_file, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_invalid_share_file, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_append_file_error, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_append_ar_error, test_c_group_setup, test_c_group_teardown),

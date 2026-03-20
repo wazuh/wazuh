@@ -12,7 +12,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 list(APPEND remoted_names "test_manager")
 list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_parser_get_agent \
                             -Wl,--wrap,_merror -Wl,--wrap,_merror_exit -Wl,--wrap,popen \
-                            -Wl,--wrap,MergeAppendFile -Wl,--wrap,OS_MoveFile -Wl,--wrap,w_parser_get_group \
+                            -Wl,--wrap,MergeAppendFile -Wl,--wrap,OS_MoveFile \
                             -Wl,--wrap,wurl_request -Wl,--wrap,TestUnmergeFiles -Wl,--wrap,OS_MD5_File \
                             -Wl,--wrap,open_memstream -Wl,--wrap,OS_MD5_Str -Wl,--wrap,fprintf\
                             -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get \

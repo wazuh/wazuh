@@ -10,7 +10,6 @@
 
 #include "shared.h"
 #include "remoted.h"
-#include "shared_download.h"
 #include <unistd.h>
 
 /* Prototypes */
@@ -203,9 +202,6 @@ int main(int argc, char **argv)
 
     /* Start up message */
     mdebug2(STARTUP_MSG, (int)getpid());
-
-    //Start shared download
-    w_init_shared_download();
 
     /* Really start the program */
     HandleRemote(uid);
