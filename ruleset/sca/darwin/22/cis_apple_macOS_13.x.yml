@@ -1148,14 +1148,14 @@ checks:
       subtechnique: ["T1562.002", "T1070.001"]
     condition: any
     rules:
-      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)s OR \d+[\w@-] compare => 5184000'
-      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)h OR \d+[\w@-] compare => 1440'
-      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)d OR \d+[\w@-] compare => 60'
-      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)y OR \d+[\w@-] compare => 1'
-      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+[\w@-] OR (\d+)b compare => 5368709120'
-      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+[\w@-] OR (\d+)k compare => 5242880'
-      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+[\w@-] OR (\d+)m compare => 5120'
-      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+[\w@-] OR (\d+)g compare => 5'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)s OR \d+[\w@-] compare >= 5184000'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)h OR \d+[\w@-] compare >= 1440'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)d OR \d+[\w@-] compare >= 60'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)y OR \d+[\w@-] compare >= 1'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+[\w@-] OR (\d+)b compare >= 5368709120'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+[\w@-] OR (\d+)k compare >= 5242880'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+[\w@-] OR (\d+)m compare >= 5120'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+[\w@-] OR (\d+)g compare >= 5'
 
   # 3.5 Ensure Access to Audit Records Is Controlled. (Automated) - Not Implemented
   # 3.6 Ensure Firewall Logging Is Enabled and Configured. (Automated) - Not Implemented
