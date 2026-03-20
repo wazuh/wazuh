@@ -7,9 +7,6 @@
  * Foundation
 */
 
-#ifndef CLIENT
-#ifndef WIN32
-
 #include "wmodules.h"
 
 static const char *XML_CLEANUP_TIME = "cleanup_time";
@@ -105,6 +102,3 @@ int wm_task_manager_read(__attribute__((unused)) const OS_XML *xml, xml_node **n
 
     return 0;
 }
-
-#endif 
-#endif

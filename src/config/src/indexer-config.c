@@ -9,9 +9,6 @@
  * Foundation.
  */
 
-#ifndef CLIENT
-#ifndef WIN32
-
 #include "shared.h"
 #include <cJSON.h>
 #include "engine_external.h"
@@ -40,6 +37,3 @@ int Read_Indexer(const char* config_file)
 
     return OS_SUCCESS;
 }
-
-#endif // WIN32
-#endif // CLIENT
