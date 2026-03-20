@@ -17,7 +17,7 @@ jobs:
       matrix:
         module: [shared_modules/file_helper]
         target: [agent, winagent]
-    runs-on: ubuntu-24.04
+    runs-on: wz-linux-amd64
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3

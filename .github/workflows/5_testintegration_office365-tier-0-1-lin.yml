@@ -22,7 +22,7 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-    runs-on: ubuntu-22.04
+    runs-on: wz-linux-amd64
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -71,12 +71,10 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run office365 integration tests.
       - name: Run office365 integration tests
         run: |
           cd tests/integration
           sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python -m pytest --tier 0 --tier 1 test_office365/ --html=results.html --self-contained-html
-      # Upload the tests result html as an artifact
       - name: Upload failed test results
         if: failure()
         uses: actions/upload-artifact@v4

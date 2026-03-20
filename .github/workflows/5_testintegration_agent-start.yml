@@ -47,7 +47,7 @@ jobs:
           ENTRIES='[]'
 
           DEB=$(jq -cn '{
-            runner: "ubuntu-latest", platform: "linux-deb",
+            runner: "wz-linux-amd64", platform: "linux-deb",
             "display-name": "Linux DEB (amd64)",
             "artifact-pattern": "wazuh-agent*amd64*.deb",
             "artifact-regexp": "wazuh-agent.*amd64.*\\.deb",
@@ -55,7 +55,7 @@ jobs:
             "packages-path": "/tmp/packages"
           }')
           RPM=$(jq -cn '{
-            runner: "ubuntu-latest", platform: "linux-rpm",
+            runner: "wz-linux-amd64", platform: "linux-rpm",
             "display-name": "Linux RPM (x86_64)",
             "artifact-pattern": "*x86_64*.rpm",
             "artifact-regexp": "wazuh-agent.*x86_64.*\\.rpm",
