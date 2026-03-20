@@ -2838,9 +2838,6 @@ components:
           type: string
         tz_name:
           type: string
-        uuid:
-          type: string
-          nullable: true
 
     WazuhManagerConfiguration:
       type: object
@@ -3263,97 +3260,6 @@ components:
         message:
           type: string
           description: "Confirmation message"
-
-    NewVersions:
-      type: object
-      properties:
-        last_check_date:
-          type: string
-          description: "Datetime of the last query to the CTI service"
-        current_version:
-          type: string
-          description: "Current version in the format vX.Y.Z"
-        update_check:
-          type: boolean
-          description: "Flag that indicates if the service is enabled"
-        last_available_major:
-          type: object
-          description: "Information about the most recent available major update"
-          properties:
-            tag:
-              type: string
-              description: "Version in the format vX.Y.Z"
-            description:
-              type: string
-            title:
-              type: string
-            published_date:
-              type: string
-            semver:
-              type: object
-              properties:
-                major:
-                  type: integer
-                  format: int32
-                minor:
-                  type: integer
-                  format: int32
-                patch:
-                  type: integer
-                  format: int32
-        last_available_minor:
-          type: object
-          description: "Information about the most recent available minor update"
-          properties:
-            tag:
-              type: string
-              description: "Version in the format vX.Y.Z"
-            description:
-              type: string
-            title:
-              type: string
-            published_date:
-              type: string
-            semver:
-              type: object
-              properties:
-                major:
-                  type: integer
-                  format: int32
-                minor:
-                  type: integer
-                  format: int32
-                patch:
-                  type: integer
-                  format: int32
-        last_available_patch:
-          type: object
-          description: "Information about the most recent available patch update"
-          properties:
-            tag:
-              type: string
-              description: "Version in the format vX.Y.Z"
-            description:
-              type: string
-            title:
-              type: string
-            published_date:
-              type: string
-            semver:
-              type: object
-              properties:
-                major:
-                  type: integer
-                  format: int32
-                minor:
-                  type: integer
-                  format: int32
-                patch:
-                  type: integer
-                  format: int32
-        uuid:
-          type: string
-          description: "Identifier of the Wazuh instance"
 
     SecurityConfiguration:
       type: object
@@ -4412,13 +4318,6 @@ components:
         enum:
         - 'rpm'
         - 'deb'
-    force_query:
-      in: query
-      name: force_query
-      description: "Force query to CTI service"
-      schema:
-        type: boolean
-        default: false
     file_path:
       in: query
       name: file_path
@@ -7408,7 +7307,6 @@ paths:
                       max_agents: unlimited
                       tz_offset: +0000
                       tz_name: UTC
-                      uuid: c842f85c-c24b-4b39-9508-093ce53482e7
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -8622,73 +8520,6 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '403':
           $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /cluster/version/check:
-    get:
-      tags:
-        - Cluster
-      summary: "Check available updates"
-      description: "Return if there is any available update"
-      operationId: api.controllers.cluster_controller.check_available_version
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/force_query'
-      responses:
-        '200':
-          description: "Information about available new versions"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/NewVersions'
-              example:
-                data:
-                  last_check_date: '2023-10-09T15:39:57.616301+00:00'
-                  current_version: v4.8.0
-                  update_check: true
-                  last_available_major:
-                    tag: v5.0.0
-                    description: ""
-                    title: Wazuh 5.0.0
-                    published_date: '2023-10-05T12:48:00Z'
-                    semver:
-                      major: 5
-                      minor: 0
-                      patch: 0
-                  last_available_minor:
-                    tag: v4.9.1
-                    description: ""
-                    title: Wazuh 4.9.1
-                    published_date: '2023-10-05T12:47:00Z'
-                    semver:
-                      major: 4
-                      minor: 9
-                      patch: 1
-                  last_available_patch:
-                    tag: v4.8.2
-                    description: ""
-                    title: Wazuh 4.8.2
-                    published_date: '2023-10-05T12:46:00Z'
-                    semver:
-                      major: 4
-                      minor: 8
-                      patch: 2
-                  uuid: "edc90f7f-fca4-446c-8985-e69520948e42"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '404':
-          $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':

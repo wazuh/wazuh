@@ -99,11 +99,6 @@ CONF_SECTIONS = MappingProxyType({
 })
 
 GETCONFIG_COMMAND = "getconfig"
-UPDATE_CHECK_OSSEC_FIELD = 'update_check'
-GLOBAL_KEY = 'global'
-YES_VALUE = 'yes'
-CTI_URL_FIELD = 'cti-url'
-DEFAULT_CTI_URL = 'https://cti.wazuh.com'
 
 
 def _insert(json_dst: dict, section_name: str, option: str, value: str):
@@ -1181,35 +1176,3 @@ def write_ossec_conf(new_conf: str):
     except Exception as e:
         raise WazuhError(1126, extra_message=str(e))
 
-
-def update_check_is_enabled() -> bool:
-    """Read the wazuh-manager.conf and check UPDATE_CHECK_OSSEC_FIELD value.
-
-    Returns
-    -------
-    bool
-        True if UPDATE_CHECK_OSSEC_FIELD is 'yes' or isn't present, else False.
-    """
-    try:
-        global_configurations = get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {})
-        return global_configurations.get(UPDATE_CHECK_OSSEC_FIELD, YES_VALUE) == YES_VALUE
-    except WazuhError as e:
-        if e.code != 1106:
-            raise e
-        return True
-
-
-def get_cti_url() -> str:
-    """Get the CTI service URL from the configuration.
-
-    Returns
-    -------
-    str
-        CTI service URL. The default value is returned if CTI_URL_FIELD isn't present.
-    """
-    try:
-        return get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {}).get(CTI_URL_FIELD, DEFAULT_CTI_URL)
-    except WazuhError as e:
-        if e.code != 1106:
-            raise e
-        return DEFAULT_CTI_URL

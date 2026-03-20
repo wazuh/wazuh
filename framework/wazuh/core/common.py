@@ -126,26 +126,6 @@ def get_context_cache() -> dict:
     return _context_cache
 
 
-def get_installation_uid() -> str:
-    """Get the installation UID, creating it if it does not exist.
-    Returns
-    -------
-    str
-        A string containing the installation UID.
-    """
-    if os.path.exists(INSTALLATION_UID_PATH):
-        with open(INSTALLATION_UID_PATH, 'r') as f:
-            installation_uid = f.read().strip()
-    else:
-        installation_uid = str(uuid.uuid4())
-        with open(INSTALLATION_UID_PATH, 'w') as f:
-            f.write(installation_uid)
-            os.chown(f.name, wazuh_uid(), wazuh_gid())
-            os.chmod(f.name, 0o660)
-
-    return installation_uid
-
-
 # ================================================= Context variables ==================================================
 rbac: ContextVar[Dict] = ContextVar('rbac', default={'rbac_mode': 'black'})
 current_user: ContextVar[str] = ContextVar('current_user', default='')
@@ -237,4 +217,3 @@ KEY_STORE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'keystore')
 
 # ========================================== INSTALLATION UID PATH ====================================================
 SECURITY_PATH = os.path.join(WAZUH_PATH, 'api', 'configuration', 'security')
-INSTALLATION_UID_PATH = os.path.join(SECURITY_PATH, 'installation_uid')

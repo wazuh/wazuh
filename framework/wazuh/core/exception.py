@@ -306,9 +306,6 @@ class WazuhException(Exception):
         2016: {'message': 'Invalid unix socket path'},
         2017: {'message': 'Could not retrieve agents synchronization information from wazuh-manager-db'},
 
-        # External services
-        2100: {'message': 'Error in CTI service request'},
-
         # Indexer
         2200: {'message': 'Error connecting to the Indexer service'},
         2201: {'message': 'Error in authentication credentials for Indexer service'},

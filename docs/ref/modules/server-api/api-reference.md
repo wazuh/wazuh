@@ -384,7 +384,6 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | GET | `/cluster/api/config` | API config |
 | PUT | `/cluster/restart` | Restart cluster |
 | GET | `/cluster/configuration/validation` | Validate config |
-| GET | `/cluster/version/check` | Version check |
 | GET | `/cluster/{node_id}/status` | Node status |
 | GET | `/cluster/{node_id}/info` | Node info |
 | GET | `/cluster/{node_id}/configuration` | Node config |

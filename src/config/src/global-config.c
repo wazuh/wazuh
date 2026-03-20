@@ -95,7 +95,6 @@ int Read_Global(__attribute__((unused)) const OS_XML *xml, XML_NODE node, void *
     const char *xml_limits = "limits";
     const char *xml_cti_url = "cti-url";
 #endif
-    const char *xml_update_check = "update_check";
     const char *xml_queue_size = "queue_size";
     const char *xml_forwardto = "forward_to";
 
@@ -129,11 +128,6 @@ int Read_Global(__attribute__((unused)) const OS_XML *xml, XML_NODE node, void *
         os_strdup(CTI_URL_DEFAULT, Config->cti_url);
     }
 
-    /* Default values */
-    if (Config) {
-        Config->update_check = 1;
-    }
-
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
@@ -162,21 +156,6 @@ int Read_Global(__attribute__((unused)) const OS_XML *xml, XML_NODE node, void *
                         Config->forwarders_list[tgt_idx] = tmp;
                     }
                 }
-            }
-        }
-        /* update check system */
-        else if (strcmp(node[i]->element, xml_update_check) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                if (Config) {
-                    Config->update_check = 1;
-                }
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                if (Config) {
-                    Config->update_check = 0;
-                }
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
             }
         }
         /* Compress alerts */
