@@ -73,7 +73,7 @@ Agent-side (`wm_agent_control`) is enabled for agent builds on Unix-like systems
 2. **Framework**: Sends `"{agent_id} control restart"` or `"{agent_id} control reload"` to the remoted socket
 3. **Remoted**: Forwards the control message to the target agent
 4. **Agent Dispatch**: The agent's request handler routes the `control` socket message to `wm_agentcontrol_dispatch()`
-5. **Execution**: The agent runs restart/reload via systemctl or wazuh-control (Unix) or service API (Windows)
+5. **Execution**: The agent runs restart/reload via systemctl or wazuh-control (Unix); on Windows, `control_run_detached()` spawns a detached copy of `wazuh-agent.exe service-restart` that stops and restarts the service from outside WazuhSvc
 
 ### Systemd Detection
 

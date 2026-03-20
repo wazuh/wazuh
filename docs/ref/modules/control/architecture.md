@@ -292,7 +292,7 @@ Any other command:
    └─► socket.close()
 ```
 
-### Remote Agent Restart/Reload Request Flow
+### Remote Agent Restart/Reload Request Flow (Unix)
 
 ```
 1. API/Framework
@@ -311,6 +311,33 @@ Any other command:
                └─► Parent: return "ok "
 
 4. Response propagated back to API/Framework
+```
+
+### Remote Agent Restart/Reload Request Flow (Windows)
+
+```
+1. API/Framework
+   └─► WazuhSocket(REMOTED_SOCKET).send("{agent_id} control restart")
+
+2. wazuh-remoted
+   └─► Forwards message to target agent
+
+3. wazuh-agentd (agent side)
+   └─► Receives "control" socket message
+       └─► Routes to control_dispatch("restart", &output)
+           └─► control_run_detached("restart", &output)
+               ├─► GetModuleFileNameA() — resolves wazuh-agent.exe path
+               ├─► CreateProcessA("wazuh-agent.exe service-restart",
+               │       DETACHED_PROCESS | CREATE_NO_WINDOW)
+               │   └─► Detached child:
+               │         sleep(1s)              ← waits for "ok" to reach remoted
+               │         os_stop_service()      ← stops WazuhSvc
+               │         os_start_service()     ← starts WazuhSvc
+               │         exit(0)
+               ├─► CloseHandle() — parent releases child handles
+               └─► return "ok " immediately
+
+4. Response propagated back to API/Framework (before WazuhSvc stops)
 ```
 
 ## Thread Model
