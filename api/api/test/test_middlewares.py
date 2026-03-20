@@ -121,15 +121,16 @@ async def test_check_rate_limits_middleware(endpoint, mock_req):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("endpoint, return_code_general, return_code_events", [
-    ('/agents', 6001, 0),
-    ('/events', 0, 6005),
-    ('/events', 6001, 6005),
+@pytest.mark.parametrize("endpoint, return_values, expected_calls, expected_code", [
+    ('/agents', [6001], 1, 6001),
+    ('/events', [0, 6005], 2, 6005),
+    ('/events', [6001], 1, 6001),
 ])
 async def test_check_rate_limits_middleware_ko(
-    endpoint, return_code_general, return_code_events, mock_req):
+    endpoint, return_values, expected_calls, expected_code, mock_req):
     """Test limits middleware."""
-    return_value_sequence = [return_code_general, return_code_events]
+    return_value_sequence = return_values.copy()
+
     def check_rate_limit_side_effect(*_):
         """Side effect function."""
         return return_value_sequence.pop(0)
@@ -141,20 +142,19 @@ async def test_check_rate_limits_middleware_ko(
     mock_req.url = MagicMock()
     mock_req.url.path = endpoint
     rq_x_min = 10000
-    api_conf = {'access': { 'max_request_per_minute': rq_x_min }}
+    api_conf = {'access': {'max_request_per_minute': rq_x_min}}
     with TestContext(operation=operation), \
         patch('api.middlewares.ConnexionRequest.from_starlette_request',
               return_value=mock_req) as mock_from, \
         patch('api.middlewares.configuration.api_conf', api_conf), \
-        patch('api.middlewares.check_rate_limit', side_effect=check_rate_limit_side_effect), \
+        patch('api.middlewares.check_rate_limit', side_effect=check_rate_limit_side_effect) as mock_check, \
         pytest.raises(ProblemException) as exc_info:
         await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
         mock_from.assert_called_once_with(mock_req)
         dispatch_mock.assert_not_awaited()
         assert exc_info.value.status == 429
-        assert exc_info.value.title == "Permission Denied"
-        assert exc_info.value.detail == return_code_general if endpoint == 'event' else return_code_events
-        assert exc_info.ext == mock_req
+        assert mock_check.call_count == expected_calls
+        assert exc_info.value.ext['code'] == expected_code
 
 
 @pytest.mark.asyncio
