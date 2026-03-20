@@ -1,5 +1,5 @@
 name: output/file-output-integrations/0
-enabled: true
+enabled: false
 
 metadata:
   module: wazuh

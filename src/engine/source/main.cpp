@@ -665,6 +665,7 @@ int main(int argc, char* argv[])
         }
 
         // Remote runtime settings sync
+        if (enableProcessing)
         {
             const auto remoteConfSyncInterval = confManager.get<std::size_t>(conf::key::REMOTE_CONF_SYNC_INTERVAL);
             scheduler->scheduleTask("remote-conf-sync",
