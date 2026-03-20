@@ -200,7 +200,7 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
             max_request_per_minute,
             6001)
 
-        if request.url.path == '/events':
+        if not error_code and request.url.path == '/events':
             error_code = check_rate_limit(
                 'events_request_counter',
                 'events_current_time',
