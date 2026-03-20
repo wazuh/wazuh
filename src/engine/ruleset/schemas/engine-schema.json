@@ -1683,6 +1683,42 @@
     "log.origin.function": {
       "type": "keyword"
     },
+    "log.syslog": {
+      "type": "object"
+    },
+    "log.syslog.appname": {
+      "type": "keyword"
+    },
+    "log.syslog.facility.code": {
+      "type": "long"
+    },
+    "log.syslog.facility.name": {
+      "type": "keyword"
+    },
+    "log.syslog.hostname": {
+      "type": "keyword"
+    },
+    "log.syslog.msgid": {
+      "type": "keyword"
+    },
+    "log.syslog.priority": {
+      "type": "long"
+    },
+    "log.syslog.procid": {
+      "type": "keyword"
+    },
+    "log.syslog.severity.code": {
+      "type": "long"
+    },
+    "log.syslog.severity.name": {
+      "type": "keyword"
+    },
+    "log.syslog.structured_data": {
+      "type": "flat_object"
+    },
+    "log.syslog.version": {
+      "type": "keyword"
+    },
     "message": {
       "type": "keyword"
     },

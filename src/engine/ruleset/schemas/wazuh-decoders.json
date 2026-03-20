@@ -3760,6 +3760,91 @@
             "string"
           ]
         },
+        "log.syslog": {
+          "additionalProperties": false,
+          "description": "Module: ecs\nIndexerType: object\n\nThe Syslog metadata of the event, if the event was transmitted via Syslog. Please see RFCs 5424 or 3164.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "properties": {
+            "appname": {
+              "description": "Module: ecs\nIndexerType: keyword\n\nThe device or application that originated the Syslog message, if available.",
+              "type": [
+                "string"
+              ]
+            },
+            "facility.code": {
+              "description": "Module: ecs\nIndexerType: long\n\nThe Syslog numeric facility of the log event, if available.\nAccording to RFCs 5424 and 3164, this value should be an integer between 0 and 23.",
+              "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "facility.name": {
+              "description": "Module: ecs\nIndexerType: keyword\n\nThe Syslog text-based facility of the log event, if available.",
+              "type": [
+                "string"
+              ]
+            },
+            "hostname": {
+              "description": "Module: ecs\nIndexerType: keyword\n\nThe hostname, FQDN, or IP of the machine that originally sent the Syslog message. This is sourced from the hostname field of the syslog header. Depending on the environment, this value may be different from the host that handled the event, especially if the host handling the events is acting as a collector.",
+              "type": [
+                "string"
+              ]
+            },
+            "msgid": {
+              "description": "Module: ecs\nIndexerType: keyword\n\nAn identifier for the type of Syslog message, if available. Only applicable for RFC 5424 messages.",
+              "type": [
+                "string"
+              ]
+            },
+            "priority": {
+              "description": "Module: ecs\nIndexerType: long\n\nSyslog numeric priority of the event, if available.\nAccording to RFCs 5424 and 3164, the priority is 8 * facility + severity. This number is therefore expected to contain a value between 0 and 191.",
+              "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "procid": {
+              "description": "Module: ecs\nIndexerType: keyword\n\nThe process name or ID that originated the Syslog message, if available.",
+              "type": [
+                "string"
+              ]
+            },
+            "severity.code": {
+              "description": "Module: ecs\nIndexerType: long\n\nThe Syslog numeric severity of the log event, if available.\nIf the event source publishing via Syslog provides a different numeric severity value (e.g. firewall, IDS), your source's numeric severity should go to `event.severity`. If the event source does not specify a distinct severity, you can optionally copy the Syslog severity to `event.severity`.",
+              "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "severity.name": {
+              "description": "Module: ecs\nIndexerType: keyword\n\nThe Syslog numeric severity of the log event, if available.\nIf the event source publishing via Syslog provides a different severity value (e.g. firewall, IDS), your source's text severity should go to `log.level`. If the event source does not specify a distinct severity, you can optionally copy the Syslog severity to `log.level`.",
+              "type": [
+                "string"
+              ]
+            },
+            "structured_data": {
+              "description": "Module: ecs\nIndexerType: flat_object\n\nStructured data expressed in RFC 5424 messages, if available. These are key-value pairs formed from the structured data portion of the syslog message, as defined in RFC 5424 Section 6.3.",
+              "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+              "type": [
+                "object",
+                "string"
+              ]
+            },
+            "version": {
+              "description": "Module: ecs\nIndexerType: keyword\n\nThe version of the Syslog protocol specification. Only applicable for RFC 5424 messages.",
+              "type": [
+                "string"
+              ]
+            }
+          },
+          "type": [
+            "object",
+            "string"
+          ]
+        },
         "message": {
           "description": "Module: ecs\nIndexerType: keyword\n\nFor log events the message field contains the log message, optimized for viewing in a log viewer.\nFor structured logs without an original message field, other fields can be concatenated to form a human-readable summary of the event.\nIf multiple messages exist, they can be combined into one message.",
           "type": [
