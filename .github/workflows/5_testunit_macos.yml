@@ -23,7 +23,7 @@ jobs:
           cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
           make -j$(sysctl -n hw.ncpu)
           sudo make install
-      - name: Build wazuh agent for macOS 14 with tests flags
+      - name: Build wazuh agent for macOS 14 with tests flags enabled
         env:
             CMAKE_POLICY_VERSION_MINIMUM: 3.5
         run: |
