@@ -15,6 +15,8 @@ from wazuh.core.indexer.max_version_components import MaxVersionIndex
 
 MAX_RETRIES = 3
 BACKOFF_TIMEOUT = 60
+
+
 class Indexer:
     """
     Interface to connect with Wazuh Indexer.
@@ -209,24 +211,25 @@ class Indexer:
         return await self._client.mget(*args, **kwargs)
 
     async def healthcheck(self) -> bool:
-        """
-        Check the health of the Wazuh Indexer connection.
+        """Check the health of the Wazuh Indexer connection.
 
         Attempts to call the `info()` endpoint of the OpenSearch client.
-        Returns `True` if the call succeeds (i.e., the client responds),
-        otherwise returns `False` on any exception.
+        If the call succeeds, the method returns `None`. If any exception
+        occurs (e.g., network issues, authentication failure), a
+        `WazuhIndexerError` is raised with the appropriate error code and
+        message.
 
-        Returns
-        -------
-        bool
-            `True` if the indexer is reachable and responds correctly,
-            `False` otherwise.
+        Raises
+        ------
+        WazuhIndexerError
+            If the indexer is unreachable or does not respond correctly.
+            The error code is `1015` and the message includes the original
+            exception details.
         """
         try:
             await self._client.info()
-            return True
-        except Exception:
-            return False
+        except Exception as e:
+            raise WazuhIndexerError(1015, extra_message=f"Failed to create indexer client: \n{e}")
 
 
 async def create_indexer(retries: int = MAX_RETRIES, backoff: int = BACKOFF_TIMEOUT, **kwargs) -> Indexer:
@@ -261,7 +264,7 @@ async def create_indexer(retries: int = MAX_RETRIES, backoff: int = BACKOFF_TIME
     try:
         indexer = Indexer(**kwargs)
     except TypeError as e:
-        raise WazuhIndexerError(2201, extra_message=f"Invalid arguments for Indexer: {e}") from e
+        raise WazuhIndexerError(2201, extra_message=f"Invalid arguments for Indexer: \nError:{e}") from e
 
     for attempt in range(retries + 1):
         try:
@@ -271,10 +274,11 @@ async def create_indexer(retries: int = MAX_RETRIES, backoff: int = BACKOFF_TIME
             if attempt == retries:
                 await indexer.close()
                 getLogger("wazuh").warning(
-                    f"Indexer service is unavailable after multiple connection attempts. Some functionality may be limited. Error: {e}. Verify indexer connectivity and configuration."
+                    f"Indexer service is unavailable after multiple connection attempts. Some functionality may be limited.\n"
+                    f"Error: {e}\n Verify indexer connectivity and configuration."
                 )
                 raise IndexerUnavailableError(
-                    2200, extra_message=f"Indexer unavailable after {retries} retries: {e}"
+                    2200, extra_message=f"Indexer unavailable after {retries} retries. \nError: {e}"
                 ) from e
 
             # Exponential backoff with jitter to avoid "thundering herd"
