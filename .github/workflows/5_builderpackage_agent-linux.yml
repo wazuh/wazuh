@@ -1,4 +1,4 @@
-run-name: Build Wazuh agent Linux - ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }} - ${{ inputs.system || 'deb,rpm' }} - ${{ inputs.architecture || 'amd64,i386' }}
+run-name: Build Wazuh agent Linux - ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }} - ${{ inputs.system || 'deb,rpm' }} - ${{ inputs.architecture || 'amd64' }}
 name: 5.X - Build Wazuh agent Linux (DEB/RPM)
 
 on:
@@ -12,13 +12,12 @@ on:
     inputs:
       architecture:
         type: choice
-        description: Package architecture [x86_64, amd64, i386].
+        description: Package architecture [x86_64, amd64].
         required: true
         default: amd64
         options:
           - x86_64
           - amd64
-          - i386
       system:
         type: choice
         description: Package OS [deb, rpm].
@@ -57,7 +56,7 @@ jobs:
     name: Build DEB ${{ matrix.arch }} package
     strategy:
       matrix:
-        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64", "i386"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
       fail-fast: false
 
     steps:
@@ -143,7 +142,7 @@ jobs:
     name: Test DEB ${{ matrix.arch }} package
     strategy:
       matrix:
-        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64", "i386"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
       fail-fast: false
 
     steps:
@@ -264,7 +263,7 @@ jobs:
     name: Upload DEB ${{ matrix.arch }} to S3
     strategy:
       matrix:
-        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64", "i386"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
       fail-fast: false
 
     steps:
@@ -327,7 +326,7 @@ jobs:
     name: Build RPM ${{ matrix.arch }} package
     strategy:
       matrix:
-        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64", "i386"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
       fail-fast: false
 
     steps:
@@ -420,7 +419,7 @@ jobs:
     name: Test RPM ${{ matrix.arch }} package
     strategy:
       matrix:
-        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64", "i386"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
       fail-fast: false
 
     steps:
@@ -549,7 +548,7 @@ jobs:
     name: Upload RPM ${{ matrix.arch }} to S3
     strategy:
       matrix:
-        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64", "i386"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
       fail-fast: false
 
     steps:
