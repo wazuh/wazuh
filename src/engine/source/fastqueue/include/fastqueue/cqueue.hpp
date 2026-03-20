@@ -16,9 +16,9 @@ namespace
 /**
  * @brief Optimized traits for large queues (2^17 to 2^20 elements)
  *
- * BLOCK_SIZE: 4096 elements per block
- *   - For 131K elements (2^17): ~32 blocks
- *   - For 1M elements (2^20): ~256 blocks
+ * BLOCK_SIZE: 512 elements per block
+ *   - For 131K elements (2^17): ~256 blocks
+ *   - For 1M elements (2^20): ~2048 blocks
  *   - Larger blocks = fewer allocations, better cache locality for sequential access
  *
  * IMPLICIT_INITIAL_INDEX_SIZE: 512 entries
@@ -28,8 +28,8 @@ namespace
  */
 struct WQueueTraits : public moodycamel::ConcurrentQueueDefaultTraits
 {
-    static constexpr size_t BLOCK_SIZE = 4096;                 // Optimal for large queues
-    static constexpr size_t IMPLICIT_INITIAL_INDEX_SIZE = 512; // Supports up to 2^21 elements
+    static constexpr size_t BLOCK_SIZE = 512;                  // 256 blocks for 131K capacity
+    static constexpr size_t IMPLICIT_INITIAL_INDEX_SIZE = 512; // Unchanged
 };
 } // namespace
 

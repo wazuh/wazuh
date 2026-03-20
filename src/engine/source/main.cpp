@@ -52,14 +52,6 @@
 #include "base/utils/getExceptionStack.hpp"
 #include "stackExecutor.hpp"
 
-namespace
-{
-struct QueueTraits : public moodycamel::ConcurrentQueueDefaultTraits
-{
-    static constexpr size_t BLOCK_SIZE = 2048;
-    static constexpr size_t IMPLICIT_INITIAL_INDEX_SIZE = 8192;
-};
-} // namespace
 
 volatile sig_atomic_t g_shutdown_requested = 0;
 
