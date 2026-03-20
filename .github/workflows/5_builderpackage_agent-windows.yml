@@ -1,6 +1,10 @@
 run-name: Build Wazuh agent Windows i686 - ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
 name: 5.X - Build Wazuh agent Windows (MSI)
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
@@ -38,6 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      any_matched: ${{ steps.set-matrix.outputs.any_matched }}
 
     steps:
       - name: Checkout repository
@@ -62,7 +67,7 @@ jobs:
           output_path = os.environ['GITHUB_OUTPUT']
 
           if event_name != 'pull_request':
-              matrix = []
+              matched = []
           else:
               base_ref = os.environ['BASE_REF']
               diff_range = f'origin/{base_ref}...HEAD'
@@ -74,10 +79,9 @@ jobs:
               with open('.github/test-modules-windows.json', encoding='utf-8') as stream:
                   modules = json.load(stream).get('modules', [])
 
-              matrix = []
+              matched = []
               for module in modules:
                   module_name = module['name']
-                  workflow = module['workflow']
                   matched_pattern = None
 
                   for pattern in module.get('paths', []):
@@ -87,12 +91,26 @@ jobs:
 
                   if matched_pattern is not None:
                       print(f"Matched {module_name} with pattern {matched_pattern}")
-                      matrix.append({'name': module_name, 'workflow': workflow})
+                      tiers = module.get('tiers', ['0 1'])
+                      for tier in tiers:
+                          tier_args = ' '.join(f'--tier {t}' for t in tier.split())
+                          shard_name = f"tier-{tier.replace(' ', '-')}"
+                          matched.append({
+                              'name': module_name,
+                              'shard_name': shard_name,
+                              'pytest_target': module['pytest_target'],
+                              'pytest_extra_args': module.get('pytest_extra_args', ''),
+                              'pytest_tier_args': tier_args,
+                              'start_service': module.get('start_service', False),
+                          })
 
-              print(f'Final matrix: {json.dumps(matrix)}')
+              print(f'Final matrix: {json.dumps(matched)}')
 
+          matrix = {'include': matched} if matched else {'include': [{'name': 'none'}]}
+          any_matched = 'true' if matched else 'false'
           with open(output_path, 'a', encoding='utf-8') as stream:
               stream.write(f"matrix={json.dumps(matrix, separators=(',', ':'))}\n")
+              stream.write(f"any_matched={any_matched}\n")
           PY
 
   build-windows-i686:
@@ -448,14 +466,26 @@ jobs:
       platform: 'windows'
     secrets: inherit
 
-  run-fim-tier-tests:
+  run-integration-tests:
     needs: [smoke-test-windows, detect-changes]
-    if: success() && github.event_name == 'pull_request' && contains(needs.detect-changes.outputs.matrix, '"name":"fim"')
-    name: Run Windows integration tests (fim) - skipped if no FIM changes
+    if: >
+      success() &&
+      github.event_name == 'pull_request' &&
+      needs.detect-changes.outputs.any_matched == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
+    name: ${{ needs.detect-changes.outputs.any_matched == 'true' && format('IT Windows - {0} ({1})', matrix.name, matrix.shard_name) || 'IT Windows - no relevant changes' }}
     uses: ./.github/workflows/5_testintegration_fim-tier-0-1-win.yml
     with:
       base_branch: ${{ github.event.pull_request.base.ref }}
       head_sha: ${{ github.event.pull_request.head.sha }}
       build_run_id: ${{ github.run_id }}
+      module_name: ${{ matrix.name }}
+      shard_name: ${{ matrix.shard_name }}
+      pytest_target: ${{ matrix.pytest_target }}
+      pytest_extra_args: ${{ matrix.pytest_extra_args }}
+      pytest_tier_args: ${{ matrix.pytest_tier_args }}
+      start_service: ${{ matrix.start_service }}
     secrets: inherit
 

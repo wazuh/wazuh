@@ -2,15 +2,28 @@
   "modules": [
     {
       "name": "fim",
-      "workflow": "5_testintegration_fim-tier-0-1-win.yml",
+      "pytest_target": "test_fim\\",
+      "tiers": ["0", "1"],
+      "start_service": true,
       "paths": [
-        ".github/workflows/5_testintegration_fim-tier-0-1-win.yml",
         "src/config/src/syscheck-config.c",
         "src/config/include/syscheck-config.h",
         "src/syscheckd/**",
         "src/Makefile",
         "tests/integration/conftest.py",
         "tests/integration/test_fim/**"
+      ]
+    },
+    {
+      "name": "logcollector",
+      "pytest_target": "test_logcollector\\",
+      "paths": [
+        "src/config/src/localfile-config.c",
+        "src/config/include/localfile-config.h",
+        "src/logcollector/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_logcollector/**"
       ]
     }
   ]
