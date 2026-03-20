@@ -231,15 +231,6 @@ x-rbac-catalog:
         actions: ['cluster:status']
         resources: ['*:*:*']
         effect: "allow"
-    'rootcheck:run':
-      description: "Run agents rootcheck scan"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
-        - $ref: '#/x-rbac-catalog/resources/agent:group'
-      example:
-        actions: [ 'rootcheck:run' ]
-        resources: [ 'agent:id:*' ]
-        effect: "allow"
     'security:create':
       description: "Create new system security resources"
       resources:
@@ -328,15 +319,6 @@ x-rbac-catalog:
       example:
         actions: ['mitre:read']
         resources: ['*:*:*']
-        effect: "allow"
-    'syscheck:run':
-      description: "Run agents syscheck scan"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
-        - $ref: '#/x-rbac-catalog/resources/agent:group'
-      example:
-        actions: ['syscheck:run']
-        resources: ['agent:id:*']
         effect: "allow"
     'task:status':
       description: "Access task's status information"
@@ -8168,99 +8150,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /rootcheck:
-    put:
-      tags:
-        - Rootcheck
-      summary: "Run scan"
-      description: "Run rootcheck scan in all agents or a list of them"
-      operationId: api.controllers.rootcheck_controller.put_rootcheck
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/rootcheck:run'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list'
-      responses:
-        '200':
-          description: "Run rootcheck scan in all agents or a list of them"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - "001"
-                    - "002"
-                    - "003"
-                  total_affected_items: 4
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Rootcheck scan was restarted on returned agents"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /syscheck:
-    put:
-      tags:
-        - Syscheck
-      summary: "Run scan"
-      description: "Run FIM scan in all agents"
-      operationId: api.controllers.syscheck_controller.put_syscheck
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/syscheck:run'
-      parameters:
-        - $ref: '#/components/parameters/agents_list'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
-              example:
-                data:
-                  affected_items:
-                    - '001'
-                    - '002'
-                    - '003'
-                  total_affected_items: 4
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Syscheck scan was restarted on returned agents"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
   /mitre/groups:
     get:
       tags:

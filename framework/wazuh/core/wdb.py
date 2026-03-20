@@ -181,11 +181,6 @@ class WazuhDBConnection:
                 (query_elements[2] == 'select',
                  'Wrong SQL query for Mitre database')
             ]
-        elif query_elements[sql_first_index] == 'rootcheck':
-            input_val_errors = [
-                (query_elements[sql_first_index + 1] == 'delete' or query_elements[sql_first_index + 1] == 'save',
-                 'Only "save" or "delete" requests can be sent to WDB')
-            ]
         else:
             input_val_errors = [
                 (query_elements[sql_first_index] == 'sql', "Incorrect WDB request type."),

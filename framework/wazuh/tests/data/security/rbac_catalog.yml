@@ -349,32 +349,6 @@ get_rbac_actions:
           - GET /mitre/software
           - GET /mitre/tactics
           - GET /mitre/techniques
-      rootcheck:run:
-        description: Run agents rootcheck scan
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - rootcheck:run
-          resources:
-            - agent:id:*
-          effect: allow
-        related_endpoints:
-          - PUT /rootcheck
-      syscheck:run:
-        description: Run agents syscheck scan
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - syscheck:run
-          resources:
-            - agent:id:*
-          effect: allow
-        related_endpoints:
-          - PUT /syscheck
       security:edit_run_as:
         description: Change the value of the allow_run_as flag for a user
         resources:

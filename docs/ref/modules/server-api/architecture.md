@@ -47,8 +47,6 @@ It **must not** contain business logic.
 | `agent.py` | Agent lifecycle and queries | `/agents` |
 | `manager.py` | Manager status and configuration | `/manager` |
 | `cluster.py` | Cluster operations | `/cluster` |
-| `syscheck.py` | File Integrity Monitoring | `/syscheck` |
-| `rootcheck.py` | Policy and rootcheck | `/rootcheck` |
 | `security.py` | Authentication and users | `/security` |
 | `rbac/` | Authorization logic | `/security/*` |
 | `mitre.py` | MITRE ATT&CK mappings | `/mitre` |
@@ -114,8 +112,6 @@ Each controller wraps framework calls in the **DAPI (Distributed API)** layer to
 | `cluster_controller.py` | Cluster node operations |
 | `security_controller.py` | Users, roles, policies, RBAC |
 | `active_response_controller.py` | Trigger active response commands |
-| `syscheck_controller.py` | FIM operations |
-| `rootcheck_controller.py` | Rootcheck/SCA results |
 | `mitre_controller.py` | MITRE ATT&CK mappings |
 | `task_controller.py` | Async task queries |
 | `overview_controller.py` | Agent overview/summary |

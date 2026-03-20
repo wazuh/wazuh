@@ -270,24 +270,6 @@ curl -k -X PUT "https://localhost:55000/security/user/revoke?pretty=true" \
 
 ---
 
-### Syscheck & Rootcheck
-
-**`PUT /syscheck`** — Run a syscheck (FIM) scan on agents.
-
-```bash
-curl -k -X PUT "https://localhost:55000/syscheck?agents_list=001,002&pretty=true" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-**`PUT /rootcheck`** — Run a rootcheck scan on agents.
-
-```bash
-curl -k -X PUT "https://localhost:55000/rootcheck?agents_list=001&pretty=true" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
----
-
 ### MITRE ATT&CK
 
 **`GET /mitre/techniques`** — Query MITRE techniques with full details (tactics, mitigations, software, groups, references).
@@ -432,11 +414,9 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | PUT | `/security/config` | Update config |
 | DELETE | `/security/config` | Reset config |
 
-### Syscheck, Rootcheck & Active Response
+### Active Response
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| PUT | `/syscheck` | Run syscheck scan |
-| PUT | `/rootcheck` | Run rootcheck scan |
 | PUT | `/active-response` | Run AR command |
 
 ### MITRE
