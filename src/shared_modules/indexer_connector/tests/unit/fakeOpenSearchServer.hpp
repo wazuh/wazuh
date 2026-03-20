@@ -66,6 +66,9 @@ public:
         }
     }
 
+    /**
+     * @brief Class destructor.
+     */
     ~FakeOpenSearchServer()
     {
         m_server.stop();

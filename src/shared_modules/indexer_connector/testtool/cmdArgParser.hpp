@@ -163,8 +163,8 @@ public:
                   << "\t-w WAIT_TIME\tSpecifies the wait time before close.\n"
                   << "\t-u UPDATE_MAPPINGS_FILE\tSpecifies the update mappings file.\n"
                   << "\t-l LOG_FILE\tSpecifies the log file path.\n"
-                  << "\nExample:"
-                  << "\n\t./indexer_connector_testtool -c config.json -t template.json\n"
+                  << "\nExample:\n"
+                  << "\t./indexer_connector_testtool -c config.json -t template.json\n"
                   << "\n\t./indexer_connector_testtool -c config.json -t template.json -s 000 -L 30\n"
                   << "\n\t./indexer_connector_testtool -c config.json -t template.json -s 000 -L 3 -D 120\n\n";
     }
