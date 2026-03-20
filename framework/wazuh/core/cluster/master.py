@@ -1034,7 +1034,6 @@ class Master(server.AbstractServer):
             _indexer_conf = get_ossec_conf(section="indexer")
             self.disconnected_agent_sync = DisconnectedAgentSyncTasks(server=self,
                                                                       cluster_items=self.cluster_items)
-            self.disconnected_agent_sync.check_indexer()
         except Exception:
             _indexer_conf = {}
 
