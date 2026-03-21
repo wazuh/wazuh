@@ -479,7 +479,7 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
     name: ${{ needs.detect-changes.outputs.any_matched == 'true' && format('IT Windows - {0} ({1})', matrix.name, matrix.shard_name) || 'IT Windows - no relevant changes' }}
-    uses: ./.github/workflows/5_testintegration_fim-tier-0-1-win.yml
+    uses: ./.github/workflows/5_testintegration_windows-integration-tests.yml
     with:
       base_branch: ${{ github.event.pull_request.base.ref }}
       head_sha: ${{ github.event.pull_request.head.sha }}
