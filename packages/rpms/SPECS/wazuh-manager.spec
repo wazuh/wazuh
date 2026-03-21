@@ -448,7 +448,7 @@ if [ $1 = 0 ];then
   rm -rf %{_localstatedir}/logs/
   rm -rf %{_localstatedir}/tmp
   rm -rf %{_localstatedir}/wodles/
-  rm -rf %{_localstatedir}/engine
+  rm -rf %{_localstatedir}/data
 
   # Delete audisp wazuh plugin if exists
   if [ -e /etc/audit/plugins.d/af_wazuh.conf ]; then

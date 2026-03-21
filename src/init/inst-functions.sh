@@ -880,8 +880,8 @@ generateSchemaFiles()
 
 installEngineStore()
 {
-    DEST_FULL_PATH=${INSTALLDIR}/data
-    ENGINE_SRC_PATH=./engine
+    local DEST_FULL_PATH=${INSTALLDIR}/data
+    local ENGINE_SRC_PATH=./engine
 
     # Fallback store installation
     local STORE_PATH=${DEST_FULL_PATH}/store
@@ -893,7 +893,7 @@ installEngineStore()
     local ENGINE_ENRICHMENT_GEO=${ENRICHMENT_PATH}/geo
     local ENGINE_ENRICHMENT_IOC=${ENRICHMENT_PATH}/ioc
 
-    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${STORE_PATH}
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${STORE_PATH}
     mkdir -p "${ENGINE_SCHEMA_PATH}"
     mkdir -p "${ENGINE_LOGPAR_TYPE_PATH}"
     mkdir -p "${ENGINE_ALLOWED_FIELDS_PATH}"
