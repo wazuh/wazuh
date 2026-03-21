@@ -541,27 +541,8 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/agent-template.conf
 %attr(660, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/shared/default/*
-%dir %attr(755, root, root) %{_localstatedir}/engine
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema/allowed-fields
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema/allowed-fields/0
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema/engine-schema
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema/engine-schema/0
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema/wazuh-logpar-overrides
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/schema/wazuh-logpar-overrides/0
-%dir %attr(755, root, root) %{_localstatedir}/engine/store/geo
-%dir %attr(770, root, wazuh-manager) %{_localstatedir}/engine/store/geo/mmdb
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/geo/mmdb/0
-%dir %attr(770, root, wazuh-manager) %{_localstatedir}/engine/mmdb
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/mmdb/*.mmdb
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/enrichment
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/enrichment/geo
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/enrichment/geo/0
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/enrichment/ioc
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/store/enrichment/ioc/0
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/outputs
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/engine/outputs/*.yml
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/*.yml
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework/python
 %{_localstatedir}/framework/python/*
@@ -628,8 +609,31 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/indexer
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/router
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/keystore
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/tzdb
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/etc/ruleset
+%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data
+%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data/kvdb-ioc
+%dir %attr(770, root, wazuh-manager) %{_localstatedir}/data/mmdb
+%dir %attr(750, root, wazuh-manager) %{_localstatedir}/data/ruleset
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/enrichment
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/enrichment/geo
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/enrichment/ioc
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/geo
+%dir %attr(770, root, wazuh-manager) %{_localstatedir}/data/store/geo/mmdb
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema/allowed-fields
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema/engine-schema
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema/wazuh-logpar-overrides
+%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data/tzdb
+%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data/tzdb/iana
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/mmdb/GeoLite2-ASN.mmdb
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/mmdb/GeoLite2-City.mmdb
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/enrichment/geo/0
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/enrichment/ioc/0
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/geo/mmdb/0
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema/allowed-fields/0
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema/engine-schema/0
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema/wazuh-logpar-overrides/0
+%attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/data/tzdb/iana/*
 %dir %attr(1770, root, wazuh-manager) %{_localstatedir}/tmp
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/var
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/db

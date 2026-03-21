@@ -34,22 +34,22 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<std::string>(key::STANDALONE_LOGGING_LEVEL, "WAZUH_STANDALONE_LOG_LEVEL", "info");
 
     // Store module
-    addUnit<std::string>(key::STORE_PATH, "WAZUH_STORE_PATH", (wazuhRoot / "engine/store").c_str());
+    addUnit<std::string>(key::STORE_PATH, "WAZUH_STORE_PATH", (wazuhRoot / "data/store").c_str());
 
     // Default outputs
-    addUnit<std::string>(key::OUTPUTS_PATH, "WAZUH_OUTPUTS_PATH", (wazuhRoot / "engine/outputs/").c_str());
+    addUnit<std::string>(key::OUTPUTS_PATH, "WAZUH_OUTPUTS_PATH", (wazuhRoot / "etc/outputs/").c_str());
 
     // Default kvdb ioc
-    addUnit<std::string>(key::KVDB_IOC_PATH, "WAZUH_KVDB_IOC_PATH", (wazuhRoot / "engine/kvdb-ioc").c_str());
+    addUnit<std::string>(key::KVDB_IOC_PATH, "WAZUH_KVDB_IOC_PATH", (wazuhRoot / "data/kvdb-ioc").c_str());
 
     // Content Manager
-    addUnit<std::string>(key::CM_RULESET_PATH, "WAZUH_CM_RULESET_PATH", (wazuhRoot / "etc/ruleset").c_str());
+    addUnit<std::string>(key::CM_RULESET_PATH, "WAZUH_CM_RULESET_PATH", (wazuhRoot / "data/ruleset").c_str());
     addUnit<size_t>(key::CM_SYNC_INTERVAL, "WAZUH_CM_SYNC_INTERVAL", 120);
     addUnit<size_t>(key::IOC_SYNC_INTERVAL, "WAZUH_IOC_SYNC_INTERVAL", 360);
 
     // Geo module
     addUnit<size_t>(key::GEO_SYNC_INTERVAL, "WAZUH_GEO_SYNC_INTERVAL", 360);
-    addUnit<std::string>(key::GEO_DB_PATH, "WAZUH_GEO_DB_PATH", (wazuhRoot / "engine/mmdb").c_str());
+    addUnit<std::string>(key::GEO_DB_PATH, "WAZUH_GEO_DB_PATH", (wazuhRoot / "data/mmdb").c_str());
     addUnit<std::string>(key::GEO_MANIFEST_URL,
                          "WAZUH_GEO_MANIFEST_URL",
                          "https://wazuh-cloud-cti-web-components-dev.s3.us-east-2.amazonaws.com/maxmind_geoip/manifest.json");
@@ -64,7 +64,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<size_t>(key::INDEXER_QUEUE_MAX_EVENTS, "WAZUH_INDEXER_QUEUE_MAX_EVENTS", 30000);
 
     // RemoteConfig Indexer
-    addUnit<size_t>(key::REMOTE_CONF_SYNC_INTERVAL, "WAZUH_REMOTE_CONF_SYNC_INTERVAL", 300);
+    addUnit<size_t>(key::REMOTE_CONF_SYNC_INTERVAL, "WAZUH_REMOTE_CONF_SYNC_INTERVAL", 120);
 
     // Queue event module
     addUnit<size_t>(key::EVENT_QUEUE_SIZE, "WAZUH_EVENT_QUEUE_SIZE", 0x1 << 17);
@@ -88,7 +88,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<bool>(key::SERVER_ENABLE_EVENT_PROCESSING, "WAZUH_SERVER_ENABLE_EVENT_PROCESSING", true);
 
     // TZDB module
-    addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", (wazuhRoot / "queue/tzdb").c_str());
+    addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", (wazuhRoot / "data/tzdb").c_str());
     addUnit<bool>(key::TZDB_AUTO_UPDATE, "WAZUH_TZDB_AUTO_UPDATE", false);
     addUnit<std::string>(key::TZDB_FORCE_VERSION_UPDATE, "WAZUH_TZDB_FORCE_VERSION_UPDATE", "");
 
