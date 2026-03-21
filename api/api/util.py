@@ -6,7 +6,6 @@ import logging
 import datetime
 import os
 import typing
-from functools import wraps
 from typing import Union
 
 import six
@@ -421,28 +420,3 @@ def get_invalid_keys(original_dict: dict, des_dict: dict) -> set:
                 invalid_keys.add(key)
 
     return invalid_keys
-
-
-def deprecate_endpoint(link: str = ''):
-    """Decorator to add deprecation headers to API response.
-
-    Parameters
-    ----------
-    link : str
-        Documentation related to this deprecation.
-    """
-
-    def add_deprecation_headers(func):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            api_response = await func(*args, **kwargs)
-
-            api_response.headers['Deprecated'] = 'true'
-            if link:
-                api_response.headers['Link'] = f'<{link}>; rel="Deprecated"'
-
-            return api_response
-
-        return wrapper
-
-    return add_deprecation_headers

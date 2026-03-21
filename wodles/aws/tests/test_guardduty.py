@@ -18,20 +18,28 @@ import guardduty
 SAMPLE_EVENT_1 = {'key1': 'value1', 'key2': 'value2'}
 
 
-@pytest.mark.parametrize('guardduty_native', [True, False])
 @patch('aws_bucket.AWSCustomBucket.__init__')
-def test_aws_guardduty_bucket_initializes_properly(mock_custom_bucket, guardduty_native):
-    """Test if the instances of AWSGuardDutyBucket are created properly."""
-    with patch('guardduty.AWSGuardDutyBucket.check_guardduty_type', return_value=guardduty_native):
+def test_aws_guardduty_bucket_initializes_properly(mock_custom_bucket):
+    """Test if GuardDuty native buckets are created properly."""
+    with patch('guardduty.AWSGuardDutyBucket.check_guardduty_type', return_value=True):
         instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
 
-        mock_custom_bucket.assert_called_once()
-        assert instance.service == "GuardDuty"
+    mock_custom_bucket.assert_called_once()
+    assert instance.service == "GuardDuty"
+    assert instance.type == "GuardDutyNative"
 
-        if guardduty_native:
-            assert instance.type == "GuardDutyNative"
-        else:
-            assert instance.type == "GuardDutyKinesis"
+
+@patch('guardduty.aws_tools.error')
+@patch('aws_bucket.AWSCustomBucket.__init__')
+def test_aws_guardduty_bucket_initialization_ko(mock_custom_bucket, mock_error):
+    """Test unsupported GuardDuty Kinesis buckets exit with the expected code."""
+    with patch('guardduty.AWSGuardDutyBucket.check_guardduty_type', return_value=False):
+        with pytest.raises(SystemExit) as e:
+            utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
+
+    assert e.value.code == utils.INVALID_TYPE_ERROR_CODE
+    mock_custom_bucket.assert_called_once()
+    mock_error.assert_called_once()
 
 
 @pytest.mark.parametrize('object_list, result', [(utils.LIST_OBJECT_V2, True),
@@ -84,75 +92,40 @@ def test_aws_guardduty_bucket_get_service_prefix(mock_custom_bucket, mock_type, 
     assert instance.get_service_prefix(utils.TEST_ACCOUNT_ID) == expected_base_prefix
 
 
-@pytest.mark.parametrize('guardduty_native', [True, False])
 @patch('aws_bucket.AWSLogsBucket.get_service_prefix', return_value='service_prefix/')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
-def test_aws_guardduty_bucket_get_full_prefix(mock_wazuh_aws_integration, mock_sts, mock_service_prefix,
-                                              guardduty_native):
-    """Test 'get_full_prefix' method the expected prefix depending on the GuardDuty bucket type.
-
-    Parameters
-    ----------
-    guardduty_native: bool
-        Result for the 'check_guardduty_type' call that determines the GuardDuty bucket type.
-    """
-    with patch('guardduty.AWSGuardDutyBucket.check_guardduty_type', return_value=guardduty_native):
+def test_aws_guardduty_bucket_get_full_prefix(mock_wazuh_aws_integration, mock_sts, mock_service_prefix):
+    """Test 'get_full_prefix' returns the native GuardDuty prefix."""
+    with patch('guardduty.AWSGuardDutyBucket.check_guardduty_type', return_value=True):
         instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket, prefix='prefix/')
 
-        if instance.type == "GuardDutyNative":
-            assert os.path.join(instance.get_service_prefix(utils.TEST_ACCOUNT_ID), utils.TEST_REGION, '') == \
-                   instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
-        else:
-            assert instance.prefix == instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+    assert os.path.join(instance.get_service_prefix(utils.TEST_ACCOUNT_ID), utils.TEST_REGION, '') == \
+           instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
 
 
-@pytest.mark.parametrize('guardduty_native', [True, False])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
-def test_aws_guardduty_bucket_get_base_prefix(mock_wazuh_aws_integration, mock_sts, guardduty_native: bool):
-    """Test 'get_full_prefix' method the expected base prefix depending on the GuardDuty bucket type.
-
-    Parameters
-    ----------
-    guardduty_native: bool
-        Result for the 'check_guardduty_type' call that determines the GuardDuty bucket type.
-    """
-    with patch('guardduty.AWSGuardDutyBucket.check_guardduty_type', return_value=guardduty_native):
+def test_aws_guardduty_bucket_get_base_prefix(mock_wazuh_aws_integration, mock_sts):
+    """Test 'get_base_prefix' returns the native GuardDuty base prefix."""
+    with patch('guardduty.AWSGuardDutyBucket.check_guardduty_type', return_value=True):
         instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket, prefix='prefix/')
 
-        if instance.type == "GuardDutyNative":
-            assert instance.get_base_prefix() == os.path.join(instance.prefix, 'AWSLogs', '')
-        else:
-            assert instance.get_base_prefix() == instance.prefix
+    assert instance.get_base_prefix() == os.path.join(instance.prefix, 'AWSLogs', '')
 
 
-@pytest.mark.parametrize('guardduty_native', [True, False])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
-def test_aws_guardduty_bucket_iter_regions_and_accounts(mock_wazuh_aws_integration, mock_sts, guardduty_native: bool):
-    """Test 'iter_regions_and_accounts' method makes the necessary calls in order to process the bucket's files
-    depending on the GuardDuty bucket type.
-
-    Parameters
-    ----------
-    guardduty_native: bool
-        Result for the 'check_guardduty_type' call that determines the GuardDuty bucket type.
-    """
+def test_aws_guardduty_bucket_iter_regions_and_accounts(mock_wazuh_aws_integration, mock_sts):
+    """Test 'iter_regions_and_accounts' processes only the native GuardDuty bucket format."""
     account_ids = [utils.TEST_ACCOUNT_ID]
     regions = [utils.TEST_REGION]
-    with patch('guardduty.AWSGuardDutyBucket.check_guardduty_type', return_value=guardduty_native), \
-            patch('aws_bucket.AWSBucket.iter_regions_and_accounts') as mock_bucket_regions_and_accounts, \
-            patch('aws_bucket.AWSCustomBucket.iter_regions_and_accounts') as mock_custom_regions_and_accounts:
+    with patch('guardduty.AWSGuardDutyBucket.check_guardduty_type', return_value=True), \
+            patch('aws_bucket.AWSBucket.iter_regions_and_accounts') as mock_bucket_regions_and_accounts:
         instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
 
-        if instance.type == "GuardDutyNative":
-            instance.iter_regions_and_accounts(account_ids, regions)
-            mock_bucket_regions_and_accounts.assert_called_with(instance, account_ids, regions)
-        else:
-            instance.iter_regions_and_accounts(account_ids, regions)
-            assert instance.check_prefix
-            mock_custom_regions_and_accounts.assert_called_with(instance, account_ids, regions)
+        instance.iter_regions_and_accounts(account_ids, regions)
+        mock_bucket_regions_and_accounts.assert_called_with(instance, account_ids, regions)
 
 
 @patch('guardduty.AWSGuardDutyBucket.send_msg')

@@ -33,13 +33,9 @@ FUTURE_DATE = '2022-12-31T12:00:00.000000Z'
 TEST_DATA_PATH = join(dirname(dirname(realpath(__file__))), 'data')
 
 
-@pytest.mark.parametrize(
-    'auth_path, la_id, key, offset, query, workspace, reparse, tag',
-    [
-        (None, 'client', 'secret', '1d', 'query', 'workspace', False, 'la_tag'),
-        (os.environ.get('INSTALLDIR', '/var/wazuh-manager'), None, None, '', '', '', False, ''),
-    ],
-)
+@pytest.mark.parametrize('auth_path, offset, query, workspace, reparse, tag', [
+    (os.environ.get('INSTALLDIR', '/var/wazuh-manager'), '1d', 'query', 'workspace', False, 'la_tag')
+])
 @patch('azure_services.analytics.get_log_analytics_events')
 @patch('azure_services.analytics.build_log_analytics_query')
 @patch('azure_services.analytics.get_token')
@@ -50,8 +46,6 @@ def test_start_log_analytics(
     mock_build,
     mock_get_logs,
     auth_path,
-    la_id,
-    key,
     offset,
     query,
     workspace,
@@ -64,8 +58,6 @@ def test_start_log_analytics(
     args = MagicMock(
         la_tenant_domain=tenant,
         la_auth_path=auth_path,
-        la_id=la_id,
-        la_key=key,
         la_query=query,
         la_time_offset=offset,
         workspace=workspace,
@@ -78,10 +70,7 @@ def test_start_log_analytics(
     mock_build.return_value = body = 'body'
     start_log_analytics(args)
 
-    if auth_path:
-        mock_auth.assert_called_with(auth_path=auth_path, fields=('application_id', 'application_key'))
-    else:
-        mock_auth.assert_not_called()
+    mock_auth.assert_called_with(auth_path=auth_path, fields=('application_id', 'application_key'))
 
     # Check a token is requested using the right parameters
     mock_token.assert_called_with(
@@ -112,8 +101,7 @@ def test_start_log_analytics_ko(mock_auth, mock_token, mock_build, mock_get_logs
     """Test start_log_analytics shows error message if get_log_analytics_events returns an HTTP error."""
     args = MagicMock(
         la_tenant_domain='test',
-        la_id='test',
-        la_key='test',
+        la_auth_path='test',
         la_query='test',
         la_time_offset='',
         workspace='test',
@@ -126,6 +114,16 @@ def test_start_log_analytics_ko(mock_auth, mock_token, mock_build, mock_get_logs
 def test_start_log_analytics_ko_credentials(mock_logging):
     """Test start_log_analytics stops its execution if no valid credentials are provided."""
     args = MagicMock(la_tenant_domain=None)
+    with pytest.raises(SystemExit) as err:
+        start_log_analytics(args)
+    assert err.value.code == 1
+    mock_logging.assert_called_once()
+
+
+@patch('azure_utils.logging.error')
+def test_start_log_analytics_ko_deprecated_credentials(mock_logging):
+    """Test start_log_analytics stops its execution when deprecated credentials are provided instead of auth_path."""
+    args = MagicMock(la_tenant_domain='test', la_auth_path=None, la_id='test', la_key='test')
     with pytest.raises(SystemExit) as err:
         start_log_analytics(args)
     assert err.value.code == 1

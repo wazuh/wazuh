@@ -52,7 +52,6 @@ api_config_schema = {
     "properties": {
         "host": {"type": "array", "items": {"type": "string"}},
         "port": {"type": "number"},
-        "use_only_authd": {"type": "boolean"},  # Deprecated. To be removed on later versions
         "drop_privileges": {"type": "boolean"},
         "max_upload_size": {"type": "integer", "minimum": 0},
         "authentication_pool_size": {"type": "integer", "minimum": 1, "maximum": 50},
@@ -75,8 +74,6 @@ api_config_schema = {
                 "use_ca": {"type": "boolean"},
                 "ca": {"type": "string",
                        "pattern": r"^[\w\-.]+$"},
-                "ssl_protocol": {"type": "string", "enum": ["tls", "tlsv1", "tlsv1.1", "tlsv1.2", "TLS",
-                                                            "TLSv1", "TLSv1.1", "TLSv1.2", "auto", "AUTO"]},
                 "ssl_ciphers": {"type": "string"}
             },
         },
@@ -85,7 +82,6 @@ api_config_schema = {
             "additionalProperties": False,
             "properties": {
                 "level": {"type": "string"},
-                "path": {"type": "string"},  # Deprecated. To be removed on later versions
                 "format": {"type": "string", "enum": ["plain", "json", "plain,json", "json,plain"]},
                 "max_size": {
                     "type": "object",
@@ -207,7 +203,7 @@ api_config_schema = {
 
 WAZUH_AGENT_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
     {
-        'agent': {"client", "buffer", "labels", "internal", "anti_tampering"},
+        'agent': {"client", "buffer", "internal", "anti_tampering"},
         'com': {"active-response", "logging", "internal"},
         'logcollector': {"localfile", "socket", "internal"},
         'syscheck': {"syscheck", "rootcheck", "internal"},

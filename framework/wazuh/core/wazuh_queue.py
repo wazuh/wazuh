@@ -90,7 +90,6 @@ class WazuhQueue(BaseQueue):
     """
 
     # Messages
-    HC_SK_RESTART = "syscheck restart"  # syscheck restart
     HC_FORCE_RECONNECT = "force_reconnect"  # force reconnect command
     RESTART_AGENTS = "restart-wazuh0"  # Agents
     RESTART_AGENTS_JSON = json.dumps(create_wazuh_socket_message(origin={'module': origin_module.get()},
@@ -138,7 +137,7 @@ class WazuhQueue(BaseQueue):
             Message confirming the message has been sent.
         """
         # Variables to check if msg is a non active-response message or a restart message
-        msg_is_no_ar = msg in [WazuhQueue.HC_SK_RESTART, WazuhQueue.HC_FORCE_RECONNECT]
+        msg_is_no_ar = msg == WazuhQueue.HC_FORCE_RECONNECT
         msg_is_restart = msg in [WazuhQueue.RESTART_AGENTS, WazuhQueue.RESTART_AGENTS_JSON]
 
         # Create flag and string used to specify the agent ID
@@ -155,17 +154,14 @@ class WazuhQueue(BaseQueue):
             # Return message
             ret_msg = "Command sent."
 
-        # NO-AR: Restart syscheck and reconnect
-        # Restart agents
+        # NO-AR: Reconnect and restart agents
         else:
             # If msg is not a non active-response command and not a restart command, raises WazuhInternalError
             if not msg_is_no_ar and not msg_is_restart:
                 raise WazuhInternalError(1012, msg)
             socket_msg = create_wazuh_queue_socket_msg(flag, str_agent_id, msg, is_restart=msg_is_restart)
             # Return message
-            if msg == WazuhQueue.HC_SK_RESTART:
-                ret_msg = "Restarting Syscheck on agent" if agent_id else "Restarting Syscheck on all agents"
-            elif msg == WazuhQueue.HC_FORCE_RECONNECT:
+            if msg == WazuhQueue.HC_FORCE_RECONNECT:
                 ret_msg = "Reconnecting agent" if agent_id else "Reconnecting all agents"
             else:  # msg == WazuhQueue.RESTART_AGENTS or msg == WazuhQueue.RESTART_AGENTS_JSON
                 ret_msg = "Restarting agent" if agent_id else "Restarting all agents"

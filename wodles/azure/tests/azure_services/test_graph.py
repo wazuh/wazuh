@@ -33,13 +33,9 @@ FUTURE_DATE = '2022-12-31T12:00:00.000000Z'
 TEST_DATA_PATH = join(dirname(dirname(realpath(__file__))), 'data')
 
 
-@pytest.mark.parametrize(
-    'auth_path, graph_id, key, offset, query, tag, reparse',
-    [
-        (None, 'client', 'secret', '1d', 'query', 'tag', False),
-        (os.environ.get('INSTALLDIR', '/var/wazuh-manager'), None, None, '', '', '', False),
-    ],
-)
+@pytest.mark.parametrize('auth_path, offset, query, tag, reparse', [
+    (os.environ.get('INSTALLDIR', '/var/wazuh-manager'), '1d', 'query', 'tag', False)
+])
 @patch('azure_services.graph.get_graph_events')
 @patch('azure_services.graph.build_graph_url')
 @patch('azure_services.graph.get_token')
@@ -50,8 +46,6 @@ def test_start_graph(
     mock_build,
     mock_graph,
     auth_path,
-    graph_id,
-    key,
     offset,
     query,
     tag,
@@ -62,8 +56,6 @@ def test_start_graph(
     args = MagicMock(
         graph_tenant_domain=tenant,
         graph_auth_path=auth_path,
-        graph_id=graph_id,
-        graph_key=key,
         graph_time_offset=offset,
         graph_query=query,
         graph_tag=tag,
@@ -75,10 +67,7 @@ def test_start_graph(
 
     start_graph(args)
 
-    if auth_path and tenant:
-        mock_auth.assert_called_with(auth_path=auth_path, fields=('application_id', 'application_key'))
-    else:
-        mock_auth.assert_not_called()
+    mock_auth.assert_called_with(auth_path=auth_path, fields=('application_id', 'application_key'))
 
     mock_token.assert_called_with(
         client_id=credentials[0],
@@ -105,7 +94,7 @@ def test_start_graph(
 @patch('azure_services.graph.read_auth_file', return_value=('client', 'secret'))
 def test_start_graph_ko(mock_auth, mock_token, mock_build, mock_get, mock_logging):
     """Test start_graph shows error message if get_log_analytics_events returns an HTTP error."""
-    args = MagicMock(graph_id='test', graph_key='test', graph_tenant_domain='test', graph_query='')
+    args = MagicMock(graph_auth_path='test', graph_tenant_domain='test', graph_query='')
     start_graph(args)
     mock_logging.assert_called_once()
 
@@ -114,6 +103,16 @@ def test_start_graph_ko(mock_auth, mock_token, mock_build, mock_get, mock_loggin
 def test_start_graph_ko_credentials(mock_logging):
     """Test start_graph stops its execution if no valid credentials are provided."""
     args = MagicMock(graph_tenant_domain=None)
+    with pytest.raises(SystemExit) as err:
+        start_graph(args)
+    assert err.value.code == 1
+    mock_logging.assert_called_once()
+
+
+@patch('azure_utils.logging.error')
+def test_start_graph_ko_deprecated_credentials(mock_logging):
+    """Test start_graph stops its execution when deprecated credentials are provided instead of auth_path."""
+    args = MagicMock(graph_tenant_domain='test', graph_auth_path=None, graph_id='test', graph_key='test')
     with pytest.raises(SystemExit) as err:
         start_graph(args)
     assert err.value.code == 1

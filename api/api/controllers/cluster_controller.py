@@ -9,12 +9,11 @@ from connexion import request
 from connexion.lifecycle import ConnexionResponse
 
 import wazuh.cluster as cluster
-import wazuh.core.common as common
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api.controllers.util import json_response, XML_CONTENT_TYPE
 from api.models.base_model_ import Body
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date, deprecate_endpoint
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from api.validator import check_component_configuration_pair
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -493,87 +492,6 @@ async def get_stats_weekly_node(node_id: str, pretty: bool = False,
 
     return json_response(data, pretty=pretty)
 
-
-@deprecate_endpoint()
-async def get_stats_analysisd_node(node_id: str, pretty: bool = False,
-                                   wait_for_complete: bool = False) -> ConnexionResponse:
-    """Get a specified node's analysisd statistics.
-
-    Notes
-    -----
-    To be deprecated in v5.0.
-
-    Parameters
-    ----------
-    node_id : str
-        Cluster node name.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool, optional
-        Whether to disable response timeout or not. Default `False`
-
-    Returns
-    -------
-    ConnexionResponse
-    """
-    f_kwargs = {'node_id': node_id,
-                'filename': common.ANALYSISD_STATS}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-@deprecate_endpoint()
-async def get_stats_remoted_node(node_id: str, pretty: bool = False,
-                                 wait_for_complete: bool = False) -> ConnexionResponse:
-    """Get a specified node's remoted statistics.
-
-    Notes
-    -----
-    To be deprecated in v5.0.
-
-    Parameters
-    ----------
-    node_id : str
-        Cluster node name.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool, optional
-        Whether to disable response timeout or not. Default `False`
-
-    Returns
-    -------
-    ConnexionResponse
-    """
-    f_kwargs = {'node_id': node_id,
-                'filename': common.REMOTED_STATS}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def get_log_node(node_id: str, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                        limit: int = None, sort: str = None, search: str = None, tag: str = None, level: str = None,
                        q: str = None, select: str = None, distinct: bool = False) -> ConnexionResponse:
@@ -743,7 +661,7 @@ async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionR
             rbac_permissions=request.context['token_info']['rbac_policies'],
         )
         result = raise_if_exc(await dapi.distribute_function())
-        
+
         return json_response(result, pretty=pretty, status_code=202)
 
     dapi = DistributedAPI(f=manager.restart,

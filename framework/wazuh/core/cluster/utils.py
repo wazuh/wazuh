@@ -223,9 +223,8 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
 
     config_cluster['port'] = int(config_cluster['port'])
 
-    if config_cluster['node_type'] == 'client':
-        logger.info("Deprecated node type 'client'. Using 'worker' instead.")
-        config_cluster['node_type'] = 'worker'
+    if config_cluster['node_type'] not in {'master', 'worker'}:
+        raise WazuhError(3004, extra_message=f"Invalid node type {config_cluster['node_type']}. Correct values are master and worker")
 
     if config_cluster.get(HAPROXY_HELPER):
         config_cluster[HAPROXY_HELPER] = parse_haproxy_helper_config(config_cluster[HAPROXY_HELPER])

@@ -4,7 +4,6 @@
 
 import copy
 import datetime
-import logging
 import os
 import signal
 from typing import Dict, Tuple, Any, List
@@ -22,9 +21,6 @@ import wazuh.core.utils as core_utils
 from api.api_exception import APIError
 from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH, API_SSL_PATH
 from api.validator import api_config_schema, security_config_schema
-
-CACHE_DEPRECATED_MESSAGE = 'The `cache` API configuration option was deprecated in {release} and will be removed ' \
-                           'in the next minor release.'
 
 # Fields that must preserve case sensitivity when converting to lowercase
 PRESERVE_CASE_SENSITIVITY_FIELDS = {'https.key', 'https.cert', 'https.ca'}
@@ -49,7 +45,6 @@ default_api_configuration = {
         "cert": "manager.crt",
         "use_ca": False,
         "ca": "ca.crt",
-        "ssl_protocol": "auto",
         "ssl_ciphers": ""
     },
     "logs": {
@@ -322,11 +317,6 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
         # Convert string values to lowercase except for specific fields
         dict_to_lowercase(configuration, skip_keys=PRESERVE_CASE_SENSITIVITY_FIELDS)
 
-        # Check if cache is enabled
-        if configuration.get('cache', {}).get('enabled', {}):
-            logger = logging.getLogger('wazuh-api')
-            logger.warning(CACHE_DEPRECATED_MESSAGE.format(release="4.8.0"))
-
         schema = security_config_schema if config_file == SECURITY_CONFIG_PATH else api_config_schema
         configuration = fill_dict(default_conf, configuration, schema)
 
@@ -337,7 +327,7 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
 
 
 def init_auth_worker():
-    """Set authentication pool worker to ignore SIGINT signals to avoid 
+    """Set authentication pool worker to ignore SIGINT signals to avoid
     throwing exceptions when shutting down the API in foreground mode."""
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 

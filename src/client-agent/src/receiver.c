@@ -156,12 +156,6 @@ int receive_msg()
                 continue;
             }
 
-            /* Security configuration assessment DB request */
-            else if (strncmp(tmp_msg, CFGA_DB_DUMP, strlen(CFGA_DB_DUMP)) == 0) {
-                mwarn("SCA dump operation is deprecated");
-                continue;
-            }
-
             /* Close any open file pointer if it was being written to */
             if (fp) {
                 fclose(fp);

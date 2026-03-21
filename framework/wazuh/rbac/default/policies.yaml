@@ -117,26 +117,6 @@ default_policies:
           - '*:*:*'
         effect: allow
 
-  rootcheck_run:
-    description: Allow run rootcheck.
-    policies:
-      rootcheck:
-        actions:
-          - rootcheck:run
-        resources:
-          - agent:id:*
-        effect: allow
-
-  syscheck_run:
-    description: Allow run syscheck
-    policies:
-      syscheck:
-        actions:
-          - syscheck:run
-        resources:
-          - agent:id:*
-        effect: allow
-
   cluster_all:
     description: Provide full access to all cluster related functionalities.
     policies:

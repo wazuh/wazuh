@@ -10,7 +10,7 @@ from wazuh.core.agent import Agent, get_agents_info, get_rbac_filters, WazuhDBQu
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.exception import WazuhException
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.stats import get_daemons_stats_, get_daemons_stats_socket, hourly_, totals_, weekly_
+from wazuh.core.stats import get_daemons_stats_socket, hourly_, totals_, weekly_
 from wazuh.rbac.decorators import expose_resources
 
 node_id = get_node().get('node')
@@ -213,31 +213,6 @@ def get_daemons_stats(daemons_list: list = None) -> AffectedItemsWazuhResult:
             result.add_failed_item(id_=daemon, error=e)
 
     result.total_affected_items = len(result.affected_items)
-    return result
-
-
-@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
-def deprecated_get_daemons_stats(filename):
-    """Get daemons stats from an input file.
-
-    Parameters
-    ----------
-    filename: str
-        Full path of the file to get information.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Dictionary with the stats of the input file.
-    """
-    result = AffectedItemsWazuhResult(
-        all_msg='Statistical information for each node was successfully read',
-        some_msg='Could not read statistical information for some nodes',
-        none_msg='Could not read statistical information for any node'
-    )
-    result.affected_items = get_daemons_stats_(filename)
-    result.total_affected_items = len(result.affected_items)
-
     return result
 
 

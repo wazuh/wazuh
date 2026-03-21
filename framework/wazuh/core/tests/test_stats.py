@@ -172,24 +172,6 @@ def test_get_daemons_stats_socket_ko(agents_list):
         stats.get_daemons_stats_socket(socket, agents_list=agents_list)
 
 
-def test_get_daemons_stats_():
-    """Verify get_daemons_stats_() function works as expected"""
-    with patch("builtins.open", mock_open(read_data='# Queue size\nqueue_size=\'0\'')):
-        result = stats.get_daemons_stats_('')
-        assert result[0] == {'queue_size': 0}
-
-
-def test_get_daemons_stats_ko():
-    """Test get_daemons_stats_() function exceptions works"""
-    with patch('wazuh.core.stats.open', side_effect=IOError):
-        with pytest.raises(WazuhException, match=".* 1308 .*"):
-            stats.get_daemons_stats_('filename')
-
-    with patch('wazuh.core.stats.open'):
-        with pytest.raises(WazuhInternalError, match=".* 1104 .*"):
-            stats.get_daemons_stats_('filename')
-
-
 @pytest.mark.parametrize("agent_id, daemon, response", [
     ('002', 'agent', '{"error":0, "data":{"test":0}}'),
     (3, 'test', '{"error":0, "data":{"test":0}}'),

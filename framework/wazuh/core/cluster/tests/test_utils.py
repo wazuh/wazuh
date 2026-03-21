@@ -61,8 +61,8 @@ def test_read_cluster_config():
         assert config == default_cluster_config
 
         default_cluster_config['node_type'] = 'client'
-        config = utils.read_cluster_config()
-        assert config == default_cluster_config
+        with pytest.raises(WazuhError, match='.* 3004 .*'):
+            utils.read_cluster_config()
 
         default_cluster_config['port'] = 'None'
         with pytest.raises(WazuhError, match='.* 3004 .*'):

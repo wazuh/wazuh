@@ -59,13 +59,9 @@ def create_mocked_blob(blob_name: str, last_modified: datetime = None, content_l
     return blob
 
 
-@pytest.mark.parametrize(
-    'auth_path, name, key, container_name',
-    [
-        (None, 'name', 'key', 'container'),
-        (os.environ.get('INSTALLDIR', '/var/wazuh-manager'), '', '', '*'),
-    ],
-)
+@pytest.mark.parametrize('auth_path, name, key, container_name', [
+    (os.environ.get('INSTALLDIR', '/var/wazuh-manager'), 'name', 'key', 'container')
+])
 @patch('azure_services.storage.get_blobs')
 @patch('azure_services.storage.create_new_row')
 @patch('azure_services.storage.orm.get_row', return_value=None)
@@ -98,10 +94,7 @@ def test_start_storage(
     mock_blob.return_value = m
     start_storage(args)
 
-    if auth_path:
-        mock_auth.assert_called_with(auth_path=auth_path, fields=('account_name', 'account_key'))
-    else:
-        mock_auth.assert_not_called()
+    mock_auth.assert_called_with(auth_path=auth_path, fields=('account_name', 'account_key'))
 
     md5_hash = md5(name.encode()).hexdigest()
     mock_blob.assert_called_with(
@@ -124,13 +117,14 @@ def test_start_storage(
     ],
 )
 @patch('azure_utils.logging.error')
+@patch('azure_services.storage.read_auth_file', return_value=('test', 'test'))
 @patch('azure_services.storage.create_new_row', side_effect=orm.AzureORMError)
 @patch('db.orm.get_row', return_value=None)
 @patch('azure_services.storage.BlobServiceClient')
-def test_start_storage_ko(mock_blob, mock_get, mock_create, mock_logging, container_name, exception):
+def test_start_storage_ko(mock_blob, mock_get, mock_create, mock_auth, mock_logging, container_name, exception):
     """Test start_log_analytics shows error message if get_log_analytics_events returns an HTTP error."""
     args = MagicMock(
-        storage_auth_path=None,
+        storage_auth_path='test',
         account_name='test',
         account_key='test',
         container=container_name,
@@ -155,6 +149,16 @@ def test_start_storage_ko(mock_blob, mock_get, mock_create, mock_logging, contai
 def test_start_storage_ko_credentials(mock_logging):
     """Test start_storage stops its execution if no valid credentials are provided."""
     args = MagicMock(storage_auth_path=None, account_name=None, account_key=None)
+    with pytest.raises(SystemExit) as err:
+        start_storage(args)
+    assert err.value.code == 1
+    mock_logging.assert_called_once()
+
+
+@patch('azure_utils.logging.error')
+def test_start_storage_ko_deprecated_credentials(mock_logging):
+    """Test start_storage stops its execution when deprecated credentials are provided instead of auth_path."""
+    args = MagicMock(storage_auth_path=None, account_name='test', account_key='test')
     with pytest.raises(SystemExit) as err:
         start_storage(args)
     assert err.value.code == 1
@@ -619,4 +623,3 @@ def test_download_blob_retry_then_fail():
     with pytest.raises(ResourceModifiedError):
         result = download_blob(container, blob, number_of_retries=3)
     assert container.download_blob.call_count == 3
-

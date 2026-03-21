@@ -74,7 +74,7 @@ static int g_stopFD[2] = {-1, -1};
 static void help_authd(char * home_path)
 {
     print_header();
-    print_out("  %s: -[Vhdtfi] [-g group] [-D dir] [-p port] [-P] [-c ciphers] [-v path [-s]] [-x path] [-k path]", ARGV0);
+    print_out("  %s: -[VhdtfPaL] [-g group] [-D dir] [-p port] [-c ciphers] [-v path [-s]] [-x path] [-k path] [-C days] [-B bits] [-K path] [-X path] [-S subject]", ARGV0);
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
@@ -164,7 +164,7 @@ int main(int argc, char **argv)
         unsigned long days_val = 0;
         unsigned long key_bits = 0;
 
-        while (c = getopt(argc, argv, "Vdhtfigj:D:p:c:v:sx:k:PF:ar:L:C:B:K:X:S:"), c != -1) {
+        while (c = getopt(argc, argv, "Vdhtfg:D:p:c:v:sx:k:PaL:C:B:K:X:S:"), c != -1) {
             switch (c) {
                 case 'V':
                     print_version();
@@ -177,10 +177,6 @@ int main(int argc, char **argv)
                 case 'd':
                     debug_level = 1;
                     nowDebug();
-                    break;
-
-                case 'i':
-                    mwarn(DEPRECATED_OPTION_WARN, "-i", OSSECCONF);
                     break;
 
                 case 'g':
@@ -254,14 +250,6 @@ int main(int argc, char **argv)
                         merror_exit("-%c needs an argument", c);
                     }
                     server_key = optarg;
-                    break;
-
-                case 'F':
-                    mwarn(DEPRECATED_OPTION_WARN, "-F", OSSECCONF);
-                    break;
-
-                case 'r':
-                    mwarn(DEPRECATED_OPTION_WARN, "-r", OSSECCONF);
                     break;
 
                 case 'a':

@@ -2,7 +2,7 @@
 
 This document covers the key API endpoints with practical examples, the Wazuh Query Language (WQL), error handling, and input validation.
 
-> All paths are validated against `api/api/spec/spec.yaml` (OpenAPI 3.0).  
+> All paths are validated against `api/api/spec/spec.yaml` (OpenAPI 3.0).
 > For the complete endpoint specification, refer to the [official Wazuh API Reference](https://documentation.wazuh.com/current/user-manual/api/reference.html).
 
 ---
@@ -235,19 +235,6 @@ curl -k -X PUT "https://localhost:55000/cluster/restart?pretty=true" \
 
 ---
 
-### Active Response
-
-**`PUT /active-response`** — Execute an active response command on agents.
-
-```bash
-curl -k -X PUT "https://localhost:55000/active-response?agents_list=001,002&pretty=true" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"command": "!firewall-drop", "arguments": ["-srcip", "10.0.0.50"]}'
-```
-
----
-
 ### Security
 
 #### List users
@@ -265,24 +252,6 @@ curl -k -X GET "https://localhost:55000/security/users?pretty=true" \
 
 ```bash
 curl -k -X PUT "https://localhost:55000/security/user/revoke?pretty=true" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
----
-
-### Syscheck & Rootcheck
-
-**`PUT /syscheck`** — Run a syscheck (FIM) scan on agents.
-
-```bash
-curl -k -X PUT "https://localhost:55000/syscheck?agents_list=001,002&pretty=true" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-**`PUT /rootcheck`** — Run a rootcheck scan on agents.
-
-```bash
-curl -k -X PUT "https://localhost:55000/rootcheck?agents_list=001&pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -340,7 +309,6 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | DELETE | `/agents/{agent_id}/group` | Remove from all groups |
 | PUT | `/agents/{agent_id}/group/{group_id}` | Assign to group |
 | DELETE | `/agents/{agent_id}/group/{group_id}` | Remove from group |
-| GET | `/agents/{agent_id}/group/is_sync` | Sync status |
 | GET | `/agents/{agent_id}/config/{component}/{configuration}` | Active config |
 | GET | `/agents/{agent_id}/daemons/stats` | Daemon stats |
 | GET | `/agents/{agent_id}/stats/{component}` | Component stats |
@@ -393,8 +361,6 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | GET | `/cluster/{node_id}/stats` | Node stats |
 | GET | `/cluster/{node_id}/stats/hourly` | Hourly stats |
 | GET | `/cluster/{node_id}/stats/weekly` | Weekly stats |
-| GET | `/cluster/{node_id}/stats/analysisd` | Analysisd stats |
-| GET | `/cluster/{node_id}/stats/remoted` | Remoted stats |
 | GET | `/cluster/{node_id}/logs` | Node logs |
 | GET | `/cluster/{node_id}/logs/summary` | Log summary |
 
@@ -434,13 +400,6 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | GET | `/security/config` | Security config |
 | PUT | `/security/config` | Update config |
 | DELETE | `/security/config` | Reset config |
-
-### Syscheck, Rootcheck & Active Response
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| PUT | `/syscheck` | Run syscheck scan |
-| PUT | `/rootcheck` | Run rootcheck scan |
-| PUT | `/active-response` | Run AR command |
 
 ### MITRE
 | Method | Endpoint | Description |

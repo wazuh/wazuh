@@ -122,9 +122,6 @@ help()
     exit 1;
 }
 
-AUTHD_MSG="This option is deprecated because Authd is now enabled by default."
-DATABASE_MSG="This option is deprecated because the database output is now enabled by default."
-
 # Enables additional daemons
 enable()
 {
@@ -135,11 +132,7 @@ enable()
         exit 1;
     fi
 
-    if [ "X$2" = "Xdatabase" ]; then
-        echo "$DATABASE_MSG"
-    elif [ "X$2" = "Xauth" ]; then
-        echo "$AUTHD_MSG"
-    elif [ "X$2" = "Xdebug" ]; then
+    if [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
     else
         echo ""
@@ -163,9 +156,7 @@ disable()
     fi
     daemon=''
 
-    if [ "X$2" = "Xdatabase" ]; then
-        echo "$DATABASE_MSG"
-    elif [ "X$2" = "Xdebug" ]; then
+    if [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
         echo ""

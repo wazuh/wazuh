@@ -22,7 +22,6 @@ custom_api_configuration = {
         "cert": "manager.crt",
         "use_ca": False,
         "ca": "rootCA.pem",
-        "ssl_protocol": "auto",
         "ssl_ciphers": ""
     },
     "logs": {
@@ -96,7 +95,7 @@ def test_read_configuration(mock_open, mock_exists, read_config):
         # Currently we only add SSL path to HTTPS options
         for section, subsection in [('https', 'key'), ('https', 'cert'), ('https', 'ca')]:
             config[section][subsection] = config[section][subsection].replace(f'{api.constants.API_SSL_PATH}/', '')
-        
+
         # SSL paths (key, cert, ca) must preserve their original case
         if 'https' in read_config and 'ca' in read_config['https']:
             assert config['https']['ca'] == read_config['https']['ca']
@@ -137,10 +136,10 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'access': {'block_time': 'invalid_type'}},
     {'access': {'max_request_per_minute': 'invalid_type'}},
     {'access': {'invalid_subkey': 'invalid_type'}},
-    {'remote_commands': {'localfile': {'enabled': 'invalid_type'}}},
+    {'remote_commands': {'localfile': {'allow': 'invalid_type'}}},
     {'remote_commands': {'localfile': {'exceptions': [0, 1, 2]}}},
     {'remote_commands': {'localfile': {'invalid_subkey': 'invalid_type'}}},
-    {'remote_commands': {'wodle_command': {'enabled': 'invalid_type'}}},
+    {'remote_commands': {'wodle_command': {'allow': 'invalid_type'}}},
     {'remote_commands': {'wodle_command': {'exceptions': [0, 1, 2]}}},
     {'remote_commands': {'wodle_command': {'invalid_subkey': 'invalid_type'}}},
     {'agents': {'allow_higher_versions': {'allow': True}}},
@@ -172,10 +171,6 @@ def test_read_cache_configuration(mock_exists, config, expected_msg):
             patch('builtins.open'):
         m.return_value = config
         configuration.read_yaml_config()
-
-        if expected_msg:
-            mock_logger.assert_called_once_with(configuration.CACHE_DEPRECATED_MESSAGE.format(release="4.8.0"))
-
 
 @patch('os.chmod')
 @patch('builtins.open')

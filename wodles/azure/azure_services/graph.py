@@ -17,9 +17,7 @@ from requests import HTTPError, get
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 
 from azure_utils import (
-    CREDENTIALS_URL,
     DATETIME_MASK,
-    DEPRECATED_MESSAGE,
     get_token,
     offset_to_datetime,
     read_auth_file,
@@ -42,15 +40,6 @@ def start_graph(args):
         client, secret = read_auth_file(
             auth_path=args.graph_auth_path, fields=('application_id', 'application_key')
         )
-    elif args.graph_id and args.graph_key and args.graph_tenant_domain:
-        logging.debug(f"Graph: Using id and key from configuration for authentication")
-        logging.warning(
-            DEPRECATED_MESSAGE.format(
-                name='graph_id and graph_key', release='4.4', url=CREDENTIALS_URL
-            )
-        )
-        client = args.graph_id
-        secret = args.graph_key
     else:
         logging.error('Graph: No parameters have been provided for authentication.')
         sys.exit(1)
@@ -230,4 +219,3 @@ def get_graph_events(url: str, headers: dict, md5_hash: str, query: str, tag: st
     else:
         logging.error(f"Error with Graph request: {response.json()}")
         response.raise_for_status()
-        

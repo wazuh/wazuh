@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import hashlib
 import operator
 from os import chmod, path, listdir
 from typing import Union
@@ -17,7 +16,7 @@ from wazuh.core.wdb_http import get_wdb_http_client
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches, \
+from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_with_mode, process_array, clear_temporary_caches, \
     full_copy
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources, async_list_handler
@@ -1356,59 +1355,6 @@ def get_agent_config(agent_list: list = None, component: str = None, config: str
 
     return WazuhResult(
         {'data': my_agent.get_config(component=component, config=config, agent_version=my_agent.version)})
-
-
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703]})
-def get_agents_sync_group(agent_list: list = None) -> AffectedItemsWazuhResult:
-    """Get agents configuration sync status.
-
-    Notes
-    -----
-    To be deprecated in v5.0.
-
-    Parameters
-    ----------
-    agent_list : list
-        List of agent IDs.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Agent group sync status information.
-    """
-    result = AffectedItemsWazuhResult(all_msg='Sync info was returned for all selected agents',
-                                      some_msg='Sync info was not returned for some selected agents',
-                                      none_msg='No sync info was returned',
-                                      )
-
-    system_agents = get_agents_info()
-    for agent_id in agent_list:
-        try:
-            if agent_id not in system_agents:
-                raise WazuhResourceNotFound(1701)
-            else:
-                # Check if agent exists and it is active
-                agent_info = Agent(agent_id).get_basic_information()
-                # Check if it has a multigroup
-                if len(agent_info['group']) > 1:
-                    multi_group = ','.join(agent_info['group'])
-                    multi_group = hashlib.sha256(multi_group.encode()).hexdigest()[:8]
-                    group_merged_path = path.join(common.MULTI_GROUPS_PATH, multi_group, "merged.mg")
-                else:
-                    group_merged_path = path.join(common.SHARED_PATH, agent_info['group'][0], "merged.mg")
-                result.affected_items.append({'id': agent_id,
-                                              'synced': md5(group_merged_path) == agent_info['mergedSum']})
-        except (IOError, KeyError):
-            # The file couldn't be opened and therefore the group has not been synced
-            result.affected_items.append({'id': agent_id, 'synced': False})
-        except WazuhException as e:
-            result.add_failed_item(id_=agent_id, error=e)
-
-    result.total_affected_items = len(result.affected_items)
-    result.affected_items.sort(key=lambda i: i['id'])
-
-    return result
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)

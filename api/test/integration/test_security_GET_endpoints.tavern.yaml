@@ -368,7 +368,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    
+
   - name: Try to get security roles using an invalid query
     request:
       verify: False
@@ -680,7 +680,7 @@ stages:
       status_code: 200
       json:
         <<: *response_error
-    
+
   - name: Get security policies using query parameter
     request:
       verify: False
@@ -698,7 +698,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    
+
   - name: Try to get security policies using an invalid query
     request:
       verify: False
@@ -1066,7 +1066,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    
+
   - name: Try to get security rules using an invalid query
     request:
       verify: False
@@ -1088,38 +1088,6 @@ stages:
       status_code: 200
       verify_response_with:
         function: tavern_utils:test_distinct_key
-
----
-test_name: GET /security/user/authenticate
-
-stages:
-
-  - name: Get an API token in raw format
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate"
-      headers:
-        Authorization: "Basic {basic_auth:s}"
-      params:
-        raw: True
-      method: GET
-    response:
-      status_code: 200
-      verify_response_with:
-        - function: tavern_utils:test_token_raw_format
-      save:
-        $ext:
-          function: tavern_utils:test_save_token_raw_format
-
-  - name: Test generated token
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/"
-      headers:
-        Authorization: "Bearer {login_token}"
-      method: GET
-    response:
-      status_code: 200
 
 ---
 test_name: GET /security/users
@@ -1568,7 +1536,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    
+
   - name: Try to get security users using an invalid query
     request:
       verify: False

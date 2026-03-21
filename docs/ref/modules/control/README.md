@@ -1,6 +1,6 @@
 # Control Module (wm_control)
 
-The **Control Module** (`wm_control`) provides manager control operations for the Wazuh server, handling restart and reload requests through a Unix domain socket interface. This module runs within `wazuh-modulesd` and replaces the control functionality previously handled by `wazuh-execd`.
+The **Control Module** (`wm_control`) provides manager control operations for the Wazuh server, handling restart and reload requests through a Unix domain socket interface. This module runs within `wazuh-modulesd`.
 
 ## Key Features
 
@@ -92,19 +92,6 @@ result = send_control_command('restart')  # Returns: "ok "
 - **wazuh-modulesd**: Host daemon for control module
 - **wazuh-apid**: Calls control socket for manager restart API
 - **Framework**: Python framework uses control socket for restart operations
-
-## Architecture Changes
-
-**Previous Architecture (v4.x)**:
-- Control functionality in `wazuh-execd` daemon
-- Socket: `/var/ossec/queue/sockets/com`
-- Multiple commands: restart, reload, getconfig, unmerge, uncompress, etc.
-
-**Current Architecture (v5.0)**:
-- Control functionality in `wm_control` module (within modulesd)
-- Socket: `/var/ossec/queue/sockets/control`
-- Focused commands: restart, reload
-- Configuration reading now done directly from file (no socket needed)
 
 ## Security Considerations
 

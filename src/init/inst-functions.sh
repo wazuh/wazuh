@@ -50,9 +50,6 @@ WriteSyscheck()
         echo "  <syscheck>" >> $NEWCONFIG
         echo "    <disabled>yes</disabled>" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
-        echo "    <!-- Generate alert when new file detected -->" >> $NEWCONFIG
-        echo "    <alert_new_files>yes</alert_new_files>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
         echo "  </syscheck>" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
       else

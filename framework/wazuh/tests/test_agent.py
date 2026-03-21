@@ -27,7 +27,7 @@ with patch('wazuh.core.common.wazuh_uid'):
 
         from wazuh.agent import add_agent, assign_agents_to_group, create_group, delete_agents, delete_groups, \
             get_agent_conf, get_agent_config, get_agent_groups, get_agents, get_agents_in_group, get_agents_keys, \
-            get_agents_summary, get_agents_summary_os, get_agents_summary_status, get_agents_sync_group, \
+            get_agents_summary, get_agents_summary_os, get_agents_summary_status, \
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
             get_upgrade_result, remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
             restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node, reconnect_agents, \
@@ -43,7 +43,6 @@ with patch('wazuh.core.common.wazuh_uid'):
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')
 test_shared_path = os.path.join(test_agent_path, 'shared')
-test_multigroup_path = os.path.join(test_agent_path, 'multigroups')
 test_global_bd_path = os.path.join(test_data_path, 'global.db')
 
 test_data = InitAgent(data_path=test_data_path)
@@ -1315,53 +1314,6 @@ def test_agent_get_agent_config_exceptions(socket_mock, send_mock, agent_list):
         pytest.fail('An exception should be raised.')
     except WazuhError as error:
         assert error == WazuhError(1740)
-
-
-@pytest.mark.parametrize('agent_list', [
-    full_agent_list
-])
-@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
-@patch('wazuh.core.common.MULTI_GROUPS_PATH', new=test_multigroup_path)
-@patch('wazuh.agent.get_agents_info', return_value=full_agent_list)
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_agents_sync_group(socket_mock, send_mock, get_agent_mock, agent_list):
-    """Test `get_agents_sync_group` function from agent module.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    """
-    result = get_agents_sync_group(agent_list=agent_list)
-    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-    # Check affected items
-    assert result.total_affected_items == len(agent_list)
-    assert len([item for item in result.affected_items if 'synced' in item]) == len(agent_list)
-
-
-@pytest.mark.parametrize('agent_list, expected_error', [
-    (['100'], WazuhResourceNotFound(1701))
-])
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_agents_sync_group_exceptions(socket_mock, send_mock, agent_list, expected_error):
-    """Test `get_agents_sync_group` function from agent module returns the expected exceptions when using invalid
-    parameters.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    expected_error : WazuhError
-        Expected WazuhError to be returned (not raised) by the function.
-    """
-    result = get_agents_sync_group(agent_list=agent_list)
-    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-    # Check failed items
-    assert result.total_failed_items == len(agent_list)
-    assert isinstance(result.failed_items, dict)
-    assert result.failed_items == {expected_error: {agent_list[0]}}
 
 
 @pytest.mark.parametrize('filename, group_list', [

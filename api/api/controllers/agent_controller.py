@@ -14,7 +14,7 @@ from api.models.agent_added_model import AgentAddedModel
 from api.models.agent_group_added_model import GroupAddedModel
 from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
-from api.util import deprecate_endpoint, parse_api_param, raise_if_exc, remove_nones_to_dict
+from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
 from api.validator import check_component_configuration_pair
 from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
@@ -413,42 +413,6 @@ async def delete_single_agent_multiple_groups(agent_id: str, groups_list: str = 
     data = raise_if_exc(await dapi.distribute_function())
 
     return json_response(data, pretty=pretty)
-
-
-@deprecate_endpoint()
-async def get_sync_agent(agent_id: str, pretty: bool = False, wait_for_complete=False) -> ConnexionResponse:
-    """Get agent configuration sync status.
-
-    Return whether the agent group configuration has been synchronized with the agent or not.
-
-    Parameters
-    ----------
-    agent_id : str
-        Agent ID.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-
-    Returns
-    -------
-    web.Reponse
-        API response with the agent configuration sync status.
-    """
-    f_kwargs = {'agent_list': [agent_id]}
-
-    dapi = DistributedAPI(f=agent.get_agents_sync_group,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
 
 async def delete_single_agent_single_group(agent_id: str, group_id: str, pretty: bool = False,
                                            wait_for_complete: bool = False) -> ConnexionResponse:
