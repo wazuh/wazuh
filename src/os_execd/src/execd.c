@@ -640,6 +640,7 @@ DWORD WINAPI win_exec_main(__attribute__((unused)) void * args) {
     while(1) {
         char* exec_msg = queue_pop_ex(winexec_queue);
         if (exec_msg) {
+            mdebug2("Received message: '%s'", exec_msg);
             ExecdRun(exec_msg);
             os_free(exec_msg);
         }

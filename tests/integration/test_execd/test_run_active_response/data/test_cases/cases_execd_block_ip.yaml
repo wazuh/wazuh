@@ -4,8 +4,8 @@
   metadata:
     input: '#!-execd {"wazuh":{"active_response":{"name":"block-ip","executable":"block-ip","type":"stateful","stateful_timeout":5,"location":"agent","agent_id":"001"}},"event":{"original":"Test event","kind":"event"},"source":{"ip":"3.3.3.3"},"user":{"name":"Test."}}'
 
-- name: Command execution fail - missing 'srcip'
-  description: Checks the block-ip command does not succeed because the 'srcip' is not sent.
+- name: Command execution fail - missing 'source.ip'
+  description: Checks the block-ip command does not succeed because the 'source.ip' is not sent.
   configuration_parameters:
   metadata:
     input: '#!-execd {"wazuh":{"active_response":{"name":"block-ip","executable":"block-ip","type":"stateless","location":"agent","agent_id":"001"}},"event":{"original":"Test event","kind":"event"},"user":{"name":"Test."}}'

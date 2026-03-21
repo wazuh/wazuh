@@ -31,14 +31,24 @@ def send_execd_message(test_metadata: dict, remoted_simulator: RemotedSimulator)
     if test_metadata.get('input') is None:
         raise AttributeError('No `input` key in `test_metadata`.')
 
-    monitor = FileMonitor(WAZUH_LOG_PATH)
+    # Use independent monitors for the connection and the execd events so we can
+    # safely mix full log scans with only-new-events tailing without sharing state.
+    connection_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    monitor.start(only_new_events=True, callback=generate_callback(AGENTD_CONNECTED_TO_SERVER), timeout=150)
-    assert monitor.callback_result is not None, 'Agent did not connect to remoted simulator'
+    # Don't use only_new_events for the connection check since the agent may have already
+    # connected during daemons_handler restart (which runs before this fixture).
+    # The log file is already truncated by truncate_monitored_files fixture.
+    connection_monitor.start(callback=generate_callback(AGENTD_CONNECTED_TO_SERVER), timeout=150)
+    assert connection_monitor.callback_result is not None, 'Agent did not connect to remoted simulator'
 
     # Give the agent some time to stabilize after connection
     time.sleep(2)
 
     remoted_simulator.send_custom_message(test_metadata['input'])
-    monitor.start(only_new_events=True, callback=generate_callback(EXECD_RECEIVED_MESSAGE), timeout=60)
-    assert monitor.callback_result is not None, 'Execd did not receive the message'
+
+    # Don't tail only new events here: on fast platforms (Windows) execd can log the
+    # reception line before we start monitoring, so we need to scan from the beginning
+    # of the truncated file to catch it reliably.
+    execd_monitor = FileMonitor(WAZUH_LOG_PATH)
+    execd_monitor.start(callback=generate_callback(EXECD_RECEIVED_MESSAGE), timeout=60)
+    assert execd_monitor.callback_result is not None, 'Execd did not receive the message'

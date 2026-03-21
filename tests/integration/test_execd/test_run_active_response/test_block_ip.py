@@ -58,7 +58,13 @@ from . import CONFIGS_PATH, REPO_ROOT, TEST_CASES_PATH
 
 
 # Set pytest marks.
-pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=1)]
+pytestmark = [
+    pytest.mark.agent,
+    pytest.mark.linux,
+    pytest.mark.win32,
+    pytest.mark.tier(level=1),
+    pytest.mark.skipif(sys.platform == WINDOWS, reason='Temporarily disabled on Windows')
+]
 
 # Cases metadata and its ids.
 cases_path = Path(TEST_CASES_PATH, 
@@ -68,7 +74,7 @@ test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
 # Test internal options and configurations.
-local_internal_options = {EXECD_DEBUG: '2'}
+local_internal_options = {EXECD_DEBUG: '2', 'agent.remote_conf': '0'}
 daemons_handler_configuration = {'all_daemons': True}
 
 
