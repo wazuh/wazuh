@@ -44,7 +44,7 @@ This package provides debug information for package %{name}.
 %prep
 %setup -q
 
-./src/init/gen_ossec.sh conf agent centos %rhel %{_localstatedir} > etc/ossec-agent.conf
+./src/init/gen_wazuh.sh conf agent centos %rhel %{_localstatedir} > etc/ossec-agent.conf
 
 %build
 pushd src
@@ -303,7 +303,7 @@ if [ $1 = 1 ]; then
   . %{_localstatedir}/packages_files/agent_installation_scripts/src/init/dist-detect.sh
 
   # Generating ossec.conf file
-  %{_localstatedir}/packages_files/agent_installation_scripts/src/init/gen_ossec.sh conf agent ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/ossec.conf
+  %{_localstatedir}/packages_files/agent_installation_scripts/src/init/gen_wazuh.sh conf agent ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/ossec.conf
   chown root:wazuh %{_localstatedir}/etc/ossec.conf
   chmod 640 %{_localstatedir}/etc/ossec.conf
 

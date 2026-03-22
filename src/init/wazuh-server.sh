@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015, Wazuh Inc.
 # wazuh-manager-control        This shell script takes care of starting
-#                      or stopping ossec-hids
+#                      or stopping wazuh-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 # Getting where we are installed
@@ -34,7 +34,6 @@ fi
 AUTHOR="Wazuh Inc."
 USE_JSON=false
 DAEMONS="wazuh-manager-clusterd wazuh-manager-modulesd wazuh-manager-monitord wazuh-manager-remoted wazuh-manager-analysisd wazuh-manager-db wazuh-manager-authd wazuh-manager-apid"
-DEPRECATED_DAEMONS="ossec-authd"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
@@ -331,16 +330,6 @@ start_service()
     # Delete all files in temporary folder
     TO_DELETE="$DIR/tmp"
     find $TO_DELETE -mindepth 1 -not -path "$TO_DELETE/vd_*_vd_*.tar" -not -path "$TO_DELETE/vd_*_vd_*.tar.xz" -delete
-
-    # Stop deprecated daemons that could keep alive on updates
-    for i in ${DEPRECATED_DAEMONS}; do
-        ls ${DIR}/var/run/${i}-*.pid > /dev/null 2>&1
-        if [ $? = 0 ]; then
-            pid=`cat ${DIR}/var/run/${i}-*.pid`
-            kill $pid
-            rm -f ${DIR}/var/run/${i}-${pid}.pid
-        fi
-    done
 
     node_type=$(grep '<node_type>' ${DIR}/etc/${WAZUH_CONF} | sed 's/<node_type>\(.*\)<\/node_type>/\1/' | tr -d ' ');
     if [ -z $node_type ]; then
