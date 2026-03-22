@@ -17,12 +17,6 @@
  */
 static char* build_json_keys_message(const char *ar_name, char **keys);
 
-/**
- * Get srcip from win eventdata
- * @param data Input
- * @return cJSON * with the ipAddress or NULL on fail
- * */
-static cJSON* get_srcip_from_win_eventdata(const cJSON *data);
 
 
 void write_debug_file(const char *ar_name, const char *msg) {
@@ -150,10 +144,8 @@ int send_keys_and_check_message(char **argv, char **keys) {
 
 cJSON* get_json_from_input(const char *input) {
     cJSON *input_json = NULL;
-    cJSON *version_json = NULL;
-    cJSON *origin_json = NULL;
+    cJSON *wazuh_json = NULL;
     cJSON *command_json = NULL;
-    cJSON *parameters_json = NULL;
     const char *json_err;
 
     // Parsing input
@@ -161,30 +153,16 @@ cJSON* get_json_from_input(const char *input) {
         return NULL;
     }
 
-    // Detect version
-    version_json = cJSON_GetObjectItem(input_json, "version");
-    if (!cJSON_IsNumber(version_json)) {
-        cJSON_Delete(input_json);
-        return NULL;
-    }
-
-    // Detect origin
-    origin_json = cJSON_GetObjectItem(input_json, "origin");
-    if (!cJSON_IsObject(origin_json)) {
-        cJSON_Delete(input_json);
-        return NULL;
-    }
-
-    // Detect command
+    // Detect command (added by execd)
     command_json = cJSON_GetObjectItem(input_json, "command");
     if (!cJSON_IsString(command_json)) {
         cJSON_Delete(input_json);
         return NULL;
     }
 
-    // Detect parameters
-    parameters_json = cJSON_GetObjectItem(input_json, "parameters");
-    if (!cJSON_IsObject(parameters_json)) {
+    // Detect wazuh metadata (WCS format)
+    wazuh_json = cJSON_GetObjectItem(input_json, "wazuh");
+    if (!cJSON_IsObject(wazuh_json)) {
         cJSON_Delete(input_json);
         return NULL;
     }
@@ -205,55 +183,27 @@ const char* get_command_from_json(const cJSON *input) {
 }
 
 const cJSON* get_alert_from_json(const cJSON *input) {
-    cJSON *parameters_json = NULL;
-    cJSON *alert_json = NULL;
-
-    // Detect parameters
-    parameters_json = cJSON_GetObjectItem(input, "parameters");
-    if (!cJSON_IsObject(parameters_json)) {
+    // WCS format: the entire root JSON contains the alert data
+    // This includes wazuh, event, source, user, etc. at the root level
+    if (!cJSON_IsObject(input)) {
         return NULL;
     }
 
-    // Detect alert
-    alert_json = cJSON_GetObjectItem(parameters_json, "alert");
-    if (!cJSON_IsObject(alert_json)) {
-        return NULL;
-    }
-
-    return alert_json;
+    return input;
 }
 
 const char* get_srcip_from_json(const cJSON *input) {
-    cJSON *parameters_json = NULL;
-    cJSON *alert_json = NULL;
-    cJSON *data_json = NULL;
+    cJSON *source_json = NULL;
     cJSON *srcip_json = NULL;
 
-    // Detect parameters
-    parameters_json = cJSON_GetObjectItem(input, "parameters");
-    if (!cJSON_IsObject(parameters_json)) {
+    // Extract source IP from WCS path: source.ip (at root level)
+    // This follows the ECS (Elastic Common Schema) standard for network source fields
+    source_json = cJSON_GetObjectItem(input, "source");
+    if (!cJSON_IsObject(source_json)) {
         return NULL;
     }
 
-    // Detect alert
-    alert_json = cJSON_GetObjectItem(parameters_json, "alert");
-    if (!cJSON_IsObject(alert_json)) {
-        return NULL;
-    }
-
-    // Detect data
-    data_json = cJSON_GetObjectItem(alert_json, "data");
-    if (!cJSON_IsObject(data_json)) {
-        return NULL;
-    }
-
-    // Detect srcip from win.eventdata
-    srcip_json = get_srcip_from_win_eventdata(data_json);
-    if (cJSON_IsString(srcip_json)) {
-        return srcip_json->valuestring;
-    }
-    // Detect srcip from data
-    srcip_json = cJSON_GetObjectItem(data_json, "srcip");
+    srcip_json = cJSON_GetObjectItem(source_json, "ip");
     if (cJSON_IsString(srcip_json)) {
         return srcip_json->valuestring;
     }
@@ -261,64 +211,19 @@ const char* get_srcip_from_json(const cJSON *input) {
     return NULL;
 }
 
-static cJSON* get_srcip_from_win_eventdata(const cJSON *data) {
-    cJSON *win_json = NULL;
-    cJSON *eventdata_json = NULL;
-    cJSON *ipAddress_json = NULL;
-
-    // Detect win
-    win_json = cJSON_GetObjectItem(data, "win");
-    if (!cJSON_IsObject(win_json)) {
-        return NULL;
-    }
-
-    // Detect eventdata
-    eventdata_json = cJSON_GetObjectItem(win_json, "eventdata");
-    if (!cJSON_IsObject(eventdata_json)) {
-        return NULL;
-    }
-
-    // Detect ipAddress
-    ipAddress_json = cJSON_GetObjectItem(eventdata_json, "ipAddress");
-    if (cJSON_IsString(ipAddress_json)) {
-        return ipAddress_json;
-    }
-
-    // Detect destinationIp
-    ipAddress_json = cJSON_GetObjectItem(eventdata_json, "destinationIp");
-    if (cJSON_IsString(ipAddress_json)) {
-        return ipAddress_json;
-    }
-
-    return NULL;
-}
 
 const char* get_username_from_json(const cJSON *input) {
-    cJSON *parameters_json = NULL;
-    cJSON *alert_json = NULL;
-    cJSON *data_json = NULL;
+    cJSON *user_json = NULL;
     cJSON *username_json = NULL;
 
-    // Detect parameters
-    parameters_json = cJSON_GetObjectItem(input, "parameters");
-    if (!cJSON_IsObject(parameters_json)) {
+    // Extract username from WCS path: user.name (at root level)
+    // This follows the ECS (Elastic Common Schema) standard for user fields
+    user_json = cJSON_GetObjectItem(input, "user");
+    if (!cJSON_IsObject(user_json)) {
         return NULL;
     }
 
-    // Detect alert
-    alert_json = cJSON_GetObjectItem(parameters_json, "alert");
-    if (!cJSON_IsObject(alert_json)) {
-        return NULL;
-    }
-
-    // Detect data
-    data_json = cJSON_GetObjectItem(alert_json, "data");
-    if (!cJSON_IsObject(data_json)) {
-        return NULL;
-    }
-
-    // Detect username
-    username_json = cJSON_GetObjectItem(data_json, "dstuser");
+    username_json = cJSON_GetObjectItem(user_json, "name");
     if (cJSON_IsString(username_json)) {
         return username_json->valuestring;
     }

@@ -70,21 +70,22 @@ cJSON* get_json_from_input(const char *input);
 const char* get_command_from_json(const cJSON *input);
 
 /**
- * Get alert from input
+ * Get alert from input (WCS format)
+ * Returns the entire root JSON object which contains the alert data
  * @param input Input
  * @return JSON alert or NULL on Invalid.
  * */
 const cJSON* get_alert_from_json(const cJSON *input);
 
 /**
- * Get srcip from input
+ * Get source IP from input (WCS-compliant: source.ip at root level)
  * @param input Input
- * @return char * with the srcip or NULL on fail
+ * @return char * with the source IP or NULL on fail
  * */
 const char* get_srcip_from_json(const cJSON *input);
 
 /**
- * Get username from input
+ * Get username from input (WCS-compliant: user.name at root level)
  * @param input Input
  * @return char * with the username or NULL on fail
  * */

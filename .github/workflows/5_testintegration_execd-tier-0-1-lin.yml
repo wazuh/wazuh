@@ -76,6 +76,11 @@ jobs:
         run: |
           cd tests/integration
           sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python -m pytest --tier 0 --tier 1 test_execd/ --html=results.html --self-contained-html
+      - name: Dump wazuh-agent logs on failure
+        if: failure()
+        run: |
+          sudo journalctl -xeu wazuh-agent.service || true
+          sudo tail -n 200 /var/ossec/logs/ossec.log || true
       # Upload the tests result html as an artifact
       - name: Upload failed test results
         if: failure()

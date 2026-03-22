@@ -331,7 +331,7 @@ void ExecdRun(char *exec_msg, int *childcount)
         memset(rkey, '\0', OS_SIZE_4096);
         snprintf(rkey, OS_SIZE_4096 - 1, "%s", basename_ex(cmd_copy));
 
-        keys_json = get_json_from_input(response);
+        keys_json = cJSON_Parse(response);
         if (keys_json != NULL) {
             const char *action = get_command_from_json(keys_json);
             if ((action != NULL) && (strcmp(CHECK_KEYS_ENTRY, action) == 0)) {
@@ -640,6 +640,7 @@ DWORD WINAPI win_exec_main(__attribute__((unused)) void * args) {
     while(1) {
         char* exec_msg = queue_pop_ex(winexec_queue);
         if (exec_msg) {
+            mdebug2("Received message: '%s'", exec_msg);
             ExecdRun(exec_msg);
             os_free(exec_msg);
         }

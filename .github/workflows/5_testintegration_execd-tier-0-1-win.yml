@@ -109,6 +109,24 @@ jobs:
         run: |
           cd C:\wazuh\tests\integration
           $env:GITHUB_SHA="${{ github.sha }}"; $env:GITHUB_REF_NAME="$env:BRANCH_NAME"; python -m pytest -m win32 --tier 0 --tier 1 test_execd\ --html=results.html --self-contained-html
+      - name: Dump wazuh-agent logs on failure
+        if: failure()
+        shell: pwsh
+        run: |
+          $logPathNew = 'C:\Program Files (x86)\ossec-agent\logs\ossec.log'
+          $logPathLegacy = 'C:\Program Files (x86)\ossec-agent\ossec.log'
+          if (Test-Path $logPathNew) {
+              Write-Host "Last 200 lines of $logPathNew"
+              Get-Content $logPathNew -Tail 200
+          } elseif (Test-Path $logPathLegacy) {
+              Write-Host "Last 200 lines of $logPathLegacy"
+              Get-Content $logPathLegacy -Tail 200
+          } else {
+              Write-Host "Log file not found in default locations. Listing agent directory:"
+              Get-ChildItem 'C:\Program Files (x86)\ossec-agent' -Recurse | Format-List FullName, Length
+          }
+          Write-Host 'Wazuh service status:'
+          Get-Service WazuhSvc | Format-List *
       # Upload the tests result html as an artifact
       - name: Upload failed test results
         if: failure()
