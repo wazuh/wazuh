@@ -3,6 +3,7 @@
     {
       "name": "agentd",
       "pytest_target": "test_agentd\\",
+      "tiers": ["0"],
       "paths": [
         ".github/workflows/5_builderpackage_agent-windows.yml",
         ".github/test-modules-windows.json",
@@ -19,6 +20,7 @@
     {
       "name": "enrollment",
       "pytest_target": "test_enrollment\\",
+      "tiers": ["1"],
       "paths": [
         ".github/workflows/5_builderpackage_agent-windows.yml",
         ".github/test-modules-windows.json",
@@ -84,6 +86,7 @@
     {
       "name": "logcollector",
       "pytest_target": "test_logcollector\\",
+      "tiers": ["0 1"],
       "paths": [
         ".github/workflows/5_builderpackage_agent-windows.yml",
         ".github/test-modules-windows.json",
