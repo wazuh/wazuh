@@ -104,12 +104,9 @@ jobs:
     env:
       SHOULD_UPLOAD: ${{ inputs.upload_package }}
       SHOULD_UPLOAD_CHECKSUM: ${{ inputs.checksum && inputs.upload_package }}
-      RETRY_SCRIPT: ${{ github.workspace }}/.github/scripts/run_with_retry.sh
-      AWS_MAX_ATTEMPTS: "10"
-      AWS_RETRY_MODE: adaptive
 
-    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-22.04' }}
-    timeout-minutes: 90
+    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'wz-linux-amd64' }}
+    timeout-minutes: 45
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
 
     steps:
@@ -163,7 +160,6 @@ jobs:
           echo "CONTAINER_NAME=pkg_${{ inputs.system }}_manager_builder_${{ env.PACKAGE_ARCH }}" >> $GITHUB_ENV
 
       - name: Download docker image for package building
-        timeout-minutes: 20
         run: |
           bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
 
@@ -176,7 +172,6 @@ jobs:
           cat VERSION.json
 
       - name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
-        timeout-minutes: 45
         working-directory: packages
         run: |
           SHORT_COMMIT=$(git rev-parse --short HEAD)
@@ -209,7 +204,6 @@ jobs:
           echo "PACKAGE_SYMBOLS_NAME=${PACKAGE_SYMBOLS_NAME}" | tee -a $GITHUB_ENV
 
       - name: Test install built manager
-        timeout-minutes: 15
         run: |
           TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
           if [ -z "${{ env.PACKAGE_NAME }}" ]; then echo "No package found matching the pattern!"; exit 1; fi
@@ -258,7 +252,6 @@ jobs:
           fi
 
       - name: Test uninstall built manager
-        timeout-minutes: 10
         run: |
           if [ -z "${{ env.PACKAGE_NAME }}" ] || [ -z "${{ env.CONTAINER_ID }}" ]; then
             echo "No package or container found!";
@@ -270,34 +263,12 @@ jobs:
           sudo docker stop $CONTAINER_ID && sudo docker rm $CONTAINER_ID
 
       - name: Get latest Wazuh release from GitHub
-        timeout-minutes: 10
         run: |
-          if ! command -v curl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
-            "$RETRY_SCRIPT" --attempts 4 --delay 10 --backoff 2 --max-delay 45 --timeout 300 \
-              --label "Refresh apt metadata for release lookup" -- \
-              sudo apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o DPkg::Lock::Timeout=60 update
-            "$RETRY_SCRIPT" --attempts 4 --delay 10 --backoff 2 --max-delay 45 --timeout 300 \
-              --label "Install curl and jq for release lookup" -- \
-              sudo apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o DPkg::Lock::Timeout=60 install -y curl jq
-          fi
+          apt-get update && apt-get install -y curl jq
 
           CURRENT_TAG="${{ env.TAG }}"
-          RELEASES_FILE=$(mktemp)
-          trap 'rm -f "$RELEASES_FILE"' EXIT
-
-          "$RETRY_SCRIPT" --attempts 4 --delay 5 --backoff 2 --max-delay 30 --timeout 180 \
-            --label "Download Wazuh GitHub releases metadata" -- \
-            curl -fsSL --connect-timeout 20 --max-time 120 \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              -o "$RELEASES_FILE" \
-              https://api.github.com/repos/wazuh/wazuh/releases
-
-          PREVIOUS_TAG=$(jq -r '.[].tag_name' "$RELEASES_FILE" | grep -vE 'alpha|beta|rc' | sed 's/^v//' | grep -E '^5\.[0-9]+\.[0-9]+$' | \
+          PREVIOUS_TAG=$(curl -s https://api.github.com/repos/wazuh/wazuh/releases | jq -r '.[].tag_name' | grep -vE 'alpha|beta|rc' | sed 's/^v//' | grep -E '^5\.[0-9]+\.[0-9]+$' | \
           grep -v "^${CURRENT_TAG}$" | sort -V | awk -v current="$CURRENT_TAG" '$0 < current' | tail -n1)
-
-          rm -f "$RELEASES_FILE"
-          trap - EXIT
 
           if [ -n "$PREVIOUS_TAG" ]; then
             echo "Latest release detected: $PREVIOUS_TAG"
@@ -310,7 +281,6 @@ jobs:
 
       - name: Download latest public wazuh-manager package
         if: env.HAS_PREVIOUS_RELEASE == 'true'
-        timeout-minutes: 10
         run: |
           ARCH=${{ env.ARCH }}
           VERSION=${{ env.PUBLIC_RELEASE_VERSION }}
@@ -328,28 +298,25 @@ jobs:
 
           PACKAGE_URL="$BASE_URL/$FILE_NAME_PUBLIC"
           echo "Downloading: $PACKAGE_URL"
-          "$RETRY_SCRIPT" --attempts 5 --delay 5 --backoff 2 --max-delay 30 --timeout 360 \
-            --label "Download ${FILE_NAME_PUBLIC}" -- \
-            curl -fL --connect-timeout 20 --max-time 300 -o "/tmp/$FILE_NAME_PUBLIC" "$PACKAGE_URL"
+          curl -fSL "$PACKAGE_URL" -o "/tmp/$FILE_NAME_PUBLIC"
           echo "PUBLIC_PACKAGE_NAME=$FILE_NAME_PUBLIC" >> $GITHUB_ENV
 
       - name: Run container and install public wazuh-manager
         if: env.HAS_PREVIOUS_RELEASE == 'true'
-        timeout-minutes: 20
         run: |
           FILE_NAME=${{ env.PUBLIC_PACKAGE_NAME }}
           SYSTEM=${{ inputs.system }}
 
           if [ "$SYSTEM" = "deb" ]; then
             BASE_IMAGE="ubuntu:22.04"
-            INSTALL_CMD="dpkg -i /packages/$FILE_NAME || apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o DPkg::Lock::Timeout=60 -f install -y"
-            UPDATE_CMD="apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update"
+            INSTALL_CMD="dpkg -i /packages/$FILE_NAME || apt-get -f install -y"
+            UPDATE_CMD="apt-get update"
             docker run --name wazuh_previous -d -v /tmp:/packages $BASE_IMAGE tail -f /dev/null
             sleep 5
           else
             BASE_IMAGE="centos:8"
-            INSTALL_CMD="yum --setopt=retries=5 --setopt=timeout=30 localinstall -y /packages/$FILE_NAME"
-            UPDATE_CMD="yum --setopt=retries=5 --setopt=timeout=30 update -y"
+            INSTALL_CMD="yum localinstall -y /packages/$FILE_NAME"
+            UPDATE_CMD="yum update -y"
             docker run --name wazuh_previous -d -v /tmp:/packages $BASE_IMAGE tail -f /dev/null
             # Configuring CentOS 8 repositories
             docker exec wazuh_previous bash -c "sed -i.bak 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*"
@@ -357,37 +324,29 @@ jobs:
             sleep 5
           fi
 
-          "$RETRY_SCRIPT" --attempts 4 --delay 10 --backoff 2 --max-delay 45 --timeout 600 \
-            --label "Refresh package repositories in upgrade test container" -- \
-            docker exec wazuh_previous bash -lc "$UPDATE_CMD"
-          "$RETRY_SCRIPT" --attempts 3 --delay 15 --backoff 2 --max-delay 45 --timeout 900 \
-            --label "Install previous public manager package" -- \
-            docker exec wazuh_previous bash -lc "$INSTALL_CMD"
+          docker exec wazuh_previous bash -c "$UPDATE_CMD"
+          docker exec wazuh_previous bash -c "$INSTALL_CMD"
           docker exec wazuh_previous bash -c "/var/wazuh-manager/bin/wazuh-manager-control info || echo 'Manager not started yet'"
 
       - name: Upgrade to current Wazuh version
         if: env.HAS_PREVIOUS_RELEASE == 'true'
-        timeout-minutes: 20
         run: |
           SYSTEM=${{ inputs.system }}
           FILE_NAME=${{ env.PACKAGE_NAME }}
 
           if [ "$SYSTEM" = "deb" ]; then
-            INSTALL_CMD="dpkg -i /packages/$FILE_NAME || apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o DPkg::Lock::Timeout=60 -f install -y"
+            INSTALL_CMD="dpkg -i /packages/$FILE_NAME || apt-get -f install -y"
           else
-            INSTALL_CMD="yum --setopt=retries=5 --setopt=timeout=30 localinstall -y /packages/$FILE_NAME"
+            INSTALL_CMD="yum localinstall -y /packages/$FILE_NAME"
           fi
 
           echo "Upgrading to current version with package: $FILE_NAME"
           docker cp /tmp/$FILE_NAME wazuh_previous:/packages/$FILE_NAME
-          "$RETRY_SCRIPT" --attempts 3 --delay 15 --backoff 2 --max-delay 45 --timeout 900 \
-            --label "Upgrade manager package in test container" -- \
-            docker exec wazuh_previous bash -lc "$INSTALL_CMD"
+          docker exec wazuh_previous bash -c "$INSTALL_CMD"
           docker exec wazuh_previous bash -c "/var/wazuh-manager/bin/wazuh-manager-control info || echo 'Manager not started yet after upgrade'"
 
       - name: Upload package to GitHub
         if: always()
-        timeout-minutes: 10
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PACKAGE_NAME }}
@@ -396,7 +355,6 @@ jobs:
 
       - name: Upload debug symbols to GitHub
         if: always()
-        timeout-minutes: 10
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PACKAGE_SYMBOLS_NAME }}
@@ -413,41 +371,30 @@ jobs:
 
       - name: Upload package to S3
         if: ${{ env.SHOULD_UPLOAD == 'true' }}
-        timeout-minutes: 10
         working-directory: packages
         run: |
-          "$RETRY_SCRIPT" --attempts 3 --delay 10 --backoff 2 --max-delay 30 --timeout 600 \
-            --label "Upload package to S3" -- \
-            aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
           s3uri="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_NAME }}"
           echo "S3 URI: ${s3uri}"
 
       - name: Upload checksum to S3
         if: ${{ env.SHOULD_UPLOAD_CHECKSUM == 'true' }}
-        timeout-minutes: 10
         run: |
-          "$RETRY_SCRIPT" --attempts 3 --delay 10 --backoff 2 --max-delay 30 --timeout 600 \
-            --label "Upload package checksum to S3" -- \
-            aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
           s3uri="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
           echo "S3 sha512 URI: ${s3uri}"
 
       - name: Upload debug symbols to S3
         if: ${{ env.SHOULD_UPLOAD == 'true' }}
-        timeout-minutes: 10
         run: |
-          "$RETRY_SCRIPT" --attempts 3 --delay 10 --backoff 2 --max-delay 30 --timeout 600 \
-            --label "Upload debug symbols to S3" -- \
-            aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
           symbols="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}"
           echo "S3 symbols URI: ${symbols}"
 
       - name: Upload debug symbols checksum to S3
         if: ${{ env.SHOULD_UPLOAD_CHECKSUM == 'true' }}
-        timeout-minutes: 10
         run: |
-          "$RETRY_SCRIPT" --attempts 3 --delay 10 --backoff 2 --max-delay 30 --timeout 600 \
-            --label "Upload debug symbols checksum to S3" -- \
-            aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
           symbols="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512"
           echo "S3 symbols sha512 URI: ${symbols}"
