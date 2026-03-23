@@ -42,7 +42,7 @@ TEST_F(AsyncValueDispatcherTest, Ctor)
     std::atomic<size_t> counter {0};
     std::promise<void> promise;
 
-    Utils::AsyncValueDispatcher<std::string, std::function<void(std::string &&)>> dispatcher(
+    Utils::AsyncValueDispatcher<std::string, std::function<void(std::string&&)>> dispatcher(
         [&counter, &promise](std::string&&)
         {
             counter++;
@@ -129,13 +129,7 @@ TEST_F(AsyncValueDispatcherTest, QueueSizeLimits)
     pushPromise.set_value();
 
     promise.get_future().wait();
-
-    // Due to race conditions between checking queue size and pushing,
-    // we might process slightly more than QUEUE_SIZE (typically +1)
-    // The important thing is that we don't process all QUEUE_SIZE + 5
-    EXPECT_GE(counter, QUEUE_SIZE) << "Should process at least QUEUE_SIZE elements";
-    EXPECT_LE(counter, QUEUE_SIZE + 2) << "Should not process significantly more than QUEUE_SIZE";
-    EXPECT_LT(counter, QUEUE_SIZE + 5) << "Should discard some events due to queue limit";
+    EXPECT_EQ(QUEUE_SIZE, counter);
 }
 
 TEST_F(AsyncValueDispatcherTest, ExceptionHandling)
@@ -212,7 +206,7 @@ TEST_F(AsyncValueDispatcherTest, DifferentDataTypes)
     std::atomic<size_t> counter {0};
     std::promise<void> promise;
 
-    Utils::AsyncValueDispatcher<std::string, std::function<void(std::string &&)>> dispatcher(
+    Utils::AsyncValueDispatcher<std::string, std::function<void(std::string&&)>> dispatcher(
         [&counter, &promise](std::string&&)
         {
             counter++;
