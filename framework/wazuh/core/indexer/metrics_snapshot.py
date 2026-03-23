@@ -128,10 +128,6 @@ class MetricsSnapshotTasks:
 
         async with get_indexer_client() as indexer:
             await asyncio.gather(
-                indexer.metrics.bulk_index(
-                    "wazuh-metrics-agents", agent_docs, self.bulk_size
-                ),
-                indexer.metrics.bulk_index(
-                    "wazuh-metrics-comms", comms_docs, self.bulk_size
-                ),
+                indexer.metrics.bulk_index("wazuh-metrics-agents", agent_docs, self.bulk_size),
+                indexer.metrics.bulk_index("wazuh-metrics-comms", comms_docs, self.bulk_size),
             )
