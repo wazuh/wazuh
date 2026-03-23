@@ -218,8 +218,6 @@ isWazuhInstalled()
         return 0;
     elif [ -f "${1}/bin/wazuh-control" ]; then
         return 0;
-    elif [ -f "${1}/bin/ossec-control" ]; then
-        return 0;
     else
         return 1;
     fi
@@ -347,9 +345,7 @@ UpdateStopWAZUH()
         getPreinstalledDir
     fi
 
-    if [ -f "$PREINSTALLEDDIR/bin/ossec-control" ]; then
-        $PREINSTALLEDDIR/bin/ossec-control stop > /dev/null 2>&1
-    elif [ -f "$PREINSTALLEDDIR/bin/wazuh-manager-control" ]; then
+    if [ -f "$PREINSTALLEDDIR/bin/wazuh-manager-control" ]; then
         $PREINSTALLEDDIR/bin/wazuh-manager-control stop > /dev/null 2>&1
     else
         $PREINSTALLEDDIR/bin/wazuh-control stop > /dev/null 2>&1

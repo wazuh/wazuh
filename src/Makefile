@@ -818,5 +818,5 @@ clean-windows:
 	rm -f win32/VERSION.json
 
 clean-config:
-	rm -f ../etc/ossec.mc
+	rm -f ../etc/wazuh.mc
 	rm -f Config.OS

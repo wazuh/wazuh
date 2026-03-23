@@ -82,8 +82,8 @@ cp -pr %{_localstatedir}/* ${RPM_BUILD_ROOT}%{_localstatedir}/
 # Ensure mandatory package paths exist even when install.sh does not populate SCA files.
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/ruleset/sca
 mkdir -p ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
-sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/ossec-hids-rh.init
-install -m 0755 src/init/templates/ossec-hids-rh.init ${RPM_BUILD_ROOT}%{_initrddir}/wazuh-agent
+sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-rh.init
+install -m 0755 src/init/templates/wazuh-rh.init ${RPM_BUILD_ROOT}%{_initrddir}/wazuh-agent
 sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-agent.service
 install -m 0644 src/init/templates/wazuh-agent.service ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
 
@@ -166,8 +166,8 @@ mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_sc
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/etc/templates/config/sles
 
 # Add SUSE initscript
-sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/ossec-hids-suse.init
-cp -rp src/init/templates/ossec-hids-suse.init ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/src/init/
+sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-suse.init
+cp -rp src/init/templates/wazuh-suse.init ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/src/init/
 
 # Copy scap templates
 cp -rp  etc/templates/config/generic/* ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/etc/templates/config/generic
@@ -264,10 +264,8 @@ if [ $1 = 2 ]; then
     touch %{_localstatedir}/tmp/wazuh.restart
   elif %{_localstatedir}/bin/wazuh-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     touch %{_localstatedir}/tmp/wazuh.restart
-  elif %{_localstatedir}/bin/ossec-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-    touch %{_localstatedir}/tmp/wazuh.restart
   fi
-  %{_localstatedir}/bin/ossec-control stop > /dev/null 2>&1 || %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
+  %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
 fi
 
 # Remove old databases if upgrading from pre 5.X to 5.X
@@ -315,7 +313,7 @@ if [ $1 = 1 ]; then
 fi
 
 if [ -r /etc/SuSE-release ] && grep -q "VERSION = 11" /etc/SuSE-release 2>/dev/null; then
-    cp -p %{_localstatedir}/packages_files/agent_installation_scripts/src/init/ossec-hids-suse.init /etc/init.d/wazuh-agent
+    cp -p %{_localstatedir}/packages_files/agent_installation_scripts/src/init/wazuh-suse.init /etc/init.d/wazuh-agent
     chmod 755 /etc/init.d/wazuh-agent
 fi
 
@@ -596,15 +594,7 @@ fi
 
 DELETE_WAZUH_USER_AND_GROUP=0
 
-# If the upgrade downgrades to earlier versions, it will create the ossec
-# group and user, we need to delete wazuh ones
 if [ $1 = 1 ]; then
-  if command -v %{_localstatedir}/bin/ossec-control > /dev/null 2>&1; then
-    find %{_localstatedir} -group wazuh -exec chgrp ossec {} +
-    find %{_localstatedir} -user wazuh -exec chown ossec {} +
-    DELETE_WAZUH_USER_AND_GROUP=1
-  fi
-
   if [ ! -f %{_localstatedir}/etc/client.keys ]; then
     if [ -f %{_localstatedir}/etc/client.keys.rpmsave ]; then
       mv %{_localstatedir}/etc/client.keys.rpmsave %{_localstatedir}/etc/client.keys

@@ -42,7 +42,7 @@ WAZUH_LOGFILE="wazuh-manager.log"
 WAZUH_LOGJSON="wazuh-manager.json"
 
 # Internal definitions
-NEWCONFIG="./etc/ossec.mc"
+NEWCONFIG="./etc/wazuh.mc"
 PRECONFIG="./etc/PRECONFIG"
 
 ## Templates

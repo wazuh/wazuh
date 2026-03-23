@@ -99,10 +99,6 @@ Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later."
         touch "${DIR}/WAZUH_RESTART"
         ${DIR}/bin/wazuh-control stop
         restart="true"
-    elif ${DIR}/bin/ossec-control status | grep "is running" > /dev/null 2>&1; then
-        touch "${DIR}/WAZUH_RESTART"
-        ${DIR}/bin/ossec-control stop
-        restart="true"
     fi
 
     # Remove old databases if upgrading from pre 5.X to 5.X

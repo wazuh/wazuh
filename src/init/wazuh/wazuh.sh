@@ -154,7 +154,6 @@ WazuhUpgrade()
     # Remove deprecated Wazuh tools
 
     rm -f $PREINSTALLEDDIR/bin/clear_stats
-    rm -f $PREINSTALLEDDIR/bin/ossec-control
     rm -f $PREINSTALLEDDIR/bin/manage_agents
     rm -f $PREINSTALLEDDIR/bin/util.sh
     rm -f $PREINSTALLEDDIR/bin/rootcheck_control

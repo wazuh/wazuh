@@ -49,7 +49,7 @@ This package provides debug information for package %{name}.
 %prep
 %setup -q
 
-./src/init/gen_wazuh.sh conf manager centos %rhel %{_localstatedir} > etc/ossec-server.conf
+./src/init/gen_wazuh.sh conf manager centos %rhel %{_localstatedir} > etc/wazuh-manager.conf
 
 %build
 pushd src
@@ -85,8 +85,8 @@ mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}
 
 # Copy the installed files into RPM_BUILD_ROOT directory
 cp -pr %{_localstatedir}/* ${RPM_BUILD_ROOT}%{_localstatedir}/
-sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/ossec-hids-rh.init
-install -m 0755 src/init/templates/ossec-hids-rh.init ${RPM_BUILD_ROOT}%{_initrddir}/wazuh-manager
+sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-rh.init
+install -m 0755 src/init/templates/wazuh-rh.init ${RPM_BUILD_ROOT}%{_initrddir}/wazuh-manager
 mkdir -p ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
 sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-manager.service
 install -m 0644 src/init/templates/wazuh-manager.service ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
@@ -103,8 +103,8 @@ mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/sles
 
 # Add SUSE initscript
-sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/ossec-hids-suse.init
-cp -rp src/init/templates/ossec-hids-suse.init ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/src/init/
+sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-suse.init
+cp -rp src/init/templates/wazuh-suse.init ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/src/init/
 
 # Copy scap templates
 cp -rp  etc/templates/config/generic/* ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/generic
@@ -225,12 +225,10 @@ if [ $1 = 2 ]; then
     %{_localstatedir}/bin/wazuh-manager-control stop > /dev/null 2>&1
   elif [ -x %{_localstatedir}/bin/wazuh-control ]; then
     %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
-  elif [ -x %{_localstatedir}/bin/ossec-control ]; then
-    %{_localstatedir}/bin/ossec-control stop > /dev/null 2>&1
   fi
 fi
-if pgrep -f ossec-authd > /dev/null 2>&1; then
-    kill -15 $(pgrep -f ossec-authd)
+if pgrep -f wazuh-manager-authd > /dev/null 2>&1; then
+    kill -15 $(pgrep -f wazuh-manager-authd)
 fi
 
 # Remove/relocate existing SQLite databases

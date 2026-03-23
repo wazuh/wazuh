@@ -100,18 +100,14 @@ EOF
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
             elif ${DIR}/bin/wazuh-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
-            elif ${DIR}/bin/ossec-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-                touch ${WAZUH_TMP_DIR}/wazuh.restart
             fi
             if [ -x "${DIR}/bin/wazuh-manager-control" ]; then
                 ${DIR}/bin/wazuh-manager-control stop > /dev/null 2>&1
             elif [ -x "${DIR}/bin/wazuh-control" ]; then
                 ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
-            elif [ -x "${DIR}/bin/ossec-control" ]; then
-                ${DIR}/bin/ossec-control stop > /dev/null 2>&1
             fi
-            if pgrep -f ossec-authd > /dev/null 2>&1; then
-                kill -15 $(pgrep -f ossec-authd)
+            if pgrep -f wazuh-manager-authd > /dev/null 2>&1; then
+                kill -15 $(pgrep -f wazuh-manager-authd)
             fi
 
             if [ -d ${DIR}/logs/ossec ]; then

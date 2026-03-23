@@ -47,7 +47,7 @@ if [ "$1" = "conf" ] && [ "$#" -ge "4" ]; then
 
   # Default values definition
   SERVER_IP="MANAGER_IP"
-  NEWCONFIG="./ossec.conf.temp"
+  NEWCONFIG="./wazuh.conf.temp"
   SYSCHECK="yes"
   ROOTCHECK="yes"
   SYSCOLLECTOR="yes"
