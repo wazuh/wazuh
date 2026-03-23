@@ -52,10 +52,9 @@ build_package(){
 
     if [[ "${ARCHITECTURE_TARGET}" == "amd64" ]] || [[ "${ARCHITECTURE_TARGET}" == "arm64" ]]; then
         debuild --rootcmd=sudo -b -uc -us -nc
-    elif [[ "${ARCHITECTURE_TARGET}" == "armhf" ]]; then
-        linux32 debuild --rootcmd=sudo -b -uc -us -nc
     else
-        linux32 debuild --rootcmd=sudo -ai386 -b -uc -us -nc
+        echo "Error: Unsupported architecture '${ARCHITECTURE_TARGET}'. Supported: [amd64, arm64]."
+        return 1
     fi
     return $?
 }

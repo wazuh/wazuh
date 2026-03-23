@@ -16,7 +16,7 @@ inputs:
     description: "Version of the package"
   architecture:
     required: false
-    description: "Architecture os the request url package [amd64,intel64,arm64,armhf,i386,ppc64,sparc]"
+    description: "Architecture of the requested url package [amd64,intel64,arm64]"
 
 outputs:
   testing_package_url:
