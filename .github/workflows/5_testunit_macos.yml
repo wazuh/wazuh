@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-sonoma:
-    runs-on: macos-15
+    runs-on: macos-14
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -23,13 +23,13 @@ jobs:
           cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
           make -j$(sysctl -n hw.ncpu)
           sudo make install
-      - name: Build wazuh agent for macOS 15 with tests flags
+      - name: Build wazuh agent for macOS 14 with tests flags
         env:
             CMAKE_POLICY_VERSION_MINIMUM: 3.5
         run: |
           make deps -C src TARGET=agent -j3
           C_INCLUDE_PATH=$C_INCLUDE_PATH:/opt/homebrew/include LIBRARY_PATH=/usr/local/lib:/opt/homebrew/lib make -C src TARGET=agent -j3 TEST=1
-      - name: Run wazuh unit tests for macOS 15
+      - name: Run wazuh unit tests for macOS 14
         run: |
           export DYLD_LIBRARY_PATH=/usr/local/lib:$DYLD_LIBRARY_PATH
           cd src/build
