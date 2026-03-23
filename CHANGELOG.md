@@ -23,6 +23,13 @@ All notable changes to this project will be documented in this file.
 
 - Fixed `allow_higher_versions` validation in API `upload_configuration`. ([34905](https://github.com/wazuh/wazuh/pull/34905))
 
+### Ruleset
+
+#### Fixed
+
+- Fixed bug in CIS SCA checks 35675 and 35689 for Ubuntu 24.04. ([#35088](https://github.com/wazuh/wazuh/pull/35088))
+- Fixed Dovecot decoders to correctly extract `rip` and `lip` fields. ([#35089](https://github.com/wazuh/wazuh/pull/35089))
+
 ### Other
 
 #### Changed
