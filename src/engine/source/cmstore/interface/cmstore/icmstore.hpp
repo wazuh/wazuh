@@ -2,6 +2,7 @@
 #define _CMSTORE_ICMSTORE
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/json.hpp>
@@ -132,11 +133,16 @@ public:
     virtual json::Json getAssetByUUID(const std::string& uuid) const = 0;
 
     /**
-     * @brief Get the Default Outputs Integration object
+     * @brief Get the output definitions for a production policy space.
      *
-     * @return dataType::Integration
+     * The store resolves outputs using the local outputs path:
+     * - if a directory exists for the given space key, outputs are loaded from that directory
+     * - otherwise, outputs are loaded from the `default/` directory
+     *
+     * @param spaceKey The policy space key, typically origin_space or a namespace fallback
+     * @return std::vector<json::Json> Output definitions loaded from the selected directory
      */
-    virtual const std::vector<json::Json> getDefaultOutputs() const = 0;
+    virtual const std::vector<json::Json> getOutputsForSpace(std::string_view spaceKey) const = 0;
 
     /*********************************** Resources ***************************************/
 

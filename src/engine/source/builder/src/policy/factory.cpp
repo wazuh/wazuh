@@ -246,8 +246,8 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         // Default outputs are not associated with an integration; clear KVDB validation.
         assetBuilder->clearAvailableKvdbs();
 
-        const auto defaultOutputs = cmStoreNsReader->getDefaultOutputs();
-        for (const auto& output : defaultOutputs)
+        const auto outputsForSpace = cmStoreNsReader->getOutputsForSpace(policy.getOriginSpace());
+        for (const auto& output : outputsForSpace)
         {
             buildAndStoreAsset(output, "", AssetPipelineStage::OUTPUTS_TREE, "Output");
         }

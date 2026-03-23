@@ -3,6 +3,7 @@
 
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <vector>
 
@@ -25,6 +26,7 @@ constexpr std::string_view POLICY_FILE = "policy.json";
 constexpr std::string_view KVDBS_DIR = "kvdbs";
 constexpr std::string_view DECODERS_DIR = "decoders";
 constexpr std::string_view OUTPUTS_DIR = "outputs";
+constexpr std::string_view DEFAULT_OUTPUTS_DIR = "default";
 constexpr std::string_view FILTERS_DIR = "filters";
 constexpr std::string_view INTEGRATIONS_DIR = "integrations";
 
@@ -156,8 +158,8 @@ public:
     bool assetExistsByName(const base::Name& name) const override;
     /** @copydoc ICMStoreNSReader::assetExistsByUUID */
     bool assetExistsByUUID(const std::string& uuid) const override;
-    /** @copydoc ICMStoreNSReader::getDefaultOutputs */
-    const std::vector<json::Json> getDefaultOutputs() const override;
+    /** @copydoc ICMStoreNSReader::getOutputsForSpace */
+    const std::vector<json::Json> getOutputsForSpace(std::string_view spaceKey) const override;
 
     /*********************************** General Resource ************************************/
 
