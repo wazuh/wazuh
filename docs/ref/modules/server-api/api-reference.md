@@ -358,9 +358,6 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | PUT | `/cluster/{node_id}/configuration` | Update node config |
 | GET | `/cluster/{node_id}/configuration/{component}/{configuration}` | Active config |
 | GET | `/cluster/{node_id}/daemons/stats` | Daemon stats |
-| GET | `/cluster/{node_id}/stats` | Node stats |
-| GET | `/cluster/{node_id}/stats/hourly` | Hourly stats |
-| GET | `/cluster/{node_id}/stats/weekly` | Weekly stats |
 | GET | `/cluster/{node_id}/logs` | Node logs |
 | GET | `/cluster/{node_id}/logs/summary` | Log summary |
 

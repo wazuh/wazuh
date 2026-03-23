@@ -4,7 +4,6 @@
 
 import json
 import os
-import uuid
 from contextvars import ContextVar
 from copy import deepcopy
 from functools import lru_cache, wraps
@@ -192,7 +191,6 @@ OSSEC_TMP_PATH = os.path.join(WAZUH_PATH, 'tmp')
 OSSEC_PIDFILE_PATH = os.path.join(WAZUH_PATH, 'var', 'run')
 OS_PIDFILE_PATH = os.path.join('var', 'run')
 WDB_PATH = os.path.join(WAZUH_PATH, 'queue', 'db')
-STATS_PATH = os.path.join(WAZUH_PATH, 'stats')
 BACKUP_PATH = os.path.join(WAZUH_PATH, 'backup')
 MULTI_GROUPS_PATH = os.path.join(WAZUH_PATH, 'var', 'multigroups')
 DEFAULT_RBAC_RESOURCES = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'rbac', 'default')

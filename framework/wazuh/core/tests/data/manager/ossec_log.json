@@ -9,16 +9,6 @@
     "description": "Checking for keys file changes."
 }
 {
-    "timestamp": "2023/01/18 12:52:57",
-    "tag": "wazuh-manager-remoted",
-    "pid": 27006,
-    "file": "state.c",
-    "line": 161,
-    "routine": "rem_write_state",
-    "level": "debug",
-    "description": "Updating state file."
-}
-{
     "timestamp": "2023/01/18 12:52:59",
     "tag": "wazuh-manager-db",
     "pid": 26854,
@@ -37,16 +27,6 @@
     "routine": "wdb_get_global_group_hash",
     "level": "debug",
     "description": "Using global group hash from cache"
-}
-{
-    "timestamp": "2023/01/18 12:53:02",
-    "tag": "wazuh-manager-remoted",
-    "pid": 27006,
-    "file": "state.c",
-    "line": 161,
-    "routine": "rem_write_state",
-    "level": "debug",
-    "description": "Updating state file."
 }
 {
     "timestamp": "2023/01/18 12:53:06",
@@ -137,15 +117,5 @@
     "routine": "rem_keyupdate_main",
     "level": "debug",
     "description": "Checking for keys file changes."
-}
-{
-    "timestamp": "2023/01/18 12:53:07",
-    "tag": "wazuh-manager-remoted",
-    "pid": 27006,
-    "file": "state.c",
-    "line": 161,
-    "routine": "rem_write_state",
-    "level": "debug",
-    "description": "Updating state file."
 }
 

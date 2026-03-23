@@ -37,28 +37,6 @@ def send_msg_to_wdb(msg, raw=False):
     return ['ok', dumps(result)] if raw else result
 
 
-def test_totals():
-    """Verify totals() function works and returns correct data"""
-    with patch('wazuh.stats.totals_', return_value=({})):
-        response = stats.totals(date(2019, 8, 13))
-        assert response.total_affected_items == len(response.affected_items)
-        assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
-
-
-def test_hourly():
-    """Makes sure hourly() fit with the expected."""
-    response = stats.hourly()
-    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
-    assert response.total_affected_items == len(response.affected_items)
-
-
-def test_weekly():
-    """Makes sure weekly() fit with the expected."""
-    response = stats.weekly()
-    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
-    assert response.total_affected_items == len(response.affected_items)
-
-
 @patch('wazuh.core.common.REMOTED_SOCKET', '/var/wazuh-manager/queue/sockets/remote')
 @patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/analysis')
 @patch('wazuh.core.common.WDB_SOCKET', '/var/wazuh-manager/queue/db/wdb')
