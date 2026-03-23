@@ -11,7 +11,7 @@
 
 #include "socketServer_test.hpp"
 #include <future>
-#define private public
+#define private   public
 #define protected public
 #include "socketServer.hpp"
 #undef private
