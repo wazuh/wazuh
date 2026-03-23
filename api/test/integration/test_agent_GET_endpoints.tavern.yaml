@@ -1514,10 +1514,14 @@ stages:
           internal:
             agent:
               debug: !anyint
+              max_attempts: !anyint
               min_eps: !anyint
               normal_level: !anyint
               recv_timeout: !anyint
               remote_conf: !anyint
+              request_pool: !anyint
+              request_rto_msec: !anyint
+              request_rto_sec: !anyint
               state_interval: !anyint
               tolerance: !anyint
               warn_level: !anyint
@@ -1528,14 +1532,6 @@ stages:
               keep_log_days: !anyint
               rotate_log: !anyint
               size_rotate: !anyint
-            remoted:
-              comp_average_printout: !anyint
-              max_attempts: !anyint
-              recv_counter_flush: !anyint
-              request_pool: !anyint
-              request_rto_msec: !anyint
-              request_rto_sec: !anyint
-              verify_msg_id: !anyint
 
   - name: Get active-response configuration from com component (Agent)
     request:
