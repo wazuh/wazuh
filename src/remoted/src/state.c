@@ -24,8 +24,6 @@
 remoted_state_t remoted_state = {0};
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t agents_state_mutex = PTHREAD_MUTEX_INITIALIZER;
-static char *refresh_time;
-
 extern OSHash *remoted_agents_state;
 
 /**
@@ -109,20 +107,11 @@ static void rem_inc_agents_send_discarded(const char *agent_id);
 
 void * rem_state_main() {
     if (!state_interval) {
-        minfo("State file is disabled.");
+        minfo("Agent state cleanup is disabled.");
         return NULL;
     }
 
-    os_calloc(48, sizeof(char), refresh_time);
-    if (state_interval < 60) {
-        snprintf(refresh_time, 48, "Updated every %i seconds.", state_interval);
-    } else if (state_interval < 3600) {
-        snprintf(refresh_time, 48, "Updated every %i minutes.", state_interval/60);
-    } else {
-        snprintf(refresh_time, 48, "Updated every %i hours.", state_interval/3600);
-    }
-
-    mdebug1("State file updating thread started.");
+    mdebug1("Agent state cleanup thread started.");
 
     int sock = -1;
     sock = wdbc_connect();
