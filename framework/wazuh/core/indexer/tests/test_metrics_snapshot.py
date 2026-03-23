@@ -17,6 +17,7 @@ TestBulkActionShape                          – _op_type: create on every actio
 
 import asyncio
 import sys
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -68,7 +69,7 @@ _indexer_pkg.metrics_snapshot = _metrics_snapshot_module
 _indexer_pkg.metrics = _metrics_module
 
 
-TIMESTAMP = "2026-03-17T10:00:00.000Z"
+TIMESTAMP = "2026-03-17T10:00:00Z"
 
 REMOTED_STATS = {
     "queue_size": 10,
@@ -882,6 +883,57 @@ class TestInit:
 # ---------------------------------------------------------------------------
 
 
+def _patch_collect_and_index(
+    tasks, mock_indexer, agent_docs=None, comms_docs=None, collect_agents_override=None
+):
+    """Return a combined context manager that patches both collectors and get_indexer_client.
+
+    Parameters
+    ----------
+    tasks : MetricsSnapshotTasks
+        Instance whose collectors will be patched.
+    mock_indexer : AsyncMock
+        Mock indexer returned by the ``get_indexer_client`` context manager.
+    agent_docs : list | None
+        Documents returned by ``_collect_agents``.  Ignored when *collect_agents_override* is set.
+    comms_docs : list | None
+        Documents returned by ``_collect_comms_all_nodes``.
+    collect_agents_override : callable | None
+        When provided, used as ``side_effect`` for ``_collect_agents`` instead of a fixed return value.
+    """
+    from contextlib import contextmanager
+
+    @contextmanager
+    def _ctx():
+        agent_patch_kwargs = (
+            {"side_effect": collect_agents_override}
+            if collect_agents_override is not None
+            else {
+                "new_callable": AsyncMock,
+                "return_value": agent_docs if agent_docs is not None else [],
+            }
+        )
+        with (
+            patch.object(tasks, "_collect_agents", **agent_patch_kwargs) as mock_agents,
+            patch.object(
+                tasks,
+                "_collect_comms_all_nodes",
+                new_callable=AsyncMock,
+                return_value=comms_docs if comms_docs is not None else [],
+            ) as mock_comms,
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.get_indexer_client",
+                return_value=AsyncMock(
+                    __aenter__=AsyncMock(return_value=mock_indexer),
+                    __aexit__=AsyncMock(return_value=False),
+                ),
+            ),
+        ):
+            yield mock_agents, mock_comms
+
+    return _ctx()
+
+
 class TestCollectAndIndex:
     """Tests for MetricsSnapshotTasks._collect_and_index."""
 
@@ -893,29 +945,11 @@ class TestCollectAndIndex:
 
         mock_indexer = AsyncMock()
         mock_indexer.metrics.bulk_index = AsyncMock()
-
         tasks = _make_tasks()
 
-        with (
-            patch.object(
-                tasks,
-                "_collect_agents",
-                new_callable=AsyncMock,
-                return_value=agent_docs,
-            ) as mock_agents,
-            patch.object(
-                tasks,
-                "_collect_comms_all_nodes",
-                new_callable=AsyncMock,
-                return_value=comms_docs,
-            ) as mock_comms,
-            patch(
-                "wazuh.core.indexer.metrics_snapshot.get_indexer_client",
-                return_value=AsyncMock(
-                    __aenter__=AsyncMock(return_value=mock_indexer),
-                    __aexit__=AsyncMock(return_value=False),
-                ),
-            ),
+        with _patch_collect_and_index(tasks, mock_indexer, agent_docs, comms_docs) as (
+            mock_agents,
+            mock_comms,
         ):
             await tasks._collect_and_index()
 
@@ -926,34 +960,12 @@ class TestCollectAndIndex:
     async def test_bulk_index_called_for_agents_index(self):
         """bulk_index is called with 'wazuh-metrics-agents' and the agent docs."""
         agent_docs = [{"id": "001"}]
-        comms_docs = []
 
         mock_indexer = AsyncMock()
         mock_indexer.metrics.bulk_index = AsyncMock()
-
         tasks = _make_tasks()
 
-        with (
-            patch.object(
-                tasks,
-                "_collect_agents",
-                new_callable=AsyncMock,
-                return_value=agent_docs,
-            ),
-            patch.object(
-                tasks,
-                "_collect_comms_all_nodes",
-                new_callable=AsyncMock,
-                return_value=comms_docs,
-            ),
-            patch(
-                "wazuh.core.indexer.metrics_snapshot.get_indexer_client",
-                return_value=AsyncMock(
-                    __aenter__=AsyncMock(return_value=mock_indexer),
-                    __aexit__=AsyncMock(return_value=False),
-                ),
-            ),
-        ):
+        with _patch_collect_and_index(tasks, mock_indexer, agent_docs=agent_docs):
             await tasks._collect_and_index()
 
         mock_indexer.metrics.bulk_index.assert_any_await(
@@ -963,35 +975,13 @@ class TestCollectAndIndex:
     @pytest.mark.asyncio
     async def test_bulk_index_called_for_comms_index(self):
         """bulk_index is called with 'wazuh-metrics-comms' and the comms docs."""
-        agent_docs = []
         comms_docs = [dict(REMOTED_STATS)]
 
         mock_indexer = AsyncMock()
         mock_indexer.metrics.bulk_index = AsyncMock()
-
         tasks = _make_tasks()
 
-        with (
-            patch.object(
-                tasks,
-                "_collect_agents",
-                new_callable=AsyncMock,
-                return_value=agent_docs,
-            ),
-            patch.object(
-                tasks,
-                "_collect_comms_all_nodes",
-                new_callable=AsyncMock,
-                return_value=comms_docs,
-            ),
-            patch(
-                "wazuh.core.indexer.metrics_snapshot.get_indexer_client",
-                return_value=AsyncMock(
-                    __aenter__=AsyncMock(return_value=mock_indexer),
-                    __aexit__=AsyncMock(return_value=False),
-                ),
-            ),
-        ):
+        with _patch_collect_and_index(tasks, mock_indexer, comms_docs=comms_docs):
             await tasks._collect_and_index()
 
         mock_indexer.metrics.bulk_index.assert_any_await(
@@ -1009,31 +999,15 @@ class TestCollectAndIndex:
 
         mock_indexer = AsyncMock()
         mock_indexer.metrics.bulk_index = AsyncMock()
-
         tasks = _make_tasks()
 
-        with (
-            patch.object(tasks, "_collect_agents", side_effect=_spy_agents),
-            patch.object(
-                tasks,
-                "_collect_comms_all_nodes",
-                new_callable=AsyncMock,
-                return_value=[],
-            ),
-            patch(
-                "wazuh.core.indexer.metrics_snapshot.get_indexer_client",
-                return_value=AsyncMock(
-                    __aenter__=AsyncMock(return_value=mock_indexer),
-                    __aexit__=AsyncMock(return_value=False),
-                ),
-            ),
+        with _patch_collect_and_index(
+            tasks, mock_indexer, collect_agents_override=_spy_agents
         ):
             await tasks._collect_and_index()
 
         assert len(captured_timestamps) == 1
         ts = captured_timestamps[0]
         # Must match %Y-%m-%dT%H:%M:%SZ  e.g. "2026-03-19T12:00:00Z"
-        from datetime import datetime
-
         parsed = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
         assert parsed is not None
