@@ -83,9 +83,9 @@ def test_get_status(manager_glob, manager_exists, test_manager, process_status):
         manager_exists.assert_any_call("/proc/0234")
 
 
-def test_get_ossec_log_fields():
-    """Test get_ossec_log_fields() method returns a tuple"""
-    result = get_ossec_log_fields('2020/07/14 06:10:40 rootcheck: INFO: Ending rootcheck scan.')
+def test_get_wazuh_log_fields():
+    """Test get_wazuh_log_fields() method returns a tuple"""
+    result = get_wazuh_log_fields('2020/07/14 06:10:40 rootcheck: INFO: Ending rootcheck scan.')
     assert isinstance(result, tuple), 'The result is not a tuple'
     assert result[0] == datetime(2020, 7, 14, 6, 10, 40, tzinfo=timezone.utc)
     assert result[1] == 'wazuh-rootcheck'
@@ -93,26 +93,26 @@ def test_get_ossec_log_fields():
     assert result[3] == ' Ending rootcheck scan.'
 
 
-def test_get_ossec_log_fields_ko():
-    """Test get_ossec_log_fields() method returns None when nothing matches """
-    result = get_ossec_log_fields('DEBUG')
+def test_get_wazuh_log_fields_ko():
+    """Test get_wazuh_log_fields() method returns None when nothing matches """
+    result = get_wazuh_log_fields('DEBUG')
     assert not result
 
 
 @pytest.mark.parametrize("log_format", [
     LoggingFormat.plain, LoggingFormat.json
 ])
-def test_get_ossec_logs(log_format):
-    """Test get_ossec_logs() method returns result with expected information"""
+def test_get_wazuh_logs(log_format):
+    """Test get_wazuh_logs() method returns result with expected information"""
     logs = get_logs(json_log=log_format == LoggingFormat.json).splitlines()
 
     with patch("wazuh.core.manager.get_wazuh_active_logging_format", return_value=log_format):
         with pytest.raises(WazuhInternalError, match=".*1020.*"):
-            get_ossec_logs()
+            get_wazuh_logs()
 
         with patch('wazuh.core.manager.exists', return_value=True):
             with patch('wazuh.core.manager.tail', return_value=logs):
-                result = get_ossec_logs()
+                result = get_wazuh_logs()
                 assert all(key in log for key in ('timestamp', 'tag', 'level', 'description') for log in result)
 
 

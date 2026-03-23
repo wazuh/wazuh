@@ -273,7 +273,7 @@ def _conf2json(src_xml: str, dst_json: dict):
         _insert_section(dst_json, section_name, section_json)
 
 
-def _ossecconf2json(xml_conf: str) -> dict:
+def _wazuhconf2json(xml_conf: str) -> dict:
     """Return wazuh-manager.conf in JSON from XML.
 
     Parameters
@@ -521,7 +521,7 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
         xml_data = load_wazuh_xml(conf_file)
 
         # Parse XML to JSON
-        data = _ossecconf2json(xml_data)
+        data = _wazuhconf2json(xml_data)
     except Exception as e:
         if not from_import:
             raise WazuhError(1101, extra_message=str(e))

@@ -3,11 +3,14 @@ Copyright (C) 2015-2024, Wazuh Inc.
 Created by Wazuh, Inc. <info@wazuh.com>.
 This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
+from time import sleep
+
 import pytest
 
 from wazuh_testing.constants.paths.logs import WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
 from wazuh_testing.constants.api import WAZUH_API_PORT, CONFIGURATION_TYPES
 from wazuh_testing.modules.api.configuration import get_configuration, append_configuration, delete_configuration_file
+from wazuh_testing.modules.api.utils import login
 from wazuh_testing.modules.api.patterns import API_STARTED_MSG
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils.callbacks import generate_callback
@@ -52,6 +55,8 @@ def wait_for_api_start(test_configuration: dict) -> None:
     logs_format = 'plain'
     host = ['0.0.0.0', '::']
     port = WAZUH_API_PORT
+    protocol = 'https'
+    skip_login_probe = False
 
     # Check if specific values were set or set the defaults
     if test_configuration is not None:
@@ -61,6 +66,13 @@ def wait_for_api_start(test_configuration: dict) -> None:
             logs_format = 'plain' if logs_configuration is None else logs_configuration.get('format', 'plain')
             host = test_configuration['blocks'].get('host', ['0.0.0.0', '::'])
             port = test_configuration['blocks'].get('port', WAZUH_API_PORT)
+            https_configuration = test_configuration['blocks'].get('https')
+            if https_configuration is not None and https_configuration.get('enabled') is False:
+                protocol = 'http'
+            intervals_configuration = test_configuration['blocks'].get('intervals')
+            if intervals_configuration is not None:
+                request_timeout = intervals_configuration.get('request_timeout')
+                skip_login_probe = request_timeout in (0, '0')
 
     file_to_monitor = WAZUH_API_JSON_LOG_FILE_PATH if logs_format == 'json' else WAZUH_API_LOG_FILE_PATH
     monitor_start_message = file_monitor.FileMonitor(file_to_monitor)
@@ -73,3 +85,25 @@ def wait_for_api_start(test_configuration: dict) -> None:
 
     if monitor_start_message.callback_result is None:
         raise RuntimeError('The API was not started as expected.')
+
+    if skip_login_probe:
+        return
+
+    configured_hosts = host if isinstance(host, list) else [host]
+    local_hosts = {'0.0.0.0', '::', '127.0.0.1', '::1', 'localhost'}
+    if not any(configured_host in local_hosts for configured_host in configured_hosts):
+        return
+
+    last_exception = None
+    for _ in range(5):
+        try:
+            login(host='localhost', port=str(port), protocol=protocol, timeout=2, login_attempts=1, backoff_factor=0)
+            return
+        except Exception as exception:
+            last_exception = exception
+            sleep(1)
+
+    if last_exception is not None:
+        raise last_exception
+
+    raise RuntimeError('The API was not ready to accept logins.')
