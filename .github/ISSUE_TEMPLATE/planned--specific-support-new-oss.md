@@ -29,6 +29,7 @@ assignees: ''
   - If the Wazuh central components or the Wazuh agent is not supported, deploy a Debian 12 VM for the non-supported component.
 - All testing tasks must be completed for each OS architecture supported.
 - The following tasks should be completed in order.
+- Use the Provisioner module to deploy needed systems.
 
 ## Tasks
 
@@ -38,9 +39,8 @@ assignees: ''
     - [ ] Only FQDN.
     - [ ] IP address, agent name, and group.
 - [ ] Add/Update/Check CI
-  - [ ] Test the JobFlow testing tool for that specific system.
-  - [ ] Add the OS and each architecture to the JobFlow testing tool.
-  - [ ] Add the OS and each architecture to the GitHub Deployability and Upgrade release templates.
+  - [ ] Add the new system to the DTT environment configuration files.
+- [ ] Review and update the release testing issue templates.
 - [ ] Add the OS and its supported architectures to the E2E UX Tests spreadsheet (OS sheet).
 -->
 
