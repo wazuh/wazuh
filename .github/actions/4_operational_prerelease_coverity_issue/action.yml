@@ -1,0 +1,93 @@
+name: 'Create Coverity Scan Issue'
+description: 'Creates a GitHub issue for Coverity scan'
+inputs:
+  release:
+    description: 'Release version (e.g., 4.7.1)'
+    required: true
+  stage:
+    description: 'Stage (e.g., RC 3, Alpha 1)'
+    required: true
+  main_issue:
+    description: 'Main issue number'
+    required: true
+  prev_issue:
+    description: 'Previous issue number'
+    required: true
+  assignee:
+    description: 'GitHub username to assign the issue to'
+    required: true
+  github_token:
+    description: 'GitHub token'
+    required: true
+  project_token:
+    description: 'GitHub token with project permissions (optional, for project configuration)'
+    required: false
+    default: ''
+outputs:
+  issue_url:
+    description: 'URL of the created issue'
+    value: ${{ steps.create-issue.outputs.issue_url }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Create Coverity Scan Issue
+      id: create-issue
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+      run: |
+        RELEASE="${{ inputs.release }}"
+        STAGE="${{ inputs.stage }}"
+        MAIN_ISSUE="${{ inputs.main_issue }}"
+        PREV_ISSUE="${{ inputs.prev_issue }}"
+
+        REPO="wazuh/wazuh"
+        PROJECT="XDR+SIEM/Agent team"
+        LABEL="level/task,type/test,type/test/coverity"
+        TITLE="Release $RELEASE - $STAGE - Coverity scan"
+        TAG="v$RELEASE-$(echo ${STAGE// /} | tr '[:upper:]' '[:lower:]')"
+
+        BODY=$(cat <<EOF
+        |Main RC issue|Version|Stage|Tag|Previous issue|
+        |---|---|---|---|---|
+        |#$MAIN_ISSUE|$RELEASE|$STAGE|[$TAG](https://github.com/wazuh/wazuh/tree/$TAG)|#$PREV_ISSUE|
+
+        This issue will show the results of the Coverity scan for the current RC.
+        - [Coverity dashboard](https://scan.coverity.com/projects/wazuh-wazuh)
+
+        ## Auditors' validation
+        - [ ] @wazuh/devel-xdrsiem-agent
+        - [ ] @wazuh/devel-xdrsiem-qa-release
+        EOF
+        )
+
+        if OUTPUT=$(gh issue create \
+          --repo "$REPO" \
+          --title "$TITLE" \
+          --label "$LABEL" \
+          --body "$BODY" \
+          --assignee "${{ inputs.assignee }}" 2>&1); then
+
+          ISSUE_URL="$OUTPUT"
+          echo "issue_url=$ISSUE_URL" >> $GITHUB_OUTPUT
+
+          # Extract issue number from URL
+          ISSUE_NUMBER=$(echo "$ISSUE_URL" | grep -oP '\d+$')
+
+          # Configure project fields if project_token is provided
+          if [[ -n "${{ inputs.project_token }}" ]]; then
+            echo "Configuring project fields..."
+            export GITHUB_TOKEN="${{ inputs.project_token }}"
+
+            # Add issue to project first
+            gh project item-add 86 --owner wazuh --url "$ISSUE_URL"
+
+            # Configure project fields
+            bash .github/scripts/configure-project-fields.sh "$ISSUE_NUMBER" "$RELEASE" "$STAGE"
+          else
+            echo "No project token provided, skipping project configuration"
+          fi
+        else
+          echo "Error creating issue: $OUTPUT"
+          exit 1
+        fi

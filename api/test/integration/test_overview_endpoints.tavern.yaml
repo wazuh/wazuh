@@ -42,7 +42,7 @@ stages:
                version: !anystr
          agent_status:
            connection:
-             active: 8 
+             active: 8
              disconnected: 2
              never_connected: 2
              pending: 0

@@ -8,33 +8,32 @@
  * Foundation
  */
 
+#include "file_op.h"
+#include "os_regex.h"
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
-#include <dirent.h>
 #include <time.h>
-#include <winsock2.h>
+#include <unistd.h>
 #include <windows.h>
-#include "os_regex/os_regex.h"
-#include "headers/file_op.h"
+#include <winsock2.h>
 
-#define OSSECCONF   "ossec.conf"
-#define OSSECDEF    "default-ossec.conf"
-#define OSSECLAST   "ossec.conf.bak"
-#define CLIENTKEYS  "client.keys"
-#define OS_MAXSTR   1024
-
+#define OSSECCONF  "ossec.conf"
+#define OSSECDEF   "default-ossec.conf"
+#define OSSECLAST  "ossec.conf.bak"
+#define CLIENTKEYS "client.keys"
+#define OS_MAXSTR  1024
 
 /* Check if a file exists */
-int fileexist(char *file);
+int fileexist(char* file);
 
 /* Grep for a string in a file */
-int dogrep(char *file, char *str);
+int dogrep(char* file, char* str);
 
 /* Check if dir exists */
-int direxist(char *dir);
+int direxist(char* dir);
 
 /* Get Windows main directory */
-void get_win_dir(char *file, int f_size);
+void get_win_dir(char* file, int f_size);

@@ -1,0 +1,46 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml remoted-received
+
+    actor agent
+    box "Remoted Module - Received Messages"
+    participant remoted
+    database state
+    end box
+    skinparam sequenceMessageAlign right
+
+    agent -> remoted : Message from agent
+    remoted -> remoted : Enqueue msg
+
+    alt Queue full
+        remoted -> state: discarded++
+    else
+        remoted -> remoted : Dequeue msg
+        alt Invalid msg counter
+            remoted -> state: dequeued after++
+        else
+            alt Is control msg
+                remoted -> remoted: Save msg
+                alt Is request msg
+                    remoted -> state: request++
+                else Is startup msg
+                    remoted -> state: startup++
+                else Is shutdown msg
+                    remoted -> state: shutdown++
+                else Is keepalive msg
+                    remoted -> state: keepalive++
+                end
+                remoted -> state: control++
+            else Is ping msg
+                remoted -> state: ping++
+            else Is an event
+                remoted -> state: event++
+            else None of the previous
+                remoted -> state: unknown+++
+            end
+        end
+    end
+
+@enduml

@@ -12,6 +12,7 @@
 #ifndef _PORT_LINUX_WRAPPER_H
 #define _PORT_LINUX_WRAPPER_H
 
+#include <netinet/tcp.h>
 #include "iportWrapper.h"
 #include "sharedDefs.h"
 #include "bits/stdc++.h"
@@ -263,7 +264,7 @@ class LinuxPortWrapper final : public IPortWrapper
 
         std::string processName() const override
         {
-            return {};
+            return UNKNOWN_VALUE;
         }
 
         int32_t pid() const override

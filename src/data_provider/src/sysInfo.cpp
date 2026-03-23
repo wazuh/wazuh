@@ -10,28 +10,11 @@
  */
 #include "sysInfo.hpp"
 #include "sysInfo.h"
-
-struct CJsonDeleter
-{
-    void operator()(char* json)
-    {
-        cJSON_free(json);
-    }
-    void operator()(cJSON* json)
-    {
-        cJSON_Delete(json);
-    }
-};
+#include "cjsonSmartDeleter.hpp"
 
 nlohmann::json SysInfo::hardware()
 {
-    nlohmann::json ret;
-    ret["board_serial"] = getSerialNumber();
-    ret["cpu_name"] = getCpuName();
-    ret["cpu_cores"] = getCpuCores();
-    ret["cpu_mhz"] = double(getCpuMHz());
-    getMemory(ret);
-    return ret;
+    return getHardware();
 }
 
 nlohmann::json SysInfo::packages()
@@ -72,6 +55,26 @@ void SysInfo::packages(std::function<void(nlohmann::json&)> callback)
 nlohmann::json SysInfo::hotfixes()
 {
     return getHotfixes();
+}
+
+nlohmann::json SysInfo::groups()
+{
+    return getGroups();
+}
+
+nlohmann::json SysInfo::users()
+{
+    return getUsers();
+}
+
+nlohmann::json SysInfo::services()
+{
+    return getServices();
+}
+
+nlohmann::json SysInfo::browserExtensions()
+{
+    return getBrowserExtensions();
 }
 
 #ifdef __cplusplus
@@ -228,7 +231,7 @@ int sysinfo_packages_cb(callback_data_t callback_data)
             {
                 [callback_data](nlohmann::json & jsonResult)
                 {
-                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
                     callback_data.callback(GENERIC, spJson.get(), callback_data.user_data);
                 }
             };
@@ -260,7 +263,7 @@ int sysinfo_processes_cb(callback_data_t callback_data)
             {
                 [callback_data](nlohmann::json & jsonResult)
                 {
-                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
                     callback_data.callback(GENERIC, spJson.get(), callback_data.user_data);
                 }
             };
@@ -291,6 +294,98 @@ int sysinfo_hotfixes(cJSON** js_result)
             SysInfo info;
             const auto& hotfixes       {info.hotfixes()};
             *js_result = cJSON_Parse(hotfixes.dump().c_str());
+            retVal = 0;
+        }
+    }
+    // LCOV_EXCL_START
+    catch (...)
+    {}
+
+    // LCOV_EXCL_STOP
+
+    return retVal;
+}
+
+int sysinfo_groups(cJSON** js_result)
+{
+    auto retVal { -1 };
+
+    try
+    {
+        if (js_result)
+        {
+            SysInfo info;
+            const auto& grps       {info.groups()};
+            *js_result = cJSON_Parse(grps.dump().c_str());
+            retVal = 0;
+        }
+    }
+    // LCOV_EXCL_START
+    catch (...)
+    {}
+
+    // LCOV_EXCL_STOP
+
+    return retVal;
+}
+
+int sysinfo_users(cJSON** js_result)
+{
+    auto retVal { -1 };
+
+    try
+    {
+        if (js_result)
+        {
+            SysInfo info;
+            const auto& users       {info.users()};
+            *js_result = cJSON_Parse(users.dump().c_str());
+            retVal = 0;
+        }
+    }
+    // LCOV_EXCL_START
+    catch (...)
+    {}
+
+    // LCOV_EXCL_STOP
+
+    return retVal;
+}
+
+int sysinfo_services(cJSON** js_result)
+{
+    auto retVal { -1 };
+
+    try
+    {
+        if (js_result)
+        {
+            SysInfo info;
+            const auto& services       {info.services()};
+            *js_result = cJSON_Parse(services.dump().c_str());
+            retVal = 0;
+        }
+    }
+    // LCOV_EXCL_START
+    catch (...)
+    {}
+
+    // LCOV_EXCL_STOP
+
+    return retVal;
+}
+
+int sysinfo_browser_extension(cJSON** js_result)
+{
+    auto retVal { -1 };
+
+    try
+    {
+        if (js_result)
+        {
+            SysInfo info;
+            const auto& browserExtensions       {info.browserExtensions()};
+            *js_result = cJSON_Parse(browserExtensions.dump().c_str());
             retVal = 0;
         }
     }

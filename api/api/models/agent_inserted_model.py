@@ -1,6 +1,8 @@
 # coding: utf-8
 
-from __future__ import absolute_import
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from typing import Dict
 
@@ -18,7 +20,7 @@ class AgentInsertedModel(Body):
         :type name: str
         :param ip: If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY
         :type ip: str
-        :param agent_id: Agent ID. All posible values since 000 onwards.
+        :param agent_id: Agent ID.
         :type agent_id: str
         :param key: Key to use when communicating with the manager. The agent must have the same key on its `client.keys` file.
         :type key: str

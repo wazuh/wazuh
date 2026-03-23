@@ -1,0 +1,5 @@
+- name: TCP protocol
+  description: Check connection via TCP
+  configuration_parameters:
+  metadata:
+    DELETE_KEYS_FILE: true

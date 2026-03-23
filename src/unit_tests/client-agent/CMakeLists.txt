@@ -1,8 +1,16 @@
 # Generate client-agent library
-file(GLOB client-agent_files
-    ${SRC_FOLDER}/client-agent/*.o
-    ${SRC_FOLDER}/monitord/*.o)
+if(${TARGET} STREQUAL "winagent")
+  # On winagent, agentd objects are already in DEPENDENCIES_O (winagent.cmake).
+  # Creating a separate CLIENT-AGENT library from the same objects would cause
+  # duplicate globals (e.g. agent_state), leading to test failures where the
+  # test modifies one copy but production code reads the other.
+else()
+  file(GLOB client-agent_files
+       ${SRC_FOLDER}/build/client-agent/CMakeFiles/agentd_lib.dir/src/*.o)
+  list(REMOVE_ITEM client-agent_files ${SRC_FOLDER}/build/client-agent/CMakeFiles/agentd_lib.dir/src/main.c.o)
+endif()
 
+if(NOT ${TARGET} STREQUAL "winagent")
 list(REMOVE_ITEM client-agent_files ${SRC_FOLDER}/client-agent/main.o)
 
 add_library(CLIENT-AGENT STATIC ${client-agent_files})
@@ -21,49 +29,94 @@ set_target_properties(
 )
 
 target_link_libraries(CLIENT-AGENT ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+endif()
+
+if(${TARGET} STREQUAL "winagent")
+    link_directories(${SRC_FOLDER}/build/bin)
+endif(${TARGET} STREQUAL "winagent")
 
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate agentd tests
 list(APPEND client-agent_names "test_start_agent")
-set(START_AGENT_BASE_FLAGS "-Wl,--wrap,w_rotate_log -Wl,--wrap,getDefine_Int -Wl,--wrap,OS_ConnectUDP \
+set(START_AGENT_BASE_FLAGS "-Wl,--wrap,w_rotate_log -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,OS_ConnectUDP \
                             -Wl,--wrap,OS_ConnectTCP -Wl,--wrap,OS_SetRecvTimeout -Wl,--wrap,OS_GetHost \
                             -Wl,--wrap,send_msg -Wl,--wrap,recv -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,fseek \
+                            -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
+                            -Wl,--wrap=_imp__dbsync_initialize \
                             -Wl,--wrap,fprintf -Wl,--wrap,fflush -Wl,--wrap,ReadSecMSG -Wl,--wrap,wnet_select \
                             -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_SendUDPbySize -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap,w_calloc_expression_t -Wl,--wrap,w_expression_compile -Wl,--wrap,w_expression_match \
-                            -Wl,--wrap,w_free_expression_t")
+                            -Wl,--wrap,w_free_expression_t -Wl,--wrap,OS_CloseSocket")
 if(${TARGET} STREQUAL "winagent")
-    list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS} -Wl,--wrap,os_random")
+    list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS} -Wl,--wrap,os_random -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap,w_query_agentd")
 else()
-    list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS} -Wl,--wrap=close")
+    list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS}")
 endif()
 
 list(APPEND client-agent_names "test_notify")
-list(APPEND client-agent_flags "-Wl,--wrap,control_check_connection,--wrap,OS_SendUnix,--wrap,OS_RecvUnix,--wrap,close \
+if(${TARGET} STREQUAL "winagent")
+list(APPEND client-agent_flags "-Wl,--wrap,OS_SendUnix,--wrap,OS_RecvUnix \
+                                -Wl,--wrap,strftime -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
+                                -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=getsockname -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string \
+                                -Wl,--wrap,sleep,--wrap,w_rotate_log,--wrap,getpid,--wrap,time -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
+else()
+list(APPEND client-agent_flags "-Wl,--wrap,OS_SendUnix,--wrap,OS_RecvUnix \
+                                -Wl,--wrap=getsockname -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string \
                                 -Wl,--wrap,sleep,--wrap,w_rotate_log,--wrap,getpid,--wrap,time ${DEBUG_OP_WRAPPERS}")
+endif()
 
 list(APPEND client-agent_names "test_agentd_state")
 if(${TARGET} STREQUAL "winagent")
     # cJSON_func@x instead of cJSON_func since linker will be looking for cdecl forma
     # More info at: (https://devblogs.microsoft.com/oldnewthing/20040108-00/?p=41163)
     list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
-                                -Wl,--wrap,cJSON_CreateObject@0 -Wl,--wrap,cJSON_AddNumberToObject@16 \
-                                -Wl,--wrap,cJSON_AddItemToObject@12 -Wl,--wrap,cJSON_AddStringToObject@12 \
-                                -Wl,--wrap,cJSON_Delete@4 -Wl,--wrap,strftime \
-                                -Wl,--wrap,cJSON_PrintUnformatted@4 -Wl,--wrap,w_agentd_get_buffer_lenght \
-                                -Wl,--wrap,cJSON_AddBoolToObject@12 -Wl,--enable-stdcall-fixup ${DEBUG_OP_WRAPPERS}")
+                                    -Wl,--wrap,cJSON_CreateObject@0 -Wl,--wrap,cJSON_AddNumberToObject@16 \
+                                    -Wl,--wrap,cJSON_AddItemToObject@12 -Wl,--wrap,cJSON_AddStringToObject@12 \
+                                    -Wl,--wrap,cJSON_Delete@4 -Wl,--wrap,strftime -Wl,--wrap=syscom_dispatch \
+                                    -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
+                                    -Wl,--wrap=_imp__dbsync_initialize \
+                                    -Wl,--wrap,cJSON_PrintUnformatted@4 -Wl,--wrap,w_agentd_get_buffer_lenght \
+                                    -Wl,--wrap,cJSON_AddBoolToObject@12 -Wl,--wrap,w_query_agentd -Wl,--enable-stdcall-fixup ${DEBUG_OP_WRAPPERS}")
 else()
     list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
-                                -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddNumberToObject -Wl,--wrap,strftime \
-                                -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_Delete \
-                                -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,w_agentd_get_buffer_lenght \
-                                -Wl,--wrap,cJSON_AddBoolToObject ${DEBUG_OP_WRAPPERS}")
+                                    -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddNumberToObject -Wl,--wrap,strftime \
+                                    -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_Delete \
+                                    -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,w_agentd_get_buffer_lenght \
+                                    -Wl,--wrap,cJSON_AddBoolToObject ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND client-agent_names "test_buffer")
-list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,getDefine_Int \
+                                -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
+                                -Wl,--wrap=fim_db_teardown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap,w_query_agentd")
+else()
+list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
+                                -Wl,--wrap,getDefine_Int -Wl,--wrap,_minfo -Wl,--wrap,_mwarn")
+endif()
+
+list(APPEND client-agent_names "test_agcom")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND client-agent_flags "-Wl,--wrap,getClientConfig -Wl,--wrap,getBufferConfig \
+                                -Wl,--wrap,getLabelsConfig -Wl,--wrap,getAgentInternalOptions \
+                                -Wl,--wrap,getAntiTamperingConfig -Wl,--wrap,w_agentd_state_get \
+                                -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
+                                -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize")
+else()
+list(APPEND client-agent_flags "-Wl,--wrap,getClientConfig -Wl,--wrap,getBufferConfig \
+                                -Wl,--wrap,getLabelsConfig -Wl,--wrap,getAgentInternalOptions \
+                                -Wl,--wrap,getAntiTamperingConfig -Wl,--wrap,w_agentd_state_get")
+endif()
+
+if(${TARGET} STREQUAL "agent")
+list(APPEND client-agent_names "test_agentd")
+list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request ${DEBUG_OP_WRAPPERS}")
+endif()
 
 list(LENGTH client-agent_names count)
 math(EXPR count "${count} - 1")
@@ -73,13 +126,24 @@ foreach(counter RANGE ${count})
 
     add_executable(${client-agent_test_name} ${client-agent_test_name}.c)
 
-    target_link_libraries(
-        ${client-agent_test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        CLIENT-AGENT
-        ${TEST_DEPS}
-    )
+    if(${TARGET} STREQUAL "winagent")
+        # On winagent, agentd objects come from DEPENDENCIES_O (in TEST_DEPS)
+        target_link_libraries(
+            ${client-agent_test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            ${TEST_DEPS}
+        )
+        target_link_libraries(${client-agent_test_name} fimdb)
+    else()
+        target_link_libraries(
+            ${client-agent_test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            CLIENT-AGENT
+            ${TEST_DEPS}
+        )
+    endif()
 
     if(NOT client-agent_test_flags STREQUAL " ")
         target_link_libraries(

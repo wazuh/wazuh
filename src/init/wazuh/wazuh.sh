@@ -4,13 +4,6 @@
 # Install functions for Wazuh
 # Wazuh.com (https://github.com/wazuh)
 
-patch_version(){
-        rm -rf $PREINSTALLEDDIR/etc/shared/ssh > /dev/null 2>&1
-}
-WazuhSetup(){
-    patch_version
-}
-
 InstallSELinuxPolicyPackage(){
 
     if command -v semodule > /dev/null && command -v getenforce > /dev/null; then
@@ -25,20 +18,20 @@ InstallSELinuxPolicyPackage(){
 }
 
 CheckModuleIsEnabled(){
-    # This function requires a properly formatted ossec.conf.
+    # This function requires a properly formatted config file.
     # It doesn't work if the configuration is set in the same line
 
     # How to use it:
     #
-    # CheckModuleIsEnabled '<wodle name="open-scap">' '</wodle>' 'disabled'
-    # CheckModuleIsEnabled '<cluster>' '</cluster>' 'disabled'
     # CheckModuleIsEnabled '<sca>' '</sca>' 'enabled'
 
     open_label="$1"
     close_label="$2"
     enable_label="$3"
 
-    if grep -n "${open_label}" $PREINSTALLEDDIR/etc/ossec.conf > /dev/null ; then
+    local conf_path="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}"
+
+    if grep -n "${open_label}" "$conf_path" > /dev/null ; then
         is_disabled="no"
     else
         is_disabled="yes"
@@ -55,12 +48,12 @@ CheckModuleIsEnabled(){
     fi
 
     end_config_limit="99999999"
-    for start_config in $(grep -n "${open_label}" $PREINSTALLEDDIR/etc/ossec.conf | cut -d':' -f 1); do
-        end_config="$(sed -n "${start_config},${end_config_limit}p" $PREINSTALLEDDIR/etc/ossec.conf | sed -n "/${open_label}/,\$p" | grep -n "${close_label}" | head -n 1 | cut -d':' -f 1)"
+    for start_config in $(grep -n "${open_label}" "$conf_path" | cut -d':' -f 1); do
+        end_config="$(sed -n "${start_config},${end_config_limit}p" "$conf_path" | sed -n "/${open_label}/,\$p" | grep -n "${close_label}" | head -n 1 | cut -d':' -f 1)"
         end_config="$((start_config + end_config))"
 
         if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-            configuration_block="$(sed -n "${start_config},${end_config}p" $PREINSTALLEDDIR/etc/ossec.conf)"
+            configuration_block="$(sed -n "${start_config},${end_config}p" "$conf_path")"
 
             for line in $(echo ${configuration_block} | grep -n "${tag}" | cut -d':' -f 1); do
                 # Check if the component is enabled
@@ -80,6 +73,14 @@ CheckModuleIsEnabled(){
 
 WazuhUpgrade()
 {
+    file_permissions=""
+    #Check installation type
+    if [ "X$1" = "Xmanager" ]; then
+        file_permissions="wazuh-manager"
+    else
+        file_permissions="wazuh"
+    fi
+
     # Encode Agentd passlist if not encoded
 
     passlist=$PREINSTALLEDDIR/agentless/.passlist
@@ -100,13 +101,13 @@ WazuhUpgrade()
     # Remove/relocate existing SQLite databases
     rm -f $PREINSTALLEDDIR/var/db/.profile.db*
     rm -f $PREINSTALLEDDIR/var/db/.template.db*
-    rm -f $PREINSTALLEDDIR/var/db/agents/*
+    rm -rf $PREINSTALLEDDIR/var/db/agents
 
     if [ -f "$PREINSTALLEDDIR/var/db/global.db" ]; then
         cp $PREINSTALLEDDIR/var/db/global.db $PREINSTALLEDDIR/queue/db/
         if [ -f "$PREINSTALLEDDIR/queue/db/global.db" ]; then
             chmod 640 $PREINSTALLEDDIR/queue/db/global.db
-            chown wazuh:wazuh $PREINSTALLEDDIR/queue/db/global.db
+            chown $file_permissions:$file_permissions $PREINSTALLEDDIR/queue/db/global.db
             rm -f $PREINSTALLEDDIR/var/db/global.db*
         else
             echo "Unable to move global.db during the upgrade"
@@ -152,31 +153,36 @@ WazuhUpgrade()
 
     # Remove deprecated Wazuh tools
 
+    rm -f $PREINSTALLEDDIR/bin/agent_control
+    rm -f $PREINSTALLEDDIR/bin/clear_stats
     rm -f $PREINSTALLEDDIR/bin/ossec-control
     rm -f $PREINSTALLEDDIR/bin/ossec-regex
     rm -f $PREINSTALLEDDIR/bin/ossec-logtest
     rm -f $PREINSTALLEDDIR/bin/ossec-makelists
+    rm -f $PREINSTALLEDDIR/bin/manage_agents
     rm -f $PREINSTALLEDDIR/bin/util.sh
     rm -f $PREINSTALLEDDIR/bin/rootcheck_control
     rm -f $PREINSTALLEDDIR/bin/syscheck_control
     rm -f $PREINSTALLEDDIR/bin/syscheck_update
+    rm -f $PREINSTALLEDDIR/bin/wazuh-logtest
+    rm -f $PREINSTALLEDDIR/bin/wazuh-logtest-legacy
+    rm -f $PREINSTALLEDDIR/bin/wazuh-regex
 
     # Remove old Wazuh daemons
 
     rm -f $PREINSTALLEDDIR/bin/ossec-agentd
-    rm -f $PREINSTALLEDDIR/bin/ossec-agentlessd
-    rm -f $PREINSTALLEDDIR/bin/ossec-analysisd
     rm -f $PREINSTALLEDDIR/bin/ossec-authd
-    rm -f $PREINSTALLEDDIR/bin/ossec-csyslogd
     rm -f $PREINSTALLEDDIR/bin/ossec-dbd
     rm -f $PREINSTALLEDDIR/bin/ossec-execd
-    rm -f $PREINSTALLEDDIR/bin/ossec-integratord
     rm -f $PREINSTALLEDDIR/bin/ossec-logcollector
-    rm -f $PREINSTALLEDDIR/bin/ossec-maild
     rm -f $PREINSTALLEDDIR/bin/ossec-monitord
     rm -f $PREINSTALLEDDIR/bin/ossec-remoted
-    rm -f $PREINSTALLEDDIR/bin/ossec-reportd
     rm -f $PREINSTALLEDDIR/bin/ossec-syscheckd
+    rm -f $PREINSTALLEDDIR/bin/wazuh-agentlessd
+    rm -f $PREINSTALLEDDIR/bin/wazuh-csyslogd
+    rm -f $PREINSTALLEDDIR/bin/wazuh-dbd
+    rm -f $PREINSTALLEDDIR/bin/wazuh-integratord
+    rm -f $PREINSTALLEDDIR/bin/wazuh-maild
 
     # Remove existing ruleset version file
 
@@ -200,22 +206,51 @@ WazuhUpgrade()
     rm -f $PREINSTALLEDDIR/active-response/bin/ossec-slack.sh
     rm -f $PREINSTALLEDDIR/active-response/bin/ossec-tweeter.sh
 
-    # Remove deprecated ossec-init.conf file and its link
-    if [ -f /etc/ossec-init.conf ]; then
-        rm -f $PREINSTALLEDDIR/etc/ossec-init.conf
-        rm -f /etc/ossec-init.conf
+    # Remove old Active Response binaries (renamed in 5.x)
+
+    rm -f $PREINSTALLEDDIR/active-response/bin/firewall-drop
+    rm -f $PREINSTALLEDDIR/active-response/bin/default-firewall-drop
+    rm -f $PREINSTALLEDDIR/active-response/bin/pf
+    rm -f $PREINSTALLEDDIR/active-response/bin/npf
+    rm -f $PREINSTALLEDDIR/active-response/bin/ipfw
+    rm -f $PREINSTALLEDDIR/active-response/bin/firewalld-drop
+    rm -f $PREINSTALLEDDIR/active-response/bin/host-deny
+    rm -f $PREINSTALLEDDIR/active-response/bin/ip-customblock
+    rm -f $PREINSTALLEDDIR/active-response/bin/route-null
+    rm -f $PREINSTALLEDDIR/active-response/bin/wazuh-slack
+    rm -f $PREINSTALLEDDIR/active-response/bin/kaspersky
+    rm -f $PREINSTALLEDDIR/active-response/bin/kaspersky.py
+    rm -f $PREINSTALLEDDIR/active-response/bin/restart.sh
+
+    # Remove old databases if upgrading from pre 5.X to 5.X
+    if [ $MAJOR -lt 5 ]; then
+        if [ -f $PREINSTALLEDDIR/queue/syscollector/db/local.db ]; then
+            rm -f $PREINSTALLEDDIR/queue/syscollector/db/local.db
+        fi
+        if [ -f $PREINSTALLEDDIR/queue/fim/db/fim.db ]; then
+            rm -f $PREINSTALLEDDIR/queue/fim/db/fim.db
+        fi
     fi
 
     # Replace and delete ossec group along with ossec users
     OSSEC_GROUP=ossec
     if (grep "^ossec:" /etc/group > /dev/null 2>&1) || (dscl . -read /Groups/ossec > /dev/null 2>&1)  ; then
-        find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -exec chown root:wazuh {} \;
-        find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown wazuh:wazuh {} \;
+        if [ "X$1" = "Xmanager" ]; then
+            find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -print0 | xargs -0 chown root:$file_permissions
+            find $PREINSTALLEDDIR -group $OSSEC_GROUP -print0 | xargs -0 chown $file_permissions:$file_permissions
+        else
+            find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -exec chown root:$file_permissions {} \;
+            find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown $file_permissions:$file_permissions {} \;
+        fi
     fi
     ./src/init/delete-oldusers.sh $OSSEC_GROUP
+
+    # Set merged.mg permissions to new ones
+    find $PREINSTALLEDDIR/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
 
     # Remove unnecessary `execa` socket
     if [ -f "$DIRECTORY/queue/alerts/execa" ]; then
         rm -f $DIRECTORY/queue/alerts/execa
     fi
+
 }

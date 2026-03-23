@@ -1,0 +1,39 @@
+{
+  "description": "Basic inventory sync flow test: start -> data -> end",
+  "messages": [
+    {
+      "type": "start",
+      "data": {
+        "module": "inventory_sync",
+        "mode": 0,
+        "size": 1,
+        "agentid": "001",
+        "agentname": "test-agent",
+        "agentversion": "4.8.0"
+      },
+      "description": "Start synchronization session",
+      "delay": 0.5,
+      "expect_session_response": true
+    },
+    {
+      "type": "data",
+      "data": {
+        "seq": 0,
+        "operation": 0,
+        "id": "doc123",
+        "index": "test",
+        "data": {"message": "Hello", "timestamp": "2025-08-20T10:00:00Z"}
+      },
+      "description": "Send data message using session from start response",
+      "delay": 0.5,
+      "use_session_from_start": true
+    },
+    {
+      "type": "end",
+      "data": {},
+      "description": "End synchronization session using session from start response",
+      "delay": 0.5,
+      "use_session_from_start": true
+    }
+  ]
+}

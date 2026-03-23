@@ -13,9 +13,8 @@
 
 void SysOsInfoTest::SetUp() {};
 
-void SysOsInfoTest::TearDown()
-{
-};
+void SysOsInfoTest::TearDown() {};
+
 using ::testing::_;
 using ::testing::Return;
 
@@ -33,7 +32,6 @@ class SysOsInfoProviderWrapper : public ISysOsInfoProvider
         MOCK_METHOD(std::string, displayVersion, (), (const override));
         MOCK_METHOD(std::string, machine, (), (const override));
         MOCK_METHOD(std::string, nodeName, (), (const override));
-        MOCK_METHOD(std::string, getSerialNumber, (), (const override));
 };
 
 
@@ -61,7 +59,8 @@ TEST_F(SysOsInfoTest, setOsInfoSchema)
     EXPECT_EQ("10", output.at("os_major"));
     EXPECT_EQ("0", output.at("os_minor"));
     EXPECT_EQ("Microsoft Windows 10 Home", output.at("os_name"));
-    EXPECT_EQ("1903", output.at("os_release"));
-    EXPECT_EQ("19H1", output.at("os_display_version"));
+    EXPECT_EQ("1903", output.at("os_distribution_release"));
+    EXPECT_EQ("19H1", output.at("os_full"));
     EXPECT_EQ("10.0.18362", output.at("os_version"));
+    EXPECT_EQ("10.0.18362", output.at("os_kernel_release"));
 }

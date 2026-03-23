@@ -4,8 +4,7 @@ no="n"
 yesmatch="j"
 nomatch="n"
 agent="agent"
-local="lokal"
-server="server"
+server="manager"
 help="hilfe"
 
 
@@ -22,10 +21,9 @@ system="System"
 user="User"
 host="Host"
 hitanyorabort="Drücken Sie eine Taste zum fortfahren oder Ctrl-C zum abbrechen"
-whattoinstall="Welche Art der Installation möchten Sie starten (manager, agent, lokal oder hilfe)?"
-serverchose="Manager (server) installation ausgewählt"
+whattoinstall="Welche Art der Installation möchten Sie starten (manager, agent, oder hilfe)?"
+serverchose="Manager installation ausgewählt"
 clientchose="Agent (client) installation ausgewählt"
-localchose="Lokale installation ausgewählt"
 
 # Part 2
 settingupenv="Die Installation wird vorbereitet"
@@ -44,8 +42,8 @@ usingsmtp="Benutze SMTP Server: "
 whatsmtp="Wie lautet die Adresse des SMTP Servers? (IP/Host) "
 
 # Part 3.1/agent
-serverip="Wie lautet die IP Adresse des Wazuh Servers?"
-serveraddr="Wie lautet die IP Adresse/Host des Wazuh Servers?"
+serverip="Wie lautet die IP Adresse des Wazuh Managers?"
+serveraddr="Wie lautet die IP Adresse/Host des Wazuh Managers?"
 addingip="Server IP hinzugefügt"
 addingname="Server Host hinzugefügt"
 
@@ -60,11 +58,6 @@ runrootcheck="Möchten Sie die rootkit detection engine benutzen?"
 norootcheck="Rootcheck (rootkit detection) wird nicht benutzt"
 yesrootcheck="Rootcheck (rootkit detection) wird gestartet"
 
-#Part 3.4
-runopenscap="Möchten Sie OpenSCAP benutzen?"
-norunopenscap="OpenSCAP wird nicht benutzt"
-yesrunopenscap="OpenSCAP wird gestartet"
-
 # Part 3.5/server/local
 enable_ar="Möchten Sie active response benutzen?"
 noactive="Active response wird nicht benutzt"
@@ -76,12 +69,6 @@ yesfirewall="firewall-drop (local) für level >= 6 eingeschaltet"
 defaultwhitelist="Standard Ausnahmeliste (White-list) für active response:"
 addwhite="Möchten Sie weitere IPs zur White-list hinzufügen?"
 ipswhite="IPs (Durch Leerzeichen getrennt): "
-
-
-# Part 3.5/server/local
-syslog="Möchten Sie Nachrichten von einem remote syslog (514 udp) empfangen?"
-nosyslog="Remote syslog empfang ausgeschaltet"
-yessyslog="Remote syslog empfang eingeschaltet"
 
 # Part 3.4/3.5
 readlogs="Die folgenden Log-Files werden analysiert:"

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -13,10 +13,11 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "../../headers/shared.h"
+#include "shared.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../../config/wazuh_db-config.h"
-#include "../../wazuh_db/wdb.h"
+#include "wazuh_db-config.h"
+#include "wdb.h"
+#include "wazuhdb_op.h"
 
 /* setup/teardown */
 

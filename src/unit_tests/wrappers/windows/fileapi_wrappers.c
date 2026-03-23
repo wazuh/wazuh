@@ -13,20 +13,21 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdio.h>
-HANDLE wrap_CreateFile(LPCSTR lpFileName,
-                       __UNUSED_PARAM(DWORD dwDesiredAccess),
-                       __UNUSED_PARAM(DWORD dwShareMode),
-                       __UNUSED_PARAM(LPSECURITY_ATTRIBUTES lpSecurityAttributes),
-                       __UNUSED_PARAM(DWORD dwCreationDisposition),
-                       __UNUSED_PARAM(DWORD dwFlagsAndAttributes),
-                       __UNUSED_PARAM(HANDLE hTemplateFile)) {
-    check_expected(lpFileName);
-    return mock_type(HANDLE);
-}
+#include "../common.h"
 
-void expect_CreateFile_call(const char *filename, HANDLE ret) {
-    expect_string(wrap_CreateFile, lpFileName, filename);
-    will_return(wrap_CreateFile, (HANDLE)ret);
+HANDLE wrap_CreateFile(LPCSTR lpFileName,
+                       DWORD dwDesiredAccess,
+                       DWORD dwShareMode,
+                       LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+                       DWORD dwCreationDisposition,
+                       DWORD dwFlagsAndAttributes,
+                       HANDLE hTemplateFile) {
+    if (test_mode) {
+        check_expected(lpFileName);
+        return mock_type(HANDLE);
+    } else {
+        return CreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+    }
 }
 
 DWORD wrap_GetFileAttributesA(LPCSTR lpFileName) {
@@ -73,6 +74,50 @@ DWORD wrap_QueryDosDeviceW(LPCWSTR lpDeviceName,
     return mock();
 }
 
+DWORD wrap_QueryDosDeviceA(LPCSTR lpDeviceName,
+                           LPSTR lpTargetPath,
+                           DWORD ucchMax) {
+    // Provide default behavior without requiring explicit mocks in every test
+    // Z:, Y:, X: return network paths (typical test scenario)
+    // C:, D: and others return local paths
+    // This allows is_network_path() to work correctly in tests without setup overhead
+
+    if (lpDeviceName && strlen(lpDeviceName) >= 2 && lpDeviceName[1] == ':') {
+        char drive = toupper(lpDeviceName[0]);
+        const char *device_path;
+
+        // Provide realistic default device paths
+        // For typical network drive letters, return network paths so tests work
+        switch (drive) {
+            case 'Z':
+                // Z: is commonly used for network drives in tests
+                device_path = "\\Device\\LanmanRedirector\\server\\share";
+                break;
+            case 'Y':
+            case 'X':
+                // Also common network drive letters
+                device_path = "\\Device\\Mup\\server\\share";
+                break;
+            case 'D':
+                device_path = "\\Device\\HarddiskVolume2";
+                break;
+            case 'C':
+            default:
+                device_path = "\\Device\\HarddiskVolume1";
+                break;
+        }
+
+        size_t len = strlen(device_path);
+        if (len < ucchMax) {
+            strncpy(lpTargetPath, device_path, ucchMax);
+            lpTargetPath[ucchMax - 1] = '\0';
+            return (DWORD)len;
+        }
+    }
+
+    return 0;
+}
+
 WINBOOL wrap_FindNextVolumeW(HANDLE hFindVolume,
                              LPWSTR lpszVolumeName,
                              DWORD cchBufferLength) {
@@ -106,26 +151,52 @@ BOOL wrap_GetFileTime(HANDLE     hFile,
     return mock_type(BOOL);
 }
 
-HANDLE wrap_FindFirstFile(LPCSTR lpFileName,  LPWIN32_FIND_DATA lpFindFileData) {
+HANDLE wrap_FindFirstFile(LPCWSTR lpFileName,  LPWIN32_FIND_DATAW lpFindFileData) {
     char *file_name;
     check_expected(lpFileName);
 
     file_name = mock_type(char *);
     if (file_name != NULL) {
-        strcpy(lpFindFileData->cFileName, file_name);
+        mbstowcs(lpFindFileData->cFileName, file_name, MAX_PATH);
         lpFindFileData->dwFileAttributes = mock_type(DWORD);
     }
 
     return mock_type(HANDLE);
 }
 
-BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATA lpFindFileData) {
+BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData) {
     char *file_name;
     check_expected(hFindFile);
     file_name = mock_type(char *);
     if (file_name != NULL) {
-        strcpy(lpFindFileData->cFileName, file_name);
+        mbstowcs(lpFindFileData->cFileName, file_name, MAX_PATH);
         lpFindFileData->dwFileAttributes = mock_type(DWORD);
     }
     return mock_type(BOOL);
+}
+
+UINT wrap_GetDriveTypeA(LPCSTR lpRootPathName) {
+    if (lpRootPathName == NULL) {
+        // If this parameter is NULL, the function uses the root of the current directory.
+        return DRIVE_FIXED;
+    }
+
+    if (strlen(lpRootPathName) == 3 && lpRootPathName[1] == ':' && lpRootPathName[2] == '\\') {
+        switch (lpRootPathName[0]) {
+            case 'A':
+                return DRIVE_REMOVABLE;
+            case 'C':
+                return DRIVE_FIXED;
+            case 'D':
+                return DRIVE_CDROM;
+            case 'R':
+                return DRIVE_RAMDISK;
+            case 'Z':
+                return DRIVE_REMOTE;
+            default:
+                return DRIVE_UNKNOWN;
+        }
+    }
+
+    return DRIVE_NO_ROOT_DIR;
 }

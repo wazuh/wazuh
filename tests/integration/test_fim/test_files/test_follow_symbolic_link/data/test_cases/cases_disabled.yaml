@@ -1,0 +1,119 @@
+- name: Symlink follow disabled - Real-time
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log.
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+          args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
+    FREQUENCY: 43200 # As default 12 hs
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    symlink:  !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
+    symlink_target:  !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    symlink_new_target: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir, new_target]
+    fim_mode: realtime
+
+- name: Symlink follow disabled - Real-time
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log.
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+          args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
+    FREQUENCY: 43200 # As default 12 hs
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    symlink:  !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
+    symlink_target:  !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    symlink_new_target: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], new_target]
+    fim_mode: realtime
+
+- name: Symlink follow disabled - Who-data
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log.
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+          args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
+    FREQUENCY: 43200 # As default 12 hs
+    FIM_MODE:
+      whodata: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    symlink:  !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
+    symlink_target:  !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    symlink_new_target: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir, new_target]
+    fim_mode: whodata
+
+- name: Symlink follow disabled - Who-data
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log.
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+          args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
+    FREQUENCY: 43200 # As default 12 hs
+    FIM_MODE:
+      whodata: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    symlink:  !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
+    symlink_target:  !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    symlink_new_target: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], new_target]
+    fim_mode: whodata
+
+- name: Symlink follow disabled - Schedule
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log.
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+          args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
+    FREQUENCY: 3
+    FIM_MODE:
+      realtime: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    symlink:  !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
+    symlink_target:  !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    symlink_new_target: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir, new_target]
+    fim_mode: scheduled
+
+- name: Symlink follow disabled - Schedule
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log.
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+          args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
+    FREQUENCY: 3
+    FIM_MODE:
+      realtime: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    symlink:  !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
+    symlink_target:  !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    symlink_new_target: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], new_target]
+    fim_mode: scheduled

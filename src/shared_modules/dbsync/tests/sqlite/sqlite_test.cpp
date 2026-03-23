@@ -34,6 +34,7 @@ class ConnectionWrapper: public IConnection
         ~ConnectionWrapper() = default;
         MOCK_METHOD(void, execute, (const std::string&), (override));
         MOCK_METHOD(void, close, (), (override));
+        MOCK_METHOD(int64_t, changes, (), (const override));
         MOCK_METHOD((const std::shared_ptr<sqlite3>&), db, (), (const override));
 };
 
@@ -236,4 +237,42 @@ TEST_F(SQLiteTest, ColumnValue)
     EXPECT_TRUE(spColumn5->hasValue());
     EXPECT_DOUBLE_EQ(4.0, spColumn5->value(double_t{}));
     EXPECT_EQ(SQLITE_FLOAT, spColumn5->type());
+}
+
+TEST_F(SQLiteTest, StatementExpand)
+{
+    std::shared_ptr<IConnection> spConnection = std::make_shared<Connection>();
+    Statement createStmt
+    {
+        spConnection,
+        "CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT, Colum3 BIGINT, Colum4 BIGINT, Colum5 FLOAT);"
+    };
+    createStmt.step();
+    Statement selectStmt
+    {
+        spConnection,
+        R"(INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (?,?,?,?,?);)"
+    };
+    const auto expectedStringStmt{ selectStmt.expand() };
+    EXPECT_EQ(expectedStringStmt, "INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (NULL,NULL,NULL,NULL,NULL);");
+}
+
+TEST_F(SQLiteTest, StatementExpandBind)
+{
+    std::shared_ptr<IConnection> spConnection = std::make_shared<Connection>();
+    Statement createStmt
+    {
+        spConnection,
+        "CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT, Colum3 BIGINT, Colum4 BIGINT, Colum5 FLOAT);"
+    };
+    createStmt.step();
+    Statement insertStmt
+    {
+        spConnection,
+        R"(INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (?,?,?,?,?);)"
+    };
+    insertStmt.bind(2, "bar");
+    insertStmt.bind(3, 1000);
+    const auto expectedStringStmt{ insertStmt.expand() };
+    EXPECT_EQ(expectedStringStmt, "INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (NULL,'bar',1000,NULL,NULL);");
 }

@@ -1,0 +1,86 @@
+- name: Command config wazuh manager for invalid protocol connection
+  description: Command config wazuh manager for invalid protocol connections
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: 'Testing,UDP'
+  metadata:
+    port: '1514'
+    invalid_protocol: ['Testing']
+    valid_protocol: ['UDP']
+
+
+- name: Command config wazuh manager for invalid protocol connection
+  description: Command config wazuh manager for invalid protocol connections
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: 'TCP,Testing'
+  metadata:
+    port: '1514'
+    invalid_protocol: ['Testing']
+    valid_protocol: ['TCP']
+
+
+- name: Command config wazuh manager for invalid protocol connection
+  description: Command config wazuh manager for invalid protocol connections
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: 'Testing,Testing'
+  metadata:
+    port: '1514'
+    invalid_protocol: ['Testing','Testing']
+    valid_protocol: []
+
+
+- name: Command config wazuh manager for invalid protocol connection
+  description: Command config wazuh manager for invalid protocol connections
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: 'TCP,UDP,Testing'
+  metadata:
+    port: '1514'
+    invalid_protocol: ['Testing']
+    valid_protocol: ['TCP','UDP']
+
+
+- name: Command config wazuh manager for invalid protocol connection
+  description: Command config wazuh manager for invalid protocol connections
+  configuration_parameters:
+    PORT: '514'
+    PROTOCOL: 'Testing,UDP'
+  metadata:
+    port: '514'
+    invalid_protocol: ['Testing']
+    valid_protocol: ['UDP']
+
+
+- name: Command config wazuh manager for invalid protocol connection
+  description: Command config wazuh manager for invalid protocol connections
+  configuration_parameters:
+    PORT: '514'
+    PROTOCOL: 'TCP,Testing'
+  metadata:
+    port: '514'
+    invalid_protocol: ['Testing']
+    valid_protocol: ['TCP']
+
+
+- name: Command config wazuh manager for invalid protocol connection
+  description: Command config wazuh manager for invalid protocol connections
+  configuration_parameters:
+    PORT: '514'
+    PROTOCOL: 'Testing,Testing'
+  metadata:
+    port: '514'
+    invalid_protocol: ['Testing','Testing']
+    valid_protocol: []
+
+
+- name: Command config wazuh manager for invalid protocol connection
+  description: Command config wazuh manager for invalid protocol connections
+  configuration_parameters:
+    PORT: '514'
+    PROTOCOL: 'TCP,UDP,Testing'
+  metadata:
+    port: '514'
+    invalid_protocol: ['Testing']
+    valid_protocol: ['TCP','UDP']

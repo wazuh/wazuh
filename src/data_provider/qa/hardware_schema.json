@@ -1,0 +1,45 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "hw": {
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "cpu_cores": {
+                    "type": "integer"
+                },
+                "cpu_speed": {
+                    "type": "number"
+                },
+                "cpu_name": {
+                    "type": "string"
+                },
+                "memory_free": {
+                    "type": "integer"
+                },
+                "memory_total": {
+                    "type": "integer"
+                },
+                "memory_used": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "serial_number",
+                "cpu_cores",
+                "cpu_speed",
+                "cpu_name",
+                "memory_free",
+                "memory_total",
+                "memory_used"
+            ]
+        }
+    },
+    "required": [
+        "hw"
+    ]
+}

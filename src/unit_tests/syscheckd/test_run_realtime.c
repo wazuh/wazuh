@@ -28,12 +28,13 @@
 #include "../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../wrappers/wazuh/shared/vector_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/utf8_winapi_wrapper_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/win_whodata_wrappers.h"
 
-#include "../syscheckd/syscheck.h"
-#include "../config/syscheck-config.h"
+#include "syscheck.h"
+#include "syscheck-config.h"
 
 #ifdef TEST_WINAGENT
 // This struct should always reflect the one defined in run_realtime.c
@@ -55,7 +56,6 @@ static int teardown_OSHash(void **state);
 /* setup/teardown */
 static int setup_group(void **state) {
     expect_any_always(__wrap__mdebug1, formatted_msg);
-
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -141,6 +141,8 @@ static int setup_realtime_start(void **state) {
     if(hash == NULL)
         return -1;
 
+    hash->table = calloc(1, sizeof(OSHashNode *));
+
     *state = hash;
 
     state[1] = syscheck.realtime;
@@ -152,10 +154,13 @@ static int setup_realtime_start(void **state) {
 static int teardown_realtime_start(void **state) {
     OSHash *hash = *state;
 
-    free(hash);
-
     if (syscheck.realtime) {
         free(syscheck.realtime);
+    }
+
+    if (hash) {
+        free(hash->table);
+        free(hash);
     }
 
     syscheck.realtime = state[1];
@@ -328,7 +333,7 @@ void test_realtime_start_success(void **state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 0);
 
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_AGENT)
     will_return(__wrap_inotify_init, 0);
 #else
     expect_value(wrap_CreateEvent, lpEventAttributes, NULL);
@@ -357,19 +362,13 @@ void test_realtime_start_failure_hash(void **state) {
     expect_string(__wrap__merror, formatted_msg,
         "(1102): Could not acquire memory due to [(12)-(Cannot allocate memory)].");
 
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     ret = realtime_start();
 
     errno = 0;
     assert_int_equal(ret, -1);
 }
 
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_AGENT)
 
 void test_realtime_start_failure_inotify(void **state) {
     OSHash *hash = *state;
@@ -385,15 +384,11 @@ void test_realtime_start_failure_inotify(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, FIM_ERROR_INOTIFY_INITIALIZE);
 
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     ret = realtime_start();
 
     assert_int_equal(ret, -1);
+    /* OSHash_Free already freed the hash passed via mock */
+    *state = NULL;
 }
 
 void test_realtime_adddir_realtime_start_failure(void **state) {
@@ -579,29 +574,6 @@ void test_realtime_adddir_realtime_update_failure(void **state) {
 
     assert_int_equal(ret, -1);
 }
-
-
-void test_free_syscheck_dirtb_data(void **state)
-{
-    (void) state;
-    char *data = strdup("test");
-
-    free_syscheck_dirtb_data(data);
-
-    assert_non_null(data);
-}
-
-
-void test_free_syscheck_dirtb_data_null(void **state)
-{
-    (void) state;
-    char *data = NULL;
-
-    free_syscheck_dirtb_data(data);
-
-    assert_null(data);
-}
-
 
 void test_realtime_process(void **state) {
 
@@ -1448,7 +1420,7 @@ void test_realtime_adddir_whodata_non_existent_file(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9));
+    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5));
     configuration->dirs_status.status &= ~WD_CHECK_WHODATA;
     configuration->dirs_status.status |= WD_CHECK_REALTIME;
 
@@ -1475,7 +1447,7 @@ void test_realtime_adddir_whodata_error_adding_whodata_dir(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9));
+    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5));
     configuration->dirs_status.status &= ~WD_CHECK_WHODATA;
     configuration->dirs_status.status |= WD_CHECK_REALTIME;
 
@@ -1507,7 +1479,7 @@ void test_realtime_adddir_whodata_file_success(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9));
+    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5));
     configuration->dirs_status.status &= ~WD_CHECK_WHODATA;
     configuration->dirs_status.status |= WD_CHECK_REALTIME;
 
@@ -1536,7 +1508,7 @@ void test_realtime_adddir_whodata_dir_success(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9));
+    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5));
     configuration->dirs_status.status &= ~WD_CHECK_WHODATA;
     configuration->dirs_status.status |= WD_CHECK_REALTIME;
 
@@ -1707,8 +1679,8 @@ void test_realtime_adddir_handle_error(void **state) {
     expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
     will_return(__wrap_OSHash_Get_ex, 0);
 
-    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_CreateFile, INVALID_HANDLE_VALUE);
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, INVALID_HANDLE_VALUE);
 
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6290): Unable to add directory to real time monitoring: 'C:\\a\\path'");
@@ -1726,14 +1698,18 @@ void test_realtime_adddir_success(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
     will_return(__wrap_OSHash_Get_ex, 0);
 
-    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_CreateFile, (HANDLE)123456);
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Add_ex, key, "C:\\a\\path");
+    will_return(__wrap_OSHash_Add_ex, 1);
+
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\path");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)123456);
 
     will_return(wrap_ReadDirectoryChangesW, 1);
     expect_value(__wrap_OSHash_Get_Elem_ex, self, syscheck.realtime->dirtb);
@@ -1742,11 +1718,47 @@ void test_realtime_adddir_success(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
                   "(6227): Directory added for real time monitoring: 'C:\\a\\path'");
 
-    test_mode = 0;
     ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
-    test_mode = 1;
 
     assert_int_equal(ret, 1);
+}
+
+void test_realtime_adddir_fail_file(void **state) {
+    int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\file");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Get_Elem_ex, 127);
+
+    expect_string(__wrap_utf8_CreateFile, utf8_path, "C:\\a\\file");
+    will_return(__wrap_utf8_CreateFile, (HANDLE)123456);
+
+    will_return(wrap_ReadDirectoryChangesW, 0);
+
+    expect_GetLastError_call(87);
+    will_return(__wrap_win_strerror,"The parameter is incorrect.");
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "(6323): Unable to set 'ReadDirectoryChangesW' for path: 'C:\\a\\file'. Error(87): 'The parameter is incorrect.'");
+
+    expect_CloseHandle_call((HANDLE)123456, 0);
+
+    expect_string(__wrap_w_directory_exists, path, "C:\\a\\file");
+    will_return(__wrap_w_directory_exists, 0);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(6957): Realtime mode only supports directories, not files. Switching to scheduled mode. File: 'C:\\a\\file'");
+
+    ret = realtime_adddir("C:\\a\\file", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+
+    assert_int_equal(ret, 0);
 }
 
 void test_RTCallBack_error_on_callback(void **state) {
@@ -1956,7 +1968,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_realtime_start_success, setup_realtime_start, teardown_realtime_start),
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_hash, setup_realtime_start, teardown_realtime_start),
 
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_AGENT)
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_inotify, setup_realtime_start, teardown_realtime_start),
 
         /* realtime_adddir */
@@ -1968,10 +1980,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_add_hash_failure, setup_OSHash, teardown_OSHash),
         cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_update, setup_OSHash, teardown_OSHash),
         cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_update_failure, setup_OSHash, teardown_OSHash),
-
-        /* free_syscheck_dirtb_data */
-        cmocka_unit_test(test_free_syscheck_dirtb_data),
-        cmocka_unit_test(test_free_syscheck_dirtb_data_null),
 
         /* realtime_process */
         cmocka_unit_test(test_realtime_process),
@@ -2044,6 +2052,7 @@ int main(void) {
         cmocka_unit_test(test_realtime_adddir_duplicate_entry_non_existent_directory_closed_handle),
         cmocka_unit_test(test_realtime_adddir_duplicate_entry_non_existent_directory_invalid_handle),
         cmocka_unit_test_setup_teardown(test_realtime_adddir_success, setup_OSHash, teardown_OSHash),
+        cmocka_unit_test_setup_teardown(test_realtime_adddir_fail_file, setup_OSHash, teardown_OSHash),
     };
 #endif
 

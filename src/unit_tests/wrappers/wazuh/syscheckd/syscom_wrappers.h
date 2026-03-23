@@ -13,6 +13,6 @@
 
 #include <stddef.h>
 
-size_t __wrap_syscom_dispatch(char * command, char ** output);
+size_t __wrap_syscom_dispatch(char * command, size_t length, char ** output);
 
 #endif

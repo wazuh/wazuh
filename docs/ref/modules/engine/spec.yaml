@@ -1,0 +1,2312 @@
+openapi: 3.0.3
+info:
+  title: Wazuh-Engine Analysis API
+  description: API for managing security policies, testing, geolocation, routing, and archiving using the Wazuh-Engine.
+  version: 1.0.0
+
+servers:
+  - url: "http+unix:/run/wazuh-server/analysis"
+    description: "Wazuh server using Unix socket over HTTP"
+
+tags:
+  - name: Router
+    description: "Operations for managing environments and routing"
+  - name: Tester
+    description: "Operations for testing and validating policies"
+  - name: Geo
+    description: "Operations for geo databases"
+  - name: Archiver
+    description: "Operations for managing the archives. By default a file 'archives.json' is created at '/var/lib/wazuh-server/archives.json' where all events received by the Engine are stored."
+  - name: Raw Event Indexer
+    description: "Operations for checking the status of raw event indexing."
+  - name: Content
+    description: "Operations for management content."
+  - name: Logtest
+    description: "Operations for testing of events."
+
+#################################################################################
+# Paths
+#################################################################################
+paths:
+  ################################
+  # Validate Policy
+  ################################
+  /content/validate/policy:
+    post:
+      tags:
+        - Content
+      summary: Validate a policy JSON payload
+      description: |
+        Validates a complete **policy JSON document** by importing it into a temporary namespace.
+
+        The payload must include a `policy` definition and its associated `resources`
+        (decoders, integrations, kvdbs).
+
+        ## Validation strategy
+
+        Validation has two phases depending on whether the policy contains integrations:
+
+        - **Policy without integrations** (`policy.integrations` is empty): validated by
+          import alone. No tester entry is created or posted.
+        - **Policy with integrations**: after import, a temporary tester entry is created
+          and posted to verify the policy can be fully instantiated by the Engine.
+
+        ## Effect on the persistent `"testing"` session
+
+        The `load_in_tester` flag and the policy `enabled` field jointly control what
+        happens to the persistent tester session named **"testing"**:
+
+        | `load_in_tester` | Has integrations | `enabled` | Outcome |
+        |------------------|-----------------|-----------|---------|
+        | `false`          | any             | any       | Existing `"testing"` session is **not touched**. Temp resources are cleaned up. |
+        | `true`           | no              | any       | Existing `"testing"` session and its namespace are **deleted**. No new session is created. |
+        | `true`           | yes             | `true`    | Temp session is **promoted** to `"testing"`, replacing the old one (old namespace deleted). |
+        | `true`           | yes             | `false`   | Temp session+namespace **and** the existing `"testing"` session+namespace are **deleted**. |
+
+        ## Notes
+        - A unique temporary namespace and tester session are generated per request.
+        - If the Tester API is not available, the request fails immediately.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/policyValidate_Request"
+            examples:
+              validate_only:
+                summary: Validate policy (with integrations), no persistent tester session
+                value:
+                  space: "test"
+                  load_in_tester: false
+                  full_policy:
+                    {
+                      "policy": {
+                        "title": "<policy_name>",
+                        "root_decoder": "<decoder_uuid>",
+                        "integrations": ["<integration_uuid>"],
+                        "filters": ["<filter_uuid>"],
+                        "outputs": ["<output_uuid>"],
+                        "enabled": true
+                      },
+                      "resources": {
+                        "decoders": [],
+                        "integrations": [],
+                        "kvdbs": [],
+                        "filters": [],
+                        "outputs": []
+                      }
+                    }
+              validate_no_integrations:
+                summary: Validate policy without integrations (import-only validation)
+                value:
+                  space: "standard"
+                  load_in_tester: false
+                  full_policy:
+                    {
+                      "policy": {
+                        "title": "<policy_name>",
+                        "integrations": [],
+                        "enabled": true
+                      },
+                      "resources": {
+                        "decoders": [],
+                        "integrations": [],
+                        "kvdbs": [],
+                        "filters": [],
+                        "outputs": []
+                      }
+                    }
+              validate_and_load_testing:
+                summary: Validate and promote to 'testing' session (enabled policy with integrations)
+                value:
+                  load_in_tester: true
+                  full_policy:
+                    {
+                      "policy": {
+                        "title": "<policy_name>",
+                        "root_decoder": "<decoder_uuid>",
+                        "integrations": ["<integration_uuid>"],
+                        "filters": ["<filter_uuid>"],
+                        "enabled": true
+                      },
+                      "resources": {
+                        "kvdbs": [
+                          {
+                            "id": "<kvdb_uuid>",
+                            "title": "<name>",
+                            "enabled": true,
+                            "content": {
+                              "<key>": {}
+                            }
+                          }
+                        ],
+                        "decoders": [
+                          {
+                            "id": "<decoder_uuid>",
+                            "name": "decoder/<name>/<version>",
+                            "enabled": true,
+                            "normalize": [
+                              {
+                                "map": [
+                                  { "@timestamp": "get_date()" }
+                                ]
+                              }
+                            ]
+                          }
+                        ],
+                        "integrations": [
+                          {
+                            "id": "<integration_uuid>",
+                            "title": "<name>",
+                            "enabled": true,
+                            "category": "<category>",
+                            "decoders": ["<decoder_uuid>"],
+                            "kvdbs": ["<kvdb_uuid>"]
+                          }
+                        ],
+                        "filters": [
+                          {
+                            "name": "filter/prefilter/0",
+                            "metadata": {
+                              "description": "Default filter to allow all events (for default ruleset)",
+                              "author": {
+                                "name": "Wazuh, Inc.",
+                                "url": "https://wazuh.com",
+                                "date": "2022/11/08"
+                              }
+                            },
+                            "check": "$host.os.platform == 'ubuntu'",
+                            "type": "pre-filter",
+                            "enabled": true,
+                            "id": "<filter_uuid>"
+                          }
+                        ]
+                      }
+                    }
+              validate_disabled_policy:
+                summary: Validate disabled policy — clears the existing 'testing' session
+                value:
+                  load_in_tester: true
+                  full_policy:
+                    {
+                      "policy": {
+                        "title": "<policy_name>",
+                        "root_decoder": "<decoder_uuid>",
+                        "integrations": ["<integration_uuid>"],
+                        "enabled": false
+                      },
+                      "resources": {
+                        "decoders": [],
+                        "integrations": [],
+                        "kvdbs": [],
+                        "filters": [],
+                        "outputs": []
+                      }
+                    }
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                missing_full_policy:
+                  summary: Missing or empty full_policy
+                  value:
+                    status: "ERROR"
+                    error: "Missing full policy"
+                tester_unavailable:
+                  summary: Tester API is not available
+                  value:
+                    status: "ERROR"
+                    error: "Tester API is not available"
+                tester_post_failed:
+                  summary: Failed creating temporary tester entry (policy with integrations)
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create tester entry: <details>"
+                tester_rename_failed:
+                  summary: Failed promoting temp session to 'testing'
+                  value:
+                    status: "ERROR"
+                    error: "Failed to rename tester entry: <details>"
+                cleanup_failed_session:
+                  summary: Strict cleanup failed — could not delete a session
+                  value:
+                    status: "ERROR"
+                    error: "Cleanup: failed deleting session '<name>': <details>"
+                cleanup_failed_namespace:
+                  summary: Strict cleanup failed — could not delete a namespace
+                  value:
+                    status: "ERROR"
+                    error: "Cleanup: failed deleting namespace '<name>': <details>"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # Logtest
+  ################################
+  /logtest:
+    post:
+      tags:
+        - Logtest
+      summary: Inject an event into an existing testing session
+      description: |
+        Injects a single event into the engine using a previously created and loaded testing session.
+
+        This endpoint **does not** validate policies and **does not** create sessions.
+        It only validates request parameters, parses/builds the event payload, and runs the test ingestion
+        against the session identified by the `space` field.
+
+        If tracing is enabled (trace_level != NONE), the endpoint retrieves the list of policy assets
+        from the specified testing session and uses them as the trace filter.
+
+        Notes about event parsing:
+        - `queue` indicates the queue to which the event will be sent.
+        - `location` cannot be empty.
+        - If `location` matches the legacy agent format (`"[ID] (Name) IP->Module"`), it is parsed and may
+          rewrite the final stored location to just the module.
+        - If not legacy, host metadata is merged into the event before setting location/message.
+        - `metadata` is **required** and must be a **JSON object** (not a JSON-encoded string, number, or array).
+          If `metadata` is missing, not an object, contains invalid nested fields, or includes top-level keys other than `wazuh`,
+          the request is rejected with a clear error message.
+        - `metadata` is restricted to the top-level `wazuh` key. Arbitrary sibling fields such as `metadata.name` are not allowed.
+        - `metadata.wazuh` must be a JSON object when present.
+          Use it to provide only fields accepted by the Wazuh event schema.
+        - An empty top-level object (`{}`) is rejected because the implementation requires `metadata.wazuh`.
+        - An empty `metadata.wazuh` object is also rejected by the current validation.
+          Provide at least one schema-valid leaf field under `wazuh`, for example `{ "wazuh": { "agent": { "id": "001" } } }`.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicRunPost_Request"
+            examples:
+              basic:
+                summary: Basic run using queue 1
+                value:
+                  space: "test"
+                  queue: 1
+                  location: "/var/log/auth.log"
+                  metadata:
+                    wazuh:
+                      agent:
+                        name: "AgentName"
+                  event: "Dec 19 12:00:00 host sshd[123]: Failed password for root from 10.0.0.1 port 12345 ssh2"
+                  trace_level: "NONE"
+
+              with_trace:
+                summary: Run with tracing enabled
+                value:
+                  space: "test"
+                  queue: 1
+                  location: "[001] (my-agent) 192.168.1.10->syslog"
+                  metadata:
+                    wazuh:
+                      agent:
+                        id: "001"
+                  event: "<34>Dec 19 12:00:00 my-agent myapp: something happened"
+                  trace_level: "ALL"
+
+              metadata_wazuh_ok:
+                summary: metadata with top-level `wazuh` object
+                value:
+                  space: "test"
+                  queue: 1
+                  location: "syscheck"
+                  metadata:
+                    wazuh:
+                      host:
+                        name: "test-host"
+                  event: "File /etc/passwd modified"
+                  trace_level: "ALL"
+
+              metadata_wazuh_nested_ok:
+                summary: metadata can provide nested `wazuh` fields accepted by the event schema
+                value:
+                  space: "test"
+                  queue: 1
+                  location: "syscheck"
+                  metadata:
+                    wazuh:
+                      agent:
+                        id: "001"
+                      labels:
+                        kind: "test"
+                  event: "File /etc/passwd modified"
+                  trace_level: "ALL"
+
+              metadata_wazuh_empty_invalid:
+                summary: INVALID - empty wazuh metadata object
+                value:
+                  space: "test"
+                  queue: 1
+                  location: "syscheck"
+                  metadata:
+                    wazuh: {}
+                  event: "File /etc/passwd modified"
+                  trace_level: "ALL"
+
+              metadata_empty_object_invalid:
+                summary: INVALID - empty metadata object without `wazuh`
+                value:
+                  queue: 1
+                  location: "syscheck"
+                  metadata: {}
+                  event: "File /etc/passwd modified"
+                  trace_level: "ALL"
+
+              metadata_non_wazuh_key_invalid:
+                summary: INVALID - non-`wazuh` top-level metadata fields are rejected
+                value:
+                  queue: 1
+                  location: "syscheck"
+                  metadata:
+                    name: "test-host"
+                  event: "File /etc/passwd modified"
+                  trace_level: "ALL"
+
+              metadata_as_string_invalid:
+                summary: INVALID - metadata is a JSON-encoded string (Struct expects an object)
+                value:
+                  queue: 1
+                  location: "syscheck"
+                  metadata: "{\"wazuh\": {}}"
+                  event: "File /etc/passwd modified"
+                  trace_level: "ALL"
+
+              missing_metadata_invalid:
+                summary: INVALID - missing required metadata
+                value:
+                  space: "test"
+                  queue: 1
+                  location: "syscheck"
+                  event: "File /etc/passwd modified"
+                  trace_level: "ALL"
+
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TesterRunPost_Response"
+              examples:
+                ok_with_wazuh_metadata:
+                  summary: OK - `metadata.wazuh` contributes Wazuh-scoped fields
+                  value:
+                    status: "OK"
+                    result:
+                      output: {"wazuh":{"protocol":{"queue":1,"location":"syscheck"},"integration":{"category":"Security","name":"integration/wazuh-core/0","decoders":["core-wazuh-message","integrations"]},"host":{"name":"test-host"}},"event":{"original":"File /etc/passwd modified"},"@timestamp":"2025-12-26T17:33:22Z"}
+                      asset_traces:
+                        - asset: "decoder/core-wazuh-message/0"
+                          success: true
+                          traces:
+                            - "@timestamp: get_date -> Success"
+
+                ok_with_nested_wazuh_metadata:
+                  summary: OK - populated `metadata.wazuh` is accepted
+                  value:
+                    status: "OK"
+                    result:
+                      output: {"wazuh":{"protocol":{"queue":1,"location":"syscheck"},"integration":{"category":"Security","name":"integration/wazuh-core/0","decoders":["core-wazuh-message","integrations"]},"agent":{"id":"001"}},"event":{"original":"File /etc/passwd modified"},"@timestamp":"2025-12-26T17:34:18Z"}
+                      asset_traces:
+                        - asset: "decoder/core-wazuh-message/0"
+                          success: true
+                          traces:
+                            - "@timestamp: get_date -> Success"
+
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                invalid_queue:
+                  summary: Queue out of allowed range (1..255)
+                  value:
+                    status: "ERROR"
+                    error: "Invalid queue: 300 (must be 1..255)"
+
+                invalid_trace_level:
+                  summary: Unsupported trace level
+                  value:
+                    status: "ERROR"
+                    error: "Invalid trace level: \"VERBOSE\". Supported: NONE, ASSET_ONLY, ALL"
+
+                empty_location:
+                  summary: Location cannot be empty
+                  value:
+                    status: "ERROR"
+                    error: "Error parsing event: Invalid format: location cannot be empty"
+
+                event_parse_error:
+                  summary: Protocol parsing failed
+                  value:
+                    status: "ERROR"
+                    error: "Error parsing event: <details>"
+
+
+                metadata_required:
+                  summary: metadata must include `wazuh`
+                  value:
+                    status: "ERROR"
+                    error: "metadata is required and must be a JSON object"
+
+                metadata_wrong_type_struct:
+                  summary: metadata must be an object (Struct); a string, number, or array is invalid
+                  value:
+                    status: "ERROR"
+                    error: "metadata is required and must be a JSON object"
+
+                metadata_invalid_nested:
+                  summary: metadata contains an invalid empty object under `wazuh`
+                  value:
+                    status: "ERROR"
+                    error: "Metadata field 'wazuh' is an empty object, which is not allowed"
+
+                metadata_unknown_top_level_field:
+                  summary: metadata contains unsupported top-level fields
+                  value:
+                    status: "ERROR"
+                    error: "Metadata should contain 'wazuh' as root"
+
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+    delete:
+      tags:
+        - Logtest
+      summary: Cleanup logtest session and temporary namespace
+      description: |
+        Stops and removes the logtest testing session for the given `space` (if any)
+        and deletes the associated temporary namespace from storage, including all assets.
+
+        This operation is safe and idempotent. If there is no active session or
+        namespace to delete for the given space, it returns **OK**.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogtestDelete_Request"
+            examples:
+              cleanup_test:
+                summary: Cleanup the test space
+                value:
+                  space: "test"
+
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                ok:
+                  summary: Cleanup completed or nothing to delete
+                  value:
+                    status: "OK"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # Router
+  ################################
+  /router/route/post:
+    post:
+      tags:
+        - Router
+      summary: Create a new route
+      description: |
+        This endpoint allows the creation of a new route in the Wazuh Engine API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoutePost_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                missing_route_field:
+                  summary: Missing /route field
+                  value:
+                    status: "ERROR"
+                    error: "Missing /route"
+                missing_name:
+                  summary: Name field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                namespace_not_exist:
+                  summary: Namespace does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the route: Failed to create environment with namespace 'testing': Namespace does not exist: testing"
+                namespace_has_no_assets:
+                  summary: Namespace has no assets
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the route: Failed to create environment with namespace 'testing': Namespace 'testing' has no assets"
+                priority_zero:
+                  summary: Priority is set to 0
+                  value:
+                    status: "ERROR"
+                    error: "Priority cannot be 0"
+                priority_too_high:
+                  summary: Priority is set to more than 1000
+                  value:
+                    status: "ERROR"
+                    error: "Priority cannot be greater than 1000"
+                priority_already_in_use:
+                  summary: Priority already in use
+                  value:
+                    status: "ERROR"
+                    error: "The priority of the route  is already in use"
+                route_name_already_exists:
+                  summary: Route name already exists
+                  value:
+                    status: "ERROR"
+                    error: "The name of the route is already in use"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/route/delete:
+    post:
+      tags:
+        - Router
+      summary: Delete a route
+      description: |
+        This endpoint allows deleting a specific route in the Wazuh Engine API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouteDelete_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                missing_name:
+                  summary: Missing name field
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                route_not_exist:
+                  summary: Route does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The route not exist"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/route/get:
+    post:
+      tags:
+        - Router
+      summary: Retrieve a route
+      description: |
+        This endpoint allows retrieving detailed information about a specific route.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouteGet_Request"
+      responses:
+        "200":
+          description: Successfully retrieved route
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RouteGet_Response"
+              example:
+                status: OK
+                error: null
+                route:
+                  name: "example-route"
+                  namespaceId: "wazuh"
+                  priority: 10
+                  description: "Example route"
+                  entry_status: ENABLED
+                  uptime: 3600
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                missing_name:
+                  summary: Name field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                route_not_exist:
+                  summary: Route does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The route not exist"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/route/reload:
+    post:
+      tags:
+        - Router
+      summary: Reload a route
+      description: |
+        This endpoint allows reloading a specific route in the Wazuh Engine API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouteReload_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                missing_name:
+                  summary: Name field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                route_not_exist:
+                  summary: Route does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The route not exist"
+                invalid_asset:
+                  summary: Some asset has validation errors
+                  value:
+                    status: "ERROR"
+                    error: "Failed to reload the route: Failed to create environment with namespace 'wazuh': Expected 'name' key in asset document but got 'n'"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/route/patchPriority:
+    post:
+      tags:
+        - Router
+      summary: Update route priority
+      description: |
+        This endpoint allows updating the priority of a specific route.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoutePatchPriority_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                missing_name:
+                  summary: Name field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                route_not_exist:
+                  summary: Route does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The route not exist"
+                priority_too_high:
+                  summary: Priority greater than allowed
+                  value:
+                    status: "ERROR"
+                    error: "Priority cannot be greater than 1000"
+                priority_zero:
+                  summary: Priority cannot be zero
+                  value:
+                    status: "ERROR"
+                    error: "Priority cannot be 0"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/table/get:
+    post:
+      tags:
+        - Router
+      summary: Retrieve all routes
+      description: |
+        This endpoint retrieves the list of existing routes in the Wazuh Engine API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved routes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableGet_Response"
+              example:
+                status: OK
+                error: null
+                routes:
+                  - name: "example-route"
+                    namespaceId: "wazuh"
+                    priority: 10
+                    description: "Example route"
+                    entry_status: ENABLED
+                    uptime: 3600
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/queue/post:
+    post:
+      tags:
+        - Router
+      summary: Send an event to the router queue
+      description: |
+        This endpoint allows sending a Wazuh event to the router queue.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueuePost_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/eps/changeSettings:
+    post:
+      tags:
+        - Router
+      summary: Update EPS limiter settings
+      description: |
+        This endpoint allows updating the EPS (Events Per Second) limiter settings.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EpsUpdate_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                missing_fields:
+                  summary: Missing required fields
+                  value:
+                    status: "ERROR"
+                    error: "EPS Limit must be greater than 0"
+                eps_negative:
+                  summary: EPS is negative
+                  value:
+                    status: "ERROR"
+                    error: "Failed to parse protobuff json request: INVALID_ARGUMENT:(eps): invalid value -10 for type TYPE_UINT32"
+                refresh_interval_negative:
+                  summary: Refresh interval is negative
+                  value:
+                    status: "ERROR"
+                    error: "Failed to parse protobuff json request: INVALID_ARGUMENT:(refresh_interval): invalid value -10000 for type TYPE_UINT32"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/eps/get:
+    post:
+      tags:
+        - Router
+      summary: Retrieve EPS limiter settings
+      description: |
+        This endpoint retrieves the current EPS limiter settings.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved EPS settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EpsGet_Response"
+              example:
+                status: OK
+                error: null
+                eps: 100
+                refresh_interval: 60
+                enabled: true
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/eps/activate:
+    post:
+      tags:
+        - Router
+      summary: Activate EPS limiter
+      description: |
+        This endpoint activates the EPS limiter in the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                eps_already_active:
+                  summary: EPS already active
+                  value:
+                    status: "ERROR"
+                    error: "EPS counter is already active"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /router/eps/deactivate:
+    post:
+      tags:
+        - Router
+      summary: Deactivate EPS limiter
+      description: |
+        This endpoint deactivates the EPS limiter in the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                eps_already_inactive:
+                  summary: EPS already inactive
+                  value:
+                    status: "ERROR"
+                    error: "EPS counter is already inactive"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # Tester
+  ################################
+  /tester/session/post:
+    post:
+      tags:
+        - Tester
+      summary: Create a new tester session
+      description: |
+        This endpoint allows creating a new tester session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TesterSessionPost_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                missing_session:
+                  summary: Missing /session
+                  value:
+                    status: "ERROR"
+                    error: "Missing /session"
+                missing_name:
+                  summary: Name cannot be empty
+                  value:
+                    status: "ERROR"
+                    error: "Name cannot be empty"
+                session_already_exists:
+                  summary: Session name already exists
+                  value:
+                    status: "ERROR"
+                    error: "The 'testing' environment already exists"
+                namespace_does_not_exist:
+                  summary: Namespace folder does not exist
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the 'testing' environment: File Namespace does not exist: testing"
+                namespace_without_assets:
+                  summary: Namespace has no assets
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the 'testing' environment: Namespace 'wazuh' has no assets"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /tester/session/delete:
+    post:
+      tags:
+        - Tester
+      summary: Delete a tester session
+      description: |
+        This endpoint allows deleting a specific tester session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TesterSessionDelete_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                missing_name:
+                  summary: Name cannot be empty
+                  value:
+                    status: "ERROR"
+                    error: "Invalid name name: Name cannot be empty"
+                session_not_exist:
+                  summary: Session does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The 'testing' environment does not exist"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /tester/session/get:
+    post:
+      tags:
+        - Tester
+      summary: Retrieve a tester session
+      description: |
+        This endpoint retrieves details of a specific tester session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TesterSessionGet_Request"
+      responses:
+        "200":
+          description: Successfully retrieved session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TesterSessionGet_Response"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                missing_name:
+                  summary: Name cannot be empty
+                  value:
+                    status: "ERROR"
+                    error: "Invalid name name: Name cannot be empty"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /tester/session/reload:
+    post:
+      tags:
+        - Tester
+      summary: Reload a tester session
+      description: |
+        This endpoint reloads a specific tester session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TesterSessionReload_Request"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                missing_name:
+                  summary: Missing name field
+                  value:
+                    status: "ERROR"
+                    error: "Invalid name name: Name cannot be empty"
+                session_non_exist:
+                  summary: Non-existent session
+                  value:
+                    status: "ERROR"
+                    error: "The 'testing' environment does not exist"
+                asset_validation_error:
+                  summary: Asset validation failure
+                  value:
+                    status: "ERROR"
+                    error: "Failed to create the 'testing' environment: Expected 'name' key in asset document but got 'n'"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /tester/run/post:
+    post:
+      tags:
+        - Tester
+      summary: Run a test in a session
+      description: |
+        This endpoint allows running a test in a specific tester session. It Injects a single event
+        into the engine using a previously created and loaded testing session.
+        Additional metadata about the agent can be provided in the `agent_metadata` field, which
+        is merged into the event before ingestion, it must be a **JSON object** (not a JSON-encoded string).
+        It can be an empty JSON object (`{}`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TesterRunPost_Request"
+      responses:
+        "200":
+          description: Successfully ran the test
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TesterRunPost_Response"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                missing_fields:
+                  summary: Empty request
+                  value:
+                    status: "ERROR"
+                    error: "Error parsing events: NDJson parser error, empty batch"
+                session_non_exist:
+                  summary: Session does not exist
+                  value:
+                    status: "ERROR"
+                    error: "The 'testing' environment does not exist"
+                asset_validation_error:
+                  summary: Environment not enabled
+                  value:
+                    status: "ERROR"
+                    error: "The 'testing' environment is not enabled"
+                namespace_missing:
+                  summary: Namespace required
+                  value:
+                    status: "ERROR"
+                    error: "Error: Namespaces parameter is required"
+                ndjson_too_short:
+                  summary: Batch too short
+                  value:
+                    status: "ERROR"
+                    error: "Error parsing events: NDJson parser error, invalid batch, expected at least 3 lines"
+                ndjson_invalid_subheader:
+                  summary: Invalid NDJSON subheader
+                  value:
+                    status: "ERROR"
+                    error: "Error parsing events: NDJson parser error, invalid subheader, expected '/module' and '/collector' fields"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /tester/table/get:
+    post:
+      tags:
+        - Tester
+      summary: Retrieve all tester sessions
+      description: |
+        This endpoint retrieves a list of all tester sessions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved sessions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TesterTableGet_Response"
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # Geo
+  ################################
+  /geo/db/get:
+    post:
+      tags:
+        - Geo
+      summary: Query geolocation data for an IP address
+      description: |
+        This endpoint queries geolocation data for a given IP address from both CITY and ASN databases.
+        Returns WCS-compliant data with two objects: "geo" for city/location information and "as" for ASN information.
+        If a database is not available or the IP is not found, empty objects are returned for that database type.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GeoDbGet_Request"
+      responses:
+        "200":
+          description: Successfully retrieved geolocation data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeoDbGet_Response"
+              examples:
+                withBothData:
+                  summary: IP with both CITY and ASN data
+                  value:
+                    status: "OK"
+                    data:
+                      geo:
+                        city_name: "Mountain View"
+                        location:
+                          lat: 37.386
+                          lon: -122.0838
+                        country_code: "US"
+                      as:
+                        number: 15169
+                        organization_name: "Google LLC"
+                cityOnly:
+                  summary: IP with only CITY data
+                  value:
+                    status: "OK"
+                    data:
+                      geo:
+                        city_name: "Mountain View"
+                      as: {}
+                noData:
+                  summary: IP not found in databases
+                  value:
+                    status: "OK"
+                    data:
+                      geo: {}
+                      as: {}
+        "400":
+          description: Bad Request. The request was malformed or validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                emptyIp:
+                  summary: Empty IP address
+                  value:
+                    status: "ERROR"
+                    error: "IP cannot be empty"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  /geo/db/list:
+    post:
+      tags:
+        - Geo
+      summary: List all geolocation databases
+      description: |
+        This endpoint retrieves information about all geolocation databases currently loaded in the geo manager.
+        Returns details including database name, path, MD5 hash, creation timestamp, and type (city or asn).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved database list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeoDbList_Response"
+              examples:
+                withDatabases:
+                  summary: Manager with loaded databases
+                  value:
+                    status: "OK"
+                    entries:
+                      - name: "GeoLite2-City.mmdb"
+                        path: "/var/wazuh-manager/geo/GeoLite2-City.mmdb"
+                        hash: "a1b2c3d4e5f6"
+                        createdAt: "2024-01-15T10:30:00Z"
+                        type: "city"
+                      - name: "GeoLite2-ASN.mmdb"
+                        path: "/var/wazuh-manager/geo/GeoLite2-ASN.mmdb"
+                        hash: "f6e5d4c3b2a1"
+                        createdAt: "2024-01-15T10:30:00Z"
+                        type: "asn"
+                empty:
+                  summary: No databases loaded
+                  value:
+                    status: "OK"
+                    entries: []
+        "400":
+          $ref: "#/components/responses/BadRequest_400"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  #################################
+  # Archiver
+  #################################
+  /archiver/activate:
+    post:
+      tags:
+        - Archiver
+      summary: Activate the archiver
+      description: |
+        This endpoint activates the archiver in the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /archiver/deactivate:
+    post:
+      tags:
+        - Archiver
+      summary: Deactivate the archiver
+      description: |
+        This endpoint deactivates the archiver in the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+  /archiver/status:
+    post:
+      tags:
+        - Archiver
+      summary: Get the status of the archiver
+      description: |
+        This endpoint retrieves the current status of the archiver.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved archiver status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArchiverStatus_Response"
+              examples:
+                archiver_active:
+                  summary: Archiver is active
+                  value:
+                    status: "OK"
+                    error: null
+                    active: true
+                archiver_inactive:
+                  summary: Archiver is inactive
+                  value:
+                    status: "OK"
+                    error: null
+                    active: false
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  #################################
+  # Raw Event Indexer
+  #################################
+  /_internal/raweventindexer/status:
+    post:
+      tags:
+        - Raw Event Indexer
+      summary: Get the status of the raw event indexer
+      description: |
+        This endpoint retrieves whether raw event indexing is enabled.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyRequest"
+      responses:
+        "200":
+          description: Successfully retrieved raw event indexer status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RawEventIndexerStatus_Response"
+              examples:
+                enabled:
+                  summary: Raw event indexer enabled
+                  value:
+                    status: "OK"
+                    error: null
+                    enabled: true
+                disabled:
+                  summary: Raw event indexer disabled
+                  value:
+                    status: "OK"
+                    error: null
+                    enabled: false
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # IOC Management
+  ################################
+  /content/ioc/update:
+    post:
+      tags:
+        - Content
+      summary: Update IOCs from a file
+      description: |
+        Performs an asynchronous update of the Indicators of Compromise (IOCs) in the manager 
+        using the provided file path and hash.
+
+        The file must be in **nd-json** (newline-delimited JSON) format, where each line 
+        represents a single IOC JSON object containing at minimum:
+        - `name`: The IOC value (IP, domain, hash, etc.)
+        - `type`: The IOC type (e.g., "connection", "url_domain", "file_hash")
+
+        **Hash-based optimization**: The `hash` field (typically MD5) is used to skip the 
+        update if the file content hasn't changed since the last synchronization, improving 
+        efficiency and reducing unnecessary I/O operations.
+
+        **Behavior**:
+        - If the hash matches the previously stored hash, returns OK without performing sync.
+        - If the hash differs, schedules an asynchronous synchronization task.
+        - Only one synchronization can run at a time (enforced by internal semaphore).
+        - Updates are performed using a hot-swap mechanism to avoid service interruption.
+
+        **Error handling**:
+        - File path validation is performed before scheduling.
+        - An empty `hash` field results in a 400 Bad Request (`Field /hash cannot be empty`).
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateIoc_Request"
+            examples:
+              update_iocs:
+                summary: Update IOCs from file with hash
+                value:
+                  path: "/var/lib/wazuh-server/iocs/threat-intel.ndjson"
+                  hash: "5d41402abc4b2a76b9719d911017c592"
+      responses:
+        "200":
+          description: Success - Synchronization scheduled or skipped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                sync_scheduled:
+                  summary: Synchronization task scheduled successfully
+                  value:
+                    status: "OK"
+                    error: null
+                hash_match_no_sync:
+                  summary: Hash matches, synchronization skipped
+                  value:
+                    status: "OK"
+                    error: "IOC data is already up to date"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                empty_path:
+                  summary: Path field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Field /path cannot be empty"
+                empty_hash:
+                  summary: Hash field is empty
+                  value:
+                    status: "ERROR"
+                    error: "Field /hash cannot be empty"
+                file_not_found:
+                  summary: File does not exist
+                  value:
+                    status: "ERROR"
+                    error: "File not found: /invalid/path/file.json"
+                sync_in_progress:
+                  summary: Another synchronization is already running
+                  value:
+                    status: "ERROR"
+                    error: "IOC synchronization already in progress"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                store_unavailable:
+                  summary: Store service is not available
+                  value:
+                    status: "ERROR"
+                    error: "Store is not available"
+                scheduler_unavailable:
+                  summary: Scheduler service is not available
+                  value:
+                    status: "ERROR"
+                    error: "Scheduler is not available"
+
+  /content/ioc/state:
+    get:
+      tags:
+        - Content
+      summary: Get IOC synchronization state
+      description: |
+        Retrieves the current state of the IOC manager, including:
+        - **hash**: MD5 hash of the last successfully synchronized IOC file
+        - **updating**: Boolean indicating if a synchronization is currently in progress
+        - **lastError**: Error message from the last failed synchronization (empty if last sync succeeded)
+
+        This endpoint is useful for:
+        - Monitoring IOC synchronization status
+        - Checking if updates are being processed
+        - Diagnosing synchronization failures
+        - Verifying which IOC file version is currently active
+
+      responses:
+        "200":
+          description: Success - State retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetIocState_Response"
+              examples:
+                idle_state:
+                  summary: No sync in progress, last sync successful
+                  value:
+                    status: "OK"
+                    hash: "5d41402abc4b2a76b9719d911017c592"
+                    updating: false
+                    lastError: ""
+                syncing_state:
+                  summary: Synchronization currently in progress
+                  value:
+                    status: "OK"
+                    hash: "5d41402abc4b2a76b9719d911017c592"
+                    updating: true
+                    lastError: ""
+                error_state:
+                  summary: Last synchronization failed
+                  value:
+                    status: "OK"
+                    hash: "abc123def456"
+                    updating: false
+                    lastError: "Failed to open file: /path/to/iocs.ndjson"
+                initial_state:
+                  summary: No IOCs synchronized yet
+                  value:
+                    status: "OK"
+                    hash: ""
+                    updating: false
+                    lastError: ""
+                store_error:
+                  summary: Store is not available
+                  value:
+                    status: "ERROR"
+                    hash: ""
+                    updating: false
+                    lastError: "Store is not available"
+
+  ################################
+  # Content Validate
+  ################################
+  /content/validate/resource:
+    post:
+      tags:
+        - Content
+      summary: Validate a content resource
+      description: |
+        This endpoint validates a content resource payload before storing it.
+        It validates the request schema and performs type-specific validation.
+
+        The validation is performed without requiring the full namespace context, so a resource can be checked
+        independently from other assets.
+
+        The request body must be a JSON object and the resource must include a valid UUIDv4 in the `resource.id` field.
+        The request body size can be limited through:
+        - `analysisd.api_resource_payload_max_bytes`
+        - `analysisd.api_resource_kvdb_payload_max_bytes`
+
+        A value of `0` means unlimited for that limit. If the body exceeds a configured limit, the request is rejected
+        with HTTP 413.
+
+        - **Integrations**:
+          - Validate schema.
+          - Validate `decoders[]` as UUIDv4 values.
+          - Validate `kvdbs[]` as UUIDv4 values.
+          - Validate category existence and validity.
+          - Validate `default_parent` as UUIDv4 (if present).
+        - **KVDB**:
+          - Validate schema.
+          - Require `content` to be a JSON object.
+        - **Decoders**:
+          - Attempt decoder construction/compilation.
+          - Validation must not fail if referenced KVDBs are not present at validation time.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentValidate_Request"
+            examples:
+              kvdb_validate:
+                summary: Validate a KVDB resource
+                value:
+                  type: kvdb
+                  resource:
+                    id: "82e215c4-988a-4f64-8d15-b98b2fc03a4f"
+                    date: "2025-10-06T13:32:19Z"
+                    title: "windows_kerberos_status_code_to_code_name"
+                    author: "Wazuh Inc."
+                    content:
+                      "0x0": "KDC_ERR_NONE"
+                      "0x1": "KDC_ERR_NAME_EXP"
+                      "0x2": "KDC_ERR_SERVICE_EXP"
+                      "0x3": "KDC_ERR_BAD_PVNO"
+                      "0x4": "KDC_ERR_C_OLD_MAST_KVNO"
+                      "0x5": "KDC_ERR_S_OLD_MAST_KVNO"
+                      "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN"
+                    enabled: true
+
+              integration_validate_with_parent:
+                summary: Validate an Integration resource (with optional default_parent)
+                value:
+                  type: integration
+                  resource:
+                    id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
+                    title: "windows"
+                    enabled: true
+                    category: "Security"
+                    default_parent: "85853f26-5779-469b-86c4-c47ee7d400b4"
+                    decoders:
+                      - "85853f26-5779-469b-86c4-c47ee7d400b4"
+                      - "4aa06596-5ba9-488c-8354-2475705e1257"
+                      - "4da71af3-fff5-4b67-90d6-51db9e15bc47"
+                      - "6f8bd7d2-8516-4b2b-a6f1-cc924513c404"
+                    kvdbs: []
+
+              integration_validate_no_parent:
+                summary: Validate an Integration resource (no default_parent)
+                value:
+                  type: integration
+                  resource:
+                    id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
+                    title: "windows"
+                    enabled: false
+                    category: "Security"
+                    decoders:
+                      - "85853f26-5779-469b-86c4-c47ee7d400b4"
+                    kvdbs: []
+      responses:
+        "200":
+          $ref: "#/components/responses/GenericSuccess_200"
+        "400":
+          description: Bad Request. The request was malformed or failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                missing_type:
+                  summary: Missing /type
+                  value:
+                    status: "ERROR"
+                    error: "Field /type is required"
+                unsupported_type:
+                  summary: Unsupported /type
+                  value:
+                    status: "ERROR"
+                    error: "Unsupported value for /type"
+                invalid_json:
+                  summary: Invalid JSON payload
+                  value:
+                    status: "ERROR"
+                    error: "Invalid JSON payload"
+                integration_invalid_category:
+                  summary: Integration invalid category
+                  value:
+                    status: "ERROR"
+                    error: "Category 'ossec' is not a valid category for integration 'windows'."
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+#################################################################################
+# Components
+#################################################################################
+components:
+  #################################################################################
+  # Schemas
+  #################################################################################
+  schemas:
+    ################################
+    # Common
+    ################################
+    ReturnStatus:
+      type: string
+      enum:
+        - UNKNOWN
+        - OK
+        - ERROR
+      description: "Status codes representing different return states."
+
+    ReturnError:
+      type: string
+      description: "Error message if status is ERROR"
+      nullable: true
+
+    Response:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/ReturnStatus"
+        error:
+          $ref: "#/components/schemas/ReturnError"
+
+    EmptyRequest:
+      type: object
+      description: "Empty request body"
+      properties: {}
+
+    ResourceName:
+      type: string
+      description: "Name of the resource, a '/' separated string. Where the first part is the type, the second part is the name, and the last part is the version."
+      example: "type/name/0"
+
+    Namespace:
+      type: string
+      description: "Namespace where the policy and assets are located"
+      example: "namespace1"
+
+    #################################
+    # Router
+    #################################
+    RouteState:
+      type: string
+      enum:
+        - STATE_UNKNOWN
+        - DISABLED
+        - ENABLED
+      description: "State of the route"
+
+    RouterEntry:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+        namespaceId:
+          $ref: "#/components/schemas/Namespace"
+        priority:
+          type: integer
+          description: "Priority of the route"
+        description:
+          type: string
+          description: "Description of the route"
+        entry_status:
+          $ref: "#/components/schemas/RouteState"
+        uptime:
+          type: integer
+          description: "Uptime of the route in seconds"
+
+    RoutePost_Request:
+      type: object
+      required: [name, namespaceId, priority]
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+        namespaceId:
+          $ref: "#/components/schemas/Namespace"
+        priority:
+          type: integer
+          description: "Priority of the route"
+        description:
+          type: string
+          description: "Description of the route"
+
+    RouteDelete_Request:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+
+    RouteGet_Request:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+
+    RouteGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            route:
+              $ref: "#/components/schemas/RouterEntry"
+
+    RouteReload_Request:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+
+    RoutePatchPriority_Request:
+      type: object
+      required: [name, priority]
+      properties:
+        name:
+          type: string
+          description: "Name of the route"
+        priority:
+          type: integer
+          description: "New priority of the route"
+
+    TableGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            routes:
+              type: array
+              items:
+                $ref: "#/components/schemas/RouterEntry"
+              description: "List of all routes in the router"
+
+    QueuePost_Request:
+      type: object
+      properties:
+        wazuh_event:
+          type: string
+          description: "Wazuh event to be processed"
+
+    EpsUpdate_Request:
+      type: object
+      required: [eps, refresh_interval]
+      properties:
+        eps:
+          type: integer
+          description: "New EPS (Events Per Second) limit value for the Engine"
+        refresh_interval:
+          type: integer
+          description: "Interval in seconds to refresh the EPS limit"
+
+    EpsGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            eps:
+              type: integer
+              description: "Current EPS (Events Per Second) limit value for the Engine"
+            refresh_interval:
+              type: integer
+              description: "Interval in seconds to refresh the EPS limit"
+            enabled:
+              type: boolean
+              description: "Whether the EPS limit is enabled or not"
+
+    #################################
+    # Content
+    #################################
+    policyValidate_Request:
+      type: object
+      required: [full_policy, space]
+      properties:
+        space:
+          type: string
+          description: "Target space/session name (e.g. test, standard). Determines which tester session to promote into."
+        load_in_tester:
+          type: boolean
+          description: "If true, load testing policies into the Tester environment."
+        full_policy:
+          type: object
+          description: "Full policy JSON payload"
+
+    #################################
+    # IOC Management
+    #################################
+    UpdateIoc_Request:
+      type: object
+      required: [path, hash]
+      properties:
+        path:
+          type: string
+          description: "Absolute path to the ndjson file containing IOCs to synchronize"
+          example: "/var/lib/wazuh-server/iocs/threat-intel.ndjson"
+        hash:
+          type: string
+          description: "MD5 hash of the IOC file. Required for change detection and skipping unnecessary syncs."
+          example: "5d41402abc4b2a76b9719d911017c592"
+
+    GetIocState_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            hash:
+              type: string
+              description: "MD5 hash of the current IOCs in the manager"
+              example: "5d41402abc4b2a76b9719d911017c592"
+            updating:
+              type: boolean
+              description: "Indicates if an IOC synchronization is currently in progress"
+              example: false
+            lastError:
+              type: string
+              description: "Error message from last failed synchronization. Empty if last sync succeeded."
+              example: ""
+
+    #################################
+    # Tester
+    #################################
+    TesterSessionName:
+      type: string
+      description: "Name of the session"
+
+    TesterLifetime:
+      type: integer
+      description: "Lifetime of the session in seconds"
+
+    TesterDescription:
+      type: string
+      description: "Optional description of the session"
+      nullable: true
+
+    TesterSessionPost:
+      type: object
+      required: [name, namespaceId]
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+        namespaceId:
+          $ref: "#/components/schemas/Namespace"
+        lifetime:
+          $ref: "#/components/schemas/TesterLifetime"
+        description:
+          $ref: "#/components/schemas/TesterDescription"
+
+    TesterSession:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+        namespaceId:
+          $ref: "#/components/schemas/Namespace"
+        lifetime:
+          $ref: "#/components/schemas/TesterLifetime"
+        description:
+          $ref: "#/components/schemas/TesterDescription"
+        entry_status:
+          $ref: "#/components/schemas/RouteState"
+        last_use:
+          type: integer
+          description: "Last use of the session in seconds since epoch"
+
+    TesterResult:
+      type: object
+      properties:
+        output:
+          type: object
+          description: "JSON output of the event"
+        asset_traces:
+          type: array
+          items:
+            type: object
+            properties:
+              asset:
+                $ref: "#/components/schemas/ResourceName"
+              success:
+                type: boolean
+                description: "If the asset was successfully decoded"
+              traces:
+                type: array
+                items:
+                  type: string
+                description: "Traces of the asset"
+
+    TesterRunPost_Request:
+      type: object
+      required: [name, event, agent_metadata]
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+        event:
+          type: string
+          description: "Event to test"
+        agent_metadata:
+          type: object
+          description: "Metadata about the agent sending the event"
+        trace_level:
+          type: string
+          enum:
+            - NONE
+            - ASSET_ONLY
+            - ALL
+          description: "Level of traces"
+        asset_trace:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceName"
+          description: "Assets for which detailed traces are required"
+        namespaces:
+          type: array
+          items:
+            $ref: "#/components/schemas/Namespace"
+          description: "Namespaces where the assets to test are located"
+
+    TesterRunPost_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            result:
+              $ref: "#/components/schemas/TesterResult"
+
+    PublicRunPost_Request:
+      type: object
+      required: [queue, location, metadata, event, trace_level, space]
+      properties:
+        space:
+          type: string
+          description: "Target space/session name to run against (e.g. test, standard)"
+        queue:
+          type: integer
+          minimum: 1
+          maximum: 255
+          description: "Queue number where the event will be injected (engine/input queue)"
+        location:
+          type: string
+          description: "Event source/location label (e.g., file path, agent name, or custom identifier)"
+        metadata:
+          type: object
+          description: "Required metadata object. Only the top-level `wazuh` key is allowed, and `metadata.wazuh` must be an object. The minimal accepted value is `{ \"wazuh\": {} }`."
+        event:
+          type: string
+          description: "Raw event payload to test"
+        trace_level:
+          type: string
+          enum:
+            - NONE
+            - ASSET_ONLY
+            - ALL
+          description: "Level of traces"
+
+    LogtestDelete_Request:
+      type: object
+      required: [space]
+      properties:
+        space:
+          type: string
+          description: "Target space/session name to delete (e.g. test, standard)"
+
+    TesterTableGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            sessions:
+              type: array
+              items:
+                $ref: "#/components/schemas/TesterSession"
+              description: "List of sessions if status is OK"
+
+    TesterSessionReload_Request:
+      type: object
+      required: [name]
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+
+    TesterSessionGet_Request:
+      type: object
+      required: [name]
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+
+    TesterSessionGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            session:
+              $ref: "#/components/schemas/TesterSession"
+
+    TesterSessionDelete_Request:
+      type: object
+      required: [name]
+      properties:
+        name:
+          $ref: "#/components/schemas/TesterSessionName"
+
+    TesterSessionPost_Request:
+      type: object
+      properties:
+        session:
+          $ref: "#/components/schemas/TesterSessionPost"
+
+    ################################
+    # Content Validate
+    ################################
+    ContentValidate_Request:
+      type: object
+      required: [type, resource]
+      properties:
+        type:
+          type: string
+          enum:
+            - decoder
+            - filter
+            - integration
+            - kvdb
+        resource:
+          type: object
+          description: "JSON object of the resource to validate"
+
+    #################################
+    # Geo
+    #################################
+    GeoDbEntry:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Database name"
+        path:
+          type: string
+          description: "Path of the MMDB database file"
+        type:
+          type: string
+          description: "MMDB database type [city|asn]"
+
+    GeoDbGet_Request:
+      type: object
+      required: [ip]
+      properties:
+        ip:
+          type: string
+          description: "IP address to query for geolocation data"
+          example: "8.8.8.8"
+
+    GeoDbGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: object
+              description: "WCS-compliant geolocation data with 'geo' and 'as' objects"
+              properties:
+                geo:
+                  type: object
+                  description: "City and location data from CITY database. Empty object if not found or database not available."
+                  additionalProperties: true
+                as:
+                  type: object
+                  description: "ASN data from ASN database. Empty object if not found or database not available."
+                  additionalProperties: true
+              example:
+                geo:
+                  city_name: "Mountain View"
+                  location:
+                    lat: 37.386
+                    lon: -122.0838
+                  country_code: "US"
+                as:
+                  number: 15169
+                  organization_name: "Google LLC"
+
+    GeoDbList_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            entries:
+              type: array
+              items:
+                $ref: "#/components/schemas/GeoDbEntry"
+              description: "List of MMDB database entries currently loaded in the geo manager"
+
+    #################################
+    # Archiver
+    #################################
+    ArchiverStatus_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            active:
+              type: boolean
+              description: "Indicates whether the archiver is active"
+
+    #################################
+    # Raw Event Indexer
+    #################################
+    RawEventIndexerStatus_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            enabled:
+              type: boolean
+              description: "Indicates whether the raw event indexer is enabled"
+
+  #################################################################################
+  # Responses
+  #################################################################################
+  responses:
+    InternalServerError_500:
+      description: "Internal Server Error"
+      content:
+        text/plain:
+          schema:
+            type: string
+            description: "Internal server error message"
+          example: |
+            Internal Server Error
+
+    BadRequest_400:
+      description: "Bad Request"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Response"
+          example:
+            status: ERROR
+            error: "Error message"
+
+    GenericSuccess_200:
+      description: "Generic Success"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Response"
+          example:
+            status: OK
+            error: null

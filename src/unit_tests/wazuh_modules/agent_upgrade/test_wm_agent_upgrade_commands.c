@@ -16,13 +16,13 @@
 #include "../../wrappers/common.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
-#include "../../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
+#include "../../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
 
-#include "../../wazuh_modules/wmodules.h"
-#include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_manager.h"
-#include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_tasks.h"
-#include "../../headers/shared.h"
+#include "wmodules.h"
+#include "wm_agent_upgrade_manager.h"
+#include "wm_agent_upgrade_tasks.h"
+#include "shared.h"
 
 int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task);
 int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task);
@@ -180,6 +180,7 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_ok(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, os_major);
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, os_minor);
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -237,6 +238,7 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, os_major);
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, os_minor);
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -293,6 +295,7 @@ void test_wm_agent_upgrade_validate_agent_task_version_err(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, os_major);
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, os_minor);
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -350,6 +353,7 @@ void test_wm_agent_upgrade_validate_agent_task_system_err(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, os_major);
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, os_minor);
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_GLOBAL_DB_FAILURE);
 
     int ret = wm_agent_upgrade_validate_agent_task(agent_task);
@@ -485,6 +489,7 @@ void test_wm_agent_upgrade_analyze_agent_ok(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, major);
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, minor);
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -562,6 +567,7 @@ void test_wm_agent_upgrade_analyze_agent_duplicated_err(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, major);
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, minor);
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -639,6 +645,7 @@ void test_wm_agent_upgrade_analyze_agent_unknown_err(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, major);
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, minor);
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -1134,7 +1141,7 @@ void test_wm_agent_upgrade_process_agent_result_command_done(void **state)
     cJSON_AddNumberToObject(response_json, "error", WM_UPGRADE_SUCCESS);
     cJSON_AddStringToObject(response_json, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8164): Received upgrade notification from agent '25'. Error code: '0', message: 'Success'");
 
     // wm_agent_upgrade_parse_task_module_request
@@ -1169,7 +1176,7 @@ void test_wm_agent_upgrade_process_agent_result_command_failed(void **state)
     int agents[2];
     wm_upgrade_agent_status_task *upgrade_agent_status_task = NULL;
     char *agent_status = "Failed";
-    char *agent_error = "Upgrade procedure exited with error code";
+    char *agent_error = "Upgrade procedure exited with error code: 2";
 
     agents[0] = 25;
     agents[1] = OS_INVALID;
@@ -1205,7 +1212,7 @@ void test_wm_agent_upgrade_process_agent_result_command_failed(void **state)
     cJSON_AddNumberToObject(response_json, "error", WM_UPGRADE_SUCCESS);
     cJSON_AddStringToObject(response_json, "message", upgrade_error_codes[WM_UPGRADE_SUCCESS]);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8164): Received upgrade notification from agent '25'. Error code: '2', message: 'Error message'");
 
     // wm_agent_upgrade_parse_task_module_request
@@ -1335,6 +1342,7 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, "18");
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, "04");
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, "x86_64");
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -1472,7 +1480,7 @@ void test_wm_agent_upgrade_process_upgrade_custom_command_no_agents(void **state
 
     will_return(__wrap_wm_agent_upgrade_get_agent_ids, NULL);
 
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtwarn, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtwarn, formatted_msg, "(8160): There are no valid agents to upgrade.");
 
     // wm_agent_upgrade_parse_response
@@ -1584,6 +1592,7 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, "18");
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, "04");
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, "x86_64");
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -1717,7 +1726,7 @@ void test_wm_agent_upgrade_process_upgrade_command_no_agents(void **state)
 
     will_return(__wrap_wm_agent_upgrade_get_agent_ids, NULL);
 
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtwarn, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtwarn, formatted_msg, "(8160): There are no valid agents to upgrade.");
 
     // wm_agent_upgrade_parse_response

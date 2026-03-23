@@ -16,7 +16,6 @@
 #include <chrono>
 #include "defs.h"
 #include "dbsync.hpp"
-#include "rsync.hpp"
 #include "sysInfo.hpp"
 #include "syscollector.hpp"
 
@@ -48,25 +47,26 @@ int main(int argc, const char* argv[])
             std::cout << payload << std::endl;
         }
     };
-    const auto reportSyncFunction
+
+    const auto persistDiffFunction
     {
-        [](const std::string & payload)
+        [](const std::string&, Operation_t, const std::string&, const std::string & payload, uint64_t version)
         {
-            std::cout << "sync output payload:" << std::endl;
+            std::cout << "persist output payload (version: " << version << "):" << std::endl;
             std::cout << payload << std::endl;
         }
     };
 
     const auto logFunction
     {
-        [](const syscollector_log_level_t level, const std::string & log)
+        [](const modules_log_level_t level, const std::string & log)
         {
-            static const std::map<syscollector_log_level_t, std::string> s_logStringMap
+            static const std::map<modules_log_level_t, std::string> s_logStringMap
             {
-                {SYS_LOG_ERROR, "ERROR"},
-                {SYS_LOG_INFO, "INFO"},
-                {SYS_LOG_DEBUG, "DEBUG"},
-                {SYS_LOG_DEBUG_VERBOSE, "DEBUG2"}
+                {LOG_ERROR, "ERROR"},
+                {LOG_INFO, "INFO"},
+                {LOG_DEBUG, "DEBUG"},
+                {LOG_DEBUG_VERBOSE, "DEBUG2"}
             };
             std::cout << s_logStringMap.at(level) << ": " << log << std::endl;
         }
@@ -81,12 +81,13 @@ int main(int argc, const char* argv[])
     };
 
     const auto spInfo{ std::make_shared<SysInfo>() };
-    RemoteSync::initialize(logErrorFunction);
     DBSync::initialize(logErrorFunction);
+
+    std::thread thread;  // Declare thread outside try block
 
     try
     {
-        std::thread thread
+        thread = std::thread
         {
             [timedMainLoop, sleepTime]
             {
@@ -105,7 +106,7 @@ int main(int argc, const char* argv[])
 
         Syscollector::instance().init(spInfo,
                                       reportDiffFunction,
-                                      reportSyncFunction,
+                                      persistDiffFunction,
                                       logFunction,
                                       SYSCOLLECTOR_DB_DISK_PATH,
                                       SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,
@@ -119,19 +120,26 @@ int main(int argc, const char* argv[])
                                       true,
                                       true,
                                       true,
+                                      true,
+                                      true,
+                                      true,
+                                      true,
+                                      true,
                                       true);
 
-        if (thread.joinable())
-        {
-            thread.join();
-        }
+        Syscollector::instance().start();
     }
     catch (const std::exception& ex)
     {
         std::cout << ex.what() << std::endl;
     }
 
-    RemoteSync::teardown();
+    // Always join the thread before exiting (both success and exception paths)
+    if (thread.joinable())
+    {
+        thread.join();
+    }
+
     DBSync::teardown();
     return 0;
 }

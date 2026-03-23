@@ -1,0 +1,56 @@
+{
+  "description": "DataClean flow test with multiple indices: start -> multiple dataclean -> end",
+  "messages": [
+    {
+      "type": "start",
+      "data": {
+        "module": "fim",
+        "mode": 1,
+        "size": 3,
+        "agentid": "001",
+        "agentname": "test-agent",
+        "agentversion": "4.8.0"
+      },
+      "description": "Start synchronization session for DataClean with 3 indices",
+      "delay": 0.5,
+      "expect_session_response": true
+    },
+    {
+      "type": "dataclean",
+      "data": {
+        "seq": 0,
+        "index": "wazuh-states-fim-files"
+      },
+      "description": "Send DataClean message for first index",
+      "delay": 0.3,
+      "use_session_from_start": true
+    },
+    {
+      "type": "dataclean",
+      "data": {
+        "seq": 1,
+        "index": "wazuh-states-fim-registry-keys"
+      },
+      "description": "Send DataClean message for second index",
+      "delay": 0.3,
+      "use_session_from_start": true
+    },
+    {
+      "type": "dataclean",
+      "data": {
+        "seq": 2,
+        "index": "wazuh-states-fim-registry-values"
+      },
+      "description": "Send DataClean message for third index",
+      "delay": 0.3,
+      "use_session_from_start": true
+    },
+    {
+      "type": "end",
+      "data": {},
+      "description": "End synchronization session",
+      "delay": 0.5,
+      "use_session_from_start": true
+    }
+  ]
+}

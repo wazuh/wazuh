@@ -3,13 +3,14 @@
 # Installation script for Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
-### Looking up for the execution directory
-cd `dirname $0`
+# Resolve script location and always run from its directory.
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+cd "$SCRIPT_DIR" || exit 1
 
 
-### Looking for echo -n
+# Select a portable "echo -n" variant for shells that do not support it.
 ECHO="echo -n"
-hs=`echo -n "a"`
+hs=$(echo -n "a")
 if [ ! "X$hs" = "Xa" ]; then
     if [ -x /usr/ucb/echo ]; then
         ECHO="/usr/ucb/echo -n"
@@ -20,19 +21,11 @@ if [ ! "X$hs" = "Xa" ]; then
     fi
 fi
 
-# For solaris
-echo "xxxx" | grep -E "xxx" > /dev/null 2>&1
-if [ ! $? = 0 ]; then
-    if [ -x /usr/xpg4/bin/grep ]; then
-        PATH=/usr/xpg4/bin:$PATH
-    fi
-fi
-
-# Initializing vars
+# Initialize runtime flags.
 SET_DEBUG=""
 
-# Checking for command line arguments
-for i in $*; do
+# Parse supported command-line arguments.
+for i in "$@"; do
     if [ "X$i" = "Xdebug" ]; then
         SET_DEBUG="debug"
     elif [ "X$i" = "Xbinary-install" ]; then
@@ -44,46 +37,67 @@ for i in $*; do
     fi
 done
 
+setBuildCextra()
+{
+    config_os="./src/Config.OS"
+    tmp_config_os="${config_os}.tmp.$$"
+
+    if [ -f "$config_os" ]; then
+        grep -v '^CEXTRA=' "$config_os" > "$tmp_config_os"
+    else
+        : > "$tmp_config_os"
+    fi
+
+    echo "CEXTRA=${CEXTRA}" >> "$tmp_config_os"
+    mv "$tmp_config_os" "$config_os"
+}
+
+isPFFirewall()
+{
+    UNAME=$(uname)
+    if [ "X${UNAME}" = "XFreeBSD" ] || [ "X${UNAME}" = "XOpenBSD" ]; then
+        grep -qi 'pf_enable="YES"' /etc/rc.conf 2>/dev/null
+    elif [ "X${UNAME}" = "XDarwin" ]; then
+        which pfctl > /dev/null 2>&1
+    else
+        return 1
+    fi
+}
+
 ##########
 # install()
 ##########
 Install()
 {
-    echo ""
-    echo "4- ${installing}"
+    if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ]; then
+        echo ""
+        echo "4- ${installing}"
 
-    echo ""
-    echo "DIR=\"${INSTALLDIR}\""
-
-    # Changing Config.OS with the new C flags
-    # Checking if debug is enabled
-    if [ "X${SET_DEBUG}" = "Xdebug" ]; then
-        CEXTRA="${CEXTRA} -DDEBUGAD"
+        echo ""
+        echo "DIR=\"${INSTALLDIR}\""
     fi
 
-    echo "CEXTRA=${CEXTRA}" >> ./src/Config.OS
+    # Keep Config.OS idempotent: replace previous CEXTRA instead of appending on every run.
+    setBuildCextra
 
     MAKEBIN=make
-    ## Find make/gmake
+    # Select make command for BSD variants.
     if [ "X$NUNAME" = "XOpenBSD" ]; then
-        MAKEBIN=gmake
+          MAKEBIN=gmake
     elif [ "X$NUNAME" = "XFreeBSD" ]; then
-        MAKEBIN=gmake
+          MAKEBIN=gmake
     elif [ "X$NUNAME" = "XNetBSD" ]; then
-        MAKEBIN=gmake
+          MAKEBIN=gmake
     elif [ "X$NUNAME" = "XDragonflyBSD" ]; then
-        MAKEBIN=gmake
+          MAKEBIN=gmake
     elif [ "X$NUNAME" = "XBitrig" ]; then
-  	    MAKEBIN=gmake
-    elif [ "X$NUNAME" = "XSunOS" ]; then
-	      MAKEBIN=gmake
-    elif [ "X$NUNAME" = "XHP-UX" ]; then
-          MAKEBIN=/usr/local/bin/gmake
-    elif [ "X$NUNAME" = "XAIX" ]; then
-          MAKEBIN=/opt/freeware/bin/gmake
+          MAKEBIN=gmake
+    fi
+    if grep -q "Alpine Linux" /etc/os-release 2>/dev/null; then
+        ALPINE_DEPS="EXTERNAL_SRC_ONLY=1"
     fi
 
-    # On CentOS <= 5 we need to disable syscollector compilation
+    # Legacy RHEL/CentOS versions cannot build all modules.
     OS_VERSION_FOR_SYSC="${DIST_NAME}"
     if ([ "X${OS_VERSION_FOR_SYSC}" = "Xrhel" ] || [ "X${OS_VERSION_FOR_SYSC}" = "Xcentos" ]) && [ ${DIST_VER} -le 5 ]; then
         AUDIT_FLAG="USE_AUDIT=no"
@@ -93,23 +107,24 @@ Install()
         fi
     fi
 
-    # Makefile
-    echo " - ${runningmake}"
-    echo ""
+    # Build step.
+    if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ]; then
+        echo " - ${runningmake}"
+        echo ""
+    fi
 
     cd ./src
 
-    # Binary install will use the previous generated code.
+    # "binary-install" reuses prebuilt artifacts from the workspace and skips compilation.
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
-        # Download external libraries if missing
-        find external/* > /dev/null 2>&1 || ${MAKEBIN} deps TARGET=${INSTYPE}
+        # Download external libraries only when the folder is still empty.
+        [ -z "$(find external -mindepth 1 -maxdepth 1 -type d 2>/dev/null)" ] && ${MAKEBIN} deps ${ALPINE_DEPS} TARGET=${INSTYPE}
 
         if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
             CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
         fi
 
-        # Add DATABASE=pgsql or DATABASE=mysql to add support for database
-        # alert entry
+        # DATABASE=pgsql|mysql enables alert output through those backends.
         ${MAKEBIN} TARGET=${INSTYPE} INSTALLDIR=${INSTALLDIR} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
 
         if [ $? != 0 ]; then
@@ -118,30 +133,25 @@ Install()
         fi
     fi
 
-    # If update, stop Wazuh
+    # For updates, stop running services before replacing files.
     if [ "X${update_only}" = "Xyes" ]; then
         echo "Stopping Wazuh..."
         UpdateStopOSSEC
     fi
 
-    # Install
+    # Install selected components.
     InstallWazuh
 
     cd ../
 
-    # Install Wazuh ruleset updater
-    if [ "X$INSTYPE" = "Xserver" ]; then
-        WazuhSetup
-    fi
-
-    # Calling the init script to start Wazuh during boot
+    # Generate/init service units and enable boot-time startup.
     runInit $INSTYPE ${update_only}
     runinit_value=$?
 
-    # If update, start Wazuh
+    # For updates, run upgrade hooks and start services again.
     if [ "X${update_only}" = "Xyes" ]; then
-        WazuhUpgrade
-        # Update versions previous to Wazuh 1.2
+        WazuhUpgrade $INSTYPE
+        # Compatibility migration for very old versions.
         UpdateOldVersions
         echo "Starting Wazuh..."
         UpdateStartOSSEC
@@ -156,86 +166,27 @@ Install()
 
 }
 
-##########
-# UseSyscheck()
-##########
-UseSyscheck()
-{
-    # Integrity check config
-    echo ""
-    $ECHO "  3.2- ${runsyscheck} ($yes/$no) [$yes]: "
-    if [ "X${USER_ENABLE_SYSCHECK}" = "X" ]; then
-        read AS
-    else
-        AS=${USER_ENABLE_SYSCHECK}
-    fi
-    echo ""
-    case $AS in
-        $nomatch)
-            echo "   - ${nosyscheck}."
-            ;;
-        *)
-            SYSCHECK="yes"
-            echo "   - ${yessyscheck}."
-            ;;
-    esac
-}
-
-
-##########
-# UseRootcheck()
-##########
-UseRootcheck()
-{
-    # Rootkit detection configuration
-    echo ""
-    $ECHO "  3.3- ${runrootcheck} ($yes/$no) [$yes]: "
-
-    if [ "X${USER_ENABLE_ROOTCHECK}" = "X" ]; then
-        read ES
-    else
-        ES=${USER_ENABLE_ROOTCHECK}
-    fi
-
-    echo ""
-    case $ES in
-        $nomatch)
-            echo "   - ${norootcheck}."
-            ;;
-        *)
-            ROOTCHECK="yes"
-            echo "   - ${yesrootcheck}."
-            ;;
-    esac
-}
-
 UseSyscollector()
 {
-    # Syscollector config predefined (is overwritten by the preload-vars file)
-    if [ "X${USER_ENABLE_SYSCOLLECTOR}" = "Xn" ]; then
-        SYSCOLLECTOR="no"
-     else
-         SYSCOLLECTOR="yes"
-     fi
+    # Default Syscollector value (can be overridden by preloaded vars).
+    setToggleVar "SYSCOLLECTOR" "${USER_ENABLE_SYSCOLLECTOR}" "yes"
 }
 
 UseSecurityConfigurationAssessment()
 {
-    # Configuration assessment config predefined (is overwritten by the preload-vars file)
-    if [ "X${USER_ENABLE_SCA}" = "Xn" ]; then
-        SECURITY_CONFIGURATION_ASSESSMENT="no"
-     else
-        SECURITY_CONFIGURATION_ASSESSMENT="yes"
-     fi
+    # Default SCA value (can be overridden by preloaded vars).
+    setToggleVar "SECURITY_CONFIGURATION_ASSESSMENT" "${USER_ENABLE_SCA}" "yes"
 }
 
 UseSSLCert()
 {
-    if [ "X${USER_CREATE_SSL_CERT}" = "Xn" ]; then
-        SSL_CERT="no"
-    else
-        SSL_CERT="yes"
-    fi
+    setToggleVar "SSL_CERT" "${USER_CREATE_SSL_CERT}" "yes"
+}
+
+UseUpdateCheck()
+{
+    # Default update-check value (can be overridden by preloaded vars).
+    setToggleVar "UPDATE_CHECK" "${USER_ENABLE_UPDATE_CHECK}" "yes"
 }
 
 ##########
@@ -243,24 +194,32 @@ UseSSLCert()
 ##########
 EnableAuthd()
 {
-    # Authd config
+    # Authd toggle.
     NB=$1
-    echo ""
-    $ECHO "  $NB - ${runauthd} ($yes/$no) [$yes]: "
+    AS=""
+    PROMPTED="no"
     if [ "X${USER_ENABLE_AUTHD}" = "X" ]; then
+        echo ""
+        $ECHO "  $NB - ${runauthd} ($yes/$no) [$yes]: "
         read AS
-    else
-        AS=${USER_ENABLE_AUTHD}
+        PROMPTED="yes"
     fi
-    echo ""
+    AS=${AS:-${USER_ENABLE_AUTHD}}
+    if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ] || [ "X${PROMPTED}" = "Xyes" ]; then
+        echo ""
+    fi
     case $AS in
         $nomatch)
             AUTHD="no"
-            echo "   - ${norunauthd}."
+            if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ] || [ "X${PROMPTED}" = "Xyes" ]; then
+                echo "   - ${norunauthd}."
+            fi
             ;;
         *)
             AUTHD="yes"
-            echo "   - ${yesrunauthd}."
+            if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ] || [ "X${PROMPTED}" = "Xyes" ]; then
+                echo "   - ${yesrunauthd}."
+            fi
             ;;
     esac
 }
@@ -271,25 +230,32 @@ EnableAuthd()
 ConfigureBoot()
 {
     NB=$1
+    ANSWER=""
+    PROMPTED="no"
     if [ "X$INSTYPE" != "Xagent" ]; then
 
-        echo ""
-        $ECHO "  $NB- ${startwazuh} ($yes/$no) [$yes]: "
-
         if [ "X${USER_AUTO_START}" = "X" ]; then
+            echo ""
+            $ECHO "  $NB- ${startwazuh} ($yes/$no) [$yes]: "
             read ANSWER
-        else
-            ANSWER=${USER_AUTO_START}
+            PROMPTED="yes"
         fi
+        ANSWER=${ANSWER:-${USER_AUTO_START}}
 
-        echo ""
+        if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ] || [ "X${PROMPTED}" = "Xyes" ]; then
+            echo ""
+        fi
         case $ANSWER in
             $nomatch)
-                echo "   - ${nowazuhstart}"
+                if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ] || [ "X${PROMPTED}" = "Xyes" ]; then
+                    echo "   - ${nowazuhstart}"
+                fi
                 ;;
             *)
                 START_WAZUH="yes"
-                echo "   - ${yeswazuhstart}"
+                if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ] || [ "X${PROMPTED}" = "Xyes" ]; then
+                    echo "   - ${yeswazuhstart}"
+                fi
                 ;;
         esac
     fi
@@ -301,6 +267,11 @@ ConfigureBoot()
 SetupLogs()
 {
     NB=$1
+    if [ "X${INSTALLER_BRIEF_FLOW}" = "Xyes" ]; then
+        WriteLogs "echo"
+        return 0
+    fi
+
     echo ""
     echo "  $NB- ${readlogs}"
     echo ""
@@ -309,10 +280,6 @@ SetupLogs()
 
     echo ""
     catMsg "0x106-logs"
-
-    if [ "X$USER_NO_STOP" = "X" ]; then
-        read ANY
-    fi
 }
 
 
@@ -321,74 +288,79 @@ SetupLogs()
 ##########
 ConfigureClient()
 {
-    echo ""
-    echo "3- ${configuring} $NAME."
-    echo ""
+    if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ]; then
+        echo ""
+        echo "3- ${configuring} $NAME."
+        echo ""
+    fi
 
-    if [ "X${USER_AGENT_SERVER_IP}" = "X" -a "X${USER_AGENT_SERVER_NAME}" = "X" ]; then
-        # Looping and asking for server ip or hostname
-        while [ 1 ]; do
-            $ECHO "  3.1- ${serveraddr}: "
-                read ADDRANSWER
-            # Is it an IP?
-            echo $ADDRANSWER | grep -E "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$" > /dev/null 2>&1
-            if [ $? = 0 ]; then
-                    echo ""
+    if [ "X${USER_AGENT_MANAGER_IP}" = "X" -a "X${USER_AGENT_MANAGER_NAME}" = "X" ]; then
+        # Ask until a manager address/hostname is provided.
+        while :; do
+            if [ "X${INSTALLER_BRIEF_FLOW}" = "Xyes" ]; then
+                $ECHO "  ${serveraddr}: "
+            else
+                $ECHO "  3.1- ${serveraddr}: "
+            fi
+            read ADDRANSWER
+            # Check whether the input is an IPv4 address.
+            if printf '%s' "$ADDRANSWER" | grep -Eq "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$"; then
+                echo ""
                 SERVER_IP=$ADDRANSWER
-                    echo "   - ${addingip} $IP"
+                echo "   - ${addingip} ${SERVER_IP}"
                 break;
-            # Must be a name
-            elif [ $? != 0 ]; then
-                    echo ""
+            # Otherwise treat it as hostname/FQDN.
+            else
+                echo ""
                 HNAME=$ADDRANSWER
-                    echo "   - ${addingname} $HNAME"
+                echo "   - ${addingname} $HNAME"
                 break;
             fi
         done
     else
-        SERVER_IP=${USER_AGENT_SERVER_IP}
-        HNAME=${USER_AGENT_SERVER_NAME}
+        SERVER_IP=${USER_AGENT_MANAGER_IP}
+        HNAME=${USER_AGENT_MANAGER_NAME}
     fi
 
-    # Syscheck?
-    UseSyscheck
-
-    # Rootcheck?
-    UseRootcheck
+    # Keep the rest of the agent flow non-interactive after manager address input.
+    setToggleVar "SYSCHECK" "${USER_ENABLE_SYSCHECK}" "yes"
+    setToggleVar "ROOTCHECK" "${USER_ENABLE_ROOTCHECK}" "yes"
 
     UseSyscollector
-
     UseSecurityConfigurationAssessment
 
-    echo ""
-    $ECHO "  3.5 - ${enable_ar} ($yes/$no) [$yes]: "
+    setToggleVar "ACTIVERESPONSE" "${USER_ENABLE_ACTIVE_RESPONSE}" "yes"
 
-    if [ "X${USER_ENABLE_ACTIVE_RESPONSE}" = "X" ]; then
-        read ANY
+    # CA store: keep legacy behavior for empty/no and allow path overrides.
+    if [ -z "${USER_CA_STORE}" ]; then
+        SET_CA_STORE="false"
+        CA_STORE=""
     else
-        ANY=${USER_ENABLE_ACTIVE_RESPONSE}
+        ANY=$(normalizeYesNo "${USER_CA_STORE}")
+        case $ANY in
+            no)
+                SET_CA_STORE="false"
+                CA_STORE=""
+                ;;
+            *)
+                SET_CA_STORE="true"
+                CA_STORE=${USER_CA_STORE}
+                if [ -f "$CA_STORE" ]; then
+                    if hash openssl 2>/dev/null && \
+                       [ "$(date -d "$(openssl x509 -enddate -noout -in "$CA_STORE" | cut -d= -f2)" +%s 2>/dev/null)" -lt "$(date +%s)" ] 2>/dev/null; then
+                        echo ""
+                        echo "     Warning: the certificate at \"$CA_STORE\" is expired."
+                    fi
+                elif [ ! -d "$CA_STORE" ]; then
+                    echo ""
+                    echo "     Warning: No such file or directory \"$CA_STORE\"."
+                fi
+                ;;
+        esac
     fi
 
-    case $ANY in
-        $nomatch)
-            echo ""
-            echo "   - ${noactive}."
-            ;;
-        *)
-            ACTIVERESPONSE="yes"
-            echo ""
-            echo "   - ${yesactive}."
-            ;;
-    esac
-
-    # Set up CA store
-    catMsg "0x109-castore"
-    AddCAStore
-
-    # Set up the log files
+    # Configure logging and write agent config.
     SetupLogs "3.7"
-
-    # Write configuration
     WriteAgent
 }
 
@@ -397,154 +369,33 @@ ConfigureClient()
 ##########
 ConfigureServer()
 {
-    echo ""
-    echo "3- ${configuring} $NAME."
+    if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ]; then
+        echo ""
+        echo "3- ${configuring} $NAME."
 
+        # Active response section.
+        catMsg "0x107-ar"
 
-    # Configuring e-mail notification
-    echo ""
-    $ECHO "  3.1- ${mailnotify} ($yes/$no) [$no]: "
+        echo ""
+        echo "   - ${defaultwhitelist}"
 
-    if [ "X${USER_ENABLE_EMAIL}" = "X" ]; then
-        read ANSWER
-    else
-        ANSWER=${USER_ENABLE_EMAIL}
-    fi
-
-    case $ANSWER in
-        $yesmatch)
-            EMAILNOTIFY="yes"
-            $ECHO "   - ${whatsemail} "
-            if [ "X${USER_EMAIL_ADDRESS}" = "X" ]; then
-
-                read EMAIL
-                echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.+-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
-                # Ugly e-mail validation
-                while [ "$EMAIL" = "" -o ! ${RVAL} = 0 ] ; do
-                    $ECHO "   - ${whatsemail} "
-                    read EMAIL
-                    echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.+-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
-                done
-            else
-                EMAIL=${USER_EMAIL_ADDRESS}
-            fi
-
-            if [ -x "$HOST_CMD" ]; then
-              HOSTTMP=`${HOST_CMD} -W 5 -t mx wazuh.com 2>/dev/null`
-              if [ $? = 1 ]; then
-                 # Trying without the -W
-                 HOSTTMP=`${HOST_CMD} -t mx wazuh.com 2>/dev/null`
-              fi
-              echo "x$HOSTTMP" | grep "wazuh.com mail is handled" > /dev/null 2>&1
-              if [ $? = 0 ]; then
-                 # Breaking down the user e-mail
-                 EMAILHOST=`echo ${EMAIL} | cut -d "@" -f 2`
-                 if [ "X${EMAILHOST}" = "Xlocalhost" ]; then
-                    SMTPHOST="127.0.0.1"
-                 else
-                    HOSTTMP=`${HOST_CMD} -W 5 -t mx ${EMAILHOST}`
-                    SMTPHOST=`echo ${HOSTTMP} | cut -d " " -f 7`
-                 fi
-              fi
-            fi
-
-            if [ "X${USER_EMAIL_SMTP}" = "X" ]; then
-                if [ "X${SMTPHOST}" != "X" ]; then
-                    echo ""
-                    echo "   - ${yoursmtp}: ${SMTPHOST}"
-                    $ECHO "   - ${usesmtp} ($yes/$no) [$yes]: "
-                    read EMAIL2
-                    case ${EMAIL2} in
-                        $nomatch)
-                        echo ""
-                        SMTP=""
-                        ;;
-                    *)
-                        SMTP=${SMTPHOST}
-                        echo ""
-                        echo "   --- ${usingsmtp} ${SMTP}"
-                        ;;
-                    esac
-                fi
-
-                if [ "X${SMTP}" = "X" ]; then
-                    $ECHO "   - ${whatsmtp} "
-                    read SMTP
-                fi
-            else
-                SMTP=${USER_EMAIL_SMTP}
-            fi
-        ;;
-        *)
-            echo ""
-            echo "   --- ${nomail}."
-            EMAILNOTIFY="no"
-        ;;
-    esac
-
-    # Checking if syscheck should run
-    UseSyscheck
-
-    # Checking if rootcheck should run
-    UseRootcheck
-
-    UseSyscollector
-
-    UseSecurityConfigurationAssessment
-
-    # Active response
-    catMsg "0x107-ar"
-
-    echo ""
-    echo "   - ${defaultwhitelist}"
-
-    for ip in ${NAMESERVERS} ${NAMESERVERS2};
-    do
-    if [ ! "X${ip}" = "X" -a ! "${ip}" = "0.0.0.0" ]; then
-        echo "      - ${ip}"
-    fi
-    done
-
-    AddWhite
-
-    if [ "X$INSTYPE" = "Xserver" ]; then
-      # Configuring remote syslog
-      echo ""
-      $ECHO "  3.6- ${syslog} ($yes/$no) [$yes]: "
-
-      if [ "X${USER_ENABLE_SYSLOG}" = "X" ]; then
-        read ANSWER
-      else
-        ANSWER=${USER_ENABLE_SYSLOG}
-      fi
-
-      echo ""
-      case $ANSWER in
-        $nomatch)
-            echo "   --- ${nosyslog}."
-            ;;
-        *)
-            echo "   - ${yessyslog}."
-            RLOG="yes"
-            ;;
-      esac
-
-      # Configuring remote connections
-      SLOG="yes"
+        for ip in ${NAMESERVERS} ${NAMESERVERS2};
+        do
+        if [ ! "X${ip}" = "X" -a ! "${ip}" = "0.0.0.0" ]; then
+            echo "      - ${ip}"
+        fi
+        done
     fi
 
     UseSSLCert
 
-    # Setting up the auth daemon & logs
-    if [ "X$INSTYPE" = "Xserver" ]; then
+    # Configure auth daemon, boot behavior, logs, and write config.
+    if [ "X$INSTYPE" = "Xmanager" ]; then
         EnableAuthd "3.7"
         ConfigureBoot "3.8"
         SetupLogs "3.9"
+        UseUpdateCheck
         WriteManager
-    else
-        ConfigureBoot "3.6"
-        SetupLogs "3.7"
-        WriteLocal
     fi
 }
 
@@ -553,28 +404,8 @@ ConfigureServer()
 ##########
 setInstallDir()
 {
-    if [ "X${USER_DIR}" = "X" ]; then
-        # If we don't have a value in USER_DIR, it means that the user
-        # should specify the installation directory.
-        while [ 1 ]; do
-            echo ""
-            $ECHO "2- ${wheretoinstall} [$INSTALLDIR]: "
-            read ANSWER
-            if [ ! "X$ANSWER" = "X" ]; then
-                echo $ANSWER |grep -E "^/[a-zA-Z0-9./_-]{3,128}$">/dev/null 2>&1
-                if [ $? = 0 ]; then
-                    INSTALLDIR=$ANSWER;
-                    break;
-                fi
-            else
-                break;
-            fi
-        done
-    else
-        # This else statement handles the case in which it was determined that the installation
-        # is an upgrade. So, the USER_DIR variable was previously set with the value of PREINSTALLEDDIR.
-        # Another possibility is that USER_DIR could have been set before running the script in
-        # order to run an unattended installation.
+    # USER_DIR overrides the default path derived from install type.
+    if [ "X${USER_DIR}" != "X" ]; then
         INSTALLDIR=${USER_DIR}
     fi
 }
@@ -589,8 +420,6 @@ setEnv()
 
     if [ "X$INSTYPE" = "Xagent" ]; then
         CEXTRA="$CEXTRA -DCLIENT"
-    elif [ "X$INSTYPE" = "Xlocal" ]; then
-        CEXTRA="$CEXTRA -DLOCAL"
     fi
 }
 
@@ -599,7 +428,43 @@ setEnv()
 ##########
 askForDelete()
 {
+    # Updates must never remove the installation directory.
+    if [ "X${update_only}" = "Xyes" ]; then
+        return 0
+    fi
+
     if [ -d "$INSTALLDIR" ]; then
+        # Reject overlay installs when clean-install mode is requested.
+        if [ "X${USER_CLEANINSTALL}" != "X" ]; then
+            CLEANINSTALL_ANY=$(normalizeYesNo "${USER_CLEANINSTALL}")
+            case $CLEANINSTALL_ANY in
+                yes)
+                    ANY=$(normalizeYesNo "${USER_DELETE_DIR}")
+                    case $ANY in
+                        yes)
+                            :
+                            ;;
+                        no)
+                            echo "ERROR: USER_CLEANINSTALL is enabled and '${INSTALLDIR}' already exists, but USER_DELETE_DIR='${USER_DELETE_DIR}'."
+                            echo "ERROR: Refusing overlay installation. Set USER_DELETE_DIR='${yes}' or choose a different USER_DIR."
+                            exit 1;
+                            ;;
+                        *)
+                            echo "ERROR: invalid USER_DELETE_DIR value '${USER_DELETE_DIR}'. Use '${yes}' or '${no}'."
+                            exit 1;
+                            ;;
+                    esac
+                    ;;
+                no)
+                    :
+                    ;;
+                *)
+                    echo "ERROR: invalid USER_CLEANINSTALL value '${USER_CLEANINSTALL}'. Use '${yes}' or '${no}'."
+                    exit 1;
+                    ;;
+            esac
+        fi
+
         if [ "X${USER_DELETE_DIR}" = "X" ]; then
             echo ""
             $ECHO "    - ${deletedir} ($yes/$no) [$no]: "
@@ -612,8 +477,8 @@ askForDelete()
             $yesmatch)
                 echo "      Stopping Wazuh..."
                 UpdateStopOSSEC
-                rm -rf $INSTALLDIR
-                if [ ! $? = 0 ]; then
+                rm -rf -- "$INSTALLDIR"
+                if [ $? -ne 0 ]; then
                     echo "Error deleting ${INSTALLDIR}"
                     exit 2;
                 fi
@@ -623,133 +488,14 @@ askForDelete()
 }
 
 ##########
-# checkDependencies()
-# Thanks to gabriel@macacos.org
-##########
-checkDependencies()
-{
-    echo ""
-    OLDOPATH=$PATH
-    if [ "X$NUNAME" = "XSunOS" ]; then
-        PATH=$PATH:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
-        export  PATH
-    elif [ "X$NUNAME" = "XAIX" ]; then
-        PATH=$PATH:/usr/vac/bin
-        export  PATH
-    fi
-
-    PATH=$OLDOPATH
-    export PATH
-}
-
-##########
-# AddWhite()
-##########
-AddWhite()
-{
-    while [ 1 ]
-    do
-        echo ""
-        $ECHO "   - ${addwhite} ($yes/$no)? [$no]: "
-
-        # If white list is set, we don't need to ask it here.
-        if [ "X${USER_WHITE_LIST}" = "X" ]; then
-            read ANSWER
-        else
-            ANSWER=${USER_WHITE_LIST}
-        fi
-
-        if [ "X${ANSWER}" = "X" ] ; then
-            ANSWER=$no
-        fi
-
-        case $ANSWER in
-            $no)
-                break;
-                ;;
-            *)
-                SET_WHITE_LIST="true"
-                $ECHO "   - ${ipswhite}"
-                if [ "X${USER_WHITE_LIST}" = "X" ]; then
-                    read IPS
-                else
-                    IPS=${USER_WHITE_LIST}
-                fi
-
-                break;
-                ;;
-        esac
-    done
-}
-
-##########
-# AddCAStore()
-##########
-AddCAStore()
-{
-    while [ 1 ]
-    do
-        echo ""
-        $ECHO "   - ${addcastore} ($yes/$no)? [$no]: "
-
-        # If white list is set, we don't need to ask it here.
-        if [ "X${USER_CA_STORE}" = "X" ]; then
-            read ANSWER
-        else
-            ANSWER=${USER_CA_STORE}
-        fi
-
-        if [ "X${ANSWER}" = "X" ] ; then
-            ANSWER=$no
-        fi
-
-        case $ANSWER in
-            $no)
-                break;
-                ;;
-            *)
-                SET_CA_STORE="true"
-                $ECHO "   - ${castore}"
-                if [ "X${USER_CA_STORE}" = "X" ]; then
-                    read CA_STORE
-                else
-                    CA_STORE=${USER_CA_STORE}
-                fi
-
-                break;
-                ;;
-        esac
-    done
-
-    # Check the certificate
-
-    if [ -n "$CA_STORE" ]
-    then
-        if [ -f $CA_STORE ]
-        then
-            if hash openssl 2>&1 > /dev/null && [ $(date -d "$(openssl x509 -enddate -noout -in $CA_STORE | cut -d = -f 2)" +%s) -lt $(date +%s) ]
-            then
-                echo ""
-                echo "     Warning: the certificate at \"$CA_STORE\" is expired."
-            fi
-        elif [ ! -d $CA_STORE ]
-        then
-            echo ""
-            echo "     Warning: No such file or directory \"$CA_STORE\"."
-        fi
-    fi
-}
-
-
-##########
 # AddPFTable()
 ##########
 AddPFTable()
 {
-    #default pf rules
+    # Default PF table/rules snippet.
     TABLE="wazuh_fwtable"
 
-    # Add table to the first line
+    # Print rules to be added by the user.
     echo ""
     echo "   - ${pfmessage}:"
     echo "     ${moreinfo}"
@@ -765,6 +511,337 @@ AddPFTable()
 
 }
 
+setDefaultRuntimeOptions()
+{
+    # Apply installer defaults only when values are not preloaded.
+    if [ "X${USER_LANGUAGE}" = "X" ]; then
+        USER_LANGUAGE="en"
+    fi
+}
+
+normalizeYesNo()
+{
+    _raw_value=$(echo "${1}" | tr '[:upper:]' '[:lower:]')
+
+    case $_raw_value in
+        $yes|$yesmatch)
+            echo "yes"
+            ;;
+        $no|$nomatch)
+            echo "no"
+            ;;
+        *)
+            echo "invalid"
+            ;;
+    esac
+}
+
+normalizeYesNoOrDefault()
+{
+    _raw_value="$1"
+    _default_value="$2"
+    _normalized_value=$(normalizeYesNo "${_raw_value}")
+
+    if [ "X${_normalized_value}" = "Xinvalid" ]; then
+        echo "${_default_value}"
+    else
+        echo "${_normalized_value}"
+    fi
+}
+
+setToggleVar()
+{
+    _target_var="$1"
+    _input_value="$2"
+    _default_value="$3"
+    _normalized_value=$(normalizeYesNoOrDefault "${_input_value}" "${_default_value}")
+
+    if [ "X${_normalized_value}" = "Xno" ]; then
+        eval "${_target_var}=\"no\""
+    else
+        eval "${_target_var}=\"yes\""
+    fi
+}
+
+setDefaultIfEmpty()
+{
+    _var_name="$1"
+    _default_value="$2"
+    eval "_current_value=\${${_var_name}}"
+
+    if [ "X${_current_value}" = "X" ]; then
+        eval "${_var_name}=\"${_default_value}\""
+    fi
+}
+
+setDefaultConfigByInstallType()
+{
+    # Defaults shared by all install types.
+    setDefaultIfEmpty USER_ENABLE_ACTIVE_RESPONSE "y"
+    setDefaultIfEmpty USER_CA_STORE "n"
+
+    if [ "X${INSTYPE}" = "Xmanager" ]; then
+        setDefaultIfEmpty USER_AUTO_START "y"
+        setDefaultIfEmpty USER_ENABLE_AUTHD "y"
+        setDefaultIfEmpty USER_ENABLE_SYSCHECK "n"
+        setDefaultIfEmpty USER_ENABLE_ROOTCHECK "n"
+        setDefaultIfEmpty USER_ENABLE_SYSCOLLECTOR "n"
+        setDefaultIfEmpty USER_ENABLE_SCA "n"
+        setDefaultIfEmpty USER_ENABLE_UPDATE_CHECK "y"
+        setDefaultIfEmpty USER_CREATE_SSL_CERT "y"
+        return 0;
+    fi
+
+    if [ "X${INSTYPE}" = "Xagent" ]; then
+        # Preserve current agent defaults without extra prompts.
+        setDefaultIfEmpty USER_ENABLE_SYSCHECK "y"
+        setDefaultIfEmpty USER_ENABLE_ROOTCHECK "y"
+        setDefaultIfEmpty USER_ENABLE_SYSCOLLECTOR "y"
+        setDefaultIfEmpty USER_ENABLE_SCA "y"
+    fi
+}
+
+shouldUseBriefInstallFlow()
+{
+    [ "X${update_only}" = "X" ]
+}
+
+selectInstallType()
+{
+    while :; do
+        echo ""
+        echo "1- Installation type:"
+        echo "   1) manager"
+        echo "   2) agent"
+        $ECHO "   Select an option [1-2]: "
+        read ANSWER
+
+        case "$ANSWER" in
+            1|manager|m|${server}|${serverm})
+                INSTYPE="manager"
+                echo ""
+                echo "  - ${serverchose}."
+                return 0;
+                ;;
+            2|agent|a|${agent}|${agentm})
+                INSTYPE="agent"
+                echo ""
+                echo "  - ${clientchose}."
+                return 0;
+                ;;
+            *)
+                echo ""
+                echo "  - Please choose a valid option (1 or 2)."
+                ;;
+        esac
+    done
+}
+
+resolveCleanInstallDirectory()
+{
+    # USER_UPDATE="n" always exits, matching previous install.sh semantics.
+    echo ""
+    echo "${mustuninstall}"
+    exit 0;
+}
+
+detectPreinstalledDirForInstallType()
+{
+    PREINSTALLEDDIR=""
+    PREINSTALL_DETECTION_ERROR=""
+    PREINSTALL_DETECTED_TYPE=""
+
+    getPreinstalledDirByType
+    GET_PREINSTALLED_DIR_RESULT=$?
+    if [ ${GET_PREINSTALLED_DIR_RESULT} -eq 2 ]; then
+        return 2
+    fi
+    if [ ${GET_PREINSTALLED_DIR_RESULT} -ne 0 ]; then
+        return 0
+    fi
+
+    if ! isWazuhInstalled "$PREINSTALLEDDIR"; then
+        PREINSTALL_DETECTION_ERROR="A ${pidir_service_name} service entry points to '${PREINSTALLEDDIR}', but no Wazuh control binary was found there."
+        return 2
+    fi
+
+    PRE_TYPE=$(getPreinstalledType)
+    if [ "X$PRE_TYPE" = "X" ]; then
+        PREINSTALL_DETECTION_ERROR="A Wazuh control binary was found in '${PREINSTALLEDDIR}', but its installation type could not be determined."
+        return 2
+    fi
+    PREINSTALL_DETECTED_TYPE="${PRE_TYPE}"
+
+    if [ "X$INSTYPE" = "Xagent" ] && [ "X$PRE_TYPE" != "Xagent" ]; then
+        PREINSTALL_DETECTION_ERROR="The installation found at '${PREINSTALLEDDIR}' reports type '${PRE_TYPE}', which is incompatible with the selected '${INSTYPE}' installation flow."
+        return 2
+    fi
+
+    if [ "X$INSTYPE" != "Xagent" ] && [ "X$PRE_TYPE" != "Xmanager" ]; then
+        PREINSTALL_DETECTION_ERROR="The installation found at '${PREINSTALLEDDIR}' reports type '${PRE_TYPE}', which is incompatible with the selected '${INSTYPE}' installation flow."
+        return 2
+    fi
+}
+
+abortInconsistentPreinstalledInstall()
+{
+    echo ""
+    echo "ERROR: An inconsistent existing ${INSTYPE} installation was detected."
+    if [ "X${PREINSTALLEDDIR}" != "X" ]; then
+        echo "Path found: ${PREINSTALLEDDIR}"
+    fi
+    if [ "X${PREINSTALL_DETECTED_TYPE}" != "X" ]; then
+        echo "Reported type: ${PREINSTALL_DETECTED_TYPE}"
+    fi
+    if [ "X${PREINSTALL_DETECTION_ERROR}" != "X" ]; then
+        echo "Details: ${PREINSTALL_DETECTION_ERROR}"
+    fi
+    echo ""
+    echo "Resolve or remove the broken installation before running install.sh again."
+    exit 1
+}
+
+resolveExistingInstallAction()
+{
+    if [ "X${USER_UPDATE}" = "X" ]; then
+        while :; do
+            echo ""
+            echo "2- Existing ${INSTYPE} installation detected at:"
+            echo "   ${PREINSTALLEDDIR}"
+            echo "   1) Update existing installation"
+            echo "   2) Clean install in same directory (existing data will be removed)"
+            echo "   3) Exit"
+            $ECHO "   Select an option [1-3]: "
+            read ANY
+
+            case "$ANY" in
+                1)
+                    update_only="yes"
+                    break;
+                    ;;
+                2)
+                    update_only=""
+                    USER_DIR="${PREINSTALLEDDIR}"
+                    USER_DELETE_DIR="y"
+                    break;
+                    ;;
+                3)
+                    echo ""
+                    echo "${mustuninstall}"
+                    exit 0;
+                    ;;
+                *)
+                    echo ""
+                    echo "  - Please choose a valid option (1, 2 or 3)."
+                    ;;
+            esac
+        done
+        return 0
+    fi
+
+    ANY=$(normalizeYesNo "${USER_UPDATE}")
+    case $ANY in
+        yes)
+            update_only="yes"
+            ;;
+        no)
+            update_only=""
+            resolveCleanInstallDirectory
+            ;;
+        *)
+            echo "ERROR: invalid USER_UPDATE value '${USER_UPDATE}'. Use '${yes}' or '${no}'."
+            exit 1;
+            ;;
+    esac
+}
+
+validateUpgradeCompatibility()
+{
+    if [ -z "$USER_OLD_VERSION" ]; then
+        return 0
+    fi
+
+    OLD_MAJOR=$(echo "$USER_OLD_VERSION" | sed 's/^v//' | cut -d. -f1)
+    OLD_MINOR=$(echo "$USER_OLD_VERSION" | sed 's/^v//' | cut -d. -f2)
+
+    UPGRADE_BLOCKED="no"
+    ERROR_MESSAGE=""
+
+    if [ "$USER_INSTALL_TYPE" = "agent" ]; then
+        # Agent upgrades are supported only from >= 4.14.0.
+        if [ -n "$OLD_MAJOR" ] && [ -n "$OLD_MINOR" ]; then
+            if [ "$OLD_MAJOR" -lt 4 ] || { [ "$OLD_MAJOR" -eq 4 ] && [ "$OLD_MINOR" -lt 14 ]; }; then
+                UPGRADE_BLOCKED="yes"
+                ERROR_MESSAGE="Current version: $USER_OLD_VERSION
+Target version:  5.0.0
+
+Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later."
+            fi
+        fi
+    else
+        # Manager upgrades from 4.x to 5.x are blocked.
+        if [ -n "$OLD_MAJOR" ] && [ "$OLD_MAJOR" -lt 5 ]; then
+            UPGRADE_BLOCKED="yes"
+            ERROR_MESSAGE="Current version: $USER_OLD_VERSION
+Target version:  5.0.0
+
+Upgrade to Wazuh 5.0.0 is not supported from version 4.x.
+A clean installation is required for managers."
+        fi
+    fi
+
+    if [ "$UPGRADE_BLOCKED" = "yes" ]; then
+        echo ""
+        echo "═════════════════════════════════════════════════════════════════"
+        echo "  UPGRADE BLOCKED: Incompatible version detected"
+        echo "═════════════════════════════════════════════════════════════════"
+        echo ""
+        echo "$ERROR_MESSAGE"
+        echo ""
+        echo "Required action:"
+        if [ "$USER_INSTALL_TYPE" = "agent" ]; then
+            echo "  1. Upgrade to version 4.14.0 or later first"
+            echo "  2. Then upgrade to 5.0.0"
+        else
+            echo "  1. Backup your configuration"
+            echo "  2. Perform a clean installation of 5.0.0"
+            echo "  3. Restore your configuration"
+        fi
+        echo ""
+        echo "For more information, visit:"
+        echo "  https://documentation.wazuh.com/current/upgrade-guide/"
+        echo "═════════════════════════════════════════════════════════════════"
+        echo ""
+        exit 1
+    fi
+}
+
+prepareUpdateState()
+{
+    if [ "X${update_only}" != "Xyes" ]; then
+        return 0
+    fi
+
+    if [ "$(doUpdatecleanup)" = "${FALSE}" ]; then
+        echo ""
+        echo "${unabletoupdate}"
+        sleep 5
+        update_only=""
+        return 0
+    fi
+
+    USER_DIR="$PREINSTALLEDDIR"
+    USER_INSTALL_TYPE=$(getPreinstalledType)
+    USER_OLD_VERSION=$(getPreinstalledVersion)
+    USER_OLD_NAME=$(getPreinstalledName)
+
+    if [ "X${USER_INSTALL_TYPE}" = "X" ]; then
+        USER_INSTALL_TYPE="${INSTYPE}"
+    fi
+
+    validateUpgradeCompatibility
+}
+
 ##########
 # main()
 ##########
@@ -776,77 +853,38 @@ main()
     . ./src/init/shared.sh
     . ./src/init/functions.sh
 
-    # Reading pre-defined file
-    if [ ! `isFile ${PREDEF_FILE}` = "${FALSE}" ]; then
-        . ${PREDEF_FILE}
+    # Load preloaded vars, if present.
+    if [ "$(isFile "${PREDEF_FILE}")" != "${FALSE}" ]; then
+        . "${PREDEF_FILE}"
     fi
 
-    # If user language is not set
+    setDefaultRuntimeOptions
 
-    if [ "X${USER_LANGUAGE}" = "X" ]; then
-
-        # Choosing the language.
-        while [ 1 ]; do
-        echo ""
-        for i in `ls ${TEMPLATE}`; do
-            # ignore CVS (should not be there anyways and config)
-            if [ "$i" = "CVS" -o "$i" = "config" ]; then continue; fi
-            cat "${TEMPLATE}/$i/language.txt"
-            if [ ! "$i" = "en" ]; then
-                LG="${LG}/$i"
-            fi
-        done
-        $ECHO "  (${LG}) [en]: "
-        read USER_LG;
-
-        if [ "X${USER_LG}" = "X" ]; then
-            USER_LG="en"
-        fi
-
-        if [ -d "${TEMPLATE}/${USER_LG}" ]; then
-            break;
-        fi
-        done;
-
-        LANGUAGE=${USER_LG}
-
+    # Apply USER_LANGUAGE; fallback to english if locale is unavailable.
+    if [ -d "${TEMPLATE}/${USER_LANGUAGE}" ]; then
+        LANGUAGE=${USER_LANGUAGE}
     else
-
-        # If provided language is not valid, default to english
-        if [ -d "${TEMPLATE}/${USER_LANGUAGE}" ]; then
-            LANGUAGE=${USER_LANGUAGE}
-        else
-            LANGUAGE="en"
-        fi
-
-    fi # for USER_LANGUAGE
+        LANGUAGE="en"
+    fi
 
     . ./src/init/language.sh
     . ./src/init/init.sh
     . ./src/init/wazuh/wazuh.sh
-    . ${TEMPLATE}/${LANGUAGE}/messages.txt
+    . "${TEMPLATE}/${LANGUAGE}/messages.txt"
     . ./src/init/inst-functions.sh
     . ./src/init/template-select.sh
 
-    # Must be executed as ./install.sh
-    if [ `isFile ${VERSION_FILE}` = "${FALSE}" ]; then
+    # Sanity checks.
+    if [ "$(isFile "${VERSION_FILE}")" = "${FALSE}" ]; then
         catError "0x1-location";
     fi
 
-    # Must be root
     if [ ! "X$ME" = "Xroot" ]; then
         catError "0x2-beroot";
     fi
 
-    # Checking dependencies
-    checkDependencies
-
-    if [ "X$USER_NO_STOP" = "X" ]; then
-        clear 2> /dev/null
-    fi
-
-    # Initial message
-    echo " $NAME $VERSION (Rev. $REVISION) ${installscript} - http://www.wazuh.com"
+    # Installer banner.
+    echo " $NAME $VERSION (Rev. $REVISION) ${installscript} - https://www.wazuh.com"
     catMsg "0x101-initial"
     echo ""
     echo "  - $system: $UNAME (${DIST_NAME} ${DIST_VER}.${DIST_SUBVER})"
@@ -854,185 +892,132 @@ main()
     echo "  - $host: $HOST"
     echo ""
     echo ""
-    echo "  -- $hitanyorabort --"
-
-    if [ "X$USER_NO_STOP" = "X" ]; then
-        read ANY
-    fi
 
     . ./src/init/update.sh
-    # Is this an update?
-    if getPreinstalledDir && [ "X${USER_CLEANINSTALL}" = "X" ]; then
-        echo ""
-        ct="1"
-        while [ $ct = "1" ]; do
-            ct="0"
-            $ECHO " - ${wanttoupdate} ($yes/$no): "
-            if [ "X${USER_UPDATE}" = "X" ]; then
-                read ANY
-            else
-                ANY=$yes
-            fi
 
-            case $ANY in
-                $yes)
-                    update_only="yes"
-                    break;
-                    ;;
-                $no)
-                    echo ""
-                    echo "${mustuninstall}"
-                    exit 0;
-                    ;;
-                  *)
-                    ct="1"
-                    ;;
-            esac
-        done
+    # Select install type.
+    serverm=$(echo "${server}" | cut -b 1)
+    agentm=$(echo "${agent}" | cut -b 1)
 
-
-        # Do some of the update steps.
-        if [ "X${update_only}" = "Xyes" ]; then
-            . ./src/init/update.sh
-
-            if [ "`doUpdatecleanup`" = "${FALSE}" ]; then
-                # Disabling update
-                echo ""
-                echo "${unabletoupdate}"
-                sleep 5;
-                update_only=""
-            else
-                # Get update
-                USER_DIR="$PREINSTALLEDDIR"
-                USER_INSTALL_TYPE=`getPreinstalledType`
-                USER_OLD_VERSION=`getPreinstalledVersion`
-                USER_OLD_NAME=`getPreinstalledName`
-                USER_DELETE_DIR="$nomatch"
-            fi
-
-            ct="1"
-
-            # We dont need to update the rules on agent installs
-            if [ "X${USER_INSTALL_TYPE}" = "Xagent" ]; then
-                ct="0"
-            fi
-
-        fi
-    fi
-
-    # Setting up the installation type
-    hybrid="hybrid"
-    HYBID=""
-    hybridm=`echo ${hybrid} | cut -b 1`
-    serverm=`echo ${server} | cut -b 1`
-    localm=`echo ${local} | cut -b 1`
-    agentm=`echo ${agent} | cut -b 1`
-    helpm=`echo ${help} | cut -b 1`
-
-    # If user install type is not set, ask for it.
+    # Skip prompt when USER_INSTALL_TYPE is preloaded.
     if [ "X${USER_INSTALL_TYPE}" = "X" ]; then
-
-        # Loop for the installation options
-        while [ 1 ]
-        do
-            echo ""
-            $ECHO "1- ${whattoinstall} "
-
-            read ANSWER
-            case $ANSWER in
-
-                ${helpm}|${help})
-                    catMsg "0x102-installhelp"
-                ;;
-
-                ${server}|${serverm}|"manager"|"m")
-                    echo ""
-                    echo "  - ${serverchose}."
-                    INSTYPE="server"
-                    break;
-                ;;
-
-                ${agent}|${agentm}|"a")
-                    echo ""
-                    echo "  - ${clientchose}."
-                    INSTYPE="agent"
-                    break;
-                ;;
-
-                ${hybrid}|${hybridm})
-                    echo ""
-                    echo "  - ${serverchose} (hybrid)."
-                    INSTYPE="server"
-                    HYBID="go"
-                    break;
-                ;;
-                ${local}|${localm})
-                    echo ""
-                    echo "  - ${localchose}."
-                    INSTYPE="local"
-                    break;
-                ;;
-            esac
-        done
-
+        selectInstallType
     else
         INSTYPE=${USER_INSTALL_TYPE}
     fi
 
-    # Setting up the installation directory
-    setInstallDir
+    INSTYPE=$(echo "${INSTYPE}" | tr '[:upper:]' '[:lower:]')
+    case "${INSTYPE}" in
+        m|manager|server)
+            INSTYPE="manager"
+            ;;
+        a|agent)
+            INSTYPE="agent"
+            ;;
+        *)
+            echo "ERROR: invalid USER_INSTALL_TYPE value '${USER_INSTALL_TYPE}'. Use 'manager' or 'agent'."
+            exit 1;
+            ;;
+    esac
 
-    # Setting up the environment
+    setDefaultConfigByInstallType
+
+    # Detect existing install of the selected type and resolve update/clean flow.
+    CLEANINSTALL_ANY=$(normalizeYesNo "${USER_CLEANINSTALL}")
+    if [ "X${USER_CLEANINSTALL}" = "X" ] || [ "X${CLEANINSTALL_ANY}" = "Xno" ]; then
+        if [ "X$INSTYPE" = "Xagent" ]; then
+            pidir_service_name="wazuh-agent"
+        else
+            pidir_service_name="wazuh-manager"
+        fi
+
+        detectPreinstalledDirForInstallType
+        DETECT_PREINSTALLED_RESULT=$?
+
+        if [ ${DETECT_PREINSTALLED_RESULT} -eq 2 ]; then
+            abortInconsistentPreinstalledInstall
+        fi
+
+        if [ "X$PREINSTALLEDDIR" != "X" ]; then
+            resolveExistingInstallAction
+            prepareUpdateState
+        else
+            echo ""
+            echo "2- Clean install: no existing ${INSTYPE} installation detected."
+        fi
+    elif [ "X${CLEANINSTALL_ANY}" = "Xyes" ]; then
+        if [ "X${USER_UPDATE}" != "X" ]; then
+            echo "WARNING: USER_UPDATE is ignored when USER_CLEANINSTALL='${yes}'."
+        fi
+    else
+        echo "ERROR: invalid USER_CLEANINSTALL value '${USER_CLEANINSTALL}'. Use '${yes}' or '${no}'."
+        exit 1;
+    fi
+
+    # Set default install dir only when USER_DIR is not provided.
+    if [ -z "${USER_DIR}" ]; then
+        if [ "X$INSTYPE" = "Xagent" ]; then
+            INSTALLDIR="/var/ossec"
+        else
+            INSTALLDIR="/var/wazuh-manager"
+        fi
+    fi
+
+    # Resolve install directory and environment.
+    setInstallDir
     setEnv
 
-    # Ask to remove the current installation if exists
+    # Optionally remove existing directory.
     askForDelete
 
-    # Configuring the system (based on the installation type)
+    INSTALLER_BRIEF_FLOW="no"
+    if shouldUseBriefInstallFlow; then
+        INSTALLER_BRIEF_FLOW="yes"
+    fi
+
+    # Run install-type specific configuration.
     if [ "X${update_only}" = "X" ]; then
-        if [ "X$INSTYPE" = "Xserver" ]; then
+        if [ "X$INSTYPE" = "Xmanager" ]; then
             ConfigureServer
         elif [ "X$INSTYPE" = "Xagent" ]; then
             ConfigureClient
-        elif [ "X$INSTYPE" = "Xlocal" ]; then
-            ConfigureServer
         else
             catError "0x4-installtype"
         fi
     fi
 
-    # Installing (calls the respective script
-    # -- InstallAgent.sh or InstallServer.sh
+    # Install selected components.
     Install
 
-    # User messages
+    # Post-install usage hints.
+    control_script="wazuh-control"
+    if [ "X$INSTYPE" = "Xmanager" ]; then
+        control_script="wazuh-manager-control"
+    fi
     echo ""
     echo " - ${configurationdone}."
     echo ""
     echo " - ${tostart}:"
-    echo "      $INSTALLDIR/bin/wazuh-control start"
+    echo "      $INSTALLDIR/bin/${control_script} start"
     echo ""
     echo " - ${tostop}:"
-    echo "      $INSTALLDIR/bin/wazuh-control stop"
+    echo "      $INSTALLDIR/bin/${control_script} stop"
     echo ""
-    echo " - ${configat} $INSTALLDIR/etc/ossec.conf"
+    echo " - ${configat} $INSTALLDIR/etc/${WAZUH_CONF}"
     echo ""
-
-
-    catMsg "0x103-thanksforusing"
+    if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ]; then
+        catMsg "0x103-thanksforusing"
+    fi
 
 
     if [ "X${update_only}" = "Xyes" ]; then
-        # Message for the update
-        if [ "X`sh ./src/init/fw-check.sh`" = "XPF" ]; then
-            if [ "X$USER_NO_STOP" = "X" ]; then
-                read ANY
-            fi
+        # Update completion message.
+        if isPFFirewall; then
             AddPFTable
         fi
         echo ""
 
-        # If version < wazuh 1.2
+        # Compatibility note for very old versions.
         if [ "X$USER_OLD_NAME" != "XWazuh" ]; then
             echo " ====================================================================================="
             echo "  ${update_rev_newconf1}"
@@ -1046,18 +1031,13 @@ main()
     fi
 
 
-    if [ "X$USER_NO_STOP" = "X" ]; then
-        read ANY
-    fi
-
-
-    # PF firewall message
-    if [ "X`sh ./src/init/fw-check.sh`" = "XPF" ]; then
+    # PF firewall reminder.
+    if isPFFirewall; then
         AddPFTable
     fi
 
 
-    if [ "X$INSTYPE" = "Xserver" ]; then
+    if [ "X$INSTYPE" = "Xmanager" ]; then
         echo ""
         echo " - ${addserveragent}"
         echo ""
@@ -1074,55 +1054,20 @@ main()
 
     if [ "X$notmodified" = "Xyes" ]; then
         catMsg "0x105-noboot"
-        echo "      $INSTALLDIR/bin/wazuh-control start"
+        echo "      $INSTALLDIR/bin/${control_script} start"
         echo ""
     fi
 }
 
 _f_cfg="./install.cfg.sh"
 
-if [ -f $_f_cfg ]; then
-  . $_f_cfg
+if [ -f "$_f_cfg" ]; then
+  . "$_f_cfg"
 fi
 
-### Calling main function where everything happens
+# Run main installer flow.
 main
-
-
-if [ "x$HYBID" = "xgo" ]; then
-    echo "   --------------------------------------------"
-    echo "   Finishing Hybrid setup (agent configuration)"
-    echo "   --------------------------------------------"
-    echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo "USER_DIR=\"$INSTALLDIR/ossec-agent\"" >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_ENABLE_SCA="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_CREATE_SSL_CERT="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_ENABLE_ACTIVE_RESPONSE="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_CLEANINSTALL="y"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-
-   cd src && ${MAKEBIN} clean && cd ..
-   ./install.sh
-   rm etc/preloaded-vars.conf
-fi
 
 exit 0
 
-#### exit ? ###
+# End of script.

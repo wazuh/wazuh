@@ -1,0 +1,9 @@
+- blocks:
+    upload_configuration:
+      indexer:
+        allow: ALLOWED
+  sections:
+    - section: remote
+      elements:
+        - port:
+            value: 1514

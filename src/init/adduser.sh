@@ -29,21 +29,17 @@ else
         GROUPADD="/usr/sbin/pw groupadd"
         USERADD="/usr/sbin/pw useradd"
         OSMYSHELL="/sbin/nologin"
-    elif [ "$UNAME" = "SunOS" -o "$UNAME" = "OpenBSD" ]; then
+    elif [ "$UNAME" = "OpenBSD" ]; then
         GROUPADD="/usr/sbin/groupadd"
-        USERADD="/usr/sbin/useradd"
-        OSMYSHELL="/bin/false"
-    elif [ "$UNAME" = "HP-UX" ]; then
-        GROUPADD="/usr/sbin/groupadd"
-        USERADD="/usr/sbin/useradd"
-        OSMYSHELL="/bin/false"
-    elif [ "$UNAME" = "AIX" ]; then
-        GROUPADD="/usr/bin/mkgroup"
         USERADD="/usr/sbin/useradd"
         OSMYSHELL="/bin/false"
     elif [ "$UNAME" = "NetBSD" ]; then
         GROUPADD="/usr/sbin/groupadd"
         USERADD="/usr/sbin/useradd"
+        OSMYSHELL="/sbin/nologin"
+    elif [ $(grep "Alpine Linux" /etc/os-release > /dev/null  && echo 1) ]; then
+        GROUPADD="/usr/sbin/addgroup -S"
+        USERADD="/usr/sbin/adduser -S"
         OSMYSHELL="/sbin/nologin"
     else
     # All current linux distributions should support system accounts for
@@ -73,12 +69,10 @@ else
     fi
 
     if ! grep "^${USER}:" /etc/passwd > /dev/null 2>&1; then
-        if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "SunOS" -o "$UNAME" = "HP-UX" -o "$UNAME" = "NetBSD" ]; then
+        if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "NetBSD" ]; then
             ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${USER}"
-        elif [ "$UNAME" = "AIX" ]; then
-            GID=$(cat /etc/group | grep wazuh| cut -d':' -f 3)
-            uid=$(( $GID + 1 ))
-            echo "${USER}:x:$uid:$GID::${DIR}:/bin/false" >> /etc/passwd
+        elif [ $(grep "Alpine Linux" /etc/os-release > /dev/null  && echo 1) ]; then
+            ${USERADD} "${USER}" -h "${DIR}" -s ${OSMYSHELL} -G "${GROUP}"
         else
             ${USERADD} "${USER}" -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}"
         fi

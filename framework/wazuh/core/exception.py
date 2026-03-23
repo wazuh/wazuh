@@ -2,13 +2,14 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-
 from copy import deepcopy
-from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, WAZUH_VERSION, AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP
+from typing import Union
+
+from wazuh.core.cluster import __version__
+from wazuh.core.common import AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP, MAX_SOCKET_BUFFER_SIZE
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
-DOCU_VERSION = 'current' if WAZUH_VERSION == '' else '.'.join(WAZUH_VERSION.split('.')[:2]).lstrip('v')
-
+DOCU_VERSION = 'current' if __version__ == '' else '.'.join(__version__.split('.')[:2]).lstrip('v')
 
 class WazuhException(Exception):
     """
@@ -20,11 +21,12 @@ class WazuhException(Exception):
         900: 'One of the API child processes terminated abruptly. The API process pool is not usable anymore. '
              'Please restart the Wazuh API',
         901: 'API executor subprocess broke. A service restart may be needed',
+        902: 'API Endpoint only available on master node',
 
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
         1000: {'message': 'Wazuh Internal Error',
-               'remediation': 'Please, check `WAZUH_HOME/logs/ossec.log`, `WAZUH_HOME/logs/cluster.log` and '
+               'remediation': 'Please, check `WAZUH_HOME/logs/wazuh-manager.log`, `WAZUH_HOME/logs/cluster.log` and '
                               '`WAZUH_HOME/logs/api.log` to get more information about the error'},
         1001: 'Error importing module',
         1002: 'Error executing command',
@@ -33,7 +35,7 @@ class WazuhException(Exception):
         1005: {'message': 'Error reading file',
                'remediation': 'Please, ensure you have the right file permissions in Wazuh directories'},
         1006: {'message': 'File/directory does not exist or there is a problem with the permissions',
-               'remediation': 'Please, check if path to file/directory is correct and `wazuh` '
+               'remediation': 'Please, check if path to file/directory is correct and `wazuh-manager` '
                               'has the appropriate permissions'},
         1010: 'Unable to connect to queue',
         1011: 'Error communicating with queue',
@@ -48,9 +50,11 @@ class WazuhException(Exception):
         1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
         1018: 'Body request is not a valid JSON',
         1019: 'Error trying to create backup file',
+        1020: {'message': 'Could not find any Wazuh log file',
+               'remediation': 'Please check `WAZUH_HOME/logs`'},
+
         # Configuration: 1100 - 1199
-        1101: {'message': 'Requested component does not exist',
-               'remediation': 'Run `WAZUH_PATH/bin/wazuh-logtest -t` to check your configuration'},
+        1101: {'message': 'Requested component does not exist'},
         1102: {'message': 'Invalid section',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html) '
@@ -89,57 +93,31 @@ class WazuhException(Exception):
                               f"configurations"},
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
-        1119: "Directory '/tmp' needs read, write & execution permission for 'wazuh' user",
-        1121: {'message': "Error connecting with socket"},
-        1122: {'message': 'Experimental features are disabled',
-               'remediation': 'Experimental features can be enabled in WAZUH_PATH/api/configuration/api.yaml or '
-                              'using API endpoint https://documentation.wazuh.com/current/user-manual/api/'
-                              'reference.html#operation/api.controllers.manager_controller.put_api_config or '
-                              'https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/'
-                              'api.controllers.cluster_controller.put_api_config'},
+        1119: "Directory '/tmp' needs read, write & execution permission for 'wazuh-manager' user",
+        1121: {'message': "Error connecting with socket",
+               'remediation': "Please ensure the selected module is running and properly configured"},
         1123: {
             'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is "
                        f"{MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
         1124: {'message': 'Remote command detected',
-               'remediation': f'To solve this issue please enable the remote commands in the API settings or add an '
+               'remediation': f'To solve this issue, please enable the remote commands in the API settings or add an '
                               f'exception: https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
-                              f'configuration.html#remote-commands-configuration'},
+                              f'configuration.html#remote-commands-localfile-and-wodle-command'},
         1125: {'message': 'Invalid ossec configuration',
                'remediation': 'Please, provide a valid ossec configuration'
                },
         1126: {'message': 'Error updating ossec configuration',
-               'remediation': 'Please, ensure `WAZUH_PATH/etc/ossec.conf` has the proper permissions and ownership.'
+               'remediation': 'Please, ensure `WAZUH_PATH/etc/wazuh-manager.conf` has the proper permissions and ownership.'
                },
-
-        # Rule: 1200 - 1299
-        1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-        1201: {'message': 'Error reading rule files',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-        1202: {'message': 'Argument \'status\' must be: enabled, disabled or all',
-               'remediation': 'Please indicate one of the following states: enabled, disabled, all'
-               },
-        1203: {'message': 'Error in argument \'level\'',
-               'remediation': 'Argument \'level\' must be a number or an interval separated by \'-\''
-               },
-        1205: {'message': 'Requirement not valid',
-               'remediation': 'Please indicate one of the following values:'
-               },
-
-        1207: {'message': 'Error reading rule files, wrong permissions',
-               'remediation': 'Please, check your permissions over the file'
-               },
-        1208: {'message': 'The rule does not exist or you do not have permission to see it',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
+        1127: {'message': 'Protected section was modified',
+               'remediation': 'To solve this, either revert the changes made to this section or disable the protection '
+                              'in the API settings: '
+                              f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
+        1128: {'message': 'Invalid configuration for the given component'},
+        1129: {'message': 'Higher version agents detected',
+               'remediation': f'To solve this issue, please enable agents higher versions in the API settings: '
+                              f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
+                              f'configuration.html#agents'},
 
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
@@ -158,7 +136,7 @@ class WazuhException(Exception):
         1402: {'message': 'Invalid sort_ascending field',
                'remediation': 'Please, use only true if ascending or false if descending'
                },
-        1403: {'message': 'Not a valid sort field ',
+        1403: {'message': 'Not a valid sort field',
                'remediation': 'Please, use only allowed sort fields'
                },
         1405: {'message': 'Specified limit exceeds maximum allowed',
@@ -168,58 +146,25 @@ class WazuhException(Exception):
                'remediation': 'Please select a limit between 1 and 1000'
                },
         1407: 'Query does not match expected format',
-        1408: 'Field does not exist.',
+        1408: 'Field does not exist',
         1409: 'Invalid query operator',
         1410: 'Selecting more than one field in distinct mode',
         1411: 'TimeFrame is not valid',
         1412: 'Date filter not valid. Valid formats are YYYY-MM-DD HH:mm:ss, YYYY-MM-DDTHH:mm:ssZ or YYYY-MM-DD',
-        1413: {'message': 'Error reading rules file'},
-        1414: {'message': 'Error reading rules file',
-               'remediation': 'Please, make sure you have read permissions over the file'
-               },
-        1415: {'message': 'Rules file not found',
-               'remediation': 'Please, use GET /rules/files to list all available rules'
-               },
-
-        # Decoders: 1500 - 1599
-        1500: {'message': 'Error reading decoders from ossec.conf',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/ruleset/custom.html)'
-                              'to get more information on adding or modifying existing decoders'
-               },
-        1501: {'message': 'Error reading decoders file'
-               },
-        1502: {'message': 'Error reading decoders file',
-               'remediation': 'Please, make sure you have read permissions on the file'
-               },
-        1503: {'message': 'Decoders file not found',
-               'remediation': 'Please, use GET /decoders/files to list all available decoders'
-               },
-        1504: {'message': 'The decoder does not exist or you do not have permission to see it',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about the decoders'
-               },
 
         # Syscheck/AR: 1600 - 1699
-        1600: {'message': 'There is no database for selected agent with id',
-               'remediation': 'Please, upgrade wazuh to v3.7.0 or newer. Visit '
-                              f'https://documentation.wazuh.com/{DOCU_VERSION}/upgrade-guide/index.html'
-                              ' to obtain more information on upgrading wazuh'
-               },
-
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
         1650: 'Active response - Command not specified',
 
-        1652: 'Active response - Unable to run command',
+        1652: {'message': 'The command used is not defined in the configuration.',
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
+                              f'{DOCU_VERSION}/user-manual/capabilities/active-response/how-to-configure.html)'
+                              'to get more information'
+               },
 
         # Agents: 1700 - 1799
         1701: {'message': 'Agent does not exist',
                'remediation': 'Please, use `GET /agents?select=id,name` to find all available agents'
-               },
-        1703: {'message': 'Action not available for Manager (agent 000)',
-               'remediation': 'Please, use `GET /agents?select=id,name` to find all available agents and make sure you '
-                              'select an agent other than 000'
                },
         1705: {'message': 'There is an agent with the same name',
                'remediation': 'Please choose another name'
@@ -299,7 +244,7 @@ class WazuhException(Exception):
         1743: 'Error running Wazuh syntax validator',
         1745: "Agent only belongs to 'default' and it cannot be unassigned from this group.",
         1750: {'message': 'Could not send restart command, active-response is disabled in the agent',
-               'remediation': "You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`"},
+               'remediation': "You can activate it in agents' `WAZUH_HOME/etc/wazuh-manager.conf`"},
         1751: {'message': 'Could not assign agent to group',
                'remediation': 'Agent already belongs to specified group, please select another agent'},
         1752: {'message': 'Could not force single group for the agent'},
@@ -309,32 +254,10 @@ class WazuhException(Exception):
         1760: {'message': 'Feature only available for older agent versions, it doesn\'t apply for more recent ones.'
                },
 
-        # CDB List: 1800 - 1899
-        1800: {'message': 'Bad format in CDB list {path}'},
-        1801: {'message': 'Wrong \'path\' parameter',
-               'remediation': 'Please, provide a correct path'},
-        1802: {'message': 'Lists file not found',
-               'remediation': 'Please, use `GET /lists/files` to find all available lists'},
-        1803: {'message': 'Error reading lists file',
-               'remediation': 'Please, make sure you have read permissions over the file'
-               },
-        1804: {'message': 'Error reading lists file',
-               'remediation': 'Please, make sure you provide a correct filepath'
-               },
-        1805: {'message': 'File with the same name already exists in a subdirectory.',
-               'remediation': 'Please, make sure to use a name which is not repeated. '
-               },
-        1806: {'message': 'Error trying to create CDB list file.'
-               },
-        1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
-                          'The error message will be the output of upgrade module'},
-
         # Manager:
-        1901: {'message': '\'execq\' socket has not been created'
+        1901: {'message': 'Control socket has not been created'
                },
-        1902: {'message': 'Connection to \'execq\' socket failed'
-               },
-        1904: {'message': 'Bad data from \'wcom\''
+        1902: {'message': 'Connection to control socket failed'
                },
         1905: {'message': 'File could not be updated, it already exists',
                'remediation': 'Please, provide a different file or set overwrite=True to overwrite actual file'
@@ -373,12 +296,25 @@ class WazuhException(Exception):
         2007: {'message': 'Error retrieving data from Wazuh DB'},
         2008: {'message': 'Corrupted RBAC database',
                'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
-        2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
+        2009: {'message': 'Pagination error. Response from wazuh-manager-db was over the maximum socket buffer size'},
+        2010: {'message': 'The requested read operation did not complete fully'},
+        2011: {'message': 'Could not connect to the wazuh-manager-db unix socket'},
+        2012: {'message': 'Invalid wazuh-manager-db HTTP request'},
+        2013: {'message': 'Error sending HTTP request'},
+        2014: {'message': 'The wazuh-manager-db client connection timeout has been exceeded'},
+        2015: {'message': 'Invalid request URL scheme'},
+        2016: {'message': 'Invalid unix socket path'},
+        2017: {'message': 'Could not retrieve agents synchronization information from wazuh-manager-db'},
+
+        # Indexer
+        2200: {'message': 'Error connecting to the Indexer service'},
+        2201: {'message': 'Error in authentication credentials for Indexer service'},
 
         # Cluster
         3000: 'Cluster',
         3001: 'Error creating zip file',
         3002: {'message': 'Error creating PID file'},
+        3003: {'message': 'Error during file handling'},
         3004: {'message': 'Error in cluster configuration',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html)'
@@ -391,17 +327,9 @@ class WazuhException(Exception):
         3007: 'Client.keys file received in master node',
         3009: {'message': 'Error executing distributed API request',
                'remediation': ''},
-        3012: 'Cluster is not running',
-        3013: {'message': 'Cluster is not running, it might be disabled in `WAZUH_HOME/etc/ossec.conf`',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html)'
-                              ' to get more information about how to configure a cluster'
-               },
         3015: 'Cannot access directory',
         3016: 'Received an error response',
         3018: 'Error sending request',
-        3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, '
-              'try again in the master node: {MASTER_IP}',
         3020: {'message': 'Timeout sending request',
                'remediation': 'Please, try to make the request again'},
         3021: 'Timeout executing API request',
@@ -413,7 +341,7 @@ class WazuhException(Exception):
         3024: "Length of command exceeds limit defined in wazuh.cluster.common.Handler.cmd_len.",
         3025: {'message': "Could not decrypt message",
                'remediation': "Check the cluster key is correct in the worker's "
-                              f"[ossec.conf](https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/reference/"
+                              f"[wazuh-manager.conf](https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/reference/"
                               f"ossec-conf/cluster.html#key)"
                               ", ensure it is the same that the master's."},
         3026: "Error sending request: Memory error. Request chunk size divided by 2.",
@@ -441,6 +369,18 @@ class WazuhException(Exception):
         3037: 'Error while processing Agent-info chunks',
         3038: "Error while processing extra-valid files",
         3039: "Timeout while waiting to receive a file",
+        3040: "Error while waiting to receive a file",
+
+        # HAProxy Helper exceptions
+        3041: "Server status check timed out after adding new servers",
+        3042: "User configuration is not valid",
+        3043: "Could not initialize Proxy API",
+        3044: "Could not connect to the HAProxy dataplane API",
+        3045: "Could not connect to HAProxy",
+        3046: "Invalid credentials for the Proxy API",
+        3047: "Invalid HAProxy Dataplane API specification configured",
+        3048: "Could not detect a valid HAProxy process linked to the Dataplane API",
+        3049: "Unexpected response from HAProxy Dataplane API",
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
@@ -466,9 +406,6 @@ class WazuhException(Exception):
                               'POST /security/roles/{role_id}/policies'},
         4011: {'message': 'The specified role-policy link already exist'},
         4013: {'message': 'The specified name already exists'},
-        4015: {'message': 'Permission denied, could not remove agents from group before deleting it',
-               'remediation': 'Please, make sure you have the right permissions for actions: agent:modify_group and '
-                              'group:modify_assignments before attempting to delete the group'},
         4016: {'message': 'The specified user-role relation does not exist',
                'remediation': 'Please, create the specified user-role relation with the endpoint '
                               'POST /security/user/{username}/roles'},
@@ -512,6 +449,8 @@ class WazuhException(Exception):
                'remediation': 'The value of the allow_run_as parameter must be true (enabled authentication through '
                               'authorization context) or false (disabled authentication through authorization context).'
                },
+        5011: {'message': 'Administrator users can only be modified by themselves',
+               'remediation': 'Log in as administrator and try again'},
 
         # Security issues
         6000: {'message': 'Limit of login attempts reached. '
@@ -528,34 +467,35 @@ class WazuhException(Exception):
                'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/api/reference.html#operation/api.controllers.'
                               f'security_controller.edit_run_as'},
-
-        # Logtest
-        7000: {'message': 'Error trying to get logtest response'},
-        7001: {'message': 'Error trying to read logtest session token',
-               'remediation': 'Make sure you introduce the token within the field "token"'}
-
-        # > 9000: Authd
+        6005: {'message': 'Maximum number of requests per minute reached'},
     }
 
     # Reserve agent upgrade custom errors
-    ERRORS.update({key: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
-                                    'The error message will be the output of upgrade module'}
-                   for key in range(1811, 1900)})
+    ERRORS.update({key: {'message': 'Vulnerability scan\'s reserved exception IDs (8001-9000). '
+                                    'The error message will be the output of vulnerability scan module'}
+                   for key in range(8007, 9000)})
 
-    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, title=None,
-                 type=None):
-        """
-        Creates a Wazuh Exception.
+    def __init__(self, code: int, extra_message: str = None, extra_remediation: str = None, cmd_error: bool = False,
+                 dapi_errors: dict = None, title: str = None, type: str = None):
+        """Create a WazuhException object.
 
-        :param code: Exception code.
-        :param extra_message: Adds an extra message to the error description.
-        :param extra_remediation: Adds an extra description to remediation
-        :param cmd_error: If it is a custom error code (i.e. ossec commands), the error description will be the message.
-        :param dapi_errors: dict with details about node and logfile. I.e.:
-                            {'master-node': {'error': 'Wazuh Internal error',
-                                             'logfile': WAZUH_HOME/logs/api.log}
-                            }
-        :param title: Name of the exception to be shown
+        Parameters
+        ----------
+        code : int
+            Exception code.
+        extra_message : str
+            Adds an extra message to the error description.
+        extra_remediation : str
+            Adds an extra description to remediation.
+        cmd_error : bool
+            If it is a custom error code (i.e. ossec commands), the error description will be the message.
+        dapi_errors : dict
+            Dictionary with details about node and logfile. I.e.: {'master-node': {'error': 'Wazuh Internal error',
+            'logfile': WAZUH_HOME/logs/api.log}}
+        title : str
+            Name of the exception to be shown.
+        type : str
+            Type of the exception.
         """
         self._type = type if type else 'about:blank'
         self._title = title if title else self.__class__.__name__
@@ -565,28 +505,28 @@ class WazuhException(Exception):
         self._cmd_error = cmd_error
         self._dapi_errors = {} if dapi_errors is None else deepcopy(dapi_errors)
 
-        error_details = self.ERRORS[self._code] if not cmd_error else extra_message
-        if isinstance(error_details, dict):
-            code_message, code_remediation = error_details.get('message', ''), error_details.get('remediation', None)
-        else:
-            code_message, code_remediation = error_details, None
+        if not cmd_error and self._code in self.ERRORS:
+            error_details = self.ERRORS[self._code]
+            if isinstance(error_details, dict):
+                code_message, code_remediation = error_details.get('message', ''), error_details.get('remediation', None)
+            else:
+                code_message, code_remediation = error_details, None
 
-        if not cmd_error:
             if extra_message:
                 if isinstance(extra_message, dict):
                     self._message = code_message.format(**extra_message)
                 else:
-                    self._message = "{0}: {1}".format(code_message, extra_message)
+                    self._message = f"{code_message}: {extra_message}"
             else:
                 self._message = code_message
+            self._remediation = code_remediation if extra_remediation is None \
+                else f"{code_remediation}: {extra_remediation}"
         else:
             self._message = extra_message
-
-        self._remediation = code_remediation if extra_remediation is None \
-            else f"{code_remediation}: {extra_remediation}"
+            self._remediation = None
 
     def __str__(self):
-        return "Error {0} - {1}".format(self._code, self._message)
+        return f"Error {self._code} - {self._message}"
 
     def __repr__(self):
         return repr(self.to_dict())
@@ -608,7 +548,8 @@ class WazuhException(Exception):
 
     def __hash__(self):
         return hash(
-            (self._type, self._title, self._code, self._extra_message, self._extra_remediation, self._cmd_error))
+            (self._type, self._title, self._code, self._extra_message if isinstance(self._extra_message, str) else None,
+              self._extra_remediation, self._cmd_error))
 
     def __or__(self, other):
         if isinstance(other, WazuhException):
@@ -623,7 +564,7 @@ class WazuhException(Exception):
         obj.__dict__ = deepcopy(dict(self.__dict__))
         return obj
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {'type': self._type,
                 'title': self._title,
                 'code': self._code,
@@ -674,19 +615,29 @@ class WazuhInternalError(WazuhException):
     _default_type = "about:blank"
     _default_title = "Wazuh Internal Error"
 
-    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, ids=None,
-                 title=None, type=None):
-        """Creates a WazuhInternalError exception.
+    def __init__(self, code: int, extra_message: str = None, extra_remediation: str = None, cmd_error: bool = False,
+                 dapi_errors: dict = None, ids: Union[list, set] = None, title: str = None, type: str = None):
+        """Create a WazuhInternalError exception.
 
-        :param code: Exception code.
-        :param extra_message: Adds an extra message to the error description.
-        :param extra_remediation: Adds an extra description to remediation
-        :param cmd_error: If it is a custom error code (i.e. ossec commands), the error description will be the message.
-        :param dapi_errors: dict with details about node and logfile. I.e.:
-                            {'master-node': {'error': 'Wazuh Internal error',
-                                             'logfile': WAZUH_HOME/logs/api.log}
-                            }
-        :param ids: List or set with the ids involved in the exception
+        Parameters
+        ----------
+        code : int
+            Exception code.
+        extra_message : str
+            Adds an extra message to the error description.
+        extra_remediation : str
+            Adds an extra description to remediation.
+        cmd_error : bool
+            If it is a custom error code (i.e. ossec commands), the error description will be the message.
+        dapi_errors : dict
+            Dictionary with details about node and logfile. I.e.: {'master-node': {'error': 'Wazuh Internal error',
+            'logfile': WAZUH_HOME/logs/api.log}}
+        title : str
+            Name of the exception to be shown.
+        type : str
+            Type of the exception.
+        ids : list or set
+            List or set with the ids involved in the exception
         """
 
         super().__init__(code, extra_message=extra_message,
@@ -707,27 +658,52 @@ class WazuhClusterError(WazuhInternalError):
     _default_title = "Wazuh Cluster Error"
 
 
+class WazuhHAPHelperError(WazuhClusterError):
+    """
+    This type of exception is raised inside the HAProxy Helper.
+    """
+    _default_type = "about:blank"
+    _default_title = "HAProxy Helper Error"
+
+
+class WazuhIndexerError(WazuhInternalError):
+    """Indexer client exception."""
+
+    _default_type = 'about:blank'
+    _default_title = 'Wazuh Indexer Error'
+
+
 class WazuhError(WazuhException):
     """
     This type of exception is raised as a controlled response to a bad request from user
-    that cannot be performed properly
+    that cannot be performed properly.
     """
     _default_type = "about:blank"
     _default_title = "Bad Request"
 
-    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, ids=None,
-                 title=None, type=None):
-        """Creates a WazuhError exception.
+    def __init__(self, code: int, extra_message: str = None, extra_remediation: str = None, cmd_error: bool = False,
+                 dapi_errors: dict = None, ids: Union[list, set] = None, title: str = None, type: str = None):
+        """Create a WazuhError exception.
 
-        :param code: Exception code.
-        :param extra_message: Adds an extra message to the error description.
-        :param extra_remediation: Adds an extra description to remediation
-        :param cmd_error: If it is a custom error code (i.e. ossec commands), the error description will be the message.
-        :param dapi_errors: dict with details about node and logfile. I.e.:
-                            {'master-node': {'error': 'Wazuh Internal error',
-                                             'logfile': WAZUH_HOME/logs/api.log}
-                            }
-        :param ids: List or set with the ids involved in the exception
+        Parameters
+        ----------
+        code : int
+            Exception code.
+        extra_message : str
+            Adds an extra message to the error description.
+        extra_remediation : str
+            Adds an extra description to remediation.
+        cmd_error : bool
+            If it is a custom error code (i.e. ossec commands), the error description will be the message.
+        dapi_errors : dict
+            Dictionary with details about node and logfile. I.e.: {'master-node': {'error': 'Wazuh Internal error',
+            'logfile': WAZUH_HOME/logs/api.log}}
+        title : str
+            Name of the exception to be shown.
+        type : str
+            Type of the exception.
+        ids : list or set
+            List or set with the ids involved in the exception
         """
 
         super().__init__(code, extra_message=extra_message,
@@ -750,7 +726,7 @@ class WazuhError(WazuhException):
                 result._ids = self.ids | other.ids
         return result
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         result = super().to_dict()
         result['ids'] = list(self.ids)
 

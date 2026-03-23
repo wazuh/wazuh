@@ -19,7 +19,7 @@
 #include "../wrappers/wazuh/client-agent/buffer_wrappers.h"
 #include "../wrappers/libc/time_wrappers.h"
 
-#include "../../client-agent/state.h"
+#include "state.h"
 
 const char * get_str_status(agent_status_t status);
 void w_agentd_state_update(w_agentd_state_update_t type, void * data);

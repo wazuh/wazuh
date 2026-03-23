@@ -1,0 +1,73 @@
+{
+  "description": "Simple ReqRet test - send 2 out of 3 expected messages, then end to trigger ReqRet",
+  "messages": [
+    {
+      "type": "start",
+      "data": {
+        "module": "inventory_sync",
+        "mode": 0,
+        "size": 3,
+        "agentid": "001",
+        "agentname": "test-agent",
+        "agentversion": "4.8.0"
+      },
+      "description": "Start session expecting 3 messages (seq 0, 1, 2)",
+      "delay": 0.5,
+      "expect_session_response": true,
+      "session_id": "simple_reqret"
+    },
+    {
+      "type": "data",
+      "data": {
+        "seq": 0,
+        "operation": 0,
+        "id": "doc001",
+        "index": "test_simple_reqret",
+        "data": {"message": "Message 0", "seq": 0}
+      },
+      "description": "Send message seq=0",
+      "delay": 0.2,
+      "use_session_from_start": "simple_reqret"
+    },
+    {
+      "type": "data",
+      "data": {
+        "seq": 2,
+        "operation": 0,
+        "id": "doc003",
+        "index": "test_simple_reqret",
+        "data": {"message": "Message 2", "seq": 2}
+      },
+      "description": "Send message seq=2 (skip seq=1 intentionally)",
+      "delay": 0.2,
+      "use_session_from_start": "simple_reqret"
+    },
+    {
+      "type": "end",
+      "data": {},
+      "description": "Send end - manager should detect missing seq=1 and send ReqRet",
+      "delay": 0.3,
+      "use_session_from_start": "simple_reqret"
+    },
+    {
+      "type": "data",
+      "data": {
+        "seq": 1,
+        "operation": 0,
+        "id": "doc002",
+        "index": "test_simple_reqret",
+        "data": {"message": "Message 1 (retransmitted)", "seq": 1}
+      },
+      "description": "Send missing seq=1 after receiving ReqRet",
+      "delay": 0.2,
+      "use_session_from_start": "simple_reqret"
+    },
+    {
+      "type": "end",
+      "data": {},
+      "description": "Send end again - should now get end_ack since all sequences complete",
+      "delay": 0.3,
+      "use_session_from_start": "simple_reqret"
+    }
+  ]
+}

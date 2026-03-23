@@ -1,0 +1,101 @@
+# Name of the helper function
+name: to_int
+
+metadata:
+  description: |
+    Transforms a number to an integer by truncating the fractional part or rounding to the nearest integer based on the fractional value (e.g., 9.6 → 10, -4.7 → -5);
+    values with a fractional part ≥ 0.5 or ≤ -0.5 round away from zero, while others round toward zero.
+    The result of the to_int operation is mapped to “target_field”. In case of errors “target_field” will not be modified.
+    This helper function is typically used in the map stage
+  keywords:
+    - double
+    - float
+    - integer
+
+helper_type: map
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  number_to_transform:
+    type: number
+    generate:
+      - float
+      - double
+      - integer
+    source: reference
+  operation_mode:
+    type: string  # Accept only string
+    source: value # includes only values
+    restrictions:
+      allowed:
+        - truncate
+        - round
+
+output:
+  type: number
+  subset: integer
+
+test:
+  - arguments:
+      number_to_transform: -4.176666736602783
+      operation_mode: truncate
+    should_pass: true
+    expected: -4
+    description: Truncates a negative float, ignoring the fractional part.
+  - arguments:
+      number_to_transform: -4.716666736602783
+      operation_mode: round
+    should_pass: true
+    expected: -5
+    description: Round a negative float.
+  - arguments:
+      number_to_transform: -4.176666736602783
+      operation_mode: round
+    should_pass: true
+    expected: -4
+    description: Rounds a negative float to the nearest integer.
+  - arguments:
+      number_to_transform: 0.7124601006507874
+      operation_mode: truncate
+    should_pass: true
+    expected: 0
+    description: Truncates a positive float less than 1 to 0.
+  - arguments:
+      number_to_transform: 0.7124601006507874
+      operation_mode: round
+    should_pass: true
+    expected: 1
+    description: Rounds a positive float greater than 0.5 to 1.
+  - arguments:
+      number_to_transform: 1.50
+      operation_mode: truncate
+    should_pass: true
+    expected: 1
+    description: Truncates a positive float with a fractional part of 0.5.
+  - arguments:
+      number_to_transform: 1.49999999
+      operation_mode: truncate
+    should_pass: true
+    expected: 1
+    description: Truncates a positive float just below 1.5 to 1.
+  - arguments:
+      number_to_transform: 1.51
+      operation_mode: round
+    should_pass: true
+    expected: 2
+    description: Rounds a positive float just below 1.5 to 2.
+  - arguments:
+      number_to_transform: 1.48888888
+      operation_mode: round
+    should_pass: true
+    expected: 1
+    description: Rounds a positive float below 1.5 but closer to 1 to 1.
+  - arguments:
+      number_to_transform: 1000
+      operation_mode: round
+    should_pass: true
+    expected: 1000
+    description: Rounds a positive integer

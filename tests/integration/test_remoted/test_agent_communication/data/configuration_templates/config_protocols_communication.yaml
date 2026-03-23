@@ -1,0 +1,9 @@
+- sections:
+    - section: remote
+      elements:
+        - port:
+            value: 'PORT'
+        - protocol:
+            value: 'PROTOCOL'
+        - queue_size:
+            value: 131072

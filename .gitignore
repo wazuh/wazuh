@@ -1,4 +1,5 @@
 *.so
+*.so.*
 *.o
 *.a
 *.dSYM
@@ -11,20 +12,21 @@
 # Auto generated build files
 src/LOCATION
 src/isbigendian.c
-src/analysisd/compiled_rules/compiled_rules.h
 etc/ossec.mc
 src/Config.OS
 src/selinux/*.mod
 src/selinux/*.pp
 framework/wazuh/core/wazuh.json
 src/**/build/*
+tools/**/build/*
+src/generated_headers/*.h
+src/generated_headers/*.hpp
+src/wazuh_modules/sca/build
+src/wazuh_modules/sca/coverage_report
 
 # Compiled programs
-src/agent-auth
-src/agent_control
 src/clear_stats
 src/isbigendian
-src/list_agents
 src/manage_agents
 src/ossec-agentd
 src/ossec-agentlessd
@@ -41,7 +43,6 @@ src/ossec-regex
 src/wazuh-regex
 src/parallel-regex
 src/ossec-remoted
-src/ossec-reportd
 src/ossec-syscheckd
 src/ossec-integratord
 src/rootcheck_control
@@ -63,9 +64,16 @@ src/wazuh-logtest-legacy
 src/wazuh-maild
 src/wazuh-monitord
 src/wazuh-remoted
-src/wazuh-reportd
 src/wazuh-syscheckd
 src/wazuh-integratord
+src/wazuh-keystore
+src/wazuh-keystore-testtool
+src/wazuh-manager-keystore
+src/wazuh-manager-authd
+src/wazuh-manager-db
+src/wazuh-manager-modulesd
+src/wazuh-manager-monitord
+src/wazuh-manager-remoted
 
 # Active responses
 src/firewall-drop
@@ -94,8 +102,9 @@ src/win32/route-null.cmd
 src/win32/netsh-win-2016.cmd
 src/win32/route-null-2012.cmd
 src/win32/netsh.cmd
-src/win32/VERSION
-src/win32/REVISION
+src/win32/VERSION.json
+src/libwazuhshared.*
+src/libwazuhext.*
 
 # Eclipse files
 .cproject
@@ -108,6 +117,7 @@ src/win32/REVISION
 # temporary vim files
 *.swp
 *.swo
+.cache/
 
 # patch files
 *.rej
@@ -117,16 +127,19 @@ src/win32/REVISION
 *.gcno
 *.gcda
 src/TEMP.db
-src/local.db
+src/local.db*
 src/coverage-report/
 src/data_provider/coverage_report/
 src/shared_modules/dbsync/coverage_report/
 src/shared_modules/dbsync/smokeTests/output/
-src/shared_modules/dbsync/smokeTests/temp.db
-src/shared_modules/rsync/coverage_report/
+src/shared_modules/dbsync/smokeTests/temp.db*
+src/shared_modules/sync_protocol/coverage_report/
 src/shared_modules/utils/coverage_report/
 src/shared_modules/utils/tests/coverage_report
+src/syscheckd/coverage_report/
 src/wazuh_modules/syscollector/coverage_report/
+src/syscheckd/coverage_report
+src/syscheckd/src/db/smokeTests/output
 src/ossec.test
 src/tap_*
 etc/preloaded-vars.conf
@@ -143,9 +156,23 @@ src/active-response/firewall-drop.sh
 # Databases commits
 framework/wazuh/rbac/migrations/versions/*
 
-# Documentation folder
+# Documentation files
 documentation/
+doxygen_config.cfg
+doxygen_errors.txt
 
-# MSU for Vulnerability Detector
-src/wazuh_modules/vulnerability_detector/msu.json.gz
+# Flatbuffers generated headers.
+src/shared_modules/utils/flatbuffers/include/
+src/wazuh_modules/syscollector/include/*_generated.h
+src/wazuh_modules/vulnerability_scanner/include/*_schema.h
+src/wazuh_modules/vulnerability_scanner/include/*_generated.h
 
+# Test files
+src/wazuh_modules/vulnerability_scanner/qa/test_data/*/input_*.bin
+cov-int
+wazuh.tgz
+src/*.log
+src/result-*.txt
+
+# Tool files
+tools/repository_bumper_*

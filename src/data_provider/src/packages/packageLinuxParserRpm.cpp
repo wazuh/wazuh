@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December 22, 2021.
  *
  * This program is free software; you can redistribute it
@@ -15,9 +15,10 @@
 #include "sharedDefs.h"
 #include "packageLinuxRpmParserHelper.h"
 #include "packageLinuxRpmParserHelperLegacy.h"
-#include "filesystemHelper.h"
 #include "stringHelper.h"
 #include "rpmlib.h"
+
+#include <filesystem_wrapper.hpp>
 
 void getRpmInfo(std::function<void(nlohmann::json&)> callback)
 {
@@ -26,7 +27,7 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
     {
         [](std::function<void(nlohmann::json&)> cb)
         {
-            const auto rawRpmPackagesInfo{ UtilsWrapper::exec("rpm -qa --qf '%{name}\t%{arch}\t%{summary}\t%{size}\t%{epoch}\t%{release}\t%{version}\t%{vendor}\t%{installtime:date}\t%{group}\t\n'") };
+            const auto rawRpmPackagesInfo{ UtilsWrapperLinux::exec("rpm -qa --qf '%{name}\t%{arch}\t%{summary}\t%{size}\t%{epoch}\t%{release}\t%{version}\t%{vendor}\t%{installtime}\t%{group}\t\n'") };
 
             if (!rawRpmPackagesInfo.empty())
             {
@@ -45,7 +46,7 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
         }
     };
 
-    if (!UtilsWrapper::existsRegular(RPM_DATABASE))
+    if (!UtilsWrapperLinux::existsRegular(RPM_DATABASE))
     {
         // We are probably using RPM >= 4.16 – get the packages from librpm.
         try
@@ -66,7 +67,6 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
         {
             rpmDefaultQuery(callback);
         }
-
     }
     else
     {
@@ -92,9 +92,113 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
         {
             rpmDefaultQuery(callback);
         }
+    }
+}
 
+void getRpmPythonPackages(std::unordered_set<std::string>& pythonPackages)
+{
+    std::vector<std::string> pythonFiles;
+
+    const auto rpmPythonDefaultQuery
+    {
+        [](std::vector<std::string>& pFiles)
+        {
+            const auto rawPythonPackagesList
+            {
+                UtilsWrapperLinux::exec(
+                    "rpm -qa | grep -E 'python.*' | xargs -I {} rpm -ql {} | grep -E '\\.egg-info$|\\.dist-info$'")};
+
+            if (!rawPythonPackagesList.empty())
+            {
+                const auto rows {Utils::split(rawPythonPackagesList, '\n')};
+
+                for (const auto& row : rows)
+                {
+                    pFiles.push_back(row);
+                }
+            }
+        }
+    };
+
+    const auto filterPythonFiles
+    {
+        [&pythonPackages](const std::vector<std::string>& pFiles)
+        {
+            const auto PYTHON_INFO_FILES = std::array
+            {
+                std::make_pair(std::regex(R"(^.*\.egg-info$)"), "/PKG-INFO"),
+                std::make_pair(std::regex(R"(^.*\.dist-info$)"), "/METADATA")};
+
+            for (const auto& file : pFiles)
+            {
+                std::smatch match;
+                const file_system::FileSystemWrapper fileSystemWrapper;
+
+                for (const auto& [pattern, extraFile] : PYTHON_INFO_FILES)
+                {
+                    if (std::regex_search(file, match, pattern))
+                    {
+                        std::string baseInfoPath = match.str(0);
+
+                        if (fileSystemWrapper.is_regular_file(baseInfoPath))
+                        {
+                            pythonPackages.insert(std::move(baseInfoPath));
+                        }
+                        else
+                        {
+                            std::string fullPath = baseInfoPath + extraFile;
+
+                            if (fileSystemWrapper.exists(fullPath))
+                            {
+                                pythonPackages.insert(std::move(fullPath));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    if (!UtilsWrapperLinux::existsRegular(RPM_DATABASE))
+    {
+        // We are probably using RPM >= 4.16 – get Python package files from librpm.
+        try
+        {
+            RpmPackageManager rpm {std::make_shared<RpmLib>()};
+
+            for (const auto& p : rpm)
+            {
+                if (!p.files.empty())
+                {
+                    for (const auto& file : p.files)
+                    {
+                        pythonFiles.push_back(file);
+                    }
+                }
+            }
+        }
+        catch (...)
+        {
+            rpmPythonDefaultQuery(pythonFiles);
+        }
+    }
+    else
+    {
+        try
+        {
+            BerkeleyRpmDBReader db {std::make_shared<BerkeleyDbWrapper>(RPM_DATABASE)};
+
+            // Get Python package files from the Berkeley DB.
+            while (db.getNextPythonFiles(pythonFiles));
+        }
+        catch (...)
+        {
+            rpmPythonDefaultQuery(pythonFiles);
+        }
     }
 
-
-
+    if (!pythonFiles.empty())
+    {
+        filterPythonFiles(pythonFiles);
+    }
 }

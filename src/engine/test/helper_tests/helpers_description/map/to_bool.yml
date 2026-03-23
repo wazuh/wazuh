@@ -1,0 +1,64 @@
+name: to_bool
+metadata:
+  description: |
+    Converts a numeric reference to boolean.
+    Rule: non-zero → true, zero → false.
+    In case of errors “target_field” will not be modified.
+    This helper function is typically used in the map stage.
+  keywords:
+    - boolean
+    - number
+helper_type: map
+is_variadic: false
+
+arguments:
+  number_to_convert:
+    type: number
+    generate:
+      - integer
+      - float
+      - double
+    source: reference
+
+skipped:
+  - success_cases
+
+output:
+  type: boolean
+
+test:
+  - arguments:
+      number_to_convert: 1
+    should_pass: true
+    expected: true
+    description: Converts integer 1 to true.
+  - arguments:
+      number_to_convert: 1.0
+    should_pass: true
+    expected: true
+    description: Converts float 1.0 to true.
+  - arguments:
+      number_to_convert: 0
+    should_pass: true
+    expected: false
+    description: Converts integer 0 to false.
+  - arguments:
+      number_to_convert: 0.0
+    should_pass: true
+    expected: false
+    description: Converts float 0.0 to false.
+  - arguments:
+      number_to_convert: 2
+    should_pass: true
+    expected: true
+    description: Converts integer 2 to true (positive numbers are true).
+  - arguments:
+      number_to_convert: -1
+    should_pass: true
+    expected: true
+    description: Converts integer -1 to true (non-positives are true).
+  - arguments:
+      number_to_convert: 0.5
+    should_pass: true
+    expected: true
+    description: Converts float 0.5 to true (positive numbers are true).

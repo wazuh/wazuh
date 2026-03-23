@@ -1,0 +1,21 @@
+- name: check_syscollector_scan
+  description: Verify that the scan starts on startup and collects information but no sync is performed
+  configuration_parameters:
+    DISABLED: 'no'
+    INTERVAL_SCAN: 1h
+    START_ON_START: 'yes'
+    HARDWARE_SCAN: 'yes'
+    OS_SCAN: 'yes'
+    NETWORK_SCAN: 'yes'
+    PACKAGES_SCAN: 'yes'
+    PORTS_SCAN: 'yes'
+    ALL_PORTS: 'yes'
+    PROCESSES_SCAN: 'yes'
+    HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
+    SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
+    MAX_EPS: 10
+  metadata:
+    dummy_metadata: ''

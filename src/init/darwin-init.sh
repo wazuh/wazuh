@@ -9,7 +9,7 @@
 INSTALLATION_PATH=${1}
 SERVICE=/Library/LaunchDaemons/com.wazuh.agent.plist
 STARTUP=/Library/StartupItems/WAZUH/StartupParameters.plist
-LAUNCHER_SCRIPT=/Library/StartupItems/WAZUH/launcher.sh
+LAUNCHER_SCRIPT=/Library/StartupItems/WAZUH/Wazuh-launcher
 STARTUP_SCRIPT=/Library/StartupItems/WAZUH/WAZUH
 
 launchctl unload /Library/LaunchDaemons/com.wazuh.agent.plist 2> /dev/null
@@ -37,7 +37,6 @@ echo '<?xml version="1.0" encoding="UTF-8"?>
 
 chown root:wheel $SERVICE
 chmod u=rw-,go=r-- $SERVICE
-launchctl load $SERVICE
 
 echo '
 #!/bin/sh

@@ -6,40 +6,40 @@ import asyncio
 import re
 from collections import defaultdict
 from functools import wraps
+from typing import Awaitable, Any
 
 from wazuh.core.agent import get_agents_info, get_groups, expand_group
 from wazuh.core.common import rbac, broadcast, cluster_nodes
 from wazuh.core.exception import WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.utils import expand_rules, expand_lists, expand_decoders
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
+
+SENSITIVE_FIELD_PATHS = ("authd.pass",)
+
+MASK_DEFAULT = "*****"
 
 integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
 
 
-def _expand_resource(resource):
-    """This function expand a specified resource depending of its type.
-    
+def _expand_resource(resource: str) -> set:
+    """Expand a specified resource depending on its type.
+
     Parameters
     ----------
     resource : str
-        Resource to be expanded
+        Resource to be expanded.
 
     Returns
     -------
-    str
+    set
         Result of the resource expansion.
     """
     name, attribute, value = resource.split(':')
     resource_type = ':'.join([name, attribute])
 
-    # This is the special case, expand_group can receive * or the name of the group. That's why it' s always called
-    if resource_type == 'agent:group':
-        return expand_group(value)
-
     # We need to transform the wildcard * to the resource of the system
     if value == '*':
-        if resource_type == 'agent:id':
+        if resource_type == 'agent:id' or resource_type == 'agent:group':
             return get_agents_info()
         elif resource_type == 'group:id':
             return get_groups()
@@ -62,28 +62,33 @@ def _expand_resource(resource):
             with RulesManager() as rum:
                 rules = rum.get_rules()
             return {str(rule_id.id) for rule_id in rules}
-        elif resource_type == 'rule:file':
-            return expand_rules()
-        elif resource_type == 'decoder:file':
-            return expand_decoders()
-        elif resource_type == 'list:file':
-            return expand_lists()
         elif resource_type == 'node:id':
             return set(cluster_nodes.get())
         elif resource_type == '*:*':  # Resourceless
             return {'*'}
         return set()
-    # We return the value casted to set
     else:
+        if resource_type == 'agent:group':
+            return expand_group(value)
+
+        # We return the value casted to set
         return {value}
 
 
-def _combination_defined_rbac(needed_resources, user_resources):
-    """This function avoids that the combinations of resources are processed as a individuals resources
+def _combination_defined_rbac(needed_resources: list, user_resources: str) -> bool:
+    """This function avoids that the combinations of resources are processed as individuals resources.
 
-    :param needed_resources: These are the needed resources for the framework's function
-    :param user_resources: These are the user's resources for the actions
-    :return: True if the resource combination match with the required resource combination, otherwise False
+    Parameters
+    ----------
+    needed_resources : list
+        These are the needed resources for the framework's function.
+    user_resources : str
+        These are the user's resources for the actions.
+
+    Returns
+    -------
+    bool
+        True if the resource combination matches with the required resource combination, False otherwise.
     """
     for needed_resource in needed_resources:
         split_needed_resource = needed_resource.split('&')
@@ -109,15 +114,22 @@ def _combination_defined_rbac(needed_resources, user_resources):
     return False
 
 
-def _optimize_resources(req_resources):
-    """This function creates an optimized data structure for a more easy processing
+def _optimize_resources(req_resources: list) -> defaultdict:
+    """This function creates an optimized data structure for an easier processing.
     Example:
         ["node:id:master-node",            {
         "node:id:worker1",         -->         "node:id": {"master", "worker1", "worker2"}
         "node:id:worker2"]                 }
 
-    :param req_resources: Resource to be optimized
-    :return expanded_resource: Returns the result of the resource expansion
+    Parameters
+    ----------
+    req_resources : list
+        Resource to be optimized.
+
+    Returns
+    -------
+    defaultdict
+        Returns the result of the resource expansion.
     """
     resources_value_odict = defaultdict(set)
     for element in req_resources:
@@ -126,12 +138,16 @@ def _optimize_resources(req_resources):
     return resources_value_odict
 
 
-def _black_expansion(req_resources, final_user_permissions):
-    """If RBAC policies is empty and the RBAC's mode is black, we have the permission over the required resource
-    or if we can't expand the resource, the action is resourceless
+def _black_expansion(req_resources: list, final_user_permissions: dict):
+    """If RBAC policies is empty and the RBAC's mode is black, we have the permission over the required resource,
+    or if we can't expand the resource, the action is resourceless.
 
-    :param req_resources: Required resource for the framework's function
-    :param final_user_permissions: Final user's permissions after processing the combinations of resources
+    Parameters
+    ----------
+    req_resources : list
+        Required resource for the framework's function.
+    final_user_permissions : dict
+        Final user's permissions after processing the combinations of resources.
     """
     for req_resource in req_resources:
         split_combination = req_resource.split('&')
@@ -147,14 +163,21 @@ def _black_expansion(req_resources, final_user_permissions):
                 final_user_permissions[identifier].update(expanded_resource)
 
 
-def _process_effect(effect, identifier, value, final_user_permissions, expanded_resource):
-    """This function will add or remove resources from the final permissions depending on the effect of the permission
+def _process_effect(effect: str, identifier: str, value: str, final_user_permissions: dict, expanded_resource: set):
+    """This function will add or remove resources from the final permissions depending on the effect of the permission.
 
-    :param effect: Allow or Deny
-    :param identifier: Resource identifier. Ex: "node:id"
-    :param value: Value of the resource. Ex: "master-node"
-    :param final_user_permissions: Dictionary that contains the user's final permissions
-    :param expanded_resource: The expansion of the user_resource. Ex: Value= "*" -> ["mater-node", "worker1", "worker2"]
+    Parameters
+    ----------
+    effect : str
+        Allow or Deny.
+    identifier: str
+        Resource identifier. Ex: "node:id"
+    value : str
+        Value of the resource. Ex: "master-node"
+    final_user_permissions : dict
+        Dictionary that contains the user's final permissions.
+    expanded_resource : set
+        The expansion of the user_resource. Ex: Value= "*" -> ["mater-node", "worker1", "worker2"]
     """
     if effect == 'allow':
         if value == '*':
@@ -168,13 +191,17 @@ def _process_effect(effect, identifier, value, final_user_permissions, expanded_
             final_user_permissions[identifier].difference_update(expanded_resource.intersection({value}))
 
 
-def _single_processor(req_resources, user_permissions_for_resource, final_user_permissions):
-    """This function process the individual resources.
+def _single_processor(req_resources: list, user_permissions_for_resource: dict, final_user_permissions: dict):
+    """This function processes the individual resources.
 
-    :param req_resources: Required resource for the framework's function
-    :param user_permissions_for_resource: User's defined resources in his RBAC permissions
-    :param final_user_permissions: Final user's permissions after processing the combinations of resources
-    :return expanded_resource: Returns the result of the resource expansion
+    Parameters
+    ----------
+    req_resources : list
+        Required resource for the framework's function.
+    user_permissions_for_resource : dict
+        User's defined resources in his RBAC permissions.
+    final_user_permissions : dict
+        Final user's permissions after processing the combinations of resources
     """
     req_resources = _optimize_resources(req_resources)
     for user_resource, user_resource_effect in user_permissions_for_resource.items():
@@ -194,15 +221,19 @@ def _single_processor(req_resources, user_permissions_for_resource, final_user_p
                             value, final_user_permissions, expanded_resource)
 
 
-def _combination_processor(req_resources, user_permissions_for_resource, final_user_permissions):
-    """This function process the combinations of resources.
-    Checks how the API is currently running and depending on the API and
-    the resources defined for the user, will return a dictionary with the final permissions.
+def _combination_processor(req_resources: list, user_permissions_for_resource: dict, final_user_permissions: dict):
+    """This function processes the combinations of resources.
+    Checks how the API is currently running and depending on the API and the resources defined for the user, will return
+    a dictionary with the final permissions.
 
-    :param req_resources: Required resource for the framework's function
-    :param user_permissions_for_resource: User's defined resources in his RBAC permissions
-    :param final_user_permissions: Final user's permissions after processing the combinations of resources
-    :return expanded_resource: Returns the result of the resource expansion
+    Parameters
+    ---------
+    req_resources : list
+        Required resource for the framework's function.
+    user_permissions_for_resource : dict
+        User's defined resources in his RBAC permissions.
+    final_user_permissions : dict
+        Final user's permissions after processing the combinations of resources.
     """
     for user_resource, user_resource_effect in user_permissions_for_resource.items():
         # _combination_defined_rbac: This function prevents pairs from being treated individually
@@ -220,11 +251,20 @@ def _combination_processor(req_resources, user_permissions_for_resource, final_u
                                     value, final_user_permissions, expanded_resource)
 
 
-def _match_permissions(req_permissions: dict = None, rbac_mode: str = 'white'):
-    """Try to match function required permissions against user permissions to allow or deny execution
+def _match_permissions(req_permissions: dict = None, rbac_mode: str = 'white') -> dict:
+    """Try to match function required permissions against user permissions to allow or deny execution.
 
-    :param req_permissions: Required permissions to allow function execution
-    :return: Dictionary with final permissions
+    Parameters
+    ----------
+    req_permissions : dict
+        Required permissions to allow function execution.
+    rbac_mode : str
+        RBAC mode (white or black).
+
+    Returns
+    -------
+    dict
+        Dictionary with final permissions.
     """
     allow_match = defaultdict(set)
     for req_action, req_resources in req_permissions.items():
@@ -237,13 +277,22 @@ def _match_permissions(req_permissions: dict = None, rbac_mode: str = 'white'):
     return allow_match
 
 
-def _get_required_permissions(actions: list = None, resources: list = None, **kwargs):
+def _get_required_permissions(actions: list = None, resources: list = None, **kwargs: dict) -> tuple:
     """Resource pairs exposed by the framework function
 
-    :param actions: List of exposed actions
-    :param resources: List of exposed resources
-    :param kwargs: Function kwargs to look for dynamic resources
-    :return: Dictionary with required actions as keys and a list of required resources as values
+    Parameters
+    ----------
+    actions : list
+        List of exposed actions.
+    resources : list
+        List of exposed resources.
+    kwargs : dict
+        Function kwargs to look for dynamic resources.
+
+    Returns
+    -------
+    tuple
+        Dictionary with required actions as keys and a list of required resources as values
     """
     # We expose required resources for the request
     res_list = list()
@@ -294,16 +343,27 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
     return target_params, req_permissions, add_denied
 
 
-def _get_denied(original, allowed, target_param, res_id, resources=None):
-    """This function compare the original kwargs and the processed kwargs,
-    the difference between both should be the denied resources
+def _get_denied(original: dict, allowed: list, target_param: str, res_id: int, resources: list = None) -> set:
+    """This function compares the original kwargs and the processed kwargs, the difference between both should be the
+    denied resources.
 
-    :param original: The original function's kwargs
-    :param allowed: The processed list of resources after RBAC
-    :param target_param: Element of kwargs that was processed
-    :param res_id: Involved resource
-    :param resources: List of the required resources for the function
-    :return:
+    Parameters
+    ----------
+    original : dict
+        The original function's kwargs.
+    allowed : list
+        The processed list of resources after RBAC.
+    target_param : str
+        Element of kwargs that was processed.
+    res_id : int
+        Involved resource.
+    resources : list
+        List of the required resources for the function.
+
+    Returns
+    -------
+    set
+        Difference between the original kwargs and the processed ones.
     """
     try:
         return {original[target_param]} - allowed[res_id]
@@ -313,15 +373,14 @@ def _get_denied(original, allowed, target_param, res_id, resources=None):
         return {res.split(':')[2] for res in resources} if resources is not None else {}
 
 
-async def async_list_handler(result: asyncio.coroutine, **kwargs):
-    """This function makes list_handler async
-    """
+async def async_list_handler(result: Awaitable[Any], **kwargs):
+    """This function makes list_handler async."""
     result = await result
     return list_handler(result, **kwargs)
 
 
 def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowed: dict = None, target: dict = None,
-                 add_denied: bool = False, **post_proc_kwargs):
+                 add_denied: bool = False, **post_proc_kwargs: dict) -> AffectedItemsWazuhResult:
     """Post processor for framework list responses with affected items and optional denied items.
 
     Parameters
@@ -342,6 +401,7 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
     Returns
     -------
     AffectedItemsWazuhResult
+        Framework responses.
     """
     if add_denied:
         for res_id, target_param in target.items():
@@ -365,14 +425,22 @@ def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowe
 
 def expose_resources(actions: list = None, resources: list = None, post_proc_func: callable = list_handler,
                      post_proc_kwargs: dict = None):
-    """Decorator to apply user permissions on a Wazuh framework function
-    based on exposed action:resource pairs.
+    """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
 
-    :param actions: List of actions exposed by the framework function
-    :param resources: List of resources exposed by the framework function
-    :param post_proc_func: Name of the function to use in response post processing
-    :param post_proc_kwargs: Extra parameters used in post processing
-    :return: Allow or deny framework function execution
+    Parameters
+    ----------
+    actions : list
+        List of actions exposed by the framework function.
+    resources : list
+        List of resources exposed by the framework function.
+    post_proc_func : callable
+        Name of the function to use in response post processing.
+    post_proc_kwargs : dict
+        Extra parameters used in post processing.
+
+    Returns
+    -------
+    Allow or deny framework function execution.
     """
     if post_proc_kwargs is None:
         post_proc_kwargs = dict()
@@ -417,12 +485,119 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                             kwargs[target_param] = list()
                         else:
                             skip_execution = True
-            result = func(*args, **kwargs) if not skip_execution else None
+
+            # If func is still decorated by expose_resources, do not remove 'call_func'
+            if hasattr(func, '__wrapped__') or kwargs.pop('call_func', True):
+                result = func(*args, **kwargs) if not skip_execution else None
+            else:
+                result = AffectedItemsWazuhResult()
+
             if post_proc_func is None:
                 return result
             else:
                 return post_proc_func(result, original=original_kwargs, allowed=allow, target=target_params,
                                       add_denied=add_denied, **post_proc_kwargs)
+        wrapper.__wazuh_exposed__ = True
+        return wrapper
+
+    return decorator
+
+
+def _has_update_permissions() -> bool:
+    """Check if current user holds update-config permissions.
+
+    Returns
+    -------
+    bool
+        True if user has 'manager:update_config' or 'cluster:update_config', False otherwise.
+    """
+    perms = rbac.get() or {}
+    for action in ("manager:update_config", "cluster:update_config"):
+        action_map = perms.get(action)
+        if isinstance(action_map, dict) and len(action_map) > 0:
+            return True
+    return False
+
+
+def _mask_paths_in_object(obj, dotted_path: str, mask_text: str):
+    """Mask a value at a dotted path inside dict/list.
+
+    Parameters
+    ----------
+    obj : dict | list
+        Object to process.
+    dotted_path : str
+        Path in dotted notation (e.g. "authd.pass").
+    mask_text : str
+        Replacement text.
+    """
+    if isinstance(obj, dict) and dotted_path in obj:
+        obj[dotted_path] = mask_text
+        return
+    elif isinstance(obj, list):
+        for el in obj:
+            _mask_paths_in_object(el, dotted_path, mask_text)
+        return
+    elif not isinstance(obj, dict):
+        return
+
+    head, *tail = dotted_path.split('.', 1)
+    if head not in obj:
+        return
+    elif not tail:
+        obj[head] = mask_text
+    else:
+        _mask_paths_in_object(obj[head], tail[0], mask_text)
+
+
+def _mask_payload(payload, mask_text: str = MASK_DEFAULT) -> None:
+    """Apply masking to any supported payload shape (in place).
+
+    Parameters
+    ----------
+    payload :
+        One of: dict, list, or AffectedItemsWazuhResult. Other types are ignored.
+    mask_text : str
+        Replacement text used for masked values.
+    """
+    if isinstance(payload, AffectedItemsWazuhResult):
+        for item in payload.affected_items:
+            _mask_payload(item, mask_text)
+        return
+
+    if isinstance(payload, dict):
+        for path in SENSITIVE_FIELD_PATHS:
+            _mask_paths_in_object(payload, path, mask_text)
+    elif isinstance(payload, list):
+        for el in payload:
+            _mask_payload(el, mask_text)
+
+
+def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
+    """Decorator to mask sensitive fields in config responses for users without update permissions.
+
+    Parameters
+    ----------
+    mask_text : str
+        Replacement text for sensitive values. Default: '*****'.
+
+    Returns
+    -------
+    callable
+        Decorator that post-processes the target function's return value in place.
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            result = func(*args, **kwargs)
+            try:
+                # Only mask if user LACKS update-config permissions
+                if not _has_update_permissions():
+                    _mask_payload(result, mask_text=mask_text)
+            except Exception:
+                # Never break the endpoint if masking fails for any reason
+                pass
+            return result
 
         return wrapper
 

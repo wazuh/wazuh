@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -12,9 +12,9 @@
 #include <stddef.h>
 #include <cmocka.h>
 
-#include "../../os_crypto/sha256/sha256_op.h"
+#include "sha256_op.h"
 #include "../../wrappers/common.h"
-#include "../headers/shared.h"
+#include "shared.h"
 
 /* setups/teardowns */
 static int setup_group(void **state) {
@@ -55,9 +55,9 @@ void test_sha256_file() {
     const char *string_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
     char path[] = "path/to/file";
 
-    expect_value(__wrap_fopen, path, path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
+    expect_value(__wrap_wfopen, path, path);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, string);
     will_return(__wrap_fread, 0);
@@ -74,20 +74,34 @@ void test_sha256_file() {
 void test_sha256_file_fail() {
     char path[] = "path/to/non-existing/file";
 
-    expect_value(__wrap_fopen, path, path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
+    expect_value(__wrap_wfopen, path, path);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
 
     os_sha256 buffer;
     assert_int_equal(OS_SHA256_File(path, buffer, OS_TEXT), -1);
 }
 
-int main(void) {
+void test_OS_SHA256_File_null_path(void** state)
+{
+    (void)state;
+    os_sha256 output;
+    os_sha256 expected = {0};
+    memset(output, 0xFF, sizeof(output));
+
+    int ret = OS_SHA256_File(NULL, output, OS_BINARY);
+
+    assert_int_equal(ret, -1);
+    assert_memory_equal(output, expected, sizeof(output));
+}
+
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_sha256_string),
         cmocka_unit_test(test_sha256_string_sized),
         cmocka_unit_test_setup_teardown(test_sha256_file, setup_group, teardown_group),
         cmocka_unit_test_setup_teardown(test_sha256_file_fail, setup_group, teardown_group),
-    };
+        cmocka_unit_test(test_OS_SHA256_File_null_path)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

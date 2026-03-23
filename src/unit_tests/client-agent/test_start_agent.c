@@ -20,24 +20,24 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/wazuh/monitord/monitord_wrappers.h"
+#include "../../os_crypto/md5/md5_op.h"
 
 #ifdef TEST_WINAGENT
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"
 #endif
 
-#include "../client-agent/agentd.h"
+#include "agentd.h"
+#include "module_limits.h"
 
 extern void send_msg_on_startup(void);
 extern bool agent_handshake_to_server(int server_id, bool is_startup);
 extern void send_agent_stopped_message();
 extern int _s_verify_counter;
-
-#ifndef TEST_WINAGENT
-int __wrap_close(int fd) {
-    check_expected(fd);
-    return 0;
-}
-#endif
+extern int parse_handshake_json(const char *json_str, module_limits_t *limits,
+                                char *cluster_name, size_t cluster_name_size,
+                                char *cluster_node, size_t cluster_node_size,
+                                char *agent_groups, size_t agent_groups_size,
+                                char *merged_sum, size_t merged_sum_size);
 
 int __wrap_send_msg(const char *msg, ssize_t msg_length) {
     check_expected(msg);
@@ -75,13 +75,11 @@ char SERVER_ENC_ACK[] = {0x23,0x41,0x45,0x53,0x3a,0x4c,0x63,0x7a,0xef,0x9e,0x16,
 char SERVER_NULL_ACK[] = {0x00};
 char SERVER_WRONG_ACK[] = {0x01,0x02,0x03,0x00};
 
-void add_server_config(char* address, int protocol) {
+void add_server_config(char* address) {
     os_realloc(agt->server, sizeof(agent_server) * (agt->rip_id + 2), agt->server);
     os_strdup(address, agt->server[agt->rip_id].rip);
     agt->server[agt->rip_id].port = 1514;
-    agt->server[agt->rip_id].protocol = 0;
     memset(agt->server + agt->rip_id + 1, 0, sizeof(agent_server));
-    agt->server[agt->rip_id].protocol = protocol;
     agt->rip_id++;
     agt->server_count++;
 }
@@ -116,20 +114,18 @@ static int setup_test(void **state) {
     agt->server = NULL;
     agt->rip_id = 0;
     agt->execdq = 0;
-    agt->cfgadq = -1;
     agt->profile = NULL;
     agt->buffer = 1;
     agt->buflength = 5000;
     agt->events_persec = 500;
     agt->flags.auto_restart = 1;
-    agt->crypto_method = W_METH_AES;
     /* Connected sock */
     agt->sock = -1;
     /* Server */
-    add_server_config("127.0.0.1", IPPROTO_UDP);
-    add_server_config("127.0.0.2", IPPROTO_TCP);
-    add_server_config("VALID_HOSTNAME/127.0.0.3", IPPROTO_UDP);
-    add_server_config("INVALID_HOSTNAME/", IPPROTO_UDP);
+    add_server_config("127.0.0.1");
+    add_server_config("127.0.0.2");
+    add_server_config("VALID_HOSTNAME/127.0.0.3");
+    add_server_config("INVALID_HOSTNAME/");
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
@@ -138,7 +134,7 @@ static int setup_test(void **state) {
     /* Keys */
     keys_init(&keys);
     OS_AddKey(&keys, "001", "agent0", "any", "6958b43cb096e036f872d65d6a4dc01b3c828f64a204c04", 0);
-    os_set_agent_crypto_method(&keys,agt->crypto_method);
+    os_set_agent_crypto_method(&keys, W_METH_AES);
 
     _s_verify_counter = 0;
 
@@ -160,11 +156,14 @@ static int teardown_test(void **state) {
 static void test_connect_server(void **state) {
     bool connected = false;
     expect_any(__wrap__minfo, formatted_msg);
-    /* Connect to first server (UDP)*/
+    /* Connect to first server (TCP)*/
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
-    will_return(__wrap_OS_ConnectUDP, 11);
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 11);
 
     expect_any_count(__wrap__minfo, formatted_msg, 2);
 
@@ -182,11 +181,8 @@ static void test_connect_server(void **state) {
     expect_any(__wrap_OS_ConnectTCP, _ip);
     expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, 12);
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_close, fd, 11);
-#else
-    expect_value(wrap_closesocket, fd, 11);
-#endif
+    expect_value(__wrap_OS_CloseSocket, sock, 11);
+    will_return(__wrap_OS_CloseSocket, 0);
 
     expect_any_count(__wrap__minfo, formatted_msg, 2);
 
@@ -195,14 +191,14 @@ static void test_connect_server(void **state) {
     assert_int_equal(agt->sock, 12);
     assert_true(connected);
 
-    /* Connect to third server (UDP), valid host name*/
+    /* Connect to third server (TCP), valid host name*/
     will_return(__wrap_getDefine_Int, 5);
-    will_return(__wrap_OS_ConnectUDP, 13);
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_close, fd, 12);
-#else
-    expect_value(wrap_closesocket, fd, 12);
-#endif
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 13);
+    expect_value(__wrap_OS_CloseSocket, sock, 12);
+    will_return(__wrap_OS_CloseSocket, 0);
 
     expect_any_count(__wrap__minfo, formatted_msg, 2);
 
@@ -211,13 +207,10 @@ static void test_connect_server(void **state) {
     assert_int_equal(agt->sock, 13);
     assert_true(connected);
 
-    /* Connect to fourth server (UDP), invalid host name*/
+    /* Connect to fourth server (TCP), invalid host name*/
     will_return(__wrap_getDefine_Int, 5);
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_close, fd, 13);
-#else
-    expect_value(wrap_closesocket, fd, 13);
-#endif
+    expect_value(__wrap_OS_CloseSocket, sock, 13);
+    will_return(__wrap_OS_CloseSocket, 0);
 
     expect_any(__wrap__minfo, formatted_msg);
     expect_any(__wrap__merror, formatted_msg);
@@ -225,11 +218,14 @@ static void test_connect_server(void **state) {
     connected = connect_server(3, true);
     assert_false(connected);
 
-    /* Connect to first server (UDP), simulate connection error*/
+    /* Connect to first server (TCP), simulate connection error*/
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
-    will_return(__wrap_OS_ConnectUDP, -1);
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, -1);
     connected = connect_server(0, true);
     assert_false(connected);
 
@@ -240,23 +236,25 @@ static void test_connect_server(void **state) {
 static void test_agent_handshake_to_server(void **state) {
     bool handshaked = false;
 
-    /* Handshake with first server (UDP) */
+    /* Handshake with first server (TCP) */
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
-    will_return(__wrap_OS_ConnectUDP, 21);
-    #ifndef TEST_WINAGENT
-    will_return(__wrap_recv, SERVER_ENC_ACK);
-    #else
-    will_return(wrap_recv, SERVER_ENC_ACK);
-    #endif
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 21);
     will_return(__wrap_wnet_select, 1);
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");
+    expect_any(__wrap_OS_RecvSecureTCP, sock);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 3);
+    expect_any_count(__wrap__minfo, formatted_msg, 4);
 
     handshaked = agent_handshake_to_server(0, false);
     assert_true(handshaked);
@@ -270,22 +268,19 @@ static void test_agent_handshake_to_server(void **state) {
     expect_any(__wrap_OS_ConnectTCP, _ip);
     expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, 22);
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_close, fd, 21);
-#else
-    expect_value(wrap_closesocket, fd, 21);
-#endif
+    expect_value(__wrap_OS_CloseSocket, sock, 21);
+    will_return(__wrap_OS_CloseSocket, 0);
     will_return(__wrap_wnet_select, 1);
     expect_any(__wrap_OS_RecvSecureTCP, sock);
     expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
     will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 6);
+    expect_any_count(__wrap__minfo, formatted_msg, 7);
 
     handshaked = agent_handshake_to_server(1, false);
     assert_true(handshaked);
@@ -299,23 +294,20 @@ static void test_agent_handshake_to_server(void **state) {
     expect_any(__wrap_OS_ConnectTCP, _ip);
     expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, 23);
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_close, fd, 22);
-#else
-    expect_value(wrap_closesocket, fd, 22);
-#endif
+    expect_value(__wrap_OS_CloseSocket, sock, 22);
+    will_return(__wrap_OS_CloseSocket, 0);
     will_return(__wrap_wnet_select, 1);
     expect_any(__wrap_OS_RecvSecureTCP, sock);
     expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
     will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");
-    expect_string(__wrap_send_msg, msg, "1:ossec:ossec: Agent started: 'agent0->any'.");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
+    expect_string(__wrap_send_msg, msg, "1:wazuh-agent:wazuh: Agent started: [001] (agent0).");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 3);
+    expect_any_count(__wrap__minfo, formatted_msg, 4);
 
     handshaked = agent_handshake_to_server(1, true);
     assert_true(handshaked);
@@ -324,12 +316,12 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
-    will_return(__wrap_OS_ConnectUDP, -1);
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_close, fd, 23);
-#else
-    expect_value(wrap_closesocket, fd, 23);
-#endif
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, -1);
+    expect_value(__wrap_OS_CloseSocket, sock, 23);
+    will_return(__wrap_OS_CloseSocket, 0);
 
     expect_any(__wrap__minfo, formatted_msg);
     expect_any(__wrap__merror, formatted_msg);
@@ -341,9 +333,12 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
-    will_return(__wrap_OS_ConnectUDP, 23);
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 23);
     will_return(__wrap_wnet_select, 0);
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
 
     expect_any(__wrap__mwarn, formatted_msg);
 
@@ -354,16 +349,18 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
-    will_return(__wrap_OS_ConnectUDP, 24);
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_close, fd, 23);
-    will_return(__wrap_recv, SERVER_WRONG_ACK);
-#else
-    expect_value(wrap_closesocket, fd, 23);
-    will_return(wrap_recv, SERVER_WRONG_ACK);
-#endif
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 24);
+    expect_value(__wrap_OS_CloseSocket, sock, 23);
+    will_return(__wrap_OS_CloseSocket, 0);
     will_return(__wrap_wnet_select, 1);
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");
+    expect_any(__wrap_OS_RecvSecureTCP, sock);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, SERVER_WRONG_ACK);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_WRONG_ACK));
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_WRONG_ACK);
     will_return(__wrap_ReadSecMSG, SERVER_WRONG_ACK);
     will_return(__wrap_ReadSecMSG, KS_CORRUPT);
@@ -374,11 +371,513 @@ static void test_agent_handshake_to_server(void **state) {
     return;
 }
 
+static void test_agent_handshake_to_server_invalid_version(void **state) {
+    bool handshaked = false;
+
+    /* Handshake with first server (TCP) */
+    will_return(__wrap_getDefine_Int, 5);
+    expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
+    will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 21);
+    will_return(__wrap_wnet_select, 1);
+    expect_any(__wrap_OS_RecvSecureTCP, sock);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
+    expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
+    will_return(__wrap_ReadSecMSG, "#!-err {\"message\": \"Agent version must be lower or equal to manager version\"}");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_any_count(__wrap__minfo, formatted_msg, 1);
+
+    expect_string(__wrap__mwarn, formatted_msg ,"Couldn't connect to server '127.0.0.1': 'Agent version must be lower or equal to manager version'");
+
+    handshaked = agent_handshake_to_server(0, false);
+    assert_false(handshaked);
+}
+
+static void test_agent_handshake_to_server_error_getting_msg1(void **state) {
+    bool handshaked = false;
+
+    /* Handshake with first server (TCP) */
+    will_return(__wrap_getDefine_Int, 5);
+    expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
+    will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 21);
+    will_return(__wrap_wnet_select, 1);
+    expect_any(__wrap_OS_RecvSecureTCP, sock);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
+    expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
+    will_return(__wrap_ReadSecMSG, "#!-err \"message\": \"Agent version must be lower or equal to manager version\"}");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_any_count(__wrap__minfo, formatted_msg, 1);
+
+    expect_string(__wrap__merror, formatted_msg ,"Error getting message from server '127.0.0.1'");
+
+    handshaked = agent_handshake_to_server(0, false);
+    assert_false(handshaked);
+}
+
+static void test_agent_handshake_to_server_error_getting_msg2(void **state) {
+    bool handshaked = false;
+
+    /* Handshake with first server (TCP) */
+    will_return(__wrap_getDefine_Int, 5);
+    expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
+    will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 21);
+    will_return(__wrap_wnet_select, 1);
+    expect_any(__wrap_OS_RecvSecureTCP, sock);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
+    expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
+    will_return(__wrap_ReadSecMSG, "#!-err {\"key\": \"Agent version must be lower or equal to manager version\"}");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_any_count(__wrap__minfo, formatted_msg, 1);
+
+    expect_string(__wrap__merror, formatted_msg ,"Error getting message from server '127.0.0.1'");
+
+    handshaked = agent_handshake_to_server(0, false);
+    assert_false(handshaked);
+}
+
 /* agent_start_up_to_server */
 static void test_send_msg_on_startup(void **state) {
-    expect_string(__wrap_send_msg, msg, "1:ossec:ossec: Agent started: 'agent0->any'.");
+    expect_string(__wrap_send_msg, msg, "1:wazuh-agent:wazuh: Agent started: [001] (agent0).");
     send_msg_on_startup();
     return;
+}
+
+/* parse_handshake_json tests */
+static void test_parse_handshake_json_full_payload(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    char merged_sum[sizeof(os_md5)] = {0};
+    int ret;
+
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":200000,\"registry_key\":150000,\"registry_value\":100000},"
+            "\"syscollector\":{"
+                "\"hotfixes\":2000,\"packages\":60000,\"processes\":70000,"
+                "\"ports\":80000,\"network_iface\":200,\"network_protocol\":300,"
+                "\"network_address\":400,\"hardware\":2,\"os_info\":3,"
+                "\"users\":100,\"groups\":200,\"services\":20000,\"browser_extensions\":500"
+            "},"
+            "\"sca\":{\"checks\":15000}"
+        "},"
+        "\"cluster_name\":\"test-cluster\","
+        "\"cluster_node\":\"test-node\","
+        "\"agent_groups\":[\"default\",\"webservers\"],"
+        "\"merged_sum\":\"0123456789abcdef0123456789abcdef\""
+        "}";
+
+    module_limits_init(&limits);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups),
+                               merged_sum, sizeof(merged_sum));
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(limits.fim.file, 200000);
+    assert_int_equal(limits.fim.registry_key, 150000);
+    assert_int_equal(limits.fim.registry_value, 100000);
+    assert_int_equal(limits.syscollector.hotfixes, 2000);
+    assert_int_equal(limits.syscollector.packages, 60000);
+    assert_int_equal(limits.syscollector.processes, 70000);
+    assert_int_equal(limits.syscollector.ports, 80000);
+    assert_int_equal(limits.syscollector.network_iface, 200);
+    assert_int_equal(limits.syscollector.network_protocol, 300);
+    assert_int_equal(limits.syscollector.network_address, 400);
+    assert_int_equal(limits.syscollector.hardware, 2);
+    assert_int_equal(limits.syscollector.os_info, 3);
+    assert_int_equal(limits.syscollector.users, 100);
+    assert_int_equal(limits.syscollector.groups, 200);
+    assert_int_equal(limits.syscollector.services, 20000);
+    assert_int_equal(limits.syscollector.browser_extensions, 500);
+    assert_int_equal(limits.sca.checks, 15000);
+    assert_true(limits.limits_received);
+    assert_string_equal(cluster_name, "test-cluster");
+    assert_string_equal(cluster_node, "test-node");
+    assert_string_equal(agent_groups, "default,webservers");
+    assert_string_equal(merged_sum, "0123456789abcdef0123456789abcdef");
+}
+
+static void test_parse_handshake_json_missing_syscollector(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    /* Missing syscollector - should fail since all fields are required */
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":50000,\"registry_key\":25000,\"registry_value\":20000},"
+            "\"sca\":{\"checks\":15000}"
+        "},"
+        "\"cluster_name\":\"test-cluster\","
+        "\"cluster_node\":\"test-node\","
+        "\"agent_groups\":[\"default\"]"
+        "}";
+
+    module_limits_init(&limits);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups), NULL, 0);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_parse_handshake_json_with_cluster_name(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":100000,\"registry_key\":50000,\"registry_value\":50000},"
+            "\"syscollector\":{"
+                "\"hotfixes\":1000,\"packages\":50000,\"processes\":50000,"
+                "\"ports\":50000,\"network_iface\":100,\"network_protocol\":100,"
+                "\"network_address\":100,\"hardware\":1,\"os_info\":1,"
+                "\"users\":100,\"groups\":100,\"services\":10000,\"browser_extensions\":100"
+            "},"
+            "\"sca\":{\"checks\":10000}"
+        "},"
+        "\"cluster_name\":\"wazuh-cluster\","
+        "\"cluster_node\":\"wazuh-node\","
+        "\"agent_groups\":[\"default\"]"
+        "}";
+
+    module_limits_init(&limits);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups), NULL, 0);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(cluster_name, "wazuh-cluster");
+}
+
+static void test_parse_handshake_json_no_cluster_name(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    /* Missing cluster_name - should fail since it's required */
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":100000,\"registry_key\":50000,\"registry_value\":50000},"
+            "\"syscollector\":{"
+                "\"hotfixes\":1000,\"packages\":50000,\"processes\":50000,"
+                "\"ports\":50000,\"network_iface\":100,\"network_protocol\":100,"
+                "\"network_address\":100,\"hardware\":1,\"os_info\":1,"
+                "\"users\":100,\"groups\":100,\"services\":10000,\"browser_extensions\":100"
+            "},"
+            "\"sca\":{\"checks\":10000}"
+        "},"
+        "\"cluster_node\":\"wazuh-node\","
+        "\"agent_groups\":[\"default\"]"
+        "}";
+
+    module_limits_init(&limits);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups), NULL, 0);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_parse_handshake_json_invalid_json(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    const char *json_str = "not valid json {{{";
+
+    module_limits_init(&limits);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups), NULL, 0);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_parse_handshake_json_no_limits_object(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    const char *json_str = "{\"cluster_name\":\"test\"}";
+
+    module_limits_init(&limits);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups), NULL, 0);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_parse_handshake_json_null_params(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    const char *json_str = "{\"limits\":{\"fim\":{\"file\":100000}}}";
+
+    /* Test with NULL json_str */
+    ret = parse_handshake_json(NULL, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups), NULL, 0);
+    assert_int_equal(ret, -1);
+
+    /* Test with NULL limits */
+    ret = parse_handshake_json(json_str, NULL, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups), NULL, 0);
+    assert_int_equal(ret, -1);
+}
+
+static void test_parse_handshake_json_empty_string(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    const char *json_str = "";
+
+    module_limits_init(&limits);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups), NULL, 0);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_parse_handshake_json_with_cluster_node(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":100000,\"registry_key\":50000,\"registry_value\":50000},"
+            "\"syscollector\":{"
+                "\"hotfixes\":1000,\"packages\":50000,\"processes\":50000,"
+                "\"ports\":50000,\"network_iface\":100,\"network_protocol\":100,"
+                "\"network_address\":100,\"hardware\":1,\"os_info\":1,"
+                "\"users\":100,\"groups\":100,\"services\":10000,\"browser_extensions\":100"
+            "},"
+            "\"sca\":{\"checks\":10000}"
+        "},"
+        "\"cluster_name\":\"wazuh-cluster\","
+        "\"cluster_node\":\"wazuh-node-01\","
+        "\"agent_groups\":[\"default\"]"
+        "}";
+
+    module_limits_init(&limits);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups), NULL, 0);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(cluster_name, "wazuh-cluster");
+    assert_string_equal(cluster_node, "wazuh-node-01");
+}
+
+static void test_parse_handshake_json_no_cluster_node(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    /* Missing cluster_node - should fail since it's required */
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":100000,\"registry_key\":50000,\"registry_value\":50000},"
+            "\"syscollector\":{"
+                "\"hotfixes\":1000,\"packages\":50000,\"processes\":50000,"
+                "\"ports\":50000,\"network_iface\":100,\"network_protocol\":100,"
+                "\"network_address\":100,\"hardware\":1,\"os_info\":1,"
+                "\"users\":100,\"groups\":100,\"services\":10000,\"browser_extensions\":100"
+            "},"
+            "\"sca\":{\"checks\":10000}"
+        "},"
+        "\"cluster_name\":\"wazuh-cluster\","
+        "\"agent_groups\":[\"default\"]"
+        "}";
+
+    module_limits_init(&limits);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups), NULL, 0);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_parse_handshake_json_no_agent_groups(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    /* Missing agent_groups - should fail since it's required */
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":100000,\"registry_key\":50000,\"registry_value\":50000},"
+            "\"syscollector\":{"
+                "\"hotfixes\":1000,\"packages\":50000,\"processes\":50000,"
+                "\"ports\":50000,\"network_iface\":100,\"network_protocol\":100,"
+                "\"network_address\":100,\"hardware\":1,\"os_info\":1,"
+                "\"users\":100,\"groups\":100,\"services\":10000,\"browser_extensions\":100"
+            "},"
+            "\"sca\":{\"checks\":10000}"
+        "},"
+        "\"cluster_name\":\"wazuh-cluster\","
+        "\"cluster_node\":\"wazuh-node\""
+        "}";
+
+    module_limits_init(&limits);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups), NULL, 0);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_parse_handshake_json_empty_agent_groups(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    int ret;
+
+    /* Empty agent_groups array - allowed, agent can fallback to merge.mg */
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":100000,\"registry_key\":50000,\"registry_value\":50000},"
+            "\"syscollector\":{"
+                "\"hotfixes\":1000,\"packages\":50000,\"processes\":50000,"
+                "\"ports\":50000,\"network_iface\":100,\"network_protocol\":100,"
+                "\"network_address\":100,\"hardware\":1,\"os_info\":1,"
+                "\"users\":100,\"groups\":100,\"services\":10000,\"browser_extensions\":100"
+            "},"
+            "\"sca\":{\"checks\":10000}"
+        "},"
+        "\"cluster_name\":\"wazuh-cluster\","
+        "\"cluster_node\":\"wazuh-node\","
+        "\"agent_groups\":[]"
+        "}";
+
+    module_limits_init(&limits);
+    /* Debug message logged for empty array */
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups), NULL, 0);
+
+    /* Empty agent_groups is now allowed - returns success */
+    assert_int_equal(ret, 0);
+    /* agent_groups should be empty string */
+    assert_string_equal(agent_groups, "");
+}
+
+static void test_parse_handshake_json_invalid_merged_sum(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char cluster_name[256] = {0};
+    char cluster_node[256] = {0};
+    char agent_groups[1024] = {0};
+    char merged_sum[sizeof(os_md5)] = {0};
+    int ret;
+
+    const char *json_str =
+        "{"
+        "\"limits\":{"
+            "\"fim\":{\"file\":100000,\"registry_key\":50000,\"registry_value\":50000},"
+            "\"syscollector\":{"
+                "\"hotfixes\":1000,\"packages\":50000,\"processes\":50000,"
+                "\"ports\":50000,\"network_iface\":100,\"network_protocol\":100,"
+                "\"network_address\":100,\"hardware\":1,\"os_info\":1,"
+                "\"users\":100,\"groups\":100,\"services\":10000,\"browser_extensions\":100"
+            "},"
+            "\"sca\":{\"checks\":10000}"
+        "},"
+        "\"cluster_name\":\"wazuh-cluster\","
+        "\"cluster_node\":\"wazuh-node\","
+        "\"agent_groups\":[\"default\"],"
+        "\"merged_sum\":\"0123456789abcdef0123456789abcdez\""
+        "}";
+
+    module_limits_init(&limits);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    ret = parse_handshake_json(json_str, &limits, cluster_name, sizeof(cluster_name),
+                               cluster_node, sizeof(cluster_node),
+                               agent_groups, sizeof(agent_groups),
+                               merged_sum, sizeof(merged_sum));
+
+    assert_int_equal(ret, -1);
 }
 
 /* send_agent_stopped_message */
@@ -394,8 +893,25 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_connect_server, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_agent_handshake_to_server, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_handshake_to_server_invalid_version, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_handshake_to_server_error_getting_msg1, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_handshake_to_server_error_getting_msg2, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_send_msg_on_startup, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_send_agent_stopped_message, setup_test, teardown_test),
+        /* parse_handshake_json tests */
+        cmocka_unit_test(test_parse_handshake_json_full_payload),
+        cmocka_unit_test(test_parse_handshake_json_missing_syscollector),
+        cmocka_unit_test(test_parse_handshake_json_with_cluster_name),
+        cmocka_unit_test(test_parse_handshake_json_with_cluster_node),
+        cmocka_unit_test(test_parse_handshake_json_no_cluster_node),
+        cmocka_unit_test(test_parse_handshake_json_no_cluster_name),
+        cmocka_unit_test(test_parse_handshake_json_no_agent_groups),
+        cmocka_unit_test(test_parse_handshake_json_empty_agent_groups),
+        cmocka_unit_test(test_parse_handshake_json_invalid_merged_sum),
+        cmocka_unit_test(test_parse_handshake_json_invalid_json),
+        cmocka_unit_test(test_parse_handshake_json_no_limits_object),
+        cmocka_unit_test(test_parse_handshake_json_null_params),
+        cmocka_unit_test(test_parse_handshake_json_empty_string),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

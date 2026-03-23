@@ -4,8 +4,7 @@ no="n"
 yesmatch="y"
 nomatch="n"
 agent="agent"
-local="local"
-server="server"
+server="manager"
 help="help"
 
 # Global
@@ -21,10 +20,9 @@ system="系统类型"
 user="用户"
 host="主机"
 hitanyorabort="按 ENTER 继续或 Ctrl-C 退出."
-whattoinstall="您希望哪一种安装 (manager, agent, local or help)?"
-serverchose="选择了 Manager (server) 类型的安装"
+whattoinstall="您希望哪一种安装 (manager, agent, or help)?"
+serverchose="选择了 Manager 类型的安装"
 clientchose="选择了 Agent (client) 类型的安装"
-localchose="选择了 Local 类型的安装"
 
 # Part 2
 settingupenv="正在初始化安装环境"
@@ -43,8 +41,8 @@ usingsmtp="使用 SMTP 服务器: "
 whatsmtp="请输入您的 SMTP 服务器IP或主机名 ?"
 
 # Part 3.1/agent
-serverip="请输入 Wazuh 服务器的IP地址"
-serveraddr="请输入 Wazuh 服务器的IP地址或主机名"
+serverip="请输入 Wazuh 管理器的IP地址"
+serveraddr="请输入 Wazuh 管理器的IP地址或主机名"
 addingip="添加服务器IP "
 addingname="添加服务器主机名 "
 
@@ -59,11 +57,6 @@ runrootcheck="您希望运行 rootkit检测吗?"
 norootcheck="rootkit检测将不被部署"
 yesrootcheck="rootkit检测将被部署"
 
-# Part 3.4
-runopenscap="Do you want to run OpenSCAP?"
-norunopenscap="Not running OpenSCAP"
-yesrunopenscap="Running OpenSCAP"
-
 # Part 3.5/server/local
 enable_ar="您希望开启联动(active response)功能吗?"
 noactive="联动功能(Active response)被关闭"
@@ -75,11 +68,6 @@ yesfirewall="防火墙联动(firewall-drop)当事件级别 >= 6 时被启动"
 defaultwhitelist="联动功能默认的白名单是:"
 addwhite="您希望添加更多的IP到白名单吗?"
 ipswhite="请输入IP (用空格进行分隔): "
-
-# Part 3.5/server/local
-syslog="您希望接收远程机器syslog吗 (port 514 udp)?"
-nosyslog="远程机器syslog将不被接收"
-yessyslog="远程机器syslog将被接收"
 
 # Part 3.4/3.5
 readlogs="设置配置文件以分析一下日志:"

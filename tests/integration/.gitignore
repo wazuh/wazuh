@@ -1,0 +1,26 @@
+# Python cache
+__pycache__
+.pytest_cache
+
+# Python bytecode files
+*.pyc
+.idea
+
+# Thumbnails
+._*
+
+### Pycharm ###
+.idea/*
+.idea/
+
+### VisualStudioCode ###
+.vscode/*
+.mypy_cache/
+.vs/*
+
+### Python Virtualenv
+venv
+
+### VisualStudioCode Patch ###
+# Ignore all local history of files
+.history

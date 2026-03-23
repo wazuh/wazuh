@@ -1,0 +1,153 @@
+name: 'Create Agent Integration Tests Issue'
+description: 'Creates a GitHub issue for Agent integration tests'
+inputs:
+  release:
+    description: 'Release version (e.g., 4.9.1)'
+    required: true
+  stage:
+    description: 'Stage (e.g., RC 2, Alpha 1)'
+    required: true
+  main_issue:
+    description: 'Main issue number'
+    required: true
+  prev_issue:
+    description: 'Previous issue number'
+    required: true
+  assignee:
+    description: 'GitHub username to assign the issue to'
+    required: true
+  github_token:
+    description: 'GitHub token'
+    required: true
+  project_token:
+    description: 'GitHub token with project permissions (optional, for project configuration)'
+    required: false
+    default: ''
+outputs:
+  issue_url:
+    description: 'URL of the created issue'
+    value: ${{ steps.create-issue.outputs.issue_url }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Create Agent Integration Tests Issue
+      id: create-issue
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+      run: |
+        RELEASE="${{ inputs.release }}"
+        STAGE="${{ inputs.stage }}"
+        MAIN_ISSUE="${{ inputs.main_issue }}"
+        PREV_ISSUE="${{ inputs.prev_issue }}"
+
+        REPO="wazuh/wazuh"
+        PROJECT="XDR+SIEM/Agent team"
+        LABEL="level/task,type/test"
+        TITLE="Release $RELEASE - $STAGE - Agent integration tests"
+        TAG="v$RELEASE-$(echo ${STAGE// /} | tr '[:upper:]' '[:lower:]')"
+
+        # Define integration tests array
+        INTEGRATION_TESTS=(
+          "4_testintegration_agentd-tier-0-1-lin"
+          "4_testintegration_agentd-tier-0-1-win"
+          "4_testintegration_aws-tier-0-1"
+          "4_testintegration_enrollment-tier-0-1-lin"
+          "4_testintegration_enrollment-tier-0-1-win"
+          "4_testintegration_execd-tier-0-1-lin"
+          "4_testintegration_execd-tier-0-1-win"
+          "4_testintegration_fim-tier-0-1-lin"
+          "4_testintegration_fim-tier-0-1-macos"
+          "4_testintegration_fim-tier-0-1-win"
+          "4_testintegration_github-tier-0-1-lin"
+          "4_testintegration_github-tier-0-1-win"
+          "4_testintegration_logcollector-tier-0-1-lin"
+          "4_testintegration_logcollector-tier-0-1-macos"
+          "4_testintegration_logcollector-tier-0-1-win"
+          "4_testintegration_msgraph-tier-0-1-lin"
+          "4_testintegration_office365-tier-0-1-lin"
+          "4_testintegration_office365-tier-0-1-win"
+          "4_testintegration_sca-tier-0-1-lin"
+          "4_testintegration_sca-tier-0-1-win"
+          "4_testintegration_syscollector-tier-0-1-lin"
+          "4_testintegration_syscollector-tier-0-1-win"
+          "4_testintegration_fim-tier-2-lin"
+          "4_testintegration_fim-tier-2-win"
+        )
+
+        # Generate results template rows
+        RESULTS_ROWS=""
+        for test in "${INTEGRATION_TESTS[@]}"; do
+          RESULTS_ROWS="${RESULTS_ROWS}| | $test | | |\n"
+        done
+
+        BODY=$(cat <<EOF
+        |Main RC issue|Version|Stage|Tag|Previous issue|
+        |---|---|---|---|---|
+        |#$MAIN_ISSUE|$RELEASE|$STAGE|[$TAG](https://github.com/wazuh/wazuh/tree/$TAG)|#$PREV_ISSUE|
+
+        The tests will be performed on GitHub workflows. Linux, Windows, and macOS will be used as required.
+
+        <details><summary>Results template</summary>
+
+        ---
+
+        ## Results
+
+        | Result | Test | Link | Comment |
+        |:-:|--|--|--|
+        $(printf "$RESULTS_ROWS")
+
+        ### Legend
+
+        🟢 The pipeline has been executed successfully.
+        🟡 The pipeline is still in progress.
+        🔴 The pipeline has failed.
+
+        ## Conclusion
+
+        ...
+
+        ---
+
+        </details>
+
+        ## Auditors' validation
+
+        In order to close and proceed with the release or the next candidate version, the following auditors must give the green light to this RC.
+
+        - [ ] @wazuh/devel-xdrsiem-agent
+        - [ ] @wazuh/devel-xdrsiem-qa-release
+        EOF
+        )
+
+        if OUTPUT=$(gh issue create \
+          --repo "$REPO" \
+          --title "$TITLE" \
+          --label "$LABEL" \
+          --body "$BODY" \
+          --assignee "${{ inputs.assignee }}" 2>&1); then
+
+          ISSUE_URL="$OUTPUT"
+          echo "issue_url=$ISSUE_URL" >> $GITHUB_OUTPUT
+
+          # Extract issue number from URL
+          ISSUE_NUMBER=$(echo "$ISSUE_URL" | grep -oP '\d+$')
+
+          # Configure project fields if project_token is provided
+          if [[ -n "${{ inputs.project_token }}" ]]; then
+            echo "Configuring project fields..."
+            export GITHUB_TOKEN="${{ inputs.project_token }}"
+
+            # Add issue to project first
+            gh project item-add 86 --owner wazuh --url "$ISSUE_URL"
+
+            # Configure project fields
+            bash .github/scripts/configure-project-fields.sh "$ISSUE_NUMBER" "$RELEASE" "$STAGE"
+          else
+            echo "No project token provided, skipping project configuration"
+          fi
+        else
+          echo "Error creating issue: $OUTPUT"
+          exit 1
+        fi

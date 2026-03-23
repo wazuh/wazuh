@@ -1,0 +1,121 @@
+# Name of the helper function
+name: iana_protocol_number_to_name
+
+metadata:
+  description: |
+    Resolves an IANA IP protocol numeric code (0..255) to its canonical keyword.
+    The helper accepts either a number or a base-10 numeric string (same argument, by reference).
+    The helper returns failure for experimental, reserved, unassigned codes and for generic/unspecific categories.
+  keywords:
+    - iana
+    - protocol
+
+helper_type: map
+
+arguments:
+  protocol_code:
+    type:
+      - string
+      - number
+    source: reference
+
+skipped:
+  - success_cases
+
+is_variadic: False
+
+output:
+  type: string
+  subset: string
+
+test:
+  - arguments:
+      protocol_code: 6
+    should_pass: true
+    expected: "tcp"
+    description: 6 → "tcp"
+  - arguments:
+      protocol_code: 58
+    should_pass: true
+    expected: "ipv6-icmp"
+    description: 58 → "ipv6-icmp"
+  - arguments:
+      protocol_code: 147
+    should_pass: true
+    expected: "bit-emu"
+    description: 147 → "bit-emu"
+  - arguments:
+      protocol_code: "6"
+    should_pass: true
+    expected: "tcp"
+    description: string numeric accepted
+  - arguments:
+      protocol_code: "58"
+    should_pass: true
+    expected: "ipv6-icmp"
+    description: string numeric accepted
+  - arguments:
+      protocol_code: "147"
+    should_pass: true
+    expected: "bit-emu"
+    description: string numeric accepted
+  - arguments:
+      protocol_code: "6.0"
+    should_pass: false
+    description: rejects non-integer numeric string
+  - arguments:
+      protocol_code: "-1"
+    should_pass: false
+    description: out of range (negative)
+  - arguments:
+      protocol_code: "256"
+    should_pass: false
+    description: out of range (>255)
+  - arguments:
+      protocol_code: "abc"
+    should_pass: false
+    description: non-numeric string rejected
+  - arguments:
+      protocol_code: 61
+    should_pass: false
+    description: reject generic/unspecific category
+  - arguments:
+      protocol_code: 63
+    should_pass: false
+    description: reject generic/unspecific category
+  - arguments:
+      protocol_code: 68
+    should_pass: false
+    description: reject generic/unspecific category
+  - arguments:
+      protocol_code: 99
+    should_pass: false
+    description: reject generic/unspecific category
+  - arguments:
+      protocol_code: 114
+    should_pass: false
+    description: reject generic/unspecific category
+  - arguments:
+      protocol_code: 148
+    should_pass: false
+    description: unassigned protocol code
+  - arguments:
+      protocol_code: 253
+    should_pass: false
+    description: experimental protocol code
+  - arguments:
+      protocol_code: 255
+    should_pass: false
+    description: reserved protocol code
+  - arguments:
+      protocol_code: -1
+    should_pass: false
+    description: out of range (negative)
+  - arguments:
+      protocol_code: 256
+    should_pass: false
+    description: out of range (>255)
+  - arguments:
+      protocol_code: null
+    should_pass: false
+    description: null rejected

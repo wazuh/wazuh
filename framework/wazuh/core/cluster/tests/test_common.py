@@ -1,9 +1,8 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import _hashlib
-import _io
 import abc
 import asyncio
 import hashlib
@@ -13,7 +12,7 @@ import os
 import sys
 from contextvars import ContextVar
 from datetime import datetime
-from unittest.mock import patch, MagicMock, mock_open, call, ANY
+from unittest.mock import patch, MagicMock, call, ANY, AsyncMock, mock_open
 
 import cryptography
 import pytest
@@ -35,10 +34,9 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.core.cluster.common as cluster_common
         import wazuh.core.results as wresults
         from wazuh.core import common
-        from wazuh.core.wdb import WazuhDBConnection
+        from wazuh.core.wdb import AsyncWazuhDBConnection
 
 # Globals
-
 cluster_items = {"etc/": {"permissions": "0o640", "source": "master", "files": ["client.keys"],
                           "description": "client keys file database"},
                  "intervals": {"worker": {"sync_integrity": 9, "sync_agent_info": 10, "sync_agent_groups": 10,
@@ -55,7 +53,6 @@ cluster_items = {"etc/": {"permissions": "0o640", "source": "master", "files": [
 fernet_key = "00000000000000000000000000000000"
 wazuh_common = cluster_common.WazuhCommon()
 in_buffer = cluster_common.InBuffer()
-
 
 asyncio.set_event_loop_policy(EventLoopPolicy())
 loop = new_event_loop()
@@ -166,6 +163,7 @@ def test_sst_init(setup_coro_mock, create_task_mock):
     with patch.object(TaskMock, "add_done_callback") as done_callback_mock:
         sst_task = cluster_common.SendStringTask(wazuh_common=cluster_common.WazuhCommon(), logger='')
         assert sst_task.logger == ''
+        assert sst_task.task in sst_task.tasks_hard_reference
         assert isinstance(sst_task.wazuh_common, cluster_common.WazuhCommon)
         setup_coro_mock.assert_called_once()
         done_callback_mock.assert_called_once()
@@ -203,8 +201,10 @@ def test_sst_done_callback(setup_coro_mock, create_task_mock):
         logger = logging.getLogger('wazuh')
         with patch.object(logger, "error") as logger_mock:
             sst_task = cluster_common.SendStringTask(wazuh_common=wazuh_common_mock, logger=logger)
+            assert sst_task.task in sst_task.tasks_hard_reference
             sst_task.done_callback()
             logger_mock.assert_called_once_with(Exception)
+            assert sst_task.task not in sst_task.tasks_hard_reference
 
 
 # Test ReceiveStringTask methods
@@ -235,16 +235,21 @@ def test_rst_init(setup_coro_mock, create_task_mock):
         assert isinstance(string_task.task, TaskMock)
 
 
+@pytest.mark.asyncio
 @patch('logging.Logger')
-@patch('asyncio.create_task')
-@patch('wazuh.core.cluster.common.WazuhCommon')
-@patch('wazuh.core.cluster.common.ReceiveStringTask.set_up_coro')
-def test_rst_str_method(setup_coro_mock, wazuh_common_mock, create_task_mock, logger_mock):
+async def test_rst_str_method(logger_mock, event_loop):
     """Test the proper output of the '__str__' method."""
+    async def coro(task_id: str, data: str):
+        return ''
 
-    string_task = cluster_common.ReceiveStringTask(wazuh_common_mock, '', b"task", logger_mock)
-    assert isinstance(string_task.__str__(), str)
-    assert string_task.__str__() == "task"
+    def return_coro():
+        return coro
+
+    with patch('wazuh.core.cluster.common.ReceiveStringTask.set_up_coro', side_effect = return_coro) as setup_coro_mock:
+        string_task = cluster_common.ReceiveStringTask(cluster_common.WazuhCommon(), '', b"task", logger_mock)
+        assert isinstance(string_task.__str__(), str)
+        assert string_task.__str__() == "task"
+        await string_task.coro('task', 'data' )
 
 
 @patch('logging.Logger')
@@ -256,7 +261,6 @@ def test_rst_set_up_coro_ko(wazuh_common_mock, logger_mock):
         cluster_common.ReceiveStringTask(wazuh_common_mock, logger_mock, b"task")
 
 
-@pytest.mark.asyncio
 @patch("asyncio.create_task")
 @patch("wazuh.core.cluster.common.ReceiveStringTask.set_up_coro")
 def test_rst_done_callback(setup_coro_mock, create_task_mock):
@@ -475,7 +479,7 @@ def test_handler_msg_build_ok(pack_mock):
     assert isinstance(handler.msg_build(b"command", 12345, b"000000000000000000000"), list)
     assert isinstance(handler.msg_build(b"command", 12345, b"data")[0], bytearray)
 
-    assert pack_mock.call_count == 13
+    assert pack_mock.call_count == 10
 
 
 def test_handler_msg_build_ko():
@@ -540,24 +544,32 @@ def test_handler_get_messages_ko(decrypt_mock, msg_parse_mock):
 
 @pytest.mark.asyncio
 @patch('wazuh.core.cluster.common.Handler.push')
-@patch('asyncio.wait_for', return_value="some value")
 @patch('wazuh.core.cluster.common.Handler.next_counter', return_value=30)
 @patch('wazuh.core.cluster.common.Handler.msg_build', return_value=["some", "messages"])
-async def test_handler_send_request_ok(msg_build_mock, next_counter_mock, wait_for_mock, push_mock):
+async def test_handler_send_request_ok(msg_build_mock, next_counter_mock, push_mock):
     """Test if a request is being properly sent."""
+
+    async def delay():
+        await asyncio.sleep(0.5)
+
     handler = cluster_common.Handler(fernet_key, cluster_items)
 
-    assert (await handler.send_request(b'some bytes', b'some data') == "some value")
-    assert next_counter_mock.return_value not in handler.box
+    with patch('wazuh.core.cluster.common.Response.read', return_value="some value") as read_mock:
+        assert (await handler.send_request(b'some bytes', b'some data') == "some value")
+        assert next_counter_mock.return_value not in handler.box
+        read_mock.assert_awaited_once()
 
-    wait_for_mock.side_effect = asyncio.TimeoutError
-    assert (await handler.send_request(b'some bytes', b'some data') == b'Error sending request: '
-                                                                       b'timeout expired.')
-    assert handler.box[next_counter_mock.return_value] is None
+    handler.cluster_items['intervals']['communication']['timeout_cluster_request'] = 0.01
+    with patch('wazuh.core.cluster.common.Response.read', side_effect=delay):
+        with pytest.raises(exception.WazuhClusterError, match=r'\b3020\b'):
+            await handler.send_request(b'some bytes', b'some data')
+        read_mock.assert_awaited_once()
+        assert handler.box[next_counter_mock.return_value] is None
+
 
     msg_build_mock.assert_called_with(b'some bytes', 30, b'some data')
     next_counter_mock.assert_called_with()
-    assert wait_for_mock.call_count == 2
+
     push_mock.assert_called_with("messages")
 
 
@@ -637,21 +649,22 @@ async def test_handler_update_chunks_wdb(send_request_mock):
     handler = cluster_common.Handler(fernet_key, cluster_items)
     handler.server = ServerMock(None)
 
-    with patch('wazuh.core.cluster.cluster.run_in_pool',
-               return_value={'total_updated': 0, 'errors_per_folder': {'key': 'value'}, 'generic_errors': ['ERR'],
-                             'updated_chunks': 2, 'time_spent': 6,
-                             'error_messages': {'chunks': [[0, 0], [1, 1]], 'others': ['other1', 'other2']}}):
+    with patch('wazuh.core.cluster.common.send_data_to_wdb', new_callable=AsyncMock) as send_data_to_wdb_mock:
         with patch.object(LoggerMock, "debug") as logger_debug_mock:
             with patch.object(LoggerMock, "debug2") as logger_debug2_mock:
                 with patch.object(LoggerMock, "error") as logger_error_mock:
+                    send_data_to_wdb_mock.return_value = {
+                        'total_updated': 0, 'errors_per_folder': {'key': 'value'}, 'generic_errors': ['ERR'],
+                        'updated_chunks': 2, 'time_spent': 6,
+                        'error_messages': {'chunks': [[0, 0], [1, 1]], 'others': ['other1', 'other2']}}
                     assert await handler.update_chunks_wdb(
-                        data={'chunks': [0, 1, 2, 3, 4]}, info_type='info',
+                        data={'chunks': [0, 1, 2, 3, 4]}, info_type='agent-groups',
                         logger=logger, error_command=b'ERROR', timeout=10) == {'error_messages': [0, 1],
                                                                                'errors_per_folder': {'key': 'value'},
                                                                                'generic_errors': ['ERR'],
                                                                                'time_spent': 6,
                                                                                'total_updated': 0, 'updated_chunks': 2}
-                    logger_debug_mock.assert_has_calls([call('2/5 chunks updated in wazuh-db in 6.000s.')])
+                    logger_debug_mock.assert_has_calls([call('2/5 chunks updated in wazuh-manager-db in 6.000s.')])
                     logger_debug2_mock.assert_has_calls([call('Chunk 1/5: 0'), call('Chunk 2/5: 1')])
                     logger_error_mock.assert_has_calls([call('other1'), call('other2'),
                                                         call('Wazuh-db response for chunk 1/5 was not "ok": 0'),
@@ -659,54 +672,16 @@ async def test_handler_update_chunks_wdb(send_request_mock):
 
     # Test Exception
     send_request_mock.reset_mock()
-    with pytest.raises(exception.WazuhClusterError,
-                       match=r'.*Error 3037 - Error while processing Agent-info chunks: .*'):
-        await handler.update_chunks_wdb(data={'chunks': [0, 1, 2, 3, 4]}, info_type='info',
-                                        logger=logger, error_command=b'ERROR', timeout=10)
+    error_message = 'error'
+    with patch('wazuh.core.cluster.common.send_data_to_wdb', side_effect=Exception(error_message)):
+        with pytest.raises(exception.WazuhClusterError,
+                        match=r'.*Error 3037 - Error while processing Agent-info chunks: .*'):
+            await handler.update_chunks_wdb(data={'chunks': [0, 1, 2, 3, 4]}, info_type='info',
+                                            logger=logger, error_command=b'ERROR', timeout=10)
+
     send_request_mock.assert_has_calls(
         [call(command=b'ERROR',
-              data=b'error processing info chunks in process pool: '
-                   b'Error 2005 - Could not connect to wdb socket: [Errno 2] No such file or directory')])
-
-
-@pytest.mark.asyncio
-@patch('wazuh.core.cluster.common.Handler.send_request', return_value=b"some data")
-async def test_handler_send_result_to_manager(send_request_mock):
-    """Check that the results are sent correctly."""
-
-    handler = cluster_common.Handler(fernet_key, cluster_items)
-    assert await handler.send_result_to_manager(command=b'testing', result={'dict': '0'}) == b"some data"
-    send_request_mock.assert_has_calls([call(command=b'testing', data=b'{"dict": "0"}')])
-
-
-@pytest.mark.asyncio
-@freeze_time("2022-02-15")
-@patch('wazuh.core.cluster.common.Handler.send_result_to_manager', return_value=b"ok")
-@patch('wazuh.core.cluster.common.Handler.update_chunks_wdb', return_value={'updated_chunks': 1})
-@patch('wazuh.core.cluster.common.Handler.get_chunks_in_task_id', return_value={'test': 'chunks_in_task_id'})
-async def test_handler_sync_wazuh_db_information(get_chunks_in_task_id_mock, update_chunks_wdb_mock,
-                                                 send_result_to_manager_mock):
-    """Check that data is sent to wazuh-db."""
-
-    class LoggerMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            self._info = []
-
-        def info(self, data):
-            """Auxiliary method."""
-            self._info.append(data)
-
-    logger = LoggerMock()
-    sync_dict = {'date_start_master': 0, 'date_end_master': 0, 'n_synced_chunks': 0}
-    handler = cluster_common.Handler(fernet_key, cluster_items)
-    with patch.object(LoggerMock, "info") as logger_info_mock:
-        assert await handler.sync_wazuh_db_information(task_id=b'1', info_type='info', logger=logger,
-                                                       command=b'command',
-                                                       error_command=b'error_command', sync_dict=sync_dict,
-                                                       timeout=10) == b'ok'
-        logger_info_mock.assert_has_calls([call('Finished in 0.000s. Updated 1 chunks.')])
+              data=f'error processing info chunks in process pool: {error_message}'.encode())])
 
 
 @pytest.mark.asyncio
@@ -757,11 +732,12 @@ async def test_handler_send_string():
     with patch('wazuh.core.cluster.common.Handler.send_request', return_value=b"some data"):
         assert (await handler.send_string(b"something") == b"some data")
 
-    with patch('wazuh.core.cluster.common.Handler.send_request', return_value=b"Error"):
+    with patch('wazuh.core.cluster.common.Handler.send_request', side_effect=exception.WazuhClusterError(3020)):
         with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
-            assert (await handler.send_string(b"something") == b"Error")
-            logger_mock.assert_called_once_with(f'There was an error while trying to send a string: {b"Error"}',
-                                                exc_info=False)
+            assert exception.WazuhClusterError(3020).message.encode() in await handler.send_string(b"something")
+            logger_mock.assert_called_once_with(
+                'There was an error while trying to send a string: Error 3020 - Timeout sending request',
+                exc_info=False)
 
 
 def test_handler_get_manager():
@@ -865,7 +841,12 @@ async def test_handler_forward_sendsync_response_ok():
 
 
 @pytest.mark.asyncio
-async def test_handler_forward_sendsync_response_ko():
+@pytest.mark.parametrize('exception, expected_error', [
+    (exception.WazuhException(1001), exception.WazuhException(1001)),
+    (exception.WazuhClusterError(3020), None),
+    (Exception('Test'), exception.WazuhClusterError(1000, extra_message='Test'))
+])
+async def test_handler_forward_sendsync_response_ko(exception, expected_error):
     """Test the exceptions present in 'forward_sendsync_response' method."""
 
     class ParentManager:
@@ -886,20 +867,22 @@ async def test_handler_forward_sendsync_response_ko():
 
     with patch('wazuh.core.cluster.common.Handler.get_manager', return_value=mock_manager):
         # Mock the functions with the expected exceptions
-        with patch.object(mock_manager.local_server, "send_request",
-                          side_effect=exception.WazuhException(1001)) as send_request_mock:
+        with patch.object(mock_manager.local_server, "send_request", side_effect=exception):
             with patch.object(logging.getLogger('wazuh'), "error") as logger_mock:
-                with patch('wazuh.core.cluster.common.Handler.send_request', return_value="some value"):
-                    with patch('json.dumps', return_value="some value"):
-                        await handler.forward_sendsync_response(b"client string_id")
-                        assert handler.in_str == {b'other_string': 'some value'}
-                        logger_mock.assert_called_once_with(f"Error sending send sync response to local client: "
-                                                            f"{exception.WazuhException(1001)}")
+                with patch('wazuh.core.cluster.common.Handler.send_request',
+                           return_value="some value") as send_request_mock:
+                    await handler.forward_sendsync_response(b"client string_id")
+                    assert handler.in_str == {b'other_string': 'some value'}
 
-                        send_request_mock.side_effect = Exception
-                        await handler.forward_sendsync_response(b"client string_id")
-                        logger_mock.assert_called_with("Error sending send sync response to local client: "
-                                                       "b'string_id'")
+                    if expected_error:
+                        logger_mock.assert_called_once_with(f"Error sending sendsync response to local client: "
+                                                            f"{str(exception)}")
+                        send_request_mock.assert_called_once_with(
+                            b'sendsync_err',
+                            json.dumps(expected_error, cls=cluster_common.WazuhJSONEncoder).encode()
+                        )
+                    else:
+                        logger_mock.assert_not_called()
 
 
 def test_handler_data_received_ok():
@@ -1021,6 +1004,9 @@ def test_handler_process_request():
     with patch('wazuh.core.cluster.common.Handler.cancel_task') as cancel_task_mock:
         handler.process_request(b"cancel_task", b"data")
         cancel_task_mock.assert_called_once_with(b"data")
+    with patch('wazuh.core.cluster.common.Handler.process_dapi_error') as process_dapi_err_mock:
+        handler.process_request(b"dapi_err", b"dapi_client error_msg")
+        process_dapi_err_mock.assert_called_once_with(b"dapi_client error_msg")
     with patch('wazuh.core.cluster.common.Handler.process_unknown_cmd') as process_unknown_cmd_mock:
         handler.process_request(b"something random", b"data")
         process_unknown_cmd_mock.assert_called_once_with(b"something random")
@@ -1049,11 +1035,22 @@ def test_handler_receive_file():
     """Test if a descriptor file is created for an incoming file."""
     handler = cluster_common.Handler(fernet_key, cluster_items)
 
-    assert handler.receive_file(b"data") == (b"ok ", b"Ready to receive new file")
-    assert "fd" in handler.in_file[b"data"]
-    assert isinstance(handler.in_file[b"data"]["fd"], _io.BufferedWriter)
-    assert "checksum" in handler.in_file[b"data"]
-    assert isinstance(handler.in_file[b"data"]["checksum"], _hashlib.HASH)
+    path = b"/queue/cluster/testfile"
+
+    with patch('builtins.open', mock_open()) as open_mock:
+        assert handler.receive_file(path) == (b"ok ", b"Ready to receive new file")
+    assert "fd" in handler.in_file[path]
+    assert handler.in_file[path]["fd"] == open_mock.return_value
+    assert "checksum" in handler.in_file[path]
+    assert isinstance(handler.in_file[path]["checksum"], _hashlib.HASH)
+
+
+def test_handler_receive_file_rejects_invalid_and_disallowed_paths():
+    """Ensure receive_file rejects invalid paths and writes outside allowed cluster directories."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+
+    # Disallowed path (attempt to write into /etc)
+    assert handler.receive_file(b"/etc/wazuh-manager.conf") == (b"err", b"Write path not allowed")
 
 
 def test_handler_update_file():
@@ -1147,6 +1144,70 @@ def test_handler_process_unknown_cmd():
     assert handler.process_unknown_cmd(b"unknown") == (b'err', "unknown command 'b'unknown''".encode())
 
 
+def test_handler_process_dapi_error():
+    """Test if 'dapi_err' command is properly handled in 'process_dapi_error'."""
+
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+
+    class ClientsMock:
+        """Auxiliary class."""
+
+        def send_request(self, command, error_msg):
+            pass
+
+    class LocalServerDapiMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self.clients = {"dapi_client": ClientsMock()}
+
+    class ManagerMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self.local_server = LocalServerDapiMock()
+
+    with patch("asyncio.create_task", return_value=b"ok") as create_task_mock:
+        handler.server = ManagerMock()
+        with patch.object(ClientsMock, "send_request") as send_request_mock:
+            handler.process_dapi_error(b"dapi_client error_msg")
+            send_request_mock.assert_called_once_with(b"dapi_err", b"error_msg")
+            create_task_mock.assert_called_once()
+
+
+def test_handler_process_dapi_error_ko():
+    """Test the correct exception raise at method 'process_dapi_error'."""
+
+    class ClientsMock:
+        """Auxiliary class."""
+
+        def send_request(self, command, error_msg):
+            pass
+
+    class LocalServerDapiMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self.clients = {"not_data": ClientsMock()}
+
+    class ManagerMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self.local_server = LocalServerDapiMock()
+
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3032 .*"):
+        handler.server = ManagerMock()
+        handler.process_dapi_error(data=b"data 2")
+
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3025 .*"):
+        with patch("asyncio.create_task", side_effect=exception.WazuhClusterError(1001)):
+            handler.server = ManagerMock()
+            handler.server.local_server.clients = {"data": ClientsMock()}
+            handler.process_dapi_error(data=b"data 2")
+
+
 def test_handler_process_error_from_peer():
     """Test if errors in requests are properly handled."""
     handler = cluster_common.Handler(fernet_key, cluster_items)
@@ -1178,23 +1239,48 @@ def test_handler_setup_task_logger():
 
 
 @pytest.mark.asyncio
-@patch("asyncio.wait_for")
-async def test_handler_wait_for_file(wait_for_mock):
-    """Check if wait_for is called with expected parameters."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
-    await handler.wait_for_file(asyncio.Event(), 'test')
-    wait_for_mock.assert_called_once_with(ANY, timeout=120)
+async def test_handler_wait_for_file():
+    """Check if wait_for is called with expected parameters.
 
+       The implementation is complex because asyncio.wait_for is patched.
+       Handler.wait_for_file and and unlocking coroutine are run using asyncio.gather
+       The unlocking coroutine waits 0.5 seconds, while the timeout is set to 10 seconds
+       The test must not raise any exception.
+       '"""
+
+    async def unlock_file(event: asyncio.Event):
+        await asyncio.sleep(0.5)
+        event.set()
+
+    file_event = asyncio.Event()
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler.cluster_items['intervals']['communication']['timeout_receiving_file'] = 10
+    await asyncio.gather(handler.wait_for_file(file_event, 'test'), unlock_file(file_event))
 
 @pytest.mark.asyncio
 @patch('wazuh.core.cluster.common.Handler.send_request')
 async def test_handler_wait_for_file_ko(send_request_mock):
-    """Check if expected exception is raised."""
+    """Check if expected exception is raised.
+        Condition 1: when event.wait() exceeds the timeout, WazuhClusterError 3039 is raised
+        Condition 2: when any other exception occurs, WazuhClusterError 3040  is raised"""
+
+    async def delay():
+        await asyncio.sleep(0.5)
+
+    send_request_mock.return_value = ''
     handler = cluster_common.Handler(fernet_key, cluster_items)
-    with pytest.raises(exception.WazuhClusterError, match='.* 3039 .*'):
-        with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError):
-            await handler.wait_for_file(asyncio.Event(), 'test')
+    handler.cluster_items['intervals']['communication']['timeout_receiving_file'] = 0.4
+    file_event = AsyncMock()
+    with pytest.raises(exception.WazuhClusterError, match=r'.* 3039 .*'):
+        with patch.object(file_event, 'wait', side_effect = delay):
+            await handler.wait_for_file(file_event, 'test')
     send_request_mock.assert_called_once_with(command=b'cancel_task', data=ANY)
+
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3040 .*"):
+        with patch.object(file_event, 'wait', side_effect = Exception('any')):
+            await handler.wait_for_file(file_event, "task_id")
+    send_request_mock.assert_called_with(command=b'cancel_task', data=ANY)
+
 
 # Test 'WazuhCommon' class methods
 
@@ -1203,8 +1289,56 @@ def test_wazuh_common_init():
 
     wazuh_common_test = cluster_common.WazuhCommon()
     assert wazuh_common_test.sync_tasks == {}
-    assert wazuh_common_test.logger_tag == ""
 
+
+@pytest.mark.asyncio
+@patch("wazuh.core.cluster.common.AsyncWazuhDBConnection", return_value=AsyncMock())
+async def test_wazuh_common_recalculate_group_hash(asyncwazuhdbconnection_mock):
+    class LoggerMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self._debug = []
+
+        def debug(self, data):
+            """Auxiliary method."""
+            self._debug.append(data)
+
+    logger = LoggerMock()
+    await wazuh_common.recalculate_group_hash(logger)
+    assert logger._debug == ['Recalculating agent-group hash.']
+
+
+@pytest.mark.asyncio
+@patch("wazuh.core.cluster.common.AsyncWazuhDBConnection")
+async def test_wazuh_common_recalculate_group_hash_ko(asyncwazuhdbconnection_mock):
+    class LoggerMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self._warning = []
+            self._debug = []
+
+        def debug(self, data):
+            """Auxiliary method."""
+            self._debug.append(data)
+
+        def warning(self, data):
+            """Auxiliary method."""
+            self._warning.append(data)
+
+    logger = LoggerMock()
+    asyncwazuhdbconnection_mock.side_effect = [exception.WazuhInternalError(2007), exception.WazuhError(2003)]
+
+    await wazuh_common.recalculate_group_hash(logger)
+    assert logger._debug == ['Recalculating agent-group hash.']
+    assert logger._warning == ['Error 2007 executing recalculate agent-group hash command: '
+                               'Error retrieving data from Wazuh DB']
+
+    logger = LoggerMock()
+    await wazuh_common.recalculate_group_hash(logger)
+    assert logger._debug == ['Recalculating agent-group hash.']
+    assert logger._warning == ['Error 2003 executing recalculate agent-group hash command: Error in wazuhdb request']
 
 def test_wazuh_common_get_logger():
     """Check if a Logger object is properly returned."""
@@ -1324,47 +1458,6 @@ def test_wazuh_common_get_node():
         manager_mock.assert_called_once()
 
 
-# Test SyncTask class methods
-
-def test_sync_task_init():
-    """Test '__init__' method from the SyncTask class."""
-    sync_task = cluster_common.SyncTask(b"cmd", logging.getLogger("wazuh"),
-                                        cluster_common.Handler(fernet_key, cluster_items))
-
-    assert sync_task.cmd == b"cmd"
-    assert sync_task.logger == logging.getLogger("wazuh")
-    assert isinstance(sync_task.server, cluster_common.Handler)
-
-
-@pytest.mark.asyncio
-@patch('wazuh.core.cluster.common.Handler.send_request', return_value=Exception())
-async def test_sync_task_request_permission(send_request_mock):
-    """Check if a True value is returned once a permission to start synchronization is granted or a False when it
-    is not."""
-
-    sync_task = cluster_common.SyncTask(b"cmd", logging.getLogger("wazuh"),
-                                        cluster_common.Handler(fernet_key, cluster_items))
-
-    # Test first condition
-    with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
-        assert await sync_task.request_permission() is False
-        send_request_mock.assert_called_with(command=b"cmd" + b"_p", data=b"")
-        logger_mock.assert_called_once_with(f"Error asking for permission: {Exception()}")
-
-    with patch.object(logging.getLogger("wazuh"), "debug") as logger_mock:
-        # Test second condition
-        send_request_mock.return_value = b"True"
-        assert await sync_task.request_permission() is True
-        send_request_mock.assert_called_with(command=b"cmd" + b"_p", data=b"")
-        logger_mock.assert_called_once_with("Permission to synchronize granted.")
-
-        # Test third condition
-        send_request_mock.return_value = b"False"
-        assert await sync_task.request_permission() is False
-        send_request_mock.assert_called_with(command=b"cmd" + b"_p", data=b"")
-        logger_mock.assert_called_with("Master didn't grant permission to start a new synchronization: b'False'")
-
-
 # Test SyncWazuhdb class
 
 def test_sync_wazuh_db_init():
@@ -1394,7 +1487,7 @@ async def test_sync_wazuh_db_retrieve_information(socket_mock):
         else:
             return 'ok', {'id': counter}
 
-    wdb_conn = WazuhDBConnection()
+    wdb_conn = AsyncWazuhDBConnection()
     logger = logging.getLogger("wazuh")
     handler = cluster_common.Handler(fernet_key, cluster_items)
     sync_object = cluster_common.SyncWazuhdb(manager=handler, logger=logger, cmd=b'syn_a_w_m',
@@ -1424,13 +1517,47 @@ async def test_sync_wazuh_db_retrieve_information(socket_mock):
         with patch.object(sync_object.logger, 'error') as logger_error_mock:
             assert await sync_object.retrieve_information() == []
             logger_error_mock.assert_called_with(
-                'Error obtaining data from wazuh-db: Error 1000 - Wazuh Internal Error')
+                'Could not obtain data from wazuh-manager-db: Error 1000 - Wazuh Internal Error')
+
+
+@patch('wazuh.core.wdb_http.WazuhDBHTTPClient')
+async def test_sync_wazuh_db_retrieve_agents_information(wdb_http_client_mock):
+    """Validate that the `retrieve_agents_information` method works as expected."""
+    logger = logging.getLogger('wazuh')
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    sync_object = cluster_common.SyncWazuhdb(manager=handler, logger=logger, cmd=b'syn_a_w_m',
+                                             data_retriever=None,
+                                             get_data_command='global sync-agent-info-get ',
+                                             set_data_command='global sync-agent-info-set')
+
+    agents_info = {'id': 1, 'name': 'test'}
+    wdb_http_client_mock.return_value.close = AsyncMock()
+    get_agents_sync_mock = AsyncMock(return_value=agents_info)
+    wdb_http_client_mock.return_value.get_agents_sync = get_agents_sync_mock
+
+    assert await sync_object.retrieve_agents_information() == {'id': 1, 'name': 'test'}
+
+
+async def test_sync_wazuh_db_retrieve_agents_information_ko():
+    """Validate that the `retrieve_agents_information` method handles exceptions successfully."""
+    logger = logging.getLogger('wazuh')
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    sync_object = cluster_common.SyncWazuhdb(manager=handler, logger=logger, cmd=b'syn_a_w_m',
+                                             data_retriever=None,
+                                             get_data_command='global sync-agent-info-get ',
+                                             set_data_command='global sync-agent-info-set')
+
+    with patch('wazuh.core.wdb_http.WazuhDBHTTPClient', side_effect=exception.WazuhException(1000)):
+        with patch.object(sync_object.logger, 'error') as logger_error_mock:
+            assert await sync_object.retrieve_agents_information() is None
+            logger_error_mock.assert_called_with(
+                'Could not obtain data from wazuh-manager-db: Error 1000 - Wazuh Internal Error')
 
 
 @pytest.mark.asyncio
 @freeze_time('1970-01-01')
 @patch("json.dumps", return_value="")
-@patch('wazuh.core.cluster.common.perf_counter', return_value=0)
+@patch('wazuh.core.cluster.common.time.perf_counter', return_value=0)
 async def test_sync_wazuh_db_sync_ok(perf_counter_mock, json_dumps_mock):
     """Check if the information is being properly sent to the master/worker node."""
 
@@ -1447,14 +1574,14 @@ async def test_sync_wazuh_db_sync_ok(perf_counter_mock, json_dumps_mock):
                 send_request_mock.assert_called_once_with(command=b"cmd", data=b"OK")
                 json_dumps_mock.assert_called_with({'set_data_command': 'set_command',
                                                     'payload': {}, 'chunks': ['a', 'b']})
-                logger_debug_mock.assert_has_calls([call(f"Sending chunks.")])
+                logger_debug_mock.assert_has_calls([call("Sending chunks.")])
 
             send_string_mock.assert_called_with(b"")
 
     # Test else
     with patch.object(sync_wazuh_db.logger, "info") as logger_info_mock:
         assert await sync_wazuh_db.sync(start_time=-10, chunks=[]) is True
-        logger_info_mock.assert_called_once_with(f"Finished in 10.000s. Updated 0 chunks.")
+        logger_info_mock.assert_called_once_with("Finished in 10.000s. Updated 0 chunks.")
 
     # Test except
     with patch("wazuh.core.cluster.common.Handler.send_string", return_value=b'Error 1'):
@@ -1464,7 +1591,7 @@ async def test_sync_wazuh_db_sync_ok(perf_counter_mock, json_dumps_mock):
 
 
 @patch("json.loads", return_value={"updated_chunks": 10, "error_messages": None})
-@patch('wazuh.core.cluster.common.perf_counter', return_value=0)
+@patch('wazuh.core.cluster.common.time.perf_counter', return_value=0)
 def test_end_sending_agent_information(perf_counter_mock, json_loads_mock):
     """Check the correct output message when a command "syn_m_a_e", "syn_m_g_e" or "syn_w_g_e" takes place."""
 
@@ -1478,13 +1605,21 @@ def test_end_sending_agent_information(perf_counter_mock, json_loads_mock):
     logger = logging.getLogger('testing')
     with patch('wazuh.core.cluster.common.utils.get_utc_now', side_effect=get_utc_now_mock):
         with patch.object(logger, "info") as logger_info_mock:
-            assert cluster_common.end_sending_agent_information(logger, 0, "response") == (b'ok', b'Thanks')
+            assert cluster_common.end_sending_agent_information(
+                logger,
+                datetime.fromtimestamp(0),
+                "response"
+                ) == (b'ok', b'Thanks')
             json_loads_mock.assert_called_once_with("response")
             logger_info_mock.assert_called_once_with("Finished in 0.000s. Updated 10 chunks.")
 
         with patch.object(logger, "error") as logger_error_mock:
             json_loads_mock.return_value = {"updated_chunks": 10, "error_messages": "error"}
-            assert cluster_common.end_sending_agent_information(logger, 0, "response") == (b'ok', b'Thanks')
+            assert cluster_common.end_sending_agent_information(
+                logger,
+                datetime.fromtimestamp(0),
+                "response"
+                ) == (b'ok', b'Thanks')
             logger_error_mock.assert_called_once_with(
                 "Finished in 0.000s. Updated 10 chunks. There were 5 chunks with errors: error")
 
@@ -1496,11 +1631,11 @@ def test_error_receiving_agent_information():
     logger = logging.getLogger('testing')
     with patch.object(logger, "error") as logger_error_mock:
         assert cluster_common.error_receiving_agent_information(logger, "response", "info") == (b'ok', b'Thanks')
-        logger_error_mock.assert_called_once_with("There was an error while processing info on the master: response")
+        logger_error_mock.assert_called_once_with("There was an error while processing info on the peer: response")
 
 
 @patch("wazuh.core.cluster.common.WazuhDBConnection")
-def test_send_data_to_wdb_ko(WazuhDBConnection_mock):
+async def test_send_data_to_wdb(WazuhDBConnection_mock):
     """Check if the data chunks are being properly forward to the Wazuh-db socket."""
 
     class MockWazuhDBConnection:
@@ -1515,6 +1650,8 @@ def test_send_data_to_wdb_ko(WazuhDBConnection_mock):
                 raise TimeoutError
             elif self.exceptions == 1:
                 return ''
+            elif self.exceptions == 2:
+                raise Exception('Cannot execute Global database query; FOREIGN KEY constraint failed')
             else:
                 raise Exception
 
@@ -1523,25 +1660,32 @@ def test_send_data_to_wdb_ko(WazuhDBConnection_mock):
             pass
 
     WazuhDBConnection_mock.return_value = MockWazuhDBConnection()
+    chunks = ['[{"data": "1chunk"}]', '[{"data": "2chunk"}]']
 
-    result = cluster_common.send_data_to_wdb(data={'chunks': ['[{"data": ""}]'], 'payload': {}, 'set_data_command': ''},
-                                             timeout=15, info_type='agent-groups')
+    result = await cluster_common.send_data_to_wdb(data={'chunks': ['[{"data": ""}]'], 'payload': {},
+                                                         'set_data_command': ''}, timeout=15, info_type='agent-groups')
     assert result['error_messages']['others'] == ['Timeout while processing agent-groups chunks.']
 
     WazuhDBConnection_mock.return_value.exceptions += 1
-    result = cluster_common.send_data_to_wdb(data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''},
-                                             timeout=15)
+    result = await cluster_common.send_data_to_wdb(data={'chunks': chunks,
+                                                         'payload': {}, 'set_data_command': ''},
+                                                         timeout=15, info_type='agent-groups')
     assert result['updated_chunks'] == 2
 
     WazuhDBConnection_mock.return_value.exceptions += 1
-    result = cluster_common.send_data_to_wdb(data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''},
-                                             timeout=15)
+    result = await cluster_common.send_data_to_wdb(data={'chunks': chunks, 'set_data_command': ''},
+                                             timeout=15, info_type='agent-groups')
+    assert result['updated_chunks'] == 0
+
+    WazuhDBConnection_mock.return_value.exceptions += 1
+    result = await cluster_common.send_data_to_wdb(data={'chunks': chunks, 'payload': {}, 'set_data_command': ''},
+                                             timeout=15, info_type='agent-groups')
     assert result['error_messages']['chunks'] == [(0, ''), (1, '')]
 
     with patch('wazuh.core.cluster.master.utils.Timeout', side_effect=Exception):
-        result = cluster_common.send_data_to_wdb(data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''},
-                                                 timeout=15)
-        assert result['error_messages']['others'] == ['Error while processing agent-info chunks: ']
+        result = await cluster_common.send_data_to_wdb(data={'chunks': chunks, 'set_data_command': ''},
+                                                 timeout=15, info_type='agent-groups')
+        assert result['error_messages']['others'] == ['Error while processing agent-groups chunks: ']
 
 
 @patch.object(logging, "error")
@@ -1564,7 +1708,10 @@ def test_asyncio_exception_handler(format_tb, mock_loop, mock_logging):
     mock_logging.assert_called_once_with(output)
 
 
-def test_wazuh_json_encoder_default():
+@patch('wazuh.core.common.os.chmod')
+@patch('wazuh.core.common.os.chown')
+@patch('wazuh.core.common.wazuh_gid', return_value=0)
+def test_wazuh_json_encoder_default(mock_gid, mock_chown, mock_chmod):
     """Test if a special JSON encoder is defined for Wazuh."""
 
     wazuh_encoder = cluster_common.WazuhJSONEncoder()
@@ -1588,10 +1735,10 @@ def test_wazuh_json_encoder_default():
 
     with patch('builtins.callable', return_value=False):
         # Test second condition
-        assert isinstance(wazuh_encoder.default(exception.WazuhException(3012)), dict)
-        assert wazuh_encoder.default(exception.WazuhException(3012)) == \
+        assert isinstance(wazuh_encoder.default(exception.WazuhException(3009)), dict)
+        assert wazuh_encoder.default(exception.WazuhException(3009)) == \
                {'__wazuh_exception__': {'__class__': 'WazuhException',
-                                        '__object__': {'type': 'about:blank', 'title': 'WazuhException', 'code': 3012,
+                                        '__object__': {'type': 'about:blank', 'title': 'WazuhException', 'code': 3009,
                                                        'extra_message': None, 'extra_remediation': None,
                                                        'cmd_error': False, 'dapi_errors': {}}}}
 
@@ -1623,19 +1770,56 @@ def test_wazuh_json_encoder_default():
             wazuh_encoder.default({"key": "value"})
 
 
-def test_as_wazuh_object_ok():
+@patch('wazuh.core.common.os.chmod')
+@patch('wazuh.core.common.os.chown')
+@patch('wazuh.core.common.wazuh_gid', return_value=0)
+def test_as_wazuh_object_ok(mock_gid, mock_chown, mock_chmod):
     """Test the different outputs taking into account the input values."""
 
-    # Test the first condition and nested if
-    assert cluster_common.as_wazuh_object({"__callable__": {"__name__": "type", "__wazuh__": "version"}}) == "server"
+    # Test the first condition - Wazuh methods without @dapi_allower must be blocked
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({"__callable__": {"__name__": "to_dict", "__wazuh__": "version"}})
+    assert "is not exposed with @dapi_allower decorator" in str(err.value)
 
     # Test the first condition and nested else
-    assert isinstance(
-        cluster_common.as_wazuh_object({"__callable__": {"__name__": "path", "__qualname__": "__loader__.value",
-                                                         "__module__": "os"}}), str)
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({
+            "__callable__": {
+                "__name__": "join",
+                "__qualname__": "path.join",
+                "__module__": "os"
+            }
+        })
+    assert "Decoding callable from module 'os' is not allowed" in str(err.value)
 
-    assert cluster_common.as_wazuh_object({"__callable__": {"__name__": "__name__", "__qualname__": "value",
-                                                            "__module__": "itertools"}}) == "itertools"
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({"__callable__": {"__name__": "__name__", "__qualname__": "value",
+                                                        "__module__": "itertools"}})
+    assert "Decoding callable from module" in str(err.value)
+
+    # Test the first condition - non-exposed callables must be blocked (no @dapi_allower)
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({"__callable__": {"__name__": "check_user",
+                                                         "__module__": "api.authentication",
+                                                         "__qualname__": "check_user",
+                                                         "__type__": "function"}})
+    assert "is not exposed with @dapi_allower decorator" in str(err.value)
+
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({"__callable__": {"__name__": "get_node",
+                                                         "__module__": "wazuh.core.cluster.cluster",
+                                                         "__qualname__": "get_node",
+                                                         "__type__": "function"}})
+    assert "is not exposed with @dapi_allower decorator" in str(err.value)
+
+    # Test that functions with @dapi_allower decorator are allowed
+    func =  cluster_common.as_wazuh_object({"__callable__": {"__name__": "read_config_wrapper",
+                                                             "__module__": "wazuh.cluster",
+                                                             "__qualname__": "read_config_wrapper",
+                                                             "__type__": "function"}})
+    assert callable(func)
+    assert func.__module__ == "wazuh.cluster"
+    assert func.__name__ == "read_config_wrapper"
 
     # Test the second condition
     assert isinstance(cluster_common.as_wazuh_object(
@@ -1654,7 +1838,11 @@ def test_as_wazuh_object_ok():
     # Test the fifth condition
     result = cluster_common.as_wazuh_object({'__unhandled_exc__': {'__class__': 'ValueError',
                                                                    '__args__': ('test',)}})
-    assert isinstance(result, ValueError)
+    assert result == {"ValueError": ["test"]}
+
+    result = cluster_common.as_wazuh_object({'__unhandled_exc__': {'__class__': 'exit',
+                                                                   '__args__': []}})
+    assert result == {"exit": []}
 
     # No condition fulfilled
     assert isinstance(cluster_common.as_wazuh_object({"__wazuh_datetime_bad__": "2021-10-14"}), dict)
@@ -1662,7 +1850,10 @@ def test_as_wazuh_object_ok():
            {"__wazuh_datetime_bad__": "2021-10-14"}
 
 
-def test_as_wazuh_object_ko():
+@patch('wazuh.core.common.os.chmod')
+@patch('wazuh.core.common.os.chown')
+@patch('wazuh.core.common.wazuh_gid', return_value=0)
+def test_as_wazuh_object_ko(mock_chmod, mock_chown, mock_gid):
     """Test if the exceptions are correctly raised."""
 
     with pytest.raises(exception.WazuhInternalError, match=r'.* 1000 .*'):
@@ -1686,7 +1877,7 @@ def test_sync_task_init():
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.cluster.common.Handler.send_request', return_value=Exception())
+@patch('wazuh.core.cluster.common.Handler.send_request', side_effect=Exception())
 async def test_sync_task_request_permission(send_request_mock):
     """Check if a True value is returned once a permission to start synchronization is granted or a False when it
     is not."""
@@ -1700,6 +1891,7 @@ async def test_sync_task_request_permission(send_request_mock):
 
     with patch.object(logging.getLogger("wazuh"), "debug") as logger_mock:
         # Test second condition
+        send_request_mock.side_effect = None
         send_request_mock.return_value = b"True"
         assert await sync_task.request_permission() is True
         send_request_mock.assert_called_with(command=b"cmd" + b"_p", data=b"")
@@ -1727,8 +1919,9 @@ async def test_sync_task_sync():
 @patch("json.dumps", return_value='')
 @patch("os.path.relpath", return_value="path")
 @patch("os.unlink", return_value="unlinked path")
-@patch("wazuh.core.cluster.cluster.compress_files", return_value="files/path/")
-async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock, json_dumps_mock):
+@patch("wazuh.core.cluster.cluster.compress_files", return_value=("files/path/", {}))
+@patch("wazuh.core.cluster.utils.log_subprocess_execution")
+async def test_sync_files_sync_ok(log_subprocess_mock, compress_files_mock, unlink_mock, relpath_mock, json_dumps_mock):
     """Check if the methods to synchronize files are defined."""
     files_to_sync = {"path1": "metadata1"}
     files_metadata = {"path2": "metadata2"}
@@ -1747,21 +1940,21 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
         async def send_request(self, command, data):
             """Decide with will be the right output depending on the scenario."""
             if command == b"cmd" and data == b"" and self.count == 1:
-                return b"Error"
+                raise exception.WazuhClusterError(3020, extra_message=command.decode())
             elif command == b"cmd" and data == b"" and self.count == 2:
                 return b"OK"
             elif command == b"cmd_e" and b"OK path" and self.count == 2:
-                return Exception()
+                raise Exception()
             elif command == b"cmd" and data == b"" and self.count == 3:
                 return b"OK"
             elif command == b"cmd_e" and b"OK path" and self.count == 3:
-                return b"Error"
+                raise exception.WazuhClusterError(3016, extra_message=command.decode())
             elif command == b"cmd" and data == b"" and self.count == 4:
                 return b"OK"
             elif command == b"cmd_e" and b"OK path" and self.count == 4:
                 return b"OK"
 
-        async def send_file(self, filename):
+        async def send_file(self, filename, task_id):
             """Auxiliary method."""
             pass
 
@@ -1771,10 +1964,11 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
     # Test second condition
     with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
         await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
+        log_subprocess_mock.assert_called()
         json_dumps_mock.assert_called_once_with(
-            exception.WazuhClusterError(code=3016, extra_message=str(b"Error")),
+            exception.WazuhClusterError(code=3020, extra_message="cmd"),
             cls=cluster_common.WazuhJSONEncoder)
-        logger_mock.assert_called_once_with("Error sending zip file: Error 3016 - Received an error response: b'Error'")
+        logger_mock.assert_called_once_with("Error sending zip file: Error 3020 - Timeout sending request: cmd")
 
     worker_mock.count = 2
     with patch.object(WorkerMock, "send_file", return_value=1000) as send_file_mock:
@@ -1786,6 +1980,7 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
                 logger_debug_mock.assert_has_calls([call(
                     f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of 1 files."),
                     call("Sending zip file."), call("Zip file sent."), call("Decreasing sync size limit to 30.00 MB.")])
+                log_subprocess_mock.assert_called()
                 logger_error_mock.assert_called_once_with("Error sending zip file: ")
                 compress_files_mock.assert_has_calls([call('Testing', {'path1': 'metadata1'},
                                                            {'path2': 'metadata2'}, None)] * 2)
@@ -1806,8 +2001,9 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
                 logger_debug_mock.assert_has_calls([call(
                     f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of 1 files."),
                     call("Sending zip file."), call("Zip file sent."), call('Increasing sync size limit to 37.50 MB.')])
+                log_subprocess_mock.assert_called()
                 logger_error_mock.assert_called_once_with(
-                    f"Error sending zip file: {exception.WazuhException(3016, 'Error')}")
+                    f"Error sending zip file: {exception.WazuhException(3016, 'cmd_e')}")
                 compress_files_mock.assert_called_once_with('Testing', {'path1': 'metadata1'},
                                                             {'path2': 'metadata2'}, None)
                 unlink_mock.assert_called_once_with("files/path/")
@@ -1822,11 +2018,12 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
 
             # Test return
             worker_mock.count = 4
-            assert await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None) is True
+            await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
             send_file_mock.assert_called_once_with('files/path/', b'OK')
             logger_debug_mock.assert_has_calls([call(
                 f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of 1 files."),
                 call("Sending zip file."), call("Zip file sent."), call("Increasing sync size limit to 46.88 MB.")])
+            log_subprocess_mock.assert_called()
             compress_files_mock.assert_called_once_with('Testing', {'path1': 'metadata1'}, {'path2': 'metadata2'}, None)
             unlink_mock.assert_called_once_with("files/path/")
             relpath_mock.assert_called_once_with('files/path/', common.WAZUH_PATH)
@@ -1835,7 +2032,7 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.cluster.common.Handler.send_request", return_value=Exception())
+@patch("wazuh.core.cluster.common.Handler.send_request", side_effect=Exception())
 async def test_sync_files_sync_ko(send_request_mock):
     """Test if the right exceptions are being risen when necessary."""
     files_to_sync = {"path1": "metadata1"}
@@ -1850,3 +2047,14 @@ async def test_sync_files_sync_ko(send_request_mock):
     # Test first condition
     await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
     send_request_mock.assert_has_calls([call(command=b'cmd', data=b''), call(command=b'cmd_r', data=ANY)])
+
+    # Test FileNotFoundError raised when deleting compressed_data file
+    with patch('os.unlink', side_effect=FileNotFoundError):
+        compressed_data = "files/path/"
+        with patch("wazuh.core.cluster.cluster.compress_files", return_value=(compressed_data, {})):
+            send_request_mock.side_effect = None
+            logger = logging.getLogger('wazuh')
+            with patch.object(logger, "error") as logger_mock:
+                await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
+                logger_mock.assert_called_with(f"File {compressed_data} could not be removed/not found. "
+                                               f"May be due to a lost connection.")

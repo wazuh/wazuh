@@ -1,0 +1,19 @@
+name: output/file-output-integrations/0
+enabled: false
+
+metadata:
+  module: wazuh
+  title: file output event
+  description: Output integrations events to a file
+  compatibility: >
+    This decoder has been tested on Wazuh version 5.x
+  versions:
+    - 5.x
+  author:
+    name: Wazuh, Inc.
+    date: 2022/11/08
+  references:
+    - ""
+
+outputs:
+  - file: "alerts"

@@ -1,0 +1,47 @@
+# Name of the helper function
+name: ends_with
+
+metadata:
+  description: |
+    Checks if the string stored in the field ends with the value provided.
+    If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+
+  keywords:
+    - string
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  conteined:
+    type: string  # Expected type is string
+    generate: string
+    source: both # includes values or references (their names start with $)
+
+# do not compare with target field to avoid failure
+skipped:
+  - success_cases
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      conteined: wazuh!!
+    target_field: hello wazuh!!
+    should_pass: true
+    description: Success ends with
+  - arguments:
+      conteined: wazuh
+    target_field: hello wazuh!!!
+    should_pass: false
+    description: Failure ends with
+  - arguments:
+      conteined: hello
+    target_field: hello wazuh!
+    should_pass: false
+    description: Failure ends with

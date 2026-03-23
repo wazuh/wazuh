@@ -17,8 +17,9 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/config_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_sync_wrappers.h"
-#include "../syscheckd/syscheck.h"
-#include "../config/syscheck-config.h"
+#include "../wrappers/wazuh/shared_modules/agent_sync_protocol_wrappers.h"
+#include "syscheck.h"
+#include "syscheck-config.h"
 
 
 /* redefinitons/wrapping */
@@ -34,7 +35,24 @@ static int delete_string(void **state)
 /* tests */
 
 
-void test_syscom_dispatch_getconfig(void **state)
+void test_syscom_dispatch_getconfig_agent(void **state)
+{
+    (void) state;
+    size_t ret;
+
+    char command[] = "syscheck getconfig args";
+    char * output;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'args' section.");
+
+    ret = syscom_dispatch(command, strlen(command), &output);
+    *state = output;
+
+    assert_string_equal(output, "err Could not get requested section");
+    assert_int_equal(ret, 35);
+}
+
+void test_syscom_dispatch_getconfig_manager(void **state)
 {
     (void) state;
     size_t ret;
@@ -44,7 +62,7 @@ void test_syscom_dispatch_getconfig(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'args' section.");
 
-    ret = syscom_dispatch(command, &output);
+    ret = syscom_dispatch(command, strlen(command), &output);
     *state = output;
 
     assert_string_equal(output, "err Could not get requested section");
@@ -57,12 +75,12 @@ void test_syscom_dispatch_getconfig_noargs(void **state)
     (void) state;
     size_t ret;
 
-    char command[] = "getconfig";
+    char command[] = "syscheck getconfig";
     char * output;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6281): SYSCOM getconfig needs arguments.");
 
-    ret = syscom_dispatch(command, &output);
+    ret = syscom_dispatch(command, strlen(command), &output);
     *state = output;
 
     assert_string_equal(output, "err SYSCOM getconfig needs arguments");
@@ -70,39 +88,20 @@ void test_syscom_dispatch_getconfig_noargs(void **state)
 }
 
 
-void test_syscom_dispatch_dbsync(void **state)
+void test_syscom_dispatch_restart_agent(void **state)
 {
     (void) state;
     size_t ret;
 
-    char command[] = "dbsync args";
+    char command[] = "syscheck restart";
     char *output;
 
-    expect_string(__wrap_fim_sync_push_msg, msg, "args");
-
-    ret = syscom_dispatch(command, &output);
+    ret = syscom_dispatch(command, strlen(command), &output);
 
     assert_int_equal(ret, 0);
 }
 
-
-void test_syscom_dispatch_dbsync_noargs(void **state)
-{
-    (void) state;
-    size_t ret;
-
-    char command[] = "dbsync";
-    char *output;
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(6281): SYSCOM dbsync needs arguments.");
-
-    ret = syscom_dispatch(command, &output);
-
-    assert_int_equal(ret, 0);
-}
-
-
-void test_syscom_dispatch_restart(void **state)
+void test_syscom_dispatch_restart_manager(void **state)
 {
     (void) state;
     size_t ret;
@@ -110,7 +109,7 @@ void test_syscom_dispatch_restart(void **state)
     char command[] = "restart";
     char *output;
 
-    ret = syscom_dispatch(command, &output);
+    ret = syscom_dispatch(command, strlen(command), &output);
 
     assert_int_equal(ret, 0);
 }
@@ -126,7 +125,7 @@ void test_syscom_dispatch_getconfig_unrecognized(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6282): SYSCOM Unrecognized command 'invalid'");
 
-    ret = syscom_dispatch(command, &output);
+    ret = syscom_dispatch(command, strlen(command), &output);
     *state = output;
 
     assert_string_equal(output, "err Unrecognized command");
@@ -137,14 +136,76 @@ void test_syscom_dispatch_null_command(void **state)
 {
     char * output;
 
-    expect_assert_failure(syscom_dispatch(NULL, &output));
+    expect_assert_failure(syscom_dispatch(NULL, 0, &output));
 }
 
 void test_syscom_dispatch_null_output(void **state)
 {
     char command[] = "invalid";
 
-    expect_assert_failure(syscom_dispatch(command, NULL));
+    expect_assert_failure(syscom_dispatch(command, strlen(command), NULL));
+}
+
+void test_syscom_dispatch_sync_success(void **state)
+{
+    (void) state;
+    size_t ret;
+    char command[] = "fim_sync test-data";
+    char *output;
+
+    syscheck.enable_synchronization = 1;
+    syscheck.sync_handle = (AgentSyncProtocolHandle*)0x1234;
+
+    expect_value(__wrap_asp_parse_response_buffer, handle, syscheck.sync_handle);
+    expect_memory(__wrap_asp_parse_response_buffer, data, "test-data", strlen("test-data"));
+    expect_value(__wrap_asp_parse_response_buffer, length, strlen("test-data"));
+    will_return(__wrap_asp_parse_response_buffer, true);
+
+    ret = syscom_dispatch(command, strlen(command), &output);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_syscom_dispatch_sync_disabled(void **state)
+{
+    (void) state;
+    size_t ret;
+    char command[] = "fim_sync something";
+    char *output;
+
+    syscheck.enable_synchronization = 0;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "FIM synchronization is disabled");
+
+    ret = syscom_dispatch(command, strlen(command), &output);
+    *state = output;
+
+    assert_string_equal(output, "err FIM synchronization is disabled");
+    assert_int_equal(ret, 35);
+}
+
+void test_syscom_dispatch_sync_error(void **state)
+{
+    (void) state;
+    size_t ret;
+    char command[] = "fim_sync test-data";
+    char *output;
+
+    syscheck.enable_synchronization = 1;
+    syscheck.sync_handle = (AgentSyncProtocolHandle*)0x1234;
+
+    expect_value(__wrap_asp_parse_response_buffer, handle, syscheck.sync_handle);
+    expect_memory(__wrap_asp_parse_response_buffer, data, "test-data", strlen("test-data"));
+    expect_value(__wrap_asp_parse_response_buffer, length, strlen("test-data"));
+    will_return(__wrap_asp_parse_response_buffer, false);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "WMCOM Error syncing module");
+
+    ret = syscom_dispatch(command, strlen(command), &output);
+    *state = output;
+
+    assert_string_equal(output, "err Error syncing module");
+    assert_int_equal(ret, 24);
 }
 
 void test_syscom_getconfig_syscheck(void **state)
@@ -280,14 +341,17 @@ void test_syscom_getconfig_null_output(void **state)
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_teardown(test_syscom_dispatch_getconfig, delete_string),
+        cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_agent, delete_string),
+        cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_manager, delete_string),
         cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_noargs, delete_string),
-        cmocka_unit_test(test_syscom_dispatch_dbsync),
-        cmocka_unit_test(test_syscom_dispatch_dbsync_noargs),
-        cmocka_unit_test(test_syscom_dispatch_restart),
+        cmocka_unit_test(test_syscom_dispatch_restart_agent),
+        cmocka_unit_test(test_syscom_dispatch_restart_manager),
         cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_unrecognized, delete_string),
         cmocka_unit_test_teardown(test_syscom_dispatch_null_command, delete_string),
         cmocka_unit_test(test_syscom_dispatch_null_output),
+        cmocka_unit_test_teardown(test_syscom_dispatch_sync_success, delete_string),
+        cmocka_unit_test_teardown(test_syscom_dispatch_sync_disabled, delete_string),
+        cmocka_unit_test_teardown(test_syscom_dispatch_sync_error, delete_string),
         cmocka_unit_test_teardown(test_syscom_getconfig_syscheck, delete_string),
         cmocka_unit_test_teardown(test_syscom_getconfig_syscheck_failure, delete_string),
         cmocka_unit_test_teardown(test_syscom_getconfig_rootcheck, delete_string),

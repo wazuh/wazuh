@@ -1,23 +1,53 @@
 # Find the wazuh shared library
-find_library(WAZUHEXT NAMES libwazuhext.so HINTS "${SRC_FOLDER}")
+find_library(
+  WAZUHLIB
+  NAMES libwazuh_test.a
+  HINTS "${SRC_FOLDER}/build/lib")
+find_library(
+  WAZUHEXT
+  NAMES libwazuhext.so
+  HINTS "${SRC_FOLDER}/build/lib")
 set(uname "Linux")
 
+if(NOT WAZUHLIB)
+  message(FATAL_ERROR "libwazuh_test.a not found in ${SRC_FOLDER}/build/lib! Aborting...")
+endif()
+
 if(NOT WAZUHEXT)
-    message(FATAL_ERROR "libwazuhext not found! Aborting...")
+  message(FATAL_ERROR "libwazuhext not found in ${SRC_FOLDER}/build/lib! Aborting...")
 endif()
 
 # Add compiling flags
-add_compile_options(-ggdb -O0 -g -coverage -DTEST_SERVER -DENABLE_AUDIT -DINOTIFY_ENABLED -fsanitize=address -fsanitize=undefined)
+add_compile_options(
+  -ggdb
+  -O0
+  -g
+  -coverage
+  -DTEST_SERVER
+  -DENABLE_AUDIT
+  -DINOTIFY_ENABLED
+  -fsanitize=address
+  -fsanitize=undefined)
 link_libraries(-fsanitize=address -fsanitize=undefined)
-# Set tests dependencies
-set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -ldl -lcmocka -fprofile-arcs -ftest-coverage)
 
-add_subdirectory(analysisd)
+# Set tests dependencies - use linker groups to resolve circular dependencies
+link_directories("${SRC_FOLDER}/build/lib/")
+set(TEST_DEPS
+    -Wl,--start-group
+    ${WAZUHLIB}
+    ${WAZUHEXT}
+    -lrouter
+    -lschema_validator
+    -Wl,--end-group
+    -lpthread
+    -ldl
+    -lcmocka
+    -fprofile-arcs
+    -ftest-coverage)
+
 add_subdirectory(remoted)
 add_subdirectory(wazuh_db)
 add_subdirectory(os_auth)
 add_subdirectory(os_crypto)
 add_subdirectory(wazuh_modules)
 add_subdirectory(monitord)
-add_subdirectory(logcollector)
-add_subdirectory(os_execd)

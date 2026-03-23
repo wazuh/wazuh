@@ -10,13 +10,14 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include "headers/defs.h"
+#include "defs.h"
 #include "../../common.h"
 
 char * wrap_fgets (char * __s, int __n, FILE * __stream) {

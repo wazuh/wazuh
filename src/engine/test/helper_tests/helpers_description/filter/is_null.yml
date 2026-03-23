@@ -1,0 +1,43 @@
+# Name of the helper function
+name: is_null
+
+metadata:
+  description: |
+    Checks if the value stored in field is null.
+    If it's not null, the function evaluates to false. In case of error, the function will evaluate to false.
+    This helper function is typically used in the check stage
+  keywords:
+    - undefined
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Target field can hold any JSON type in input events; success only when it's actually null
+target_field:
+  type:
+    - number
+    - string
+    - boolean
+    - array
+    - object
+
+
+test:
+  - target_field: null
+    should_pass: false
+    description: Is null
+  - target_field: "hello"
+    should_pass: false
+    description: Not null (string)
+  - target_field: 0
+    should_pass: false
+    description: Not null (number)
+  - target_field: []
+    should_pass: false
+    description: Not null (array)
+  - target_field:
+      key: value
+    should_pass: false
+    description: Not null (object)

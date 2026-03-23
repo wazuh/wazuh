@@ -1,0 +1,50 @@
+- sections:
+    - section: wodle
+      attributes:
+        - name: syscollector
+      elements:
+        - disabled:
+            value: DISABLED
+        - interval:
+            value: INTERVAL_SCAN
+        - scan_on_start:
+            value: START_ON_START
+        - hardware:
+            value: HARDWARE_SCAN
+        - os:
+            value: OS_SCAN
+        - network:
+            value: NETWORK_SCAN
+        - packages:
+            value: PACKAGES_SCAN
+        - ports:
+            value: PORTS_SCAN
+            attributes:
+              - all: ALL_PORTS
+        - processes:
+            value: PROCESSES_SCAN
+        - hotfixes:
+            value: HOTFIXES_SCAN
+        - groups:
+            value: GROUPS_SCAN
+        - users:
+            value: USERS_SCAN
+        - services:
+            value: SERVICES_SCAN
+        - browser_extensions:
+            value: BROWSER_EXTENSIONS_SCAN
+
+    - section: syscheck
+      elements:
+        - disabled:
+            value: 'yes'
+
+    - section: rootcheck
+      elements:
+        - disabled:
+            value: 'yes'
+
+    - section: sca
+      elements:
+        - enabled:
+            value: 'no'

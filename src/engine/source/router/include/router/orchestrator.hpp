@@ -1,0 +1,248 @@
+#ifndef _ROUTER_ORCHESTATOR_HPP
+#define _ROUTER_ORCHESTATOR_HPP
+
+#include <atomic>
+#include <cstdint>
+#include <list>
+#include <memory>
+#include <shared_mutex>
+
+#include <bk/icontroller.hpp>
+#include <builder/ibuilder.hpp>
+#include <fastqueue/iqueue.hpp>
+#include <rawevtindexer/iraweventindexer.hpp>
+#include <store/istore.hpp>
+
+#include <router/iapi.hpp>
+#include <router/types.hpp>
+
+namespace router
+{
+
+using ProdQueueType = fastqueue::IQueue<IngestEvent>;
+using TestQueueType = fastqueue::IQueue<test::EventTest>;
+
+// Forward declarations
+template<typename T>
+class IWorker;
+class IRouter;
+class ITester;
+class EnvironmentBuilder;
+class EntryConverter;
+
+// Change name to syncronizer
+class Orchestrator : public IOrchestratorAPI
+{
+
+protected:
+    constexpr static const char* STORE_PATH_TESTER_TABLE = "router/tester/0"; ///< Default path for the tester state
+    constexpr static const char* STORE_PATH_ROUTER_TABLE = "router/router/0"; ///< Default path for the router state
+
+    // Workers synchronization
+    std::list<std::shared_ptr<IWorker<IRouter>>> m_routerWorkers;
+    std::shared_ptr<IWorker<ITester>> m_testerWorker;
+    mutable std::shared_mutex m_syncMutex;  ///< Mutex for the Workers synchronization (1 query at a time)
+    std::atomic<bool> m_isShutdown {false}; ///< Flag to indicate orchestrator has been shutdown
+
+    // Workers configuration
+    std::shared_ptr<ProdQueueType> m_eventQueue;      ///< The event queue
+    std::shared_ptr<TestQueueType> m_testQueue;       ///< The test queue
+    std::shared_ptr<EnvironmentBuilder> m_envBuilder; ///< The environment builder
+
+    // Event queue contention monitoring
+    std::atomic<bool> m_eventQueueContended {false};       ///< True while queue load is above contention threshold
+    std::atomic<int64_t> m_contentionStartUsec {0};        ///< First contention timestamp (steady_clock, usec)
+    std::atomic<int64_t> m_lastContentionWarningUsec {0};  ///< Last warning timestamp (steady_clock, usec)
+    std::atomic<uint64_t> m_droppedEventsInContention {0}; ///< Failed push count in current contention window
+    static constexpr int64_t CONTENTION_WARNING_INTERVAL_SEC = 600LL; ///< Interval in seconds
+    static constexpr int64_t CONTENTION_WARNING_INTERVAL_USEC =
+        CONTENTION_WARNING_INTERVAL_SEC * 1000LL * 1000LL;               ///< 10 minutes
+    static constexpr std::size_t CONTENTION_LOAD_PERCENT_THRESHOLD = 90; ///< Queue load threshold
+
+    // Configuration options
+    std::weak_ptr<store::IStore> m_wStore; ///< Read and store configurations
+    base::Name m_storeTesterName;          ///< Path of internal configuration state for testers
+    base::Name m_storeRouterName;          ///< Path of internal configuration state for routers
+    std::size_t m_testTimeout;             ///< Timeout for the tests
+
+    // Raw Event Indexer
+    std::shared_ptr<raweventindexer::IRawEventIndexer> m_rawIndexer;
+
+    template<typename T>
+    using WorkerOp = std::function<base::OptError(const std::shared_ptr<IWorker<T>>&)>;
+    base::OptError forEachRouterWorker(const WorkerOp<IRouter>& f);
+    base::OptError forTesterWorker(const WorkerOp<ITester>& f);
+
+    void dumpTestersInternal() const; ///< Dump testers (m_syncMutex lock must be held)
+    void dumpRoutersInternal() const; ///< Dump routers (m_syncMutex lock must be held)
+
+    void dumpTesters() const; ///< Dump the testers to the store
+    void dumpRouters() const; ///< Dump the routers to the store
+
+    /**
+     * @brief Initialize a worker
+     *
+     * @param worker The worker to initialize
+     * @param routerEntries The router entries to initialize the worker
+     * @param testerEntries The tester entries to initialize the worker
+     * @return base::OptError The error if the worker can't be initialized
+     */
+    base::OptError initRouterWorker(const std::shared_ptr<IWorker<IRouter>>& worker,
+                                    const std::vector<EntryConverter>& routerEntries);
+    base::OptError initTesterWorker(const std::shared_ptr<IWorker<ITester>>& worker,
+                                    const std::vector<EntryConverter>& testerEntries);
+
+    Orchestrator() = default; ///< Default constructor for testing purposes
+
+public:
+    ~Orchestrator() = default;
+    /**
+     * @brief Configuration for the Orchestrator
+     *
+     */
+    struct Options
+    {
+        int m_numThreads; ///< Number of workers to create
+
+        std::weak_ptr<store::IStore> m_wStore;      ///< Store to read namespaces and configurations
+        std::weak_ptr<builder::IBuilder> m_builder; ///< Builder use for creating environments
+
+        std::shared_ptr<bk::IControllerMaker> m_controllerMaker; ///< Controller maker for creating controllers
+        std::shared_ptr<ProdQueueType> m_prodQueue;              ///< The event queue
+        std::shared_ptr<TestQueueType> m_testQueue;              ///< The test queue
+
+        std::shared_ptr<raweventindexer::IRawEventIndexer> m_rawIndexer; ///< Raw indexer used in worker drain path
+
+        int m_testTimeout; ///< Timeout for handlers of testers
+
+        void validate() const; ///< Validate the configuration options if is invalid throw an  std::runtime_error
+    };
+
+    Orchestrator(const Options& opt);
+
+    /**
+     * @brief Start the router
+     *
+     */
+    void start();
+
+    /**
+     * @brief Stop the router
+     *
+     */
+    void stop();
+
+    /**
+     * @brief Clean up the router
+     * @warning After calling this method, the Orchestrator instance should not be used again.
+     */
+    void cleanup();
+
+    /**************************************************************************
+     * IRouterAPI
+     *************************************************************************/
+
+    /**
+     * @copydoc router::IRouterAPI::postEnvironment
+     */
+    base::OptError postEntry(const prod::EntryPost& entry) override;
+
+    /**
+     * @copydoc router::IRouterAPI::hotSwapNamespace
+     */
+    base::OptError hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace) override;
+
+    /**
+     * @copydoc router::IRouterAPI::existsEntry
+     */
+    bool existsEntry(const std::string& name) const override;
+    /**
+     * @copydoc router::IRouterAPI::deleteEnvironment
+     */
+    base::OptError deleteEntry(const std::string& name) override;
+
+    /**
+     * @copydoc router::IRouterAPI::getEnvironment
+     */
+    base::RespOrError<prod::Entry> getEntry(const std::string& name) const override;
+
+    /**
+     * @copydoc router::IRouterAPI::reloadEnvironment
+     */
+    base::OptError reloadEntry(const std::string& name) override;
+
+    /**
+     * @copydoc router::IRouterAPI::ChangeEnvironmentPriority
+     */
+    base::OptError changeEntryPriority(const std::string& name, size_t priority) override;
+
+    /**
+     * @copydoc router::IRouterAPI::getEntries
+     */
+    std::list<prod::Entry> getEntries() const override;
+
+    /**
+     * @copydoc router::IRouterAPI::postEvent
+     */
+    void postEvent(IngestEvent&& event) override;
+
+    /**************************************************************************
+     * ITesterAPI
+     *************************************************************************/
+
+    /**
+     * @copydoc router::ITesterAPI::postTestEnvironment
+     */
+    base::OptError postTestEntry(const test::EntryPost& entry) override;
+
+    /**
+     * @copydoc router::ITesterAPI::deleteTestEnvironment
+     */
+    base::OptError deleteTestEntry(const std::string& name) override;
+
+    /**
+     * @copydoc router::ITesterAPI::getTestEnvironment
+     */
+    base::RespOrError<test::Entry> getTestEntry(const std::string& name) const override;
+
+    /**
+     * @copydoc router::ITesterAPI::reloadTestEnvironment
+     */
+    base::OptError reloadTestEntry(const std::string& name) override;
+
+    /**
+     * @copydoc router::ITesterAPI::renameTestEnvironment
+     */
+    base::OptError renameTestEntry(const std::string& from, const std::string& to) override;
+
+    /**
+     * @copydoc router::ITesterAPI::getTestEntries
+     */
+    std::list<test::Entry> getTestEntries() const override;
+
+    /**
+     * @copydoc router::ITesterAPI::ingestTest ASynchronous
+     */
+    std::future<base::RespOrError<test::Output>> ingestTest(base::Event&& event, const test::Options& opt) override;
+
+    /**
+     * @copydoc router::ITesterAPI::ingestTest Synchronous
+     */
+    base::OptError ingestTest(base::Event&& event,
+                              const test::Options& opt,
+                              std::function<void(base::RespOrError<test::Output>&&)> callbackFn) override;
+
+    /**
+     * @copydoc router::ITesterAPI::getAssets
+     */
+    base::RespOrError<std::unordered_set<std::string>> getAssets(const std::string& name) const override;
+
+    /**
+     * @copydoc router::ITesterAPI::getTestTimeout
+     */
+    std::size_t getTestTimeout() const override { return m_testTimeout; }
+};
+
+} // namespace router
+
+#endif // _ROUTER_ORCHESTATOR_HPP

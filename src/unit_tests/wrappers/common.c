@@ -14,7 +14,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <string.h>
-#include "headers/defs.h"
+#include "defs.h"
 
 time_t time_mock_value;
 int test_mode = 0;

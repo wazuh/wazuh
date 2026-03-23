@@ -1,0 +1,12 @@
+- name: Key registry with invalid characters
+  description: The event should trigger a warning that the path name is invalid.
+  configuration_parameters:
+    WINDOWS_REGISTRY: !!python/object/apply:os.path.join
+          args: [HKEY_LOCAL_MACHINE, SOFTWARE, Classes, testkey]
+    ARCH: '64bit'
+  metadata:
+    fim_mode: scheduled
+    key: 'HKEY_LOCAL_MACHINE'
+    sub_key: !!python/object/apply:os.path.join
+          args: [SOFTWARE, Classes, testkey]
+    arch: 'x64'

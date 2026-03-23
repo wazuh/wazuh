@@ -1,0 +1,11 @@
+- name: HTTPS_ENABLED
+  description: Check if the API accepts HTTPS requests when configured.
+  configuration_parameters:
+    ENABLED: yes
+  metadata: null
+
+- name: HTTPS_DISABLED
+  description: Check if the API accepts HTTP requests when configured.
+  configuration_parameters:
+    ENABLED: no
+  metadata: null

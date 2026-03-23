@@ -1,0 +1,56 @@
+# Name of the helper function
+name: parse_short
+
+metadata:
+  description: |
+    Evaluates if the content of the input field is a string that can be successfully converted into an short integer
+    number. It converts and stores the short integer number in `field` with truncation.
+  keywords:
+    - parser
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input_field:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+skipped:
+  - success_cases # parser failed
+
+target_field:
+  type: object
+
+test:
+  - arguments:
+      input_field: "-2"
+    target_field: any_value
+    should_pass: true
+    expected: -2
+    description: Success short parse
+
+  - arguments:
+      input_field: "32768"
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure short parse (out of range)
+
+  - arguments:
+      input_field: "23.45"
+    target_field: any_value
+    should_pass: true
+    expected: 23
+    description: Success short parse with truncation
+
+  - arguments:
+      input_field: hello
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure unsigned long parse

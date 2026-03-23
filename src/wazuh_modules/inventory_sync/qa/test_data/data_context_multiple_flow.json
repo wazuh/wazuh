@@ -1,0 +1,62 @@
+{
+  "description": "DataContext flow test with multiple context messages: start -> multiple datacontext -> end",
+  "messages": [
+    {
+      "type": "start",
+      "data": {
+        "module": "syscollector",
+        "mode": 1,
+        "size": 3,
+        "agentid": "001",
+        "agentname": "test-agent",
+        "agentversion": "4.8.0"
+      },
+      "description": "Start synchronization session for DataContext with 3 messages",
+      "delay": 0.5,
+      "expect_session_response": true
+    },
+    {
+      "type": "datacontext",
+      "data": {
+        "seq": 0,
+        "id": "context-id-0",
+        "index": "wazuh-states-vulnerabilities",
+        "data": {"cve": "CVE-2024-1234", "severity": "high"}
+      },
+      "description": "Send first DataContext message",
+      "delay": 0.3,
+      "use_session_from_start": true
+    },
+    {
+      "type": "datacontext",
+      "data": {
+        "seq": 1,
+        "id": "context-id-1",
+        "index": "wazuh-states-vulnerabilities",
+        "data": {"cve": "CVE-2024-5678", "severity": "medium"}
+      },
+      "description": "Send second DataContext message",
+      "delay": 0.3,
+      "use_session_from_start": true
+    },
+    {
+      "type": "datacontext",
+      "data": {
+        "seq": 2,
+        "id": "context-id-2",
+        "index": "wazuh-states-vulnerabilities",
+        "data": {"cve": "CVE-2024-9012", "severity": "critical"}
+      },
+      "description": "Send third DataContext message",
+      "delay": 0.3,
+      "use_session_from_start": true
+    },
+    {
+      "type": "end",
+      "data": {},
+      "description": "End synchronization session",
+      "delay": 0.5,
+      "use_session_from_start": true
+    }
+  ]
+}

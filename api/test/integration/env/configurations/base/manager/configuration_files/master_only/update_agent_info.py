@@ -5,13 +5,13 @@ import time
 import yaml
 
 output_file = '/tmp_volume/configuration_files/agent_info_output'
-ADDR = '/var/ossec/queue/db/wdb'
+ADDR = '/var/wazuh-manager/queue/db/wdb'
 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 sock.connect(ADDR)
 
 
 def send_msg(msg):
-    """Send message to wazuh-db socket
+    """Send message to wazuh-manager-db socket
 
     Parameters
     ----------

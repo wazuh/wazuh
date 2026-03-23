@@ -1,0 +1,45 @@
+name: 5.X - API RBAC DB Version Check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/5_codeanalysis_api-rbac-db-version.yml"
+      - "framework/wazuh/rbac/default/**"
+      - "framework/wazuh/rbac/orm.py"
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Get changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            rbac_defaults:
+              - 'framework/wazuh/rbac/default/**'
+            orm_handler:
+              - 'framework/wazuh/rbac/orm.py'
+
+      - name: Require API RBAC DB version bump when defaults changed
+        if: steps.filter.outputs.rbac_defaults == 'true'
+        run: |
+          echo "RBAC default files and ORM handler changed. Checking DB version bump..."
+          if [ "${{ steps.filter.outputs.orm_handler }}" != "true" ]; then
+            echo "Error: RBAC default files were modified but orm.py was not changed."
+            exit 1
+          fi
+          git fetch origin ${{ github.base_ref }}
+          DB_VERSION_CHANGED=$(git diff "origin/${{ github.base_ref }}" HEAD -- framework/wazuh/rbac/orm.py | grep -U0 'CURRENT_ORM_VERSION' | wc -l)
+          if [ "$DB_VERSION_CHANGED" -eq "0" ]; then
+            echo "Error: CURRENT_ORM_VERSION was not bumped in orm.py."
+            exit 1
+          else
+            echo "CURRENT_ORM_VERSION version bump detected."
+          fi

@@ -13,7 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <string.h>
-#include "headers/defs.h"
+#include "defs.h"
 #include "../../common.h"
 
 

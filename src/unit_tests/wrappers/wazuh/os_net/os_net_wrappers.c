@@ -11,7 +11,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include "../../headers/shared.h"
+#include "shared.h"
 #include "os_net_wrappers.h"
 
 int __wrap_OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t perm) {
@@ -125,11 +125,6 @@ int __wrap_wnet_select(__attribute__((unused)) int sock,
     return (int)mock();
 }
 
-int __wrap_OS_CloseSocket(int sock) {
-    check_expected(sock);
-    return mock();
-}
-
 uint32_t __wrap_wnet_order(uint32_t value) {
     check_expected(value);
     return mock();
@@ -172,14 +167,53 @@ int __wrap_get_ipv6_numeric(__attribute__((unused)) const char *address,
 
 int __wrap_get_ipv4_string(__attribute__((unused)) struct in_addr addr,
                             char *address, size_t address_size) {
-    check_expected(address);
+    int ret = mock();
+    if (ret == OS_INVALID)
+    {
+        check_expected(address);
+    }
+    else
+    {
+        strncpy(address, mock_ptr_type(char *), address_size);
+    }
     check_expected(address_size);
-    return mock();
+    return ret;
 }
 
 int __wrap_get_ipv6_string(__attribute__((unused)) struct in6_addr addr6,
                             char *address, size_t address_size) {
-    check_expected(address);
+    int ret = mock();
+    if (ret == OS_INVALID)
+    {
+        check_expected(address);
+    }
+    else
+    {
+        strncpy(address, mock_ptr_type(char *), address_size);
+    }
     check_expected(address_size);
+    return ret;
+}
+
+int __wrap_OS_SendSecureTCPCluster(int sock, const void *command, const void *payload, size_t length) {
+    check_expected(sock);
+    check_expected(command);
+    check_expected(payload);
+    check_expected(length);
+
+    return mock();
+}
+
+int __wrap_OS_RecvSecureClusterTCP(int sock, char *ret, size_t length) {
+    check_expected(sock);
+    check_expected(length);
+
+    strncpy(ret, mock_type(char*), length);
+
+    return mock();
+}
+
+int __wrap_OS_CloseSocket(int sock) {
+    check_expected(sock);
     return mock();
 }

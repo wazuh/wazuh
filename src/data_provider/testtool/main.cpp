@@ -54,9 +54,29 @@ class SysInfoPrinter final
             m_data["ports"] = m_sysinfo.ports();
         }
 
-        void printHotfixes()
+        void printHotfixesInfo()
         {
             m_data["hotfixes"] = m_sysinfo.hotfixes();
+        }
+
+        void printGroupsInfo()
+        {
+            m_data["groups"] = m_sysinfo.groups();
+        }
+
+        void printUsersInfo()
+        {
+            m_data["users"] = m_sysinfo.users();
+        }
+
+        void printServicesInfo()
+        {
+            m_data["services"] = m_sysinfo.services();
+        }
+
+        void printBrowserExtensionsInfo()
+        {
+            m_data["browser_extensions"] = m_sysinfo.browserExtensions();
         }
 
         void printData()
@@ -100,7 +120,11 @@ int main(int argc, const char* argv[])
             printer.printPackagesInfo();
             printer.printProcessesInfo();
             printer.printPortsInfo();
-            printer.printHotfixes();
+            printer.printHotfixesInfo();
+            printer.printUsersInfo();
+            printer.printGroupsInfo();
+            printer.printServicesInfo();
+            printer.printBrowserExtensionsInfo();
             printer.printData();
             printer.printPackagesInfoCallback();
             printer.printProcessesInfoCallback();
@@ -135,7 +159,11 @@ int main(int argc, const char* argv[])
             }
             else if (cmdLineArgs.hotfixesArg())
             {
-                printer.printHotfixes();
+                printer.printHotfixesInfo();
+            }
+            else if (cmdLineArgs.usersArg())
+            {
+                printer.printUsersInfo();
             }
             else if (cmdLineArgs.packagesCallbackArg())
             {
@@ -144,6 +172,18 @@ int main(int argc, const char* argv[])
             else if (cmdLineArgs.processesCallbackArg())
             {
                 printer.printProcessesInfoCallback();
+            }
+            else if (cmdLineArgs.groupsArg())
+            {
+                printer.printGroupsInfo();
+            }
+            else if (cmdLineArgs.servicesArg())
+            {
+                printer.printServicesInfo();
+            }
+            else if (cmdLineArgs.browserExtensionsArg())
+            {
+                printer.printBrowserExtensionsInfo();
             }
             else
             {

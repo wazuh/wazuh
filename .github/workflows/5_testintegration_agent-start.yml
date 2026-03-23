@@ -1,0 +1,133 @@
+name: 5.X - Agent Startup Smoke Test
+
+on:
+  workflow_call:
+    inputs:
+      base_branch:
+        description: 'Base branch to download artifacts from (empty = use artifacts from current run)'
+        required: false
+        type: string
+        default: ''
+      platform:
+        description: 'Platform to test (linux, windows, macos, all)'
+        required: false
+        type: string
+        default: 'all'
+
+  workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
+      platform:
+        description: 'Platform to test'
+        required: false
+        type: choice
+        default: 'all'
+        options:
+          - all
+          - linux
+          - windows
+          - macos
+# Note: Github will force this by default in June 2026, but we set it explicitly to avoid any issues with JavaScript actions in the meantime.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  setup-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Define test matrix
+        id: set-matrix
+        run: |
+          PLATFORM="${{ inputs.platform }}"
+          ENTRIES='[]'
+
+          DEB=$(jq -cn '{
+            runner: "ubuntu-latest", platform: "linux-deb",
+            "display-name": "Linux DEB (amd64)",
+            "artifact-pattern": "wazuh-agent*amd64*.deb",
+            "artifact-regexp": "wazuh-agent.*amd64.*\\.deb",
+            "build-workflow": "5_builderpackage_agent-linux.yml",
+            "packages-path": "/tmp/packages"
+          }')
+          RPM=$(jq -cn '{
+            runner: "ubuntu-latest", platform: "linux-rpm",
+            "display-name": "Linux RPM (x86_64)",
+            "artifact-pattern": "*x86_64*.rpm",
+            "artifact-regexp": "wazuh-agent.*x86_64.*\\.rpm",
+            "build-workflow": "5_builderpackage_agent-linux.yml",
+            "packages-path": "/tmp/packages"
+          }')
+          WIN=$(jq -cn '{
+            runner: "windows-2022", platform: "windows",
+            "display-name": "Windows",
+            "artifact-pattern": "wazuh-agent*windows*.msi",
+            "artifact-regexp": "wazuh-agent.*windows.*\\.msi",
+            "build-workflow": "5_builderpackage_agent-windows.yml",
+            "packages-path": "C:\\packages"
+          }')
+          MAC=$(jq -cn '{
+            runner: "macos-14", platform: "macos",
+            "display-name": "macOS (arm64)",
+            "artifact-pattern": "wazuh-agent*arm64*.pkg",
+            "artifact-regexp": "wazuh-agent.*arm64.*\\.pkg",
+            "build-workflow": "5_builderpackage_agent-macos.yml",
+            "packages-path": "/tmp/packages"
+          }')
+
+          [[ "$PLATFORM" == "all" || "$PLATFORM" == "linux"   ]] && ENTRIES=$(jq -cn --argjson e "$ENTRIES" --argjson a "$DEB" --argjson b "$RPM" '$e + [$a,$b]')
+          [[ "$PLATFORM" == "all" || "$PLATFORM" == "windows" ]] && ENTRIES=$(jq -cn --argjson e "$ENTRIES" --argjson a "$WIN" '$e + [$a]')
+          [[ "$PLATFORM" == "all" || "$PLATFORM" == "macos"   ]] && ENTRIES=$(jq -cn --argjson e "$ENTRIES" --argjson a "$MAC" '$e + [$a]')
+
+          if [ "$(echo "$ENTRIES" | jq 'length')" -eq 0 ]; then
+            echo "ERROR: No platforms selected. Invalid platform value: '$PLATFORM'. Valid values: all, linux, windows, macos"
+            exit 1
+          fi
+
+          echo "matrix=$(jq -cn --argjson entries "$ENTRIES" '{include: $entries}')" >> $GITHUB_OUTPUT
+
+  test:
+    name: Test ${{ matrix.display-name }} startup
+    needs: setup-matrix
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        if: inputs.base_branch == ''
+        with:
+          pattern: ${{ matrix.artifact-pattern }}
+          path: ${{ matrix.packages-path }}
+          merge-multiple: true
+
+      - name: Download package artifact (manual)
+        uses: dawidd6/action-download-artifact@v6
+        if: inputs.base_branch != ''
+        with:
+          workflow: ${{ matrix.build-workflow }}
+          workflow_conclusion: success
+          name_is_regexp: true
+          name: ${{ matrix.artifact-regexp }}
+          path: ${{ matrix.packages-path }}
+          if_no_artifact_found: fail
+          check_artifacts: true
+          search_artifacts: true
+          branch: ${{ inputs.base_branch }}
+
+      - name: Run smoke test
+        uses: ./.github/actions/5_testintegration_agent-start/run-test
+        with:
+          platform: ${{ matrix.platform }}
+          packages-path: ${{ matrix.packages-path }}
+          ghcr-token: ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}
+          actor: ${{ github.actor }}

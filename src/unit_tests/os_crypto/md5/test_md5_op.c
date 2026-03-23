@@ -12,9 +12,9 @@
 #include <stddef.h>
 #include <cmocka.h>
 
-#include "../../os_crypto/md5/md5_op.h"
+#include "md5_op.h"
 #include "../../wrappers/common.h"
-#include "../headers/shared.h"
+#include "shared.h"
 
 /* setups/teardowns */
 static int setup_group(void **state) {
@@ -35,22 +35,25 @@ void test_md5_string(void **state) {
     const char *string_md5 = "d67c5cbf5b01c9f91932e3b8def5e5f8";
     os_md5 buffer;
 
-    OS_MD5_Str(string, -1, buffer);
+    assert_int_equal(OS_MD5_Str(string, -1, buffer), 0);
 
     assert_string_equal(buffer, string_md5);
 }
 
 void test_md5_file(void **state) {
     const char *string = "teststring";
-    const char *string_md5 = "d41d8cd98f00b204e9800998ecf8427e";
+    const char *string_md5 = "d67c5cbf5b01c9f91932e3b8def5e5f8";
 
     char path[] = "path/to/file";
 
-    expect_value(__wrap_fopen, path, path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
+    expect_value(__wrap_wfopen, path, path);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, string);
+    will_return(__wrap_fread, strlen(string));
+
+    will_return(__wrap_fread, "");
     will_return(__wrap_fread, 0);
 
     expect_value(__wrap_fclose, _File, 1);
@@ -65,19 +68,36 @@ void test_md5_file(void **state) {
 void test_md5_file_fail(void **state) {
     char path[] = "path/to/non-existing/file";
 
-    expect_value(__wrap_fopen, path, path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
+    expect_value(__wrap_wfopen, path, path);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
 
     os_md5 buffer;
     assert_int_equal(OS_MD5_File(path, buffer, OS_TEXT), -1);
+}
+
+void test_OS_MD5_File_null_path(void **state) {
+    os_md5 output;
+
+    memset(output, '1', sizeof(output));
+
+    const char *volatile null_path = NULL;
+
+    int ret = OS_MD5_File(null_path, output, OS_BINARY);
+
+    assert_int_equal(ret, -1);
+
+    char expected[sizeof(output)];
+    memset(expected, 0, sizeof(expected));
+    assert_memory_equal(output, expected, sizeof(output));
 }
 
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_md5_string),
         cmocka_unit_test_setup_teardown(test_md5_file, setup_group, teardown_group),
-        cmocka_unit_test_setup_teardown(test_md5_file_fail, setup_group, teardown_group)
+        cmocka_unit_test_setup_teardown(test_md5_file_fail, setup_group, teardown_group),
+        cmocka_unit_test(test_OS_MD5_File_null_path)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

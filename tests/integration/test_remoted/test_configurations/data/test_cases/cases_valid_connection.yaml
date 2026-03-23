@@ -1,0 +1,78 @@
+- name: Command config wazuh manager for valid connection
+  description: Command config wazuh manager for valid connections
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: 'UDP'
+  metadata:
+    port: '1514'
+    valid_protocol: ['UDP']
+
+
+- name: Command config wazuh manager for valid connection
+  description: Command config wazuh manager for valid connections
+  configuration_parameters:
+    PORT: '514'
+    PROTOCOL: 'UDP'
+  metadata:
+    port: '514'
+    valid_protocol: ['UDP']
+
+
+- name: Command config wazuh manager for valid connection
+  description: Command config wazuh manager for valid connections
+  configuration_parameters:
+    PORT: '553'
+    PROTOCOL: 'TCP'
+  metadata:
+    port: '553'
+    valid_protocol: ['TCP']
+
+
+- name: Command config wazuh manager for valid connection
+  description: Command config wazuh manager for valid connections
+  configuration_parameters:
+    PORT: '23467'
+    PROTOCOL: 'TCP'
+  metadata:
+    port: '23467'
+    valid_protocol: ['TCP']
+
+
+- name: Command config wazuh manager for valid connection
+  description: Command config wazuh manager for valid connections
+  configuration_parameters:
+    PORT: '1209'
+    PROTOCOL: 'TCP,UDP'
+  metadata:
+    port: '1209'
+    valid_protocol: ['TCP','UDP']
+
+
+- name: Command config wazuh manager for valid connection
+  description: Command config wazuh manager for valid connections
+  configuration_parameters:
+    PORT: '2134'
+    PROTOCOL: 'TCP,UDP'
+  metadata:
+    port: '2134'
+    valid_protocol: ['TCP','UDP']
+
+
+- name: Command config wazuh manager for valid connection
+  description: Command config wazuh manager for valid connections
+  configuration_parameters:
+    PORT: '55632'
+    PROTOCOL: 'UDP,TCP'
+  metadata:
+    port: '55632'
+    valid_protocol: ['UDP','TCP']
+
+
+- name: Command config wazuh manager for valid connection
+  description: Command config wazuh manager for valid connections
+  configuration_parameters:
+    PORT: '2134'
+    PROTOCOL: 'UDP,TCP'
+  metadata:
+    port: '2134'
+    valid_protocol: ['UDP','TCP']

@@ -15,24 +15,15 @@
 #include "dbsync.hpp"
 #include "dbsync_implementation.h"
 #include "dbsyncPipelineFactory.h"
+#include "cjsonSmartDeleter.hpp"
+#include "hashHelper.h"
+#include "stringHelper.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 using namespace DbSync;
-
-struct CJsonDeleter
-{
-    void operator()(char* json)
-    {
-        cJSON_free(json);
-    }
-    void operator()(cJSON* json)
-    {
-        cJSON_Delete(json);
-    }
-};
 
 static std::function<void(const std::string&)> gs_logFunction;
 
@@ -52,10 +43,12 @@ void dbsync_initialize(log_fnc_t log_function)
     });
 }
 
-DBSYNC_HANDLE dbsync_create(const HostType     host_type,
-                            const DbEngineType db_type,
-                            const char*        path,
-                            const char*        sql_statement)
+DBSYNC_HANDLE dbsync_create_(const HostType     host_type,
+                             const DbEngineType db_type,
+                             const char*        path,
+                             const char*        sql_statement,
+                             const DbManagement db_management,
+                             const char**       upgrade_statements)
 {
     DBSYNC_HANDLE retVal{ nullptr };
     std::string errorMessage;
@@ -68,7 +61,15 @@ DBSYNC_HANDLE dbsync_create(const HostType     host_type,
     {
         try
         {
-            retVal = DBSyncImplementation::instance().initialize(host_type, db_type, path, sql_statement);
+            auto upgradeStatements = std::vector<std::string>();
+
+            while (upgrade_statements && *upgrade_statements)
+            {
+                upgradeStatements.emplace_back(*upgrade_statements);
+                upgrade_statements++;
+            }
+
+            retVal = DBSyncImplementation::instance().initialize(host_type, db_type, path, sql_statement, db_management, upgradeStatements);
         }
         catch (const DbSync::dbsync_error& ex)
         {
@@ -85,6 +86,23 @@ DBSYNC_HANDLE dbsync_create(const HostType     host_type,
 
     log_message(errorMessage);
     return retVal;
+}
+
+DBSYNC_HANDLE dbsync_create(const HostType     host_type,
+                            const DbEngineType db_type,
+                            const char*        path,
+                            const char*        sql_statement)
+{
+    return dbsync_create_(host_type, db_type, path, sql_statement, DbManagement::VOLATILE, nullptr);
+}
+
+DBSYNC_HANDLE dbsync_create_persistent(const HostType     host_type,
+                                       const DbEngineType db_type,
+                                       const char*        path,
+                                       const char*        sql_statement,
+                                       const char**       upgrade_statements)
+{
+    return dbsync_create_(host_type, db_type, path, sql_statement, DbManagement::PERSISTENT, upgrade_statements);
 }
 
 void dbsync_teardown(void)
@@ -114,11 +132,26 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
             {
                 [callback_data](ReturnTypeCallback result, const nlohmann::json & jsonResult)
                 {
-                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    nlohmann::json patchedJson = jsonResult;
+                    auto convert_inode = [](nlohmann::json & obj)
+                    {
+                        if (obj.contains("inode"))
+                        {
+                            obj["inode"] = std::to_string(obj["inode"].get<uint64_t>());
+                        }
+                    };
+
+                    convert_inode(patchedJson);
+
+                    if (patchedJson.contains("new")) convert_inode(patchedJson["new"]);
+
+                    if (patchedJson.contains("old")) convert_inode(patchedJson["old"]);
+
+                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(patchedJson.dump().c_str()) };
                     callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(tables)};
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{cJSON_Print(tables)};
             txn = PipelineFactory::instance().create(handle, nlohmann::json::parse(spJsonBytes.get()), thread_number, max_queue_size, callbackWrapper);
         }
         catch (const DbSync::dbsync_error& ex)
@@ -186,7 +219,7 @@ int dbsync_sync_txn_row(const TXN_HANDLE txn,
     {
         try
         {
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_input)};
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{cJSON_PrintUnformatted(js_input)};
             PipelineFactory::instance().pipeline(txn)->syncRow(nlohmann::json::parse(spJsonBytes.get()));
             retVal = 0;
         }
@@ -222,7 +255,7 @@ int dbsync_add_table_relationship(const DBSYNC_HANDLE handle,
     {
         try
         {
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(js_input)};
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{cJSON_Print(js_input)};
             DBSyncImplementation::instance().addTableRelationship(handle, nlohmann::json::parse(spJsonBytes.get()));
             retVal = 0;
         }
@@ -261,7 +294,7 @@ int dbsync_insert_data(const DBSYNC_HANDLE handle,
     {
         try
         {
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(js_insert)};
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{cJSON_Print(js_insert)};
             DBSyncImplementation::instance().insertBulkData(handle, nlohmann::json::parse(spJsonBytes.get()));
             retVal = 0;
         }
@@ -294,9 +327,9 @@ int dbsync_insert_data(const DBSYNC_HANDLE handle,
     return retVal;
 }
 
-int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
-                              const char*              table,
-                              const unsigned long long max_rows)
+int dbsync_set_table_max_rows(const DBSYNC_HANDLE handle,
+                              const char*         table,
+                              const long long     max_rows)
 {
     auto retVal { -1 };
     std::string errorMessage;
@@ -350,11 +383,11 @@ int dbsync_sync_row(const DBSYNC_HANDLE handle,
             {
                 [callback_data](ReturnTypeCallback result, const nlohmann::json & jsonResult)
                 {
-                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
                     callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_input) };
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{ cJSON_PrintUnformatted(js_input) };
             DBSyncImplementation::instance().syncRowData(handle, nlohmann::json::parse(spJsonBytes.get()), callbackWrapper);
             retVal = 0;
         }
@@ -400,11 +433,11 @@ int dbsync_select_rows(const DBSYNC_HANDLE handle,
             {
                 [callback_data](ReturnTypeCallback result, const nlohmann::json & jsonResult)
                 {
-                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
                     callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_data_input) };
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{ cJSON_PrintUnformatted(js_data_input) };
             DBSyncImplementation::instance().selectData(handle, nlohmann::json::parse(spJsonBytes.get()), callbackWrapper);
             retVal = 0;
         }
@@ -445,7 +478,7 @@ int dbsync_delete_rows(const DBSYNC_HANDLE handle,
     {
         try
         {
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_key_values) };
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{ cJSON_PrintUnformatted(js_key_values) };
             DBSyncImplementation::instance().deleteRowsData(handle, nlohmann::json::parse(spJsonBytes.get()));
             retVal = 0;
         }
@@ -490,7 +523,15 @@ int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
             {
                 [callback_data](ReturnTypeCallback result, const nlohmann::json & jsonResult)
                 {
-                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    nlohmann::json patchedJson = jsonResult;
+
+                    if (patchedJson.contains("inode"))
+                    {
+                        uint64_t inode = patchedJson["inode"].get<uint64_t>();
+                        patchedJson["inode"] = std::to_string(inode);
+                    }
+
+                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(patchedJson.dump().c_str()) };
                     callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };
@@ -547,7 +588,7 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
                     result[s_opMap.at(resultType)].push_back(jsonResult);
                 }
             };
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
             DBSyncImplementation::instance().updateSnapshotData(handle, nlohmann::json::parse(spJsonBytes.get()), callbackWrapper);
             *js_result = cJSON_Parse(result.dump().c_str());
             retVal = 0;
@@ -599,11 +640,11 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
             {
                 [callback_data](ReturnTypeCallback result, const nlohmann::json & jsonResult)
                 {
-                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
                     callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
             DBSyncImplementation::instance().updateSnapshotData(handle, nlohmann::json::parse(spJsonBytes.get()), callbackWrapper);
             retVal = 0;
         }
@@ -638,6 +679,41 @@ void dbsync_free_result(cJSON** js_data)
     }
 }
 
+int dbsync_close_and_delete_db(const DBSYNC_HANDLE handle,
+                               const char*         path)
+{
+    auto retVal { -1 };
+    std::string errorMessage;
+
+    if (!handle || !path)
+    {
+        errorMessage += "Invalid parameters.";
+    }
+    else
+    {
+        try
+        {
+            DBSyncImplementation::instance().closeAndDeleteDatabase(handle, path);
+            retVal = 0;
+        }
+        catch (const DbSync::dbsync_error& ex)
+        {
+            errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+            retVal = ex.id();
+        }
+        // LCOV_EXCL_START
+        catch (...)
+        {
+            errorMessage += "Unrecognized error.";
+        }
+
+        // LCOV_EXCL_STOP
+    }
+
+    log_message(errorMessage);
+    return retVal;
+}
+
 #ifdef __cplusplus
 }
 #endif
@@ -651,12 +727,15 @@ void DBSync::initialize(std::function<void(const std::string&)> logFunction)
     }
 }
 
-DBSync::DBSync(const HostType     hostType,
-               const DbEngineType dbType,
-               const std::string& path,
-               const std::string& sqlStatement)
-    : m_dbsyncHandle { DBSyncImplementation::instance().initialize(hostType, dbType, path, sqlStatement) }
+DBSync::DBSync(const HostType                  hostType,
+               const DbEngineType              dbType,
+               const std::string&              path,
+               const std::string&              sqlStatement,
+               const DbManagement              dbManagement,
+               const std::vector<std::string>& upgradeStatements)
+    : m_dbsyncHandle { DBSyncImplementation::instance().initialize(hostType, dbType, path, sqlStatement, dbManagement, upgradeStatements) }
     , m_shouldBeRemoved{ true }
+    , m_dbPath{ path }
 { }
 
 DBSync::DBSync(const DBSYNC_HANDLE dbsyncHandle)
@@ -666,7 +745,9 @@ DBSync::DBSync(const DBSYNC_HANDLE dbsyncHandle)
 
 DBSync::~DBSync()
 {
-    if (m_shouldBeRemoved)
+    // Only release context if we own it AND the singleton is not being destroyed
+    // This prevents use-after-free during static destruction order issues
+    if (m_shouldBeRemoved && !DBSyncImplementation::isShuttingDown())
     {
         DBSyncImplementation::instance().releaseContext(m_dbsyncHandle);
     }
@@ -689,8 +770,8 @@ void DBSync::insertData(const nlohmann::json& jsInsert)
     DBSyncImplementation::instance().insertBulkData(m_dbsyncHandle, jsInsert);
 }
 
-void DBSync::setTableMaxRow(const std::string&       table,
-                            const unsigned long long maxRows)
+void DBSync::setTableMaxRow(const std::string& table,
+                            const long long    maxRows)
 {
     DBSyncImplementation::instance().setMaxRows(m_dbsyncHandle, table, maxRows);
 }
@@ -760,6 +841,118 @@ void DBSync::updateWithSnapshot(const nlohmann::json&     jsInput,
     DBSyncImplementation::instance().updateSnapshotData(m_dbsyncHandle, jsInput, callbackWrapper);
 }
 
+void DBSync::closeAndDeleteDatabase()
+{
+    DBSyncImplementation::instance().closeAndDeleteDatabase(m_dbsyncHandle, m_dbPath);
+}
+
+std::string DBSync::getConcatenatedChecksums(const std::string& tableName)
+{
+    return getConcatenatedChecksums(tableName, "");
+}
+
+std::string DBSync::getConcatenatedChecksums(const std::string& tableName, const std::string& rowFilter)
+{
+    std::string concatenatedChecksums;
+
+    auto callback = [&concatenatedChecksums](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    {
+        if (type == ReturnTypeCallback::SELECTED)
+        {
+            concatenatedChecksums += jsonResult.at("checksum").get<std::string>();
+        }
+    };
+
+    auto selectQuery {SelectQuery::builder()
+                      .table(tableName)
+                      .columnList({"checksum"})
+                      .orderByOpt("checksum")
+                      .rowFilter(rowFilter)
+                      .distinctOpt(false)
+                      .build()};
+
+    selectRows(selectQuery.query(), callback);
+
+    return concatenatedChecksums;
+}
+
+std::string DBSync::calculateTableChecksum(const std::string& tableName)
+{
+    return calculateTableChecksum(tableName, "");
+}
+
+std::string DBSync::calculateTableChecksum(const std::string& tableName, const std::string& rowFilter)
+{
+    std::string concatenated_checksums = getConcatenatedChecksums(tableName, rowFilter);
+
+    // Build checksum-of-checksums
+    Utils::HashData hash(Utils::HashType::Sha1);
+    std::string final_checksum;
+
+    hash.update(concatenated_checksums.c_str(), concatenated_checksums.length());
+    const std::vector<unsigned char> hashResult = hash.hash();
+    final_checksum = Utils::asciiToHex(hashResult);
+
+    return final_checksum;
+}
+
+void DBSync::increaseEachEntryVersion(const std::string& tableName)
+{
+    std::vector<nlohmann::json> rows;
+    auto callback {[&rows](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    {
+        if (ReturnTypeCallback::SELECTED == type)
+        {
+            rows.push_back(jsonResult);
+        }
+    }};
+
+    auto selectQuery {SelectQuery::builder()
+                      .table(tableName)
+                      .columnList({"*"})
+                      .orderByOpt("")
+                      .distinctOpt(false)
+                      .build()};
+
+    selectRows(selectQuery.query(), callback);
+
+    size_t processed = 0;
+
+    for (auto& row : rows)
+    {
+        try
+        {
+            row["version"] = row["version"].get<int>() + 1;
+
+            auto updateCallback {[](ReturnTypeCallback, const nlohmann::json&) {}};
+
+            auto syncQuery {SyncRowQuery::builder()
+                            .table(tableName)
+                            .data(row)
+                            .build()};
+
+            syncRow(syncQuery.query(), updateCallback);
+            processed++;
+        }
+        catch (const std::exception& ex)
+        {
+            // Log which entry failed with as much context as possible
+            std::string entryInfo = "entry " + std::to_string(processed + 1) + "/" + std::to_string(rows.size());
+
+            // Try to get primary key info if available
+            if (row.contains("id"))
+            {
+                entryInfo += " (id: " + row["id"].dump() + ")";
+            }
+
+            log_message("Failed to update version for " + entryInfo + " in table " + tableName + ": " + ex.what());
+
+            // Re-throw to stop the recovery process
+            throw;
+        }
+    }
+
+}
 
 DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
                      const nlohmann::json& tables,
@@ -813,4 +1006,88 @@ void DBSyncTxn::getDeletedRows(ResultCallbackData  callbackData)
         }
     };
     PipelineFactory::instance().pipeline(m_txn)->getDeleted(callbackWrapper);
+}
+
+SelectQuery& SelectQuery::columnList(const std::vector<std::string>& fields)
+{
+    m_jsQuery["query"]["column_list"] = fields;
+    return *this;
+}
+
+SelectQuery& SelectQuery::rowFilter(const std::string& filter)
+{
+    m_jsQuery["query"]["row_filter"] = filter;
+    return *this;
+}
+
+SelectQuery& SelectQuery::distinctOpt(const bool distinct)
+{
+    m_jsQuery["query"]["distinct_opt"] = distinct;
+    return *this;
+}
+
+SelectQuery& SelectQuery::orderByOpt(const std::string& orderBy)
+{
+    m_jsQuery["query"]["order_by_opt"] = orderBy;
+    return *this;
+}
+
+SelectQuery& SelectQuery::countOpt(const uint32_t count)
+{
+    m_jsQuery["query"]["count_opt"] = count;
+    return *this;
+}
+
+DeleteQuery& DeleteQuery::data(const nlohmann::json& data)
+{
+    m_jsQuery["query"]["data"].push_back(data);
+    return *this;
+}
+
+DeleteQuery& DeleteQuery::reset()
+{
+    m_jsQuery["query"]["data"].clear();
+    return *this;
+}
+
+DeleteQuery& DeleteQuery::rowFilter(const std::string& filter)
+{
+    m_jsQuery["query"]["where_filter_opt"] = filter;
+    return *this;
+}
+
+InsertQuery& InsertQuery::data(const nlohmann::json& data)
+{
+    m_jsQuery["data"].push_back(data);
+    return *this;
+}
+
+InsertQuery& InsertQuery::reset()
+{
+    m_jsQuery["data"].clear();
+    return *this;
+}
+
+SyncRowQuery& SyncRowQuery::data(const nlohmann::json& data)
+{
+    m_jsQuery["data"].push_back(data);
+    return *this;
+}
+
+SyncRowQuery& SyncRowQuery::ignoreColumn(const std::string& column)
+{
+    m_jsQuery["options"]["ignore"].push_back(column);
+    return *this;
+}
+
+SyncRowQuery& SyncRowQuery::returnOldData()
+{
+    m_jsQuery["options"]["return_old_data"] = true;
+    return *this;
+}
+
+SyncRowQuery& SyncRowQuery::reset()
+{
+    m_jsQuery["data"].clear();
+    return *this;
 }

@@ -1,0 +1,123 @@
+namespace Wazuh.SyncSchema;
+
+enum Mode: byte {
+    ModuleFull,
+    ModuleDelta,
+    ModuleCheck,
+    MetadataDelta,
+    MetadataCheck,
+    GroupDelta,
+    GroupCheck
+}
+
+enum Operation: byte {
+    Upsert,
+    Delete
+}
+
+enum Status: byte {
+    Ok,
+    Error,
+    Offline,
+    ChecksumMismatch,
+    Processing
+}
+
+enum Option: byte {
+    Sync,
+    VDFirst,
+    VDSync
+}
+
+table DataValue {
+    seq: ulong;
+    session: ulong;
+    operation: Operation;
+    id: string;
+    index: string;
+    version: ulong;
+    data: [byte];
+}
+
+table DataContext {
+    seq: ulong;
+    session: ulong;
+    id: string;
+    index: string;
+    data: [byte];
+}
+
+table Start {
+    module: string;
+    mode: Mode;
+    size: ulong;
+    index: [string];
+    option: Option;
+    architecture: string;
+    hostname: string;
+    osname: string;
+    osplatform: string;
+    ostype: string;
+    osversion: string;
+    agentversion: string;
+    agentname: string;
+    agentid: string;
+    groups: [string];
+    global_version: ulong;
+    cluster_name: string;
+    cluster_node: string;
+}
+
+table StartAck {
+    status: Status;
+    session: ulong;
+}
+
+table End {
+    session: ulong;
+}
+
+table EndAck {
+    status: Status;
+    session: ulong;
+}
+
+table Pair {
+    begin: ulong;
+    end: ulong;
+}
+
+table ReqRet {
+    seq: [Pair];
+    session: ulong;
+}
+
+table DataClean {
+    seq: ulong;
+    session: ulong;
+    index: string;
+}
+
+table ChecksumModule {
+    session: ulong;
+    index: string;
+    checksum: string;
+}
+
+union MessageType {
+    DataValue,
+    DataClean,
+    ChecksumModule,
+    Start,
+    StartAck,
+    End,
+    EndAck,
+    ReqRet,
+    DataContext
+}
+
+table Message {
+    content: MessageType;
+}
+
+root_type Message;

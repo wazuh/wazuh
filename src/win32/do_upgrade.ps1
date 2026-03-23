@@ -1,312 +1,323 @@
-# Backup dirs
-$Env:WAZUH_BACKUP_DIR         = ".\backup"
-$TMP_BACKUP_DIR               = "wazuh_backup_tmp"
-# Finding MSI useful constants
-$Env:WAZUH_DEF_REG_START_PATH = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products\"
-$Env:WAZUH_PUBLISHER_VALUE    = "Wazuh, Inc."
+# Check if there is an upgrade in progress
+if (Test-Path ".\upgrade\upgrade_in_progress") {
+    write-output "$(Get-Date -format u) - There is an upgrade in progress. Aborting..." >> .\upgrade\upgrade.log
+    exit 1
+}
+
+write-output "0" | out-file ".\upgrade\upgrade_in_progress" -encoding ascii
+
+# Delete previous upgrade.log
+Remove-Item -Path ".\upgrade\upgrade.log" -ErrorAction SilentlyContinue
 
 # Select powershell
-if ((Get-WmiObject Win32_OperatingSystem).OSArchitecture -eq "64-bit" -And [System.IntPtr]::Size -eq 4) {
-    write-output "$(Get-Date -format u) Sysnative Powershell will be used to access the registry." >> .\upgrade\upgrade.log
+if (Test-Path "$env:windir\sysnative") {
+    write-output "$(Get-Date -format u) - Sysnative Powershell will be used to access the registry." >> .\upgrade\upgrade.log
     Set-Alias Start-NativePowerShell "$env:windir\sysnative\WindowsPowerShell\v1.0\powershell.exe"
 } else {
     Set-Alias Start-NativePowerShell "$env:windir\System32\WindowsPowerShell\v1.0\powershell.exe"
 }
 
-# Check unistall
-function is_wazuh_installed
-{
-    Start-NativePowerShell {
 
-        $retval = $FALSE
-        # Searching through the registry keys (Starting from $WAZUH_DEF_REG_START_PATH)
-        $path = Get-ChildItem $Env:WAZUH_DEF_REG_START_PATH
-        foreach ($subpaths in $path) {
-            $subpath = $subpaths | Get-ChildItem
-            foreach ($subsubpath in $subpath) {
-                if ($subsubpath -match "InstallProperties") {
-                    if ($subsubpath.GetValue("Publisher") -match $Env:WAZUH_PUBLISHER_VALUE) {
-                        $retval = $TRUE
-                    }
-                }
-            }
-        }
+function get-version {
+    # possible version file paths
+    $JsonFile = "VERSION.json"
+    $TextFile = "VERSION"
+    $version = $null
 
-        Write-Output $retval
-    }
-}
+    # first check JSON version file exists
+    if (Test-Path $JsonFile) {
+        $VERSION_JSON = Get-Content $JsonFile -Raw
 
-# Forces Wazuh-Agent to stop
-function stop_wazuh_agent
-{
-    param (
-        $process_name
-    )
-
-    Get-Service -Name "Wazuh" | Stop-Service -ErrorAction SilentlyContinue -Force
-    $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
-    $counter = 5
-
-    while($process_id -ne $null -And $counter -gt 0)
-    {
-        write-output "$(Get-Date -format u) - Trying to stop Wazuh service again. Remaining attempts: $counter." >> .\upgrade\upgrade.log
-        $counter--
-        Get-Service -Name "Wazuh" | Stop-Service
-        taskkill /pid $process_id /f /T
-        Start-Sleep 2
-        $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
-    }
-
-}
-
-function backup_home
-{
-    write-output "$(Get-Date -format u) - Backing up Wazuh home files." >> .\upgrade\upgrade.log
-
-    # Clean before backup
-    Remove-Item $Env:WAZUH_BACKUP_DIR -recurse -ErrorAction SilentlyContinue -force
-    Remove-Item $env:temp\$TMP_BACKUP_DIR -recurse -ErrorAction SilentlyContinue
-
-    # Save wazuh home in tmp dir (Exclude not filter directories)
-    New-Item -ItemType directory -Path $env:temp\$TMP_BACKUP_DIR -ErrorAction SilentlyContinue
-    Copy-Item .\*  $env:temp\$TMP_BACKUP_DIR -force
-
-    # Move the tmp dir to local dir
-    New-Item -ItemType directory -Path $Env:WAZUH_BACKUP_DIR -ErrorAction SilentlyContinue
-    Copy-Item $env:temp\$TMP_BACKUP_DIR\* $Env:WAZUH_BACKUP_DIR -force
-    Remove-Item $env:temp\$TMP_BACKUP_DIR -recurse -ErrorAction SilentlyContinue
-
-}
-
-function backup_msi {
-
-    Start-NativePowerShell {
-
-        write-output "$(Get-Date -format u) - Searching Wazuh-Agent cached MSI through the registry." >> .\upgrade\upgrade.log
-
-        $path = Get-ChildItem $Env:WAZUH_DEF_REG_START_PATH
-        $wazuh_msi_path = $null
-
-        # Searching through the registry keys (Starting from $WAZUH_DEF_REG_START_PATH)
-        foreach ($subpaths in $path) {
-            $subpath = $subpaths | Get-ChildItem
-            foreach ($subsubpath in $subpath) {
-                if ($subsubpath -match "InstallProperties") {
-                    if ($subsubpath.GetValue("Publisher") -match $Env:WAZUH_PUBLISHER_VALUE) {
-                        $wazuh_msi_path = $subsubpath.GetValue("LocalPackage")
-                    }
-                }
-            }
-        }
-
-        # Do backup the MSI if it exists
-        if ($wazuh_msi_path -ne $null) {
-            $msi_filename = Split-Path $wazuh_msi_path -leaf
-            write-output "$(Get-Date -format u) - Backing up Wazuh-Agent cached MSI: `"$wazuh_msi_path`"." >> .\upgrade\upgrade.log
-            Copy-Item $wazuh_msi_path -Destination $Env:WAZUH_BACKUP_DIR -force
-            Write-Output "$msi_filename"
+        if ($VERSION_JSON -match "['""]version['""]\s*:\s*['""]([^'""]+)['""]") {
+            $version = $matches[1]
+            Write-Output "$(Get-Date -format u) - Extracted version from $JsonFile : $version." >> .\upgrade\upgrade.log
         } else {
-            write-output "$(Get-Date -format u) - Wazuh-Agent cached MSI was not found." >> .\upgrade\upgrade.log
+            Write-Output "$(Get-Date -format u) - Failed to extract version from JSON file $JsonFile." >> .\upgrade\upgrade.log
+            exit 1
         }
+    }
+    # fallback to the plain text VERSION file
+    elseif (Test-Path $TextFile) {
+        $version = Get-Content $TextFile -Raw
+        $version = $version.Trim() -replace "^v", ""
+        Write-Output "$(Get-Date -format u) - Extracted version from $TextFile : $version." >> .\upgrade\upgrade.log
+    } else {
+        Write-Output "$(Get-Date -format u) - Error: No version file found (expected $JsonFile or $TextFile)." >> .\upgrade\upgrade.log
+        exit 1
+    }
+
+    return $version
+}
+
+
+function remove_upgrade_files {
+    Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
+    Remove-Item -Path ".\wazuh-agent*.msi" -ErrorAction SilentlyContinue
+    Remove-Item -Path ".\do_upgrade.ps1" -ErrorAction SilentlyContinue
+}
+
+
+function get_wazuh_installation_directory {
+    Start-NativePowerShell {
+        # Registry paths to check (in order of preference)
+        $registryPaths = @(
+            @{Path = "HKLM:\SOFTWARE\WOW6432Node\Wazuh, Inc.\Wazuh Agent"; Key = "WazuhInstallDir"},
+            @{Path = "HKLM:\SOFTWARE\WOW6432Node\Wazuh\Wazuh Agent"; Key = "WazuhInstallDir"},
+            @{Path = "HKLM:\SOFTWARE\WOW6432Node\ossec"; Key = "Install_Dir"}
+        )
+
+        $WazuhInstallDir = $null
+
+        # Try each registry path
+        foreach ($reg in $registryPaths) {
+            try {
+                $WazuhInstallDir = (Get-ItemProperty -Path $reg.Path -ErrorAction SilentlyContinue).($reg.Key)
+                if ($null -ne $WazuhInstallDir) {
+                    Write-output "$(Get-Date -format u) - Found Wazuh installation at: $($reg.Path)\$($reg.Key) = $WazuhInstallDir" >> .\upgrade\upgrade.log
+                    break
+                }
+            }
+            catch {
+                continue
+            }
+        }
+
+        # Fallback to current directory if not found in registry
+        if ($null -eq $WazuhInstallDir) {
+            Write-output "$(Get-Date -format u) - Couldn't find Wazuh in registry. Using current directory" >> .\upgrade\upgrade.log
+            $WazuhInstallDir = (Get-Location).Path.TrimEnd('\')
+        }
+
+        return $WazuhInstallDir
     }
 }
 
-# Looks for the Wazuh-Agent uninstall command
-function get_uninstall_string {
-
-	Start-NativePowerShell {
-
-        $UninstallString = $null
-        # Searching through the registry keys (Starting from $WAZUH_DEF_REG_START_PATH)
-        $path = Get-ChildItem $Env:WAZUH_DEF_REG_START_PATH
-        foreach ($subpaths in $path) {
-            $subpath = $subpaths | Get-ChildItem
-            foreach ($subsubpath in $subpath) {
-                if ($subsubpath -match "InstallProperties") {
-                    if ($subsubpath.GetValue("Publisher") -match $Env:WAZUH_PUBLISHER_VALUE) {
-                        $UninstallString = $subsubpath.GetValue("UninstallString") + " /quiet"
-                    }
-                }
-            }
-        }
-		Write-Output $UninstallString
-	}
-}
-
-# Looks for the Wazuh-Agent uninstall command and executes it, if exists
-function uninstall_wazuh {
-
-    $UninstallString = get_uninstall_string
-
-	if ($UninstallString -ne $null) {
-		write-output "$(Get-Date -format u) - Performing the Wazuh-Agent uninstall using: `"$UninstallString`"." >> .\upgrade\upgrade.log
-		& "C:\Windows\SYSTEM32\cmd.exe" /c $UninstallString
-
-		# registry takes some time to refresh (e.g.: NT 6.3)
-		Start-Sleep 5
-		$counter = 10
-		While((is_wazuh_installed) -And $counter -gt 0) {
-			write-output "$(Get-Date -format u) - Waiting for the uninstallation to end." >> .\upgrade\upgrade.log
-			$counter--
-			Start-Sleep 2
-		}
-	} else {
-		write-output "$(Get-Date -format u) - Wazuh-Agent uninstall command was not found." >> .\upgrade\upgrade.log
-	}
-
+# Check process status
+function check-process {
+    $process_id = (Get-Process wazuh-agent).id
+    $counter = 10
+    while($process_id -eq $null -And $counter -gt 0) {
+        $counter--
+        Start-Service -Name "Wazuh"
+        Start-Sleep 2
+        $process_id = (Get-Process wazuh-agent).id
+    }
+    write-output "$(Get-Date -format u) - Process ID: $($process_id)." >> .\upgrade\upgrade.log
 }
 
 # Check new version and restart the Wazuh service
-function check-installation
-{
-    $new_version = (Get-Content VERSION)
+function check-installation {
+    $actual_version = get-version
     $counter = 5
-    while($new_version -eq $current_version -And $counter -gt 0)
-    {
+    while($actual_version -eq $current_version -And $counter -gt 0) {
         write-output "$(Get-Date -format u) - Waiting for the Wazuh-Agent installation to end." >> .\upgrade\upgrade.log
         $counter--
         Start-Sleep 2
-        $new_version = (Get-Content VERSION)
+        $actual_version = get-version
     }
-    write-output "$(Get-Date -format u) - Restarting Wazuh-Agent service." >> .\upgrade\upgrade.log
-    Get-Service -Name "Wazuh" | Start-Service
+    write-output "$(Get-Date -format u) - Starting Wazuh-Agent service." >> .\upgrade\upgrade.log
+    Start-Service -Name "Wazuh"
 }
 
-function restore
-{
+# Function to extract the version from the MSI using msiexec
+function get_msi_version {
+    $msiPath = (Get-Item ".\wazuh-agent*.msi").FullName
+    write-output "$(Get-Date -format u) - Extracting the version from MSI file." >> .\upgrade\upgrade.log
+    try {
+        # Extracting the version using msiexec and waiting for it to complete
+        Start-Process -FilePath "msiexec.exe" -ArgumentList "/a", "`"$msiPath`"", "/qn", "TARGETDIR=$env:TEMP", "/lv*", "`".\upgrade\msi_output.log`"" -Wait
+
+        $msi_version = Get-MSIProductVersion ".\upgrade\msi_output.log"
+        return $msi_version
+
+    } catch {
+        # Log any errors that occur during the process
+        write-output "$(Get-Date -format u) - Couldn't extract MSI version. Error: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+        return $null
+    }
+}
+
+function Get-MSIProductVersion {
     param (
-        $msi_filename
+        [string]$logFilePath
     )
 
-    kill -processname win32ui -ErrorAction SilentlyContinue -Force
-    stop_wazuh_agent("wazuh-agent")
-
-    # Saves ossec.log before remove fail update
-    Copy-Item $Env:WAZUH_BACKUP_DIR\ossec.log $Env:WAZUH_BACKUP_DIR\ossec.log.save -force
-    Copy-Item ossec.log $Env:WAZUH_BACKUP_DIR\ossec.log -force
-
-    # Uninstall the latest version of the Wazuh-Agent.
-    uninstall_wazuh
-
-    # Install the former version of the Wazuh-Agent
-    if ($msi_filename -ne $null) {
-        write-output "$(Get-Date -format u) - Excecuting former Wazuh-Agent MSI: `"$Env:WAZUH_BACKUP_DIR\$msi_filename`"." >> .\upgrade\upgrade.log
-        cmd /c start $Env:WAZUH_BACKUP_DIR\$msi_filename -quiet -norestart -log installer.log
-
-        $counter = 10
-        While(-Not (is_wazuh_installed) -And $counter -gt 0) {
-            write-output "$(Get-Date -format u) - Waiting for the installation to end." >> .\upgrade\upgrade.log
-            $counter--
-            Start-Sleep 2
-        }
-        Remove-Item $Env:WAZUH_BACKUP_DIR\$msi_filename -ErrorAction SilentlyContinue
+    # Check if the log file exists
+    if (-not (Test-Path $logFilePath)) {
+        write-output "$(Get-Date -format u) - MSI log file not generated: $logFilePath" >> .\upgrade\upgrade.log
+        return $null
     }
 
-    # Restore old files
-    write-output "$(Get-Date -format u) - Restoring former Wazuh-Agent home files." >> .\upgrade\upgrade.log
-    Copy-Item $Env:WAZUH_BACKUP_DIR\* .\ -force
+    try {
+        # Get the line that contains "ProductVersion"
+        $msi_version_info = Get-Content $logFilePath | Select-String "ProductVersion" | ForEach-Object { $_.Line }
 
-    # Get current version
-    $current_version = (Get-Content VERSION)
-    write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
+        # Check if the version format is valid
+        if (-not ($msi_version_info -match "ProductVersion\s*=\s*([0-9\.]+)")) {
+            write-output "$(Get-Date -format u) - Invalid ProductVersion format in the MSI log: $logFilePath" >> .\upgrade\upgrade.log
+            return $null
+        }
+
+        # Return the version with the 'v' prefix
+        $product_version = "v$($matches[1])"
+        return $product_version
+
+    } catch {
+        # Log any errors that occur
+        write-output "$(Get-Date -format u) - Error extracting ProductVersion from MSI log: $($logFilePath). Error: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+        return $null
+    }
 }
 
-# Stop UI and launch the msi installer
-function install
-{
-    kill -processname win32ui -ErrorAction SilentlyContinue -Force
+
+
+# Stop UI and launch the MSI installer
+function install {
+    param (
+        [string]$installDir
+    )
+
+    # Try to stop win32ui
+    try {
+        Write-Output "$(Get-Date -format u) - Stopping win32ui process." >> .\upgrade\upgrade.log
+        Stop-Process -Name "win32ui" -Force -ErrorAction Stop
+    } catch {
+        Write-Output "$(Get-Date -format u) - Tried to stop process win32ui: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+    }
+
+    # Try to stop Wazuh service
+    try {
+        Write-Output "$(Get-Date -format u) - Stopping Wazuh service." >> .\upgrade\upgrade.log
+        Stop-Service -Name "Wazuh" -Force -ErrorAction Stop
+    } catch {
+        Write-Output "$(Get-Date -format u) - Tried to stop Wazuh service: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+    }
+
+    # Wait for Wazuh service to fully stop
+    Start-Sleep -Seconds 5
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
-    write-output "$(Get-Date -format u) - Starting upgrade processs." >> .\upgrade\upgrade.log
-    cmd /c start (Get-Item ".\wazuh-agent*.msi").Name -quiet -norestart -log installer.log
+    Write-Output "$(Get-Date -format u) - Starting upgrade process." >> .\upgrade\upgrade.log
+
+    try {
+        $msiPath = (Get-Item ".\wazuh-agent*.msi").Name
+
+        if ($msi_new_version -ne $null -and $msi_new_version -eq $current_version) {
+            Write-Output "$(Get-Date -format u) - Reinstalling the same version." >> .\upgrade\upgrade.log
+        }
+
+        # Build msiexec arguments with explicit APPLICATIONFOLDER
+        $msiArgs = @(
+            "/i",
+            $msiPath,
+            "APPLICATIONFOLDER=`"$installDir`"",
+            "WIXUI_INSTALLDIR=APPLICATIONFOLDER",
+            "REBOOT=ReallySuppress",
+            "/qn",
+            "/l*v",
+            "installer.log"
+        )
+
+        write-output "$(Get-Date -format u) - Installing MSI to: $installDir (msiexec.exe $($msiArgs -join ' '))" >> .\upgrade\upgrade.log
+
+        Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -NoNewWindow
+
+    } catch {
+        Write-Output "$(Get-Date -format u) - Installation failed: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+        return $false
+    }
+
+    return $true
 }
 
+# Check that the Wazuh installation runs on the expected path
+$wazuhDir = get_wazuh_installation_directory
+$normalizedWazuhDir = $wazuhDir.TrimEnd('\')
+$currentDir = (Get-Location).Path.TrimEnd('\')
+
+if ($normalizedWazuhDir -ne $currentDir) {
+    Write-Output "$(Get-Date -format u) - Current working directory is not the Wazuh installation directory. Aborting." >> .\upgrade\upgrade.log
+    Write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
+    remove_upgrade_files
+    exit 1
+}
 
 # Get current version
-$current_version = (Get-Content VERSION)
-write-output "$(Get-Date -format u) - Current version: $($current_version)." > .\upgrade\upgrade.log
+$current_version = get-version
+write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
 
-# Get process name
-$current_process = "wazuh-agent"
-If (!(Test-Path ".\wazuh-agent.exe"))
-{
-    $current_process = "ossec-agent"
+# Get new msi version
+$msi_new_version = get_msi_version
+if ($msi_new_version -ne $null) {
+  write-output "$(Get-Date -format u) - MSI new version: $($msi_new_version)." >> .\upgrade\upgrade.log
+} else {
+  write-output "$(Get-Date -format u) - Could not find version in MSI file." >> .\upgrade\upgrade.log
 }
 
-# Generating backup
-write-output "$(Get-Date -format u) - Generating backup." >> .\upgrade\upgrade.log
-backup_home
-$previous_msi_name = backup_msi
 
-# Ensure implicated processes are stopped before launch the upgrade
-Get-Process msiexec | Stop-Process -ErrorAction SilentlyContinue -Force
-stop_wazuh_agent($current_process)
+# Check version compatibility: direct upgrade to 5.x requires agent >= 4.14
+if ($msi_new_version -ne $null) {
+    try {
+        $target_ver = [Version]($msi_new_version -replace '^v', '')
+        $current_ver = [Version]($current_version -replace '^v', '')
+        if ($target_ver -ge [Version]"5.0.0" -and $current_ver -lt [Version]"4.14.0") {
+            write-output "$(Get-Date -format u) - Upgrade failed: direct upgrade to v5.0.0 is not supported from version $($current_version). Please upgrade to v4.14.x first." >> .\upgrade\upgrade.log
+            write-output "1" | out-file ".\upgrade\upgrade_result" -encoding ascii
+            remove_upgrade_files
+            exit 1
+        }
+    } catch {
+        write-output "$(Get-Date -format u) - Could not compare versions for compatibility check: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+        write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
+        remove_upgrade_files
+        exit 1
+    }
+}
 
-# Install
-install
+# Ensure no other instance of msiexec is running by stopping them
+try {
+    $proc = Get-Process -Name "msiexec" -ErrorAction Stop
+    Stop-Process -InputObject $proc -Force -ErrorAction Stop
+    Write-Output "$(Get-Date -Format u) - Killed msiexec process(es)." >> .\upgrade\upgrade.log
+} catch {
+    Write-Output "$(Get-Date -Format u) - Tried to stop msiexec process: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+}
+
+# Install with explicit INSTALLDIR
+install -installDir $wazuhDir
 check-installation
+
 write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade\upgrade.log
 
-# Check process status
-$process_id = (Get-Process wazuh-agent).id
-$counter = 5
-while($process_id -eq $null -And $counter -gt 0)
-{
-    $counter--
-    Start-Service -Name "Wazuh"
-    Start-Sleep 2
-    $process_id = (Get-Process wazuh-agent).id
-}
-write-output "$(Get-Date -format u) - Process ID: $($process_id)." >> .\upgrade\upgrade.log
+check-process
 
 # Wait for agent state to be cleaned
 Start-Sleep 10
 
 # Check status file
-$status = Get-Content .\wazuh-agent.state | select-string "status='connected'" -SimpleMatch
-$counter = 5
-while($status -eq $null -And $counter -gt 0)
-{
+function Get-AgentStatus {
+    Select-String -Path '.\wazuh-agent.state' -Pattern "^status='(.+)'" | %{$_.Matches[0].Groups[1].value}
+}
+
+$status = Get-AgentStatus
+$counter = 30
+while($status -ne "connected"  -And $counter -gt 0) {
     $counter--
     Start-Sleep 2
-    $status = Get-Content .\wazuh-agent.state | select-string "status='connected'" -SimpleMatch
+    $status = Get-AgentStatus
 }
-write-output "$(Get-Date -format u) - Reading status file: $($status)." >> .\upgrade\upgrade.log
+Write-Output "$(Get-Date -Format u) - Reading status file: status='$status'." >> .\upgrade\upgrade.log
 
-If ($status -eq $null)
-{
-    Get-Service -Name "Wazuh" | Stop-Service
-    write-output "$(Get-Date -format u) - Upgrade failed: Restoring former installation." >> .\upgrade\upgrade.log
-
+if ($status -ne "connected") {
+    write-output "$(Get-Date -format u) - Upgrade failed." >> .\upgrade\upgrade.log
     write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
-
-    .\wazuh-agent.exe uninstall-service >> .\upgrade\upgrade.log
-    restore($previous_msi_name)
-
-    If ($current_process -eq "wazuh-agent")
-    {
-        write-output "$(Get-Date -format u) - Installing Wazuh service." >> .\upgrade\upgrade.log
-        .\wazuh-agent.exe install-service >> .\upgrade\upgrade.log
-    }
-    Else
-    {
-        write-output "$(Get-Date -format u) - Installing Wazuh service." >> .\upgrade\upgrade.log
-        sc.exe delete WazuhSvc -ErrorAction SilentlyContinue -Force
-        Remove-Item .\wazuh-agent.exe -ErrorAction SilentlyContinue
-        Remove-Item .\wazuh-agent.state -ErrorAction SilentlyContinue
-        .\ossec-agent.exe install-service >> .\upgrade\upgrade.log
-    }
-
-    write-output "$(Get-Date -format u) - Starting Wazuh-Agent service." >> .\upgrade\upgrade.log
-    Start-Service -Name "Wazuh" -ErrorAction SilentlyContinue
-
 }
-Else
-{
+else {
     write-output "0" | out-file ".\upgrade\upgrade_result" -encoding ascii
     write-output "$(Get-Date -format u) - Upgrade finished successfully." >> .\upgrade\upgrade.log
-    $new_version = (Get-Content VERSION)
+    $new_version = get-version
     write-output "$(Get-Date -format u) - New version: $($new_version)." >> .\upgrade\upgrade.log
 }
 
-Remove-Item $Env:WAZUH_BACKUP_DIR -recurse -ErrorAction SilentlyContinue
-Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
+remove_upgrade_files
+
+exit 0

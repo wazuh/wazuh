@@ -1,0 +1,9 @@
+Welcome to the Wazuh Agent Installer. 
+
+Wazuh is a free, open-source and enterprise-ready security monitoring solution for threat detection, integrity monitoring, incident response and compliance.
+
+This package will install the Wazuh agent in your system.
+
+Check out our documentation to learn more about Wazuh, and join our community where our team and other users can help you.
+
+To continue, click Next. 

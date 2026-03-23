@@ -48,6 +48,11 @@ cJSON* __wrap_cJSON_AddNumberToObject(__attribute__ ((__unused__)) cJSON * const
     return mock_type(cJSON *);
 }
 
+cJSON* __wrap_cJSON_AddFalseToObject(__attribute__ ((__unused__)) cJSON * const object, const char * const name) {
+    if (name) check_expected(name);
+    return mock_type(cJSON *);
+}
+
 cJSON* __wrap_cJSON_AddObjectToObject(cJSON * const object, const char * const name) {
     if (name) check_expected(name);
     check_expected(object);
@@ -100,7 +105,7 @@ cJSON_bool __wrap_cJSON_IsNumber(__attribute__ ((__unused__)) cJSON * item) {
     return mock_type(cJSON_bool);
 }
 
-cJSON_bool __wrap_cJSON_IsString(const cJSON * const item) {
+cJSON_bool __wrap_cJSON_IsString(__attribute__ ((__unused__)) const cJSON * const item) {
     return mock_type(cJSON_bool);
 }
 
@@ -115,7 +120,7 @@ cJSON * __wrap_cJSON_Parse(__attribute__ ((__unused__)) const char *value) {
 cJSON * __wrap_cJSON_ParseWithOpts(__attribute__ ((__unused__)) const char *value,
                                    const char **return_parse_end,
                                    __attribute__ ((__unused__)) cJSON_bool require_null_terminated) {
-    *return_parse_end = NULL;
+    *return_parse_end = mock_type(char *);
     return mock_type(cJSON *);
 }
 

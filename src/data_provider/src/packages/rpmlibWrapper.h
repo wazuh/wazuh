@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December 22, 2021.
  *
  * This program is free software; you can redistribute it
@@ -36,8 +36,14 @@ class IRpmLibWrapper
         virtual uint64_t rpmtdGetNumber(rpmtd td) = 0;
         virtual int rpmtsRun(rpmts ts, rpmps okProbs, rpmprobFilterFlags ignoreSet) = 0;
         virtual rpmdbMatchIterator rpmtsInitIterator(const rpmts ts, rpmDbiTagVal rpmtag, const void* keypointer, size_t keylen) = 0;
+        virtual rpmVSFlags rpmtsSetVSFlags(rpmts ts, rpmVSFlags vsflags) = 0;
         virtual Header rpmdbNextIterator(rpmdbMatchIterator mi) = 0;
         virtual rpmdbMatchIterator rpmdbFreeIterator(rpmdbMatchIterator mi) = 0;
+        virtual rpmfi rpmfiNew(rpmts ts, Header h, rpmTagVal tag, rpmfiFlags flags) = 0;
+        virtual rpm_count_t rpmfiFC(rpmfi fi) = 0;
+        virtual int rpmfiNext(rpmfi fi) = 0;
+        virtual const char* rpmfiFN(rpmfi fi) = 0;
+        virtual rpmfi rpmfiFree(rpmfi fi) = 0;
 };
 
 #endif // _RPMLIB_WRAPPER_H

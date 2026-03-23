@@ -1,0 +1,7 @@
+{
+    "name": "schema/allowed-fields/0",
+    "allowed_fields": {
+        "filter": [],
+        "output": []
+    }
+}

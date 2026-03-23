@@ -1,0 +1,9 @@
+- name: Command config wazuh manager for queue size
+  description: Command config wazuh manager for queue size
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: 'TCP'
+    QUEUE_SIZE: '99999999'
+  metadata:
+    port: '1514'
+    queue_size: '99999999'

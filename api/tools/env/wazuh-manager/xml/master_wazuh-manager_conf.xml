@@ -1,0 +1,27 @@
+<root>
+
+    <cluster>
+        <name>wazuh</name>
+        <node_name>master-node</node_name>
+        <node_type>master</node_type>
+        <key>9d273b53510fef702b54a92e9cffc82e</key>
+        <port>1516</port>
+        <bind_addr>0.0.0.0</bind_addr>
+        <hidden>no</hidden>
+     </cluster>
+     <indexer>
+        <hosts>
+            <host>https://wazuh.indexer:9200</host>
+        </hosts>
+        <ssl>
+            <certificate_authorities>
+                <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
+            </certificate_authorities>
+            <certificate>/var/wazuh-manager/etc/certs/wazuh.master.pem</certificate>
+            <key>/var/wazuh-manager/etc/certs/wazuh.master-key.pem</key>
+        </ssl>
+    </indexer>
+
+     <use_source_ip>no</use_source_ip>
+
+</root>

@@ -13,11 +13,11 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "../../headers/shared.h"
-#include "../../wazuh_modules/wm_task_general.h"
-#include "../../wazuh_modules/wmodules.h"
-#include "../../wazuh_modules/agent_upgrade/wm_agent_upgrade.h"
-#include "../../wazuh_modules/agent_upgrade/agent/wm_agent_upgrade_agent.h"
+#include "shared.h"
+#include "wm_task_general.h"
+#include "wmodules.h"
+#include "wm_agent_upgrade.h"
+#include "wm_agent_upgrade_agent.h"
 
 #include "../../wrappers/common.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
@@ -335,9 +335,9 @@ void test_uncompress_fopen_fail(void **state) {
 #else
     expect_string(__wrap__mterror, formatted_msg, "(8140): At uncompress(): Unable to open 'tmp/test_filename.mg.XXXXXX'");
 #endif
-    expect_any(__wrap_fopen, path);
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, 0);
+    expect_any(__wrap_wfopen, path);
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, 0);
 
     expect_value(__wrap_gzclose, file, 4);
     will_return(__wrap_gzclose, 0);
@@ -357,9 +357,9 @@ void test_uncompress_fwrite_fail(void **state) {
     expect_string(__wrap_gzopen, mode, "rb");
     will_return(__wrap_gzopen, 4);
 
-    expect_any(__wrap_fopen, path);
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, 5);
+    expect_any(__wrap_wfopen, path);
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, 5);
 
     expect_value(__wrap_gzread, gz_fd, 4);
     will_return(__wrap_gzread, 4);
@@ -394,9 +394,9 @@ void test_uncompress_gzread_fail(void **state) {
     expect_string(__wrap_gzopen, mode, "rb");
     will_return(__wrap_gzopen, 4);
 
-    expect_any(__wrap_fopen, path);
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, 5);
+    expect_any(__wrap_wfopen, path);
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, 5);
 
     expect_value(__wrap_gzread, gz_fd, 4);
     will_return(__wrap_gzread, -1);
@@ -428,9 +428,9 @@ void test_uncompress_success(void **state) {
     expect_string(__wrap_gzopen, mode, "rb");
     will_return(__wrap_gzopen, 4);
 
-    expect_any(__wrap_fopen, path);
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, 5);
+    expect_any(__wrap_wfopen, path);
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, 5);
 
     expect_value(__wrap_gzread, gz_fd, 4);
     will_return(__wrap_gzread, 4);
@@ -549,9 +549,9 @@ void test_wm_agent_upgrade_com_open_invalid_open(void **state) {
     expect_string(__wrap_w_ref_parent_folder, path, "test_file");
     will_return(__wrap_w_ref_parent_folder, 0);
 
-    expect_any(__wrap_fopen, path);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 0);
+    expect_any(__wrap_wfopen, path);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg,   "(1103): Could not open file 'test_file' due to [(2)-(No such file or directory)].");
@@ -571,9 +571,9 @@ void test_wm_agent_upgrade_com_open_success(void **state) {
     expect_string(__wrap_w_ref_parent_folder, path, "test_file");
     will_return(__wrap_w_ref_parent_folder, 0);
 
-    expect_any(__wrap_fopen, path);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 4);
+    expect_any(__wrap_wfopen, path);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 4);
 
     char *response = wm_agent_upgrade_com_open(command);
     cJSON *response_object = cJSON_Parse(response);
@@ -837,7 +837,7 @@ void test_wm_agent_upgrade_sha1_sha_success(void **state) {
 void test_wm_agent_upgrade_com_upgrade_unsign_error(void **state) {
     cJSON * command = *state;
 
-    will_return(__wrap_getDefine_Int, 3600);
+    will_return(__wrap_getDefine_Int_default, 3600);
 
     // Unsign
     {
@@ -859,7 +859,7 @@ void test_wm_agent_upgrade_com_upgrade_unsign_error(void **state) {
 void test_wm_agent_upgrade_com_upgrade_uncompress_error(void **state) {
     cJSON * command = *state;
 
-    will_return(__wrap_getDefine_Int, 3600);
+    will_return(__wrap_getDefine_Int_default, 3600);
 
     // Unsign
     {
@@ -908,7 +908,7 @@ void test_wm_agent_upgrade_com_upgrade_uncompress_error(void **state) {
 void test_wm_agent_upgrade_com_upgrade_clean_directory_error(void **state) {
     cJSON * command = *state;
 
-    will_return(__wrap_getDefine_Int, 3600);
+    will_return(__wrap_getDefine_Int_default, 3600);
 
     // Unsign
     {
@@ -941,9 +941,9 @@ void test_wm_agent_upgrade_com_upgrade_clean_directory_error(void **state) {
         expect_string(__wrap_gzopen, mode, "rb");
         will_return(__wrap_gzopen, 4);
 
-        expect_any(__wrap_fopen, path);
-        expect_string(__wrap_fopen, mode, "wb");
-        will_return(__wrap_fopen, 5);
+        expect_any(__wrap_wfopen, path);
+        expect_string(__wrap_wfopen, mode, "wb");
+        will_return(__wrap_wfopen, 5);
 
         expect_value(__wrap_gzread, gz_fd, 4);
         will_return(__wrap_gzread, 4);
@@ -979,7 +979,7 @@ void test_wm_agent_upgrade_com_upgrade_clean_directory_error(void **state) {
 void test_wm_agent_upgrade_com_unmerge_error(void **state) {
     cJSON * command = *state;
 
-    will_return(__wrap_getDefine_Int, 3600);
+    will_return(__wrap_getDefine_Int_default, 3600);
 
     // Unsign
     {
@@ -1012,9 +1012,9 @@ void test_wm_agent_upgrade_com_unmerge_error(void **state) {
         expect_string(__wrap_gzopen, mode, "rb");
         will_return(__wrap_gzopen, 4);
 
-        expect_any(__wrap_fopen, path);
-        expect_string(__wrap_fopen, mode, "wb");
-        will_return(__wrap_fopen, 5);
+        expect_any(__wrap_wfopen, path);
+        expect_string(__wrap_wfopen, mode, "wb");
+        will_return(__wrap_wfopen, 5);
 
         expect_value(__wrap_gzread, gz_fd, 4);
         will_return(__wrap_gzread, 4);
@@ -1058,7 +1058,7 @@ void test_wm_agent_upgrade_com_unmerge_error(void **state) {
 void test_wm_agent_upgrade_com_installer_error(void **state) {
     cJSON * command = *state;
 
-    will_return(__wrap_getDefine_Int, 3600);
+    will_return(__wrap_getDefine_Int_default, 3600);
     // Unsign
     {
         expect_string(__wrap_w_ref_parent_folder, path, "test_file");
@@ -1089,9 +1089,9 @@ void test_wm_agent_upgrade_com_installer_error(void **state) {
         expect_string(__wrap_gzopen, mode, "rb");
         will_return(__wrap_gzopen, 4);
 
-        expect_any(__wrap_fopen, path);
-        expect_string(__wrap_fopen, mode, "wb");
-        will_return(__wrap_fopen, 5);
+        expect_any(__wrap_wfopen, path);
+        expect_string(__wrap_wfopen, mode, "wb");
+        will_return(__wrap_wfopen, 5);
 
         expect_value(__wrap_gzread, gz_fd, 4);
         will_return(__wrap_gzread, 4);
@@ -1139,7 +1139,7 @@ void test_wm_agent_upgrade_com_installer_error(void **state) {
 void test_wm_agent_upgrade_com_chmod_error(void **state) {
     cJSON * command = *state;
 
-    will_return(__wrap_getDefine_Int, 3600);
+    will_return(__wrap_getDefine_Int_default, 3600);
     // Unsign
     {
         expect_string(__wrap_w_ref_parent_folder, path, "test_file");
@@ -1170,9 +1170,9 @@ void test_wm_agent_upgrade_com_chmod_error(void **state) {
         expect_string(__wrap_gzopen, mode, "rb");
         will_return(__wrap_gzopen, 4);
 
-        expect_any(__wrap_fopen, path);
-        expect_string(__wrap_fopen, mode, "wb");
-        will_return(__wrap_fopen, 5);
+        expect_any(__wrap_wfopen, path);
+        expect_string(__wrap_wfopen, mode, "wb");
+        will_return(__wrap_wfopen, 5);
 
         expect_value(__wrap_gzread, gz_fd, 4);
         will_return(__wrap_gzread, 4);
@@ -1226,7 +1226,7 @@ void test_wm_agent_upgrade_com_chmod_error(void **state) {
 void test_wm_agent_upgrade_com_execute_error(void **state) {
     cJSON * command = *state;
 
-    will_return(__wrap_getDefine_Int, 3600);
+    will_return(__wrap_getDefine_Int_default, 3600);
     // Unsign
     {
         expect_string(__wrap_w_ref_parent_folder, path, "test_file");
@@ -1257,9 +1257,9 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
         expect_string(__wrap_gzopen, mode, "rb");
         will_return(__wrap_gzopen, 4);
 
-        expect_any(__wrap_fopen, path);
-        expect_string(__wrap_fopen, mode, "wb");
-        will_return(__wrap_fopen, 5);
+        expect_any(__wrap_wfopen, path);
+        expect_string(__wrap_wfopen, mode, "wb");
+        will_return(__wrap_wfopen, 5);
 
         expect_value(__wrap_gzread, gz_fd, 4);
         will_return(__wrap_gzread, 4);
@@ -1330,7 +1330,7 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
 void test_wm_agent_upgrade_com_success(void **state) {
     cJSON * command = *state;
 
-    will_return(__wrap_getDefine_Int, 3600);
+    will_return(__wrap_getDefine_Int_default, 3600);
     // Unsign
     {
         expect_string(__wrap_w_ref_parent_folder, path, "test_file");
@@ -1361,9 +1361,9 @@ void test_wm_agent_upgrade_com_success(void **state) {
         expect_string(__wrap_gzopen, mode, "rb");
         will_return(__wrap_gzopen, 4);
 
-        expect_any(__wrap_fopen, path);
-        expect_string(__wrap_fopen, mode, "wb");
-        will_return(__wrap_fopen, 5);
+        expect_any(__wrap_wfopen, path);
+        expect_string(__wrap_wfopen, mode, "wb");
+        will_return(__wrap_wfopen, 5);
 
         expect_value(__wrap_gzread, gz_fd, 4);
         will_return(__wrap_gzread, 4);
@@ -1636,9 +1636,9 @@ void test_wm_agent_upgrade_process_open_command(void **state) {
         expect_string(__wrap_w_ref_parent_folder, path, "test_file");
         will_return(__wrap_w_ref_parent_folder, 0);
 
-        expect_any(__wrap_fopen, path);
-        expect_string(__wrap_fopen, mode, "w");
-        will_return(__wrap_fopen, 4);
+        expect_any(__wrap_wfopen, path);
+        expect_string(__wrap_wfopen, mode, "w");
+        will_return(__wrap_wfopen, 4);
     }
 
     size_t length = wm_agent_upgrade_process_command(buffer, &output);
@@ -1731,7 +1731,7 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state) {
     char *output = NULL;
     // upgrade
     {
-        will_return(__wrap_getDefine_Int, 3600);
+        will_return(__wrap_getDefine_Int_default, 3600);
         // Unsign
         {
             expect_string(__wrap_w_ref_parent_folder, path, "test_file");
@@ -1762,9 +1762,9 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state) {
             expect_string(__wrap_gzopen, mode, "rb");
             will_return(__wrap_gzopen, 4);
 
-            expect_any(__wrap_fopen, path);
-            expect_string(__wrap_fopen, mode, "wb");
-            will_return(__wrap_fopen, 5);
+            expect_any(__wrap_wfopen, path);
+            expect_string(__wrap_wfopen, mode, "wb");
+            will_return(__wrap_wfopen, 5);
 
             expect_value(__wrap_gzread, gz_fd, 4);
             will_return(__wrap_gzread, 4);

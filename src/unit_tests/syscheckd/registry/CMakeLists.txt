@@ -1,24 +1,46 @@
-include_directories((${SRC_FOLDER}/syscheckd))
+include_directories(${SRC_FOLDER}/syscheckd/src)
+include_directories(${SRC_FOLDER}/syscheckd/include)
+
+link_directories(${SRC_FOLDER}/unit_tests/wrappers/syscheckd/registry)
+
+if(${TARGET} STREQUAL "winagent")
+    link_directories(${SRC_FOLDER}/build/bin)
+endif(${TARGET} STREQUAL "winagent")
 
 # registry.c tests
 add_executable(test_registry test_registry.c)
 
 target_compile_options(test_registry PRIVATE "-Wall")
+target_compile_options(test_registry PRIVATE "-g")
 
 target_link_libraries(test_registry SYSCHECK_O ${TEST_DEPS} fim_shared)
-target_link_libraries(test_registry "-Wl,--wrap=_mdebug2,--wrap=_mdebug1,--wrap=_merror,--wrap=_mwarn
-                                     -Wl,--wrap=send_syscheck_msg,--wrap=os_random -Wl,--wrap,getpid
-                                     -Wl,--wrap=fim_db_set_all_registry_data_unscanned
-                                     -Wl,--wrap=fim_db_set_all_registry_key_unscanned
-                                     -Wl,--wrap=fim_db_get_registry_key,--wrap=fim_db_insert_registry_key
-                                     -Wl,--wrap=fim_db_set_registry_key_scanned,--wrap=fim_db_get_registry_key_rowid
-                                     -Wl,--wrap=fim_db_get_registry_data,--wrap=fim_db_insert_registry_data
-                                     -Wl,--wrap=fim_db_remove_registry_value_data,--wrap=fim_db_get_values_from_registry_key
-                                     -Wl,--wrap=fim_db_process_read_registry_data_file,--wrap=fim_db_remove_registry_key
-                                     -Wl,--wrap=fim_db_get_registry_keys_not_scanned,--wrap=fim_db_get_registry_data_not_scanned
-                                     -Wl,--wrap=fim_db_set_registry_data_scanned,--wrap=fim_registry_value_diff
-                                     -Wl,--wrap=fim_db_process_read_file,--wrap=get_registry_permissions
-                                     -Wl,--wrap=decode_win_acl_json,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock")
+target_link_libraries(test_registry "${DEBUG_OP_WRAPPERS} \
+                                     -Wl,--wrap=send_syscheck_msg  -Wl,--wrap,persist_syscheck_msg -Wl,--wrap=os_random -Wl,--wrap,getpid \
+                                     -Wl,--wrap,validate_and_persist_fim_event -Wl,--wrap,cleanup_failed_fim_files \
+                                     -Wl,--wrap,cleanup_failed_registry_keys -Wl,--wrap,cleanup_failed_registry_values \
+                                     -Wl,--wrap=fim_registry_value_diff -Wl,--wrap=get_registry_permissions \
+                                     -Wl,--wrap=decode_win_acl_json -Wl,--wrap=pthread_mutex_lock -Wl,--wrap=pthread_mutex_unlock \
+                                     -Wl,--wrap,fim_db_init -Wl,--wrap=fim_sync_push_msg -Wl,--wrap=syscom_dispatch \
+                                     -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key \
+                                     -Wl,--wrap=fim_db_file_pattern_search -Wl,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                     -Wl,--wrap=fim_db_file_update -Wl,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                     -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
+                                     -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
+                                     -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
+                                     -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
+                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                     -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                                     -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
+                                     -Wl,--wrap,fim_recovery_check_if_full_sync_required \
+                                     -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                                     -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \
+                                     -Wl,--wrap,fim_db_update_last_sync_time \
+                                     -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
+                                     -Wl,--wrap=fim_db_teardown -Wl,--wrap,utf8_LookupAccountSid")
+
+if(${TARGET} STREQUAL "winagent")
+    target_link_libraries(test_registry fimdb)
+endif(${TARGET} STREQUAL "winagent")
 
 add_test(NAME test_registry COMMAND test_registry)
 
@@ -28,6 +50,20 @@ add_executable(test_events test_events.c)
 target_compile_options(test_events PRIVATE "-Wall")
 
 target_link_libraries(test_events SYSCHECK_O ${TEST_DEPS} fim_shared)
-target_link_libraries(test_events "-Wl,--wrap=_mdebug2,--wrap=_mdebug1,--wrap=_merror,--wrap=_mwarn,--wrap=_merror_exit,--wrap=_mterror_exit")
+target_link_libraries(test_events "${DEBUG_OP_WRAPPERS} \
+                                   -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap=fim_run_integrity \
+                                   -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_transaction_start -Wl,--wrap,fim_db_init \
+                                   -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
+                                   -Wl,--wrap=fim_db_file_update -Wl,--wrap,fim_db_get_path -Wl,--wrap=fim_db_file_pattern_search -Wl,--wrap=fim_db_remove_path \
+                                   -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown \
+                                   -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
+                                   -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
+                                   -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                                   -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
+                                   -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate")
+
+if(${TARGET} STREQUAL "winagent")
+    target_link_libraries(test_events fimdb)
+endif(${TARGET} STREQUAL "winagent")
 
 add_test(NAME test_events COMMAND test_events)

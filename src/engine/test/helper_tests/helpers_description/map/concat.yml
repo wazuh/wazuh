@@ -1,0 +1,69 @@
+name: concat
+
+metadata:
+  description: |
+    The function `concat` concatenates various types of data including strings, numbers, and objects.
+    The function receives two or more operands and concatenates them in the order they are provided.
+    The result of the concatenation is stored in the field `field`.
+  keywords:
+    - different_types
+
+
+helper_type: map
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  operand_left:
+    type:
+      - string
+      - number
+      - object
+    source: both # Includes values or references (their names start with $)
+
+  operand_right:
+    type:
+      - string
+      - number
+      - object
+    source: both # Includes values or references (their names start with $)
+
+output:
+  type: string
+  subset: string
+
+test:
+  - arguments:
+      operand_right_3: "yes"
+      operand_right: " "
+      operand_right_1: "no"
+      operand_left: "hello"
+      operand_right_2: "yes"
+    should_pass: true
+    expected: hello noyesyes
+    description: Concatenate a string with another empty one
+  - arguments:
+      operand_left:
+        source: reference
+        value: null
+      operand_right:
+        source: value
+        value: "hello"
+    should_pass: false
+    description: Trying to concatenate a value with a reference does not exist
+  - arguments:
+      operand_left:
+        source: reference
+        value:
+          key: value
+      operand_right:
+        source: value
+        value: 2
+      operand_right_1:
+        source: reference
+        value: hello
+    should_pass: true
+    expected: "{\"key\":\"value\"}2hello"
+    description: Concat object, number and string

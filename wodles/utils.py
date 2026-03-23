@@ -138,3 +138,5 @@ def get_wazuh_type() -> str:
 
 
 ANALYSISD = os.path.join(find_wazuh_path(), 'queue', 'sockets', 'queue')
+# Max size of the event that ANALYSISID can handle
+MAX_EVENT_SIZE = 65535

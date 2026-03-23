@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December 22, 2021.
  *
  * This program is free software; you can redistribute it
@@ -73,6 +73,40 @@ uint64_t RpmPackageManager::Iterator::getAttributeNumber(rpmTag tag) const
     return retval;
 }
 
+std::vector<std::string> RpmPackageManager::Iterator::getFiles() const
+{
+    std::vector<std::string> files;
+
+    std::string packageName = getAttribute(RPMTAG_NAME);
+
+    if (packageName.rfind("python", 0) != 0)
+    {
+        return files;
+    }
+
+    rpmfi fi = m_rpmlib->rpmfiNew(m_transactionSet, m_header, RPMTAG_BASENAMES, RPMFI_NOHEADER);
+
+    if (!fi)
+    {
+        return files;
+    }
+
+    rpm_count_t file_count = m_rpmlib->rpmfiFC(fi);
+
+    for (rpm_count_t i = 0; i < file_count && m_rpmlib->rpmfiNext(fi) >= 0; i++)
+    {
+        const char* path = m_rpmlib->rpmfiFN(fi);
+
+        if (path)
+        {
+            files.emplace_back(path);
+        }
+    }
+
+    m_rpmlib->rpmfiFree(fi);
+    return files;
+}
+
 const RpmPackageManager::Iterator RpmPackageManager::END_ITERATOR{};
 
 RpmPackageManager::Iterator::Iterator()
@@ -93,11 +127,17 @@ RpmPackageManager::Iterator::Iterator(std::shared_ptr<IRpmLibWrapper>& rpmlib)
 
     if (rpmlib->rpmtsOpenDB(m_transactionSet, O_RDONLY))
     {
+        m_rpmlib->rpmtsFree(m_transactionSet);
         throw std::runtime_error("rpmtsOpenDB failed");
     }
 
+    // Disable signature verification to avoid errors on systems where RPM is compiled without OpenPGP support
+    rpmlib->rpmtsSetVSFlags(m_transactionSet, RPMVSF_MASK_NOSIGNATURES);
+
     if (rpmlib->rpmtsRun(m_transactionSet, nullptr, 0))
     {
+        m_rpmlib->rpmtsCloseDB(m_transactionSet);
+        m_rpmlib->rpmtsFree(m_transactionSet);
         throw std::runtime_error("rpmtsRun failed");
     }
 
@@ -105,6 +145,8 @@ RpmPackageManager::Iterator::Iterator(std::shared_ptr<IRpmLibWrapper>& rpmlib)
 
     if (!m_dataContainer)
     {
+        m_rpmlib->rpmtsCloseDB(m_transactionSet);
+        m_rpmlib->rpmtsFree(m_transactionSet);
         throw std::runtime_error("rpmtdNew failed");
     }
 
@@ -112,6 +154,9 @@ RpmPackageManager::Iterator::Iterator(std::shared_ptr<IRpmLibWrapper>& rpmlib)
 
     if (!m_matches)
     {
+        m_rpmlib->rpmtdFree(m_dataContainer);
+        m_rpmlib->rpmtsCloseDB(m_transactionSet);
+        m_rpmlib->rpmtsFree(m_transactionSet);
         throw std::runtime_error("rpmtsInitIterator failed");
     }
 
@@ -163,5 +208,6 @@ RpmPackageManager::Package RpmPackageManager::Iterator::operator*()
     p.source = getAttribute(RPMTAG_SOURCE);
     p.architecture = getAttribute(RPMTAG_ARCH);
     p.description = getAttribute(RPMTAG_DESCRIPTION);
+    p.files = getFiles();
     return p;
 }

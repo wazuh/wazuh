@@ -12,7 +12,7 @@
 
 #include <pthread.h>
 #include "shared.h"
-#include "../../../client-agent/agentd.h"
+#include "agentd.h"
 
 #ifdef WIN32
 #include <winsock2.h>

@@ -4,9 +4,10 @@
 
 import logging
 
-from aiohttp import web
+from connexion import request
+from connexion.lifecycle import ConnexionResponse
 
-from api.encoder import dumps, prettify
+from api.controllers.util import json_response
 from api.util import raise_if_exc, remove_nones_to_dict
 from wazuh.agent import get_full_overview
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -14,12 +15,20 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 logger = logging.getLogger('wazuh-api')
 
 
-async def get_overview_agents(request, pretty=False, wait_for_complete=False):
-    """ Get full summary of agents.
+async def get_overview_agents(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+    """Get full summary of agents.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return: Dict with a full summary of agents
+    Parameters
+    ----------
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     f_kwargs = {}
 
@@ -29,8 +38,8 @@ async def get_overview_agents(request, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)

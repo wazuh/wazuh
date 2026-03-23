@@ -10,13 +10,19 @@
 
 #ifdef WIN32
 #include "shared.h"
-#include "client-agent/agentd.h"
-#include "logcollector/logcollector.h"
-#include "os_execd/execd.h"
-#include "wazuh_modules/wmodules.h"
+#include "agentd.h"
+#include "logcollector.h"
+#include "execd.h"
+#include "wmodules.h"
 #include "sysInfo.h"
 #include "sym_load.h"
-#include "../os_net/os_net.h"
+#include "os_net.h"
+#include "dll_load_notify.h"
+#include "startup_gate_op.h"
+
+#ifdef WAZUH_UNIT_TESTING
+#include "unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
+#endif
 
 HANDLE hMutex;
 int win_debug_level;
@@ -28,6 +34,12 @@ sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 /** Prototypes **/
 int Start_win32_Syscheck();
 
+typedef struct win_module_start_ctx {
+    wm_routine routine;
+    void *data;
+    char name[OS_SIZE_128];
+} win_module_start_ctx_t;
+
 /* syscheck main thread */
 #ifdef WIN32
 DWORD WINAPI skthread(__attribute__((unused)) LPVOID arg)
@@ -35,12 +47,58 @@ DWORD WINAPI skthread(__attribute__((unused)) LPVOID arg)
 void *skthread()
 #endif
 {
-
+    startup_gate_wait_for_ready("wazuh-syscheckd");
     Start_win32_Syscheck();
 #ifdef WIN32
     return 0;
 #else
     return (NULL);
+#endif
+}
+
+/* logcollector main thread */
+#ifdef WIN32
+DWORD WINAPI logcollector_thread(__attribute__((unused)) LPVOID arg)
+#else
+void *logcollector_thread()
+#endif
+{
+    startup_gate_wait_for_ready("wazuh-logcollector");
+    LogCollectorStart();
+#ifdef WIN32
+    return 0;
+#else
+    return (NULL);
+#endif
+}
+
+#ifdef WIN32
+DWORD WINAPI win_module_thread(__attribute__((unused)) void *arg)
+#else
+void *win_module_thread(void *arg)
+#endif
+{
+    win_module_start_ctx_t *ctx = (win_module_start_ctx_t *)arg;
+
+    if (!ctx || !ctx->routine) {
+        os_free(ctx);
+#ifdef WIN32
+        return 0;
+#else
+        return NULL;
+#endif
+    }
+
+    startup_gate_wait_for_ready(ctx->name[0] ? ctx->name : "wazuh-modulesd");
+
+#ifdef WIN32
+    DWORD result = ctx->routine(ctx->data);
+    os_free(ctx);
+    return result;
+#else
+    void *result = ctx->routine(ctx->data);
+    os_free(ctx);
+    return result;
 #endif
 }
 
@@ -57,10 +115,14 @@ void stop_wmodules()
 /* Locally start (after service/win init) */
 int local_start()
 {
+    // This must be always the first instruction
+    enable_dll_verification();
+
     char *cfg = OSSECCONF;
     WSADATA wsaData;
     DWORD  threadID;
     DWORD  threadID2;
+
     win_debug_level = getDefine_Int("windows", "debug", 0, 2);
 
     /* Get debug level */
@@ -79,6 +141,11 @@ int local_start()
     /* Initialize logging module*/
     w_logging_init();
 
+    /* Start Winsock */
+    if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {
+        merror_exit("WSAStartup() failed");
+    }
+
     /* Start agent */
     os_calloc(1, sizeof(agent), agt);
 
@@ -87,20 +154,25 @@ int local_start()
         merror_exit("Configuration file '%s' not found", cfg);
     }
 
-    /* Start Winsock */
-    if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {
-        merror_exit("WSAStartup() failed");
-    }
-
     /* Read agent config */
     mdebug1("Reading agent configuration.");
     if (ClientConf(cfg) < 0) {
-        merror_exit(CLIENT_ERROR);
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
+    }
+
+    if (!(agt->server && agt->server[0].rip)) {
+        merror(AG_INV_IP);
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
     if (!Validate_Address(agt->server)){
         merror(AG_INV_MNGIP, agt->server[0].rip);
-        merror_exit(CLIENT_ERROR);
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
+    }
+
+    if (!Validate_IPv6_Link_Local_Interface(agt->server)){
+        merror(AG_INV_INT);
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
     if (agt->notify_time == 0) {
@@ -113,21 +185,11 @@ int local_start()
         agt->max_time_reconnect_try = (agt->notify_time * 3);
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
-    minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
-    if (agt->force_reconnect_interval) {
-        minfo("Using force reconnect interval, Wazuh Agent will reconnect every %ld %s", \
-               w_seconds_to_time_value(agt->force_reconnect_interval), w_seconds_to_time_unit(agt->force_reconnect_interval, TRUE));
-    }
 
-    /* Read logcollector config file */
-    mdebug1("Reading logcollector configuration.");
+    startup_gate_initialize();
 
-    /* Init message queue */
-    w_msg_hash_queues_init();
-
-    if (LogCollectorConfig(cfg) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
-    }
+    /* Initialize sender */
+    sender_init();
 
     if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
         // If autoenrollment is enabled, we will avoid exit if there is no valid key
@@ -138,13 +200,55 @@ int local_start()
             merror_exit(AG_NOKEYS_EXIT);
         }
     }
-    /* Read keys */
+
+    /* Read private keys */
     minfo(ENC_READ);
     OS_ReadKeys(&keys, W_DUAL_KEY, 0);
 
-    /* If there is no file to monitor, create a clean entry
-     * for the mark messages.
-     */
+    minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
+
+    /* Start execd thread */
+    if (!WinExecdStart()) {
+        agt->execdq = -1;
+    }
+
+    /* Start mutex */
+    mdebug1("Creating thread mutex.");
+    hMutex = CreateMutex(NULL, FALSE, NULL);
+    if (hMutex == NULL) {
+        merror_exit("Error creating mutex.");
+    }
+
+    /* Set wait lock before starting threads */
+    os_setwait();
+
+    /* Initialize buffer before starting threads that may use it */
+    if (agt->buffer) {
+        buffer_init();
+    } else {
+        minfo(DISABLED_BUFFER);
+    }
+
+    /* Start syscheck thread */
+    w_create_thread(NULL,
+                     0,
+                     skthread,
+                     NULL,
+                     0,
+                     (LPDWORD)&threadID);
+
+    /* Read logcollector config file */
+    mdebug1("Reading logcollector configuration.");
+
+    /* Init message queue */
+    w_msg_hash_queues_init();
+
+    /* Read config file */
+    if (LogCollectorConfig(cfg) < 0) {
+        mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
+    }
+
+    /* No file available to monitor -- continue */
     if (logff == NULL) {
         os_calloc(2, sizeof(logreader), logff);
         logff[0].file = NULL;
@@ -159,7 +263,7 @@ int local_start()
 
     /* No sockets defined */
     if (logsk == NULL) {
-        os_calloc(2, sizeof(logsocket), logsk);
+        os_calloc(2, sizeof(socket_forwarder), logsk);
         logsk[0].name = NULL;
         logsk[0].location = NULL;
         logsk[0].mode = 0;
@@ -170,59 +274,51 @@ int local_start()
         logsk[1].prefix = NULL;
     }
 
-    /* Read execd config */
-    if (!WinExecdStart()) {
-        agt->execdq = -1;
-    }
-
-    /* Initialize sender */
-    sender_init();
-
-    /* Initialize random numbers */
-    srandom(time(0));
-    os_random();
-
-    // Initialize children pool
-    wm_children_pool_init();
-
-    /* Start buffer thread */
-    if (agt->buffer){
-        buffer_init();
-        w_create_thread(NULL,
-                         0,
-                         dispatch_buffer,
-                         NULL,
-                         0,
-                         (LPDWORD)&threadID);
-    }else{
-        minfo(DISABLED_BUFFER);
-    }
-
-    /* state_main thread */
-    w_agentd_state_init();
+    /* Start logcollector thread */
     w_create_thread(NULL,
                      0,
-                     state_main,
+                     logcollector_thread,
                      NULL,
                      0,
                      (LPDWORD)&threadID);
+
+    /* Initialize children pool */
+    wm_children_pool_init();
+
+    /* Read wodle configuration */
+    if (wm_config() < 0) {
+        mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
+    }
+
+    /* Start modules */
+    if (!wm_check()) {
+        wmodule * cur_module;
+
+        for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+            win_module_start_ctx_t *start_ctx = NULL;
+            const char *module_name = NULL;
+
+            os_calloc(1, sizeof(win_module_start_ctx_t), start_ctx);
+            start_ctx->routine = cur_module->context->start;
+            start_ctx->data = cur_module->data;
+            module_name = (cur_module->context && cur_module->context->name) ? cur_module->context->name : "module";
+            snprintf(start_ctx->name, sizeof(start_ctx->name), "wazuh-modulesd/%s", module_name);
+
+            w_create_thread(NULL,
+                            0,
+                            win_module_thread,
+                            start_ctx,
+                            0,
+                            (LPDWORD)&threadID2);
+        }
+    }
 
     /* Socket connection */
     agt->sock = -1;
 
-    /* Start mutex */
-    mdebug1("Creating thread mutex.");
-    hMutex = CreateMutex(NULL, FALSE, NULL);
-    if (hMutex == NULL) {
-        merror_exit("Error creating mutex.");
-    }
-    /* Start syscheck thread */
-    w_create_thread(NULL,
-                     0,
-                     skthread,
-                     NULL,
-                     0,
-                     (LPDWORD)&threadID);
+    /* Initialize random numbers */
+    srandom(time(0));
+    os_random();
 
     /* Launch rotation thread */
     int rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
@@ -235,23 +331,32 @@ int local_start()
                         (LPDWORD)&threadID);
     }
 
-    /* Check if server is connected */
-    os_setwait();
+    /* Launch dispatch thread */
+    if (agt->buffer) {
+        w_create_thread(NULL,
+                         0,
+                         dispatch_buffer,
+                         NULL,
+                         0,
+                         (LPDWORD)&threadID);
+    }
+
+    /* Configure and start statistics */
+    w_agentd_state_init();
+    w_create_thread(NULL,
+                     0,
+                     state_main,
+                     NULL,
+                     0,
+                     (LPDWORD)&threadID);
+
     start_agent(1);
+
     os_delwait();
     w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
 
+    /* Start request module */
     req_init();
-
-    /* Start receiver thread */
-    w_create_thread(NULL,
-                     0,
-                     receiver_thread,
-                     NULL,
-                     0,
-                     (LPDWORD)&threadID2);
-
-    /* Start request receiver thread */
     w_create_thread(NULL,
                      0,
                      req_receiver,
@@ -259,26 +364,14 @@ int local_start()
                      0,
                      (LPDWORD)&threadID2);
 
-    // Read wodle configuration and start modules
-
-    if (!wm_config() && !wm_check()) {
-        wmodule * cur_module;
-
-        for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-            w_create_thread(NULL,
-                            0,
-                            cur_module->context->start,
-                            cur_module->data,
-                            0,
-                            (LPDWORD)&threadID2);
-        }
-    }
+    /* Delete agent state file at exit */
+    atexit(DeleteState);
 
     /* Send agent stopped message at exit */
     atexit(send_agent_stopped_message);
 
-    /* Start logcollector -- main process here */
-    LogCollectorStart();
+    /* Start receiver -- main process here */
+    receiver_messages();
 
     if (sysinfo_module){
         so_free_library(sysinfo_module);
@@ -291,7 +384,7 @@ int local_start()
 /* SendMSGAction for Windows */
 int SendMSGAction(__attribute__((unused)) int queue, const char *message, const char *locmsg, char loc)
 {
-    const char *pl;
+    char loc_buff[OS_SIZE_8192 + 1] = {0};
     char tmpstr[OS_MAXSTR + 2];
     DWORD dwWaitResult;
     int retval = -1;
@@ -320,16 +413,12 @@ int SendMSGAction(__attribute__((unused)) int queue, const char *message, const 
         }
     }   /* end - while for mutex... */
 
-    /* locmsg cannot have the C:, as we use it as delimiter */
-    pl = strchr(locmsg, ':');
-    if (pl) {
-        /* Set pl after the ":" if it exists */
-        pl++;
-    } else {
-        pl = locmsg;
+    if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), (char *) locmsg, '|', ':')) {
+        merror(FORMAT_ERROR);
+        return retval;
     }
 
-    snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, pl, message);
+    snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, loc_buff, message);
 
     /* Send events to the manager across the buffer */
     if (!agt->buffer){
@@ -338,7 +427,7 @@ int SendMSGAction(__attribute__((unused)) int queue, const char *message, const 
             retval = 0;
         }
     } else {
-        buffer_append(tmpstr);
+        buffer_append(tmpstr, -1);
         retval = 0;
     }
 
@@ -352,6 +441,95 @@ int SendMSGAction(__attribute__((unused)) int queue, const char *message, const 
 int SendMSG(__attribute__((unused)) int queue, const char *message, const char *locmsg, char loc) {
     os_wait();
     return SendMSGAction(queue, message, locmsg, loc);
+}
+
+int SendBinaryMSGAction(__attribute__((unused)) int queue, const void *message, size_t message_len, const char *locmsg, char loc)
+{
+    char loc_buff[OS_SIZE_8192 + 1] = {0};
+    char tmpstr[OS_MAXSTR + 1] = {0};
+    DWORD dwWaitResult;
+    int retval = -1;
+
+    // Using a mutex to synchronize the writes
+    while (1) {
+        dwWaitResult = WaitForSingleObject(hMutex, 1000000L);
+
+        if (dwWaitResult != WAIT_OBJECT_0) {
+            switch (dwWaitResult) {
+                case WAIT_TIMEOUT:
+                    mdebug2("Sending mutex timeout.");
+                    sleep(5);
+                    continue;
+                case WAIT_ABANDONED:
+                    merror("Error waiting mutex (abandoned).");
+                    return retval;
+                default:
+                    merror("Error waiting mutex.");
+                    return retval;
+            }
+        } else {
+            // Lock acquired, proceed
+            break;
+        }
+    }
+
+    // Escape the location string.
+    if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), (char *) locmsg, '|', ':')) {
+        merror(FORMAT_ERROR);
+        ReleaseMutex(hMutex); // Release mutex on error
+        return retval;
+    }
+
+    // Manually construct the binary message
+    char *p = tmpstr;
+    size_t loc_buff_len = strlen(loc_buff);
+    size_t header_len = 3 + loc_buff_len; // Format "loc:loc_buff:"
+    size_t total_len = header_len + message_len;
+
+    // Safety check: Ensure the message fits in the fixed-size buffer.
+    if (total_len > OS_MAXSTR) {
+        mwarn("Binary message is too large to be sent (%zu bytes required, %d max). Payload of %zu bytes for module '%s' was dropped.",
+                total_len, OS_MAXSTR, message_len, locmsg);
+        ReleaseMutex(hMutex); // Release mutex on error
+        return retval;
+    }
+
+    // Build the header
+    *p++ = loc;
+    *p++ = ':';
+    memcpy(p, loc_buff, loc_buff_len);
+    p += loc_buff_len;
+    *p++ = ':';
+
+    // Append the binary payload
+    memcpy(p, message, message_len);
+
+    // Dispatch the message (either to buffer or directly)
+    if (!agt->buffer) {
+        w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
+        // Pass the constructed message and its *actual size*.
+        if (send_msg(tmpstr, total_len) >= 0) {
+            retval = 0;
+        }
+    } else {
+        // Pass the constructed message and its *actual size* to the buffer.
+        if (buffer_append(tmpstr, total_len) >= 0) {
+            retval = 0;
+        }
+    }
+
+    // Release the mutex
+    if (!ReleaseMutex(hMutex)) {
+        merror("Error releasing mutex.");
+    }
+
+    return retval;
+}
+
+/* SendBinaryMSG for Windows */
+int SendBinaryMSG(__attribute__((unused)) int queue, const void *message, size_t message_len, const char *locmsg, char loc) {
+    os_wait();
+    return SendBinaryMSGAction(queue, message, message_len, locmsg, loc);
 }
 
 /* SendMSGPredicated for Windows */
@@ -377,13 +555,18 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
     return (0);
 }
 
+/* StartMQPredicated for Windows */
+int StartMQPredicated(__attribute__((unused)) const char *path, __attribute__((unused)) short int type, __attribute__((unused)) short int n_tries, __attribute__((unused)) bool (*fn_ptr)()) {
+    return (0);
+}
+
 /* MQReconnectPredicated for Windows */
 int MQReconnectPredicated(__attribute__((unused)) const char *path, __attribute__((unused)) bool (fn_ptr)())
 {
     return (0);
 }
 
-char *get_agent_ip()
+char *get_agent_ip_legacy_win32()
 {
     char agent_ip[IPSIZE + 1] = { '\0' };
     cJSON *object;
@@ -402,9 +585,23 @@ char *get_agent_ip()
                         }
                         cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
                         if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring, " ")) {
-                            const cJSON *ip = cJSON_GetObjectItem(element, "IPv6");
+
+                            const char * primaryIpType = NULL;
+                            const char * secondaryIpType = NULL;
+
+                            if (strchr(gateway->valuestring, ':') != NULL) {
+                                // Assume gateway is IPv6. IPv6 IP will be prioritary
+                                primaryIpType = "IPv6";
+                                secondaryIpType = "IPv4";
+                            } else {
+                                // Assume gateway is IPv4. IPv4 IP will be prioritary
+                                primaryIpType = "IPv4";
+                                secondaryIpType = "IPv6";
+                            }
+
+                            const cJSON * ip = cJSON_GetObjectItem(element, primaryIpType);
                             if (!ip) {
-                                ip = cJSON_GetObjectItem(element, "IPv4");
+                                ip = cJSON_GetObjectItem(element, secondaryIpType);
                                 if (!ip) {
                                     continue;
                                 }

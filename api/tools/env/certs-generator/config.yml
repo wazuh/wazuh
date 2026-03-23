@@ -1,0 +1,18 @@
+nodes:
+  indexer:
+    - name: wazuh.indexer
+      ip: wazuh.indexer
+
+  server:
+    - name: wazuh.master
+      ip: wazuh.master
+      node_type: master
+    - name: wazuh.worker
+      ip: wazuh.worker
+      node_type: worker
+    - name: wazuh2.worker
+      ip: wazuh2.worker
+      node_type: worker
+  dashboard:
+    - name: wazuh.dashboard
+      ip: wazuh.dashboard

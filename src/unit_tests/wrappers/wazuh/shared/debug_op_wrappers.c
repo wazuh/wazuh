@@ -219,3 +219,8 @@ void __wrap__mwarn(__attribute__((unused)) const char * file,
 
     check_expected(formatted_msg);
 }
+
+char * __wrap_win_strerror(__attribute__((unused)) unsigned long error) {
+    return mock_type(char*);
+}
+

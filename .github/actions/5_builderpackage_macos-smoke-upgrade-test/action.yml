@@ -1,0 +1,44 @@
+name: 'Test upgrade Wazuh agent package'
+description: 'Test upgrade Wazuh agent package'
+
+inputs:
+  old_package_url:
+    description: 'Package url to update from'
+    required: true
+  expected_upgrade_version:
+    description: 'Expected package version after upgrading'
+    required: true
+  architecture:
+    type: choice
+    description: Package architecture [intel64, arm64].
+    options:
+      - intel64
+      - arm64
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Copy upgrade test script to remote arm64 host
+      shell: bash
+      if: inputs.architecture == 'arm64'
+      run: |
+        ${{ env.SCP_COMMAND_ARM64 }} ${{ github.action_path }}/smoke_upgrade_test.sh ${{ env.ansible_user_arm64 }}@${{ env.ansible_host_arm64 }}:/tmp/smoke_upgrade_test.sh
+
+    - name: Execute upgrade test script on remote arm64 host
+      shell: bash
+      if: inputs.architecture == 'arm64'
+      run: |
+        ${{ env.SSH_COMMAND_ARM64 }} 'cd ~ && sudo bash /tmp/smoke_upgrade_test.sh ${{ inputs.old_package_url }} ${{ inputs.expected_upgrade_version }} "wazuh/packages/macos/output/*agent*pkg"'
+
+    - name: Copy upgrade test script to remote intel64 host
+      shell: bash
+      if: inputs.architecture == 'intel64'
+      run: |
+        ${{ env.SCP_COMMAND_INTEL64 }} ${{ github.action_path }}/smoke_upgrade_test.sh ${{ env.ansible_user_intel64 }}@${{ env.ansible_host_intel64 }}:/tmp/smoke_upgrade_test.sh
+
+    - name: Execute upgrade test script on remote intel64 host
+      shell: bash
+      if: inputs.architecture == 'intel64'
+      run: |
+        ${{ env.SSH_COMMAND_INTEL64 }} 'sudo bash /tmp/smoke_upgrade_test.sh ${{ inputs.old_package_url }} ${{ inputs.expected_upgrade_version }} "/tmp/${{ env.PACKAGE_NAME }}"'

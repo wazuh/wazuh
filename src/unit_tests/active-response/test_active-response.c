@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -13,8 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../headers/shared.h"
-#include "../../active-response/active_responses.h"
+#include "shared.h"
+#include "active_responses.h"
 
 #include "../wrappers/common.h"
 

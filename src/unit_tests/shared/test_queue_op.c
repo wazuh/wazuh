@@ -10,6 +10,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 #include <stdio.h>
 
@@ -89,6 +90,18 @@ void test_queue_full(void **state){
     assert_int_equal(queue_full(queue), 1);
 }
 
+void test_queue_full_ex(void **state) {
+    w_queue_t *queue = *state;
+    expect_value_count(__wrap_pthread_mutex_lock, mutex,  &queue->mutex, QUEUE_SIZE);
+    expect_value_count(__wrap_pthread_mutex_unlock, mutex, &queue->mutex, QUEUE_SIZE);
+
+    for (int i=0; i < QUEUE_SIZE - 1; i++){
+        assert_int_equal(queue_full_ex(queue), 0);
+        queue->begin++;
+    }
+    assert_int_equal(queue_full_ex(queue), 1);
+}
+
 void test_queue_empty(void **state){
     w_queue_t *queue = *state;
     assert_int_equal(queue_empty(queue), 1);
@@ -96,6 +109,57 @@ void test_queue_empty(void **state){
     assert_int_equal(queue_empty(queue), 0);
     queue->begin--;
     assert_int_equal(queue_empty(queue), 1);
+}
+
+void test_queue_get_percentage_ex(void ** state) {
+
+    w_queue_t * queue = *state;
+
+    // empty
+    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+    assert_float_equal(queue_get_percentage_ex(queue), 0.0f, 0.01f);
+
+    // quarter full
+    for (int i = 0; i < QUEUE_SIZE / 4; i++) {
+        queue_push(queue, NULL);
+    }
+    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+    assert_float_equal(queue_get_percentage_ex(queue), 0.25f, 0.01f);
+
+    // half full
+    for (int i = 0; i < QUEUE_SIZE / 4; i++) {
+        queue_push(queue, NULL);
+    }
+    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+    assert_float_equal(queue_get_percentage_ex(queue), 0.5f, 0.01f);
+
+    // three quarters full
+    for (int i = 0; i < QUEUE_SIZE / 4; i++) {
+        queue_push(queue, NULL);
+    }
+    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+    assert_float_equal(queue_get_percentage_ex(queue), 0.75f, 0.01f);
+
+    // full
+    for (int i = 0; i < QUEUE_SIZE / 4; i++) {
+        queue_push(queue, NULL);
+    }
+    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+    assert_float_equal(queue_get_percentage_ex(queue), 1.0f, 0.01f);
+
+    // empty
+    for (int i = 0; i < QUEUE_SIZE; i++) {
+        queue_pop(queue);
+    }
+
+    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+    assert_float_equal(queue_get_percentage_ex(queue), 0.0f, 0.01f);
 }
 
 void test_queue_push(void **state) {
@@ -284,11 +348,62 @@ void test_queue_pop_ex_timedwait_no_timeout(void **state) {
     assert_ptr_not_equal(ptr, NULL);
     os_free(ptr);
 }
+
+void test_try_queue_pop_ex_empty(void** state)
+{
+    w_queue_t* queue = *state;
+    void* ptr = NULL;
+
+    // Test popping from empty queue - should return NULL without blocking
+    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+
+    ptr = try_queue_pop_ex(queue);
+    assert_ptr_equal(ptr, NULL);
+}
+
+void test_try_queue_pop_ex_with_elements(void** state)
+{
+    w_queue_t* queue = *state;
+    int i;
+    int* ptr = NULL;
+
+    // First, add some elements to the queue
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
+        ptr = malloc(sizeof(int));
+        *ptr = i;
+        queue_push(queue, ptr);
+    }
+
+    // Test popping elements from queue with data
+    expect_value_count(__wrap_pthread_mutex_lock, mutex, &queue->mutex, QUEUE_SIZE - 1);
+    expect_value_count(__wrap_pthread_mutex_unlock, mutex, &queue->mutex, QUEUE_SIZE - 1);
+    expect_value_count(__wrap_pthread_cond_signal, cond, &queue->available_not_empty, QUEUE_SIZE - 1);
+
+    // Pop all elements and verify they are correct
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
+        ptr = try_queue_pop_ex(queue);
+        assert_ptr_not_equal(ptr, NULL);
+        assert_int_equal(*ptr, i);
+        os_free(ptr);
+    }
+
+    // Now queue should be empty, so next pop should return NULL
+    expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_mutex_unlock, mutex, &queue->mutex);
+
+    ptr = try_queue_pop_ex(queue);
+    assert_ptr_equal(ptr, NULL);
+}
 /************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_queue_full, setup_queue, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_queue_full_ex, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_empty, setup_queue, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_queue_get_percentage_ex, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_push, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_push_ex, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_push_ex_block, setup_queue, teardown_queue),
@@ -296,6 +411,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_queue_pop_ex, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_pop_ex_timedwait_timeout, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_pop_ex_timedwait_no_timeout, setup_queue, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_try_queue_pop_ex_empty, setup_queue, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_try_queue_pop_ex_with_elements, setup_queue, teardown_queue),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

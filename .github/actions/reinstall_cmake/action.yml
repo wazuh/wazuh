@@ -1,0 +1,31 @@
+name: "Reinstall CMake"
+description: "Installs a compatible CMake version."
+
+inputs:
+  version:
+    required: false
+    description: "Version to install"
+    default: 3.31.6
+
+runs:
+  using: "composite"
+  steps:
+      - name: Reinstall CMake
+        run: |
+          requested_version="${{ inputs.version }}"
+
+          if command -v cmake >/dev/null 2>&1; then
+            current_version="$(cmake --version | awk 'NR==1 {print $3}')"
+            cmake --version
+            if [ "${current_version}" = "${requested_version}" ]; then
+              echo "CMake ${requested_version} is already installed. Skipping reinstallation."
+              exit 0
+            fi
+          fi
+
+          sudo chmod +x tools/devContainer/reinstall-cmake.sh
+          sudo rm /usr/local/bin/cmake || true
+          sudo rm /usr/local/bin/ctest || true
+          sudo tools/devContainer/reinstall-cmake.sh "${requested_version}"
+          cmake --version
+        shell: bash

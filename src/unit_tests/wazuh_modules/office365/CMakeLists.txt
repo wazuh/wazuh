@@ -10,10 +10,15 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Tests list and flags
 list(APPEND tests_names "test_wm_office365")
-list(APPEND tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mtinfo -Wl,--wrap,_mterror\
-                        -Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtdebug2 -Wl,--wrap,access -Wl,--wrap,wurl_http_request \
+list(APPEND tests_flags "-Wl,--wrap,access -Wl,--wrap,wurl_http_request \
                         -Wl,--wrap,wurl_free_response -Wl,--wrap,wm_sendmsg -Wl,--wrap,strftime -Wl,--wrap,gmtime_r \
-                        -Wl,--wrap,wm_state_io -Wl,--wrap,time -Wl,--wrap,StartMQ ${DEBUG_OP_WRAPPERS} -Wl,--wrap,isDebug")
+                        -Wl,--wrap,wm_state_io -Wl,--wrap,time -Wl,--wrap,StartMQ -Wl,--wrap,wfopen \
+                        -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \ -Wl,--wrap=is_fim_shutdown \
+                        -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown \
+                        -Wl,--wrap,fim_sync_push_msg -Wl,--wrap,fim_run_integrity -Wl,--wrap,fim_db_remove_path \
+                        -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start -Wl,--wrap,fim_db_transaction_deleted_rows \
+                        -Wl,--wrap,fim_db_transaction_sync_row -Wl,--wrap,fim_db_file_update -Wl,--wrap,fim_db_file_pattern_search \
+                        -Wl,--wrap,fim_db_init -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS} -Wl,--wrap,isDebug")
 
 list(APPEND use_shared_libs 1)
 
@@ -21,8 +26,13 @@ list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.c")
 
 # Generate wazuh modules library
-file(GLOB office365 ../../../wazuh_modules/*.o)
-list(REMOVE_ITEM office365 ../../../wazuh_modules/main.o)
+if(${TARGET} STREQUAL "winagent")
+    file(GLOB_RECURSE office365 ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.obj)
+    list(REMOVE_ITEM office365 ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.obj)
+else()
+    file(GLOB_RECURSE office365 ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+    list(REMOVE_ITEM office365 ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
+endif()
 
 add_library(OFFICE365_O STATIC ${office365})
 
@@ -41,6 +51,9 @@ set_target_properties(
 
 target_link_libraries(OFFICE365_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+if(${TARGET} STREQUAL "winagent")
+    link_directories(${SRC_FOLDER}/build/bin)
+endif(${TARGET} STREQUAL "winagent")
 
 # Compiling tests
 list(LENGTH tests_names count)
@@ -56,12 +69,14 @@ foreach(counter RANGE ${count})
       add_executable(${test_name} ${test_name}.c)
     endif()
 
-    if(${TARGET} STREQUAL "server")
+    if(${TARGET} STREQUAL "manager")
         target_link_libraries(
             ${test_name}
+            -Wl,--start-group
             ${WAZUHLIB}
             ${WAZUHEXT}
             OFFICE365_O
+            -Wl,--end-group
             -lcmocka
             -ldl
             -fprofile-arcs
@@ -72,9 +87,13 @@ foreach(counter RANGE ${count})
             ${test_name}
             ${TEST_DEPS}
         )
+        if(${TARGET} STREQUAL "winagent")
+          target_link_libraries(${test_name} fimdb)
+        endif(${TARGET} STREQUAL "winagent")
     endif()
 
     if(NOT test_flags STREQUAL " ")
+        separate_arguments(test_flags)
         target_link_libraries(
             ${test_name}
             ${test_flags}

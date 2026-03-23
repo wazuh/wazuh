@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 #include <string.h>
 #include <stdio.h>
@@ -41,8 +42,13 @@ int __wrap_getpid() {
 }
 
 #ifndef WIN32
+__attribute__((weak)) void __wrap_sleep_hook(unsigned int seconds) {
+    (void)seconds;
+}
+
 void __wrap_sleep(unsigned int seconds) {
     check_expected(seconds);
+    __wrap_sleep_hook(seconds);
     return;
 }
 
@@ -86,6 +92,17 @@ int __wrap_readlink(__attribute__((unused)) void **state) {
 int __wrap_symlink(const char *path1, const char *path2) {
     check_expected(path1);
     check_expected(path2);
+    return mock();
+}
+
+int __wrap_link(const char *path1, const char *path2) {
+    check_expected(path1);
+    check_expected(path2);
+    return mock();
+}
+
+int __wrap_rmdir(const char *path) {
+    check_expected(path);
     return mock();
 }
 

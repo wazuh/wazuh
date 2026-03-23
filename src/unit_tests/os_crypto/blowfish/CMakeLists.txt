@@ -17,7 +17,7 @@ foreach(counter RANGE ${count})
     list(GET blowfish_tests_names ${counter} test_name)
     list(GET blowfish_tests_flags ${counter} test_flags)
     add_executable(${test_name} ${test_name}.c)
-    if(${TARGET} STREQUAL "server")
+    if(${TARGET} STREQUAL "manager")
         target_link_libraries(
             ${test_name}
             ${TEST_DEPS}

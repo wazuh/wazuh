@@ -20,6 +20,8 @@
 #define FormatMessage wrap_FormatMessage
 #undef  LookupAccountSid
 #define LookupAccountSid wrap_LookupAccountSid
+#undef  LookupAccountSidW
+#define LookupAccountSidW wrap_LookupAccountSid
 #undef  GetFileSecurity
 #define GetFileSecurity wrap_GetFileSecurity
 #define ReadDirectoryChangesW wrap_ReadDirectoryChangesW

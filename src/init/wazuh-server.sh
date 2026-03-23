@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Copyright (C) 2015, Wazuh Inc.
-# wazuh-control        This shell script takes care of starting
+# wazuh-manager-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
@@ -11,11 +11,17 @@ cd ${LOCAL}
 PWD=`pwd`
 DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
+WAZUH_CONF="${WAZUH_CONF:-wazuh-manager.conf}"
+
+# Ensure the correct lib dir is used when agent/manager are co-hosted.
+export LD_LIBRARY_PATH="${DIR}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 # Installation info
-VERSION="v4.5.0"
-REVISION="40500"
-TYPE="server"
+VERSION="v5.0.0"
+REVISION="alpha0"
+TYPE="manager"
+WAZUH_ENGINE_GROUP="${WAZUH_ENGINE_GROUP:-wazuh-manager}"
+export WAZUH_ENGINE_GROUP
 
 ###  Do not modify below here ###
 
@@ -27,13 +33,11 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-analysisd wazuh-maild wazuh-execd wazuh-db wazuh-authd wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd wazuh-apid"
-OP_DAEMONS="wazuh-clusterd wazuh-maild wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd"
+DAEMONS="wazuh-manager-clusterd wazuh-manager-modulesd wazuh-manager-monitord wazuh-manager-remoted wazuh-manager-analysisd wazuh-manager-db wazuh-manager-authd wazuh-manager-apid"
 DEPRECATED_DAEMONS="ossec-authd"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
-OP_SDAEMONS=$(echo $OP_DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
 
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
@@ -42,21 +46,21 @@ LOCK_PID="${LOCK}/pid"
 # This number should be more than enough (even if it is
 # started multiple times together). It will try for up
 # to 10 attempts (or 10 seconds) to execute.
-MAX_ITERATION="10"
+MAX_ITERATION="60"
 
-MAX_KILL_TRIES=600
-
+MAX_KILL_TRIES=30
 
 checkpid()
 {
     for i in ${CDAEMONS}; do
-        for j in `cat ${DIR}/var/run/${i}-*.pid 2>/dev/null`; do
+        daemon_name="$i"
+        for j in `cat ${DIR}/var/run/${daemon_name}-*.pid 2>/dev/null`; do
             ps -p $j >/dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
-                    echo "Deleting PID file '${DIR}/var/run/${i}-${j}.pid' not used..."
+                    echo "Deleting PID file '${DIR}/var/run/${daemon_name}-${j}.pid' not used..."
                 fi
-                rm ${DIR}/var/run/${i}-${j}.pid
+                rm ${DIR}/var/run/${daemon_name}-${j}.pid
             fi
         done
     done
@@ -79,7 +83,7 @@ lock()
         # Waiting 1 second before trying again
         sleep 1;
         i=`expr $i + 1`;
-        pid=`cat ${LOCK_PID}` 2>/dev/null
+        pid=$(cat ${LOCK_PID} 2>/dev/null)
 
         if [ $? = 0 ]
         then
@@ -118,12 +122,6 @@ help()
     exit 1;
 }
 
-AUTHD_MSG="This option is deprecated because Authd is now enabled by default."
-DATABASE_MSG="This option is deprecated because the database output is now enabled by default."
-SYSLOG_MSG="This option is deprecated because Client Syslog is now enabled by default."
-AGENTLESS_MSG="This option is deprecated because Agentless is now enabled by default."
-INTEGRATOR_MSG="This option is deprecated because Integrator is now enabled by default."
-
 # Enables additional daemons
 enable()
 {
@@ -134,17 +132,7 @@ enable()
         exit 1;
     fi
 
-    if [ "X$2" = "Xdatabase" ]; then
-        echo "$DATABASE_MSG"
-    elif [ "X$2" = "Xclient-syslog" ]; then
-        echo "$SYSLOG_MSG"
-    elif [ "X$2" = "Xagentless" ]; then
-        echo "$AGENTLESS_MSG";
-    elif [ "X$2" = "Xintegrator" ]; then
-        echo "$INTEGRATOR_MSG";
-    elif [ "X$2" = "Xauth" ]; then
-        echo "$AUTHD_MSG"
-    elif [ "X$2" = "Xdebug" ]; then
+    if [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
     else
         echo ""
@@ -168,15 +156,7 @@ disable()
     fi
     daemon=''
 
-    if [ "X$2" = "Xdatabase" ]; then
-        echo "$DATABASE_MSG"
-    elif [ "X$2" = "Xclient-syslog" ]; then
-        echo "$SYSLOG_MSG"
-    elif [ "X$2" = "Xagentless" ]; then
-        echo "$AGENTLESS_MSG";
-    elif [ "X$2" = "Xintegrator" ]; then
-        echo "$INTEGRATOR_MSG";
-    elif [ "X$2" = "Xdebug" ]; then
+    if [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
         echo ""
@@ -237,7 +217,8 @@ testconfig()
 {
     # We first loop to check the config.
     for i in ${SDAEMONS}; do
-        ${DIR}/bin/${i} -t ${DEBUG_CLI};
+        daemon_name="$i"
+        ${DIR}/bin/${daemon_name} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
             if [ $USE_JSON = true ]; then
                 echo -n '{"error":20,"message":"'${i}': Configuration error."}'
@@ -254,6 +235,88 @@ testconfig()
         fi
     done
 }
+# Check if the system uses systemd
+is_systemd() {
+    [ -d /run/systemd/system ]
+}
+
+# Add daemons to the manager cgroup if systemd is used in legacy systems.
+add_to_cgroup()
+{
+    CGROUP_PATH="/sys/fs/cgroup/systemd/system.slice/wazuh-manager.service/cgroup.procs"
+
+    # Check if cgroup path exists
+    if [ ! -f "$CGROUP_PATH" ]; then
+        echo "Warning: cgroup path does not exist: $CGROUP_PATH" >&2
+    else
+        for pidfile in ${DIR}/var/run/wazuh-manager-*.pid; do
+            [ -f "$pidfile" ] || continue
+            pid=$(cat "$pidfile" 2>/dev/null)
+            [ -z "$pid" ] && continue
+
+            # Try to write to cgroup, capture any errors
+            if ! echo "$pid" >> "$CGROUP_PATH" 2>/dev/null; then
+                echo "Warning: Failed to add PID $pid to cgroup ($(basename "$pidfile"))" >&2
+            fi
+        done
+    fi
+}
+
+get_wazuh_engine_pid()
+{
+    local max_ticks=100
+    local ticks=0
+    local pidfile
+
+    ${DIR}/bin/wazuh-manager-analysisd
+
+    while [ $ticks -lt $max_ticks ]; do
+        pidfile=$(ls ${DIR}/var/run/wazuh-manager-analysisd-*.pid 2>/dev/null | head -n1)
+        if [ -n "$pidfile" ]; then
+            echo "${pidfile##*-}" | sed 's/\.pid$//'
+            return 0
+        fi
+        ticks=$((ticks + 1))
+        sleep 0.1
+    done
+
+    return 1  # timeout
+}
+
+wait_for_wazuh_engine_ready()
+{
+    local attempts=0
+    local max_attempts=240 # TODO Improve this value
+
+    ENGINE_PID=$(get_wazuh_engine_pid)
+    if [ $? -ne 0 ]; then
+        echo "Failed to obtain PID for wazuh-manager-analysisd"
+        return 1
+    fi
+
+    while [ $attempts -lt $max_attempts ]; do
+        curl --silent --unix-socket ${DIR}/queue/sockets/analysis \
+            -X POST -H "Content-Type: application/json" \
+            -d '{"name":"default"}' \
+            http://localhost/router/route/get \
+            > /dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            return 0
+        fi
+
+        if ! kill -0 "$ENGINE_PID" 2>/dev/null; then
+            echo "wazuh-manager-analysisd died during route check."
+            return 1
+        fi
+
+        attempts=$((attempts + 1))
+        sleep 1
+    done
+
+    echo "wazuh-manager-analysisd did not respond correctly after $max_attempts attempts."
+    kill $ENGINE_PID
+    return 1
+}
 
 # Start function
 start_service()
@@ -263,22 +326,11 @@ start_service()
         echo "Starting Wazuh $VERSION..."
     fi
 
-    TEST=$(${DIR}/bin/wazuh-logtest-legacy -t  2>&1 | grep "ERROR")
-    if [ ! -z "$TEST" ]; then
-        if [ $USE_JSON = true ]; then
-            echo -n '{"error":21,"message":"OSSEC analysisd: Testing rules failed. Configuration error."}'
-        else
-            echo "OSSEC analysisd: Testing rules failed. Configuration error. Exiting."
-        fi
-        touch ${DIR}/var/run/wazuh-analysisd.failed
-        exit 1;
-    fi
-
     checkpid;
 
     # Delete all files in temporary folder
-    TO_DELETE="$DIR/tmp/*"
-    rm -rf $TO_DELETE
+    TO_DELETE="$DIR/tmp"
+    find $TO_DELETE -mindepth 1 -not -path "$TO_DELETE/vd_*_vd_*.tar" -not -path "$TO_DELETE/vd_*_vd_*.tar.xz" -delete
 
     # Stop deprecated daemons that could keep alive on updates
     for i in ${DEPRECATED_DAEMONS}; do
@@ -290,38 +342,30 @@ start_service()
         fi
     done
 
+    node_type=$(grep '<node_type>' ${DIR}/etc/${WAZUH_CONF} | sed 's/<node_type>\(.*\)<\/node_type>/\1/' | tr -d ' ');
+    if [ -z $node_type ]; then
+        echo "Invalid cluster configuration, check the $DIR/etc/${WAZUH_CONF} file."
+        unlock;
+        exit 1;
+    fi
+
     # We actually start them now.
     first=true
     if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"data":['
     fi
     for i in ${SDAEMONS}; do
-        ## If wazuh-maild is disabled, don't try to start it.
-        if [ X"$i" = "Xwazuh-maild" ]; then
-             grep "<email_notification>no<" ${DIR}/etc/ossec.conf >/dev/null 2>&1
-             if [ $? = 0 ]; then
-                 continue
-             fi
+        ## Only start the API daemon on the master node
+        if [ X"$i" = "Xwazuh-manager-apid" ] && [ "$node_type" != "master" ]; then
+            continue
         fi
-        ## If wazuh-clusterd is disabled, don't try to start it.
-        if [ X"$i" = "Xwazuh-clusterd" ]; then
-             start_config="$(grep -n "<cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
-             end_config="$(grep -n "</cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
+
+        ## If wazuh-manager-authd is disabled, don't try to start it.
+        if [ X"$i" = "Xwazuh-manager-authd" ]; then
+             start_config="$(grep -n "<auth>" ${DIR}/etc/${WAZUH_CONF} | cut -d':' -f 1)"
+             end_config="$(grep -n "</auth>" ${DIR}/etc/${WAZUH_CONF} | cut -d':' -f 1)"
              if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-                sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
-                if [ $? = 0 ]; then
-                    continue
-                fi
-             else
-                continue
-             fi
-        fi
-        ## If wazuh-authd is disabled, don't try to start it.
-        if [ X"$i" = "Xwazuh-authd" ]; then
-             start_config="$(grep -n "<auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
-             end_config="$(grep -n "</auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
-             if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-                sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
+                sed -n "${start_config},${end_config}p" ${DIR}/etc/${WAZUH_CONF} | grep "<disabled>yes" >/dev/null 2>&1
                 if [ $? = 0 ]; then
                     continue
                 fi
@@ -341,29 +385,32 @@ start_service()
             failed=false
             rm -f ${DIR}/var/run/${i}.failed
             touch ${DIR}/var/run/${i}.start
-            if [ $USE_JSON = true ]; then
-                ${DIR}/bin/${i} ${DEBUG_CLI} > /dev/null 2>&1;
+            daemon_name="$i"
+
+            if [ ! -z "$LEGACY_SYSTEMD_VERSION" ]; then
+                if command -v systemd-run >/dev/null 2>&1; then
+                    # safe to use systemd-run
+                    if [ $USE_JSON = true ]; then
+                        systemd-run --scope --slice=system.slice ${DIR}/bin/${daemon_name} ${DEBUG_CLI} > /dev/null 2>&1
+                    else
+                        systemd-run --scope --slice=system.slice ${DIR}/bin/${daemon_name} ${DEBUG_CLI}
+                    fi
+                else
+                    echo "ERROR: systemd is in use but systemd-run is not available" >&2
+                    exit 1
+                fi
             else
-                ${DIR}/bin/${i} ${DEBUG_CLI};
+                if [ "$i" = "wazuh-manager-analysisd" ]; then
+                    wait_for_wazuh_engine_ready
+                elif [ $USE_JSON = true ]; then
+                    ${DIR}/bin/${daemon_name} ${DEBUG_CLI} > /dev/null 2>&1;
+                else
+                    ${DIR}/bin/${daemon_name} ${DEBUG_CLI};
+                fi
             fi
+
             if [ $? != 0 ]; then
                 failed=true
-            else
-                is_optional ${i};
-                if [ $? = 0 ]; then
-                    j=0;
-                    while [ $failed = false ]; do
-                        pstatus ${i};
-                        if [ $? = 1 ]; then
-                            break;
-                        fi
-                        sleep 1;
-                        j=`expr $j + 1`;
-                        if [ "$j" -ge "${MAX_ITERATION}" ]; then
-                            failed=true
-                        fi
-                    done
-                fi
             fi
             if [ $failed = true ]; then
                 if [ $USE_JSON = true ]; then
@@ -396,6 +443,11 @@ start_service()
     # to internally create their PID files.
     sleep 2;
 
+    # Add daemons to the manager cgroup if systemd is used.
+    if [ ! -z "$LEGACY_SYSTEMD_VERSION" ]; then
+        add_to_cgroup
+    fi
+
     if [ $USE_JSON = true ]; then
         echo -n ']}'
     else
@@ -404,35 +456,25 @@ start_service()
     rm -f ${DIR}/var/run/*.start
 }
 
-is_optional()
-{
-    daemon=$1
-    for op in ${OP_SDAEMONS}; do
-        # If the daemon is optional, don't check if it is running in background.
-        if [ X"$op" = X"$daemon" ]; then
-            return 1;
-        fi
-    done
-    return 0;
-}
-
 pstatus()
 {
     pfile=$1;
+    _pstatus_quiet=${2:-""}
     # pfile must be set
     if [ "X${pfile}" = "X" ]; then
         return 0;
     fi
 
-    ls ${DIR}/var/run/${pfile}-*.pid > /dev/null 2>&1
+    daemon_name="$pfile"
+    ls ${DIR}/var/run/${daemon_name}-*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
-        for pid in `cat ${DIR}/var/run/${pfile}-*.pid 2>/dev/null`; do
+        for pid in `cat ${DIR}/var/run/${daemon_name}-*.pid 2>/dev/null`; do
             ps -p ${pid} > /dev/null 2>&1
             if [ ! $? = 0 ]; then
-                if [ $USE_JSON = false ]; then
+                if [ $USE_JSON = false ] && [ "X${_pstatus_quiet}" = "X" ]; then
                     echo "${pfile}: Process ${pid} not used by Wazuh, removing..."
                 fi
-                rm -f ${DIR}/var/run/${pfile}-${pid}.pid
+                rm -f ${DIR}/var/run/${daemon_name}-${pid}.pid
                 continue;
             fi
 
@@ -455,9 +497,7 @@ wait_pid() {
         then
             return 1
         else
-            # sleep doesn't work in AIX
-            # read doesn't work in FreeBSD
-            sleep 0.1 > /dev/null 2>&1 || read -t 0.1 > /dev/null 2>&1
+            sleep 1
             wp_counter=`expr $wp_counter + 1`
         fi
     done
@@ -468,49 +508,63 @@ wait_pid() {
 stop_service()
 {
     checkpid;
+
+    # First pass: send kill signal to all running daemons
+    for i in ${DAEMONS}; do
+        daemon_name="$i"
+        pstatus ${i};
+        if [ $? = 1 ]; then
+            if [ $USE_JSON != true ]
+            then
+                echo "Killing ${i}...";
+            fi
+            pid=`cat ${DIR}/var/run/${daemon_name}-*.pid`
+            kill $pid
+        else
+            if [ $USE_JSON != true ]
+            then
+                echo "${i} not running...";
+            fi
+        fi
+    done
+
+    # Second pass: wait for all processes that are still alive
     first=true
     if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"data":['
     fi
     for i in ${DAEMONS}; do
+        daemon_name="$i"
         if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','
         else
             first=false
         fi
 
-        pstatus ${i};
+        pstatus ${i} "quiet";
 
         if [ $? = 1 ]; then
-            if [ $USE_JSON != true ]
-            then
-                echo "Killing ${i}...";
-            fi
-
-            pid=`cat ${DIR}/var/run/${i}-*.pid`
-            kill $pid
+            pid=`cat ${DIR}/var/run/${daemon_name}-*.pid`
 
             if wait_pid $pid
             then
                 if [ $USE_JSON = true ]; then
-                    echo -n '{"daemon":"'${i}'","status":"killed"}'
+                    echo -n '{"daemon":"'${i}'","status":"stopped"}'
                 fi
             else
                 if [ $USE_JSON = true ]; then
-                    echo -n '{"daemon":"'${i}'","status":"failed to kill"}'
+                    echo -n '{"daemon":"'${i}'","status":"killed"}'
                 else
                     echo "Process ${i} couldn't be terminated. It will be killed.";
-                    kill -9 $pid
                 fi
+                kill -9 $pid
             fi
         else
             if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"stopped"}'
-            else
-                echo "${i} not running...";
             fi
         fi
-        rm -f ${DIR}/var/run/${i}-*.pid
+        rm -f ${DIR}/var/run/${daemon_name}-*.pid
     done
 
     if [ $USE_JSON = true ]; then
@@ -544,6 +598,21 @@ info()
     fi
 }
 
+restart_service()
+{
+    touch ${DIR}/var/run/.restart
+    testconfig
+    lock
+    if [ $USE_JSON = true ]; then
+        stop_service > /dev/null 2>&1
+    else
+        stop_service
+    fi
+    start_service
+    rm -f ${DIR}/var/run/.restart
+    unlock
+}
+
 ### MAIN HERE ###
 
 if [ "$1" = "-j" ]; then
@@ -568,24 +637,18 @@ stop)
     unlock
     ;;
 restart)
-    touch ${DIR}/var/run/.restart
-    testconfig
-    lock
-    if [ $USE_JSON = true ]; then
-        stop_service > /dev/null 2>&1
-    else
-        stop_service
-    fi
-    start_service
-    rm -f ${DIR}/var/run/.restart
-    unlock
+    restart_service
     ;;
 reload)
-    DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
-    lock
-    stop_service
-    start_service
-    unlock
+    DAEMONS=$(echo $DAEMONS | sed 's/wazuh-manager-remoted//')
+    SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
+    if is_systemd; then
+        SYSTEMD_VERSION=$(systemctl --version | awk 'NR==1 {print $2}')
+        if [ "$SYSTEMD_VERSION" -le 237 ]; then
+            LEGACY_SYSTEMD_VERSION=1
+        fi
+    fi
+    restart_service
     ;;
 status)
     lock

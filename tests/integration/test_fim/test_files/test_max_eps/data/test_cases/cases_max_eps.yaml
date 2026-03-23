@@ -1,0 +1,55 @@
+- name: 10_eps_creating_multiple_files_realtime
+  description: Check if number of eps is correct after create multiple files on a monitored folder
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    FIM_MODE:
+      realtime: 'yes'
+    MAX_EPS: 10
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    max_eps: 10
+    fim_mode: 'realtime'
+
+- name: 10_eps_creating_multiple_files_whodata
+  description: Check if number of eps is correct after create multiple files on a monitored folder
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    FIM_MODE:
+      whodata: 'yes'
+    MAX_EPS: 10
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    max_eps: 10
+    fim_mode: 'whodata'
+
+- name: 50_eps_creating_multiple_files_realtime
+  description: Check if number of eps is correct after create multiple files on a monitored folder
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    FIM_MODE:
+      realtime: 'yes'
+    MAX_EPS: 50
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    max_eps: 50
+    fim_mode: 'realtime'
+
+- name: 50_eps_creating_multiple_files_whodata
+  description: Check if number of eps is correct after create multiple files on a monitored folder
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    FIM_MODE:
+      whodata: 'yes'
+    MAX_EPS: 50
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    max_eps: 50
+    fim_mode: 'whodata'

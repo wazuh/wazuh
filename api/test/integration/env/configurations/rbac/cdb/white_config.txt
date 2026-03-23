@@ -1,9 +1,0 @@
-| Resource  | List                                                         |
-|-----------|--------------------------------------------------------------|
-| list:file | aws-eventnames aws-sources audit-keys security-eventchannel  |
-
-| Actions      | Resources | Allow                                                | Deny |
-|--------------|-----------|------------------------------------------------------|------|
-| lists:read   | list:file | aws-eventnames audit-keys                            |      |
-| lists:update | *:*       | *                                                    |      |
-| lists:delete | list:file | aws-eventnames audit-keys                            |      |

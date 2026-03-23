@@ -21,13 +21,18 @@
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 
-#include "../external/cJSON/cJSON.h"
-#include "headers/store_op.h"
-#include "monitord/monitord.h"
-#include "headers/defs.h"
-#include "headers/shared.h"
-#include "config/config.h"
+#include "../../external/cJSON/cJSON.h"
+#include "store_op.h"
+#include "monitord.h"
+#include "defs.h"
+#include "shared.h"
+#include "config.h"
 #include "os_err.h"
+
+#ifdef TEST_SERVER
+#undef ARGV0
+#define ARGV0 "wazuh-manager-monitord"
+#endif
 
 /* redefinitons/wrapping */
 
@@ -48,7 +53,6 @@ int setup_monitord(void **state) {
     mond.global.agents_disconnection_time = 0;
 
     mond.delete_old_agents = 0;
-    mond.a_queue = -1;
     mond.day_wait = 0;
     mond.compress = 0;
     mond.sign = 0;
@@ -76,7 +80,6 @@ int teardown_monitord(void **state) {
     mond.global.agents_disconnection_time = 0;
 
     mond.delete_old_agents = 0;
-    mond.a_queue = -1;
     mond.day_wait = 0;
     mond.compress = 0;
     mond.sign = 0;
@@ -305,47 +308,6 @@ void test_check_logs_time_trigger_false(void **state) {
     assert_int_equal(result, 0);
 }
 
-/* Tests monitor_queue_connect */
-
-void test_monitor_queue_connect_fail(void **state) {
-    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
-    expect_value(__wrap_StartMQ, type, WRITE);
-    will_return(__wrap_StartMQ, -1);
-
-    monitor_queue_connect();
-
-    assert_int_equal(mond.a_queue, -1);
-}
-
-void test_monitor_queue_connect_success(void **state) {
-    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
-    expect_value(__wrap_StartMQ, type, WRITE);
-    will_return(__wrap_StartMQ, 1);
-    expect_string(__wrap_SendMSG, message, OS_AD_STARTED);
-    expect_string(__wrap_SendMSG, locmsg, ARGV0);
-    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
-    will_return(__wrap_SendMSG, 1);
-
-    monitor_queue_connect();
-
-    assert_int_equal(mond.a_queue, 1);
-}
-
-void test_monitor_queue_connect_msg_fail(void **state) {
-    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
-    expect_value(__wrap_StartMQ, type, WRITE);
-    will_return(__wrap_StartMQ, 1);
-    expect_string(__wrap_SendMSG, message, OS_AD_STARTED);
-    expect_string(__wrap_SendMSG, locmsg, ARGV0);
-    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
-    will_return(__wrap_SendMSG, -1);
-    expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
-
-    monitor_queue_connect();
-
-    assert_int_equal(mond.a_queue, -1);
-}
-
 /* Tests getMonitorInternalOptions */
 
 void test_getMonitorInternalOptions_success(void **state) {
@@ -411,50 +373,6 @@ void test_getMonitorGlobalOptions_success(void **state) {
     cJSON_Delete(root);
 }
 
-/* Tests getReportsOptions */
-
-void test_getReportsOptions_success(void **state) {
-    cJSON *root = NULL;
-    report_config **reports_array = NULL;
-    report_config *report = NULL;
-    char **email_array = NULL;
-    char *expected_output = "{\"reports\":[{\"title\":\"Title\",\"group\":\"Group\",\"rule\":\"Rule\",\
-\"level\":\"Level\",\"srcip\":\"SourceIP\",\"user\":\"User\",\"showlogs\":\"yes\",\"email_to\":[\"emailto_test\"]}]}";
-    char *result = NULL;
-
-    os_calloc(2, sizeof(report_config*), reports_array);
-    os_calloc(1, sizeof(report_config), report);
-    os_calloc(2, sizeof(char*), email_array);
-
-    reports_array[0] = report;
-    reports_array[1] = NULL;
-    os_strdup("emailto_test", email_array[0]);
-    email_array[1] = NULL;
-
-    // Arbitrary configuration
-    report->title = "Title";
-    report->r_filter.group = "Group";
-    report->r_filter.rule = "Rule";
-    report->r_filter.level = "Level";
-    report->r_filter.srcip = "SourceIP";
-    report->r_filter.user = "User";
-    report->r_filter.show_alerts = 1;
-    report->emailto = email_array;
-    mond.reports = reports_array;
-
-    root = getReportsOptions();
-
-    result = cJSON_PrintUnformatted(root);
-    assert_string_equal(expected_output, result);
-
-    cJSON_Delete(root);
-    os_free(report);
-    os_free(reports_array);
-    os_free(email_array[0]);
-    os_free(email_array);
-    os_free(result);
-}
-
 /* Tests ReadConfig */
 
 void test_MonitordConfig_success(void **state) {
@@ -463,11 +381,8 @@ void test_MonitordConfig_success(void **state) {
     int no_agents = 0;
     short day_wait = -1;
 
-    will_return_count(__wrap_getDefine_Int, 1, -1);
+    will_return_count(__wrap_getDefine_Int_default, 1, -1);
 
-    expect_value(__wrap_ReadConfig, modules, CREPORTS);
-    expect_string(__wrap_ReadConfig, cfgfile, cfg);
-    will_return(__wrap_ReadConfig, 0);
     expect_value(__wrap_ReadConfig, modules, CGLOBAL);
     expect_string(__wrap_ReadConfig, cfgfile, cfg);
     will_return(__wrap_ReadConfig, 0);
@@ -475,13 +390,10 @@ void test_MonitordConfig_success(void **state) {
     result = MonitordConfig(cfg, &mond, no_agents, day_wait);
 
     assert_int_equal(result, OS_SUCCESS);
-    assert_int_equal(mond.global.agents_disconnection_time, 600);
+    assert_int_equal(mond.global.agents_disconnection_time, 900);
     assert_int_equal(mond.global.agents_disconnection_alert_time, 0);
 
     assert_null(mond.agents);
-    assert_null(mond.smtpserver);
-    assert_null(mond.emailfrom);
-    assert_null(mond.emailidsname);
 
     assert_int_equal(mond.day_wait, 1);
     assert_int_equal(mond.compress, 1);
@@ -499,9 +411,9 @@ void test_MonitordConfig_fail(void **state) {
     int no_agents = 0;
     short day_wait = -1;
 
-    will_return_count(__wrap_getDefine_Int, 1, -1);
+    will_return_count(__wrap_getDefine_Int_default, 1, -1);
 
-    expect_value(__wrap_ReadConfig, modules, CREPORTS);
+    expect_value(__wrap_ReadConfig, modules, CGLOBAL);
     expect_string(__wrap_ReadConfig, cfgfile, cfg);
     will_return(__wrap_ReadConfig, -1);
 
@@ -534,16 +446,10 @@ int main()
         /* Tests check_logs_time_trigger */
         cmocka_unit_test_setup_teardown(test_check_logs_time_trigger_true, setup_monitord, teardown_monitord),
         cmocka_unit_test_setup_teardown(test_check_logs_time_trigger_false, setup_monitord, teardown_monitord),
-        /* Tests monitor_queue_connect */
-        cmocka_unit_test_setup_teardown(test_monitor_queue_connect_fail, setup_monitord, teardown_monitord),
-        cmocka_unit_test_setup_teardown(test_monitor_queue_connect_success, setup_monitord, teardown_monitord),
-        cmocka_unit_test_setup_teardown(test_monitor_queue_connect_msg_fail, setup_monitord, teardown_monitord),
         /* Tests getMonitorInternalOptions */
         cmocka_unit_test_setup_teardown(test_getMonitorInternalOptions_success, setup_monitord, teardown_monitord),
         /* Tests getMonitorGlobalOptions */
         cmocka_unit_test_setup_teardown(test_getMonitorGlobalOptions_success, setup_monitord, teardown_monitord),
-        /* Tests getReportsOptions */
-        cmocka_unit_test_setup_teardown(test_getReportsOptions_success, setup_monitord, teardown_monitord),
         /* Tests MonitordConfig */
         cmocka_unit_test_setup_teardown(test_MonitordConfig_success, setup_monitord, teardown_monitord),
         cmocka_unit_test_setup_teardown(test_MonitordConfig_fail, setup_monitord, teardown_monitord),

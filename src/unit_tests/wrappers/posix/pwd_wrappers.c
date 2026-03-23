@@ -36,16 +36,7 @@ int __wrap_getpwnam_r(const char *name,
 
     return 0;
 }
-// Test solaris version of this wrapper.
-#ifdef SOLARIS
-struct passwd **__wrap_getpwuid_r(__attribute__((unused)) uid_t uid,
-                                  struct passwd *pwd,
-                                  __attribute__((unused)) char *buf,
-                                  __attribute__((unused)) size_t buflen) {
-        pwd->pw_name = mock_type(char*);
-        return mock_type(struct passwd*);
-}
-#else
+
 int __wrap_getpwuid_r(__attribute__((unused)) uid_t uid,
                       struct passwd *pwd,
                       __attribute__((unused)) char *buf,
@@ -55,5 +46,4 @@ int __wrap_getpwuid_r(__attribute__((unused)) uid_t uid,
     *result = mock_type(struct passwd*);
     return mock();
 }
-#endif
 #endif

@@ -118,20 +118,12 @@ class FedoraOsParser : public ISysOsParser
         bool parseFile(std::istream& in, nlohmann::json& output) override;
 };
 
-class SolarisOsParser : public ISysOsParser
+class AlpineOsParser : public ISysOsParser
 {
     public:
-        SolarisOsParser() = default;
-        ~SolarisOsParser() = default;
+        AlpineOsParser() = default;
+        ~AlpineOsParser() = default;
         bool parseFile(std::istream& in, nlohmann::json& output) override;
-};
-
-class HpUxOsParser : public ISysOsParser
-{
-    public:
-        HpUxOsParser() = default;
-        ~HpUxOsParser() = default;
-        bool parseUname(const std::string& in, nlohmann::json& output) override;
 };
 
 class MacOsParser
@@ -140,6 +132,7 @@ class MacOsParser
         MacOsParser() = default;
         ~MacOsParser() = default;
         bool parseSwVersion(const std::string& in, nlohmann::json& output);
+        bool parseSystemProfiler(const std::string& in, nlohmann::json& output);
         bool parseUname(const std::string& in, nlohmann::json& output);
 };
 
@@ -173,11 +166,6 @@ class FactorySysOsParser final
                 return std::make_unique<FedoraOsParser>();
             }
 
-            if (platform == "solaris")
-            {
-                return std::make_unique<SolarisOsParser>();
-            }
-
             if (platform == "debian")
             {
                 return std::make_unique<DebianOsParser>();
@@ -208,9 +196,9 @@ class FactorySysOsParser final
                 return std::make_unique<RedHatOsParser>();
             }
 
-            if (platform == "hp-ux")
+            if (platform == "alpine")
             {
-                return std::make_unique<HpUxOsParser>();
+                return std::make_unique<AlpineOsParser>();
             }
 
             throw std::runtime_error

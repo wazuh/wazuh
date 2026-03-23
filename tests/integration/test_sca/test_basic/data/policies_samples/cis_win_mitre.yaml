@@ -1,0 +1,31 @@
+policy:
+  id: cis_win_mitre
+  file: cis_win_mitre
+  name: CIS Benchmark for Windows with MITRE
+  description: This is a mock file for checking MITRE behaviour on Windows systems
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+  regex_type: pcre2
+
+requirements:
+  title: Check Windows family platform
+  description: Requirements for running the policy against Windows family.
+  condition: any
+  rules:
+    - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows'
+
+checks:
+  - id: 1
+    title: "Test_1"
+    description: "Ensure the Administrator account is disabled."
+    rationale: "Test_1"
+    remediation: "Disable the built-in Administrator account."
+    compliance:
+      nist_800_53: ["CM.7"]
+      pci_dss: ["1.3.4"]
+    mitre:
+      tactic: ["TA0005"]
+      technique: ["T1005"]
+    condition: all
+    rules:
+      - 'c:net user administrator -> r:Account active\s+No'

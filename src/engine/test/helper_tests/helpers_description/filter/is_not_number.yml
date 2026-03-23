@@ -1,0 +1,42 @@
+# Name of the helper function
+name: is_not_number
+
+metadata:
+  description: |
+    Checks if the value stored in field is not a number.
+    If it is a number, the function evaluates to false. In case of error, the function will evaluate to false.
+    This helper function is typically used in the check stage
+  keywords:
+    - undefined
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Target field can be any JSON type; success only when it is not a number
+target_field:
+  type:
+    - number
+    - string
+    - boolean
+    - array
+    - object
+
+test:
+  - target_field: "hello"
+    should_pass: true
+    description: Not number (string)
+  - target_field: true
+    should_pass: true
+    description: Not number (boolean)
+  - target_field: [1]
+    should_pass: true
+    description: number (array not empty)
+  - target_field:
+      key: value
+    should_pass: true
+    description: Not number (object)
+  - target_field: 0
+    should_pass: false
+    description: Is number

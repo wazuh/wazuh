@@ -11,7 +11,8 @@
 #include <iostream>
 #include <fstream>
 #include <regex>
-#include <syscollectorNormalizer.h>
+
+#include "syscollectorNormalizer.hpp"
 
 SysNormalizer::SysNormalizer(const std::string& configFile,
                              const std::string& target)

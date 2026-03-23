@@ -19,15 +19,18 @@
 #include "../wrappers/linux/inotify_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"
+#include "../wrappers/wazuh/shared_modules/agent_sync_protocol_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_realtime_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/win_whodata_wrappers.h"
 
-#include "../syscheckd/syscheck.h"
-#include "../syscheckd/db/fim_db.h"
+#include "syscheck.h"
+#include "../syscheckd/src/db/include/db.h"
+#include "syscheck-config.h"
 
 #ifdef TEST_WINAGENT
 #include "../wrappers/windows/processthreadsapi_wrappers.h"
@@ -38,7 +41,23 @@ void set_whodata_mode_changes();
 
 /* External 'static' functions prototypes */
 void fim_send_msg(char mq, const char * location, const char * msg);
+extern volatile int fim_sync_module_running;
 #ifdef WIN32
+DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args);
+DWORD WINAPI __real_fim_run_integrity(__attribute__((unused)) void * args);
+#else
+void * fim_run_integrity(__attribute__((unused)) void * args);
+void * __real_fim_run_integrity(__attribute__((unused)) void * args);
+#endif
+bool __wrap_fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval);
+
+/* DataClean helper function prototypes */
+bool fim_has_configured_directories(void);
+bool fim_has_configured_paths(void);
+bool fim_has_data_in_database(void);
+bool handle_all_paths_removed(void);
+#ifdef WIN32
+bool fim_has_configured_registries(void);
 DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
 
 extern void free_win32rtfim_data(win32rtfim *data);
@@ -59,22 +78,83 @@ void fim_realtime_delete_watches(const directory_t *configuration);
 extern time_t last_time;
 extern unsigned int files_read;
 
+static bool stop_fim_integrity_on_sync = false;
+static bool stop_fim_integrity_on_sleep = false;
+static bool request_pause_after_sync = false;
+
+#define TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY "first_sync_completed"
+
+static void call_real_fim_run_integrity(void) {
+#ifdef TEST_WINAGENT
+    fim_run_integrity(NULL);
+#else
+    __real_fim_run_integrity(NULL);
+#endif
+}
+
+void __wrap_asp_sync_module_hook(void) {
+    if (stop_fim_integrity_on_sync) {
+        fim_sync_module_running = 0;
+    }
+
+    if (request_pause_after_sync) {
+        syscheck.fim_pause_requested.data = 1;
+        request_pause_after_sync = false;
+    }
+}
+
+void __wrap_sleep_hook(__attribute__((unused)) unsigned int seconds) {
+    if (stop_fim_integrity_on_sleep) {
+        syscheck.fim_pause_requested.data = 0;
+        fim_sync_module_running = 0;
+    }
+}
+
+#ifdef TEST_WINAGENT
+void wrap_Sleep_hook(__attribute__((unused)) DWORD dwMilliseconds) {
+    if (stop_fim_integrity_on_sleep) {
+        syscheck.fim_pause_requested.data = 0;
+        fim_sync_module_running = 0;
+    }
+}
+#endif
+
+int64_t __wrap_fim_db_get_last_sync_time(const char* table_name) {
+    check_expected(table_name);
+    return mock_type(int64_t);
+}
+
+void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp) {
+    check_expected(table_name);
+    check_expected(timestamp);
+}
+
 /* redefinitons/wrapping */
 
 #ifdef TEST_WINAGENT
 int __wrap_audit_restore(void) {
     return mock();
 }
-#else
+#endif
+
 time_t __wrap_time(time_t *timer) {
     return mock_type(time_t);
 }
 
-#endif
 
+extern bool fim_shutdown_process_on();
 /* Setup/Teardown */
 
 static int setup_group(void ** state) {
+    stop_fim_integrity_on_sync = false;
+    stop_fim_integrity_on_sleep = false;
+    request_pause_after_sync = false;
+    fim_sync_module_running = 0;
+    fim_flush_in_progress.data = 0;
+    fim_flush_result.data = 0;
+    syscheck.fim_pause_requested = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+    syscheck.fim_pausing_is_allowed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+
 #ifdef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -103,12 +183,9 @@ static int setup_group(void ** state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
 
-    syscheck.database = fim_db_init(FIM_DB_DISK);
 #endif // TEST_WINAGENT
 
-#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
-#endif
 
     will_return_always(__wrap_os_random, 12345);
 
@@ -212,6 +289,15 @@ static int teardown_tmp_file(void **state) {
 #endif
 
 static int teardown_group(void **state) {
+    stop_fim_integrity_on_sync = false;
+    stop_fim_integrity_on_sleep = false;
+    request_pause_after_sync = false;
+    fim_sync_module_running = 0;
+    fim_flush_in_progress.data = 0;
+    fim_flush_result.data = 0;
+    syscheck.fim_pause_requested.data = 0;
+    syscheck.fim_pausing_is_allowed.data = 0;
+
 #ifdef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -230,7 +316,6 @@ static int teardown_group(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 #endif
 
-    fim_db_clean();
     Free_Syscheck(&syscheck);
 
     return 0;
@@ -239,8 +324,8 @@ static int teardown_group(void **state) {
 /**
  * @brief This function loads expect and will_return calls for the function send_sync_msg
 */
-static void expect_w_send_sync_msg(const char *msg, const char *locmsg, char location, int ret) {
-    expect_SendMSG_call(msg, locmsg, location, ret);
+static void expect_w_send_sync_msg(const char *msg, const char *locmsg, char location,  bool (*fn_ptr)(), int ret) {
+    expect_SendMSGPredicated_call(msg, locmsg, location, fn_ptr, ret);
 }
 
 static int setup_max_fps(void **state) {
@@ -302,6 +387,65 @@ static int teardown_dbsync_msg(void **state) {
     free(ret_msg);
     return 0;
 }
+
+static void expect_fim_startup_log(bool first_sync_completed) {
+    expect_string(__wrap__mdebug1,
+                  formatted_msg,
+                  first_sync_completed
+                      ? "FIM first synchronization already completed in a previous run. Keeping startup synchronization delay."
+                      : "Initial FIM scan data is ready. Triggering first synchronization without startup delay.");
+}
+
+static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, uint32_t sync_interval, bool persist_first_sync_marker) {
+    expect_string(__wrap__minfo, formatted_msg, "Starting FIM synchronization.");
+
+    expect_value(__wrap_asp_sync_module, handle, handle);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
+    will_return(__wrap_asp_sync_module, true);
+
+    expect_string(__wrap__minfo, formatted_msg, "FIM synchronization finished successfully.");
+
+    if (persist_first_sync_marker) {
+#ifndef TEST_WINAGENT
+        will_return(__wrap_time, 123456);
+#endif
+        expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+        expect_any(__wrap_fim_db_update_last_sync_time_value, timestamp);
+    }
+
+#ifdef TEST_WINAGENT
+    /* On Windows, fim_run_integrity checks 3 tables: file, registry key, and registry value */
+    expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
+    will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
+    expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
+    will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
+#endif
+    expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
+    will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
+    expect_string(__wrap__mdebug1,
+                  formatted_msg,
+                  sync_interval == 1
+                      ? "FIM synchronization finished, waiting for 1 seconds before next run."
+                      : "FIM synchronization finished, waiting for 0 seconds before next run.");
+}
+
+static void expect_fim_flush_sync_body(AgentSyncProtocolHandle* handle, bool persist_first_sync_marker) {
+    expect_string(__wrap__minfo, formatted_msg, "Starting FIM synchronization requested by agent-info.");
+
+    expect_value(__wrap_asp_sync_module, handle, handle);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
+    will_return(__wrap_asp_sync_module, true);
+
+    expect_string(__wrap__minfo, formatted_msg, "FIM synchronization requested by agent-info finished.");
+
+    if (persist_first_sync_marker) {
+#ifndef TEST_WINAGENT
+        will_return(__wrap_time, 123456);
+#endif
+        expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+        expect_any(__wrap_fim_db_update_last_sync_time_value, timestamp);
+    }
+}
 /* tests */
 
 void test_fim_whodata_initialize(void **state)
@@ -354,40 +498,6 @@ void test_log_realtime_status(void **state)
 
     expect_string(__wrap__minfo, formatted_msg, FIM_REALTIME_RESUMED);
     log_realtime_status(1);
-}
-
-void test_fim_send_msg(void **state) {
-    (void) state;
-
-    expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, 0);
-    fim_send_msg(SYSCHECK_MQ, SYSCHECK, "test");
-}
-
-void test_fim_send_msg_retry(void **state) {
-    (void) state;
-
-    expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
-
-    expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
-
-    expect_StartMQ_call(DEFAULTQUEUE, WRITE, 0);
-
-    expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
-
-    fim_send_msg(SYSCHECK_MQ, SYSCHECK, "test");
-}
-
-void test_fim_send_msg_retry_error(void **state) {
-    (void) state;
-
-    expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
-    expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
-
-    expect_StartMQ_call(DEFAULTQUEUE, WRITE, -1);
-
-    expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: 'queue/sockets/queue'. Giving up.");
-
-    expect_assert_failure(fim_send_msg(SYSCHECK_MQ, SYSCHECK, "test"));
 }
 
 #ifndef TEST_WINAGENT
@@ -768,8 +878,8 @@ void test_set_whodata_mode_changes(void **state) {
     int i;
     char *dirs[] = {
         "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
-        "%WINDIR%\\System32\\drivers\\etc",
         "%WINDIR%\\System32\\wbem",
+        "%WINDIR%\\System32\\Windowspowershell\\v1.0",
         NULL
     };
     char expanded_dirs[3][OS_SIZE_1024];
@@ -783,10 +893,10 @@ void test_set_whodata_mode_changes(void **state) {
     // Mark directories to be added in realtime
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status |= WD_CHECK_REALTIME;
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_CHECK_WHODATA;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 7))->dirs_status.status |= WD_CHECK_REALTIME;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 7))->dirs_status.status &= ~WD_CHECK_WHODATA;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 8))->dirs_status.status |= WD_CHECK_REALTIME;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 8))->dirs_status.status &= ~WD_CHECK_WHODATA;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 4))->dirs_status.status |= WD_CHECK_REALTIME;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 4))->dirs_status.status &= ~WD_CHECK_WHODATA;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5))->dirs_status.status |= WD_CHECK_REALTIME;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 5))->dirs_status.status &= ~WD_CHECK_WHODATA;
 
     // Expand directories
     for(i = 0; dirs[i]; i++) {
@@ -798,8 +908,8 @@ void test_set_whodata_mode_changes(void **state) {
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6225): The 'c:\\programdata\\microsoft\\windows\\start menu\\programs\\startup' directory starts to be monitored in real-time mode.");
-    expect_string(__wrap__merror, formatted_msg, "(6611): 'realtime_adddir' failed, the directory 'c:\\windows\\system32\\drivers\\etc' couldn't be added to real time mode.");
-    expect_string(__wrap__mdebug1, formatted_msg, "(6225): The 'c:\\windows\\system32\\wbem' directory starts to be monitored in real-time mode.");
+    expect_string(__wrap__merror, formatted_msg, "(6611): 'realtime_adddir' failed, the directory 'c:\\windows\\system32\\wbem' couldn't be added to real time mode.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6225): The 'c:\\windows\\system32\\windowspowershell\\v1.0' directory starts to be monitored in real-time mode.");
 
     set_whodata_mode_changes();
 }
@@ -839,75 +949,19 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
 #endif  // WIN_WHODATA
 #endif
 
-
-void test_send_syscheck_msg_10_eps(void ** state) {
-    syscheck.max_eps = 10;
-    cJSON *event = cJSON_CreateObject();
-
-    if (event == NULL) {
-        fail_msg("Failed to create cJSON object");
-    }
-
-    // We must not sleep the first 9 times
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    for (int i = 1; i < syscheck.max_eps; i++) {
-        expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {}");
-        expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
-        send_syscheck_msg(event);
-    }
-
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_sleep, seconds, 1);
-#else
-    expect_value(wrap_Sleep, dwMilliseconds, 1000);
-#endif
-
-    // After 10 times, sleep one second
-    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {}");
-    expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
-
-    send_syscheck_msg(event);
-
-    cJSON_Delete(event);
-}
-
-void test_send_syscheck_msg_0_eps(void ** state) {
-    syscheck.max_eps = 0;
-    cJSON *event = cJSON_CreateObject();
-
-    if (event == NULL) {
-        fail_msg("Failed to create cJSON object");
-    }
-
-    // We must not sleep
-    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {}");
-    expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
-    send_syscheck_msg(event);
-    cJSON_Delete(event);
-}
-
-void test_fim_send_scan_info(void **state) {
-    (void) state;
-    const char *msg = "{\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}";
-#ifndef TEST_WINAGENT
-    will_return(__wrap_time, 1);
-#endif
-    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}");
-    expect_w_send_sync_msg(msg, SYSCHECK, SYSCHECK_MQ, 0);
-    fim_send_scan_info(FIM_SCAN_START);
-}
-
 #ifndef TEST_WINAGENT
 void test_fim_link_update(void **state) {
     char *new_path = "/new_path";
+    char pattern[PATH_MAX] = {0};
+
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", NULL, FIM_DB_DISK, FIMDB_OK);
     expect_string(__wrap_remove_audit_rule_syscheck, path, affected_config->symbolic_links);
+
+    snprintf(pattern, PATH_MAX, "%s%c%%", affected_config->symbolic_links, PATH_SEP);
+    expect_fim_db_file_pattern_search(pattern, 0);
 
     expect_fim_checker_call(new_path, affected_config);
     expect_realtime_adddir_call(new_path, 0);
@@ -943,6 +997,7 @@ void test_fim_link_update_already_added(void **state) {
 void test_fim_link_check_delete(void **state) {
     char *link_path = "/link";
     char *pointed_folder = "/folder";
+    char pattern[PATH_MAX] = {0};
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
@@ -952,9 +1007,10 @@ void test_fim_link_check_delete(void **state) {
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, 0);
 
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", NULL, FIM_DB_DISK, FIMDB_OK);
-
     expect_string(__wrap_remove_audit_rule_syscheck, path, affected_config->symbolic_links);
+
+    snprintf(pattern, PATH_MAX, "%s%c%%", affected_config->symbolic_links, PATH_SEP);
+    expect_fim_db_file_pattern_search(pattern, 0);
 
     expect_fim_configuration_directory_call("data", NULL);
     fim_link_check_delete(affected_config);
@@ -1029,27 +1085,13 @@ void test_fim_delete_realtime_watches(void **state) {
 
 void test_fim_link_delete_range(void **state) {
     fim_tmp_file *tmp_file = *state;
+    char pattern[PATH_MAX] = {0};
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
-    expect_wrapper_fim_db_delete_range_call(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_OK);
-    fim_link_delete_range(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1)));
-}
-
-void test_fim_link_delete_range_error(void **state) {
-    char error_msg[OS_SIZE_128];
-    fim_tmp_file *tmp_file = *state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    snprintf(error_msg, OS_SIZE_128, FIM_DB_ERROR_RM_PATTERN, "/folder/%");
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
-
-    expect_wrapper_fim_db_delete_range_call(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_ERR);
-    expect_string(__wrap__merror, formatted_msg, error_msg);
+    snprintf(pattern, PATH_MAX, "%s%c%%", "/folder", PATH_SEP);
+    expect_fim_db_file_pattern_search(pattern, 0);
 
     fim_link_delete_range(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1)));
 }
@@ -1130,36 +1172,250 @@ void test_check_max_fps_sleep(void **state) {
     check_max_fps();
 }
 
-void test_send_sync_control(void **state) {
-    char debug_msg[OS_SIZE_256] = {0};
-    char *ret_msg = dbsync_check_msg("fim_file", INTEGRITY_CHECK_GLOBAL, 32, "start", "top", NULL, "checksum");
-    *state = ret_msg;
+void test_fim_run_integrity_skips_initial_wait_for_pending_first_sync(void **state) {
+    AgentSyncProtocolHandle* original_handle = syscheck.sync_handle;
+    uint32_t original_sync_interval = syscheck.sync_interval;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
 
-    snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, ret_msg);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    (void)state;
 
-    expect_SendMSG_call(ret_msg, "fim_file", DBSYNC_MQ, 0);
+    syscheck.sync_handle = handle;
+    syscheck.sync_interval = 1;
+    fim_sync_module_running = 1;
+    stop_fim_integrity_on_sync = true;
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+#ifdef TEST_WINAGENT
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+#endif
 
-    fim_send_sync_control("fim_file", INTEGRITY_CHECK_GLOBAL, 32, "start", "top", NULL, "checksum");
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 0);
+    expect_fim_startup_log(false);
+    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, true);
+
+    call_real_fim_run_integrity();
+
+    stop_fim_integrity_on_sync = false;
+    syscheck.sync_handle = original_handle;
+    syscheck.sync_interval = original_sync_interval;
 }
 
-void test_send_sync_state(void **state) {
-    char debug_msg[OS_SIZE_256] = {0};
-    cJSON *event = cJSON_CreateObject(); // to be freed in dbsync_state_msg
+void test_fim_run_integrity_keeps_initial_wait_after_first_sync(void **state) {
+    AgentSyncProtocolHandle* original_handle = syscheck.sync_handle;
+    uint32_t original_sync_interval = syscheck.sync_interval;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
 
-    if (event == NULL) {
-        fail_msg("Failed to create cJSON object");
-    }
-    cJSON_AddStringToObject(event, "data", "random_string");
-    char *ret_msg = "{\"component\":\"fim_file\",\"type\":\"state\",\"data\":{\"data\":\"random_string\"}}";
+    (void)state;
 
-    snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, ret_msg);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    syscheck.sync_handle = handle;
+    syscheck.sync_interval = 1;
+    fim_sync_module_running = 1;
+    stop_fim_integrity_on_sync = true;
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+#ifdef TEST_WINAGENT
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+#endif
 
-    expect_SendMSG_call(ret_msg, "fim_file", DBSYNC_MQ, 0);
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 123456);
+    expect_fim_startup_log(true);
 
-    fim_send_sync_state("fim_file", event);
+#ifdef TEST_WINAGENT
+    expect_value(wrap_Sleep, dwMilliseconds, 1000);
+#else
+    expect_value(__wrap_sleep, seconds, 1);
+#endif
+
+    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, false);
+
+    call_real_fim_run_integrity();
+
+    stop_fim_integrity_on_sync = false;
+    syscheck.sync_handle = original_handle;
+    syscheck.sync_interval = original_sync_interval;
 }
+
+void test_fim_run_integrity_pause_still_waits_after_skip_is_consumed(void **state) {
+    AgentSyncProtocolHandle* original_handle = syscheck.sync_handle;
+    uint32_t original_sync_interval = syscheck.sync_interval;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+
+    (void)state;
+
+    syscheck.sync_handle = handle;
+    syscheck.sync_interval = 1;
+    fim_sync_module_running = 1;
+    stop_fim_integrity_on_sleep = true;
+    request_pause_after_sync = true;
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+#ifdef TEST_WINAGENT
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+#endif
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 0);
+    expect_fim_startup_log(false);
+    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, true);
+#ifdef TEST_WINAGENT
+    expect_value(wrap_Sleep, dwMilliseconds, 1000);
+#else
+    expect_value(__wrap_sleep, seconds, 1);
+#endif
+
+    call_real_fim_run_integrity();
+
+    assert_int_equal(syscheck.fim_pausing_is_allowed.data, 1);
+
+    stop_fim_integrity_on_sleep = false;
+    request_pause_after_sync = false;
+    syscheck.sync_handle = original_handle;
+    syscheck.sync_interval = original_sync_interval;
+    syscheck.fim_pause_requested.data = 0;
+    syscheck.fim_pausing_is_allowed.data = 0;
+}
+
+void test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_completion(void **state) {
+    AgentSyncProtocolHandle* original_handle = syscheck.sync_handle;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+
+    (void)state;
+
+    syscheck.sync_handle = handle;
+    fim_sync_module_running = 1;
+    stop_fim_integrity_on_sync = true;
+    syscheck.fim_pause_requested.data = 1;
+    fim_flush_in_progress.data = 1;
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 0);
+    expect_fim_startup_log(false);
+    expect_fim_flush_sync_body(handle, false);
+#ifndef TEST_WINAGENT
+    will_return(__wrap_time, 123456);
+#endif
+    expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    expect_any(__wrap_fim_db_update_last_sync_time_value, timestamp);
+
+    call_real_fim_run_integrity();
+
+    assert_int_equal(fim_flush_in_progress.data, 0);
+    assert_int_equal(fim_flush_result.data, 0);
+    assert_int_equal(syscheck.fim_pausing_is_allowed.data, 1);
+
+    stop_fim_integrity_on_sync = false;
+    syscheck.sync_handle = original_handle;
+    syscheck.fim_pause_requested.data = 0;
+    syscheck.fim_pausing_is_allowed.data = 0;
+    fim_flush_in_progress.data = 0;
+    fim_flush_result.data = 0;
+}
+
+/* ---------------------------------- DataClean Tests ---------------------------------- */
+
+void test_fim_has_configured_directories_null_list(void **state) {
+    OSList *original = syscheck.directories;
+    syscheck.directories = NULL;
+
+    bool result = fim_has_configured_directories();
+
+    assert_false(result);
+
+    syscheck.directories = original;
+}
+
+void test_fim_has_configured_directories_with_directories(void **state) {
+#ifdef TEST_WINAGENT
+    // On WINAGENT, pthread_rwlock functions are wrapped - need to set expectations
+    // OSList_foreach uses OSList_GetFirstNode (wrlock) and OSList_GetNext (rdlock)
+    // Note: pthread_mutex is NOT wrapped in test_run_check linker flags
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+#endif
+
+    bool result = fim_has_configured_directories();
+
+    assert_true(result);
+}
+
+void test_fim_has_configured_paths_with_directories(void **state) {
+#ifdef TEST_WINAGENT
+    // On WINAGENT, pthread_rwlock functions are wrapped - need to set expectations
+    // OSList_foreach uses OSList_GetFirstNode (wrlock) and OSList_GetNext (rdlock)
+    // Note: pthread_mutex is NOT wrapped in test_run_check linker flags
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+#endif
+
+    bool result = fim_has_configured_paths();
+
+    assert_true(result);
+}
+
+void test_fim_has_data_in_database_no_entries(void **state) {
+    will_return(__wrap_fim_db_get_count_file_entry, 0);
+#ifdef WIN32
+    will_return(__wrap_fim_db_get_count_registry_key, 0);
+    will_return(__wrap_fim_db_get_count_registry_data, 0);
+#endif
+
+    bool result = fim_has_data_in_database();
+
+    assert_false(result);
+}
+
+void test_fim_has_data_in_database_with_file_entries(void **state) {
+    will_return(__wrap_fim_db_get_count_file_entry, 10);
+
+    bool result = fim_has_data_in_database();
+
+    assert_true(result);
+}
+
+void test_handle_all_paths_removed_no_data_in_db(void **state) {
+    will_return(__wrap_fim_db_get_count_file_entry, 0);
+#ifdef WIN32
+    will_return(__wrap_fim_db_get_count_registry_key, 0);
+    will_return(__wrap_fim_db_get_count_registry_data, 0);
+#endif
+
+    expect_string(__wrap__mdebug1, formatted_msg, "No monitored paths configured and no data in database. Nothing to clean.");
+
+    bool result = handle_all_paths_removed();
+
+    assert_true(result);
+}
+
+void test_handle_all_paths_removed_no_sync_handle(void **state) {
+    AgentSyncProtocolHandle *original_handle = syscheck.sync_handle;
+    syscheck.sync_handle = NULL;
+
+    // First call checks if DB has data
+    will_return(__wrap_fim_db_get_count_file_entry, 10);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "All monitored paths removed from configuration but database has data. Initiating DataClean process.");
+    expect_string(__wrap__merror, formatted_msg, "Sync protocol not initialized, cannot send DataClean notification.");
+
+    bool result = handle_all_paths_removed();
+
+    assert_false(result);
+
+    syscheck.sync_handle = original_handle;
+}
+
+/* ---------------------------------- End DataClean Tests ---------------------------------- */
 
 int main(void) {
 #ifndef WIN_WHODATA
@@ -1175,14 +1431,20 @@ int main(void) {
 #endif
 
         cmocka_unit_test(test_log_realtime_status),
-        cmocka_unit_test(test_fim_send_msg),
-        cmocka_unit_test(test_fim_send_msg_retry),
-        cmocka_unit_test(test_fim_send_msg_retry_error),
-        cmocka_unit_test(test_send_syscheck_msg_10_eps),
-        cmocka_unit_test(test_send_syscheck_msg_0_eps),
-        cmocka_unit_test(test_fim_send_scan_info),
         cmocka_unit_test_setup_teardown(test_check_max_fps_no_sleep, setup_max_fps, teardown_max_fps),
         cmocka_unit_test_setup_teardown(test_check_max_fps_sleep, setup_max_fps, teardown_max_fps),
+        cmocka_unit_test(test_fim_run_integrity_skips_initial_wait_for_pending_first_sync),
+        cmocka_unit_test(test_fim_run_integrity_keeps_initial_wait_after_first_sync),
+        cmocka_unit_test(test_fim_run_integrity_pause_still_waits_after_skip_is_consumed),
+        cmocka_unit_test(test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_completion),
+        /* DataClean tests */
+        cmocka_unit_test(test_fim_has_configured_directories_null_list),
+        cmocka_unit_test(test_fim_has_configured_directories_with_directories),
+        cmocka_unit_test(test_fim_has_configured_paths_with_directories),
+        cmocka_unit_test(test_fim_has_data_in_database_no_entries),
+        cmocka_unit_test(test_fim_has_data_in_database_with_file_entries),
+        cmocka_unit_test(test_handle_all_paths_removed_no_data_in_db),
+        cmocka_unit_test(test_handle_all_paths_removed_no_sync_handle),
 #ifndef TEST_WINAGENT
         cmocka_unit_test(test_fim_run_realtime_first_error),
         cmocka_unit_test(test_fim_run_realtime_first_timeout),
@@ -1196,7 +1458,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_link_check_delete_noentry_error, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_delete_realtime_watches, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_delete_range, setup_tmp_file, teardown_tmp_file),
-        cmocka_unit_test_setup_teardown(test_fim_link_delete_range_error, setup_tmp_file, teardown_tmp_file),
         cmocka_unit_test_setup_teardown(test_fim_link_silent_scan, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_reload_broken_link_already_monitored, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_reload_broken_link_reload_broken, setup_symbolic_links, teardown_symbolic_links),
@@ -1205,8 +1466,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_run_realtime_w_wait_success, setup_hash, teardown_hash),
         cmocka_unit_test(test_fim_run_realtime_w_sleep),
 #endif
-        cmocka_unit_test_teardown(test_send_sync_control, teardown_dbsync_msg),
-        cmocka_unit_test(test_send_sync_state),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

@@ -5,7 +5,7 @@
      προσθέσει ένα υπολογιστή στο αρχείο /etc/hosts.deny.
      Η δεύτερη θα μπλοκάρει τον υπολογιστή μέσω
      iptables (για linux) ή μέσω ipfilter
-     (για Solaris, FreeBSD ή NetBSD).
+     (FreeBSD ή NetBSD).
 
    - Μπορούν να χρησιμοποιηθούν για να σταματήσουν
      SSHD brute force scans, portscans και κάποιων άλλων

@@ -19,15 +19,11 @@ void __wrap_fim_checker(const char *path, event_data_t *evt_data, const director
     check_expected(configuration);
 }
 
-directory_t *__wrap_fim_configuration_directory(const char *path) {
+directory_t *__wrap_fim_configuration_directory(const char *path,
+                                                 __attribute__((unused)) bool notify_not_found,
+                                                 __attribute__((unused)) const OSList *directories_list) {
     check_expected(path);
     return mock_type(directory_t *);
-}
-
-cJSON *__wrap_fim_entry_json(const char * path,
-                             __attribute__((unused)) fim_file_data * data) {
-    check_expected(path);
-    return mock_type(cJSON*);
 }
 
 cJSON *__wrap_fim_json_event() {
@@ -73,4 +69,29 @@ void expect_fim_configuration_directory_call(const char *path, directory_t *ret)
 
 void __wrap_free_entry(__attribute__((unused)) fim_entry *entry) {
     return;
+}
+
+void __wrap_fim_db_transaction_deleted_rows(__attribute__((unused))TXN_HANDLE txn_handler,
+                                            __attribute__((unused))result_callback_t callback,
+                                            __attribute__((unused))void* txn_ctx) {
+    function_called();
+}
+
+int __wrap_fim_db_transaction_sync_row(__attribute__((unused))TXN_HANDLE txn_handler, __attribute__((unused))const fim_entry* entry){
+    return mock_type(int);
+}
+
+TXN_HANDLE __wrap_fim_db_transaction_start(__attribute__((unused))const char* table,
+                                           __attribute__((unused))result_callback_t row_callback,
+                                           __attribute__((unused))void *user_data){
+    return mock_type(TXN_HANDLE);
+}
+
+int __wrap_Start_win32_Syscheck() {
+    function_called();
+    return mock();
+}
+
+void __wrap_fim_generate_delete_event(){
+    function_called();
 }

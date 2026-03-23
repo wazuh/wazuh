@@ -18,7 +18,7 @@
 Additional dependencies can be installed on Ubuntu by running the following commands.
 ```
 sudo apt-get update -y
-sudo apt-get install -y gcc-mingw-w64 nsis make python gcc g++ cmake libc6-dev curl policycoreutils automake autoconf libtool libssl-dev lcov
+sudo apt-get install -y gcc-mingw-w64 make python3 gcc g++ cmake libc6-dev curl policycoreutils automake autoconf libtool libssl-dev lcov
 ```
 
 To install the additional dependencies on macOS run the following commands.
@@ -30,9 +30,9 @@ $ brew install lcov
 ```
 
 ## Compile Wazuh
-In order to run unit tests on a specific wazuh target, the project needs to be built with the `DEBUG` and `TEST` options as shown below:
+In order to run unit tests on a specific wazuh target, the project needs to be built with the `TEST` option as shown below:
 ```
-make TARGET=server|agent|winagent DEBUG=1 TEST=1
+make TARGET=server|agent|winagent TEST=1
 ```
 
 ## Compile and run unit tests for Linux targets
@@ -191,7 +191,7 @@ If you need to run the tests on a CentOS 7 machine, you can follow these instruc
 
 After installing wine, the `WINEPATH` and `WINEARCH` variables need to be created in order for it to know it should run on 32 bit mode and find all required dlls for the tests. On an Ubuntu system, the following commands need to be executed and/or added into the user's `.bashrc` file.
 ```
-export WINEPATH="/usr/i686-w64-mingw32/lib;/path/to/wazuh/src"
+export WINEPATH="/usr/i686-w64-mingw32/lib;/usr/lib/gcc/i686-w64-mingw32/13-posix;/path/to/wazuh/src;/path/to/wazuh/src/build/bin"
 export WINEARCH=win32
 ```
 If wine complains about being a 64 bit installation, remove/rename the directory `~/.wine` and run it again.

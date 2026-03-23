@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>InstallDate</key>
+        <date>2024-11-07T08:58:38Z</date>
+        <key>InstallPrefixPath</key>
+        <string></string>
+        <key>InstallProcessName</key>
+        <string>installer</string>
+        <key>PackageFileName</key>
+        <string>wazuh-agent_4.10.1-0_intel64_36ce5ed34f.pkg</string>
+        <key>PackageIdentifier</key>
+        <string>com.wazuh.pkg.wazuh-agent</string>
+        <key>PackageVersion</key>
+        <string>4.10.1</string>
+</dict>
+</plist>

@@ -1,0 +1,33 @@
+- name: report_changes_found_scheduled
+  description: When a file is monitored with report_changes, the diff file and changes are reported (Scheduled mode)
+  configuration_parameters:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir_reports]
+    TEST_DIRECTORIES_NO_DIFF: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir_nodiff]
+    INTERVAL: 5
+    REALTIME: 'no'
+    WHODATA: 'no'
+    NODIFF_FILE: !!python/object/apply:os.path.join [!!python/object/apply:os.getcwd [], 'testdir_nodiff', 'regular_file']
+  metadata:
+    path_or_files_to_create: [!!python/object/apply:os.path.join [!!python/object/apply:os.getcwd [], testdir_reports], !!python/object/apply:os.path.join [!!python/object/apply:os.getcwd [], testdir_nodiff]]
+    folder: !!python/object/apply:os.path.join [!!python/object/apply:os.getcwd [], testdir_reports]
+    filename: regular_file
+    fim_mode: scheduled
+
+- name: report_changes_truncated_scheduled
+  description: When a file is set to nodiff, report_changes information is truncated (Scheduled mode)
+  configuration_parameters:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir_reports]
+    TEST_DIRECTORIES_NO_DIFF: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir_nodiff]
+    INTERVAL: 5
+    REALTIME: 'no'
+    WHODATA: 'no'
+    NODIFF_FILE: !!python/object/apply:os.path.join [!!python/object/apply:os.getcwd [], 'testdir_nodiff', 'regular_file']
+  metadata:
+    path_or_files_to_create: [!!python/object/apply:os.path.join [!!python/object/apply:os.getcwd [], testdir_reports], !!python/object/apply:os.path.join [!!python/object/apply:os.getcwd [], testdir_nodiff]]
+    folder: !!python/object/apply:os.path.join [!!python/object/apply:os.getcwd [], testdir_nodiff]
+    filename: regular_file
+    fim_mode: scheduled

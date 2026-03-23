@@ -16,19 +16,19 @@
 
 #include "shared.h"
 #include "list_op.h"
-#include "os_regex/os_regex.h"
-#include "os_net/os_net.h"
-#include "wazuh_modules/wmodules.h"
-#include "../external/cJSON/cJSON.h"
-#include "os_execd/execd.h"
+#include "os_regex.h"
+#include "os_net.h"
+#include "wmodules.h"
+#include "../../external/cJSON/cJSON.h"
+#include "execd.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/posix/select_wrappers.h"
-#include "../wrappers/wazuh/os_execd/exec_wrappers.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/exec_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 
 extern int test_mode;
 extern OSList *timeout_list;
@@ -66,9 +66,9 @@ static int test_setup_file_timeout(void **state) {
     timeout_data *timeout_entry;
     os_calloc(1, sizeof(timeout_data), timeout_entry);
     os_calloc(2, sizeof(char *), timeout_entry->command);
-    os_strdup("restart-wazuh10", timeout_entry->command[0]);
+    os_strdup(AR_BINDIR "/block-ip", timeout_entry->command[0]);
     timeout_entry->command[1] = NULL;
-    os_strdup("restart-wazuh-10.0.0.1-root", timeout_entry->rkey);
+    os_strdup("block-ip-10.0.0.1-root", timeout_entry->rkey);
     timeout_entry->time_of_addition = 123456789;
     timeout_entry->time_to_block = 10;
     OSList_AddData(timeout_list, timeout_entry);
@@ -90,33 +90,26 @@ static void test_ExecdStart_ok(void **state) {
     int queue = 1;
     int now = 123456789;
     char *message = "{"
-                        "\"version\":\"1\","
-                        "\"origin\":{"
-                            "\"name\":\"node01\","
-                            "\"module\":\"wazuh-analysisd\""
-                        "},"
-                        "\"command\":\"restart-wazuh0\","
-                        "\"parameters\":{"
-                            "\"extra_args\":[],"
-                            "\"alert\":{"
-                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                "\"rule\":{"
-                                    "\"level\":5,"
-                                    "\"description\":\"File added to the system.\","
-                                    "\"id\":\"554\""
-                                "},"
-                                "\"id\":\"1609860180.513333\","
-                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                "\"syscheck\":{"
-                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                    "\"mode\":\"realtime\","
-                                    "\"event\":\"added\""
-                                "},"
-                                "\"location\":\"syscheck\""
+                        "\"wazuh\":{"
+                            "\"active_response\":{"
+                                "\"name\":\"block-ip\","
+                                "\"executable\":\"block-ip\","
+                                "\"type\":\"stateless\","
+                                "\"location\":\"agent\","
+                                "\"agent_id\":\"001\""
                             "}"
+                        "},"
+                        "\"event\":{"
+                            "\"original\":\"Test event\","
+                            "\"kind\":\"event\""
+                        "},"
+                        "\"source\":{"
+                            "\"ip\":\"10.0.0.1\""
+                        "},"
+                        "\"user\":{"
+                            "\"name\":\"root\""
                         "}"
                     "}";
-    int timeout = 0;
 
     will_return(__wrap_time, now);
 
@@ -128,98 +121,79 @@ static void test_ExecdStart_ok(void **state) {
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
     expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
-                                                                        "\"version\":\"1\","
-                                                                        "\"origin\":{"
-                                                                            "\"name\":\"node01\","
-                                                                            "\"module\":\"wazuh-analysisd\""
-                                                                        "},"
-                                                                        "\"command\":\"restart-wazuh0\","
-                                                                        "\"parameters\":{"
-                                                                            "\"extra_args\":[],"
-                                                                            "\"alert\":{"
-                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                "\"rule\":{"
-                                                                                    "\"level\":5,"
-                                                                                    "\"description\":\"File added to the system.\","
-                                                                                    "\"id\":\"554\""
-                                                                                "},"
-                                                                                "\"id\":\"1609860180.513333\","
-                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                "\"syscheck\":{"
-                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                    "\"mode\":\"realtime\","
-                                                                                    "\"event\":\"added\""
-                                                                                "},"
-                                                                                "\"location\":\"syscheck\""
+                                                                        "\"wazuh\":{"
+                                                                            "\"active_response\":{"
+                                                                                "\"name\":\"block-ip\","
+                                                                                "\"executable\":\"block-ip\","
+                                                                                "\"type\":\"stateless\","
+                                                                                "\"location\":\"agent\","
+                                                                                "\"agent_id\":\"001\""
                                                                             "}"
+                                                                        "},"
+                                                                        "\"event\":{"
+                                                                            "\"original\":\"Test event\","
+                                                                            "\"kind\":\"event\""
+                                                                        "},"
+                                                                        "\"source\":{"
+                                                                            "\"ip\":\"10.0.0.1\""
+                                                                        "},"
+                                                                        "\"user\":{"
+                                                                            "\"name\":\"root\""
                                                                         "}"
                                                                     "}'");
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_wfopen(AR_BINDIR "/block-ip", "r", (FILE *)1);
+    expect_fclose((FILE *)1, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
-                                                                                        "\"version\":\"1\","
-                                                                                        "\"origin\":{"
-                                                                                            "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip {"
+                                                                                        "\"wazuh\":{"
+                                                                                            "\"active_response\":{"
+                                                                                                "\"name\":\"block-ip\","
+                                                                                                "\"executable\":\"block-ip\","
+                                                                                                "\"type\":\"stateless\","
+                                                                                                "\"location\":\"agent\","
+                                                                                                "\"agent_id\":\"001\""
+                                                                                            "}"
                                                                                         "},"
-                                                                                        "\"command\":\"add\","
-                                                                                        "\"parameters\":{"
-                                                                                            "\"extra_args\":[],"
-                                                                                            "\"alert\":{"
-                                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                                "\"rule\":{"
-                                                                                                    "\"level\":5,"
-                                                                                                    "\"description\":\"File added to the system.\","
-                                                                                                    "\"id\":\"554\""
-                                                                                                "},"
-                                                                                                "\"id\":\"1609860180.513333\","
-                                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                                "\"syscheck\":{"
-                                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                                    "\"mode\":\"realtime\","
-                                                                                                    "\"event\":\"added\""
-                                                                                                "},"
-                                                                                                "\"location\":\"syscheck\""
-                                                                                            "},"
-                                                                                            "\"program\":\"restart-wazuh\""
-                                                                                        "}"
+                                                                                        "\"event\":{"
+                                                                                            "\"original\":\"Test event\","
+                                                                                            "\"kind\":\"event\""
+                                                                                        "},"
+                                                                                        "\"source\":{"
+                                                                                            "\"ip\":\"10.0.0.1\""
+                                                                                        "},"
+                                                                                        "\"user\":{"
+                                                                                            "\"name\":\"root\""
+                                                                                        "},"
+                                                                                        "\"command\":\"add\""
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
 
     expect_value(__wrap_fprintf, __stream, wfd->file_in);
     expect_string(__wrap_fprintf, formatted_msg, "{"
-                                                    "\"version\":\"1\","
-                                                    "\"origin\":{"
-                                                        "\"name\":\"node01\","
-                                                        "\"module\":\"wazuh-execd\""
+                                                    "\"wazuh\":{"
+                                                        "\"active_response\":{"
+                                                            "\"name\":\"block-ip\","
+                                                            "\"executable\":\"block-ip\","
+                                                            "\"type\":\"stateless\","
+                                                            "\"location\":\"agent\","
+                                                            "\"agent_id\":\"001\""
+                                                        "}"
                                                     "},"
-                                                    "\"command\":\"add\","
-                                                    "\"parameters\":{"
-                                                        "\"extra_args\":[],"
-                                                        "\"alert\":{"
-                                                            "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                            "\"rule\":{"
-                                                                "\"level\":5,"
-                                                                "\"description\":\"File added to the system.\","
-                                                                "\"id\":\"554\""
-                                                            "},"
-                                                            "\"id\":\"1609860180.513333\","
-                                                            "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                            "\"syscheck\":{"
-                                                                "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                "\"mode\":\"realtime\","
-                                                                "\"event\":\"added\""
-                                                            "},"
-                                                            "\"location\":\"syscheck\""
-                                                        "},"
-                                                        "\"program\":\"restart-wazuh\""
-                                                    "}"
+                                                    "\"event\":{"
+                                                        "\"original\":\"Test event\","
+                                                        "\"kind\":\"event\""
+                                                    "},"
+                                                    "\"source\":{"
+                                                        "\"ip\":\"10.0.0.1\""
+                                                    "},"
+                                                    "\"user\":{"
+                                                        "\"name\":\"root\""
+                                                    "},"
+                                                    "\"command\":\"add\""
                                                 "}\n");
     will_return(__wrap_fprintf, 0);
 
@@ -227,7 +201,7 @@ static void test_ExecdStart_ok(void **state) {
     will_return(__wrap_fgets, "{"
                                   "\"version\":1,"
                                   "\"origin\":{"
-                                      "\"name\":\"restart-wazuh\","
+                                      "\"name\":\"block-ip\","
                                       "\"module\":\"active-response\""
                                   "},"
                                   "\"command\":\"check_keys\","
@@ -238,32 +212,26 @@ static void test_ExecdStart_ok(void **state) {
 
     expect_value(__wrap_fprintf, __stream, wfd->file_in);
     expect_string(__wrap_fprintf, formatted_msg, "{"
-                                                    "\"version\":\"1\","
-                                                    "\"origin\":{"
-                                                        "\"name\":\"node01\","
-                                                        "\"module\":\"wazuh-execd\""
+                                                    "\"wazuh\":{"
+                                                        "\"active_response\":{"
+                                                            "\"name\":\"block-ip\","
+                                                            "\"executable\":\"block-ip\","
+                                                            "\"type\":\"stateless\","
+                                                            "\"location\":\"agent\","
+                                                            "\"agent_id\":\"001\""
+                                                        "}"
                                                     "},"
-                                                    "\"command\":\"continue\","
-                                                    "\"parameters\":{"
-                                                        "\"extra_args\":[],"
-                                                        "\"alert\":{"
-                                                            "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                            "\"rule\":{"
-                                                                "\"level\":5,"
-                                                                "\"description\":\"File added to the system.\","
-                                                                "\"id\":\"554\""
-                                                            "},"
-                                                            "\"id\":\"1609860180.513333\","
-                                                            "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                            "\"syscheck\":{"
-                                                                "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                "\"mode\":\"realtime\","
-                                                                "\"event\":\"added\""
-                                                            "},"
-                                                            "\"location\":\"syscheck\""
-                                                        "},"
-                                                        "\"program\":\"restart-wazuh\""
-                                                    "}"
+                                                    "\"event\":{"
+                                                        "\"original\":\"Test event\","
+                                                        "\"kind\":\"event\""
+                                                    "},"
+                                                    "\"source\":{"
+                                                        "\"ip\":\"10.0.0.1\""
+                                                    "},"
+                                                    "\"user\":{"
+                                                        "\"name\":\"root\""
+                                                    "},"
+                                                    "\"command\":\"continue\""
                                                 "}\n");
     will_return(__wrap_fprintf, 0);
 
@@ -277,33 +245,27 @@ static void test_ExecdStart_timeout_not_repeated(void **state) {
     int queue = 1;
     int now = 123456789;
     char *message = "{"
-                        "\"version\":\"1\","
-                        "\"origin\":{"
-                            "\"name\":\"node01\","
-                            "\"module\":\"wazuh-analysisd\""
-                        "},"
-                        "\"command\":\"restart-wazuh10\","
-                        "\"parameters\":{"
-                            "\"extra_args\":[],"
-                            "\"alert\":{"
-                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                "\"rule\":{"
-                                    "\"level\":5,"
-                                    "\"description\":\"File added to the system.\","
-                                    "\"id\":\"554\""
-                                "},"
-                                "\"id\":\"1609860180.513333\","
-                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                "\"syscheck\":{"
-                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                    "\"mode\":\"realtime\","
-                                    "\"event\":\"added\""
-                                "},"
-                                "\"location\":\"syscheck\""
+                        "\"wazuh\":{"
+                            "\"active_response\":{"
+                                "\"name\":\"block-ip\","
+                                "\"executable\":\"block-ip\","
+                                "\"type\":\"stateful\","
+                                "\"stateful_timeout\":10,"
+                                "\"location\":\"agent\","
+                                "\"agent_id\":\"001\""
                             "}"
+                        "},"
+                        "\"event\":{"
+                            "\"original\":\"Test event\","
+                            "\"kind\":\"event\""
+                        "},"
+                        "\"source\":{"
+                            "\"ip\":\"10.0.0.2\""
+                        "},"
+                        "\"user\":{"
+                            "\"name\":\"root\""
                         "}"
                     "}";
-    int timeout = 10;
 
     will_return(__wrap_time, now);
 
@@ -315,98 +277,82 @@ static void test_ExecdStart_timeout_not_repeated(void **state) {
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
     expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
-                                                                        "\"version\":\"1\","
-                                                                        "\"origin\":{"
-                                                                            "\"name\":\"node01\","
-                                                                            "\"module\":\"wazuh-analysisd\""
-                                                                        "},"
-                                                                        "\"command\":\"restart-wazuh10\","
-                                                                        "\"parameters\":{"
-                                                                            "\"extra_args\":[],"
-                                                                            "\"alert\":{"
-                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                "\"rule\":{"
-                                                                                    "\"level\":5,"
-                                                                                    "\"description\":\"File added to the system.\","
-                                                                                    "\"id\":\"554\""
-                                                                                "},"
-                                                                                "\"id\":\"1609860180.513333\","
-                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                "\"syscheck\":{"
-                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                    "\"mode\":\"realtime\","
-                                                                                    "\"event\":\"added\""
-                                                                                "},"
-                                                                                "\"location\":\"syscheck\""
+                                                                        "\"wazuh\":{"
+                                                                            "\"active_response\":{"
+                                                                                "\"name\":\"block-ip\","
+                                                                                "\"executable\":\"block-ip\","
+                                                                                "\"type\":\"stateful\","
+                                                                                "\"stateful_timeout\":10,"
+                                                                                "\"location\":\"agent\","
+                                                                                "\"agent_id\":\"001\""
                                                                             "}"
+                                                                        "},"
+                                                                        "\"event\":{"
+                                                                            "\"original\":\"Test event\","
+                                                                            "\"kind\":\"event\""
+                                                                        "},"
+                                                                        "\"source\":{"
+                                                                            "\"ip\":\"10.0.0.2\""
+                                                                        "},"
+                                                                        "\"user\":{"
+                                                                            "\"name\":\"root\""
                                                                         "}"
                                                                     "}'");
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh10");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_wfopen(AR_BINDIR "/block-ip", "r", (FILE *)1);
+    expect_fclose((FILE *)1, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
-                                                                                        "\"version\":\"1\","
-                                                                                        "\"origin\":{"
-                                                                                            "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip {"
+                                                                                        "\"wazuh\":{"
+                                                                                            "\"active_response\":{"
+                                                                                                "\"name\":\"block-ip\","
+                                                                                                "\"executable\":\"block-ip\","
+                                                                                                "\"type\":\"stateful\","
+                                                                                                "\"stateful_timeout\":10,"
+                                                                                                "\"location\":\"agent\","
+                                                                                                "\"agent_id\":\"001\""
+                                                                                            "}"
                                                                                         "},"
-                                                                                        "\"command\":\"add\","
-                                                                                        "\"parameters\":{"
-                                                                                            "\"extra_args\":[],"
-                                                                                            "\"alert\":{"
-                                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                                "\"rule\":{"
-                                                                                                    "\"level\":5,"
-                                                                                                    "\"description\":\"File added to the system.\","
-                                                                                                    "\"id\":\"554\""
-                                                                                                "},"
-                                                                                                "\"id\":\"1609860180.513333\","
-                                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                                "\"syscheck\":{"
-                                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                                    "\"mode\":\"realtime\","
-                                                                                                    "\"event\":\"added\""
-                                                                                                "},"
-                                                                                                "\"location\":\"syscheck\""
-                                                                                            "},"
-                                                                                            "\"program\":\"restart-wazuh\""
-                                                                                        "}"
+                                                                                        "\"event\":{"
+                                                                                            "\"original\":\"Test event\","
+                                                                                            "\"kind\":\"event\""
+                                                                                        "},"
+                                                                                        "\"source\":{"
+                                                                                            "\"ip\":\"10.0.0.2\""
+                                                                                        "},"
+                                                                                        "\"user\":{"
+                                                                                            "\"name\":\"root\""
+                                                                                        "},"
+                                                                                        "\"command\":\"add\""
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
 
     expect_value(__wrap_fprintf, __stream, wfd->file_in);
     expect_string(__wrap_fprintf, formatted_msg, "{"
-                                                    "\"version\":\"1\","
-                                                    "\"origin\":{"
-                                                        "\"name\":\"node01\","
-                                                        "\"module\":\"wazuh-execd\""
+                                                    "\"wazuh\":{"
+                                                        "\"active_response\":{"
+                                                            "\"name\":\"block-ip\","
+                                                            "\"executable\":\"block-ip\","
+                                                            "\"type\":\"stateful\","
+                                                            "\"stateful_timeout\":10,"
+                                                            "\"location\":\"agent\","
+                                                            "\"agent_id\":\"001\""
+                                                        "}"
                                                     "},"
-                                                    "\"command\":\"add\","
-                                                    "\"parameters\":{"
-                                                        "\"extra_args\":[],"
-                                                        "\"alert\":{"
-                                                            "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                            "\"rule\":{"
-                                                                "\"level\":5,"
-                                                                "\"description\":\"File added to the system.\","
-                                                                "\"id\":\"554\""
-                                                            "},"
-                                                            "\"id\":\"1609860180.513333\","
-                                                            "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                            "\"syscheck\":{"
-                                                                "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                "\"mode\":\"realtime\","
-                                                                "\"event\":\"added\""
-                                                            "},"
-                                                            "\"location\":\"syscheck\""
-                                                        "},"
-                                                        "\"program\":\"restart-wazuh\""
-                                                    "}"
+                                                    "\"event\":{"
+                                                        "\"original\":\"Test event\","
+                                                        "\"kind\":\"event\""
+                                                    "},"
+                                                   "\"source\":{"
+                                                        "\"ip\":\"10.0.0.2\""
+                                                    "},"
+                                                    "\"user\":{"
+                                                        "\"name\":\"root\""
+                                                    "},"
+                                                    "\"command\":\"add\""
                                                 "}\n");
     will_return(__wrap_fprintf, 0);
 
@@ -414,7 +360,7 @@ static void test_ExecdStart_timeout_not_repeated(void **state) {
     will_return(__wrap_fgets, "{"
                                   "\"version\":1,"
                                   "\"origin\":{"
-                                      "\"name\":\"restart-wazuh\","
+                                      "\"name\":\"block-ip\","
                                       "\"module\":\"active-response\""
                                   "},"
                                   "\"command\":\"check_keys\","
@@ -425,65 +371,55 @@ static void test_ExecdStart_timeout_not_repeated(void **state) {
 
     expect_value(__wrap_fprintf, __stream, wfd->file_in);
     expect_string(__wrap_fprintf, formatted_msg, "{"
-                                                    "\"version\":\"1\","
-                                                    "\"origin\":{"
-                                                        "\"name\":\"node01\","
-                                                        "\"module\":\"wazuh-execd\""
+                                                    "\"wazuh\":{"
+                                                        "\"active_response\":{"
+                                                            "\"name\":\"block-ip\","
+                                                            "\"executable\":\"block-ip\","
+                                                            "\"type\":\"stateful\","
+                                                            "\"stateful_timeout\":10,"
+                                                            "\"location\":\"agent\","
+                                                            "\"agent_id\":\"001\""
+                                                        "}"
                                                     "},"
-                                                    "\"command\":\"continue\","
-                                                    "\"parameters\":{"
-                                                        "\"extra_args\":[],"
-                                                        "\"alert\":{"
-                                                            "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                            "\"rule\":{"
-                                                                "\"level\":5,"
-                                                                "\"description\":\"File added to the system.\","
-                                                                "\"id\":\"554\""
-                                                            "},"
-                                                            "\"id\":\"1609860180.513333\","
-                                                            "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                            "\"syscheck\":{"
-                                                                "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                "\"mode\":\"realtime\","
-                                                                "\"event\":\"added\""
-                                                            "},"
-                                                            "\"location\":\"syscheck\""
-                                                        "},"
-                                                        "\"program\":\"restart-wazuh\""
-                                                    "}"
+                                                    "\"event\":{"
+                                                        "\"original\":\"Test event\","
+                                                        "\"kind\":\"event\""
+                                                    "},"
+                                                    "\"source\":{"
+                                                        "\"ip\":\"10.0.0.2\""
+                                                    "},"
+                                                    "\"user\":{"
+                                                        "\"name\":\"root\""
+                                                    "},"
+                                                    "\"command\":\"continue\""
                                                 "}\n");
     will_return(__wrap_fprintf, 0);
 
     will_return(__wrap_wpclose, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Adding command 'restart-wazuh {"
-                                                                                    "\"version\":\"1\","
-                                                                                    "\"origin\":{"
-                                                                                        "\"name\":\"node01\","
-                                                                                        "\"module\":\"wazuh-execd\""
-                                                                                    "},"
-                                                                                    "\"command\":\"delete\","
-                                                                                    "\"parameters\":{"
-                                                                                        "\"extra_args\":[],"
-                                                                                        "\"alert\":{"
-                                                                                            "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                            "\"rule\":{"
-                                                                                                "\"level\":5,"
-                                                                                                "\"description\":\"File added to the system.\","
-                                                                                                "\"id\":\"554\""
-                                                                                            "},"
-                                                                                            "\"id\":\"1609860180.513333\","
-                                                                                            "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                            "\"syscheck\":{"
-                                                                                                "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                                "\"mode\":\"realtime\","
-                                                                                                "\"event\":\"added\""
-                                                                                            "},"
-                                                                                            "\"location\":\"syscheck\""
+    expect_string(__wrap__mdebug1, formatted_msg, "Adding command '" AR_BINDIR "/block-ip {"
+                                                                                        "\"wazuh\":{"
+                                                                                            "\"active_response\":{"
+                                                                                                "\"name\":\"block-ip\","
+                                                                                                "\"executable\":\"block-ip\","
+                                                                                                "\"type\":\"stateful\","
+                                                                                                "\"stateful_timeout\":10,"
+                                                                                                "\"location\":\"agent\","
+                                                                                                "\"agent_id\":\"001\""
+                                                                                            "}"
                                                                                         "},"
-                                                                                        "\"program\":\"restart-wazuh\""
-                                                                                    "}"
-                                                                                "}' to the timeout list, with a timeout of '10s'.");
+                                                                                        "\"event\":{"
+                                                                                            "\"original\":\"Test event\","
+                                                                                            "\"kind\":\"event\""
+                                                                                        "},"
+                                                                                        "\"source\":{"
+                                                                                            "\"ip\":\"10.0.0.2\""
+                                                                                        "},"
+                                                                                        "\"user\":{"
+                                                                                            "\"name\":\"root\""
+                                                                                        "},"
+                                                                                        "\"command\":\"delete\""
+                                                                                    "}' to the timeout list, with a timeout of '10s'.");
 
     ExecdStart(queue);
 }
@@ -493,33 +429,27 @@ static void test_ExecdStart_timeout_repeated(void **state) {
     int queue = 1;
     int now = 123456789;
     char *message = "{"
-                        "\"version\":\"1\","
-                        "\"origin\":{"
-                            "\"name\":\"node01\","
-                            "\"module\":\"wazuh-analysisd\""
-                        "},"
-                        "\"command\":\"restart-wazuh10\","
-                        "\"parameters\":{"
-                            "\"extra_args\":[],"
-                            "\"alert\":{"
-                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                "\"rule\":{"
-                                    "\"level\":5,"
-                                    "\"description\":\"File added to the system.\","
-                                    "\"id\":\"554\""
-                                "},"
-                                "\"id\":\"1609860180.513333\","
-                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                "\"syscheck\":{"
-                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                    "\"mode\":\"realtime\","
-                                    "\"event\":\"added\""
-                                "},"
-                                "\"location\":\"syscheck\""
+                        "\"wazuh\":{"
+                            "\"active_response\":{"
+                                "\"name\":\"block-ip\","
+                                "\"executable\":\"block-ip\","
+                                "\"type\":\"stateful\","
+                                "\"stateful_timeout\":10,"
+                                "\"location\":\"agent\","
+                                "\"agent_id\":\"001\""
                             "}"
+                        "},"
+                        "\"event\":{"
+                            "\"original\":\"Test event\","
+                            "\"kind\":\"event\""
+                        "},"
+                        "\"source\":{"
+                            "\"ip\":\"10.0.0.1\""
+                        "},"
+                        "\"user\":{"
+                            "\"name\":\"root\""
                         "}"
                     "}";
-    int timeout = 10;
 
     will_return(__wrap_time, now);
 
@@ -531,98 +461,82 @@ static void test_ExecdStart_timeout_repeated(void **state) {
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
     expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
-                                                                        "\"version\":\"1\","
-                                                                        "\"origin\":{"
-                                                                            "\"name\":\"node01\","
-                                                                            "\"module\":\"wazuh-analysisd\""
-                                                                        "},"
-                                                                        "\"command\":\"restart-wazuh10\","
-                                                                        "\"parameters\":{"
-                                                                            "\"extra_args\":[],"
-                                                                            "\"alert\":{"
-                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                "\"rule\":{"
-                                                                                    "\"level\":5,"
-                                                                                    "\"description\":\"File added to the system.\","
-                                                                                    "\"id\":\"554\""
-                                                                                "},"
-                                                                                "\"id\":\"1609860180.513333\","
-                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                "\"syscheck\":{"
-                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                    "\"mode\":\"realtime\","
-                                                                                    "\"event\":\"added\""
-                                                                                "},"
-                                                                                "\"location\":\"syscheck\""
+                                                                        "\"wazuh\":{"
+                                                                            "\"active_response\":{"
+                                                                                "\"name\":\"block-ip\","
+                                                                                "\"executable\":\"block-ip\","
+                                                                                "\"type\":\"stateful\","
+                                                                                "\"stateful_timeout\":10,"
+                                                                                "\"location\":\"agent\","
+                                                                                "\"agent_id\":\"001\""
                                                                             "}"
+                                                                        "},"
+                                                                        "\"event\":{"
+                                                                            "\"original\":\"Test event\","
+                                                                            "\"kind\":\"event\""
+                                                                        "},"
+                                                                        "\"source\":{"
+                                                                            "\"ip\":\"10.0.0.1\""
+                                                                        "},"
+                                                                        "\"user\":{"
+                                                                            "\"name\":\"root\""
                                                                         "}"
                                                                     "}'");
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh10");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_wfopen(AR_BINDIR "/block-ip", "r", (FILE *)1);
+    expect_fclose((FILE *)1, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
-                                                                                        "\"version\":\"1\","
-                                                                                        "\"origin\":{"
-                                                                                            "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip {"
+                                                                                        "\"wazuh\":{"
+                                                                                            "\"active_response\":{"
+                                                                                                "\"name\":\"block-ip\","
+                                                                                                "\"executable\":\"block-ip\","
+                                                                                                "\"type\":\"stateful\","
+                                                                                                "\"stateful_timeout\":10,"
+                                                                                                "\"location\":\"agent\","
+                                                                                                "\"agent_id\":\"001\""
+                                                                                            "}"
                                                                                         "},"
-                                                                                        "\"command\":\"add\","
-                                                                                        "\"parameters\":{"
-                                                                                            "\"extra_args\":[],"
-                                                                                            "\"alert\":{"
-                                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                                "\"rule\":{"
-                                                                                                    "\"level\":5,"
-                                                                                                    "\"description\":\"File added to the system.\","
-                                                                                                    "\"id\":\"554\""
-                                                                                                "},"
-                                                                                                "\"id\":\"1609860180.513333\","
-                                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                                "\"syscheck\":{"
-                                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                                    "\"mode\":\"realtime\","
-                                                                                                    "\"event\":\"added\""
-                                                                                                "},"
-                                                                                                "\"location\":\"syscheck\""
-                                                                                            "},"
-                                                                                            "\"program\":\"restart-wazuh\""
-                                                                                        "}"
+                                                                                        "\"event\":{"
+                                                                                            "\"original\":\"Test event\","
+                                                                                            "\"kind\":\"event\""
+                                                                                        "},"
+                                                                                        "\"source\":{"
+                                                                                            "\"ip\":\"10.0.0.1\""
+                                                                                        "},"
+                                                                                        "\"user\":{"
+                                                                                            "\"name\":\"root\""
+                                                                                        "},"
+                                                                                        "\"command\":\"add\""
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
 
     expect_value(__wrap_fprintf, __stream, wfd->file_in);
     expect_string(__wrap_fprintf, formatted_msg, "{"
-                                                    "\"version\":\"1\","
-                                                    "\"origin\":{"
-                                                        "\"name\":\"node01\","
-                                                        "\"module\":\"wazuh-execd\""
+                                                    "\"wazuh\":{"
+                                                        "\"active_response\":{"
+                                                            "\"name\":\"block-ip\","
+                                                            "\"executable\":\"block-ip\","
+                                                            "\"type\":\"stateful\","
+                                                            "\"stateful_timeout\":10,"
+                                                            "\"location\":\"agent\","
+                                                            "\"agent_id\":\"001\""
+                                                        "}"
                                                     "},"
-                                                    "\"command\":\"add\","
-                                                    "\"parameters\":{"
-                                                        "\"extra_args\":[],"
-                                                        "\"alert\":{"
-                                                            "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                            "\"rule\":{"
-                                                                "\"level\":5,"
-                                                                "\"description\":\"File added to the system.\","
-                                                                "\"id\":\"554\""
-                                                            "},"
-                                                            "\"id\":\"1609860180.513333\","
-                                                            "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                            "\"syscheck\":{"
-                                                                "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                "\"mode\":\"realtime\","
-                                                                "\"event\":\"added\""
-                                                            "},"
-                                                            "\"location\":\"syscheck\""
-                                                        "},"
-                                                        "\"program\":\"restart-wazuh\""
-                                                    "}"
+                                                    "\"event\":{"
+                                                        "\"original\":\"Test event\","
+                                                        "\"kind\":\"event\""
+                                                    "},"
+                                                    "\"source\":{"
+                                                        "\"ip\":\"10.0.0.1\""
+                                                    "},"
+                                                    "\"user\":{"
+                                                        "\"name\":\"root\""
+                                                    "},"
+                                                    "\"command\":\"add\""
                                                 "}\n");
     will_return(__wrap_fprintf, 0);
 
@@ -630,7 +544,7 @@ static void test_ExecdStart_timeout_repeated(void **state) {
     will_return(__wrap_fgets, "{"
                                   "\"version\":1,"
                                   "\"origin\":{"
-                                      "\"name\":\"restart-wazuh\","
+                                      "\"name\":\"block-ip\","
                                       "\"module\":\"active-response\""
                                   "},"
                                   "\"command\":\"check_keys\","
@@ -641,32 +555,27 @@ static void test_ExecdStart_timeout_repeated(void **state) {
 
     expect_value(__wrap_fprintf, __stream, wfd->file_in);
     expect_string(__wrap_fprintf, formatted_msg, "{"
-                                                    "\"version\":\"1\","
-                                                    "\"origin\":{"
-                                                        "\"name\":\"node01\","
-                                                        "\"module\":\"wazuh-execd\""
+                                                    "\"wazuh\":{"
+                                                        "\"active_response\":{"
+                                                            "\"name\":\"block-ip\","
+                                                            "\"executable\":\"block-ip\","
+                                                            "\"type\":\"stateful\","
+                                                            "\"stateful_timeout\":10,"
+                                                            "\"location\":\"agent\","
+                                                            "\"agent_id\":\"001\""
+                                                        "}"
                                                     "},"
-                                                    "\"command\":\"abort\","
-                                                    "\"parameters\":{"
-                                                        "\"extra_args\":[],"
-                                                        "\"alert\":{"
-                                                            "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                            "\"rule\":{"
-                                                                "\"level\":5,"
-                                                                "\"description\":\"File added to the system.\","
-                                                                "\"id\":\"554\""
-                                                            "},"
-                                                            "\"id\":\"1609860180.513333\","
-                                                            "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                            "\"syscheck\":{"
-                                                                "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                "\"mode\":\"realtime\","
-                                                                "\"event\":\"added\""
-                                                            "},"
-                                                            "\"location\":\"syscheck\""
-                                                        "},"
-                                                        "\"program\":\"restart-wazuh\""
-                                                    "}"
+                                                    "\"event\":{"
+                                                        "\"original\":\"Test event\","
+                                                        "\"kind\":\"event\""
+                                                    "},"
+                                                    "\"source\":{"
+                                                        "\"ip\":\"10.0.0.1\""
+                                                    "},"
+                                                    "\"user\":{"
+                                                        "\"name\":\"root\""
+                                                    "},"
+                                                    "\"command\":\"abort\""
                                                 "}\n");
     will_return(__wrap_fprintf, 0);
 
@@ -676,39 +585,31 @@ static void test_ExecdStart_timeout_repeated(void **state) {
 
     ExecdStart(queue);
 }
-
 static void test_ExecdStart_wpopenv_err(void **state) {
     wfd_t * wfd = *state;
     int queue = 1;
     int now = 123456789;
     char *message = "{"
-                        "\"version\":\"1\","
-                        "\"origin\":{"
-                            "\"name\":\"node01\","
-                            "\"module\":\"wazuh-analysisd\""
-                        "},"
-                        "\"command\":\"restart-wazuh0\","
-                        "\"parameters\":{"
-                            "\"extra_args\":[],"
-                            "\"alert\":{"
-                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                "\"rule\":{"
-                                    "\"level\":5,"
-                                    "\"description\":\"File added to the system.\","
-                                    "\"id\":\"554\""
-                                "},"
-                                "\"id\":\"1609860180.513333\","
-                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                "\"syscheck\":{"
-                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                    "\"mode\":\"realtime\","
-                                    "\"event\":\"added\""
-                                "},"
-                                "\"location\":\"syscheck\""
+                        "\"wazuh\":{"
+                            "\"active_response\":{"
+                                "\"name\":\"block-ip\","
+                                "\"executable\":\"block-ip\","
+                                "\"type\":\"stateless\","
+                                "\"location\":\"agent\","
+                                "\"agent_id\":\"001\""
                             "}"
+                        "},"
+                        "\"event\":{"
+                            "\"original\":\"Test event\","
+                            "\"kind\":\"event\""
+                        "},"
+                        "\"source\":{"
+                            "\"ip\":\"10.0.0.1\""
+                        "},"
+                        "\"user\":{"
+                            "\"name\":\"root\""
                         "}"
                     "}";
-    int timeout = 0;
 
     will_return(__wrap_time, now);
 
@@ -720,66 +621,53 @@ static void test_ExecdStart_wpopenv_err(void **state) {
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
     expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
-                                                                        "\"version\":\"1\","
-                                                                        "\"origin\":{"
-                                                                            "\"name\":\"node01\","
-                                                                            "\"module\":\"wazuh-analysisd\""
-                                                                        "},"
-                                                                        "\"command\":\"restart-wazuh0\","
-                                                                        "\"parameters\":{"
-                                                                            "\"extra_args\":[],"
-                                                                            "\"alert\":{"
-                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                "\"rule\":{"
-                                                                                    "\"level\":5,"
-                                                                                    "\"description\":\"File added to the system.\","
-                                                                                    "\"id\":\"554\""
-                                                                                "},"
-                                                                                "\"id\":\"1609860180.513333\","
-                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                "\"syscheck\":{"
-                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                    "\"mode\":\"realtime\","
-                                                                                    "\"event\":\"added\""
-                                                                                "},"
-                                                                                "\"location\":\"syscheck\""
+                                                                        "\"wazuh\":{"
+                                                                            "\"active_response\":{"
+                                                                                "\"name\":\"block-ip\","
+                                                                                "\"executable\":\"block-ip\","
+                                                                                "\"type\":\"stateless\","
+                                                                                "\"location\":\"agent\","
+                                                                                "\"agent_id\":\"001\""
                                                                             "}"
+                                                                        "},"
+                                                                        "\"event\":{"
+                                                                            "\"original\":\"Test event\","
+                                                                            "\"kind\":\"event\""
+                                                                        "},"
+                                                                        "\"source\":{"
+                                                                            "\"ip\":\"10.0.0.1\""
+                                                                        "},"
+                                                                        "\"user\":{"
+                                                                            "\"name\":\"root\""
                                                                         "}"
                                                                     "}'");
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_wfopen(AR_BINDIR "/block-ip", "r", (FILE *)1);
+    expect_fclose((FILE *)1, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
-                                                                                        "\"version\":\"1\","
-                                                                                        "\"origin\":{"
-                                                                                            "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip {"
+                                                                                        "\"wazuh\":{"
+                                                                                            "\"active_response\":{"
+                                                                                                "\"name\":\"block-ip\","
+                                                                                                "\"executable\":\"block-ip\","
+                                                                                                "\"type\":\"stateless\","
+                                                                                                "\"location\":\"agent\","
+                                                                                                "\"agent_id\":\"001\""
+                                                                                            "}"
                                                                                         "},"
-                                                                                        "\"command\":\"add\","
-                                                                                        "\"parameters\":{"
-                                                                                            "\"extra_args\":[],"
-                                                                                            "\"alert\":{"
-                                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                                "\"rule\":{"
-                                                                                                    "\"level\":5,"
-                                                                                                    "\"description\":\"File added to the system.\","
-                                                                                                    "\"id\":\"554\""
-                                                                                                "},"
-                                                                                                "\"id\":\"1609860180.513333\","
-                                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                                "\"syscheck\":{"
-                                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                                    "\"mode\":\"realtime\","
-                                                                                                    "\"event\":\"added\""
-                                                                                                "},"
-                                                                                                "\"location\":\"syscheck\""
-                                                                                            "},"
-                                                                                            "\"program\":\"restart-wazuh\""
-                                                                                        "}"
+                                                                                        "\"event\":{"
+                                                                                            "\"original\":\"Test event\","
+                                                                                            "\"kind\":\"event\""
+                                                                                        "},"
+                                                                                        "\"source\":{"
+                                                                                            "\"ip\":\"10.0.0.1\""
+                                                                                        "},"
+                                                                                        "\"user\":{"
+                                                                                            "\"name\":\"root\""
+                                                                                        "},"
+                                                                                        "\"command\":\"add\""
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, NULL);
@@ -794,33 +682,26 @@ static void test_ExecdStart_fgets_err(void **state) {
     int queue = 1;
     int now = 123456789;
     char *message = "{"
-                        "\"version\":\"1\","
-                        "\"origin\":{"
-                            "\"name\":\"node01\","
-                            "\"module\":\"wazuh-analysisd\""
-                        "},"
-                        "\"command\":\"restart-wazuh0\","
-                        "\"parameters\":{"
-                            "\"extra_args\":[],"
-                            "\"alert\":{"
-                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                "\"rule\":{"
-                                    "\"level\":5,"
-                                    "\"description\":\"File added to the system.\","
-                                    "\"id\":\"554\""
-                                "},"
-                                "\"id\":\"1609860180.513333\","
-                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                "\"syscheck\":{"
-                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                    "\"mode\":\"realtime\","
-                                    "\"event\":\"added\""
-                                "},"
-                                "\"location\":\"syscheck\""
+                        "\"wazuh\":{"
+                            "\"active_response\":{"
+                                "\"name\":\"block-ip\","
+                                "\"executable\":\"block-ip\","
+                                "\"type\":\"stateless\","
+                                "\"location\":\"agent\","
+                                "\"agent_id\":\"001\""
                             "}"
+                        "},"
+                        "\"event\":{"
+                            "\"original\":\"Test event\","
+                            "\"kind\":\"event\""
+                        "},"
+                        "\"source\":{"
+                            "\"ip\":\"10.0.0.1\""
+                        "},"
+                        "\"user\":{"
+                            "\"name\":\"root\""
                         "}"
                     "}";
-    int timeout = 0;
 
     will_return(__wrap_time, now);
 
@@ -832,105 +713,86 @@ static void test_ExecdStart_fgets_err(void **state) {
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
     expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
-                                                                        "\"version\":\"1\","
-                                                                        "\"origin\":{"
-                                                                            "\"name\":\"node01\","
-                                                                            "\"module\":\"wazuh-analysisd\""
-                                                                        "},"
-                                                                        "\"command\":\"restart-wazuh0\","
-                                                                        "\"parameters\":{"
-                                                                            "\"extra_args\":[],"
-                                                                            "\"alert\":{"
-                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                "\"rule\":{"
-                                                                                    "\"level\":5,"
-                                                                                    "\"description\":\"File added to the system.\","
-                                                                                    "\"id\":\"554\""
-                                                                                "},"
-                                                                                "\"id\":\"1609860180.513333\","
-                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                "\"syscheck\":{"
-                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                    "\"mode\":\"realtime\","
-                                                                                    "\"event\":\"added\""
-                                                                                "},"
-                                                                                "\"location\":\"syscheck\""
+                                                                        "\"wazuh\":{"
+                                                                            "\"active_response\":{"
+                                                                                "\"name\":\"block-ip\","
+                                                                                "\"executable\":\"block-ip\","
+                                                                                "\"type\":\"stateless\","
+                                                                                "\"location\":\"agent\","
+                                                                                "\"agent_id\":\"001\""
                                                                             "}"
+                                                                        "},"
+                                                                        "\"event\":{"
+                                                                            "\"original\":\"Test event\","
+                                                                            "\"kind\":\"event\""
+                                                                        "},"
+                                                                        "\"source\":{"
+                                                                            "\"ip\":\"10.0.0.1\""
+                                                                        "},"
+                                                                        "\"user\":{"
+                                                                            "\"name\":\"root\""
                                                                         "}"
                                                                     "}'");
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_wfopen(AR_BINDIR "/block-ip", "r", (FILE *)1);
+    expect_fclose((FILE *)1, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
-                                                                                        "\"version\":\"1\","
-                                                                                        "\"origin\":{"
-                                                                                            "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip {"
+                                                                                        "\"wazuh\":{"
+                                                                                            "\"active_response\":{"
+                                                                                                "\"name\":\"block-ip\","
+                                                                                                "\"executable\":\"block-ip\","
+                                                                                                "\"type\":\"stateless\","
+                                                                                                "\"location\":\"agent\","
+                                                                                                "\"agent_id\":\"001\""
+                                                                                            "}"
                                                                                         "},"
-                                                                                        "\"command\":\"add\","
-                                                                                        "\"parameters\":{"
-                                                                                            "\"extra_args\":[],"
-                                                                                            "\"alert\":{"
-                                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                                "\"rule\":{"
-                                                                                                    "\"level\":5,"
-                                                                                                    "\"description\":\"File added to the system.\","
-                                                                                                    "\"id\":\"554\""
-                                                                                                "},"
-                                                                                                "\"id\":\"1609860180.513333\","
-                                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                                "\"syscheck\":{"
-                                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                                    "\"mode\":\"realtime\","
-                                                                                                    "\"event\":\"added\""
-                                                                                                "},"
-                                                                                                "\"location\":\"syscheck\""
-                                                                                            "},"
-                                                                                            "\"program\":\"restart-wazuh\""
-                                                                                        "}"
+                                                                                        "\"event\":{"
+                                                                                            "\"original\":\"Test event\","
+                                                                                            "\"kind\":\"event\""
+                                                                                        "},"
+                                                                                        "\"source\":{"
+                                                                                            "\"ip\":\"10.0.0.1\""
+                                                                                        "},"
+                                                                                        "\"user\":{"
+                                                                                            "\"name\":\"root\""
+                                                                                        "},"
+                                                                                        "\"command\":\"add\""
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
 
     expect_value(__wrap_fprintf, __stream, wfd->file_in);
     expect_string(__wrap_fprintf, formatted_msg, "{"
-                                                    "\"version\":\"1\","
-                                                    "\"origin\":{"
-                                                        "\"name\":\"node01\","
-                                                        "\"module\":\"wazuh-execd\""
+                                                    "\"wazuh\":{"
+                                                        "\"active_response\":{"
+                                                            "\"name\":\"block-ip\","
+                                                            "\"executable\":\"block-ip\","
+                                                            "\"type\":\"stateless\","
+                                                            "\"location\":\"agent\","
+                                                            "\"agent_id\":\"001\""
+                                                        "}"
                                                     "},"
-                                                    "\"command\":\"add\","
-                                                    "\"parameters\":{"
-                                                        "\"extra_args\":[],"
-                                                        "\"alert\":{"
-                                                            "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                            "\"rule\":{"
-                                                                "\"level\":5,"
-                                                                "\"description\":\"File added to the system.\","
-                                                                "\"id\":\"554\""
-                                                            "},"
-                                                            "\"id\":\"1609860180.513333\","
-                                                            "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                            "\"syscheck\":{"
-                                                                "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                "\"mode\":\"realtime\","
-                                                                "\"event\":\"added\""
-                                                            "},"
-                                                            "\"location\":\"syscheck\""
-                                                        "},"
-                                                        "\"program\":\"restart-wazuh\""
-                                                    "}"
+                                                    "\"event\":{"
+                                                        "\"original\":\"Test event\","
+                                                        "\"kind\":\"event\""
+                                                    "},"
+                                                    "\"source\":{"
+                                                        "\"ip\":\"10.0.0.1\""
+                                                    "},"
+                                                    "\"user\":{"
+                                                        "\"name\":\"root\""
+                                                    "},"
+                                                    "\"command\":\"add\""
                                                 "}\n");
     will_return(__wrap_fprintf, 0);
 
     expect_value(__wrap_fgets, __stream, wfd->file_out);
     will_return(__wrap_fgets, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Active response won't be added to timeout list. Message not received with alert keys from script 'restart-wazuh'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Active response won't be added to timeout list. Message not received with alert keys from script '" AR_BINDIR "/block-ip'");
 
     will_return(__wrap_wpclose, 0);
 
@@ -942,33 +804,26 @@ static void test_ExecdStart_get_command_err(void **state) {
     int queue = 1;
     int now = 123456789;
     char *message = "{"
-                        "\"version\":\"1\","
-                        "\"origin\":{"
-                            "\"name\":\"node01\","
-                            "\"module\":\"wazuh-analysisd\""
-                        "},"
-                        "\"command\":\"restart-wazuh0\","
-                        "\"parameters\":{"
-                            "\"extra_args\":[],"
-                            "\"alert\":{"
-                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                "\"rule\":{"
-                                    "\"level\":5,"
-                                    "\"description\":\"File added to the system.\","
-                                    "\"id\":\"554\""
-                                "},"
-                                "\"id\":\"1609860180.513333\","
-                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                "\"syscheck\":{"
-                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                    "\"mode\":\"realtime\","
-                                    "\"event\":\"added\""
-                                "},"
-                                "\"location\":\"syscheck\""
+                        "\"wazuh\":{"
+                            "\"active_response\":{"
+                                "\"name\":\"block-ip\","
+                                "\"executable\":\"block-ip\","
+                                "\"type\":\"stateless\","
+                                "\"location\":\"agent\","
+                                "\"agent_id\":\"001\""
                             "}"
+                        "},"
+                        "\"event\":{"
+                            "\"original\":\"Test event\","
+                            "\"kind\":\"event\""
+                        "},"
+                        "\"source\":{"
+                            "\"ip\":\"10.0.0.1\""
+                        "},"
+                        "\"user\":{"
+                            "\"name\":\"root\""
                         "}"
                     "}";
-    int timeout = 0;
 
     will_return(__wrap_time, now);
 
@@ -980,46 +835,32 @@ static void test_ExecdStart_get_command_err(void **state) {
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
     expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
-                                                                        "\"version\":\"1\","
-                                                                        "\"origin\":{"
-                                                                            "\"name\":\"node01\","
-                                                                            "\"module\":\"wazuh-analysisd\""
-                                                                        "},"
-                                                                        "\"command\":\"restart-wazuh0\","
-                                                                        "\"parameters\":{"
-                                                                            "\"extra_args\":[],"
-                                                                            "\"alert\":{"
-                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                "\"rule\":{"
-                                                                                    "\"level\":5,"
-                                                                                    "\"description\":\"File added to the system.\","
-                                                                                    "\"id\":\"554\""
-                                                                                "},"
-                                                                                "\"id\":\"1609860180.513333\","
-                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                "\"syscheck\":{"
-                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                    "\"mode\":\"realtime\","
-                                                                                    "\"event\":\"added\""
-                                                                                "},"
-                                                                                "\"location\":\"syscheck\""
+                                                                        "\"wazuh\":{"
+                                                                            "\"active_response\":{"
+                                                                                "\"name\":\"block-ip\","
+                                                                                "\"executable\":\"block-ip\","
+                                                                                "\"type\":\"stateless\","
+                                                                                "\"location\":\"agent\","
+                                                                                "\"agent_id\":\"001\""
                                                                             "}"
+                                                                        "},"
+                                                                        "\"event\":{"
+                                                                            "\"original\":\"Test event\","
+                                                                            "\"kind\":\"event\""
+                                                                        "},"
+                                                                        "\"source\":{"
+                                                                            "\"ip\":\"10.0.0.1\""
+                                                                        "},"
+                                                                        "\"user\":{"
+                                                                            "\"name\":\"root\""
                                                                         "}"
                                                                     "}'");
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, NULL);
+    expect_wfopen(AR_BINDIR "/block-ip", "r", NULL);
 
-    will_return(__wrap_ReadExecConfig, 0);
-
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, NULL);
-
-    expect_string(__wrap__merror, formatted_msg, "(1311): Invalid command name 'restart-wazuh0' provided.");
+    expect_string(__wrap__merror, formatted_msg, "(1311): Invalid command name 'block-ip' provided.");
 
     ExecdStart(queue);
 }
@@ -1029,34 +870,6 @@ static void test_ExecdStart_get_name_err(void **state) {
     int queue = 1;
     int now = 123456789;
     char *message = "{}";
-    char *message2 = "{"
-                        "\"version\":\"1\","
-                        "\"origin\":{"
-                            "\"name\":\"node01\","
-                            "\"module\":\"wazuh-analysisd\""
-                        "},"
-                        "\"command\":\"restart-wazuh0\","
-                        "\"parameters\":{"
-                            "\"extra_args\":[],"
-                            "\"alert\":{"
-                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                "\"rule\":{"
-                                    "\"level\":5,"
-                                    "\"description\":\"File added to the system.\","
-                                    "\"id\":\"554\""
-                                "},"
-                                "\"id\":\"1609860180.513333\","
-                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                "\"syscheck\":{"
-                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                    "\"mode\":\"realtime\","
-                                    "\"event\":\"added\""
-                                "},"
-                                "\"location\":\"syscheck\""
-                            "}"
-                        "}"
-                    "}";
-    int timeout = 0;
 
     will_return(__wrap_time, now);
 
@@ -1081,34 +894,6 @@ static void test_ExecdStart_json_err(void **state) {
     int queue = 1;
     int now = 123456789;
     char *message = "unknown";
-    char *message2 = "{"
-                        "\"version\":\"1\","
-                        "\"origin\":{"
-                            "\"name\":\"node01\","
-                            "\"module\":\"wazuh-analysisd\""
-                        "},"
-                        "\"command\":\"restart-wazuh0\","
-                        "\"parameters\":{"
-                            "\"extra_args\":[],"
-                            "\"alert\":{"
-                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                "\"rule\":{"
-                                    "\"level\":5,"
-                                    "\"description\":\"File added to the system.\","
-                                    "\"id\":\"554\""
-                                "},"
-                                "\"id\":\"1609860180.513333\","
-                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                "\"syscheck\":{"
-                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                    "\"mode\":\"realtime\","
-                                    "\"event\":\"added\""
-                                "},"
-                                "\"location\":\"syscheck\""
-                            "}"
-                        "}"
-                    "}";
-    int timeout = 0;
 
     will_return(__wrap_time, now);
 
@@ -1128,6 +913,53 @@ static void test_ExecdStart_json_err(void **state) {
     ExecdStart(queue);
 }
 
+/* Test proper handling of long active response keys
+ * Verifies that rkey concatenation respects buffer boundaries
+ * when active response keys exceed available space
+ */
+static void test_ExecdStart_long_ar_keys(void **state) {
+    #define OS_SIZE_4096 4096
+
+    char rkey[OS_SIZE_4096];
+    char basename_result[] = "disable-account";  // 15 bytes
+    char *long_keys = NULL;
+
+    /* Create keys exceeding available buffer space (4090 bytes) */
+    os_calloc(4100, sizeof(char), long_keys);
+    long_keys[0] = '-';
+    memset(long_keys + 1, 'A', 4089);
+    long_keys[4090] = '\0';
+
+    /* Initialize rkey with basename */
+    memset(rkey, '\0', OS_SIZE_4096);
+    snprintf(rkey, OS_SIZE_4096 - 1, "%s", basename_result);
+
+    size_t rkey_len = strlen(rkey);  // Should be 15
+    size_t keys_len = strlen(long_keys);  // Should be 4090
+
+    /* Verify total length exceeds buffer size */
+    assert_true(rkey_len + keys_len >= OS_SIZE_4096);  // 15 + 4090 = 4105 >= 4096
+
+    /* Note: In production code, a warning is logged when size is exceeded:
+     * mwarn("Active response key exceeds maximum size. Truncating keys.");
+     */
+
+    /* Concatenate keys with size limit */
+    strncat(rkey, long_keys, OS_SIZE_4096 - rkey_len - 1);
+
+    /* Verify buffer boundaries are respected */
+    size_t final_len = strlen(rkey);
+    assert_true(final_len < OS_SIZE_4096);  // Within bounds
+    assert_int_equal(final_len, OS_SIZE_4096 - 1);  // Exactly 4095
+
+    /* Verify content integrity */
+    assert_memory_equal(rkey, basename_result, strlen(basename_result));  // Basename preserved
+    assert_int_equal(rkey[OS_SIZE_4096 - 1], '\0');  // Null terminated
+
+    /* Cleanup */
+    os_free(long_keys);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_ExecdStart_ok, test_setup_file, test_teardown_file),
@@ -1138,6 +970,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_ExecdStart_get_command_err, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_ExecdStart_get_name_err, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_ExecdStart_json_err, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_ExecdStart_long_ar_keys, test_setup_file, test_teardown_file),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

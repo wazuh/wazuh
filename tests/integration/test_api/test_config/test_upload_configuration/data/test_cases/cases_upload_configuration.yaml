@@ -1,0 +1,29 @@
+- name: UPLOAD_ONE_BLOCK_CONFIG
+  description: Upload one block configuration
+  configuration_parameters:
+  metadata:
+    body: >
+      <wazuh_config>
+        <remote>
+          <port>1514</port>
+        </remote>
+      </wazuh_config>
+    expected_code: 200
+
+- name: UPLOAD_TWO_BLOCKS_CONFIG
+  description: Upload two blocks configuration
+  configuration_parameters:
+  metadata:
+    body: >
+      <wazuh_config>
+        <remote>
+          <port>1514</port>
+        </remote>
+      </wazuh_config>
+
+      <wazuh_config>
+        <remote>
+          <port>514</port>
+        </remote>
+      </wazuh_config>
+    expected_code: 200

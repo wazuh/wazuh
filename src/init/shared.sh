@@ -5,10 +5,8 @@
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 ### Setting up variables
-VERSION_FILE="./src/VERSION"
-REVISION_FILE="./src/REVISION"
-VERSION=`cat ${VERSION_FILE}`
-REVISION=`cat ${REVISION_FILE}`
+VERSION="v$(awk -F'"' '/"version"[ \t]*:/ {print $4}' VERSION.json)"
+REVISION=$(awk -F'"' '/"stage"[ \t]*:/ {print $4}' VERSION.json)
 UNAME=`uname -snr`
 NUNAME=`uname`
 VUNAME=`uname -r`
@@ -30,16 +28,18 @@ else
     HOST=`uname -n`
 fi
 
-OSSEC_INIT="/etc/ossec-init.conf"
 NAMESERVERS=`cat /etc/resolv.conf | grep "^nameserver" | cut -d " " -sf 2`
 NAMESERVERS2=`cat /etc/resolv.conf | grep "^nameserver" | cut -sf 2`
 HOST_CMD=`command -v host 2>/dev/null`
 NAME="Wazuh"
-INSTYPE="server"
+INSTYPE="manager"
 # Default installation directory
-INSTALLDIR="/var/ossec";
+INSTALLDIR="/var/wazuh-manager";
 PREINSTALLEDDIR=""
 CEXTRA=""
+WAZUH_CONF="ossec.conf"
+WAZUH_LOGFILE="ossec.log"
+WAZUH_LOGJSON="ossec.json"
 
 # Internal definitions
 NEWCONFIG="./etc/ossec.mc"

@@ -11,10 +11,10 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include "headers/shared.h"
-#include "headers/sec.h"
-#include "os_crypto/md5/md5_op.h"
-#include "os_crypto/blowfish/bf_op.h"
+#include "shared.h"
+#include "sec.h"
+#include "md5_op.h"
+#include "bf_op.h"
 #include "keys_wrappers.h"
 
 int __wrap_OS_IsAllowedDynamicID(__attribute__((unused)) keystore *keys, const char *id, const char *srcip) {
@@ -40,4 +40,24 @@ int __wrap_OS_IsAllowedID(__attribute__((unused)) keystore *keys, const char *id
     check_expected(id);
 
     return mock();
+}
+
+keyentry * __wrap_OS_DupKeyEntry(const keyentry * key) {
+    check_expected(key);
+
+    return mock_type(keyentry *);
+}
+
+int __wrap_OS_AddSocket(keystore * keys, unsigned int i, int sock) {
+    check_expected(keys);
+    check_expected(i);
+    check_expected(sock);
+
+    return mock();
+}
+
+void __wrap_OS_FreeKey(keyentry *key) {
+    check_expected(key);
+
+    return;
 }

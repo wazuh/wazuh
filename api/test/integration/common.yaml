@@ -8,7 +8,7 @@ description: File with information such as global variables or repeteable stages
 variables:
   protocol: https
   host: localhost
-  port: 55000
+  port: 55010
   user: testing
   user_auth_context: wazuh-wui
   pass: wazuh
@@ -18,95 +18,50 @@ variables:
 
   # delays
   reconnect_delay: 30
+  restart_delay: 90
   restart_delay_cluster: 150
   upgrade_delay: 60
   global_db_delay: 30
   cluster_sync_delay: 20
 
-  custom_wpk_path: "/var/ossec/test.wpk"
-
-  new_rules:
-    "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"5\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
-
-  new_rules_with_syntax_error:
-    "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
-
-  new_decoder:
-    "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
-
-  new_decoder_with_syntax_error:
-    "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\" NEW DECODER</program_name>\n </decoder>\n"
-
-  new_cdb_list:
-    "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
-
-  new_cdb_list_with_syntax_error:
-    ":write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
-
-  corrupted_rules_file:
-    "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n  <rule id=\"111111\" level=\"XXX\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
+  custom_wpk_path: "/var/wazuh-manager/test.wpk"
 
   invalid_file:
     "import os #:l\nos.system('do something bad') #:l"
 
   file_xml:
     <agent_config>
-    <labels>
-    <label key="aws.instance-id">i-052a1838c</label>
-    <label key="aws.sec-group">sg-1103</label>
-    <label key="network.ip">172.17.0.0</label>
-    <label key="network.mac">02:42:ac:11:00:02</label>
-    <label key="installation" hidden="yes">January 1st, 2017</label>
-    </labels>
     </agent_config>
 
   invalid_file_xml:
     agent_config>
-    <labels>
-    <label key="aws.instance-id">i-052a1838c</label>
-    <label key="aws.sec-group">sg-1103</label>
-    <label key="network.ip">172.17.0.0</label>
-    <label key="network.mac">02:42:ac:11:00:02</label>
-    <label key="installation" hidden="yes">January 1st, 2017</label>
-    </labels>
+    <localfile>
+    <location>/var/log/test.log</location>
+    <log_format>syslog</log_format>
+    </localfile>
     </agent_config>
+
+  empty_file_xml:
+    <?xml version="1.0" ?>
+    <metadata>
+    </metadata>
 
   wrong_file_xml:
     <agent_confi>
 
-    <wodle name="cis-cat">
-    <disabled>no</disabled>
-    <timeout>3600</timeout>
-    <interval>90d</interval>
-    <scan-on-start>yes</scan-on-start>
-
-    <java_path>/opt/java/bin</java_path>
-    <ciscat_path>/opt/scanner</ciscat_path>
-
-    <content type="xccdf" path="/opt/xccdf.xml">
-    <profile>level2</profile>
-    </content>
-    </wodle>
-
     <localfile>
-    <log_format>full_command</log_format>
-    <alias>ciscat-java-check</alias>
-    <command>fi</command>
-    <frequency>86400</frequency>
+      <log_format>syslog</log_format>
+      <location>/var/ossec/logs/active-responses.log</location>
     </localfile>
 
     <localfile>
-    <log_format>full_command</log_format>
-    <alias>ciscat-scanner-check</alias>
-    <command>fi</command>
-    <frequency>86400</frequency>
+      <log_format>syslog</log_format>
+      <location>/var/log/messages</location>
     </localfile>
 
     <localfile>
-    <log_format>full_command</log_format>
-    <alias>ciscat-ossec-log</alias>
-    <command>grep 'wazuh-modulesd:ciscat:' /opt/ossec/logs/ossec.log | tail -20</command>
-    <frequency>86400</frequency>
+      <log_format>syslog</log_format>
+      <location>/var/log/auth.log</location>
     </localfile>
 
     </agent_confi>
@@ -153,14 +108,9 @@ variables:
     </localfile>
     </agent_config>
 
-  valid_ossec_conf:
-    <ossec_config>
+  valid_wazuh_conf:
+    <wazuh_config>
       <global>
-        <jsonout_output>yes</jsonout_output>
-        <alerts_log>yes</alerts_log>
-        <logall>no</logall>
-        <logall_json>no</logall_json>
-        <email_notification>no</email_notification>
         <agents_disconnection_time>20s</agents_disconnection_time>
         <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
       </global>
@@ -169,13 +119,7 @@ variables:
         <log_format>plain</log_format>
       </logging>
 
-      <alerts>
-        <log_alert_level>300</log_alert_level>
-        <email_alert_level>12</email_alert_level>
-      </alerts>
-
       <remote>
-        <connection>secure</connection>
         <port>1514</port>
         <protocol>tcp</protocol>
       </remote>
@@ -183,21 +127,43 @@ variables:
       <syscheck>
         <disabled>yes</disabled>
       </syscheck>
-    </ossec_config>
 
-  invalid_ossec_conf:
-    <ossec_config>
+      <vulnerability-detection>
+        <enabled>no</enabled>
+        <feed-update-interval>60m</feed-update-interval>
+      </vulnerability-detection>
+    </wazuh_config>
+
+  invalid_wazuh_conf:
+    <wazuh_config>
       <global>
-        <jsonout_output>yes</jsonout_output>
-        <alerts_log>yes</alerts_log>
-        <logall>no</logall>
-        <logall_json>no</logall_json>
       </global>
 
-      <alerts>
-        <log_alert_level>3</log_alert_level>
-        <email_alert_level>12</email_alert_level>
-      </alerts>
+      <vulnerability-detection>
+        <enabled>no</enabled>
+        <feed-update-interval>60m</feed-update-interval>
+      </vulnerability-detection>
 
       <remote>
-    </ossec_config>
+    </wazuh_config>
+
+  invalid_wazuh_xml:
+    <wazuh_config>
+      <global>
+        <agents_disconnection_time>20s</agents_disconnection_time>
+        <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
+      </global>
+
+      <logging>
+        <log_format>plain</log_format>
+      </logging>
+
+      <remote>
+        <port>1514</port>
+        <protocol>tcp</protocol>
+      </remote>
+
+      <syscheck>
+        <disabled>yes</disabled>
+      </syscheck>
+    </wazuh_config>

@@ -1,0 +1,53 @@
+- sections:
+    - section: ms-graph
+      elements:
+        - enabled:
+            value: 'ENABLED'
+        - only_future_events:
+            value: 'yes'
+        - interval:
+            value: 'INTERVAL'
+        - curl_max_size:
+            value: '1024'
+        - run_on_start:
+            value: 'RUN_ON_START'
+        - version:
+            value: 'v1.0'
+        - api_auth:
+            elements:
+              - tenant_id:
+                  value: 'tenant_id'
+              - client_id:
+                  value: 'client_id'
+              - secret_value:
+                  value: 'secret_value'
+              - api_type:
+                  value: 'global'
+        - resource:
+            elements:
+              - name:
+                  value: 'resource_name'
+              - relationship:
+                  value: 'resource_relationship'
+
+    - section: sca
+      elements:
+        - enabled:
+            value: 'no'
+
+    - section: rootcheck
+      elements:
+        - disabled:
+            value: 'yes'
+
+    - section: syscheck
+      elements:
+        - disabled:
+            value: 'yes'
+
+    - section: wodle
+      attributes:
+        - name: syscollector
+      elements:
+        - disabled:
+            value: 'yes'

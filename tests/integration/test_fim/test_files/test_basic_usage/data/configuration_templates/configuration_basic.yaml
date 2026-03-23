@@ -1,0 +1,28 @@
+- sections:
+  - section: syscheck
+    elements:
+    - disabled:
+        value: 'no'
+    - frequency:
+        value: FREQUENCY
+    - directories:
+        value: TEST_DIR
+        attributes:
+        - check_all: 'yes'
+        - FIM_MODE
+    - windows_audit_interval:
+        value: 1
+  - section: sca
+    elements:
+    - enabled:
+        value: 'no'
+  - section: rootcheck
+    elements:
+    - disabled:
+        value: 'yes'
+  - section: wodle
+    attributes:
+      - name: 'syscollector'
+    elements:
+      - disabled:
+          value: 'yes'

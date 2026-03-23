@@ -4,10 +4,10 @@
 2. [Compile and run unit tests for Linux targets](#compile-and-run-unit-tests-for-linux-targets)
 
 ## Compile Wazuh
-In order to run unit tests on a specific wazuh target, the project needs to be built with the `DEBUG` and `TEST` options as shown below:
+In order to run unit tests on a specific wazuh target, the project needs to be built with the `TEST` option as shown below:
 ```
 make deps RESOURCES_URL=file:///path/to/deps/
-make TARGET=server|agent DEBUG=1 TEST=1
+make TARGET=server|agent TEST=1
 ```
 
 ## Compile and run unit tests for Linux targets

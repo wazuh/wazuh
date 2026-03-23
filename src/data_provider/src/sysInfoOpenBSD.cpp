@@ -17,7 +17,7 @@
 #include <sys/sysctl.h>
 #include <sys/utsname.h>
 
-void SysInfo::getMemory(nlohmann::json& info) const
+static void getMemory(nlohmann::json& info)
 {
     uint64_t ram{0};
     const std::vector<int> mib{CTL_HW, HW_PHYSMEM};
@@ -34,13 +34,12 @@ void SysInfo::getMemory(nlohmann::json& info) const
         };
     }
 
-    const auto ramTotal{ram / KByte};
-    info["ram_total"] = ramTotal;
-    info["ram_free"] = 0;
-    info["ram_usage"] = 0;
+    info["memory_total"] = ram;
+    info["memory_free"] = 0;
+    info["memory_used"] = 0;
 }
 
-int SysInfo::getCpuMHz() const
+static int getCpuMHz()
 {
     unsigned long cpuMHz{0};
     const std::vector<int> mib{CTL_HW, HW_CPUSPEED};
@@ -60,7 +59,7 @@ int SysInfo::getCpuMHz() const
     return cpuMHz;
 }
 
-std::string SysInfo::getSerialNumber() const
+static std::string getSerialNumber()
 {
     const std::vector<int> mib{CTL_HW, HW_SERIALNO};
     size_t len{0};
@@ -102,6 +101,79 @@ std::string SysInfo::getSerialNumber() const
     return std::string{reinterpret_cast<const char*>(spBuff.get())};
 }
 
+static int getCpuCores()
+{
+    int cores{0};
+    size_t len{sizeof(cores)};
+    const std::vector<int> mib{CTL_HW, HW_NCPU};
+    const auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), &cores, &len, nullptr, 0)};
+
+    if (ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error reading cpu cores number."
+        };
+    }
+
+    return cores;
+}
+
+static std::string getCpuName()
+{
+    const std::vector<int> mib{CTL_HW, HW_MODEL};
+    size_t len{0};
+    auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), nullptr, &len, nullptr, 0)};
+
+    if (ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error getting cpu name size."
+        };
+    }
+
+    const auto spBuff{std::make_unique<char[]>(len + 1)};
+
+    if (!spBuff)
+    {
+        throw std::runtime_error
+        {
+            "Error allocating memory to read the cpu name."
+        };
+    }
+
+    ret = sysctl(const_cast<int*>(mib.data()), mib.size(), spBuff.get(), &len, nullptr, 0);
+
+    if (ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error getting cpu name"
+        };
+    }
+
+    spBuff.get()[len] = 0;
+    return std::string{reinterpret_cast<const char*>(spBuff.get())};
+}
+
+nlohmann::json SysInfo::getHardware() const
+{
+    nlohmann::json hardware;
+    hardware["serial_number"] = getSerialNumber();
+    hardware["cpu_name"] = getCpuName();
+    hardware["cpu_cores"] = getCpuCores();
+    hardware["cpu_speed"] = double(getCpuMHz());
+    getMemory(hardware);
+    return hardware;
+}
+
 nlohmann::json SysInfo::getProcessesInfo() const
 {
     // Currently not supported for this OS
@@ -129,12 +201,15 @@ nlohmann::json SysInfo::getOsInfo() const
 
     if (uname(&uts) >= 0)
     {
-        ret["sysname"] = uts.sysname;
+        ret["os_kernel_name"] = uts.sysname;
         ret["hostname"] = uts.nodename;
-        ret["version"] = uts.version;
+        ret["os_kernel_version"] = uts.version;
         ret["architecture"] = uts.machine;
-        ret["release"] = uts.release;
+        ret["os_kernel_release"] = uts.release;
     }
+
+    // ECS-compliant os.type field (values: linux, macos, unix, windows)
+    ret["os_type"] = "unix";
 
     return ret;
 }
@@ -158,5 +233,29 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> /*callback*/) con
 nlohmann::json SysInfo::getHotfixes() const
 {
     // Currently not supported for this OS.
+    return nlohmann::json();
+}
+
+nlohmann::json SysInfo::getGroups() const
+{
+    //TODO: Pending implementation.
+    return nlohmann::json();
+}
+
+nlohmann::json SysInfo::getUsers() const
+{
+    //TODO: Pending implementation.
+    return nlohmann::json();
+}
+
+nlohmann::json SysInfo::getServices() const
+{
+    //TODO: Pending implementation.
+    return nlohmann::json();
+}
+
+nlohmann::json SysInfo::getBrowserExtensions() const
+{
+    //TODO: Pending implementation.
     return nlohmann::json();
 }

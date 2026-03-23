@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December 22, 2021.
  *
  * This program is free software; you can redistribute it
@@ -34,11 +34,11 @@ class UtilsMock
 
 static UtilsMock* gs_utils_mock = NULL;
 
-std::string UtilsWrapper::exec(const std::string& cmd, const size_t bufferSize)
+std::string UtilsWrapperLinux::exec(const std::string& cmd, const size_t bufferSize)
 {
     return gs_utils_mock->exec(cmd, bufferSize);
 }
-bool UtilsWrapper::existsRegular(const std::string& path)
+bool UtilsWrapperLinux::existsRegular(const std::string& path)
 {
     return gs_utils_mock->existsRegular(path);
 }
@@ -59,8 +59,14 @@ class RpmLibMock
         MOCK_METHOD(uint64_t, rpmtdGetNumber, (rpmtd td));
         MOCK_METHOD(int, rpmtsRun, (rpmts ts, rpmps okProbs, rpmprobFilterFlags ignoreSet));
         MOCK_METHOD(rpmdbMatchIterator, rpmtsInitIterator, (const rpmts ts, rpmDbiTagVal rpmtag, const void* keypointer, size_t keylen));
+        MOCK_METHOD(rpmVSFlags, rpmtsSetVSFlags, (rpmts ts, rpmVSFlags vsflags));
         MOCK_METHOD(Header, rpmdbNextIterator, (rpmdbMatchIterator mi));
         MOCK_METHOD(rpmdbMatchIterator, rpmdbFreeIterator, (rpmdbMatchIterator mi));
+        MOCK_METHOD(rpmfi, rpmfiNew, (rpmts ts, Header h, rpmTagVal tag, rpmfiFlags flags));
+        MOCK_METHOD(rpm_count_t, rpmfiFC, (rpmfi fi));
+        MOCK_METHOD(int, rpmfiNext, (rpmfi fi));
+        MOCK_METHOD(const char*, rpmfiFN, (rpmfi fi));
+        MOCK_METHOD(rpmfi, rpmfiFree, (rpmfi fi));
 };
 
 static RpmLibMock* gs_rpm_mock = NULL;
@@ -117,6 +123,10 @@ rpmdbMatchIterator rpmtsInitIterator(const rpmts ts, rpmDbiTagVal rpmtag, const 
 {
     return gs_rpm_mock->rpmtsInitIterator(ts, rpmtag, keypointer, keylen);
 }
+rpmVSFlags rpmtsSetVSFlags(rpmts ts, rpmVSFlags vsflags)
+{
+    return gs_rpm_mock->rpmtsSetVSFlags(ts, vsflags);
+}
 Header rpmdbNextIterator(rpmdbMatchIterator mi)
 {
     return gs_rpm_mock->rpmdbNextIterator(mi);
@@ -124,6 +134,26 @@ Header rpmdbNextIterator(rpmdbMatchIterator mi)
 rpmdbMatchIterator rpmdbFreeIterator(rpmdbMatchIterator mi)
 {
     return gs_rpm_mock->rpmdbFreeIterator(mi);
+}
+rpmfi rpmfiNew(rpmts ts, Header h, rpmTagVal tag, rpmfiFlags flags)
+{
+    return gs_rpm_mock->rpmfiNew(ts, h, tag, flags);
+}
+rpm_count_t rpmfiFC(rpmfi fi)
+{
+    return gs_rpm_mock->rpmfiFC(fi);
+}
+int rpmfiNext(rpmfi fi)
+{
+    return gs_rpm_mock->rpmfiNext(fi);
+}
+const char* rpmfiFN(rpmfi fi)
+{
+    return gs_rpm_mock->rpmfiFN(fi);
+}
+rpmfi rpmfiFree(rpmfi fi)
+{
+    return gs_rpm_mock->rpmfiFree(fi);
 }
 
 class LibDBMock
@@ -187,7 +217,7 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromBerkleyDB)
     CallbackMock wrapper;
 
     auto expectedPackage1 =
-        R"({"architecture":"amd64","description":"The Open Source Security Platform","format":"rpm","groups":"test","install_time":"5","name":"Wazuh","size":321,"vendor":"The Wazuh Team","version":"123:4.4-1"})"_json;
+        R"({"architecture":"amd64","description":"The Open Source Security Platform","type":"rpm","category":"test","installed":"1970-01-01T00:00:05.000Z","name":"Wazuh","size":321,"vendor":"The Wazuh Team","version_":"123:4.4-1","path":" ","priority":" ","source":" "})"_json;
 
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto libdb_mock { std::make_unique<LibDBMock>() };
@@ -344,7 +374,8 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromLibRPM)
 {
     CallbackMock wrapper;
 
-    auto expectedPackage1 = R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","install_time":"9","groups":"10","format":"rpm"})"_json;
+    auto expectedPackage1 =
+        R"({"name":"1","architecture":"2","description":"3","size":4,"version_":"5:7-6","vendor":"8","installed":"1970-01-01T00:00:09.000Z","category":"10","type":"rpm","path":" ","priority":" ","source":" "})"_json;
 
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto rpm_mock { std::make_unique<RpmLibMock>() };
@@ -383,11 +414,13 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromLibRPM)
     .WillOnce(Return("10")) \
     .WillOnce(Return("source")) \
     .WillOnce(Return("2")) \
-    .WillOnce(Return("3"));
+    .WillOnce(Return("3")) \
+    .WillOnce(Return("1"));
     EXPECT_CALL(*rpm_mock, rpmtdGetNumber(_)).WillOnce(Return(5)).WillOnce(Return(9)).WillOnce(Return(4));
 
 
     EXPECT_CALL(wrapper, callbackMock(expectedPackage1)).Times(1);
+    EXPECT_CALL(*rpm_mock, rpmtsSetVSFlags(ts, RPMVSF_MASK_NOSIGNATURES)).Times(1).WillOnce(Return(0));
 
     getRpmInfo([&wrapper](nlohmann::json & data)
     {
@@ -400,8 +433,10 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromLibRPM)
 {
     CallbackMock wrapper;
 
-    auto expectedPackage1 = R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","install_time":"9","groups":"10","format":"rpm"})"_json;
-    auto expectedPackage2 = R"({"name":"11","architecture":"12","description":"13","size":14,"version":"15:17-16","vendor":"18","install_time":"19","groups":"20","format":"rpm"})"_json;
+    auto expectedPackage1 =
+        R"({"name":"1","architecture":"2","description":"3","size":4,"version_":"5:7-6","vendor":"8","installed":"1970-01-01T00:00:09.000Z","category":"10","type":"rpm","path":" ","priority":" ","source":" "})"_json;
+    auto expectedPackage2 =
+        R"({"name":"11","architecture":"12","description":"13","size":14,"version_":"15:17-16","vendor":"18","installed":"1970-01-01T00:00:19.000Z","category":"20","type":"rpm","path":" ","priority":" ","source":" "})"_json;
 
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto rpm_mock { std::make_unique<RpmLibMock>() };
@@ -426,8 +461,10 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromBerkleyDBConfigError)
 {
     CallbackMock wrapper;
 
-    auto expectedPackage1 = R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","install_time":"9","groups":"10","format":"rpm"})"_json;
-    auto expectedPackage2 = R"({"name":"11","architecture":"12","description":"13","size":14,"version":"15:17-16","vendor":"18","install_time":"19","groups":"20","format":"rpm"})"_json;
+    auto expectedPackage1 =
+        R"({"name":"1","architecture":"2","description":"3","size":4,"version_":"5:7-6","vendor":"8","installed":"1970-01-01T00:00:09.000Z","category":"10","type":"rpm","path":" ","priority":" ","source":" "})"_json;
+    auto expectedPackage2 =
+        R"({"name":"11","architecture":"12","description":"13","size":14,"version_":"15:17-16","vendor":"18","installed":"1970-01-01T00:00:19.000Z","category":"20","type":"rpm","path":" ","priority":" ","source":" "})"_json;
 
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto libdb_mock { std::make_unique<LibDBMock>() };
@@ -453,8 +490,10 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromBerkleyDBOpenError)
 {
     CallbackMock wrapper;
 
-    auto expectedPackage1 = R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","install_time":"9","groups":"10","format":"rpm"})"_json;
-    auto expectedPackage2 = R"({"name":"11","architecture":"12","description":"13","size":14,"version":"15:17-16","vendor":"18","install_time":"19","groups":"20","format":"rpm"})"_json;
+    auto expectedPackage1 =
+        R"({"name":"1","architecture":"2","description":"3","size":4,"version_":"5:7-6","vendor":"8","installed":"1970-01-01T00:00:09.000Z","category":"10","type":"rpm","path":" ","priority":" ","source":" "})"_json;
+    auto expectedPackage2 =
+        R"({"name":"11","architecture":"12","description":"13","size":14,"version_":"15:17-16","vendor":"18","installed":"1970-01-01T00:00:19.000Z","category":"20","type":"rpm","path":" ","priority":" ","source":" "})"_json;
 
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto libdb_mock { std::make_unique<LibDBMock>() };
@@ -489,8 +528,10 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromBerkleyDBCursorError)
 {
     CallbackMock wrapper;
 
-    auto expectedPackage1 = R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","install_time":"9","groups":"10","format":"rpm"})"_json;
-    auto expectedPackage2 = R"({"name":"11","architecture":"12","description":"13","size":14,"version":"15:17-16","vendor":"18","install_time":"19","groups":"20","format":"rpm"})"_json;
+    auto expectedPackage1 =
+        R"({"name":"1","architecture":"2","description":"3","size":4,"version_":"5:7-6","vendor":"8","installed":"1970-01-01T00:00:09.000Z","category":"10","type":"rpm","path":" ","priority":" ","source":" "})"_json;
+    auto expectedPackage2 =
+        R"({"name":"11","architecture":"12","description":"13","size":14,"version_":"15:17-16","vendor":"18","installed":"1970-01-01T00:00:19.000Z","category":"20","type":"rpm","path":" ","priority":" ","source":" "})"_json;
 
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto libdb_mock { std::make_unique<LibDBMock>() };

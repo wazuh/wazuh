@@ -36,6 +36,9 @@ DBSyncExceptionType STEP_ERROR_ADD_STATUS_FIELD    { std::make_pair(17, "Error a
 DBSyncExceptionType STEP_ERROR_UPDATE_STATUS_FIELD { std::make_pair(18, "Error updating status field.")                         };
 DBSyncExceptionType STEP_ERROR_DELETE_STATUS_FIELD { std::make_pair(19, "Error deleting status field.")                         };
 DBSyncExceptionType DELETE_OLD_DB_ERROR            { std::make_pair(20, "Error deleting old db.")                               };
+DBSyncExceptionType MIN_ROW_LIMIT_BELOW_ZERO       { std::make_pair(21, "Invalid row limit, values below 0 not allowed.")       };
+DBSyncExceptionType ERROR_COUNT_MAX_ROWS           { std::make_pair(22, "Count is less than 0.")                                };
+DBSyncExceptionType STEP_ERROR_UPDATE_STMT         { std::make_pair(23, "Error upgrading DB.")                                  };
 
 namespace DbSync
 {

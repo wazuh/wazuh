@@ -1,0 +1,29 @@
+- name: cloudwatchlogs_region_with_data
+  description: CloudWatch regions configurations
+  configuration_parameters:
+    SERVICE_TYPE: cloudwatchlogs
+    LOG_GROUP_NAME: wazuh-cloudwatchlogs-integration-tests
+    REGIONS: us-east-1
+  metadata:
+    resource_type: log_group
+    service_type: cloudwatchlogs
+    log_group_name: wazuh-cloudwatchlogs-integration-tests
+    log_stream_name: wazuh-cloudwatchlogs-integration-tests-stream
+    only_logs_after: 2023-JAN-12
+    regions: us-east-1
+    expected_results: 3
+
+- name: cloudwatchlogs_regions_with_data
+  description: CloudWatch regions configurations
+  configuration_parameters:
+    SERVICE_TYPE: cloudwatchlogs
+    LOG_GROUP_NAME: wazuh-cloudwatchlogs-integration-tests
+    REGIONS: us-east-1,us-east-2
+  metadata:
+    resource_type: log_group
+    service_type: cloudwatchlogs
+    log_group_name: wazuh-cloudwatchlogs-integration-tests
+    log_stream_name: wazuh-cloudwatchlogs-integration-tests-stream
+    only_logs_after: 2023-JAN-12
+    regions: us-east-1,us-east-2
+    expected_results: 3

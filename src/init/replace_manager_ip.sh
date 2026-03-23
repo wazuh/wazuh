@@ -11,7 +11,7 @@
 
 # Just for agents
 # Prints the current ossec.conf with <address> of ossec.conf specified as first argument.
-# Example: ./replace_manager_ip.sh /var/ossec/etc/ossec.conf.rpmorig
+# Example: ./replace_manager_ip.sh /var/wazuh-manager/etc/ossec.conf.rpmorig
 
 # Aux functions
 check_tag_in_file() {  # tag file

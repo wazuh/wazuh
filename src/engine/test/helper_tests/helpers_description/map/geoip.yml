@@ -1,0 +1,58 @@
+# Name of the helper function
+name: geoip
+
+metadata:
+  description: |
+    Performs a query to the maxmind GeoLite2-City database (provided by Maxmind Inc.   https://www.maxmind.com ).
+    In case of errors the target field will not be modified.
+    In case of success it will return an object with the following fields:
+      - city_name: mapping of the 'city.names.en' field of the mmdb entry.
+      - continent_code: mapping of the 'continent.code' field of the mmdb entry.
+      - continent_name: mapping of the 'continent.names.en' field of the mmdb entry.
+      - country_iso_code: mapping of the 'country.iso_code' field of the mmdb entry.
+      - country_name: mapping of the 'country.names.en' field of the mmdb entry.
+      - postal_code: mapping of the 'postal.code' field of the mmdb entry.
+      - location.lat: mapping of the 'location.latitude' field of the mmdb entry.
+      - location.lon: mapping of the 'location.longitude' field of the mmdb entry.
+      - timezone: mapping of the 'location.time_zone' field of the mmdb entry.
+      - region_iso_code: mapping of the 'subdivisions.0.iso_code' field of the mmdb entry.
+      - region_name: mapping of the 'subdivisions.0.names.en' field of the mmdb entry.
+  keywords:
+    - max_min_db
+
+helper_type: map
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: True
+
+# Arguments expected by the helper function
+arguments:
+  ip:
+    type: string # Expected type is string
+    generate: ip
+    source: reference # Includes only references (their names start with $)
+
+# Empty wcs data
+skipped:
+  - success_cases
+
+output:
+  type: object
+
+test:
+  - arguments:
+      ip: 1.2.3.4
+    should_pass: true
+    expected:
+        city_name: Wazuh city
+        timezone: Wazuh/Timezone
+        country_name: Wazuh Country
+        continent_code: WC
+        continent_name: Wazuh Continent
+        country_iso_code: WCtry
+        postal_code: "7777"
+        location:
+            lon: 88.4293
+            lat: 41.7776
+
+    description: Get geo of public ip

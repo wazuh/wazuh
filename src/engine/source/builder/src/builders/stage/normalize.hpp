@@ -1,0 +1,20 @@
+#ifndef _BUILDER_BUILDERS_STAGE_NORMALIZE_HPP
+#define _BUILDER_BUILDERS_STAGE_NORMALIZE_HPP
+
+#include "builders/types.hpp"
+
+namespace builder::builders
+{
+
+/**
+ * @brief Build the normalize stage expression.
+ *
+ * @param definition Json definition of the stage.
+ * @param buildCtx Build context.
+ * @return base::Expression The built stage expression.
+ */
+base::Expression normalizeBuilder(const json::Json& definition, const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+} // namespace builder::builders
+
+#endif // _BUILDER_BUILDERS_STAGE_NORMALIZE_HPP

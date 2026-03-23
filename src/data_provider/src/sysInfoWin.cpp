@@ -15,6 +15,7 @@
 #include <winternl.h>
 #include <ntstatus.h>
 #include <iphlpapi.h>
+#include <shellapi.h>
 #include <memory>
 #include <list>
 #include <set>
@@ -28,7 +29,8 @@
 #include "stringHelper.h"
 #include "registryHelper.h"
 #include "defs.h"
-#include "debug_op.h"
+#include "sharedDefs.h"
+#include "timeHelper.h"
 #include "osinfo/sysOsInfoWin.h"
 #include "windowsHelper.h"
 #include "encodingWindowsHelper.h"
@@ -39,11 +41,25 @@
 #include "packages/packagesWindowsParserHelper.h"
 #include "packages/packagesWindows.h"
 #include "packages/appxWindowsWrapper.h"
+#include "packages/packagesPYPI.hpp"
+#include "packages/packagesNPM.hpp"
+#include "packages/modernPackageDataRetriever.hpp"
+#include "utilsWrapperWin.hpp"
+#include "groups_windows.hpp"
+#include "user_groups_windows.hpp"
+#include "logged_in_users_win.hpp"
+#include "users_windows.hpp"
+#include "services_windows.hpp"
+#include "chrome.hpp"
+#include "firefox.hpp"
+#include "ie_explorer.hpp"
+
 
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
 const std::string UNINSTALL_REGISTRY{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"};
 constexpr auto SYSTEM_IDLE_PROCESS_NAME {"System Idle Process"};
 constexpr auto SYSTEM_PROCESS_NAME {"System"};
+
 
 static const std::map<std::string, DWORD> gs_firmwareTableProviderSignature
 {
@@ -51,6 +67,8 @@ static const std::map<std::string, DWORD> gs_firmwareTableProviderSignature
     {"FIRM", 0x4649524D},
     {"RSMB", 0x52534D42}
 };
+
+static constexpr auto ProcessCommandLineInformation = static_cast<PROCESSINFOCLASS>(60);
 
 class SysInfoProcess final
 {
@@ -84,6 +102,37 @@ class SysInfoProcess final
             }
 
             // else: Unable to retrieve executable path from current process.
+            return ret;
+        }
+
+        std::wstring cmdLineW()
+        {
+            std::wstring ret;
+            ULONG size = 0;
+
+            auto status = NtQueryInformationProcess(
+                              m_hProcess, ProcessCommandLineInformation, nullptr, 0, &size);
+
+            if (STATUS_INFO_LENGTH_MISMATCH != status && STATUS_BUFFER_OVERFLOW != status
+                    && STATUS_BUFFER_TOO_SMALL != status)
+            {
+                return ret;
+            }
+
+            auto buffer = std::make_unique<BYTE[]>(size);
+            status = NtQueryInformationProcess(
+                         m_hProcess, ProcessCommandLineInformation, buffer.get(), size, &size);
+
+            if (NT_SUCCESS(status))
+            {
+                const auto* unicodeStr = reinterpret_cast<UNICODE_STRING*>(buffer.get());
+
+                if (unicodeStr->Buffer && unicodeStr->Length > 0)
+                {
+                    ret.assign(unicodeStr->Buffer, unicodeStr->Length / sizeof(WCHAR));
+                }
+            }
+
             return ret;
         }
 
@@ -207,6 +256,48 @@ class SysInfoProcess final
                 }
             }
 
+            // At least one logical drive couldn't be mapped, trying another use of QueryDosDevice
+            if (logicalDrives.size() != ret.size())
+            {
+                const auto spPhysicalDevices { std::make_unique<char[]>(OS_MAXSTR) };
+
+                if (QueryDosDevice(nullptr, spPhysicalDevices.get(), OS_MAXSTR))
+                {
+                    const auto tokens = Utils::splitNullTerminatedStrings(spPhysicalDevices.get());
+                    const auto spDosDevice { std::make_unique<char[]>(OS_MAXSTR) };
+
+                    for (const auto& token : tokens)
+                    {
+
+                        // Checking if token is found in logicalDrives to avoid a large map with unnecessary volumes.
+                        // logicalDrives contains a slash at the end but the result of QueryDosDevice doesn't.
+                        auto startsWithLambda = [&](const auto & logicalDrive)
+                        {
+                            return Utils::startsWith(logicalDrive, token);
+                        };
+
+                        if (std::find_if(logicalDrives.begin(),
+                                         logicalDrives.end(),
+                                         startsWithLambda) == logicalDrives.end())
+                        {
+                            continue;
+                        }
+
+                        res = QueryDosDevice(token.c_str(), spDosDevice.get(), OS_SIZE_32768);
+
+                        if (res && ret.find(spDosDevice.get()) == ret.end())
+                        {
+                            ret[spDosDevice.get()] = token + '\\';
+
+                            if (logicalDrives.size() == ret.size())
+                            {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
             return ret;
         }
 
@@ -291,18 +382,38 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
         SysInfoProcess process(pId, processHandle);
 
         // Current process information
-        jsProcessInfo["name"]       = processName(processEntry);
-        jsProcessInfo["cmd"]        = (isSystemProcess(pId)) ? "none" : process.cmd();
-        jsProcessInfo["stime"]      = process.kernelModeTime();
-        jsProcessInfo["size"]       = process.pageFileUsage();
-        jsProcessInfo["ppid"]       = processEntry.th32ParentProcessID;
-        jsProcessInfo["priority"]   = processEntry.pcPriClassBase;
-        jsProcessInfo["pid"]        = std::to_string(pId);
-        jsProcessInfo["session"]    = process.sessionId();
-        jsProcessInfo["nlwp"]       = processEntry.cntThreads;
-        jsProcessInfo["utime"]      = process.userModeTime();
-        jsProcessInfo["vm_size"]    = process.virtualSize();
-        jsProcessInfo["start_time"] = process.creationTime();
+        jsProcessInfo["name"]         = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(processName(processEntry));
+        jsProcessInfo["stime"]        = process.kernelModeTime();
+        jsProcessInfo["parent_pid"]   = processEntry.th32ParentProcessID;
+        jsProcessInfo["pid"]          = std::to_string(pId);
+        jsProcessInfo["utime"]        = process.userModeTime();
+        jsProcessInfo["start"]        = Utils::rawTimestampToISO8601(static_cast<uint32_t>(process.creationTime()));
+
+        if (isSystemProcess(pId))
+        {
+            jsProcessInfo["command_line"]    = "none";
+            jsProcessInfo["args"]  = "";
+            jsProcessInfo["args_count"]  = 0;
+        }
+        else
+        {
+            const auto fullCmdLineW = process.cmdLineW();
+            const auto parsed = parseProcessCommandLine(fullCmdLineW);
+
+            if (!parsed.cmd.empty())
+            {
+                jsProcessInfo["command_line"]   = parsed.cmd;
+                jsProcessInfo["args"] = parsed.argvs;
+                jsProcessInfo["args_count"] = parsed.argvs.size();
+            }
+            else
+            {
+                jsProcessInfo["command_line"]   = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(process.cmd());
+                jsProcessInfo["args"] = "";
+                jsProcessInfo["args_count"]  = 0;
+            }
+        }
+
         CloseHandle(processHandle);
     }
 
@@ -345,12 +456,27 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
 
                 if (packageReg.string("InstallDate", value))
                 {
-                    install_time = value;
+                    try
+                    {
+                        install_time = Utils::timestampToISO8601(Utils::normalizeTimestamp(value, packageReg.keyModificationDate()));
+                    }
+                    catch (const std::exception& e)
+                    {
+                        install_time = Utils::timestampToISO8601(packageReg.keyModificationDate());
+                    }
+                }
+                else
+                {
+                    install_time = Utils::timestampToISO8601(packageReg.keyModificationDate());
                 }
 
                 if (packageReg.string("InstallLocation", value))
                 {
                     location = value;
+                }
+                else
+                {
+                    location = UNKNOWN_VALUE;
                 }
 
                 if (!name.empty())
@@ -369,12 +495,17 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                     }
 
                     packageJson["name"]         = std::move(name);
-                    packageJson["version"]      = std::move(version);
-                    packageJson["vendor"]       = std::move(vendor);
-                    packageJson["install_time"] = std::move(install_time);
-                    packageJson["location"]     = std::move(location);
+                    packageJson["description"]  = UNKNOWN_VALUE;
+                    packageJson["version_"]     = version.empty() ? UNKNOWN_VALUE : std::move(version);
+                    packageJson["category"]     = UNKNOWN_VALUE;
+                    packageJson["priority"]     = UNKNOWN_VALUE;
+                    packageJson["size"]         = 0;
+                    packageJson["vendor"]       = vendor.empty() ? UNKNOWN_VALUE : std::move(vendor);
+                    packageJson["source"]       = UNKNOWN_VALUE;
+                    packageJson["installed"]    = install_time.empty() ? UNKNOWN_VALUE : std::move(install_time);
+                    packageJson["path"]         = location.empty() ? UNKNOWN_VALUE : std::move(location);
                     packageJson["architecture"] = std::move(architecture);
-                    packageJson["format"]       = "win";
+                    packageJson["type"]         = "win";
 
                     returnCallback(packageJson);
                 }
@@ -423,82 +554,65 @@ static void getStorePackages(const HKEY key, const std::string& user, std::funct
     }
 }
 
-std::string SysInfo::getSerialNumber() const
+static std::string getSerialNumber()
 {
     std::string ret;
 
-    if (Utils::isVistaOrLater())
+    static auto pfnGetSystemFirmwareTable{Utils::getSystemFirmwareTableFunctionAddress()};
+
+    if (pfnGetSystemFirmwareTable)
     {
-        static auto pfnGetSystemFirmwareTable{Utils::getSystemFirmwareTableFunctionAddress()};
+        const auto size {pfnGetSystemFirmwareTable(gs_firmwareTableProviderSignature.at("RSMB"), 0, nullptr, 0)};
 
-        if (pfnGetSystemFirmwareTable)
+        if (size)
         {
-            const auto size {pfnGetSystemFirmwareTable(gs_firmwareTableProviderSignature.at("RSMB"), 0, nullptr, 0)};
+            const auto spBuff{std::make_unique<unsigned char[]>(size)};
 
-            if (size)
+            if (spBuff)
             {
-                const auto spBuff{std::make_unique<unsigned char[]>(size)};
-
-                if (spBuff)
+                // Get raw SMBIOS firmware table
+                if (pfnGetSystemFirmwareTable(gs_firmwareTableProviderSignature.at("RSMB"), 0, spBuff.get(), size) == size)
                 {
-                    // Get raw SMBIOS firmware table
-                    if (pfnGetSystemFirmwareTable(gs_firmwareTableProviderSignature.at("RSMB"), 0, spBuff.get(), size) == size)
-                    {
-                        PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
-                        // Parse SMBIOS structures
-                        ret = Utils::getSerialNumberFromSmbios(smbios->SMBIOSTableData, size);
-                    }
+                    PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
+                    // Parse SMBIOS structures
+                    ret = Utils::getSerialNumberFromSmbios(smbios->SMBIOSTableData, smbios->Length);
                 }
             }
-        }
-    }
-    else
-    {
-        const auto rawData{Utils::exec("wmic baseboard get SerialNumber")};
-        const auto pos{rawData.find("\r\n")};
-
-        if (pos != std::string::npos)
-        {
-            ret = Utils::trim(rawData.substr(pos), " \t\r\n");
-        }
-        else
-        {
-            ret = UNKNOWN_VALUE;
         }
     }
 
     return ret;
 }
 
-std::string SysInfo::getCpuName() const
+static std::string getCpuName()
 {
     Utils::Registry reg(HKEY_LOCAL_MACHINE, CENTRAL_PROCESSOR_REGISTRY);
     return reg.string("ProcessorNameString");
 }
 
-int SysInfo::getCpuMHz() const
+static int getCpuMHz()
 {
     Utils::Registry reg(HKEY_LOCAL_MACHINE, CENTRAL_PROCESSOR_REGISTRY);
     return reg.dword("~MHz");
 }
 
-int SysInfo::getCpuCores() const
+static int getCpuCores()
 {
     SYSTEM_INFO siSysInfo{};
     GetSystemInfo(&siSysInfo);
     return siSysInfo.dwNumberOfProcessors;
 }
 
-void SysInfo::getMemory(nlohmann::json& info) const
+static void getMemory(nlohmann::json& info)
 {
     MEMORYSTATUSEX statex;
     statex.dwLength = sizeof(statex);
 
     if (GlobalMemoryStatusEx(&statex))
     {
-        info["ram_total"] = statex.ullTotalPhys / KByte;
-        info["ram_free"] = statex.ullAvailPhys / KByte;
-        info["ram_usage"] = statex.dwMemoryLoad;
+        info["memory_total"] = statex.ullTotalPhys;
+        info["memory_free"] = statex.ullAvailPhys;
+        info["memory_used"] = statex.ullTotalPhys - statex.ullAvailPhys;
     }
     else
     {
@@ -509,6 +623,17 @@ void SysInfo::getMemory(nlohmann::json& info) const
             "Error calling GlobalMemoryStatusEx"
         };
     }
+}
+
+nlohmann::json SysInfo::getHardware() const
+{
+    nlohmann::json hardware;
+    hardware["serial_number"] = getSerialNumber();
+    hardware["cpu_name"] = getCpuName();
+    hardware["cpu_cores"] = getCpuCores();
+    hardware["cpu_speed"] = double(getCpuMHz());
+    getMemory(hardware);
+    return hardware;
 }
 
 static void fillProcessesData(std::function<void(PROCESSENTRY32)> func)
@@ -582,6 +707,8 @@ nlohmann::json SysInfo::getOsInfo() const
         std::make_shared<SysOsInfoProviderWindows>()
     };
     SysOsInfo::setOsInfo(spOsInfoProvider, ret);
+    // ECS-compliant os.type field (values: linux, macos, unix, windows)
+    ret["os_type"] = "windows";
     return ret;
 }
 
@@ -591,12 +718,6 @@ nlohmann::json SysInfo::getNetworks() const
     std::unique_ptr<IP_ADAPTER_INFO, Utils::IPAddressSmartDeleter> adapterInfo;
     std::unique_ptr<IP_ADAPTER_ADDRESSES, Utils::IPAddressSmartDeleter> adaptersAddresses;
     Utils::NetworkWindowsHelper::getAdapters(adaptersAddresses);
-
-    if (!Utils::isVistaOrLater())
-    {
-        // Get additional IPv4 info - Windows XP only
-        Utils::NetworkWindowsHelper::getAdapterInfo(adapterInfo);
-    }
 
     auto rawAdapterAddresses { adaptersAddresses.get() };
 
@@ -622,14 +743,14 @@ nlohmann::json SysInfo::getNetworks() const
                     if (AF_INET == unicastAddressFamily)
                     {
                         // IPv4 data
-                        FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::IPV4, rawAdapterAddresses, unicastAddress,
-                                                                                                                       adapterInfo.get()))->buildNetworkData(netInterfaceInfo);
+                        FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::IPV4, rawAdapterAddresses, unicastAddress,
+                                                                                                                               adapterInfo.get()))->buildNetworkData(netInterfaceInfo);
                     }
                     else if (AF_INET6 == unicastAddressFamily)
                     {
                         // IPv6 data
-                        FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::IPV6, rawAdapterAddresses, unicastAddress,
-                                                                                                                       adapterInfo.get()))->buildNetworkData(netInterfaceInfo);
+                        FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::IPV6, rawAdapterAddresses, unicastAddress,
+                                                                                                                               adapterInfo.get()))->buildNetworkData(netInterfaceInfo);
                     }
                 }
 
@@ -637,8 +758,8 @@ nlohmann::json SysInfo::getNetworks() const
             }
 
             // Common data
-            FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::COMMON_DATA, rawAdapterAddresses, unicastAddress,
-                                                                                                           adapterInfo.get()))->buildNetworkData(netInterfaceInfo);
+            FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::COMMON_DATA, rawAdapterAddresses, unicastAddress,
+                                                                                                                   adapterInfo.get()))->buildNetworkData(netInterfaceInfo);
 
             networks["iface"].push_back(netInterfaceInfo);
         }
@@ -750,37 +871,147 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
     });
 }
 
+void expandFromRegistry(const HKEY key, const std::string& subKey, const std::string& field, std::function<void(const std::string&)> postAction)
+{
+    std::vector<std::string> installPaths;
+
+    // Get install path from registry
+    Utils::expandRegistryPath(key, subKey, installPaths);
+
+    // Get install path from registry expanded keys.
+    for (const auto& versionKey : installPaths)
+    {
+        try
+        {
+            // Get install path from registry, based on version key.
+            const auto dir {Utils::Registry {key, versionKey, KEY_READ | KEY_WOW64_64KEY}.string(field)};
+            // Add install path to dirList.
+            postAction(dir);
+        }
+        catch (const std::exception& e)
+        {
+            // Ignore errors.
+        }
+    }
+}
+
+const std::set<std::string> getPythonDirectories()
+{
+    std::set<std::string> pythonDirList;
+
+    const auto postAction = [&](const std::string & pythonDir)
+    {
+        pythonDirList.insert(pythonDir + R"(Lib\site-packages)");
+        pythonDirList.insert(pythonDir + R"(Lib\dist-packages)");
+    };
+
+    try
+    {
+        expandFromRegistry(HKEY_USERS, R"(*\SOFTWARE\Python\PythonCore\*\InstallPath)", "", postAction);
+        expandFromRegistry(HKEY_LOCAL_MACHINE, R"(SOFTWARE\Python\PythonCore\*\InstallPath)", "", postAction);
+    }
+    catch (const std::exception&)
+    {
+        // Ignore errors.
+    }
+
+    return pythonDirList;
+}
+
+const std::set<std::string> getNodeDirectories()
+{
+    std::set<std::string> nodeDirList;
+
+    const auto postAction = [&](const std::string & nodeDir)
+    {
+        nodeDirList.insert(nodeDir);
+    };
+
+    try
+    {
+        expandFromRegistry(HKEY_USERS, R"(*\SOFTWARE\Node.js)", "InstallPath", postAction);
+        expandFromRegistry(HKEY_LOCAL_MACHINE, R"(SOFTWARE\Node.js)", "InstallPath", postAction);
+        nodeDirList.insert(R"(C:\Users\*\AppData\Roaming\npm)");
+        nodeDirList.insert(R"(C:\Users\*)");
+    }
+    catch (const std::exception&)
+    {
+        // Ignore errors.
+    }
+
+    return nodeDirList;
+}
+
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
     std::set<std::string> set;
 
-    auto fillList
+    auto fillList {[&callback, &set](nlohmann::json & data)
     {
-        [&callback, &set](nlohmann::json & data)
-        {
-            const std::string key { data.at("name").get_ref<const std::string&>() + data.at("version").get_ref<const std::string&>() };
-            const auto result { set.insert(key) };
+        const std::string key {data.at("name").get_ref<const std::string&>() +
+                               data.at("version_").get_ref<const std::string&>()};
+        const auto result {set.insert(key)};
 
-            if (result.second)
-            {
-                callback(data);
-            }
+        if (result.second)
+        {
+            callback(data);
         }
-    };
+    }};
 
     getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, fillList, KEY_WOW64_64KEY);
     getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, fillList, KEY_WOW64_32KEY);
 
-    for (const auto& user : Utils::Registry{HKEY_USERS, "", KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
+    for (const auto& user : Utils::Registry {HKEY_USERS, "", KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
     {
         getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, fillList);
         getStorePackages(HKEY_USERS, user, fillList);
     }
+
+    const std::map<std::string, std::set<std::string>> searchPaths =
+    {
+        {"PYPI", getPythonDirectories()},
+        {"NPM", getNodeDirectories()}
+    };
+
+    ModernFactoryPackagesCreator::getPackages(searchPaths, callback);
 }
 
 nlohmann::json SysInfo::getHotfixes() const
 {
     std::set<std::string> hotfixes;
+    std::ostringstream oss;
+    ComHelper comHelper;
+
+    // Initialize COM
+    HRESULT hres = CoInitializeEx(0, COINIT_MULTITHREADED);
+
+    if (SUCCEEDED(hres))
+    {
+        try
+        {
+            // Query hotfixes using WMI
+            QueryWMIHotFixes(hotfixes, comHelper);
+        }
+        catch (...)
+        {
+            // Ignore the error. The OS does not support WMI API.
+        }
+
+
+        try
+        {
+            // Query hotfixes using Windows Update API
+            QueryWUHotFixes(hotfixes, comHelper);
+        }
+        catch (...)
+        {
+            // Ignore the error. The OS does not support WUA API.
+        }
+
+        // Uninitialize COM
+        CoUninitialize();
+    }
+
     PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, hotfixes);
     PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, hotfixes);
     PackageWindowsHelper::getHotFixFromRegWOW(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_WOW_HOTFIX, hotfixes);
@@ -790,10 +1021,377 @@ nlohmann::json SysInfo::getHotfixes() const
 
     for (auto& hotfix : hotfixes)
     {
-        nlohmann::json hotfixValue;
-        hotfixValue["hotfix"] = std::move(hotfix);
-        ret.push_back(std::move(hotfixValue));
+        if (!hotfix.empty())
+        {
+            nlohmann::json hotfixValue;
+            hotfixValue["hotfix_name"] = std::move(hotfix);
+            ret.push_back(std::move(hotfixValue));
+        }
     }
 
     return ret;
+}
+
+nlohmann::json SysInfo::getGroups() const
+{
+    nlohmann::json result;
+    GroupsProvider groupsProvider;
+    UserGroupsProvider userGroupsProvider;
+
+    auto collectedGroups = groupsProvider.collect({});
+
+    for (auto& group : collectedGroups)
+    {
+        nlohmann::json groupItem {};
+
+        groupItem["group_id"] = group["gid"];
+        groupItem["group_name"] = (group.contains("groupname") && !group["groupname"].get<std::string>().empty()) ? group["groupname"] : UNKNOWN_VALUE;
+        groupItem["group_description"] = group["comment"];
+        groupItem["group_id_signed"] = group["gid_signed"];
+        groupItem["group_uuid"] = group["group_sid"];
+        groupItem["group_is_hidden"] = 0;
+
+        std::set<std::uint32_t> gids {static_cast<std::uint32_t>(group["gid"].get<int>())};
+        auto collectedUsersGroups = userGroupsProvider.getUserNamesByGid(gids);
+
+        if (collectedUsersGroups.empty())
+        {
+            groupItem["group_users"] = UNKNOWN_VALUE;
+        }
+        else
+        {
+            std::string usersConcatenated;
+
+            for (const auto& user : collectedUsersGroups)
+            {
+                if (!usersConcatenated.empty())
+                {
+                    usersConcatenated += secondaryArraySeparator;
+                }
+
+                usersConcatenated += user.get<std::string>();
+            }
+
+            groupItem["group_users"] = usersConcatenated;
+        }
+
+        result.push_back(std::move(groupItem));
+
+    }
+
+    return result;
+}
+
+nlohmann::json SysInfo::getUsers() const
+{
+    nlohmann::json result;
+
+    UsersProvider usersProvider;
+    auto collectedUsers = usersProvider.collect();
+
+    LoggedInUsersProvider loggedInUserProvider;
+    auto collectedLoggedInUser = loggedInUserProvider.collect();
+
+    UserGroupsProvider userGroupsProvider;
+
+    for (auto& user : collectedUsers)
+    {
+        nlohmann::json userItem {};
+
+        std::string username = (user.contains("username") && !user["username"].get<std::string>().empty()) ? user["username"] : UNKNOWN_VALUE;
+
+        userItem["user_id"] = user["uid"];
+        userItem["user_full_name"] = user["description"];
+        userItem["user_home"] = user["directory"];
+        userItem["user_name"] = username;
+        userItem["user_shell"] = user["shell"];
+        userItem["user_uid_signed"] = user["uid_signed"];
+        userItem["user_group_id_signed"] = user["gid_signed"];
+        userItem["user_group_id"] = user["gid"];
+
+        std::set<std::uint32_t> uid {static_cast<std::uint32_t>(user["uid"].get<int>())};
+        auto collectedUsersGroups = userGroupsProvider.getGroupNamesByUid(uid);
+
+        if (collectedUsersGroups.empty())
+        {
+            userItem["user_groups"] = UNKNOWN_VALUE;
+        }
+        else
+        {
+            std::string accumGroups;
+
+            for (const auto& group : collectedUsersGroups)
+            {
+                if (!accumGroups.empty())
+                {
+                    accumGroups += secondaryArraySeparator;
+                }
+
+                accumGroups += group.get<std::string>();
+            }
+
+            userItem["user_groups"] = accumGroups;
+        }
+
+        // Only in windows
+        userItem["user_type"] = user["type"];
+
+        // Macos or windows
+        userItem["user_uuid"] = user["uuid"];
+
+        //Not in windows
+        userItem["user_is_remote"] = 0;
+
+        // Only Macos
+        userItem["user_is_hidden"] = 0;
+        userItem["user_created"] = UNKNOWN_VALUE;
+        userItem["user_auth_failed_count"] = 0;
+        userItem["user_auth_failed_timestamp"] = UNKNOWN_VALUE;
+
+        auto matched = false;
+        auto lastLogin = 0;
+
+        userItem["host_ip"] = UNKNOWN_VALUE;
+
+        //TODO: Avoid this iteration, move logic to LoggedInUsersProvider
+        for (auto& item : collectedLoggedInUser)
+        {
+            // By default, user is not logged in.
+            userItem["login_status"] = 0;
+
+            // tty,host,time and pid can take more than one value due to different logins.
+            if (item["user"] == username)
+            {
+                matched = true;
+                userItem["login_status"] = 1;
+
+                auto newDate = item["time"].get<int32_t>();
+
+                if (newDate > lastLogin)
+                {
+                    lastLogin = newDate;
+                    userItem["user_last_login"] = Utils::rawTimestampToISO8601(static_cast<uint32_t>(newDate));
+                    userItem["login_tty"] = item["tty"].get<std::string>();
+                    userItem["login_type"] = item["type"].get<std::string>();
+                    userItem["process_pid"] = item["pid"].get<int32_t>();
+                }
+
+                const auto& hostStr = item["host"].get_ref<const std::string&>();
+
+                if (!hostStr.empty())
+                {
+                    userItem["host_ip"] = userItem["host_ip"].get<std::string>() == UNKNOWN_VALUE
+                                          ? hostStr
+                                          : (userItem["host_ip"].get<std::string>() + primaryArraySeparator + hostStr);
+                }
+            }
+        }
+
+        if (!matched)
+        {
+            userItem["login_status"] = 0;
+            userItem["login_tty"] = UNKNOWN_VALUE;
+            userItem["login_type"] = UNKNOWN_VALUE;
+            userItem["process_pid"] = 0;
+            userItem["user_last_login"] = UNKNOWN_VALUE;
+        }
+
+        userItem["user_password_expiration_date"] = UNKNOWN_VALUE;
+        userItem["user_password_hash_algorithm"] = UNKNOWN_VALUE;
+        userItem["user_password_inactive_days"] = 0;
+        userItem["user_password_last_change"] = 0;
+        userItem["user_password_max_days_between_changes"] = 0;
+        userItem["user_password_min_days_between_changes"] = 0;
+        userItem["user_password_status"] = UNKNOWN_VALUE;
+        userItem["user_password_warning_days_before_expiration"] = 0;
+
+        result.push_back(std::move(userItem));
+    }
+
+    return result;
+}
+
+nlohmann::json SysInfo::getServices() const
+{
+    nlohmann::json result = nlohmann::json::array();
+
+    ServicesProvider servicesProvider;
+    auto collectedServices = servicesProvider.collect();
+
+    for (auto& svc : collectedServices)
+    {
+        nlohmann::json serviceItem{};
+
+        serviceItem["service_id"]                            = (svc.contains("name") && !svc["name"].get<std::string>().empty()) ? svc["name"] : UNKNOWN_VALUE;
+        serviceItem["service_name"]                          = svc.value("display_name", UNKNOWN_VALUE);
+        serviceItem["service_description"]                   = svc.value("description",  UNKNOWN_VALUE);
+        serviceItem["service_type"]                          = svc.value("service_type", UNKNOWN_VALUE);
+        serviceItem["service_state"]                         = svc.value("status",       UNKNOWN_VALUE);
+        serviceItem["service_sub_state"]                     = UNKNOWN_VALUE;
+        serviceItem["service_enabled"]                       = UNKNOWN_VALUE;
+        serviceItem["service_start_type"]                    = svc.value("start_type",   UNKNOWN_VALUE);
+        serviceItem["service_restart"]                       = UNKNOWN_VALUE;
+        serviceItem["service_frequency"]                     = 0;
+        serviceItem["service_starts_on_mount"]               = 0;
+        serviceItem["service_starts_on_path_modified"]       = UNKNOWN_VALUE;
+        serviceItem["service_starts_on_not_empty_directory"] = UNKNOWN_VALUE;
+        serviceItem["service_inetd_compatibility"]           = 0;
+        serviceItem["process_pid"]                           = svc.value("pid", 0);
+        serviceItem["process_executable"]                    = svc.value("path",         UNKNOWN_VALUE);
+        serviceItem["process_args"]                          = UNKNOWN_VALUE;
+        serviceItem["process_user_name"]                     = svc.value("user_account", UNKNOWN_VALUE);
+        serviceItem["process_group_name"]                    = UNKNOWN_VALUE;
+        serviceItem["process_working_directory"]             = UNKNOWN_VALUE;
+        serviceItem["process_root_directory"]                = UNKNOWN_VALUE;
+        serviceItem["file_path"]                             = UNKNOWN_VALUE;
+        serviceItem["service_address"]                       = svc.value("module_path",  UNKNOWN_VALUE);
+        serviceItem["log_file_path"]                         = UNKNOWN_VALUE;
+        serviceItem["error_log_file_path"]                   = UNKNOWN_VALUE;
+        serviceItem["service_exit_code"]                     = svc.value("service_exit_code", 0);
+        serviceItem["service_win32_exit_code"]               = svc.value("win32_exit_code", 0);
+        serviceItem["service_following"]                     = UNKNOWN_VALUE;
+        serviceItem["service_object_path"]                   = UNKNOWN_VALUE;
+        serviceItem["service_target_ephemeral_id"]           = 0;
+        serviceItem["service_target_type"]                   = UNKNOWN_VALUE;
+        serviceItem["service_target_address"]                = UNKNOWN_VALUE;
+
+        result.push_back(std::move(serviceItem));
+    }
+
+    return result;
+}
+
+nlohmann::json SysInfo::getBrowserExtensions() const
+{
+    nlohmann::json result = nlohmann::json::array();
+
+    try
+    {
+        // Collect Chrome extensions
+        chrome::ChromeExtensionsProvider chromeProvider;
+        auto collectedChromeExtensions = chromeProvider.collect();
+
+        for (auto& ext : collectedChromeExtensions)
+        {
+            nlohmann::json extensionItem{};
+
+            // Convert string fields to int
+            auto stringToInt = [&ext](const std::string & fieldName) -> int
+            {
+                if (ext.contains(fieldName))
+                {
+                    try
+                    {
+                        auto valueStr = ext[fieldName].get<std::string>();
+                        return valueStr.empty() ? 0 : std::stoi(valueStr);
+                    }
+                    catch (const std::exception&)
+                    {
+                        return 0;
+                    }
+                }
+
+                return 0;
+            };
+
+            extensionItem["browser_name"]              = (ext.contains("browser_type") && !ext["browser_type"].get<std::string>().empty()) ? ext["browser_type"] : UNKNOWN_VALUE;
+            extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
+            extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
+            extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
+            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
+            extensionItem["package_vendor"]            = ext.value("author",              UNKNOWN_VALUE);
+            extensionItem["package_build_version"]     = UNKNOWN_VALUE;
+            extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
+            extensionItem["browser_profile_name"]      = (ext.contains("profile") && !ext["profile"].get<std::string>().empty()) ? ext["profile"] : UNKNOWN_VALUE;
+            extensionItem["browser_profile_path"]      = (ext.contains("profile_path") && !ext["profile_path"].get<std::string>().empty()) ? ext["profile_path"] : UNKNOWN_VALUE;
+            extensionItem["package_reference"]         = ext.value("update_url",          UNKNOWN_VALUE);
+            extensionItem["package_permissions"]       = ext.value("permissions",         UNKNOWN_VALUE);
+            extensionItem["package_type"]              = UNKNOWN_VALUE;
+            extensionItem["package_enabled"]            = (ext.value("state", std::string("1")) == "1") ? 1 : 0;
+            extensionItem["package_visible"]           = 0;
+            extensionItem["package_autoupdate"]        = 0;
+            extensionItem["package_persistent"]        = stringToInt("persistent");
+            extensionItem["package_from_webstore"]     = stringToInt("from_webstore");
+            extensionItem["browser_profile_referenced"] = stringToInt("referenced");
+            extensionItem["package_installed"]         = ext.value("install_timestamp",  UNKNOWN_VALUE);
+            extensionItem["file_hash_sha256"]          = ext.value("manifest_hash",      UNKNOWN_VALUE);
+
+            result.push_back(std::move(extensionItem));
+        }
+
+        // Collect Firefox extensions
+        FirefoxAddonsProvider firefoxProvider;
+        auto collectedFirefoxExtensions = firefoxProvider.collect();
+
+        for (auto& ext : collectedFirefoxExtensions)
+        {
+            nlohmann::json extensionItem{};
+
+            extensionItem["browser_name"]              = "firefox";
+            extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
+            extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
+            extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
+            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
+            extensionItem["package_vendor"]            = ext.value("creator",             UNKNOWN_VALUE);
+            extensionItem["package_build_version"]     = UNKNOWN_VALUE;
+            extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
+            extensionItem["browser_profile_name"]      = UNKNOWN_VALUE;
+            extensionItem["browser_profile_path"]      = UNKNOWN_VALUE;
+            extensionItem["package_reference"]         = ext.value("source_url",          UNKNOWN_VALUE);
+            extensionItem["package_permissions"]       = UNKNOWN_VALUE;
+            extensionItem["package_type"]              = ext.value("type",                UNKNOWN_VALUE);
+            extensionItem["package_enabled"]           = ext["disabled"].get<bool>() ? 0 : 1;
+            extensionItem["package_visible"]            = ext["visible"].get<bool>() ? 1 : 0;
+            extensionItem["package_autoupdate"]        = (ext.contains("autoupdate") && ext["autoupdate"].get<bool>()) ? 1 : 0;
+            extensionItem["package_persistent"]        = 0;
+            extensionItem["package_from_webstore"]     = 0;
+            extensionItem["browser_profile_referenced"] = 0;
+            extensionItem["package_installed"]         = UNKNOWN_VALUE;
+            extensionItem["file_hash_sha256"]          = UNKNOWN_VALUE;
+
+            result.push_back(std::move(extensionItem));
+        }
+
+        // Collect Internet Explorer extensions
+        IEExtensionsProvider ieProvider;
+        auto collectedIEExtensions = ieProvider.collect();
+
+        for (auto& ext : collectedIEExtensions)
+        {
+            nlohmann::json extensionItem{};
+
+            extensionItem["browser_name"]              = "ie";
+            extensionItem["user_id"]                   = UNKNOWN_VALUE;
+            extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
+            extensionItem["package_id"]                = UNKNOWN_VALUE;
+            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_description"]       = UNKNOWN_VALUE;
+            extensionItem["package_vendor"]            = UNKNOWN_VALUE;
+            extensionItem["package_build_version"]     = UNKNOWN_VALUE;
+            extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
+            extensionItem["browser_profile_name"]      = UNKNOWN_VALUE;
+            extensionItem["browser_profile_path"]      = (ext.contains("registry_path") && !ext["registry_path"].get<std::string>().empty()) ? ext["registry_path"] : UNKNOWN_VALUE;
+            extensionItem["package_reference"]         = ext.value("registry_path",      UNKNOWN_VALUE);
+            extensionItem["package_permissions"]       = UNKNOWN_VALUE;
+            extensionItem["package_type"]              = UNKNOWN_VALUE;
+            extensionItem["package_enabled"]           = 1;
+            extensionItem["package_visible"]           = 0;
+            extensionItem["package_autoupdate"]        = 0;
+            extensionItem["package_persistent"]        = 0;
+            extensionItem["package_from_webstore"]     = 0;
+            extensionItem["browser_profile_referenced"] = 0;
+            extensionItem["package_installed"]         = UNKNOWN_VALUE;
+            extensionItem["file_hash_sha256"]          = UNKNOWN_VALUE;
+
+            result.push_back(std::move(extensionItem));
+        }
+    }
+    catch (const std::exception& e)
+    {
+        // Log error but don't fail completely
+    }
+
+    return result;
 }

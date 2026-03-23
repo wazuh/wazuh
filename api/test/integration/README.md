@@ -29,7 +29,7 @@ The Wazuh environment used to perform the API integration tests is built using `
 
 This environment is composed of **12 docker containers**. These containers have the following components installed: 3
 Wazuh managers, that compose a Wazuh cluster (1 master, 2 workers); 4 Wazuh agents with the same version as the managers
-forming the cluster; 4 Wazuh agents with version 3.13.2 (old); and 1 NGINX load balancer.
+forming the cluster; 4 Wazuh agents with version 4.14.1 (old); and 1 HAProxy load balancer.
 
 The Wazuh version used for the managers and non-old agents is the one specified by the branch used to perform the API
 integration tests.
@@ -56,30 +56,12 @@ finished. The execution of `api_test` is done automatically thanks to the `pytes
 In the `conftest.py` file, we can also find functions used to make the HTML report,
 configure [RBAC](#RBAC-API-integration-tests), etc.
 
-### Environment selection
-
-The Wazuh docker environment will have a different configuration depending on
-the [`pytest` mark](https://docs.pytest.org/en/6.2.x/mark.html) used to run the tests with.
-
-- If the `standalone` mark is specified, a Wazuh environment with **1 manager and 12 agents** will be built (no cluster)
-  .
-
-- If the `cluster` mark is specified, a Wazuh cluster setup with **3 managers and 12 agents** will be built.
-
-- If **no mark** is specified, a Wazuh cluster setup with **3 managers and 12 agents** will be built.
-
-The following table shows how these marks must be used with the `pytest` command and the environment they build:
+The environment is brought up automatically when running an API integration test. As seen in the table, the environment runs in **cluster** mode and tests are executed with `pytest`:
 
 | Command                          | Environment                                          |  
 |----------------------------------|------------------------------------------------------|
 | `pytest TEST_NAME`               | Wazuh cluster environment                            |  
-| `pytest -m cluster TEST_NAME`    | Wazuh cluster environment                            |
-| `pytest -m standalone TEST_NAME` | Wazuh environment with cluster disabled (standalone) | 
 
-Apart from choosing the environment to be built, the marks are also used to filter the API integration test cases. By
-default, tests without the `standalone` or `cluster` marks, will have both of them implicitly. Test cases with **only
-standalone** can only be passed in a Wazuh environment with cluster disabled and cases with **only cluster** mark can
-only be passed in a Wazuh cluster environment.
 
 Talking about [RBAC API integration tests](#RBAC-API-integration-tests), they don't have any marks, so there is no need
 to specify one when running them. If a mark is specified, no tests will be run due to the filters. In other words,
@@ -108,11 +90,10 @@ tests that we consider the basic ones are performed. These tests are the followi
 - `test_agent_POST_endpoints.tavern.yaml`
 - `test_agent_PUT_endpoints.tavern.yaml`
 - `test_cluster_endpoints.tavern.yaml`
-- `test_experimental_endpoints.tavern.yaml`
-- `test_agent_DELETE_endpoints.tavern.yaml`
-- `test_agent_GET_endpoints.tavern.yaml`
-- `test_agent_POST_endpoints.tavern.yaml`
-- `test_agent_PUT_endpoints.tavern.yaml`
+- `test_security_DELETE_endpoints.tavern.yaml`
+- `test_security_GET_endpoints.tavern.yaml`
+- `test_security_POST_endpoints.tavern.yaml`
+- `test_security_PUT_endpoints.tavern.yaml`
 
 The `wazuh/api/test/integration/mapping` directory contains the `integration_test_api_endpoints.json` file that
 represents a mapping between the API and framework files; and the API integration tests that need to be performed. The
@@ -155,6 +136,18 @@ test_agent_GET_endpoints.tavern.yaml ...........................................
 ============================== 92 passed, 98 warnings in 217.61s (0:03:37) ===============================
 ```
 
+```text
+API integration tests
+
+optional arguments:
+  --build-managers-only            
+                  Recreates only the managers' image once the AIT test environment is built.
+  --nobuild
+                  Prevents rebuilding the environment when running tests once the images are already created.
+  --disable-warnings 
+                  Disables warnings during test execution.
+```
+
 We can also use the `wazuh/api/test/integration/run_tests.py` script. This script includes the possibility to collect a 
 group of tests to be passed. Script arguments:
 
@@ -174,12 +167,10 @@ optional arguments:
                         Specify the keyword to filter tests out. Default None.
   -R {both,yes,no}, --rbac {both,yes,no}
                         Specify what to do with RBAC tests. Run everything, only RBAC ones or no RBAC. Default "both".
-  -m {both,standalone,cluster}, --mode {both,standalone,cluster}
-                        Specify where to pass API integration tests. Run tests in both environments, standalone environment or Wazuh cluster environment. Default "both".
   -i ITERATIONS, --iterations ITERATIONS
                         Specify how many times will every test be run. Default 1.
 ```
 
 The `run_test.py` script does not show the tests' full output. The full reports are saved 
-at `wazuh/api/test/integration/_test_results`. Containers' logs (`ossec.log`, `api.log` and `cluster.log`) are stored 
+at `wazuh/api/test/integration/_test_results`. Containers' logs (`wazuh-manager.log`, agent's `ossec.conf`, `api.log` and `cluster.log`) are stored 
 at `_test_results/logs`. Reports in HTML format are also generated and can be found at `_test_results/html_reports`.

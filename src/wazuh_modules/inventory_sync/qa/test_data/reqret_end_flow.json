@@ -1,0 +1,99 @@
+{
+  "description": "Test ReqRet mechanism triggered by incomplete sequences when end is sent",
+  "messages": [
+    {
+      "type": "start",
+      "data": {
+        "module": "inventory_sync",
+        "mode": 0,
+        "size": 5,
+        "agentid": "001",
+        "agentname": "test-agent",
+        "agentversion": "4.8.0"
+      },
+      "description": "Start synchronization session expecting 5 messages (seq 0-4)",
+      "delay": 0.5,
+      "expect_session_response": true,
+      "session_id": "reqret_test"
+    },
+    {
+      "type": "data",
+      "data": {
+        "seq": 0,
+        "operation": 0,
+        "id": "doc001",
+        "index": "test_reqret",
+        "data": {"message": "First message", "timestamp": "2025-01-20T10:00:00Z"}
+      },
+      "description": "Send first data message (seq=0)",
+      "delay": 0.3,
+      "use_session_from_start": "reqret_test"
+    },
+    {
+      "type": "data",
+      "data": {
+        "seq": 2,
+        "operation": 0,
+        "id": "doc003",
+        "index": "test_reqret",
+        "data": {"message": "Third message", "timestamp": "2025-01-20T10:02:00Z"}
+      },
+      "description": "Send third data message (seq=2) - skip seq=1 to create gap",
+      "delay": 0.3,
+      "use_session_from_start": "reqret_test"
+    },
+    {
+      "type": "data",
+      "data": {
+        "seq": 4,
+        "operation": 0,
+        "id": "doc005",
+        "index": "test_reqret",
+        "data": {"message": "Fifth message", "timestamp": "2025-01-20T10:04:00Z"}
+      },
+      "description": "Send fifth data message (seq=4) - skip seq=3 to create another gap",
+      "delay": 0.3,
+      "use_session_from_start": "reqret_test"
+    },
+    {
+      "type": "end",
+      "data": {},
+      "description": "Send end - should trigger ReqRet for missing sequences 1 and 3",
+      "delay": 0.5,
+      "use_session_from_start": "reqret_test"
+    },
+    {
+      "type": "data",
+      "data": {
+        "seq": 1,
+        "operation": 0,
+        "id": "doc002",
+        "index": "test_reqret",
+        "data": {"message": "Second message (after reqret)", "timestamp": "2025-01-20T10:01:00Z"}
+      },
+      "description": "Retransmit missing seq=1 after receiving ReqRet",
+      "delay": 0.3,
+      "use_session_from_start": "reqret_test"
+    },
+    {
+      "type": "data",
+      "data": {
+        "seq": 3,
+        "operation": 0,
+        "id": "doc004",
+        "index": "test_reqret",
+        "data": {"message": "Fourth message (after reqret)", "timestamp": "2025-01-20T10:03:00Z"}
+      },
+      "description": "Retransmit missing seq=3 after receiving ReqRet",
+      "delay": 0.3,
+      "use_session_from_start": "reqret_test"
+    },
+    {
+      "type": "end",
+      "data": {},
+      "description": "Send end again - should now receive end_ack since all sequences are complete",
+      "delay": 0.5,
+      "use_session_from_start": "reqret_test"
+    }
+  ]
+}

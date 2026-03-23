@@ -17,8 +17,8 @@
 #include <time.h>
 
 #include "shared.h"
-#include "wazuh_modules/wmodules.h"
-#include "wazuh_modules/wm_azure.h"
+#include "wmodules.h"
+#include "wm_azure.h"
 
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/common.h"
@@ -26,8 +26,10 @@
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
+#include "../../wrappers/externals/pcre2/pcre2_wrappers.h"
 
 #define TEST_MAX_DATES 5
+
 
 static wmodule *azure_module;
 static OS_XML *lxml;
@@ -36,8 +38,7 @@ extern int test_mode;
 static void wmodule_cleanup(wmodule *module){
     wm_azure_t* module_data = (wm_azure_t *)module->data;
     if(module_data->api_config){
-        free(module_data->api_config->application_key);
-        free(module_data->api_config->application_id);
+        free(module_data->api_config->auth_path);
         free(module_data->api_config->tenantdomain);
         free(module_data->api_config->request->time_offset);
         free(module_data->api_config->request->workspace);
@@ -60,8 +61,7 @@ static int setup_module() {
         "<interval>5m</interval>\n"
         "<run_on_start>no</run_on_start>\n"
         "<log_analytics>\n"
-        "    <application_id>8b7...c14</application_id>\n"
-        "    <application_key>w22...91x</application_key>\n"
+        "    <auth_path>/var/ossec/wodles/azure/credentials.txt</auth_path>\n"
         "    <tenantdomain>wazuh.onmicrosoft.com</tenantdomain>\n"
         "    <request>\n"
         "        <tag>azure-activity</tag>\n"
@@ -76,11 +76,13 @@ static int setup_module() {
     int ret = wm_azure_read(lxml, nodes, azure_module);
     OS_ClearNode(nodes);
     test_mode = 1;
+    w_test_pcre2_wrappers(false);
     return ret;
 }
 
 static int teardown_module(){
     test_mode = 0;
+    w_test_pcre2_wrappers(true);
     wmodule_cleanup(azure_module);
     OS_ClearXML(lxml);
     return 0;
@@ -124,16 +126,30 @@ void test_interval_execution(void **state) {
     module_data->scan_config.interval = 1200; // 20min
     module_data->scan_config.month_interval = false;
 
+    expect_string_count(__wrap__mtinfo, tag, WM_AZURE_LOGTAG, -1);
+    expect_string_count(__wrap__mtwarn, tag, WM_AZURE_LOGTAG, -1);
+
     expect_any_count(__wrap_SendMSG, message, (TEST_MAX_DATES + 1) * 2);
     expect_string_count(__wrap_SendMSG, locmsg, xml_rootcheck, (TEST_MAX_DATES + 1) * 2);
     expect_value_count(__wrap_SendMSG, loc, ROOTCHECK_MQ, (TEST_MAX_DATES + 1) * 2);
     will_return_count(__wrap_SendMSG, 1, (TEST_MAX_DATES + 1) * 2);
 
+    expect_string(__wrap__mtinfo, formatted_msg, "Module started.");
     expect_any_always(__wrap_wm_exec, command);
     expect_any_always(__wrap_wm_exec, secs);
     expect_any_always(__wrap_wm_exec, add_path);
 
-    will_return_always(__wrap_wm_exec, 0);
+    for (int iterations = 0; iterations <= TEST_MAX_DATES; ++iterations) {
+        expect_string(__wrap__mtinfo, formatted_msg, "Starting fetching of logs.");
+        expect_string(__wrap__mtinfo, formatted_msg, "Starting Log Analytics collection for the domain 'wazuh.onmicrosoft.com'.");
+        will_return(__wrap_wm_exec, "2025/05/28 17:55:00 azure: INFO: info message\nnot valid logline\n2025/05/28 17:55:00 azure: WARNING: warning message");
+        will_return(__wrap_wm_exec, 0);
+        will_return(__wrap_wm_exec, 0);
+        expect_string(__wrap__mtinfo, formatted_msg, "info message");
+        expect_string(__wrap__mtwarn, formatted_msg, "warning message");
+        expect_string(__wrap__mtinfo, formatted_msg, "Finished Log Analytics collection for request 'azure-activity'.");
+        expect_string(__wrap__mtinfo, formatted_msg, "Finished Log Analytics collection for the domain 'wazuh.onmicrosoft.com'.");
+    }
 
     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
@@ -141,8 +157,6 @@ void test_interval_execution(void **state) {
 
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
-    expect_any_always(__wrap__mtinfo, tag);
-    expect_any_always(__wrap__mtinfo, formatted_msg);
 
     azure_module->context->start(module_data);
 }
@@ -154,8 +168,7 @@ void test_fake_tag(void **state) {
         "<time>00:01</time>\n"
         "<run_on_start>no</run_on_start>\n"
         "<log_analytics>\n"
-        "    <application_id>8b7...c14</application_id>\n"
-        "    <application_key>w22...91x</application_key>\n"
+        "    <auth_path>/var/ossec/wodles/azure/credentials.txt</auth_path>\n"
         "    <tenantdomain>wazuh.onmicrosoft.com</tenantdomain>\n"
         "    <request>\n"
         "        <tag>azure-activity</tag>\n"
@@ -178,8 +191,7 @@ void test_read_scheduling_monthday_configuration(void **state) {
         "<day>4</day>\n"
         "<run_on_start>no</run_on_start>\n"
         "<log_analytics>\n"
-        "    <application_id>8b7...c14</application_id>\n"
-        "    <application_key>w22...91x</application_key>\n"
+        "    <auth_path>/var/ossec/wodles/azure/credentials.txt</auth_path>\n"
         "    <tenantdomain>wazuh.onmicrosoft.com</tenantdomain>\n"
         "    <request>\n"
         "        <tag>azure-activity</tag>\n"
@@ -208,8 +220,7 @@ void test_read_scheduling_weekday_configuration(void **state) {
         "<wday>Friday</wday>\n"
         "<run_on_start>no</run_on_start>\n"
         "<log_analytics>\n"
-        "    <application_id>8b7...c14</application_id>\n"
-        "    <application_key>w22...91x</application_key>\n"
+        "    <auth_path>/var/ossec/wodles/azure/credentials.txt</auth_path>\n"
         "    <tenantdomain>wazuh.onmicrosoft.com</tenantdomain>\n"
         "    <request>\n"
         "        <tag>azure-activity</tag>\n"
@@ -237,8 +248,7 @@ void test_read_scheduling_daytime_configuration(void **state) {
         "<time>00:10</time>\n"
         "<run_on_start>no</run_on_start>\n"
         "<log_analytics>\n"
-        "    <application_id>8b7...c14</application_id>\n"
-        "    <application_key>w22...91x</application_key>\n"
+        "    <auth_path>/var/ossec/wodles/azure/credentials.txt</auth_path>\n"
         "    <tenantdomain>wazuh.onmicrosoft.com</tenantdomain>\n"
         "    <request>\n"
         "        <tag>azure-activity</tag>\n"
@@ -265,8 +275,7 @@ void test_read_scheduling_interval_configuration(void **state) {
         "<interval>3h</interval>\n"
         "<run_on_start>no</run_on_start>\n"
         "<log_analytics>\n"
-        "    <application_id>8b7...c14</application_id>\n"
-        "    <application_key>w22...91x</application_key>\n"
+        "    <auth_path>/var/ossec/wodles/azure/credentials.txt</auth_path>\n"
         "    <tenantdomain>wazuh.onmicrosoft.com</tenantdomain>\n"
         "    <request>\n"
         "        <tag>azure-activity</tag>\n"

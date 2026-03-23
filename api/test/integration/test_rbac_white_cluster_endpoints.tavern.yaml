@@ -24,13 +24,15 @@ stages:
               bind_addr: !anystr
               nodes: !anything
               hidden: !anystr
-              disabled: false
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
 
 ---
 test_name: GET /cluster/healthcheck
+
+marks:
+  - xfail #https://github.com/wazuh/wazuh/issues/34666
 
 stages:
 
@@ -63,7 +65,7 @@ stages:
                 - 'worker1'
           total_affected_items: 1
           total_failed_items: 1
-        
+
   - name: Get cluster healtcheck
     request:
       verify: False
@@ -93,7 +95,7 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        
+
 ---
 test_name: GET /cluster/local/info
 
@@ -118,7 +120,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+
 ---
 test_name: GET /cluster/nodes
 
@@ -146,7 +148,7 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        
+
   - name: Get cluster nodes
     request:
       verify: False
@@ -164,7 +166,7 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        
+
   - name: Filters (type) -> master
     request:
       verify: False
@@ -182,7 +184,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+
   - name: Filters (type) -> worker
     request:
       verify: False
@@ -201,13 +203,13 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+
 ---
 test_name: GET /cluster/nodes/{node_id}
 
 stages:
 
-  - name: Get cluster {worker1} (Deny)
+  - name: Get cluster (worker1) (Deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
@@ -221,7 +223,7 @@ stages:
       json:
         error: 4000
 
-  - name: Get cluster {worker2} (Allow)
+  - name: Get cluster (worker2) (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
@@ -241,8 +243,8 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
-  - name: Get cluster {master-node,worker1,worker2} (Allow, Deny, Allow)
+
+  - name: Get cluster (master-node,worker1,worker2) (Allow, Deny, Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
@@ -268,7 +270,7 @@ stages:
                 - 'worker1'
           total_affected_items: 2
           total_failed_items: 1
-        
+
 ---
 test_name: GET /cluster/status
 
@@ -286,7 +288,6 @@ stages:
       json:
         error: !anyint
         data:
-          enabled: "yes"
           running: "yes"
 
 ---
@@ -294,7 +295,7 @@ test_name: GET /cluster/{node_id}/configuration
 
 stages:
 
-  - name: Request {node_id}
+  - name: Request (master-node)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
@@ -307,25 +308,18 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - alerts: !anything
-              auth: !anything
-              cis-cat: !anything
+            - auth: !anything
               cluster: !anything
               command: !anything
               global: !anything
-              localfile: !anything
-              osquery: !anything
               remote: !anything
-              rootcheck: !anything
-              ruleset: !anything
-              sca: !anything
-              syscheck: !anything
-              syscollector: !anything
-              vulnerability-detector: !anything
+              logging: !anything
+              vulnerability-detection: !anything
+              indexer: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+
   - name: Request (worker1) (Deny)
     request:
       verify: False
@@ -336,7 +330,7 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Filters -> section=alerts (worker2) (Allow)
+  - name: Filters -> section=global (worker2) (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/configuration"
@@ -344,22 +338,24 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        section: alerts
+        section: global
     response:
       status_code: 200
       json:
         error: !anyint
         data:
           affected_items:
-            - alerts:
-                email_alert_level: !anystr
-                log_alert_level: !anystr
+            - global:
+                agents_disconnection_alert_time: !anystr
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+
 ---
 test_name: GET /cluster/configuration/validation
+
+marks:
+  - xfail #https://github.com/wazuh/wazuh/issues/34733
 
 stages:
 
@@ -370,6 +366,9 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      timeout: 20
+      params:
+        wait_for_complete: true
     response:
       status_code: 200
       json:
@@ -383,7 +382,7 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        
+
   - name: Request cluster validation
     request:
       verify: False
@@ -393,6 +392,9 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         nodes_list: 'worker1,worker2'
+      timeout: 20
+      params:
+        wait_for_complete: true
     response:
       status_code: 200
       json:
@@ -408,26 +410,26 @@ stages:
                 - worker1
           total_affected_items: 1
           total_failed_items: 1
-        
+
 ---
 test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
 
 stages:
 
-  - name: Try to show the config of analisys/global through a worker
+  - name: Try to show the config of auth/auth through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/global"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/auth/auth"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       <<: *permission_denied
 
-  - name: Try to show the config of analisys/global through a worker
+  - name: Try to show the config of auth/auth through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/configuration/analysis/global"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/configuration/auth/auth"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -439,7 +441,7 @@ test_name: GET /cluster/{node_id}/info
 
 stages:
 
-  - name: Request {node_id}
+  - name: Request (worker1)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/info"
@@ -449,7 +451,7 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Request {node_id}
+  - name: Request (master-node)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/info"
@@ -464,7 +466,7 @@ test_name: GET /cluster/{node_id}/logs
 
 stages:
 
-  - name: Request {worker2} (Allow)
+  - name: Request (worker2) (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/logs"
@@ -474,7 +476,7 @@ stages:
     response:
       status_code: 200
 
-  - name: Request {worker1} (Deny)
+  - name: Request (worker1) (Deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/logs"
@@ -489,7 +491,7 @@ test_name: GET /cluster/{node_id}/logs/summary
 
 stages:
 
-  - name: Request {worker2} (Allow)
+  - name: Request (worker2) (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/logs/summary"
@@ -499,7 +501,7 @@ stages:
     response:
       status_code: 200
 
-  - name: Request {worker1} (Deny)
+  - name: Request (worker1) (Deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/logs/summary"
@@ -510,11 +512,36 @@ stages:
       <<: *permission_denied
 
 ---
+test_name: GET /cluster/{node_id}/daemons/stats
+
+stages:
+
+  - name: Request daemons statistics from worker1 (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+  - name: Request daemons statistics from worker2 (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
 test_name: GET /cluster/{node_id}/stats
 
 stages:
 
-  - name: Cluster stats {worker1} today (Deny)
+  - name: Cluster stats (worker1) today (Deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/stats"
@@ -524,7 +551,7 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Cluster stats {worker2} today (Allow)
+  - name: Cluster stats (worker2) today (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/stats"
@@ -541,7 +568,7 @@ test_name: GET /cluster/{node_id}/status
 
 stages:
 
-  - name: Request {worker2} (Allow)
+  - name: Request (worker2) (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/status"
@@ -551,7 +578,7 @@ stages:
     response:
       status_code: 200
 
-  - name: Request {worker1} (Deny)
+  - name: Request (worker1) (Deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/status"
@@ -594,6 +621,9 @@ stages:
 ---
 test_name: PUT /cluster/restart
 
+marks:
+  - skip: execd socket no longer exists in manager after agent-manager separation
+
 stages:
 
   - name: Restart cluster
@@ -606,7 +636,7 @@ stages:
       params:
         nodes_list: 'worker1,worker2'
     response:
-      status_code: 200
+      status_code: 202
       json:
         error: !anyint
         data:
@@ -628,8 +658,10 @@ stages:
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: 'worker2'
     response:
-      status_code: 200
+      status_code: 202
       json:
         error: !anyint
         data:
@@ -650,7 +682,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/configuration"
       method: PUT
-      data: "{valid_ossec_conf:s}"
+      data: "{valid_wazuh_conf:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
@@ -670,7 +702,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
       method: PUT
-      data: "{valid_ossec_conf:s}"
+      data: "{valid_wazuh_conf:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream

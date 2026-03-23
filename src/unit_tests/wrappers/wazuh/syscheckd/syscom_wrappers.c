@@ -12,7 +12,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-size_t __wrap_syscom_dispatch(char * command, char ** output) {
+size_t __wrap_syscom_dispatch(char * command, size_t length, char ** output) {
     check_expected(command);
 
     *output = mock_type(char*);

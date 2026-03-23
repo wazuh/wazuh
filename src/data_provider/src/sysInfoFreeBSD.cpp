@@ -17,7 +17,7 @@
 #include <sys/utsname.h>
 #include "sharedDefs.h"
 
-void SysInfo::getMemory(nlohmann::json& info) const
+static void getMemory(nlohmann::json& info)
 {
     constexpr auto vmPageSize{"vm.stats.vm.v_page_size"};
     constexpr auto vmTotal{"vm.vmtotal"};
@@ -36,8 +36,8 @@ void SysInfo::getMemory(nlohmann::json& info) const
         };
     }
 
-    const auto ramTotal{ram / KByte};
-    info["ram_total"] = ramTotal;
+    const auto ramTotal{ram};
+    info["memory_total"] = ramTotal;
     u_int pageSize{0};
     len = sizeof(pageSize);
     ret = sysctlbyname(vmPageSize, &pageSize, &len, nullptr, 0);
@@ -68,13 +68,13 @@ void SysInfo::getMemory(nlohmann::json& info) const
         };
     }
 
-    const auto ramFree{(vmt.t_free * pageSize) / KByte};
-    info["ram_free"] = ramFree;
-    info["ram_usage"] = 100 - (100 * ramFree / ramTotal);
+    const auto ramFree{(vmt.t_free * pageSize)};
+    info["memory_free"] = ramFree;
+    info["memory_used"] = ramTotal - ramFree;
 }
 
 
-int SysInfo::getCpuMHz() const
+static int getCpuMHz()
 {
     unsigned long cpuMHz{0};
     constexpr auto clockRate{"hw.clockrate"};
@@ -94,9 +94,82 @@ int SysInfo::getCpuMHz() const
     return cpuMHz;
 }
 
-std::string SysInfo::getSerialNumber() const
+static std::string getSerialNumber()
 {
     return UNKNOWN_VALUE;
+}
+
+static int getCpuCores()
+{
+    int cores{0};
+    size_t len{sizeof(cores)};
+    const std::vector<int> mib{CTL_HW, HW_NCPU};
+    const auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), &cores, &len, nullptr, 0)};
+
+    if (ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error reading cpu cores number."
+        };
+    }
+
+    return cores;
+}
+
+static std::string getCpuName()
+{
+    const std::vector<int> mib{CTL_HW, HW_MODEL};
+    size_t len{0};
+    auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), nullptr, &len, nullptr, 0)};
+
+    if (ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error getting cpu name size."
+        };
+    }
+
+    const auto spBuff{std::make_unique<char[]>(len + 1)};
+
+    if (!spBuff)
+    {
+        throw std::runtime_error
+        {
+            "Error allocating memory to read the cpu name."
+        };
+    }
+
+    ret = sysctl(const_cast<int*>(mib.data()), mib.size(), spBuff.get(), &len, nullptr, 0);
+
+    if (ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error getting cpu name"
+        };
+    }
+
+    spBuff.get()[len] = 0;
+    return std::string{reinterpret_cast<const char*>(spBuff.get())};
+}
+
+nlohmann::json SysInfo::getHardware() const
+{
+    nlohmann::json hardware;
+    hardware["serial_number"] = getSerialNumber();
+    hardware["cpu_name"] = getCpuName();
+    hardware["cpu_cores"] = getCpuCores();
+    hardware["cpu_speed"] = double(getCpuMHz());
+    getMemory(hardware);
+    return hardware;
 }
 
 nlohmann::json SysInfo::getPackages() const
@@ -130,12 +203,15 @@ nlohmann::json SysInfo::getOsInfo() const
 
     if (uname(&uts) >= 0)
     {
-        ret["sysname"] = uts.sysname;
+        ret["os_kernel_name"] = uts.sysname;
         ret["hostname"] = uts.nodename;
-        ret["version"] = uts.version;
+        ret["os_kernel_version"] = uts.version;
         ret["architecture"] = uts.machine;
-        ret["release"] = uts.release;
+        ret["os_kernel_release"] = uts.release;
     }
+
+    // ECS-compliant os.type field (values: linux, macos, unix, windows)
+    ret["os_type"] = "unix";
 
     return ret;
 }
@@ -163,12 +239,21 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         {
             const auto data{Utils::split(line, '|')};
             nlohmann::json package;
+
             package["name"] = data[0];
             package["vendor"] = data[1];
-            package["version"] = data[2];
+            package["version_"] = data[2];
+            package["installed"] = UNKNOWN_VALUE;
+            package["path"] = UNKNOWN_VALUE;
             package["architecture"] = data[3];
+            package["category"] = UNKNOWN_VALUE;
             package["description"] = data[4];
-            package["format"] = "pkg";
+            package["size"] = 0;
+            package["priority"] = UNKNOWN_VALUE;
+            package["source"] = UNKNOWN_VALUE;
+            package["type"] = "pkg";
+            // The multiarch field won't have a default value
+
             callback(package);
         }
     }
@@ -177,5 +262,29 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 nlohmann::json SysInfo::getHotfixes() const
 {
     // Currently not supported for this OS.
+    return nlohmann::json();
+}
+
+nlohmann::json SysInfo::getGroups() const
+{
+    //TODO: Pending implementation.
+    return nlohmann::json();
+}
+
+nlohmann::json SysInfo::getUsers() const
+{
+    //TODO: Pending implementation.
+    return nlohmann::json();
+}
+
+nlohmann::json SysInfo::getServices() const
+{
+    //TODO: Pending implementation.
+    return nlohmann::json();
+}
+
+nlohmann::json SysInfo::getBrowserExtensions() const
+{
+    //TODO: Pending implementation.
     return nlohmann::json();
 }

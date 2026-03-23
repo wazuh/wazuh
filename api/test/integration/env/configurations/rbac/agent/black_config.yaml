@@ -24,7 +24,6 @@
 - actions:
   - agent:delete
   resources:
-  - agent:id:000
   - agent:id:002
   - agent:id:004
   - agent:id:006
@@ -57,6 +56,12 @@
   effect: deny
 
 - actions:
+  - agent:uninstall
+  resources:
+  - "*:*:*"
+  effect: deny
+
+- actions:
   - group:read
   - group:update_config
   - group:modify_assignments
@@ -69,6 +74,7 @@
   resources:
   - group:id:default
   - group:id:group1
+  - group:id:group2
   - group:id:group3
   - group:id:pepito
   effect: deny

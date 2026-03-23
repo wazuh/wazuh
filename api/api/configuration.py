@@ -5,6 +5,7 @@
 import copy
 import datetime
 import os
+import signal
 from typing import Dict, Tuple, Any, List
 
 import yaml
@@ -21,32 +22,38 @@ from api.api_exception import APIError
 from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH, API_SSL_PATH
 from api.validator import api_config_schema, security_config_schema
 
+# Fields that must preserve case sensitivity when converting to lowercase
+PRESERVE_CASE_SENSITIVITY_FIELDS = {'https.key', 'https.cert', 'https.ca'}
+
 default_security_configuration = {
     "auth_token_exp_timeout": 900,
     "rbac_mode": "white"
 }
 
 default_api_configuration = {
-    "host": "0.0.0.0",
+    "host": ["0.0.0.0", "::"],
     "port": 55000,
     "drop_privileges": True,
-    "experimental_features": False,
     "max_upload_size": 10485760,
+    "authentication_pool_size": 2,
     "intervals": {
         "request_timeout": 10
     },
     "https": {
         "enabled": True,
-        "key": "server.key",
-        "cert": "server.crt",
+        "key": "manager.key",
+        "cert": "manager.crt",
         "use_ca": False,
         "ca": "ca.crt",
-        "ssl_protocol": "TLSv1.2",
         "ssl_ciphers": ""
     },
     "logs": {
         "level": "info",
-        "format": "plain"
+        "format": "plain",
+        "max_size": {
+            "enabled": False,
+            "size": "1M"
+        }
     },
     "cors": {
         "enabled": False,
@@ -55,49 +62,70 @@ default_api_configuration = {
         "allow_headers": "*",
         "allow_credentials": False,
     },
-    "cache": {
-        "enabled": True,
-        "time": 0.750
-    },
     "access": {
         "max_login_attempts": 50,
         "block_time": 300,
         "max_request_per_minute": 300
     },
-    "remote_commands": {
-        "localfile": {
-            "enabled": True,
-            "exceptions": []
+    "upload_configuration": {
+        "remote_commands": {
+            "localfile": {
+                "allow": True,
+                "exceptions": []
+            },
+            "wodle_command": {
+                "allow": True,
+                "exceptions": []
+            }
         },
-        "wodle_command": {
-            "enabled": True,
-            "exceptions": []
+        "limits": {
+            "eps": {
+                "allow": True
+            }
+        },
+        "agents": {
+            "allow_higher_versions": {
+                "allow": True
+            }
+        },
+        "indexer": {
+            "allow": True
         }
     }
 }
 
 
-def dict_to_lowercase(mydict: Dict):
-    """Turns all str values to lowercase. Supports nested dictionaries.
+def dict_to_lowercase(mydict: Dict, skip_keys: set = None, prefix: str = ""):
+    """Turn all string values of a dictionary to lowercase. Also support nested dictionaries.
 
-    :param mydict: Dictionary to lowercase
-    :return: None (the dictionary's reference is modified)
+    Parameters
+    ----------
+    mydict : dict
+        Dictionary with the values we want to convert.
+    skip_keys : set, optional
+        Set of keys to skip during the conversion.
+    prefix : str, optional
+        Prefix to add to the keys when checking skip_keys.
     """
+    skip_keys = skip_keys or set()
+
     for k, val in filter(lambda x: isinstance(x[1], str) or isinstance(x[1], dict), mydict.items()):
+        full_key = f"{prefix}.{k}" if prefix else k
+
         if isinstance(val, dict):
-            dict_to_lowercase(mydict[k])
+            dict_to_lowercase(mydict[k], skip_keys=skip_keys, prefix=full_key)
         else:
-            mydict[k] = val.lower()
+            if full_key not in skip_keys:
+                mydict[k] = val.lower()
 
 
 def append_wazuh_prefixes(dictionary: Dict, path_fields: Dict[Any, List[Tuple[str, str]]]) -> None:
     """Append Wazuh prefix to all path fields in a dictionary.
-    
     Parameters
     ----------
     dictionary : dict
         Dictionary with the API configuration.
-    path_fields : dict of lists of tuples of string
+    path_fields : dict
         Key: Prefix to append (path)
         Values: Sections of the configuration to append the prefix to.
     """
@@ -127,21 +155,39 @@ def fill_dict(default: Dict, config: Dict, json_schema: Dict) -> Dict:
     dict
         Filled dictionary.
     """
+    def _update_default_config(default_config: Dict, user_config: Dict) -> Dict:
+        """Update default configuration with the values of the user one.
+
+        Parameters
+        ----------
+        default_config : dict
+            Default API configuration.
+        user_config : dict
+            User API configuration.
+
+        Returns
+        -------
+        dict
+            Merged API configuration.
+        """
+        for key, value in user_config.items():
+            if isinstance(value, dict):
+                default_config[key] = _update_default_config(default_config.get(key, {}), value)
+            else:
+                default_config[key] = value
+        return default_config
+
     try:
         validate(instance=config, schema=json_schema)
-    except ValidationError as e:
-        raise APIError(2000, details=e.message)
+    except ValidationError as validation_exc:
+        raise APIError(2000, details=validation_exc.message) from None
 
-    for k, val in filter(lambda x: isinstance(x[1], dict), config.items()):
-        for item, value in config[k].items():
-            config[k][item] = default[k][item] if value == "" else config[k][item]
-        config[k] = {**default[k], **config[k]}
-
-    return {**default, **config}
+    return _update_default_config(default, config)
 
 
-def generate_private_key(private_key_path, public_exponent=65537, key_size=2048):
-    """Generate a private key in 'CONFIG_PATH/ssl/server.key'.
+def generate_private_key(private_key_path: str, public_exponent: int = 65537,
+                         key_size: int = 2048) -> rsa.RSAPrivateKey:
+    """Generate a private key in 'CONFIG_PATH/ssl/manager.key'.
 
     Parameters
     ----------
@@ -154,7 +200,7 @@ def generate_private_key(private_key_path, public_exponent=65537, key_size=2048)
 
     Returns
     -------
-    RSAPrivateKey
+    rsa.RSAPrivateKey
         Private key.
     """
     key = rsa.generate_private_key(
@@ -173,20 +219,19 @@ def generate_private_key(private_key_path, public_exponent=65537, key_size=2048)
     return key
 
 
-def generate_self_signed_certificate(private_key, certificate_path):
-    """Generate a self signed certificate using a generated private key. The certificate will be created in
-        'CONFIG_PATH/ssl/server.crt'.
+def generate_self_signed_certificate(private_key: rsa.RSAPrivateKey, certificate_path: str):
+    """Generate a self-signed certificate using a generated private key. The certificate will be created in
+    'CONFIG_PATH/ssl/manager.crt'.
 
     Parameters
     ----------
     private_key : RSAPrivateKey
         Private key.
     certificate_path : str
-        Path where the self signed certificate will be generated.
+        Path where the self-signed certificate will be generated.
     """
     # Generate private key
-    # Various details about who we are. For a self-signed certificate the
-    # subject and issuer are always the same.
+    # Various details about who we are. For a self-signed certificate, the subject and issuer are always the same
     subject = issuer = x509.Name([
         x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
         x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
@@ -203,7 +248,7 @@ def generate_self_signed_certificate(private_key, certificate_path):
     ).serial_number(
         x509.random_serial_number()
     ).not_valid_before(
-        datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+        datetime.datetime.now(datetime.timezone.utc)
     ).not_valid_after(
         # Our certificate will be valid for one year
         core_utils.get_utc_now() + datetime.timedelta(days=365)
@@ -218,13 +263,23 @@ def generate_self_signed_certificate(private_key, certificate_path):
     os.chmod(certificate_path, 0o400)
 
 
-def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
-    """Reads user API configuration and merges it with the default one
+def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = None) -> Dict:
+    """Read user API configuration and merge it with the default one.
 
-    :return: API configuration
+    Parameters
+    ----------
+    config_file : str
+        Configuration file path.
+    default_conf : dict
+        Default configuration to be merged with the user's one.
+
+    Returns
+    -------
+    dict
+        API configuration.
     """
 
-    def replace_bools(conf):
+    def replace_bools(conf: dict):
         """Replace 'yes' and 'no' strings in configuration for actual booleans.
 
         Parameters
@@ -252,15 +307,16 @@ def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
             # Replace strings for booleans
             configuration and replace_bools(configuration)
         except IOError as e:
-            raise APIError(2004, details=e.strerror)
+            raise APIError(2004, details=e.strerror) from None
     else:
         configuration = None
 
     if configuration is None:
         configuration = copy.deepcopy(default_conf)
     else:
-        # If any value is missing from user's configuration, add the default one:
-        dict_to_lowercase(configuration)
+        # Convert string values to lowercase except for specific fields
+        dict_to_lowercase(configuration, skip_keys=PRESERVE_CASE_SENSITIVITY_FIELDS)
+
         schema = security_config_schema if config_file == SECURITY_CONFIG_PATH else api_config_schema
         configuration = fill_dict(default_conf, configuration, schema)
 
@@ -270,13 +326,19 @@ def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
     return configuration
 
 
+def init_auth_worker():
+    """Set authentication pool worker to ignore SIGINT signals to avoid
+    throwing exceptions when shutting down the API in foreground mode."""
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
 # Check if the default configuration is valid according to its jsonschema, so we are forced to update the schema if any
 # change is performed to the configuration.
 try:
     validate(instance=default_security_configuration, schema=security_config_schema)
     validate(instance=default_api_configuration, schema=api_config_schema)
 except ValidationError as e:
-    raise APIError(2000, details=e.message)
+    raise APIError(2000, details=e.message) from None
 
 # Configuration - global object
 api_conf = read_yaml_config()

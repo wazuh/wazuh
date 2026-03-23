@@ -5,8 +5,9 @@
 # Syntax: make [ all | backup | install | restore | service ]
 
 WAZUH_GROUP       = wazuh
-INSTALLDIR       ?= /var/ossec
+INSTALLDIR       ?= /var/wazuh-manager
 
+MV_FILE        = mv -f
 RM_FILE        = rm -f
 INSTALL_DIR    = install -o root -g ${WAZUH_GROUP} -m 0750 -d
 INSTALL_RW_DIR = install -o root -g ${WAZUH_GROUP} -m 0770 -d
@@ -22,7 +23,7 @@ all: backup install restore
 
 backup:
 	# Backup previous configuration
-	. ../api/service/inst-api-functions.sh; backup_old_api ${REVISION}
+	. ../api/service/inst-api-functions.sh; backup_old_api
 
 install:
     # Copy files and create folders
@@ -34,11 +35,13 @@ install:
 	$(INSTALL_CONFIG_FILE) api/configuration/api.yaml ${INSTALLDIR}/api/configuration
 
 	$(INSTALL_DIR) $(INSTALLDIR)/api/scripts
-	$(INSTALL_FILE) scripts/wazuh-apid.py ${INSTALLDIR}/api/scripts
+	$(INSTALL_FILE) scripts/wazuh_manager_apid.py ${INSTALLDIR}/api/scripts
 
     # Install scripts/%.py on $(INSTALLDIR)/bin/%
-	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(INSTALLDIR)/bin/%,$(script));)
+	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(INSTALLDIR)/bin/%,$(script));)
+	
+	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_manager_apid $(INSTALLDIR)/bin/wazuh-manager-apid
 
 restore:
     # Restore old API config
-	. ../api/service/inst-api-functions.sh; restore_old_api ${REVISION}
+	. ../api/service/inst-api-functions.sh; restore_old_api

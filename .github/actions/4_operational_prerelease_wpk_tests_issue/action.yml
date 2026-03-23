@@ -1,0 +1,186 @@
+name: 'Create WPK Tests Issue'
+description: 'Creates a GitHub issue for WPK Upgrade Tests'
+inputs:
+  release:
+    description: 'Release version (e.g., 4.7.1)'
+    required: true
+  stage:
+    description: 'Stage (e.g., RC 3, Alpha 1)'
+    required: true
+  main_issue:
+    description: 'Main issue number'
+    required: true
+  prev_issue:
+    description: 'Previous issue number'
+    required: true
+  assignee:
+    description: 'GitHub username to assign the issue to'
+    required: true
+  github_token:
+    description: 'GitHub token'
+    required: true
+  project_token:
+    description: 'GitHub token with project permissions (optional, for project configuration)'
+    required: false
+    default: ''
+outputs:
+  issue_url:
+    description: 'URL of the created issue'
+    value: ${{ steps.create-issue.outputs.issue_url }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Create WPK Tests Issue
+      id: create-issue
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+      run: |
+        RELEASE="${{ inputs.release }}"
+        STAGE="${{ inputs.stage }}"
+        MAIN_ISSUE="${{ inputs.main_issue }}"
+        PREV_ISSUE="${{ inputs.prev_issue }}"
+
+        REPO="wazuh/wazuh"
+        PROJECT="XDR+SIEM/Agent team"
+        LABEL="level/task,type/test"
+        TITLE="Release $RELEASE - $STAGE - WPK Upgrade Tests"
+        TAG="v$RELEASE-$(echo ${STAGE// /} | tr '[:upper:]' '[:lower:]')"
+
+        BODY=$(cat <<EOF
+        |Main RC issue|Version|Stage|Tag|Previous issue|
+        |---|---|---|---|---|
+        |#$MAIN_ISSUE|$RELEASE|$STAGE|[$TAG](https://github.com/wazuh/wazuh/tree/$TAG)|#$PREV_ISSUE|
+
+        The purpose of this issue is to perform remote upgrade (WPK) tests for the current release candidate, report the results, and open new issues for any errors encountered.
+
+        > [!NOTE]
+        > These tests are performed locally.
+
+        ## Test description
+
+        This test involves the following steps:
+        1. Set up the previous released version of the agent: install it and connect it to the manager.
+        2. Perform a remote upgrade:
+           \`\`\`shell
+           /var/ossec/bin/agent_upgrade -a <ID> -f /var/ossec/tmp/wazuh_agent_v$RELEASE_<PLATFORM>.wpk
+           \`\`\`
+        3. Verify that the upgrade completes successfully and that the agent version is updated correctly.
+
+        Please attach evidence of the following:
+        - Agent endpoint operating system
+        - Previous agent version
+        - New agent version
+        - Upgrade process output
+
+        We aim to test each WPK package on a modern platform that supports it.
+
+        | Platform | Suggested OS          |
+        |----------|-----------------------|
+        | DEB      | Ubuntu 24.04          |
+        | RPM      | AlmaLinux 9           |
+        | MSI      | Windows 11            |
+        | PKG      | macOS 26 Tahoe @arm64 |
+
+        ## Download the manager package
+
+        \`\`\`shell
+        curl -LsO https://packages-dev.wazuh.com/pre-release/apt/pool/main/w/wazuh-manager/wazuh-manager_${RELEASE}-1_amd64.deb
+        curl -LsO https://packages-dev.wazuh.com/pre-release/yum/wazuh-manager-${RELEASE}-1.x86_64.rpm
+        \`\`\`
+
+        ## Download the WPK packages
+
+        \`\`\`shell
+        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/deb/amd64/wazuh_agent_v${RELEASE}_linux_amd64.deb.wpk
+        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/rpm/x86_64/wazuh_agent_v${RELEASE}_linux_x86_64.rpm.wpk
+        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/macos/pkg/intel64/wazuh_agent_v${RELEASE}_macos_intel64.pkg.wpk
+        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/windows/wazuh_agent_v${RELEASE}_windows.wpk
+        \`\`\`
+
+        ## Report procedure
+
+        Please complete a report using the following template:
+
+        <details><summary>Results template</summary>
+
+        ---
+
+        ## Results
+
+        | Result | OS Version   | Comment |
+        |:------:|--------------|---------|
+        |        | Ubuntu 24.04 |         |
+        |        | AlmaLinux 9  |         |
+        |        | Windows 11   |         |
+        |        | macOS Sonoma |         |
+
+        ## Findings
+
+        ...
+
+        ## Known issues
+
+        ...
+
+        ## Conclusion
+
+        ...
+
+        ---
+
+        </details>
+
+        All test results must include one of the following statuses:
+
+        |    | Description                                                           |
+        |:--:|-----------------------------------------------------------------------|
+        | 🟢 | All checks passed                                                     |
+        | 🔴 | At least one check failed                                             |
+        | 🟡 | At least one expected failure or skipped test, and no actual failures |
+
+        Any failed test must be documented in a new issue describing the error and possible root cause.
+
+        Any expected failure or skipped test must be justified in a corresponding issue. All auditors must review and validate these justifications.
+
+        ## Auditors validation
+
+        The definition of done for this issue includes validation of the conclusions and test results by all assigned auditors.
+
+        All of the following must be approved in order to close this issue:
+
+        - [ ] @wazuh/devel-xdrsiem-agent
+        - [ ] @wazuh/devel-xdrsiem-qa-release
+        EOF
+        )
+
+        if OUTPUT=$(gh issue create \
+          --repo "$REPO" \
+          --title "$TITLE" \
+          --label "$LABEL" \
+          --body "$BODY" \
+          --assignee "${{ inputs.assignee }}" 2>&1); then
+
+          ISSUE_URL="$OUTPUT"
+          echo "issue_url=$ISSUE_URL" >> $GITHUB_OUTPUT
+
+          # Extract issue number from URL
+          ISSUE_NUMBER=$(echo "$ISSUE_URL" | grep -oP '\d+$')
+
+          # Configure project fields if project_token is provided
+          if [[ -n "${{ inputs.project_token }}" ]]; then
+            echo "Configuring project fields..."
+            export GITHUB_TOKEN="${{ inputs.project_token }}"
+
+            # Add issue to project first
+            gh project item-add 86 --owner wazuh --url "$ISSUE_URL"
+
+            # Configure project fields
+            bash .github/scripts/configure-project-fields.sh "$ISSUE_NUMBER" "$RELEASE" "$STAGE"
+          else
+            echo "No project token provided, skipping project configuration"
+          fi
+        else
+          echo "Error creating issue: $OUTPUT"
+          exit 1
+        fi

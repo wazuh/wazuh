@@ -1,0 +1,46 @@
+# Name of the helper function
+name: regex_not_match
+
+metadata:
+  description: |
+    Checks that the target field (string) does NOT match the given regular expression (RE2).
+    If it matches, evaluates to false. If the field is missing or not a string, evaluates to false.
+    Keep in mind YAML escaping rules. RE2 syntax: https://github.com/google/re2/wiki/Syntax
+    Typically used in the check stage.
+  keywords:
+    - undefined
+
+helper_type: filter
+is_variadic: false
+
+arguments:
+  regxp:
+    type: string
+    generate: regex
+    source: value
+
+target_field:
+  type: string
+  generate: string
+
+skipped:
+  - success_cases
+
+test:
+  - arguments:
+      regxp: "^abc"
+    target_field: "hello world"
+    should_pass: true
+    description: Does not match (no 'abc' prefix)
+
+  - arguments:
+      regxp: "^abc"
+    target_field: "abc123"
+    should_pass: false
+    description: Matches (prefix 'abc')
+
+  - arguments:
+      regxp: "^(bye pcre\\d)$"
+    target_field: 123
+    should_pass: false
+    description: Not a string -> fails

@@ -1,0 +1,76 @@
+# Name of the helper function
+name: merge
+
+metadata:
+  description: |
+    Merge “any_object“ into “field”. Both fields must be the same type and of type object or type array
+    otherwise the operation will fail and neither fields will be modified.
+    The result of the merge operation is mapped to “field” and “any_object“ is deleted.
+    When merging objects, if a collision is produced the target key will be overridden by the reference key.
+    When merging arrays, if a collision is produced the target key will be preserved in its original order
+    and will be not duplicated.
+    This helper function is typically used in the map stage
+  keywords:
+    - undefined
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  any_object:
+    type:
+      - object
+      - array
+      - number
+      - string
+      - boolean
+    source: reference # includes only references (their names start with $)
+
+target_field:
+  type:
+    - object
+    - array
+    - number
+    - string
+    - boolean
+
+skipped:
+  - success_cases # Field types do not match
+
+test:
+  - arguments:
+      any_object:
+        key: name
+        key2:
+          age: 27
+          address: new york
+    target_field:
+      key3: surname
+    should_pass: true
+    expected:
+      key: name
+      key2:
+        age: 27
+        address: new york
+      key3: surname
+    description: JSON objects merged
+  - arguments:
+      any_object:
+        - 0
+        - 1
+        - 2
+        - 4
+    target_field:
+      - 1
+      - 3
+    should_pass: true
+    expected:
+      - 1
+      - 3
+      - 0
+      - 2
+      - 4
+    description: JSON objects merged

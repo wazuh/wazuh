@@ -1,0 +1,143 @@
+name: "Coverage CPP"
+description: "Calculates the coverage for a module located on a given path"
+
+inputs:
+  path:
+    required: true
+    description: "Path to the module"
+  test_directory:
+    required: true
+    description: "Directory where the tests are located"
+  id:
+    required: true
+    description: "Module identifier, used to name the artifact"
+  threshold:
+    required: false
+    description: "Threshold for the coverage"
+    default: "90"
+  validate_function_coverage:
+    required: false
+    description: "Whether to validate function coverage or not"
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+      - name: Dependencies for local execution
+        if: env.ACT # Only run for local execution
+        shell: bash
+        run: |
+
+          # Update packages
+          sudo apt-get update
+          sudo apt-get install -y bc
+
+      # Dependencies for testing:
+      # - lcov
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+        with:
+          packages: lcov
+          version: 1.0
+
+      # Generate the coverage files
+      - name: Generate coverage files
+        shell: bash
+        run: |
+          BUILD_DIR=$(pwd)/src/build
+          cd ${{ inputs.path }}
+
+          # Set arguments
+          arguments="--capture "
+          # Set working directory
+          arguments+="--directory $BUILD_DIR "
+          # Set output file
+          arguments+="--output-file $BUILD_DIR/coverage.info "
+          # # Disable branch coverage
+          arguments+="--rc branch_coverage=0 "
+
+          # Ignore lcov 2.x strict errors for unused include patterns, version mismatches,
+          # and gcov/lcov line range mismatches (gcov 13 + lcov 2.0 incompatibility)
+          arguments+="--ignore-errors unused,deprecated,mismatch "
+
+          # Include source files using glob patterns (compatible with lcov 2.x)
+          if [[ ${{ inputs.path }} =~ "shared_modules/utils" ]]; then
+            arguments+="--include=$(pwd)/* "
+          else
+            arguments+="--include=$(pwd)/src/* --include=$(pwd)/include/* "
+          fi
+
+          # Exclude generated headers
+          arguments+="--exclude=*_generated.h "
+
+
+          echo "Executing: lcov $arguments"
+          echo "Include files: $include_files"
+          lcov_version=$(lcov --version | awk '{print $NF}')
+          lcov_major=${lcov_version%%.*}
+          if [[ "$lcov_major" =~ ^[0-9]+$ ]] && (( lcov_major >= 2 )); then
+            ignore_errors="mismatch,unused"
+          else
+            ignore_errors="mismatch"
+          fi
+          echo "Using lcov ignore-errors: $ignore_errors (lcov $lcov_version)"
+          lcov $arguments --ignore-errors "$ignore_errors"
+
+      # Generate the HTML coverage report and capture coverage data
+      - name: Generate coverage report and extract coverage data
+        shell: bash
+        run: |
+          cd $(pwd)/src/build
+
+          # Generate HTML report
+          genhtml coverage.info --output-directory coverage_report --ignore-errors unused,deprecated,mismatch
+
+      # Upload the coverage report as an artifact
+      - name: Uploading coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Coverage Report - ${{ inputs.id }}
+          path: ./src/build/coverage_report
+          retention-days: 1
+        continue-on-error: true
+
+      # Check whether the coverage is greater than 90% both for lines and functions
+      - name: Validate coverage
+        shell: bash
+        run: |
+
+          cd $(pwd)/src/build
+
+          # Parse coverage directly from the .info file (avoids lcov version-dependent output format issues)
+          linesCoverage=$(awk -F: '/^LH:/{h+=$2}/^LF:/{f+=$2}END{if(f>0)printf "%.1f",h/f*100;else print "0.0"}' coverage.info)
+          echo "Lines coverage is: $linesCoverage %"
+          if ! (( $(echo "$linesCoverage >= ${{ inputs.threshold }}" | bc -l) )); then
+            echo "----------------------------------------"
+            echo "FAILED: Lines coverage is lower than ${{ inputs.threshold }}%"
+            echo "----------------------------------------"
+            exit 1
+          else
+            echo "------------------------------------------"
+            echo "PASSED: Lines coverage is greater than ${{ inputs.threshold }}%"
+            echo "------------------------------------------"
+          fi
+
+          functionsCoverage=$(awk -F: '/^FNH:/{h+=$2}/^FNF:/{f+=$2}END{if(f>0)printf "%.1f",h/f*100;else print "0.0"}' coverage.info)
+          echo "Functions coverage is: $functionsCoverage %"
+          if [[ "${{ inputs.validate_function_coverage }}" == "true" ]]; then
+            if ! (( $(echo "$functionsCoverage >= ${{ inputs.threshold }}" | bc -l) )); then
+              echo "---------------------------------------------"
+              echo "FAILED: Functions coverage is lower than ${{ inputs.threshold }}%"
+              echo "--------------------------------------------"
+              exit 1
+            else
+              echo "----------------------------------------------"
+              echo "PASSED: Functions coverage is greater than ${{ inputs.threshold }}%"
+              echo "----------------------------------------------"
+            fi
+          else
+            echo "----------------------------------------------"
+            echo "SKIPPED: Function coverage validation is disabled"
+            echo "----------------------------------------------"
+          fi

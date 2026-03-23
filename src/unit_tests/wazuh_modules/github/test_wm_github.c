@@ -17,9 +17,9 @@
 #include <time.h>
 
 #include "shared.h"
-#include "wazuh_modules/wmodules.h"
-#include "wazuh_modules/wm_github.h"
-#include "wazuh_modules/wm_github.c"
+#include "wmodules.h"
+#include "wm_github.h"
+#include "wm_github.c"
 
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/common.h"
@@ -501,6 +501,7 @@ void test_github_execute_scan_no_initial_scan(void **state) {
     expect_any(__wrap_wurl_http_request, url);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_GITHUB_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     wm_github_execute_scan(data->github_config, initial_scan);
@@ -561,6 +562,7 @@ void test_github_execute_scan_status_code_200(void **state) {
     expect_any(__wrap_wurl_http_request, url);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_GITHUB_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     wm_github_execute_scan(data->github_config, initial_scan);
@@ -619,6 +621,7 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     expect_any(__wrap_wurl_http_request, url);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_GITHUB_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
@@ -692,6 +695,7 @@ void test_github_execute_scan_max_size_reached(void **state) {
     expect_any(__wrap_wurl_http_request, url);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_GITHUB_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");

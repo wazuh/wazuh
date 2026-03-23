@@ -9,6 +9,7 @@
  */
 
 #include <stdio.h>
+#include "file_op.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -17,11 +18,13 @@
 #include <time.h>
 #include <windows.h>
 
-#include "os_regex/os_regex.h"
+#include "os_regex.h"
 
 
 #define OSSECCONF   "ossec.conf"
 #define OS_MAXSTR   1024
+
+#define localtime_r(x, y) localtime_s(y, x)
 
 int total;
 
@@ -31,7 +34,7 @@ int direxist(char *dir)
     DIR *dp;
 
     /* Open dir */
-    dp = opendir(dir);
+    dp = wopendir(dir);
     if (dp == NULL) {
         return (0);
     }
@@ -45,7 +48,7 @@ int fileexist(char *file)
     FILE *fp;
 
     /* Open file */
-    fp = fopen(file, "r");
+    fp = wfopen(file, "r");
     if (!fp) {
         return (0);
     }
@@ -60,7 +63,7 @@ int dogrep(char *file, char *str)
     FILE *fp;
 
     /* Open file */
-    fp = fopen(file, "r");
+    fp = wfopen(file, "r");
     if (!fp) {
         return (0);
     }
@@ -111,7 +114,7 @@ int config_dir(char *name, char *dir, char *vfile)
     printf("%s: https://documentation.wazuh.com\n\n", name);
 
     /* Add IIS config */
-    fp = fopen(OSSECCONF, "a");
+    fp = wfopen(OSSECCONF, "a");
     if (!fp) {
         printf("%s: Unable to edit configuration file.\n", name);
         return (1);
@@ -155,7 +158,7 @@ int config_iis(char *name, char *file, char *vfile)
     printf("%s: Adding IIS log file to be monitored: '%s'.\n", name, vfile);
 
     /* Add iis config config */
-    fp = fopen(OSSECCONF, "a");
+    fp = wfopen(OSSECCONF, "a");
     if (!fp) {
         printf("%s: Unable to edit configuration file.\n", name);
         return (1);

@@ -421,7 +421,7 @@ stages:
         name: "testModified2"
         rule:
           MATCH:
-            normal_rule: "modifiedR"
+            normal_rule: "modifiedR2"
     response:
       status_code: 200
       json:
@@ -432,7 +432,7 @@ stages:
               name: "testModified2"
               rule:
                 MATCH:
-                  normal_rule: "modifiedR"
+                  normal_rule: "modifiedR2"
               roles: !anything
           failed_items: []
           total_affected_items: 1
@@ -464,31 +464,6 @@ stages:
                 - 999
           total_affected_items: 0
           total_failed_items: 1
-
----
-test_name: PUT /security/user/revoke
-
-stages:
-
-  - name: Revoke all tokens
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-    response:
-      status_code: 200
-
-  - name: Revoke all tokens (Invalid token after previous call)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-    response:
-      status_code: 401
 
 ---
 test_name: DELETE /security/user/authenticate
@@ -692,3 +667,28 @@ stages:
         data:
           auth_token_exp_timeout: 3000
           rbac_mode: !anystr
+
+---
+test_name: PUT /security/user/revoke
+
+stages:
+
+  - name: Revoke all tokens
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+    response:
+      status_code: 200
+
+  - name: Revoke all tokens (Invalid token after previous call)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+    response:
+      status_code: 401

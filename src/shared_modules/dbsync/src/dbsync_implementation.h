@@ -12,9 +12,11 @@
 #ifndef _DBSYNC_IMPLEMENTATION_H
 #define _DBSYNC_IMPLEMENTATION_H
 
+#include <atomic>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include "dbengine_factory.h"
 #include "commonDefs.h"
 #include "json.hpp"
@@ -49,14 +51,16 @@ namespace DbSync
                                     const nlohmann::json&   json,
                                     const ResultCallback    callback);
 
-            DBSYNC_HANDLE initialize(const HostType     hostType,
-                                     const DbEngineType dbType,
-                                     const std::string& path,
-                                     const std::string& sqlStatement);
+            DBSYNC_HANDLE initialize(const HostType                  hostType,
+                                     const DbEngineType              dbType,
+                                     const std::string&              path,
+                                     const std::string&              sqlStatement,
+                                     const DbManagement              dbManagement,
+                                     const std::vector<std::string>& upgradeStatements);
 
             void setMaxRows(const DBSYNC_HANDLE handle,
                             const std::string& table,
-                            const unsigned long long maxRows);
+                            const long long maxRows);
 
             TXN_HANDLE createTransaction(const DBSYNC_HANDLE    handle,
                                          const nlohmann::json&  json);
@@ -78,6 +82,14 @@ namespace DbSync
             void release();
 
             void releaseContext(const DBSYNC_HANDLE handle);
+
+            void closeAndDeleteDatabase(const DBSYNC_HANDLE handle, const std::string& path);
+
+            static bool isShuttingDown()
+            {
+                return s_shuttingDown.load(std::memory_order_acquire);
+            }
+
         private:
 
             struct TransactionContext final
@@ -122,6 +134,8 @@ namespace DbSync
                         std::lock_guard<std::mutex> lock{m_mutex};
                         m_transactionContexts.erase(txnHandle);
                     }
+
+                    std::shared_timed_mutex m_syncMutex;
                 private:
                     std::map<TXN_HANDLE, std::shared_ptr<TransactionContext>> m_transactionContexts;
                     std::mutex m_mutex;
@@ -130,11 +144,13 @@ namespace DbSync
             std::shared_ptr<DbEngineContext> dbEngineContext(const DBSYNC_HANDLE handle);
 
             DBSyncImplementation() = default;
-            ~DBSyncImplementation() = default;
+            ~DBSyncImplementation();
             DBSyncImplementation(const DBSyncImplementation&) = delete;
             DBSyncImplementation& operator=(const DBSyncImplementation&) = delete;
+
             std::map<DBSYNC_HANDLE, std::shared_ptr<DbEngineContext>> m_dbSyncContexts;
             std::mutex m_mutex;
+            static std::atomic<bool> s_shuttingDown;
     };
 }
 

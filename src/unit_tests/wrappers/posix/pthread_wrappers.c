@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 void (*pthread_callback_ptr)(void) = NULL;
@@ -40,8 +41,8 @@ int __wrap_pthread_rwlock_unlock(__attribute__((unused)) pthread_rwlock_t *rwloc
     return 0;
 }
 
-int __wrap_pthread_exit() {
-    return mock();
+void __wrap_pthread_exit(__attribute__((unused)) void *value_ptr) {
+    mock_assert(0, "pthread_exit", __FILE__, __LINE__);
 }
 
 int __wrap_pthread_cond_wait(pthread_cond_t *cond,pthread_mutex_t *mutex) {

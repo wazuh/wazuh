@@ -6,17 +6,22 @@
 
 UN=${NUNAME};
 service="wazuh";
+file_permissions="wazuh-manager";
 
 runInit()
 {
     echo ""
     echo ""
+    control_script="wazuh-control"
 
     if [ -n "$1" ]; then
-        if [ "X$1" = "Xserver" ]; then
+        if [ "X$1" = "Xmanager" ]; then
             service="$service-manager"
+            file_permissions="wazuh-manager"
+            control_script="wazuh-manager-control"
         else
             service="$service-$1"
+            file_permissions="wazuh"
         fi
     fi
 
@@ -24,7 +29,7 @@ runInit()
 
     # Checking for Systemd
     if hash ps 2>&1 > /dev/null && hash grep 2>&1 > /dev/null && [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
-        if [ "X$1" = "Xserver" ] || [ "X$1" = "Xlocal" ]; then
+        if [ "X$1" = "Xmanager" ] || [ "X$1" = "Xlocal" ]; then
             type=manager
         else
             type=agent
@@ -37,7 +42,7 @@ runInit()
             SERVICE_UNIT_PATH=/etc/systemd/system/wazuh-$type.service
         fi
         GenerateService wazuh-$type.service > ${SERVICE_UNIT_PATH}
-        chown root:wazuh ${SERVICE_UNIT_PATH}
+        chown root:$file_permissions ${SERVICE_UNIT_PATH}
         systemctl daemon-reload
 
         rm -f /etc/rc.d/init.d/${service}
@@ -57,7 +62,7 @@ runInit()
             echo " - ${modifiedinit}"
             GenerateService ossec-hids-rh.init > /etc/rc.d/init.d/${service}
             chmod 755 /etc/rc.d/init.d/${service}
-            chown root:wazuh /etc/rc.d/init.d/${service}
+            chown root:$file_permissions /etc/rc.d/init.d/${service}
 
             if [ "X${update_only}" = "X" ]
             then
@@ -73,7 +78,7 @@ runInit()
         echo " - ${modifiedinit}"
         GenerateService ossec-hids-gentoo.init > /etc/init.d/${service}
         chmod 755 /etc/init.d/${service}
-        chown root:wazuh /etc/init.d/${service}
+        chown root:$file_permissions /etc/init.d/${service}
 
         if [ "X${update_only}" = "X" ]
         then
@@ -89,7 +94,7 @@ runInit()
         echo " - ${modifiedinit}"
         GenerateService ossec-hids-suse.init > /etc/init.d/${service}
         chmod 755 /etc/init.d/${service}
-        chown root:wazuh /etc/init.d/${service}
+        chown root:$file_permissions /etc/init.d/${service}
 
         if [ "X${update_only}" = "X" ]
         then
@@ -105,7 +110,7 @@ runInit()
         echo " - ${modifiedinit}"
         GenerateService ossec-hids.init > /etc/rc.d/rc.${service}
         chmod 755 /etc/rc.d/rc.${service}
-        chown root:wazuh /etc/rc.d/rc.${service}
+        chown root:$file_permissions /etc/rc.d/rc.${service}
 
         grep ${service} /etc/rc.d/rc.local > /dev/null 2>&1
         if [ $? != 0 ]; then
@@ -127,57 +132,12 @@ runInit()
         return 0;
     fi
 
-    if [ "X${UN}" = "XSunOS" ]; then
-        echo " - ${systemis} Solaris (SunOS)."
-        echo " - ${modifiedinit}"
-        GenerateService ossec-hids-solaris.init > /etc/init.d/${service}
-        chmod 755 /etc/init.d/${service}
-
-        if [ "X${update_only}" = "X" ]
-        then
-            ln -s /etc/init.d/${service} /etc/rc2.d/S97${service}
-            ln -s /etc/init.d/${service} /etc/rc3.d/S97${service}
-        fi
-
-        return 0;
-    fi
-
-    if [ "X${UN}" = "XHP-UX" ]; then
-        echo " - ${systemis} HP-UX."
-        echo " - ${modifiedinit}"
-        GenerateService ossec-hids-hpux.init > /sbin/init.d/${service}
-        chmod 755 /sbin/init.d/${service}
-
-        if [ "X${update_only}" = "X" ]
-        then
-            ln -s /sbin/init.d/${service} /sbin/rc2.d/S97${service}
-            ln -s /sbin/init.d/${service} /sbin/rc3.d/S97${service}
-        fi
-
-        return 0;
-    fi
-
-    if [ "X${UN}" = "XAIX" ]; then
-        echo " - ${systemis} AIX."
-        echo " - ${modifiedinit}"
-        GenerateService ossec-hids-aix.init > /etc/rc.d/init.d/${service}
-        chmod 755 /etc/rc.d/init.d/${service}
-
-        if [ "X${update_only}" = "X" ]
-        then
-            ln -s /etc/rc.d/init.d/${service} /etc/rc.d/rc2.d/S97${service}
-            ln -s /etc/rc.d/init.d/${service} /etc/rc.d/rc3.d/S97${service}
-        fi
-
-        return 0;
-    fi
-
     if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" -o "X${UN}" = "XDragonFly" ]; then
-        # Checking for the presence of wazuh-control on rc.local
-        grep wazuh-control /etc/rc.local > /dev/null 2>&1
+        # Checking for the presence of the control script on rc.local
+        grep ${control_script} /etc/rc.local > /dev/null 2>&1
         if [ $? != 0 ]; then
             echo "echo \"${starting}\"" >> /etc/rc.local
-            echo "${INSTALLDIR}/bin/wazuh-control start" >> /etc/rc.local
+            echo "${INSTALLDIR}/bin/${control_script} start" >> /etc/rc.local
         fi
         echo " - ${systemis} ${NUNAME}."
         echo " - ${modifiedinit}"
@@ -187,10 +147,10 @@ runInit()
             echo " - ${systemis} Linux."
             echo " - ${modifiedinit}"
 
-            grep wazuh-control /etc/rc.d/rc.local > /dev/null 2>&1
+            grep ${control_script} /etc/rc.d/rc.local > /dev/null 2>&1
             if [ $? != 0 ]; then
                 echo "echo \"${starting}\"" >> /etc/rc.d/rc.local
-                echo "${INSTALLDIR}/bin/wazuh-control start" >> /etc/rc.d/rc.local
+                echo "${INSTALLDIR}/bin/${control_script} start" >> /etc/rc.d/rc.local
             fi
             return 0;
         elif [ -d "/etc/rc.d/init.d" ]; then
@@ -198,7 +158,7 @@ runInit()
             echo " - ${modifiedinit}"
             GenerateService ossec-hids.init > /etc/rc.d/init.d/${service}
             chmod 755 /etc/rc.d/init.d/${service}
-            chown root:wazuh /etc/rc.d/init.d/${service}
+            chown root:$file_permissions /etc/rc.d/init.d/${service}
             return 0;
         # Taken from Stephen Bunn ossec howto.
         elif [ -d "/etc/init.d" -a -f "/usr/sbin/update-rc.d" ]; then
@@ -207,7 +167,7 @@ runInit()
             GenerateService ossec-hids-debian.init > /etc/init.d/${service}
             chmod +x /etc/init.d/${service}
             chmod go-w /etc/init.d/${service}
-            chown root:wazuh /etc/init.d/${service}
+            chown root:$file_permissions /etc/init.d/${service}
 
             if [ "X${update_only}" = "X" ]
             then

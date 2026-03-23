@@ -1,0 +1,160 @@
+import engine_pb2 as _engine_pb2
+from google.protobuf import struct_pb2 as _struct_pb2
+from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
+
+ALL: TraceLevel
+ASSET_ONLY: TraceLevel
+DESCRIPTOR: _descriptor.FileDescriptor
+DISABLED: State
+ENABLED: State
+NONE: TraceLevel
+STATE_UNKNOWN: State
+
+class LogtestDelete_Request(_message.Message):
+    __slots__ = ["space"]
+    SPACE_FIELD_NUMBER: _ClassVar[int]
+    space: str
+    def __init__(self, space: _Optional[str] = ...) -> None: ...
+
+class PublicRunPost_Request(_message.Message):
+    __slots__ = ["event", "location", "metadata", "queue", "space", "trace_level"]
+    EVENT_FIELD_NUMBER: _ClassVar[int]
+    LOCATION_FIELD_NUMBER: _ClassVar[int]
+    METADATA_FIELD_NUMBER: _ClassVar[int]
+    QUEUE_FIELD_NUMBER: _ClassVar[int]
+    SPACE_FIELD_NUMBER: _ClassVar[int]
+    TRACE_LEVEL_FIELD_NUMBER: _ClassVar[int]
+    event: str
+    location: str
+    metadata: _struct_pb2.Struct
+    queue: int
+    space: str
+    trace_level: str
+    def __init__(self, queue: _Optional[int] = ..., location: _Optional[str] = ..., metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., event: _Optional[str] = ..., trace_level: _Optional[str] = ..., space: _Optional[str] = ...) -> None: ...
+
+class Result(_message.Message):
+    __slots__ = ["asset_traces", "output"]
+    class AssetTrace(_message.Message):
+        __slots__ = ["asset", "success", "traces"]
+        ASSET_FIELD_NUMBER: _ClassVar[int]
+        SUCCESS_FIELD_NUMBER: _ClassVar[int]
+        TRACES_FIELD_NUMBER: _ClassVar[int]
+        asset: str
+        success: bool
+        traces: _containers.RepeatedScalarFieldContainer[str]
+        def __init__(self, asset: _Optional[str] = ..., success: bool = ..., traces: _Optional[_Iterable[str]] = ...) -> None: ...
+    ASSET_TRACES_FIELD_NUMBER: _ClassVar[int]
+    OUTPUT_FIELD_NUMBER: _ClassVar[int]
+    asset_traces: _containers.RepeatedCompositeFieldContainer[Result.AssetTrace]
+    output: _struct_pb2.Struct
+    def __init__(self, output: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., asset_traces: _Optional[_Iterable[_Union[Result.AssetTrace, _Mapping]]] = ...) -> None: ...
+
+class RunPost_Request(_message.Message):
+    __slots__ = ["agent_metadata", "asset_trace", "event", "name", "trace_level"]
+    AGENT_METADATA_FIELD_NUMBER: _ClassVar[int]
+    ASSET_TRACE_FIELD_NUMBER: _ClassVar[int]
+    EVENT_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    TRACE_LEVEL_FIELD_NUMBER: _ClassVar[int]
+    agent_metadata: _struct_pb2.Struct
+    asset_trace: _containers.RepeatedScalarFieldContainer[str]
+    event: str
+    name: str
+    trace_level: TraceLevel
+    def __init__(self, name: _Optional[str] = ..., event: _Optional[str] = ..., agent_metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., trace_level: _Optional[_Union[TraceLevel, str]] = ..., asset_trace: _Optional[_Iterable[str]] = ...) -> None: ...
+
+class RunPost_Response(_message.Message):
+    __slots__ = ["error", "result", "status"]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    RESULT_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    error: str
+    result: Result
+    status: _engine_pb2.ReturnStatus
+    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., result: _Optional[_Union[Result, _Mapping]] = ...) -> None: ...
+
+class Session(_message.Message):
+    __slots__ = ["description", "entry_status", "last_use", "lifetime", "name", "namespaceId"]
+    DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
+    ENTRY_STATUS_FIELD_NUMBER: _ClassVar[int]
+    LAST_USE_FIELD_NUMBER: _ClassVar[int]
+    LIFETIME_FIELD_NUMBER: _ClassVar[int]
+    NAMESPACEID_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    description: str
+    entry_status: State
+    last_use: int
+    lifetime: int
+    name: str
+    namespaceId: str
+    def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., lifetime: _Optional[int] = ..., description: _Optional[str] = ..., entry_status: _Optional[_Union[State, str]] = ..., last_use: _Optional[int] = ...) -> None: ...
+
+class SessionDelete_Request(_message.Message):
+    __slots__ = ["name"]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    def __init__(self, name: _Optional[str] = ...) -> None: ...
+
+class SessionGet_Request(_message.Message):
+    __slots__ = ["name"]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    def __init__(self, name: _Optional[str] = ...) -> None: ...
+
+class SessionGet_Response(_message.Message):
+    __slots__ = ["error", "session", "status"]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    SESSION_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    error: str
+    session: Session
+    status: _engine_pb2.ReturnStatus
+    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., session: _Optional[_Union[Session, _Mapping]] = ...) -> None: ...
+
+class SessionPost(_message.Message):
+    __slots__ = ["description", "lifetime", "name", "namespaceId"]
+    DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
+    LIFETIME_FIELD_NUMBER: _ClassVar[int]
+    NAMESPACEID_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    description: str
+    lifetime: int
+    name: str
+    namespaceId: str
+    def __init__(self, name: _Optional[str] = ..., namespaceId: _Optional[str] = ..., lifetime: _Optional[int] = ..., description: _Optional[str] = ...) -> None: ...
+
+class SessionPost_Request(_message.Message):
+    __slots__ = ["session"]
+    SESSION_FIELD_NUMBER: _ClassVar[int]
+    session: SessionPost
+    def __init__(self, session: _Optional[_Union[SessionPost, _Mapping]] = ...) -> None: ...
+
+class SessionReload_Request(_message.Message):
+    __slots__ = ["name"]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    def __init__(self, name: _Optional[str] = ...) -> None: ...
+
+class TableGet_Request(_message.Message):
+    __slots__ = []
+    def __init__(self) -> None: ...
+
+class TableGet_Response(_message.Message):
+    __slots__ = ["error", "sessions", "status"]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    SESSIONS_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    error: str
+    sessions: _containers.RepeatedCompositeFieldContainer[Session]
+    status: _engine_pb2.ReturnStatus
+    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., sessions: _Optional[_Iterable[_Union[Session, _Mapping]]] = ...) -> None: ...
+
+class State(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = []
+
+class TraceLevel(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = []

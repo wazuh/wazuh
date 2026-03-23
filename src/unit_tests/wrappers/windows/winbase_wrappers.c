@@ -12,15 +12,23 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <tchar.h>
 
-DWORD wrap_FormatMessage(__UNUSED_PARAM(DWORD dwFlags),
+DWORD wrap_FormatMessage(DWORD dwFlags,
                          __UNUSED_PARAM(LPCVOID lpSource),
                          __UNUSED_PARAM(DWORD dwMessageId),
                          __UNUSED_PARAM(DWORD dwLanguageId),
                          LPTSTR lpBuffer,
-                         __UNUSED_PARAM(DWORD nSize),
+                         DWORD nSize,
                          __UNUSED_PARAM(va_list *Arguments)) {
-    *((LPTSTR*)lpBuffer) = mock_type(char*);
+
+    if (dwFlags & FORMAT_MESSAGE_ALLOCATE_BUFFER) {
+        *((LPTSTR*)lpBuffer) = mock_type(char*);
+    }
+    else {
+        char *mockMessage = mock_type(char*);
+        _stprintf_s(lpBuffer, nSize, _T("%hs"), mockMessage);
+    }
     return 0;
 }
 

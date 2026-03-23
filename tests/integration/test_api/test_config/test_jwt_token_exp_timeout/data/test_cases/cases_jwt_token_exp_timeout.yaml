@@ -1,0 +1,13 @@
+- name: SHORT_EXPIRATION_TIME
+  description: Check that the JWT token expires correctly and the API response is the expected
+  configuration_parameters:
+    AUTH_TOKEN_EXP_TIMEOUT: 5
+  metadata:
+    expected_code: 401
+
+- name: LONG_EXPIRATION_TIME
+  description: Check that the JWT token does not expire and the API response is the expected
+  configuration_parameters:
+    AUTH_TOKEN_EXP_TIMEOUT: 60
+  metadata:
+    expected_code: 200

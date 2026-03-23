@@ -5,14 +5,6 @@
     <!-- Frequency that syscheck is executed default every 12 hours -->
     <frequency>43200</frequency>
 
-    <scan_on_start>yes</scan_on_start>
-
-    <!-- Generate alert when new file detected -->
-    <alert_new_files>yes</alert_new_files>
-
-    <!-- Don't ignore files that change more than 'frequency' times -->
-    <auto_ignore frequency="10" timeframe="3600">no</auto_ignore>
-
     <!-- Directories to check  (perform all possible verifications) -->
     <directories>/etc,/usr/bin,/usr/sbin</directories>
     <directories>/bin,/sbin,/boot</directories>
@@ -46,13 +38,13 @@
     <process_priority>10</process_priority>
 
     <!-- Maximum output throughput -->
-    <max_eps>100</max_eps>
+    <max_eps>50</max_eps>
 
     <!-- Database synchronization settings -->
     <synchronization>
       <enabled>yes</enabled>
       <interval>5m</interval>
-      <max_interval>1h</max_interval>
-      <max_eps>10</max_eps>
+      <max_eps>50</max_eps>
+      <integrity_interval>24h</integrity_interval>
     </synchronization>
   </syscheck>

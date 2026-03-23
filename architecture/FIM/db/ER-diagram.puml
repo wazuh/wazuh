@@ -1,0 +1,53 @@
+@startuml ER FIM DB
+
+entity "file_entry" {
+  path : text **<<PK>>**
+  --
+  checksum : text
+  device : integer
+  inode : integer
+  size : integer
+  permissions : text
+  attributes : text
+  uid : integer
+  gid : integer
+  owner : text
+  group : text
+  hash_md5 : text
+  hash_sha1 : text
+  hash_sha256 : text
+  mtime : integer
+}
+
+entity "registry_key" {
+  path : text **<<PK>>**
+  architecture : text **<<PK>>**
+  --
+  permissions : text
+  uid : integer
+  gid : integer
+  owner : text
+  group : text
+  mtime : integer
+  checksum : text
+}
+
+entity "registry_data" {
+  path : text **<<PK>>**
+  architecture : text **<<PK>>**
+  value : text **<<PK>>**
+  --
+  registry_key_path **<<FK>>**
+  registry_key_arch **<<FK>>**
+  type : integer
+  size : integer
+  hash_md5 : text
+  hash_sha1 : text
+  hash_sha256 : text
+  checksum : text
+}
+registry_data }o--|| registry_key
+
+
+@enduml
+

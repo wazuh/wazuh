@@ -1,5 +1,6 @@
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
 import contextlib
@@ -141,15 +142,17 @@ class AbstractServerHandler(c_common.Handler):
         self.name = data.decode()
         if self.name in self.server.clients:
             self.name = ''
-            raise exception.WazuhClusterError(3028, extra_message=data)
-        elif self.name == self.server.configuration['node_name']:
+            raise exception.WazuhClusterError(3028, extra_message=data.decode())
+
+        if self.name == self.server.configuration['node_name']:
             raise exception.WazuhClusterError(3029)
-        else:
-            self.server.clients[self.name] = self
-            self.tag = f'{self.tag} {self.name}'
-            context_tag.set(self.tag)
-            self.handler_tasks.append(self.loop.create_task(self.broadcast_reader()))
-            return b'ok', f'Client {self.name} added'.encode()
+
+        self.server.clients[self.name] = self
+        self.tag = f'{self.tag} {self.name}'
+        context_tag.set(self.tag)
+        self.handler_tasks.append(self.loop.create_task(self.broadcast_reader()))
+
+        return b'ok', f'Client {self.name} added'.encode()
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
         """Define response commands for servers.
@@ -258,7 +261,7 @@ class AbstractServer:
         concurrency_test : int
             Number of requests to do in the concurrency test.
         configuration : dict
-            ossec.conf cluster configuration.
+            wazuh-manager.conf cluster configuration.
         cluster_items : dict
             cluster.json cluster internal configuration.
         enable_ssl : bool
@@ -279,6 +282,7 @@ class AbstractServer:
         # logging tag
         context_tag.set(self.tag)
         self.tasks = [self.check_clients_keepalive]
+        self.tasks_event = asyncio.Event()
         self.handler_class = AbstractServerHandler
         self.loop = asyncio.get_running_loop()
         self.broadcast_results = {}
@@ -407,7 +411,7 @@ class AbstractServer:
 
     def get_connected_nodes(self, filter_node: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
                             sort: Dict = None, search: Dict = None, select: Dict = None,
-                            filter_type: str = 'all') -> Dict:
+                            filter_type: str = 'all', distinct: bool = False) -> Dict:
         """Get all connected nodes, including the master node.
 
         Parameters
@@ -426,6 +430,8 @@ class AbstractServer:
             Select which fields to return (separated by comma).
         filter_type : str
             Type of node (worker/master).
+        distinct : bool
+            Look for distinct values.
 
         Returns
         -------
@@ -475,7 +481,8 @@ class AbstractServer:
                                    sort_ascending=False if sort is not None and sort['order'] == 'desc' else True,
                                    allowed_sort_fields=default_fields,
                                    offset=offset,
-                                   limit=limit)
+                                   limit=limit,
+                                   distinct=distinct)
 
     async def check_clients_keepalive(self):
         """Check date of the last received keep alive.
@@ -486,6 +493,8 @@ class AbstractServer:
         """
         keep_alive_logger = self.setup_task_logger("Keep alive")
         while True:
+            await self.tasks_event.wait()
+            
             keep_alive_logger.debug("Calculating.")
             curr_timestamp = utils.get_utc_now().timestamp()
             # Iterate all clients and close the connection when their last keepalive is older than allowed.
@@ -497,22 +506,17 @@ class AbstractServer:
             keep_alive_logger.debug("Calculated.")
             await asyncio.sleep(self.cluster_items['intervals']['master']['check_worker_lastkeepalive'])
 
-    async def echo(self):
-        """Send an echo message to all clients every 3 seconds."""
-        while True:
-            for client_name, client in self.clients.items():
-                self.logger.debug(f"Sending echo to worker {client_name}")
-                self.logger.info((await client.send_request(b'echo-m', b'keepalive ' + client_name)).decode())
-            await asyncio.sleep(3)
-
     async def performance_test(self):
         """Send a big message to all clients every 3 seconds."""
         while True:
             for client_name, client in self.clients.items():
-                before = perf_counter()
-                response = await client.send_request(b'echo', b'a' * self.performance)
-                after = perf_counter()
-                self.logger.info(f"Received size: {len(response)} // Time: {after - before}")
+                try:
+                    before = perf_counter()
+                    response = await client.send_request(b'echo', b'a' * self.performance)
+                    after = perf_counter()
+                    self.logger.info(f"Received size: {len(response)} // Time: {after - before}")
+                except Exception as e:
+                    self.logger.error(f"Error during performance test: {e}")
             await asyncio.sleep(3)
 
     async def concurrency_test(self):
@@ -521,7 +525,11 @@ class AbstractServer:
             before = perf_counter()
             for i in range(self.concurrency):
                 for client_name, client in self.clients.items():
-                    await client.send_request(b'echo', f'concurrency {i} client {client_name}'.encode())
+                    try:
+                        await client.send_request(b'echo', f'concurrency {i} client {client_name}'.encode())
+                    except Exception as e:
+                        self.logger.error(f"Error during concurrency test ({i+1}/{self.concurrency}, {client_name}): "
+                                          f"{e}")
             after = perf_counter()
             self.logger.info(f"Time sending {self.concurrency} messages: {after - before}")
             await asyncio.sleep(10)

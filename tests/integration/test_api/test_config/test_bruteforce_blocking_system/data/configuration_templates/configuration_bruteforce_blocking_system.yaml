@@ -1,0 +1,5 @@
+- blocks:
+    access:
+      block_time: BLOCK_TIME
+      max_login_attempts: MAX_LOGIN_ATTEMPTS
+      max_request_per_minute: MAX_REQUEST_PER_MINUTE

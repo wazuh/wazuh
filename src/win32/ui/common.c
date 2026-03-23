@@ -11,8 +11,8 @@
 #include "shared.h"
 #include "os_win32ui.h"
 #include "../os_win.h"
-#include "os_xml/os_xml.h"
-#include "os_net/os_net.h"
+#include "os_xml.h"
+#include "os_net.h"
 #include "validate_op.h"
 
 /* Agent status */
@@ -57,7 +57,7 @@ char *cat_file(char *file, FILE *fp2)
     FILE *fp;
 
     if (!fp2) {
-        fp = fopen(file, "r");
+        fp = wfopen(file, "r");
     } else {
         fp = fp2;
     }
@@ -94,7 +94,7 @@ char *cat_file(char *file, FILE *fp2)
 int is_file(char *file)
 {
     FILE *fp;
-    fp = fopen(file, "r");
+    fp = wfopen(file, "r");
     if (fp) {
         fclose(fp);
         return (1);
@@ -180,6 +180,28 @@ void init_config()
     }
 }
 
+/* Read version/revision from JSON file */
+char *read_version_file_field(const char *field_name)
+{
+    cJSON *root = json_fread(VERSION_FILE, 0);
+    if (!root)
+    {
+        return NULL;
+    }
+
+    cJSON *version_json = cJSON_GetObjectItemCaseSensitive(root, field_name);
+    if (!cJSON_IsString(version_json) || (version_json->valuestring == NULL))
+    {
+        cJSON_Delete(root);
+        return NULL;
+    }
+
+    char *version_copy = strdup(version_json->valuestring);
+    cJSON_Delete(root);
+
+    return version_copy;
+}
+
 /* Read ossec config */
 int config_read(__attribute__((unused)) HWND hwnd)
 {
@@ -197,14 +219,23 @@ int config_read(__attribute__((unused)) HWND hwnd)
     }
 
     /* Get version/revision */
+    if ((tmp_str = read_version_file_field("version"), tmp_str))
+    {
+        // The old VERSION file had a 'v' prefix. The new VERSION.json does not.
+        if (tmp_str[0] != 'v') {
+            size_t len = strlen(tmp_str);
+            char prefixed_version[len + 2];
+            snprintf(prefixed_version, sizeof(prefixed_version), "v%s", tmp_str);
+            snprintf(buffer, sizeof(buffer), "Wazuh %s", prefixed_version);
+        } else {
+            snprintf(buffer, sizeof(buffer), "Wazuh %s", tmp_str);
+        }
 
-    if (tmp_str = cat_file(VERSION_FILE, NULL), tmp_str) {
-        snprintf(buffer, sizeof(buffer), "Wazuh %s", tmp_str);
         os_strdup(buffer, config_inst.version);
     }
 
     free(tmp_str);
-    if (tmp_str = cat_file(REVISION_FILE, NULL), tmp_str) {
+    if (tmp_str = read_version_file_field("stage"), tmp_str) {
         snprintf(buffer, sizeof(buffer), "Revision %s", tmp_str);
         os_strdup(buffer, config_inst.revision);
     }
@@ -301,6 +332,7 @@ int get_ossec_server()
     int success = 0;
 
     /* Definitions */
+    const char *(xml_manageraddr[]) = {"ossec_config", "client", "manager", "address", NULL};
     const char *(xml_serverip[]) = {"ossec_config", "client", "server-ip", NULL};
     const char *(xml_serverhost[]) = {"ossec_config", "client", "server-hostname", NULL};
     const char *(xml_serveraddr[]) = {"ossec_config", "client", "server", "address", NULL};
@@ -318,6 +350,19 @@ int get_ossec_server()
     config_inst.server_type = 0;
 
     /* Get IP address of manager */
+    if (str = OS_GetOneContentforElement(&xml, xml_manageraddr), str) {
+        if (OS_IsValidIP(str, NULL) == 1) {
+            config_inst.server_type = SERVER_IP_USED;
+            config_inst.server = str;
+            success = 1;
+            goto ret;
+        } else {
+            config_inst.server_type = SERVER_HOST_USED;
+            config_inst.server = str;
+            success = 1;
+            goto ret;
+        }
+    }
     if (str = OS_GetOneContentforElement(&xml, xml_serveraddr), str) {
         if (OS_IsValidIP(str, NULL) == 1) {
             config_inst.server_type = SERVER_IP_USED;
@@ -407,6 +452,10 @@ int run_cmd(char *cmd, HWND hwnd)
 int set_ossec_server(char *ip, HWND hwnd)
 {
     const char **xml_pt = NULL;
+    const char **xml_alt_pt = NULL;
+    OS_XML xml;
+    char *str = NULL;
+    const char *(xml_manageraddr[]) = {"ossec_config", "client", "manager", "address", NULL};
     const char *(xml_serveraddr[]) = {"ossec_config", "client", "server", "address", NULL};
     char config_tmp[] = CONFIG;
     char *conf_file = basename_ex(config_tmp);
@@ -425,11 +474,27 @@ int set_ossec_server(char *ip, HWND hwnd)
             return (0);
         }
         config_inst.server_type = SERVER_HOST_USED;
-        xml_pt = xml_serveraddr;
     } else {
         config_inst.server_type = SERVER_IP_USED;
-        xml_pt = xml_serveraddr;
     }
+
+    /* Keep manager/server tag compatibility depending on current config. */
+    if (OS_ReadXML(CONFIG, &xml) == 0) {
+        if (str = OS_GetOneContentforElement(&xml, xml_manageraddr), str) {
+            xml_pt = xml_manageraddr;
+            free(str);
+        } else if (str = OS_GetOneContentforElement(&xml, xml_serveraddr), str) {
+            xml_pt = xml_serveraddr;
+            free(str);
+        } else {
+            xml_pt = xml_manageraddr;
+        }
+        OS_ClearXML(&xml);
+    } else {
+        xml_pt = xml_manageraddr;
+    }
+
+    xml_alt_pt = (xml_pt == xml_manageraddr) ? xml_serveraddr : xml_manageraddr;
 
     /* Create temporary file */
     if (mkstemp_ex(tmp_path) == -1) {
@@ -439,7 +504,8 @@ int set_ossec_server(char *ip, HWND hwnd)
     }
 
     /* Read the XML. Print error and line number. */
-    if (OS_WriteXML(CONFIG, tmp_path, xml_pt, NULL, ip) != 0) {
+    if (OS_WriteXML(CONFIG, tmp_path, xml_pt, NULL, ip) != 0 &&
+        OS_WriteXML(CONFIG, tmp_path, xml_alt_pt, NULL, ip) != 0) {
         MessageBox(hwnd, "Unable to set OSSEC Server IP Address.\r\n"
                    "(Internal error on the XML Write).",
                    "Error -- Failure Setting IP", MB_OK);
@@ -499,7 +565,7 @@ int set_ossec_key(char *key, HWND hwnd)
         return (0);
     }
 
-    fp = fopen(tmp_path, "w");
+    fp = wfopen(tmp_path, "w");
     if (fp) {
         fprintf(fp, "%s", key);
         fclose(fp);

@@ -29,17 +29,17 @@ class PortImpl final : public IOSPort
         // LCOV_EXCL_STOP
         void buildPortData(nlohmann::json& port) override
         {
-            port["protocol"] = m_spPortRawData->protocol();
-            port["local_ip"] = m_spPortRawData->localIp();
-            port["local_port"] = m_spPortRawData->localPort();
-            port["remote_ip"] = m_spPortRawData->remoteIP();
-            port["remote_port"] = m_spPortRawData->remotePort();
-            port["tx_queue"] = m_spPortRawData->txQueue();
-            port["rx_queue"] = m_spPortRawData->rxQueue();
-            port["inode"] = m_spPortRawData->inode();
-            port["state"] = m_spPortRawData->state();
-            port["pid"] = m_spPortRawData->pid();
-            port["process"] = m_spPortRawData->processName();
+            port["network_transport"] = m_spPortRawData->protocol();
+            port["source_ip"] = m_spPortRawData->localIp();
+            port["source_port"] = m_spPortRawData->localPort();
+            port["destination_ip"] = m_spPortRawData->remoteIP();
+            port["destination_port"] = m_spPortRawData->remotePort();
+            port["host_network_egress_queue"] = m_spPortRawData->txQueue();
+            port["host_network_ingress_queue"] = m_spPortRawData->rxQueue();
+            port["file_inode"] = m_spPortRawData->inode();
+            port["interface_state"] = m_spPortRawData->state();
+            port["process_pid"] = m_spPortRawData->pid();
+            port["process_name"] = m_spPortRawData->processName();
         }
 };
 #endif // _PORT_IMPL_H

@@ -18,6 +18,7 @@
 #ifdef WAZUH_UNIT_TESTING
 #define EXPORTED
 #else
+#ifndef EXPORTED
 #ifdef _WIN32
 #ifdef WIN_EXPORT
 #define EXPORTED __declspec(dllexport)
@@ -30,7 +31,7 @@
 #define EXPORTED
 #endif
 #endif
-
+#endif
 
 #include "cJSON.h"
 #ifdef __cplusplus
@@ -124,6 +125,42 @@ EXPORTED int sysinfo_packages_cb(callback_data_t cb);
  * @return 0 on success, -1 otherwise.
  */
 EXPORTED int sysinfo_hotfixes(cJSON** js_result);
+
+/**
+ * @brief Obtains the groups information from the current OS being analyzed.
+ *
+ * @param js_result Resulting json where the specific information will be stored.
+ *
+ * @return 0 on success, -1 otherwise.
+ */
+EXPORTED int sysinfo_groups(cJSON** js_result);
+
+/**
+ * @brief Obtains the users information from the current OS being analyzed.
+ *
+ * @param js_result Resulting json where the specific information will be stored.
+ *
+ * @return 0 on success, -1 otherwise.
+ */
+EXPORTED int sysinfo_users(cJSON** js_result);
+
+/**
+ * @brief Obtains the services information from the current OS being analyzed.
+ *
+ * @param js_result Resulting json where the specific information will be stored.
+ *
+ * @return 0 on success, -1 otherwise.
+ */
+EXPORTED int sysinfo_services(cJSON** js_result);
+
+/**
+ * @brief Obtains the browser extension information from the current OS being analyzed.
+ *
+ * @param js_result Resulting json where the specific information will be stored.
+ *
+ * @return 0 on success, -1 otherwise.
+ */
+EXPORTED int sysinfo_browser_extension(cJSON** js_result);
 
 
 typedef int(*sysinfo_networks_func)(cJSON** jsresult);

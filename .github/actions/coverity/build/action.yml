@@ -1,0 +1,26 @@
+name: Coverity Build
+description: "Runs cov-build for the specified project and build command"
+inputs:
+  command:
+    description: "Build command (e.g., make)"
+    required: true
+  docker_image_tag:
+    description: |
+      Tag name of the Docker image to be used for the build.
+      Use only '-', '_', '.' and alphanumeric characters.
+      Default is '5.x'.
+    required: false
+    default: '5.x'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run Coverity build in container
+      shell: bash
+      run: |
+        docker run --rm \
+          -v "${{ github.workspace }}:/src" \
+          -w /src \
+          -u $(id -u):$(id -g) \
+          ghcr.io/wazuh/coverity-scan:${{ inputs.docker_image_tag }} \
+          ${{ inputs.command }}

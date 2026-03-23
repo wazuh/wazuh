@@ -14,8 +14,7 @@ policy:
   id: "cis_postgresql_13"
   file: "cis_postgre-sql-13.yml"
   name: "CIS Benchmark for PostgreSQL 13"
-  description: >
-    "This document, CIS PostgreSQL 13 Benchmark, provides prescriptive guidance for establishing a secure configuration posture for PostgreSQL 13."
+  description: "This document, CIS PostgreSQL 13 Benchmark, provides prescriptive guidance for establishing a secure configuration posture for PostgreSQL 13."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
@@ -39,15 +38,15 @@ requirements:
   condition: all
   rules:
     - 'c:psql -U $user -h $host $db -c "\\l" -w -> r:row'
-    - 'c:psql --version -> r:13'
+    - "c:psql --version -> r:13"
 
 checks:
-# 1 Installation and Patches
+  # 1 Installation and Patches
 
-# 1.1 Ensure packages are obtained from authorized repositories (Manual)
-# Not Applicable: requiers manual verification
+  # 1.1 Ensure packages are obtained from authorized repositories (Manual)
+  # Not Applicable: requiers manual verification
 
-# 1.2 Ensure systemd Service Files Are Enabled (Automated)
+  # 1.2 Ensure systemd Service Files Are Enabled (Automated)
   - id: 24000
     title: Ensure systemd Service Files Are Enabled
     description: Confirm, and correct if necessary, the PostgreSQL systemd service is enabled.
@@ -60,8 +59,19 @@ checks:
       as a "want" of the default systemd target. Multiple instances of PostgreSQL services often
       distinguish themselves using a version number.
     compliance:
-      - cis: ["1.2"]
-      - cis_csc: ["18", "5.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://linuxcommand.org/man_pages/runlevel8.html
       - https://linuxcommand.org/man_pages/chkconfig8.html
@@ -70,18 +80,18 @@ checks:
     rules:
       - c:sh -c "systemctl get-default | systemctl list-dependencies | grep postgres" -> r:postgres
 
-# 1.3 Ensure Data Cluster Initialized Successfully (Automated)
-# Not Applicable: user switching
+  # 1.3 Ensure Data Cluster Initialized Successfully (Automated)
+  # Not Applicable: user switching
 
-# 2 Directory and File Permissions
-# Not Applicable: user switching
+  # 2 Directory and File Permissions
+  # Not Applicable: user switching
 
-# 3 Logging Monitoring And Auditing
+  # 3 Logging Monitoring And Auditing
 
-# 3.1.1
-# Not Applicable: Not covered
+  # 3.1.1
+  # Not Applicable: Not covered
 
-# 3.1.2 Ensure the log destinations are set correctly (Automated) --TODO--
+  # 3.1.2 Ensure the log destinations are set correctly (Automated) --TODO--
   - id: 24001
     title: Ensure the log destinations are set correctly
     description: >
@@ -109,15 +119,26 @@ checks:
 
       (1 row)"
     compliance:
-      - cis: ["3.1.2"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/runtime-config-logging.html
     condition: all
     rules:
-      - c:sh -c "psql -U $user -h $host $db -c \"SHOW log_destination\" | grep $log_destination$" -> r:\.+
+      - c:sh -c "psql -U $user -h $host $db -c \"SHOW log_destination\" | grep $log_destination$" -> r:.+
 
-# 3.1.3 Ensure the logging collector is enabled (Automated)
+  # 3.1.3 Ensure the logging collector is enabled (Automated)
   - id: 24002
     title: Ensure the logging collector is enabled
     description: >
@@ -153,15 +174,26 @@ checks:
 
       Active: active (running) since <date>; 1s ago"
     compliance:
-      - cis: ["3.1.3"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/runtime-config-logging.html
     condition: all
     rules:
       - 'c:psql -U $user -h $host $db -c "SHOW logging_collector" -> r:\son'
 
-# 3.1.4 Ensure the log file destination directory is set correctly (Automated)
+  # 3.1.4 Ensure the log file destination directory is set correctly (Automated)
   - id: 24003
     title: Ensure the log file destination directory is set correctly
     description: >
@@ -208,15 +240,26 @@ checks:
       it is a good idea to have the logs outside of your PGDATA directory so that they are not
       included by things like pg_basebackup or pgBackRest."
     compliance:
-      - cis: ["3.1.4"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_directory\" | grep $log_directory$" -> r:\.+'
+      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_directory\" | grep $log_directory$" -> r:.+'
 
-# 3.1.5 Ensure the filename pattern for log files is set correctly (Automated)
+  # 3.1.5 Ensure the filename pattern for log files is set correctly (Automated)
   - id: 24004
     title: Ensure the filename pattern for log files is set correctly
     description: >
@@ -248,16 +291,27 @@ checks:
       (1 row)
       Note: In this example, a new logfile will be created for each day (e.g. postgresql20180901.log)"
     compliance:
-      - cis: ["3.1.5"]
-      - cis_csc: ["6.2", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://man7.org/linux/man-pages/man3/strftime.3.html
       - https://www.postgresql.org/docs/current/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_filename\" | grep $log_filename" -> r:\.+'
+      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_filename\" | grep $log_filename" -> r:.+'
 
-# 3.1.6 Ensure the log file permissions are set correctly (Automated)
+  # 3.1.6 Ensure the log file permissions are set correctly (Automated)
   - id: 24005
     title: Ensure the log file permissions are set correctly
     description: >
@@ -289,15 +343,26 @@ checks:
       0600
       (1 row)"
     compliance:
-      - cis: ["3.1.6"]
-      - cis_csc: ["14.4", "14.6"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
-    rules: 
-      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_file_mode\" | grep $log_file_mode" -> r:\.+'
+    rules:
+      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_file_mode\" | grep $log_file_mode" -> r:.+'
 
-# 3.1.7 Ensure 'log_truncate_on_rotation' is enabled (Automated)
+  # 3.1.7 Ensure 'log_truncate_on_rotation' is enabled (Automated)
   - id: 24006
     title: Ensure 'log_truncate_on_rotation' is enabled
     description: >
@@ -338,13 +403,24 @@ checks:
       on
       (1 row)"
     compliance:
-      - cis: ["3.1.7"]
-      - cis_csc: ["6.3", "6.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
-        - 'c:psql -U $user -h $host $db -c "SHOW log_truncate_on_rotation" -> r:\son'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_truncate_on_rotation" -> r:\son'
 
-# 3.1.8 Ensure the maximum log file lifetime is set correctly (Automated)
+  # 3.1.8 Ensure the maximum log file lifetime is set correctly (Automated)
   - id: 24007
     title: Ensure the maximum log file lifetime is set correctly
     description: >
@@ -365,15 +441,26 @@ checks:
       t
       (1 row)"
     compliance:
-      - cis: ["3.1.8"]
-      - cis_csc: ["6.3", "6.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_rotation_age\" | grep $log_rotation_age" -> r:\.+'
+      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_rotation_age\" | grep $log_rotation_age" -> r:.+'
 
-# 3.1.9 Ensure the maximum log file size is set correctly (Automated)
+  # 3.1.9 Ensure the maximum log file size is set correctly (Automated)
   - id: 24008
     title: Ensure the maximum log file size is set correctly
     description: >
@@ -393,15 +480,26 @@ checks:
       t
       (1 row)"
     compliance:
-      - cis: ["3.1.9"]
-      - cis_csc: ["6.3", "6.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_rotation_size\" | grep $log_rotation_size" -> r:\.+'
+      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_rotation_size\" | grep $log_rotation_size" -> r:.+'
 
-# 3.1.10 Ensure the correct syslog facility is selected (Manual)
+  # 3.1.10 Ensure the correct syslog facility is selected (Manual)
   - id: 24009
     title: Ensure the correct syslog facility is selected
     description: >
@@ -422,16 +520,27 @@ checks:
       t
       (1 row)"
     compliance:
-      - cis: ["3.1.10"]
-      - cis_csc: ["6", "6.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://tools.ietf.org/html/rfc3164 section-4.1.1
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:sh -c "psql -U $user -h $host $db -c \"show syslog_facility\" | grep $syslog_facility" -> r:\.+'
+      - 'c:sh -c "psql -U $user -h $host $db -c \"show syslog_facility\" | grep $syslog_facility" -> r:.+'
 
-# 3.1.11 Ensure the program name for PostgreSQL syslog messages is correct (Automated)
+  # 3.1.11 Ensure the program name for PostgreSQL syslog messages is correct (Automated)
   - id: 24010
     title: Ensure the program name for PostgreSQL syslog messages is correct
     description: >
@@ -455,16 +564,27 @@ checks:
       proddb
       (1 row)"
     compliance:
-      - cis: ["3.1.11"]
-      - cis_csc: ["6", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://tools.ietf.org/html/rfc3164#section-4.1.3
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:sh -c "psql -U $user -h $host $db -c \"show syslog_ident\" | grep $syslog_ident" -> r:\.+'
+      - 'c:sh -c "psql -U $user -h $host $db -c \"show syslog_ident\" | grep $syslog_ident" -> r:.+'
 
-# 3.1.12 Ensure the correct messages are written to the server log (Automated)
+  # 3.1.12 Ensure the correct messages are written to the server log (Automated)
   - id: 24011
     title: Ensure the correct messages are written to the server log
     description: >
@@ -484,15 +604,26 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.12"]
-      - cis_csc: ["6","6.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: none
     rules:
       - 'c:psql -U $user -h $host $db -c "SHOW log_min_messages" -> r:\serror|\slog$|\sfatal$|\spanic$'
 
-## 3.1.13 Ensure the correct SQL statements generating errors are recorded (Automated)
+  ## 3.1.13 Ensure the correct SQL statements generating errors are recorded (Automated)
   - id: 24012
     title: Ensure the correct SQL statements generating errors are recorded
     description: >
@@ -518,15 +649,26 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.13"]
-      - cis_csc: ["6", "6.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: none
     rules:
       - 'c:psql -U $user -h $host $db -c "SHOW log_min_error_statement" -> r:\slog$|\sfatal$|\spanic$'
 
-## 3.1.14 Ensure 'debug_print_parse' is disabled (Automated)
+  ## 3.1.14 Ensure 'debug_print_parse' is disabled (Automated)
   - id: 24013
     title: Ensure 'debug_print_parse' is disabled
     description: >
@@ -547,15 +689,26 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.14"]
-      - cis_csc: ["6", "5.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
       - 'c:psql -U $user -h $host $db -c "show debug_print_parse" -> r:\soff'
 
-## 3.1.15 Ensure 'debug_print_rewritten' is disabled (Automated)
+  ## 3.1.15 Ensure 'debug_print_rewritten' is disabled (Automated)
   - id: 24014
     title: Ensure 'debug_print_rewritten' is disabled
     description: >
@@ -576,15 +729,26 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.15"]
-      - cis_csc: ["6", "5.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html+
     condition: all
     rules:
       - 'c:psql -U $user -h $host $db -c "show debug_print_rewritten" -> r:\soff'
 
-## 3.1.16 Ensure 'debug_print_plan' is disabled (Automated)
+  ## 3.1.16 Ensure 'debug_print_plan' is disabled (Automated)
   - id: 24015
     title: Ensure 'debug_print_plan' is disabled
     description: >
@@ -604,8 +768,19 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.16"]
-      - cis_csc: ["6", "5.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -631,8 +806,19 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.17"]
-      - cis_csc: ["6", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -663,8 +849,19 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.18"]
-      - cis_csc: ["6", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     condition: all
     rules:
       - 'c:psql -U $user -h $host $db -c "SHOW log_connections" -> r:\son'
@@ -692,8 +889,19 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.19"]
-      - cis_csc: ["6", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -718,8 +926,19 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.20"]
-      - cis_csc: ["6", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -749,8 +968,19 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.21"]
-      - cis_csc: ["6", "5.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -788,8 +1018,19 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.22"]
-      - cis_csc: ["6", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://pgbadger.darold.net/
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
@@ -817,8 +1058,19 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.23"]
-      - cis_csc: ["6", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -851,14 +1103,25 @@ checks:
       t
       (1 row)
     compliance:
-      - cis: ["3.1.24"]
-      - cis_csc: ["6", "6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
       - https://en.wikipedia.org/wiki/Time_zone
     condition: all
     rules:
-      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_timezone\" | grep $log_timezone" -> r:\.+'
+      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_timezone\" | grep $log_timezone" -> r:.+'
 
   ## 3.2 Ensure the PostgreSQL Audit Extension (pgAudit) is enabled (Automated)
   - id: 24024
@@ -936,8 +1199,19 @@ checks:
       # systemctl status postgresql-13|grep 'ago$'
       Active: active (running) since [date] 10s ago
     compliance:
-      - cis: ["3.2"]
-      - cis: ["6", "6.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.pgaudit.org/
     condition: all
@@ -972,14 +1246,24 @@ checks:
       and then report on differences from that ideal.
 
     compliance:
-      - cis: ["4.5"]
-      - cis_csc: ["5.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://github.com/cybertec-postgresql/pg_permission
     condition: all
     rules:
       - 'c:psql -U $user -h $host $db -c "select * from pg_available_extensions where name=\"pg_permissions\";" -> r:pg_permissions && !r:(0\srows) && !r:ERROR'
-      
 
   ## 4.6 Ensure Row Level Security (RLS) is configured correctly (Manual)
   ## Not Aplicable: subjective
@@ -999,8 +1283,19 @@ checks:
       this setup.
 
     compliance:
-      - cis: ["4.7"]
-      - cis_csc: ["5.1", "5.8", "4.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://github.com/pgaudit/set_user
     condition: all
@@ -1041,8 +1336,19 @@ checks:
       operating systems, users must obtain or build their own FIPS 140-2 OpenSSL libraries.
 
     compliance:
-      - cis: ["6.7"]
-      - cis_csc: ["14.2", "14.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/security_hardening/using-the-system-wide-cryptographic-policies_security-hardening#switching-the-system-to-fips-mode_using-the-system-wide-cryptographic-policies
       - https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp1758.pdf
@@ -1051,7 +1357,7 @@ checks:
     rules:
       - 'c:fips-mode-setup --check -> r:FIPS\smode\sis\senabled'
 
-# 6.8 Ensure SSL is enabled and configured correctly (Automated)
+  # 6.8 Ensure SSL is enabled and configured correctly (Automated)
   - id: 24028
     title: Ensure SSL is enabled and configured correctly
     description: >
@@ -1062,8 +1368,19 @@ checks:
       compromised in transit.
 
     compliance:
-      - cis: ["6.8"]
-      - cis_csc: ["14.2", "14.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://www.postgresql.org/docs/current/static/ssl-tcp.html
       - http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-52r1.pdf
@@ -1130,8 +1447,19 @@ checks:
       backup/recovery solution, stringent testing must be conducted. A backup is only good if
       it can be restored successfully.
     compliance:
-      - cis: ["8.3"]
-      - cis_csc: ["10", "10.1", "10.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["30", "32"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic: ["TA0007"]
+      technique: ["T1595", "T1046", "T1087"]
     references:
       - https://pgbackrest.org/
       - https://github.com/pgbackrest/pgbackrest
@@ -1139,4 +1467,4 @@ checks:
       - https://www.postgresql.org/docs/current/static/app-pgbasebackup.html
     condition: none
     rules:
-      - 'c:pgbackrest -> -bash: pgbackrest: command not found'
+      - "c:pgbackrest -> -bash: pgbackrest: command not found"

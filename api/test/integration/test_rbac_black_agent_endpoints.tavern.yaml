@@ -130,7 +130,7 @@ test_name: GET /agents/{agent_id}/config/{component}/{configuration}
 
 stages:
 
-  - name: Try to get Request-Agent-Client for agent 004 (Denied)
+  - name: Try to get client configuration from agent component for agent 004 (Denied)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/004/config/agent/client"
@@ -140,7 +140,7 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Get Request-Agent-Client for agent 003 (Allowed)
+  - name: Get client configuration from agent component for agent 003 (Allowed)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/003/config/agent/client"
@@ -149,40 +149,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-
----
-test_name: GET /agents/{agent_id}/group/is_sync
-
-stages:
-
-  - name: Try to get sync of agent 008 (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/008/group/is_sync"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
-  - name: Get agent sync (Allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/007/group/is_sync"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - id: '007'
-              synced: !anybool
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
 
 ---
 test_name: GET /agents/{agent_id}/key
@@ -216,6 +182,45 @@ stages:
          failed_items: []
          total_affected_items: 1
          total_failed_items: 0
+
+---
+test_name: GET /agents/{agent_id}/daemons/stats
+
+stages:
+
+  - name: Get daemons stats from agent 001 (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - timestamp: !anystr
+              name: wazuh-manager-remoted
+              agents:
+                - id: 1
+                  uptime: !anystr
+                  metrics: !anything
+          failed_items:
+            - id: [ wazuh-manager-analysisd ]
+          total_affected_items: 1
+          total_failed_items: 1
+
+  - name: Try to get daemon stats from agent 002 (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/002/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: GET /agents/{agent_id}/stats/{component}
@@ -406,21 +411,19 @@ stages:
          affected_items:
            - filename: agent.conf
              hash: !anystr
-           - filename: ar.conf
-             hash: !anystr
-         total_affected_items: 3
+         total_affected_items: 2
          total_failed_items: 0
          failed_items: []
 
 ---
-test_name: GET /groups/{group_id}/files/{filename}/json
+test_name: GET /groups/{group_id}/files/{filename}
 
 stages:
 
  - name: Try get one file of a group (Denied)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf/json"
+     url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -430,39 +433,12 @@ stages:
  - name: Try get one file of a group (Allowed)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/group2/files/agent.conf/json"
+     url: "{protocol:s}://{host:s}:{port:d}/groups/group2/files/agent.conf"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-
----
-test_name: GET /groups/{group_id}/files/{filename}/xml
-
-stages:
-
- - name: Try get one file of a group (Denied)
-   request:
-     verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/group1/files/agent.conf/xml"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-   response:
-      <<: *permission_denied
-
- - name: Try get one file of a group (Allowed)
-   request:
-     verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/group3/files/agent.conf/xml"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-   response:
-     status_code: 200
-     headers:
-       content-type: 'application/xml; charset=utf-8'
 
 ---
 test_name: GET /agents?name=agent_name
@@ -583,6 +559,32 @@ stages:
          total_failed_items: 0
 
 ---
+test_name: GET /agents/summary
+
+stages:
+
+ - name: Get the agents summary (Partially allowed, user agnostic)
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{port:d}/agents/summary"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+   response:
+     status_code: 200
+     json:
+       error: 0
+       data:
+         status:
+           active: 4
+           disconnected: 1
+           never_connected: 1
+           pending: 0
+         os:
+          ubuntu: 5
+         groups: !anything
+
+---
 test_name: GET /agents/summary/status
 
 stages:
@@ -699,6 +701,7 @@ stages:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
           agents_list: ["005"]
+          restarted: False
       status_code: 200
       json:
         message: !anystr
@@ -863,29 +866,6 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Try to delete group2 (Group modification denied, indirectly denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        groups_list: group2
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 4015
-              id:
-                - 'group2'
-          total_affected_items: 0
-          total_failed_items: 1
-
   - name: Try to delete group antonio (Allowed)
     request:
       verify: False
@@ -914,7 +894,7 @@ test_name: DELETE /groups
 
 stages:
 
-  - name: Try to delete all groups (Partially allowed, indirectly denied to delete group2, user agnostic)
+  - name: Try to delete all groups (All denied, user agnostic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/groups"
@@ -926,18 +906,14 @@ stages:
     response:
       status_code: 200
       json:
-        error: 1
+        error: 0
         data:
           affected_items: []
-          failed_items:
-            - error:
-                code: 4015
-              id:
-                - 'group2'
+          failed_items: []
           total_affected_items: 0
-          total_failed_items: 1
+          total_failed_items: 0
 
-  - name: Try to delete a list of groups (Partially allowed, indirectly denied to delete group2, user aware)
+  - name: Try to delete a list of groups (denied, user aware)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/groups"
@@ -945,7 +921,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        groups_list: 'default,group1,group2,group3,pepito,antonio'
+        groups_list: 'default,group1,group3,pepito,antonio'
     response:
       status_code: 200
       json:
@@ -964,12 +940,8 @@ stages:
                 - group1
                 - group3
                 - pepito
-            - error:
-                code: 4015
-              id:
-                - group2
           total_affected_items: 0
-          total_failed_items: 6
+          total_failed_items: 5
 
 ---
 test_name: DELETE /agents?agents_list=agent_id
@@ -1089,7 +1061,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '000,007,008,999'
+        agents_list: '007,008,999'
         older_than: '0s'
         status: 'all'
     response:
@@ -1101,16 +1073,12 @@ stages:
             - '008'
           failed_items:
             - error:
-                code: 1703
-              id:
-                - '000'
-            - error:
                 code: 4000
               id:
                 - '007'
                 - '999'
           total_affected_items: 1
-          total_failed_items: 3
+          total_failed_items: 2
     delay_after: !float "{global_db_delay}"
 
   - name: Try to delete all agents (Partially allowed, user agnostic)
@@ -1253,6 +1221,7 @@ stages:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
           agents_list: ["005"]
+          restarted: False
       status_code: 200
       json:
         error: 2
@@ -1308,6 +1277,7 @@ stages:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
           agents_list: ["005"]
+          restarted: False
       status_code: 200
 
   - name: Try to update group3 configuration (Denied)
@@ -1389,7 +1359,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: "000,001,002,005"
+        agents_list: "001,002,005"
     response:
       status_code: 200
       json:
@@ -1401,11 +1371,10 @@ stages:
             - error:
                 code: 4000
               id:
-                - '000'
                 - '001'
                 - '002'
           total_affected_items: 1
-          total_failed_items: 3
+          total_failed_items: 2
     delay_after: !float "{reconnect_delay}"
 
   - name: Try to reconnect all agents (Partially allowed, user agnostic)
@@ -1454,7 +1423,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: "000,001,002,005"
+        agents_list: "001,002,005"
     response:
       verify_response_with:
         function: tavern_utils:healthcheck_agent_restart
@@ -1470,11 +1439,10 @@ stages:
             - error:
                 code: 4000
               id:
-                - '000'
                 - '001'
                 - '002'
           total_affected_items: 1
-          total_failed_items: 3
+          total_failed_items: 2
 
   - name: Try to restart all agents (Partially allowed, user agnostic)
     request:
@@ -1692,3 +1660,18 @@ stages:
         - function: tavern_utils:test_validate_restart_by_node_rbac
           extra_kwargs:
             permitted_agents: ['003','005','007'] # Agents '003', '005' and '007' can be restarted
+
+---
+test_name: GET /agents/uninstall
+
+stages:
+
+  - name: Check user's permission to uninstall agents (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/uninstall"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied

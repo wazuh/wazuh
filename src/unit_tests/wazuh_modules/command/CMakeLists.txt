@@ -8,15 +8,17 @@
 # Tests list and flags
 list(APPEND tests_names "test_wm_command")
 list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
-                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER")
+                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=_mtdebug1 \
+                         -Wl,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER \
+                         -Wl,--wrap=wm_validate_command -Wl,--wrap=w_query_agentd")
 list(APPEND use_shared_libs 1)
 
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.c")
 
 # Generate wazuh modules library
-file(GLOB command ../../../wazuh_modules/*.o)
-list(REMOVE_ITEM command ../../../wazuh_modules/main.o)
+file(GLOB_RECURSE command ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+list(REMOVE_ITEM command ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
 
 add_library(COMMAND_O STATIC ${command})
 
@@ -50,16 +52,31 @@ foreach(counter RANGE ${count})
       add_executable(${test_name} ${test_name}.c)
     endif()
 
-    target_link_libraries(
-        ${test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        COMMAND_O
-        -ldl
-        -lcmocka
-        -fprofile-arcs
-        -ftest-coverage
-    )
+    # Use linker groups for Linux/BSD to resolve circular dependencies, macOS doesn't support it
+    if(NOT APPLE)
+        target_link_libraries(
+            ${test_name}
+            -Wl,--start-group
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            COMMAND_O
+            -Wl,--end-group
+            -lcmocka
+            -ldl
+            -fprofile-arcs
+            -ftest-coverage
+        )
+    else()
+        target_link_libraries(
+            ${test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            COMMAND_O
+            -lcmocka
+            -fprofile-arcs
+            -ftest-coverage
+        )
+    endif()
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(
             ${test_name}

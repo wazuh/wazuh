@@ -7,12 +7,14 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-if(${TARGET} STREQUAL "server")
+if(${TARGET} STREQUAL "manager")
+    add_subdirectory(aes)
+    add_subdirectory(hmac)
     add_subdirectory(shared)
     add_subdirectory(sha1)
     add_subdirectory(blowfish)
     add_subdirectory(md5)
-    add_subdirectory(md5_sha1)
     add_subdirectory(md5_sha1_sha256)
     add_subdirectory(sha256)
+    add_subdirectory(sha512)
 endif()

@@ -18,10 +18,18 @@ int __wrap_getDefine_Int(__attribute__((unused)) const char *high_name,
                          __attribute__((unused)) int min,
                          __attribute__((unused)) int max) {
     // For SCA
-    if (!strcmp(low_name, "request_db_interval")) {
-        return 5;
+    if (!strcmp(low_name, "commands_timeout")) {
+        return 300;
     }
 
+    return mock();
+}
+
+int __wrap_getDefine_Int_default(__attribute__((unused)) const char *high_name,
+                                 __attribute__((unused)) const char *low_name,
+                                 __attribute__((unused)) int min,
+                                 __attribute__((unused)) int max,
+                                 __attribute__((unused)) int default_val) {
     // For SCA
     if (!strcmp(low_name, "commands_timeout")) {
         return 300;
@@ -61,5 +69,17 @@ int __wrap_OS_ExpandIPv6(char *ip_address, size_t size) {
 
 int __wrap_OS_IPFoundList(const char *ip_address, __attribute__((unused)) os_ip **list_of_ips) {
     check_expected(ip_address);
+    return mock();
+}
+
+int __wrap_OS_CIDRtoStr(const os_ip *ip, char *string, size_t size) {
+    check_expected(ip);
+    check_expected(size);
+
+    char *str = mock_type(char *);
+    if (str != NULL) {
+        snprintf(string, size, "%s", str);
+    }
+
     return mock();
 }

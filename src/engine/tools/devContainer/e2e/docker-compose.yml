@@ -1,0 +1,44 @@
+name: dev-env-engine
+
+services:
+  wazuh-indexer:
+    build:
+      context: ./wazuh-indexer
+    image: dev-wazuh-indexer
+    pull_policy: build
+    hostname: wazuh-indexer
+    container_name: wazuh-indexer
+    entrypoint: ["/entrypoint.sh"]
+    volumes:
+      - ./wazuh-indexer/entrypoint.sh:/entrypoint.sh:ro
+      - ./certs:/certs:ro
+      # Persistent data volume
+      # - wazuh-indexer-data:/var/lib/wazuh-indexer
+      # # Security initialization flag
+      # - wazuh-indexer-config:/etc/wazuh-indexer-init
+    ports:
+      - 9200:9200
+
+  wazuh-dashboard:
+    build:
+        context: ./wazuh-dashboard
+    image: dev-wazuh-dashboard
+    pull_policy: build
+    hostname: wazuh-dashboard
+    container_name: wazuh-dashboard
+    entrypoint: ["/entrypoint.sh"]
+    volumes:
+      - ./wazuh-dashboard/entrypoint.sh:/entrypoint.sh:ro
+      - ./certs:/certs:ro
+    ports:
+      - 443:443
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - wazuh-indexer
+
+# volumes:
+#   wazuh-indexer-data:
+#     driver: local
+#   wazuh-indexer-config:
+#     driver: local

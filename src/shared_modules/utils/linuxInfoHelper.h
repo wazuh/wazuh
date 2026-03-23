@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December 10, 2021.
  *
  * This program is free software; you can redistribute it
@@ -12,7 +12,7 @@
 #ifndef LINUXINFO_HELPER_H
 #define LINUXINFO_HELPER_H
 
-#include "filesystemHelper.h"
+#include <file_io_utils.hpp>
 #include <vector>
 #include <cstdint>
 #include <string>
@@ -37,7 +37,8 @@ namespace Utils
             if (0UL == btime)
             {
                 const std::string key {"btime "};
-                const auto file { Utils::getFileContent("/proc/stat") };
+                const file_io::FileIOUtils ioUtils;
+                const auto file { ioUtils.getFileContent("/proc/stat") };
 
                 btime = std::stoull(file.substr(file.find(key) + key.length()));
             }

@@ -1,0 +1,11 @@
+- name: Test_Valid_Resource
+  description: Check ms-graph integration when `resource` tags `name` and `relationship` are valid
+  configuration_parameters:
+    ENABLED: 'yes'
+    ONLY_FUTURE: 'yes'
+    INTERVAL: '10s'
+    CURL_SIZE: '10M'
+    TENANT_ID: 'tenant_id'
+    RESOURCE_NAME: 'security'
+    RESOURCE_RELATIONSHIP1: 'alerts_v2'
+    RESOURCE_RELATIONSHIP2: 'incidents'

@@ -1,0 +1,18 @@
+name: 'Test upgrade Wazuh agent package (Windows)'
+description: 'Test upgrade Wazuh agent package (Windows) locally using Python script'
+
+inputs:
+  old_package_url:
+    description: 'Package url to update from'
+    required: true
+  expected_upgrade_version:
+    description: 'Expected package version after upgrading'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run test upgrade Wazuh agent package (Windows)
+      shell: pwsh
+      run: |
+        python -u "${{ github.action_path }}\smoke_upgrade_test.py" "${{ inputs.old_package_url }}" "${{ inputs.expected_upgrade_version }}"

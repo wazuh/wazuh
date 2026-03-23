@@ -1,9 +1,14 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+import ast
 import json
 import re
 import subprocess
 import time
 from base64 import b64decode
-from datetime import datetime
+from datetime import datetime, timezone
 from json import loads
 
 from box import Box
@@ -45,7 +50,7 @@ def test_token_raw_format(response):
     assert type(response.text) is str
 
 
-def test_select_key_affected_items(response, select_key):
+def test_select_key_affected_items(response, select_key, flag_nested_key_list=False):
     """Check that all items in response have no other keys than those specified in 'select_key'.
 
     Absence of 'select_key' in response does not raise any error. However, extra keys in response (not specified
@@ -54,9 +59,13 @@ def test_select_key_affected_items(response, select_key):
     Some keys like 'id', 'agent_id', etc. are accepted even if not specified in 'select_key' since
     they ignore the 'select' param in API.
 
-    :param response: Request response
-    :param select_key: Keys requested in select parameter.
-        Lists and nested fields accepted e.g: id,cpu.mhz,json
+    Parameters
+    ----------
+    response : Request response
+    select_key : str
+        Keys requested in select parameter. Lists and nested fields accepted e.g: id,cpu.mhz,json
+    flag_nested_key_list : bool
+        Flag used to indicate that the nested key contains a list.
     """
     main_keys = set()
     nested_keys = dict()
@@ -79,12 +88,18 @@ def test_select_key_affected_items(response, select_key):
 
         # Check if there are keys in response that were not specified in 'select_keys', apart from those which can be
         # mandatory (id, agent_id, etc).
-        assert (set1 == set() or set1 == set1.intersection({'id', 'agent_id', 'file', 'task_id'} | main_keys)), \
-            f'Select keys are {main_keys}, but the response contains these keys: {set1}'
+        assert (set1 == set() or set1 == set1.intersection(
+            {'id', 'agent_id', 'file', 'task_id',
+             'policy_id'} | main_keys)), f'Select keys are {main_keys}, but the response contains these keys: {set1}'
 
         for nested_key in nested_keys.items():
+            # nested_key = compliance, value
             try:
-                set2 = nested_key[1].symmetric_difference(set(item[nested_key[0]].keys()))
+                if not flag_nested_key_list:
+                    set2 = nested_key[1].symmetric_difference(set(item[nested_key[0]].keys()))
+                else:
+                    set2 = nested_key[1].symmetric_difference(set(item[nested_key[0]][0].keys()))
+
                 assert set2 == set(), f'Nested select keys are {nested_key[1]}, but this one is different {set2}'
             except KeyError:
                 assert nested_key[0] in main_keys
@@ -193,7 +208,7 @@ def test_validate_data_dict_field(response, fields_dict):
 
         for element in field_list:
             try:
-                assert (isinstance(element[key], eval(value)) for key, value in dikt.items())
+                assert (isinstance(element[key], ast.literal_eval(value)) for key, value in dikt.items())
             except KeyError:
                 assert len(element) == 1
                 assert isinstance(element['count'], int)
@@ -260,9 +275,12 @@ def test_save_response_data_mitre(response, fields):
 
 
 def test_validate_mitre(response, data, index=0):
+    data = data.replace('"', '\\"')  # Escape " character in data
     data = json.loads(data.replace("'", '"'))
     for element in data:
         for k, v in element.items():
+            if isinstance(v, str):
+                v = v.replace('\\"', '"')  # Remove \\ characters used to escape "
             assert v == response.json()['data']['affected_items'][index][k]
 
 
@@ -306,18 +324,6 @@ def test_validate_auth_context(response, expected_roles=None):
     assert payload['rbac_roles'] == expected_roles
 
 
-def test_validate_syscollector_hotfix(response, hotfix_filter=None, experimental=False):
-    hotfixes_keys = {'hotfix', 'scan_id', 'scan_time'}
-    if experimental:
-        hotfixes_keys.add('agent_id')
-    affected_items = response.json()['data']['affected_items']
-    if affected_items:
-        for item in affected_items:
-            assert set(item.keys()) == hotfixes_keys
-            if hotfix_filter:
-                assert item['hotfix'] == hotfix_filter
-
-
 def test_validate_group_configuration(response, expected_field, expected_value):
     response_json = response.json()
     assert len(response_json['data']['affected_items']) > 0 and \
@@ -347,7 +353,21 @@ def test_validate_key_not_in_response(response, key):
     assert all(key not in item for item in response.json()["data"]["affected_items"])
 
 
-def check_agentd_started(response, agents_list):
+def test_validate_vd_scans(response, first_node_name, first_node_count, second_node_name, second_node_count,
+                           third_node_name, third_node_count):
+    nodes = []
+    if first_node_count > 0:
+        nodes.append(first_node_name)
+    if second_node_count > 0:
+        nodes.append(second_node_name)
+    if third_node_count > 0:
+        nodes.append(third_node_name)
+
+    # All the names in nodes must be in the response
+    assert all(node in response.json()["data"]["affected_items"] for node in nodes)
+
+
+def check_agentd_started(response, agents_list, restarted=True):
     """Wait until all the agents have their agentd process started correctly. This will avoid race conditions caused by
     agents reconnections before restarting.
 
@@ -356,9 +376,9 @@ def check_agentd_started(response, agents_list):
     response : Request response
     agents_list : list
         List of expected agents to be restarted.
+    restarted: bool
     """
     timestamp_regex = re.compile(r'^\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d')
-    agentd_started_regex = re.compile(r'agentd.+Started')
 
     def get_timestamp(log):
         """Get timestamp from log.
@@ -377,14 +397,19 @@ def check_agentd_started(response, agents_list):
         return datetime.strptime(timestamp, "%Y/%m/%d %H:%M:%S")
 
     # Save the time when the restart command was sent
-    restart_request_time = datetime.utcnow().replace(microsecond=0) - response.elapsed
+    restart_request_time = datetime.now(timezone.utc).replace(microsecond=0) - response.elapsed
 
     for agent_id in agents_list:
         tries = 0
+        agentd_started_regex = (
+            re.compile(r"agentd.+Started")
+            if restarted
+            else re.compile(r"agentd.+(Reload|Started)")
+        )
         while tries < 80:
             try:
                 # Save agentd logs in a list
-                command = f"docker exec env_wazuh-agent{int(agent_id)}_1 grep agentd /var/ossec/logs/ossec.log"
+                command = f"docker exec env-wazuh-agent{int(agent_id)}-1 grep agentd /var/ossec/logs/ossec.log"
                 output = subprocess.check_output(command.split()).decode().strip().split('\n')
             except subprocess.SubprocessError as exc:
                 raise subprocess.SubprocessError(f"Error while trying to get logs from agent {agent_id}") from exc
@@ -393,7 +418,7 @@ def check_agentd_started(response, agents_list):
             logs_after_restart = [agentd_log for agentd_log in output if
                                   get_timestamp(agentd_log).timestamp() >= restart_request_time.timestamp()]
 
-            # Check the log indicating agentd started is in the agent's ossec.log (after the restart request)
+            # Check the log indicating agentd started is in the agent's wazuh log file (after the restart request)
             if any(agentd_started_regex.search(string=agentd_log) for agentd_log in logs_after_restart):
                 break
 
@@ -418,13 +443,13 @@ def check_agent_active_status(agents_list):
     while tries < 25:
         try:
             # Get active agents
-            output = subprocess.check_output(f"docker exec env_wazuh-master_1 /var/ossec/framework/python/bin/python3 "
+            output = subprocess.check_output(f"docker exec env-wazuh-master-1 /var/wazuh-manager/framework/python/bin/python3 "
                                              f"{active_agents_script_path}".split()).decode().strip()
         except subprocess.SubprocessError as exc:
             raise subprocess.SubprocessError("Error while trying to get agents") from exc
 
         # Transform string representation of list to list and save agents id
-        id_active_agents = [agent['id'] for agent in eval(output)]
+        id_active_agents = [agent['id'] for agent in ast.literal_eval(output)]
 
         if all(a in id_active_agents for a in agents_list):
             break
@@ -436,7 +461,7 @@ def check_agent_active_status(agents_list):
         raise SystemError(f"Agents {non_active_agents} have a status different to active after restarting")
 
 
-def healthcheck_agent_restart(response, agents_list):
+def healthcheck_agent_restart(response, agents_list, restarted=True):
     """Wait until the restart process is finished for every agent in the given list.
 
     Parameters
@@ -444,9 +469,11 @@ def healthcheck_agent_restart(response, agents_list):
     response : Request response
     agents_list : list
         List of expected agents to be restarted.
+    restarted: bool
+        Indicates whether the agents are restarted or reloaded. Default: True
     """
     # Wait for agentd daemon start (up to 80 seconds)
-    check_agentd_started(response, agents_list)
+    check_agentd_started(response, agents_list, restarted)
     # Wait for cluster synchronization process (20 seconds)
     time.sleep(20)
     # Wait for active agent status (up to 25 seconds)

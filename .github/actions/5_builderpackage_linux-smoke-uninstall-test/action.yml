@@ -1,0 +1,19 @@
+name: 'Test uninstall Wazuh agent package'
+description: 'Test uninstall Wazuh agent package'
+
+inputs:
+  tested_docker:
+    description: 'image:tag of tested Docker'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run test uninstall Wazuh agent package
+      shell: bash
+      run: |
+        sudo docker run \
+          -v ${{ github.action_path }}/:/tests \
+          -v /tmp/:/packages \
+          --entrypoint '/bin/bash' ${{ inputs.tested_docker }} \
+          -c "/tests/smoke_uninstall_test.sh" 

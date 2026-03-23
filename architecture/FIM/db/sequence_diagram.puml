@@ -1,0 +1,47 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml sequence_diagram_db_fim
+database "Indexer" as indexer
+actor "wazuh-manager" as manager
+actor "wazuh-agent" as fim
+participant os as os
+participant dbsync
+participant "agent_sync_protocol" as asp
+database fim.db as fdb
+
+activate fim
+
+note over asp: Agent Sync Protocol\nhandles persistence of\ndifferences for later\nsynchronization
+
+loop scan (each ""frequency"" seconds)
+    group for each [directory]
+        fim -> os ++: get data
+        fim <-- os --: info
+        fim -> dbsync++ : update DB with new file data
+        dbsync -> fdb : save data DB
+        dbsync <-- fdb
+        fim <-- dbsync --: comparison result
+
+        alt if differences detected
+            fim -> asp ++: asp_persist_diff(id, operation, index, data)
+            note right: Persist file/registry differences\nfor synchronization
+            asp --> fim --: persisted
+        end
+
+        manager <- fim ++: send fim event
+        manager --> fim --
+     end group
+end loop
+
+group periodic synchronization
+    fim -> asp ++: asp_sync_module(handle, MODE_DELTA, timeout, retries, max_eps)
+    asp -> manager ++: sync_process
+    asp <-- manager --: result sync_process
+    asp --> fim --: sync complete
+end
+
+indexer <- manager++: Upsert/Delete
+indexer --> manager --
+@enduml

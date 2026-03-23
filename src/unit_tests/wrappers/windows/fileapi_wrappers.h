@@ -18,15 +18,18 @@
 #define FindVolumeClose wrap_FindVolumeClose
 #define QueryDosDeviceW wrap_QueryDosDeviceW
 #define FindNextVolumeW wrap_FindNextVolumeW
+#define QueryDosDeviceA wrap_QueryDosDeviceA
 #undef  CreateFile
 #define CreateFile      wrap_CreateFile
 #undef  GetFileTime
 #define GetFileTime      wrap_GetFileTime
 #define GetFileAttributesA wrap_GetFileAttributesA
-#undef FindFirstFile
-#define FindFirstFile wrap_FindFirstFile
-#undef FindNextFile
-#define FindNextFile wrap_FindNextFile
+#undef FindFirstFileW
+#define FindFirstFileW wrap_FindFirstFile
+#undef FindNextFileW
+#define FindNextFileW wrap_FindNextFile
+#undef GetDriveTypeA
+#define GetDriveTypeA wrap_GetDriveTypeA
 
 HANDLE wrap_CreateFile(LPCSTR lpFileName,
                        DWORD dwDesiredAccess,
@@ -35,8 +38,6 @@ HANDLE wrap_CreateFile(LPCSTR lpFileName,
                        DWORD dwCreationDisposition,
                        DWORD dwFlagsAndAttributes,
                        HANDLE hTemplateFile);
-
-void expect_CreateFile_call(const char *filename, HANDLE ret);
 
 DWORD wrap_GetFileAttributesA(LPCSTR lpFileName);
 
@@ -54,6 +55,10 @@ DWORD wrap_QueryDosDeviceW(LPCWSTR lpDeviceName,
                            LPWSTR lpTargetPath,
                            DWORD ucchMax);
 
+DWORD wrap_QueryDosDeviceA(LPCSTR lpDeviceName,
+                           LPSTR lpTargetPath,
+                           DWORD ucchMax);
+
 WINBOOL wrap_FindNextVolumeW(HANDLE hFindVolume,
                              LPWSTR lpszVolumeName,
                              DWORD cchBufferLength);
@@ -63,8 +68,10 @@ BOOL wrap_GetFileTime(HANDLE     hFile,
                       LPFILETIME lpLastAccessTime,
                       LPFILETIME lpLastWriteTime);
 
-HANDLE wrap_FindFirstFile(LPCSTR lpFileName,  LPWIN32_FIND_DATAA lpFindFileData);
+HANDLE wrap_FindFirstFile(LPCWSTR lpFileName,  LPWIN32_FIND_DATAW lpFindFileData);
 
-BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATAA lpFindFileData);
+BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData);
+
+UINT wrap_GetDriveTypeA(LPCSTR lpRootPathName);
 
 #endif

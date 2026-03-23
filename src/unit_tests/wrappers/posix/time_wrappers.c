@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 #include <string.h>
 
@@ -24,4 +25,11 @@ char *__wrap_ctime_r(const time_t *timep, char *buf) {
     strncpy(buf, mock_type(const char *), 26);
 
     return buf;
+}
+
+void __wrap_gettimeofday(struct timeval *__restrict __tv, __attribute__((unused)) void *__restrict __tz) {
+        struct timeval *mocked_time = mock_ptr_type(struct timeval *);
+        if (mocked_time && __tv) {
+            *__tv = *mocked_time;
+        }
 }

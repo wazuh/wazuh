@@ -1,0 +1,92 @@
+#ifndef _ROUTER_IAPI_HPP
+#define _ROUTER_IAPI_HPP
+
+#include <future>
+#include <optional>
+#include <string>
+#include <utility>
+
+#include <router/types.hpp>
+
+namespace router
+{
+
+using IngestEvent = std::pair<std::shared_ptr<const json::Json>, std::string>; // {header, rawEvent}
+
+/**
+ * @brief Interface for the Router API
+ *
+ */
+class IRouterAPI
+{
+public:
+    // Production: Entry
+    virtual base::OptError postEntry(const prod::EntryPost& entry) = 0;
+    virtual base::OptError deleteEntry(const std::string& name) = 0;
+    virtual base::RespOrError<prod::Entry> getEntry(const std::string& name) const = 0;
+
+    /**
+     * @brief Hot swap the namespace of an entry
+     *
+     * The method trays to change the namespace of an entry without
+     * deleting and recreating it. This is useful to minimize downtime.
+     * The method create the new route and only if it is successful, it
+     * deletes the old one.
+     * @param name Name of the entry
+     * @param newNamespace New namespace to set
+     * @return base::OptError Error if the route "name" does not exist or
+     * the new namespace is invalid.
+     */
+    virtual base::OptError hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace) = 0;
+
+    virtual bool existsEntry(const std::string& name) const = 0;
+
+    virtual base::OptError reloadEntry(const std::string& name) = 0;
+    virtual base::OptError changeEntryPriority(const std::string& name, size_t priority) = 0;
+
+    // Production: Table
+    virtual std::list<prod::Entry> getEntries() const = 0;
+
+    // Production: Ingest
+    virtual void postEvent(IngestEvent&& event) = 0;
+};
+
+class ITesterAPI
+{
+public:
+    // Testing: Entry
+    virtual base::OptError postTestEntry(const test::EntryPost& entry) = 0;
+    virtual base::OptError deleteTestEntry(const std::string& name) = 0;
+    virtual base::RespOrError<test::Entry> getTestEntry(const std::string& name) const = 0;
+
+    virtual base::OptError reloadTestEntry(const std::string& name) = 0;
+    virtual base::OptError renameTestEntry(const std::string& from, const std::string& to) = 0;
+
+    // Testing: Table
+    virtual std::list<test::Entry> getTestEntries() const = 0;
+
+    // Testing: Ingest Synchronous
+    virtual std::future<base::RespOrError<test::Output>> ingestTest(base::Event&& event, const test::Options& opt) = 0;
+
+    // Testing: Ingest Asynchronous
+    virtual base::OptError ingestTest(base::Event&& event,
+                                      const test::Options& opt,
+                                      std::function<void(base::RespOrError<test::Output>&&)> callbackFn) = 0;
+
+    // Get the assets of the policy of the entry
+    virtual base::RespOrError<std::unordered_set<std::string>> getAssets(const std::string& name) const = 0;
+
+    // Get the timeout of the test of event ingestion (in milliseconds)
+    virtual std::size_t getTestTimeout() const = 0;
+};
+
+class IOrchestratorAPI
+    : public IRouterAPI
+    , public ITesterAPI
+{
+public:
+    virtual ~IOrchestratorAPI() = default;
+};
+} // namespace router
+
+#endif // _ROUTER_IROUTER_HPP

@@ -1,0 +1,4 @@
+- blocks:
+    max_upload_size: MAX_UPLOAD_SIZE
+    access:
+      max_request_per_minute: 15

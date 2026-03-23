@@ -2,42 +2,44 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from functools import wraps
-
 from cachetools import TTLCache, cached
-from wazuh.core.common import cache_event
+from cachetools.keys import hashkey
+from functools import partial, wraps
+
+from wazuh.core import common
 
 from api.configuration import security_conf
 
-# Tokens cache
-tokens_cache = TTLCache(maxsize=4500, ttl=security_conf['auth_token_exp_timeout'])
+TOKENS_CACHE = TTLCache(maxsize=4500, ttl=security_conf['auth_token_exp_timeout'])
+RESOURCES_CACHE = TTLCache(maxsize=100, ttl=10)
 
 
-def clear_cache():
+def clear_tokens_cache():
     """This function clear the authorization tokens cache."""
-    cache_event.set()
+    common.token_cache_event.set()
 
 
-def token_cache(cache):
+def token_cache(cache: TTLCache = TOKENS_CACHE):
     """Apply cache depending on whether the request comes from the master node or from a worker node.
 
     Parameters
     ----------
     cache : TTLCache
-        Cache object
+        Cache object.
 
     Returns
     -------
     Requested function
     """
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
             origin_node_type = kwargs.pop('origin_node_type')
 
-            if cache_event.is_set():
+            if common.token_cache_event.is_set():
                 cache.clear()
-                cache_event.clear()
+                common.token_cache_event.clear()
 
             @cached(cache=cache)
             def f(*_args, **_kwargs):
@@ -47,5 +49,36 @@ def token_cache(cache):
                 return f(*args, **kwargs)
 
             return func(*args, **kwargs)
+
         return wrapper
+
+    return decorator
+
+
+def resource_cache(cache: TTLCache = RESOURCES_CACHE):
+    """Apply cache depending on the decorated function name.
+
+    Parameters
+    ----------
+    cache : TTLCache
+        Cache object.
+
+    Returns
+    -------
+    Requested function
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+
+            # Use different keys for each function to avoid collisions
+            @cached(cache=cache, key=partial(hashkey, func.__name__))
+            def f(*_args, **_kwargs):
+                return func(*_args, **_kwargs)
+
+            return f(*args, **kwargs)
+
+        return wrapper
+
     return decorator

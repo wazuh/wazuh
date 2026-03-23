@@ -1,0 +1,45 @@
+name: 4.X - Create and publish - Unit tests Docker image
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/testing/unit-tests/**'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: wazuh/unit-tests
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-22.04
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=true
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: tools/testing/unit-tests
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

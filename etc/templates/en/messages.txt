@@ -4,8 +4,7 @@ no="n"
 yesmatch="y"
 nomatch="n"
 agent="agent"
-local="local"
-server="server"
+server="manager"
 help="help"
 
 # Global
@@ -21,10 +20,9 @@ system="System"
 user="User"
 host="Host"
 hitanyorabort="Press ENTER to continue or Ctrl-C to abort."
-whattoinstall="What kind of installation do you want (manager, agent, local, hybrid or help)?"
-serverchose="Manager (server) installation chosen"
+whattoinstall="What kind of installation do you want (manager, agent, or help)?"
+serverchose="Manager installation chosen"
 clientchose="Agent (client) installation chosen"
-localchose="Local installation chosen"
 
 # Part 2
 settingupenv="Setting up the installation environment"
@@ -43,8 +41,8 @@ usingsmtp="Using SMTP server: "
 whatsmtp="What's your SMTP server ip/host?"
 
 # Part 3.1/agent
-serveraddr="What's the IP Address or hostname of the Wazuh server?"
-addingip="Adding Server IP"
+serveraddr="What's the IP Address or hostname of the Wazuh manager?"
+addingip="Adding Manager IP"
 addingname="Adding Hostname"
 configprofile="Enter the agent's config profile name (default: blank)"
 addingcfg="Setting agent's config profile name"
@@ -60,11 +58,6 @@ runrootcheck="Do you want to run the rootkit detection engine?"
 norootcheck="Not running rootcheck (rootkit detection)"
 yesrootcheck="Running rootcheck (rootkit detection)"
 
-# Part 3.4
-runopenscap="Do you want to run policy monitoring checks? (OpenSCAP)"
-norunopenscap="Not running OpenSCAP (policy monitoring checks)"
-yesrunopenscap="Running OpenSCAP (policy monitoring checks)"
-
 # Part 3.5/server/local
 enable_ar="Do you want to enable active response?"
 noactive="Active response disabled"
@@ -78,11 +71,6 @@ yesfirewall="firewall-drop enabled (local) for levels >= 6"
 defaultwhitelist="Default white list for the active response:"
 addwhite="Do you want to add more IPs to the white list?"
 ipswhite="IPs (space separated): "
-
-# Part 3.5/server/local
-syslog="Do you want to enable remote syslog (port 514 udp)?"
-nosyslog="Remote syslog disabled"
-yessyslog="Remote syslog enabled"
 
 # Part 3.4/3.5
 readlogs="Setting the configuration to analyze the following logs:"
@@ -104,7 +92,7 @@ configurationdone="Configuration finished properly"
 tostart="To start Wazuh"
 tostop="To stop Wazuh"
 configat="The configuration can be viewed or modified at"
-addserveragent="In order to connect agent and server, you need to add each agent to the server."
+addserveragent="In order to connect agent and manager, you need to add each agent to the manager."
 presskey="Press ENTER to continue"
 
 # Update

@@ -1,0 +1,12 @@
+  <indexer>
+    <hosts>
+      <host>https://127.0.0.1:9200</host>
+    </hosts>
+    <ssl>
+      <certificate_authorities>
+        <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
+      </certificate_authorities>
+      <certificate>/var/wazuh-manager/etc/certs/manager.pem</certificate>
+      <key>/var/wazuh-manager/etc/certs/manager-key.pem</key>
+    </ssl>
+  </indexer>

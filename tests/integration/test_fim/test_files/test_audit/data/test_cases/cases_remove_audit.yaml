@@ -1,0 +1,6 @@
+- name: Remove auditd - Whodata cannot start
+  description: When Auditd is removed, whodata thread cannot start and monitoring is done in realtime
+  configuration_parameters:
+    WHODATA: 'yes'
+  metadata:
+    fim_mode: whodata

@@ -1,0 +1,191 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "networks": {
+            "type": "object",
+            "properties": {
+                "iface": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "IPv4": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "network_ip": {
+                                            "type": "string",
+                                            "format": "ipv4"
+                                        },
+                                        "network_broadcast": {
+                                            "type": "string",
+                                            "format": "ipv4"
+                                        },
+                                        "network_dhcp": {
+                                            "type": "integer"
+                                        },
+                                        "network_metric": {
+                                            "type": "string"
+                                        },
+                                        "network_netmask": {
+                                            "type": "string",
+                                            "format": "ipv4"
+                                        }
+                                    },
+                                    "required": [
+                                        "network_ip",
+                                        "network_broadcast",
+                                        "network_dhcp",
+                                        "network_metric",
+                                        "network_netmask"
+                                    ]
+                                }
+                            },
+                            "IPv6": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "network_ip": {
+                                            "type": "string",
+                                            "format": "ipv6"
+                                        },
+                                        "network_broadcast": {
+                                            "type": "string"
+                                        },
+                                        "network_dhcp": {
+                                            "type": "integer"
+                                        },
+                                        "network_metric": {
+                                            "type": "string"
+                                        },
+                                        "network_netmask": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "network_ip",
+                                        "network_broadcast",
+                                        "network_dhcp",
+                                        "network_metric",
+                                        "network_netmask"
+                                    ]
+                                }
+                            },
+                            "interface_alias": {
+                                "type": "string"
+                            },
+                            "network_gateway": {
+                                "type": "string"
+                            },
+                            "host_mac": {
+                                "type": "string"
+                            },
+                            "interface_mtu": {
+                                "type": "integer"
+                            },
+                            "interface_name": {
+                                "type": "string"
+                            },
+                            "host_network_ingress_bytes": {
+                                "type": "integer"
+                            },
+                            "host_network_ingress_drops": {
+                                "type": "integer"
+                            },
+                            "host_network_ingress_errors": {
+                                "type": "integer"
+                            },
+                            "host_network_ingress_packages": {
+                                "type": "integer"
+                            },
+                            "interface_state": {
+                                "type": "string",
+                                "enum": [
+                                    "up",
+                                    "down",
+                                    "unknown"
+                                ]
+                            },
+                            "host_network_egress_bytes": {
+                                "type": "integer"
+                            },
+                            "host_network_egress_drops": {
+                                "type": "integer"
+                            },
+                            "host_network_egress_errors": {
+                                "type": "integer"
+                            },
+                            "host_network_egress_packages": {
+                                "type": "integer"
+                            },
+                            "interface_type": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "interface_alias",
+                            "network_gateway",
+                            "host_mac",
+                            "interface_mtu",
+                            "interface_name",
+                            "host_network_ingress_bytes",
+                            "host_network_ingress_drops",
+                            "host_network_ingress_errors",
+                            "host_network_ingress_packages",
+                            "interface_state",
+                            "host_network_egress_bytes",
+                            "host_network_egress_drops",
+                            "host_network_egress_errors",
+                            "host_network_egress_packages",
+                            "interface_type"
+                        ],
+                        "if": {
+                            "properties": {
+                                "interface_state": {
+                                    "anyOf": [
+                                        {
+                                            "const": "unknown"
+                                        },
+                                        {
+                                            "const": "down"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "then": {
+                            "properties": {
+                                "host_mac": {
+                                    "anyOf": [
+                                        {
+                                            "pattern": "^([0-9a-fA-F]{2}[:-]){5}([0-9a-fA-F]{2})$"
+                                        },
+                                        {
+                                            "const": ""
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "else": {
+                            "properties": {
+                                "host_mac": {
+                                    "pattern": "^([0-9a-fA-F]{2}[:-]){5}([0-9a-fA-F]{2})$"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "required": [
+                "iface"
+            ]
+        }
+    },
+    "required": [
+        "networks"
+    ]
+}

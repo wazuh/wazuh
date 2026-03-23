@@ -47,19 +47,6 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try to assign an agent to a forbidden group id (it must count as non existent)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: "001"
-        group_id: 'ar.conf'
-    response:
-      <<: *resource_not_found_group
-
     # PUT /agents/group?group_id=default&agents_list=998,999
   - name: Try to assign non existing agents to group default
     request:
@@ -86,8 +73,8 @@ stages:
           total_affected_items: 0
           total_failed_items: 2
 
-    # PUT /agents/group?group_id=default&agents_list=000,999
-  - name: Try to assign 000 and a non existing agent to group default
+    # PUT /agents/group?group_id=default&agents_list=999
+  - name: Try to assign a non existing agent to group default
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/group"
@@ -95,7 +82,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: "000,999"
+        agents_list: "999"
         group_id: default
     response:
       status_code: 200
@@ -108,12 +95,8 @@ stages:
                 code: 1701
               id:
                 - "999"
-            - error:
-                code: 1703
-              id:
-                - "000"
           total_affected_items: 0
-          total_failed_items: 2
+          total_failed_items: 1
 
     # PUT /agents/group?group_id=default&agents_list=001,002
   - name: Try to assign agents 001 and 002 to group default where they already belong
@@ -157,6 +140,7 @@ stages:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
           agents_list: ["003", "004"]
+          restarted: False
       status_code: 200
       json:
         error: 2
@@ -187,6 +171,7 @@ stages:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
           agents_list: ["001", "003", "004", "007"]  # 009 is not restarted as it is disconnected
+          restarted: False
       status_code: 200
       json:
         error: 0
@@ -218,6 +203,7 @@ stages:
         extra_kwargs:
           agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]  # 009 and 010 are not restarted as
                                                                                  # they are disconnected
+          restarted: False
       status_code: 200
       json:
         error: 0
@@ -259,6 +245,7 @@ stages:
         extra_kwargs:
           agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]  # 009 and 010 are not restarted as
                                                                                  # they are disconnected
+          restarted: False
       status_code: 200
 
     # PUT /groups/wrong_group/configuration
@@ -287,7 +274,7 @@ stages:
     response:
       status_code: 400
       json:
-        error: 2007
+        error: 1912
 
     # PUT /groups/group1/configuration
   - name: Try to update configuration using an invalid configuration file
@@ -459,13 +446,13 @@ stages:
           total_failed_items: 2
 
 
-  # PUT /agents/reconnect?agents_list=000,999
-  - name: Try to reconnect agent 000 and a non existing agent
+  # PUT /agents/reconnect?agents_list=999
+  - name: Try to reconnect a non existing agent
     request:
       verify: False
       <<: *agent_reconnect_request
       params:
-        agents_list: "000,999"
+        agents_list: "999"
     response:
       status_code: 200
       json:
@@ -477,12 +464,8 @@ stages:
                 code: 1701
               id:
                 - "999"
-            - error:
-                code: 1703
-              id:
-                - "000"
           total_affected_items: 0
-          total_failed_items: 2
+          total_failed_items: 1
 
   # PUT /agents/reconnect?agents_list=001,002,999
   - name: Try to reconnect agents 001,002 and 999
@@ -576,13 +559,13 @@ stages:
           total_failed_items: 2
 
 
-    # PUT /agents/restart?agents_list=000,999
-  - name: Try to restart agent 000 and a non existing agent
+    # PUT /agents/restart?agents_list=999
+  - name: Try to restart a non existing agent
     request:
       verify: False
       <<: *agent_restart_request
       params:
-        agents_list: "000,999"
+        agents_list: "999"
     response:
       status_code: 200
       json:
@@ -594,12 +577,8 @@ stages:
                 code: 1701
               id:
                 - "999"
-            - error:
-                code: 1703
-              id:
-                - "000"
           total_affected_items: 0
-          total_failed_items: 2
+          total_failed_items: 1
 
     # PUT /agents/restart?agents_list=001,002,999
   - name: Try to restart agents 001,002 and 999
@@ -676,6 +655,7 @@ stages:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
           agents_list: ["001"]
+          restarted: False
       status_code: 200
       json:
         error: 0
@@ -734,6 +714,7 @@ stages:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
           agents_list: ["002"]
+          restarted: False
       status_code: 200
       json:
         error: 0
@@ -746,28 +727,6 @@ stages:
 test_name: PUT /agents/{agent_id}/restart
 
 stages:
-
-  # PUT /agents/000/restart
-  - name: Try to restart agent 000 (manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1703
-              id:
-                - "000"
-          total_affected_items: 0
-          total_failed_items: 1
 
     # PUT /agents/999/restart
   - name: Try to restart a not existing agent
@@ -913,32 +872,6 @@ stages:
                 - '999'
         message: !anystr
 
-  - name: Try to upgrade agent 000 (manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: '000'
-    response: &agent_000_error_response
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: []
-          total_affected_items: 0
-          total_failed_items: 1
-          failed_items:
-            - error:
-                code: 1703
-                message: !anystr
-                remediation: !anystr
-              id:
-                - '000'
-        message: !anystr
-
   - name: Try to upgrade a list of agents with an invalid agents_list
     request:
       verify: False
@@ -973,6 +906,7 @@ stages:
           total_failed_items: 0
           failed_items: [ ]
         message: !anystr
+    delay_after: !float "{upgrade_delay}"
 
   - name: Try to upgrade an agent that is updated to the latest version
     request:
@@ -992,7 +926,7 @@ stages:
           total_failed_items: 1
           failed_items:
             - error:
-                code: 1822
+                code: 1823
                 message: !anystr
               id:
                 - '001'
@@ -1008,7 +942,7 @@ stages:
       params:
         agents_list: '007'
         use_http: true
-        upgrade_version: 4.0.0
+        upgrade_version: 5.0.0
     response:
       status_code: 200
       json:
@@ -1021,7 +955,7 @@ stages:
           failed_items: [ ]
         message: !anystr
 
-  - name: Try to upgrade a list of agents that cannot be upgraded (000, not existing and non active agents)
+  - name: Try to upgrade a list of agents that cannot be upgraded (not existing and non active agents)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -1029,7 +963,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '000,009,010,011,012,998,999'
+        agents_list: '009,010,011,012,998,999'
         upgrade_version: '4.0.0'
     response: &agents_not_upgraded_response
       status_code: 200
@@ -1038,7 +972,7 @@ stages:
         data:
           affected_items: []
           total_affected_items: 0
-          total_failed_items: 7
+          total_failed_items: 6
           failed_items:
             - error:  # Not existing agents
                 code: 1701
@@ -1047,12 +981,6 @@ stages:
               id:
                 - '998'
                 - '999'
-            - error:  # Agent 000
-                code: 1703
-                message: !anystr
-                remediation: !anything
-              id:
-                - '000'
             - error:  # Non active agents
                 code: 1707
                 message: !anystr
@@ -1084,7 +1012,7 @@ stages:
           total_failed_items: 3
           failed_items:
             - error:
-                code: 1822
+                code: 1823
                 message: !anystr
               id:
                 - '001'
@@ -1136,14 +1064,14 @@ stages:
       status_code: 200
       json:
         error: 0
-        data:  # Only agent 001 is in group1, but its version is greater or equal than manager version (code 1822, excluded)
+        data:  # Only agent 001 is in group1, but its version is greater or equal than manager version (code 1823, excluded)
           affected_items: []
           total_affected_items: 0
           total_failed_items: 0
           failed_items: []
         message: !anystr
 
-  - name: Upgrade all agents with os version 18.04.5 LTS and query
+  - name: Upgrade all agents with os version 18.04.6 LTS and query
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -1152,8 +1080,8 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: 'all'
-        upgrade_version: '4.0.0'
-        os.version: '18.04.5 LTS'
+        upgrade_version: '5.0.0'
+        os.version: '18.04.6 LTS'
         q: registerIP=any;id<7;id>5
     response:
       status_code: 200
@@ -1185,19 +1113,6 @@ stages:
         agents_list: 999
     response:
       <<: *resource_not_found
-
-  - name: Try to customly upgrade agent 000 (manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: '000'
-        file_path: "{custom_wpk_path:s}"
-    response:
-      <<: *agent_000_error_response
 
   - name: Try to customly upgrade an agent without parameters
     request:
@@ -1243,7 +1158,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '008'
+        agents_list: '005'
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
     response:
@@ -1251,7 +1166,7 @@ stages:
       json:
         data:
           affected_items:
-            - agent: '008'
+            - agent: '005'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
@@ -1273,7 +1188,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try to customly upgrade a list of agents that cannot be upgraded (000, not existing and non active agents)
+  - name: Try to customly upgrade a list of agents that cannot be upgraded (not existing and non active agents)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
@@ -1281,7 +1196,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '000,009,010,011,012,998,999'
+        agents_list: '009,010,011,012,998,999'
         file_path: "{custom_wpk_path:s}"
     response:
       <<: *agents_not_upgraded_response
@@ -1296,6 +1211,6 @@ stages:
       params:
         agents_list: '001,002'
         file_path: "{custom_wpk_path:s}"
-        version: 'Wazuh v999.999.999'
+        version: 'v999.999.999'
     response:
       <<: *filters_not_matching_response

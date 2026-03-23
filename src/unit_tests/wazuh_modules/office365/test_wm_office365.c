@@ -17,9 +17,9 @@
 #include <time.h>
 
 #include "shared.h"
-#include "wazuh_modules/wmodules.h"
-#include "wazuh_modules/wm_office365.h"
-#include "wazuh_modules/wm_office365.c"
+#include "wmodules.h"
+#include "wm_office365.h"
+#include "wm_office365.c"
 
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/common.h"
@@ -29,6 +29,9 @@
 #include "../../wrappers/wazuh/shared/time_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/url_wrappers.h"
 #include "../../wrappers/libc/time_wrappers.h"
+#ifdef WIN32
+#include "../../wrappers/wazuh/shared/file_op_wrappers.h"
+#endif
 
 int __wrap_access(const char *__name, int __type) {
     check_expected(__name);
@@ -95,11 +98,24 @@ static int teardown_test_read(void **state) {
             os_free(((wm_office365*)test->module->data)->auth->client_id);
             os_free(((wm_office365*)test->module->data)->auth->client_secret_path);
             os_free(((wm_office365*)test->module->data)->auth->client_secret);
+            os_free(((wm_office365*)test->module->data)->auth->login_fqdn);
+            os_free(((wm_office365*)test->module->data)->auth->management_fqdn);
             if (((wm_office365*)test->module->data)->auth->next) {
                 os_free(((wm_office365*)test->module->data)->auth->next->tenant_id);
                 os_free(((wm_office365*)test->module->data)->auth->next->client_id);
                 os_free(((wm_office365*)test->module->data)->auth->next->client_secret_path);
                 os_free(((wm_office365*)test->module->data)->auth->next->client_secret);
+                os_free(((wm_office365*)test->module->data)->auth->next->login_fqdn);
+                os_free(((wm_office365*)test->module->data)->auth->next->management_fqdn);
+                if (((wm_office365*)test->module->data)->auth->next->next) {
+                    os_free(((wm_office365*)test->module->data)->auth->next->next->tenant_id);
+                    os_free(((wm_office365*)test->module->data)->auth->next->next->client_id);
+                    os_free(((wm_office365*)test->module->data)->auth->next->next->client_secret_path);
+                    os_free(((wm_office365*)test->module->data)->auth->next->next->client_secret);
+                    os_free(((wm_office365*)test->module->data)->auth->next->next->login_fqdn);
+                    os_free(((wm_office365*)test->module->data)->auth->next->next->management_fqdn);
+                    os_free(((wm_office365*)test->module->data)->auth->next->next->next);
+                }
                 os_free(((wm_office365*)test->module->data)->auth->next->next);
             }
             os_free(((wm_office365*)test->module->data)->auth->next);
@@ -163,6 +179,8 @@ void test_read_configuration(void **state) {
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
+    assert_string_equal(module_data->auth->login_fqdn, WM_OFFICE365_DEFAULT_API_LOGIN_FQDN); // retrocompatability test
+    assert_string_equal(module_data->auth->management_fqdn, WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN); // retrocompatability test
     assert_string_equal(module_data->subscription->subscription_name, "Audit.AzureActiveDirectory");
     assert_string_equal(module_data->subscription->next->subscription_name, "Audit.Exchange");
     assert_string_equal(module_data->subscription->next->next->subscription_name, "Audit.SharePoint");
@@ -180,11 +198,19 @@ void test_read_configuration_1(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<api_auth>"
             "<tenant_id>your_tenant_id_1</tenant_id>"
             "<client_id>your_client_id_1</client_id>"
+            "<client_secret>your_secret_1</client_secret>"
+            "<api_type>gcc</api_type>"
+        "</api_auth>"
+        "<api_auth>"
+            "<tenant_id>your_tenant_id_2</tenant_id>"
+            "<client_id>your_client_id_2</client_id>"
             "<client_secret_path>/path/to/secret</client_secret_path>"
+            "<api_type>gcc-high</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -207,9 +233,18 @@ void test_read_configuration_1(void **state) {
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
+    assert_string_equal(module_data->auth->login_fqdn, WM_OFFICE365_DEFAULT_API_LOGIN_FQDN);
+    assert_string_equal(module_data->auth->management_fqdn, WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN);
     assert_string_equal(module_data->auth->next->tenant_id, "your_tenant_id_1");
     assert_string_equal(module_data->auth->next->client_id, "your_client_id_1");
-    assert_string_equal(module_data->auth->next->client_secret_path, "/path/to/secret");
+    assert_string_equal(module_data->auth->next->client_secret, "your_secret_1");
+    assert_string_equal(module_data->auth->next->login_fqdn, WM_OFFICE365_GCC_API_LOGIN_FQDN);
+    assert_string_equal(module_data->auth->next->management_fqdn, WM_OFFICE365_GCC_API_MANAGEMENT_FQDN);
+    assert_string_equal(module_data->auth->next->next->tenant_id, "your_tenant_id_2");
+    assert_string_equal(module_data->auth->next->next->client_id, "your_client_id_2");
+    assert_string_equal(module_data->auth->next->next->client_secret_path, "/path/to/secret");
+    assert_string_equal(module_data->auth->next->next->login_fqdn, WM_OFFICE365_GCC_HIGH_API_LOGIN_FQDN);
+    assert_string_equal(module_data->auth->next->next->management_fqdn, WM_OFFICE365_GCC_HIGH_API_MANAGEMENT_FQDN);
     assert_string_equal(module_data->subscription->subscription_name, "Audit.AzureActiveDirectory");
     assert_string_equal(module_data->subscription->next->subscription_name, "Audit.Exchange");
     assert_string_equal(module_data->subscription->next->next->subscription_name, "Audit.SharePoint");
@@ -223,6 +258,7 @@ void test_read_default_configuration(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
     ;
     test_structure *test = *state;
@@ -241,6 +277,7 @@ void test_read_interval(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -261,6 +298,8 @@ void test_read_interval(void **state) {
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
+    assert_string_equal(module_data->auth->login_fqdn, WM_OFFICE365_DEFAULT_API_LOGIN_FQDN);
+    assert_string_equal(module_data->auth->management_fqdn, WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN);
     assert_string_equal(module_data->subscription->subscription_name, "Audit.AzureActiveDirectory");
     assert_string_equal(module_data->subscription->next->subscription_name, "Audit.Exchange");
     assert_string_equal(module_data->subscription->next->next->subscription_name, "Audit.SharePoint");
@@ -278,6 +317,7 @@ void test_read_interval_s(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -304,6 +344,7 @@ void test_read_interval_s_fail(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -329,6 +370,7 @@ void test_read_interval_m(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -355,6 +397,7 @@ void test_read_interval_m_fail(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -380,6 +423,7 @@ void test_read_interval_h(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -406,6 +450,7 @@ void test_read_interval_h_fail(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -431,6 +476,7 @@ void test_read_interval_d(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -457,6 +503,7 @@ void test_read_interval_d_fail(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -482,6 +529,7 @@ void test_read_curl_max_size(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -502,6 +550,8 @@ void test_read_curl_max_size(void **state) {
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
+    assert_string_equal(module_data->auth->login_fqdn, WM_OFFICE365_DEFAULT_API_LOGIN_FQDN);
+    assert_string_equal(module_data->auth->management_fqdn, WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN);
     assert_string_equal(module_data->subscription->subscription_name, "Audit.AzureActiveDirectory");
     assert_string_equal(module_data->subscription->next->subscription_name, "Audit.Exchange");
     assert_string_equal(module_data->subscription->next->next->subscription_name, "Audit.SharePoint");
@@ -519,6 +569,7 @@ void test_read_curl_max_size_invalid_1(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -544,6 +595,7 @@ void test_read_curl_max_size_invalid_2(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -569,6 +621,7 @@ void test_read_curl_max_size_invalid_3(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -591,6 +644,7 @@ void test_secret_path_and_secret(void **state) {
             "<client_id>your_client_id</client_id>"
             "<client_secret_path>/path/to/secret</client_secret_path>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
     ;
     test_structure *test = *state;
@@ -609,6 +663,7 @@ void test_fake_tag(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -635,6 +690,7 @@ void test_fake_tag_1(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -661,6 +717,7 @@ void test_invalid_content_1(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription></subscription>"
@@ -686,6 +743,7 @@ void test_invalid_content_2(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -711,6 +769,7 @@ void test_invalid_content_3(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -736,6 +795,7 @@ void test_invalid_content_4(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -759,6 +819,7 @@ void test_invalid_interval(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -800,6 +861,7 @@ void test_error_api_auth_1(void **state) {
             "<invalid>your_tenant_id</invalid>"
             "<invalid>your_client_id</invalid>"
             "<invalid>your_secret</invalid>"
+            "<invalid>commercial</invalid>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -823,6 +885,7 @@ void test_error_tenant_id(void **state) {
             "<tenant_id></tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -845,6 +908,7 @@ void test_error_tenant_id_1(void **state) {
         "<api_auth>"
             "<client_id>your_client_id</client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -868,6 +932,7 @@ void test_error_client_id(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id></client_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -890,6 +955,7 @@ void test_error_client_id_1(void **state) {
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_secret>your_secret</client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -913,6 +979,7 @@ void test_error_client_secret(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret></client_secret>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -935,6 +1002,7 @@ void test_error_client_secret_1(void **state) {
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -950,7 +1018,7 @@ void test_error_client_secret_1(void **state) {
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
 
-void test_error_client_secret_path (void **state) {
+void test_error_client_secret_path(void **state) {
     const char *string =
         "<enabled>yes</enabled>\n"
         "<interval>10</interval>"
@@ -958,6 +1026,7 @@ void test_error_client_secret_path (void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret_path>/path/to/secret</client_secret_path>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -970,7 +1039,7 @@ void test_error_client_secret_path (void **state) {
     test_structure *test = *state;
     expect_string(__wrap_access, __name, "/path/to/secret");
     will_return(__wrap_access, -1);
-    expect_string(__wrap__merror, formatted_msg, "At module 'office365': The path cannot be opened.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'client_secret_path' at module 'office365': The path cannot be opened.");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
@@ -983,6 +1052,7 @@ void test_error_client_secret_path_1(void **state) {
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
             "<client_secret_path></client_secret_path>"
+            "<api_type>commercial</api_type>"
         "</api_auth>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -994,6 +1064,54 @@ void test_error_client_secret_path_1(void **state) {
     ;
     test_structure *test = *state;
     expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'client_secret_path' at module 'office365'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_error_api_type(void **state) {
+    const char *string =
+        "<enabled>yes</enabled>\n"
+        "<interval>10</interval>"
+        "<api_auth>"
+            "<tenant_id>your_tenant_id</tenant_id>"
+            "<client_id>your_client_id</client_id>"
+            "<client_secret>your_secret</client_secret>"
+            "<api_type>invalid</api_type>"
+        "</api_auth>"
+        "<subscriptions>"
+            "<subscription>Audit.AzureActiveDirectory</subscription>"
+            "<subscription>Audit.Exchange</subscription>"
+            "<subscription>Audit.SharePoint</subscription>"
+            "<subscription>Audit.General</subscription>"
+            "<subscription>DLP.All</subscription>"
+        "</subscriptions>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'api_type' at module 'office365'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_error_api_type_1(void **state) {
+    const char *string =
+        "<enabled>yes</enabled>\n"
+        "<interval>10</interval>"
+        "<api_auth>"
+            "<tenant_id>your_tenant_id</tenant_id>"
+            "<client_id>your_client_id</client_id>"
+            "<client_secret>your_secret</client_secret>"
+            "<api_type></api_type>"
+        "</api_auth>"
+        "<subscriptions>"
+            "<subscription>Audit.AzureActiveDirectory</subscription>"
+            "<subscription>Audit.Exchange</subscription>"
+            "<subscription>Audit.SharePoint</subscription>"
+            "<subscription>Audit.General</subscription>"
+            "<subscription>DLP.All</subscription>"
+        "</subscriptions>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'api_type' at module 'office365'.");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
@@ -1043,11 +1161,13 @@ void test_wm_office365_dump_yes_options(void **state) {
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret_path", data->office365_config->auth->client_secret_path);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
 
-    char *test = "{\"office365\":{\"enabled\":\"yes\",\"only_future_events\":\"yes\",\"interval\":10,\"api_auth\":[{\"tenant_id\":\"test_tenant_id\",\"client_id\":\"test_client_id\",\"client_secret_path\":\"test_client_secret_path\",\"client_secret\":\"test_client_secret\"}],\"subscriptions\":[\"test_subscription_name\"]}}";
+    char *test = "{\"office365\":{\"enabled\":\"yes\",\"only_future_events\":\"yes\",\"interval\":10,\"api_auth\":[{\"tenant_id\":\"test_tenant_id\",\"client_id\":\"test_client_id\",\"client_secret_path\":\"test_client_secret_path\",\"client_secret\":\"test_client_secret\",\"api_type\":\"commercial\"}],\"subscriptions\":[\"test_subscription_name\"]}}";
 
     cJSON *root = wm_office365_dump(data->office365_config);
     data->root_c = cJSON_PrintUnformatted(root);
@@ -1092,6 +1212,8 @@ void test_wm_office365_main_enable(void **state) {
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
     data->office365_config->only_future_events = 1;
@@ -1129,6 +1251,7 @@ void test_wm_office365_main_enable(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, NULL);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1150,6 +1273,8 @@ void test_wm_office365_get_access_token_with_auth_secret(void **state) {
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1157,6 +1282,7 @@ void test_wm_office365_get_access_token_with_auth_secret(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1185,6 +1311,8 @@ void test_wm_office365_get_access_token_with_auth_secret_path(void **state) {
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret_path", data->office365_config->auth->client_secret_path);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1192,6 +1320,7 @@ void test_wm_office365_get_access_token_with_auth_secret_path(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1199,7 +1328,9 @@ void test_wm_office365_get_access_token_with_auth_secret_path(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mtdebug1, formatted_msg, "Unknown error while getting access token.");
 
+    test_mode = 0;
     access_token = wm_office365_get_access_token(data->office365_config->auth, max_size, &error_msg);
+    test_mode = 1;
 
     fclose(outfile);
 
@@ -1217,6 +1348,8 @@ void test_wm_office365_get_access_token_with_auth_secret_response_400(void **sta
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 400;
@@ -1229,6 +1362,7 @@ void test_wm_office365_get_access_token_with_auth_secret_response_400(void **sta
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1259,6 +1393,8 @@ void test_wm_office365_get_access_token_with_auth_secret_response_null(void **st
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 400;
@@ -1271,6 +1407,7 @@ void test_wm_office365_get_access_token_with_auth_secret_response_null(void **st
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, NULL);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1298,6 +1435,8 @@ void test_wm_office365_get_access_token_with_auth_secret_response_max_size_reach
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 400;
@@ -1311,6 +1450,7 @@ void test_wm_office365_get_access_token_with_auth_secret_response_max_size_reach
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1340,6 +1480,8 @@ void test_wm_office365_get_access_token_with_auth_secret_error_json_response(voi
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 400;
@@ -1352,6 +1494,7 @@ void test_wm_office365_get_access_token_with_auth_secret_error_json_response(voi
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1381,6 +1524,8 @@ void test_wm_office365_get_access_token_with_auth_secret_response_200(void **sta
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 200;
@@ -1393,6 +1538,7 @@ void test_wm_office365_get_access_token_with_auth_secret_response_200(void **sta
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1419,12 +1565,15 @@ void test_wm_office365_manage_subscription_start_response_null(void **state) {
 
     char *token = "test_token";
     char* client_id = "test_client_id";
+    char* management_fqdn = WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN;
     int start = 1;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
@@ -1445,6 +1594,7 @@ void test_wm_office365_manage_subscription_start_response_null(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, NULL);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1452,7 +1602,7 @@ void test_wm_office365_manage_subscription_start_response_null(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mtdebug1, formatted_msg, "Unknown error while managing subscription.");
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, management_fqdn, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_INVALID);
     assert_null(error_msg);
@@ -1470,12 +1620,15 @@ void test_wm_office365_manage_subscription_start_code_200(void **state) {
 
     char *token = "test_token";
     char* client_id = "test_client_id";
+    char* management_fqdn = WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN;
     int start = 1;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
@@ -1496,6 +1649,7 @@ void test_wm_office365_manage_subscription_start_code_200(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1503,7 +1657,7 @@ void test_wm_office365_manage_subscription_start_code_200(void **state) {
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, management_fqdn, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_SUCCESS);
     assert_null(error_msg);
@@ -1521,12 +1675,15 @@ void test_wm_office365_manage_subscription_stop_error_json_response(void **state
 
     char *token = "test_token";
     char* client_id = "test_client_id";
+    char* management_fqdn = WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN;
     int start = 0;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
@@ -1547,6 +1704,7 @@ void test_wm_office365_manage_subscription_stop_error_json_response(void **state
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1556,7 +1714,7 @@ void test_wm_office365_manage_subscription_stop_error_json_response(void **state
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, management_fqdn, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_INVALID);
     assert_null(error_msg);
@@ -1574,12 +1732,15 @@ void test_wm_office365_manage_subscription_stop_error_max_size_reached(void **st
 
     char *token = "test_token";
     char* client_id = "test_client_id";
+    char* management_fqdn = WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN;
     int start = 0;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
@@ -1601,6 +1762,7 @@ void test_wm_office365_manage_subscription_stop_error_max_size_reached(void **st
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1610,7 +1772,7 @@ void test_wm_office365_manage_subscription_stop_error_max_size_reached(void **st
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, management_fqdn, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_INVALID);
     assert_null(error_msg);
@@ -1628,12 +1790,15 @@ void test_wm_office365_manage_subscription_stop_code_400_error_AF20024(void **st
 
     char *token = "test_token";
     char* client_id = "test_client_id";
+    char* management_fqdn = WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN;
     int start = 0;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
@@ -1654,6 +1819,7 @@ void test_wm_office365_manage_subscription_stop_code_400_error_AF20024(void **st
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1661,7 +1827,7 @@ void test_wm_office365_manage_subscription_stop_code_400_error_AF20024(void **st
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, management_fqdn, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_SUCCESS);
     assert_null(error_msg);
@@ -1679,12 +1845,15 @@ void test_wm_office365_manage_subscription_stop_code_400_error_different_AF20024
 
     char *token = "test_token";
     char* client_id = "test_client_id";
+    char* management_fqdn = WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN;
     int start = 0;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
@@ -1705,6 +1874,7 @@ void test_wm_office365_manage_subscription_stop_code_400_error_different_AF20024
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1714,7 +1884,7 @@ void test_wm_office365_manage_subscription_stop_code_400_error_different_AF20024
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, management_fqdn, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_INVALID);
     assert_string_equal(error_msg, data->response->body);
@@ -1781,6 +1951,7 @@ void test_wm_office365_get_content_blobs_response_null(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, NULL);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1822,6 +1993,7 @@ void test_wm_office365_get_content_blobs_response_max_size_reached(void **state)
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1869,6 +2041,7 @@ void test_wm_office365_get_content_blobs_error_json_response(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1915,6 +2088,7 @@ void test_wm_office365_get_content_blobs_bad_response(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1962,6 +2136,7 @@ void test_wm_office365_get_content_blobs_400_code_AF20055(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1974,6 +2149,104 @@ void test_wm_office365_get_content_blobs_400_code_AF20055(void **state) {
     assert_null(error_msg);
     cJSON_Delete(blob);
 
+    os_free(data->response->body);
+    os_free(data->response->header);
+    os_free(data->response);
+}
+
+void test_wm_office365_get_content_blobs_next_page_with_multi_line_header(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    size_t max_size = OS_SIZE_8192;
+
+    const char* url = "test_url";
+    const char* token = "test_token";
+    char *next_page_value = NULL;
+    char **next_page = &next_page_value;
+    bool buffer_size_reached = 0;
+    char *error_msg = NULL;
+
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 200;
+    os_strdup("[{\"contentUri\":\"https://example.com/content\"}]", data->response->body);
+    os_strdup("Content-Type: application/json\r\n"
+              "NextPageUri: https://manage.office.com/api/v1.0/tenant/activity/feed/subscriptions/content?contentType=Audit.General&nextPage=abc123\r\n"
+              "X-AspNet-Version: 4.0.30319\r\n", data->response->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_string(__wrap_wurl_http_request, header, "Content-Type: application/json");
+
+    char expHeader[OS_SIZE_8192];
+    snprintf(expHeader, OS_SIZE_8192 -1, "Authorization: Bearer %s", token);
+
+    expect_string(__wrap_wurl_http_request, header, expHeader);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
+
+    cJSON *blob = wm_office365_get_content_blobs(url, token, next_page, max_size, &buffer_size_reached, &error_msg);
+    assert_non_null(blob);
+    assert_null(error_msg);
+    assert_non_null(next_page_value);
+    assert_string_equal(next_page_value, "https://manage.office.com/api/v1.0/tenant/activity/feed/subscriptions/content?contentType=Audit.General&nextPage=abc123");
+
+    cJSON_Delete(blob);
+    os_free(next_page_value);
+    os_free(data->response->body);
+    os_free(data->response->header);
+    os_free(data->response);
+}
+
+void test_wm_office365_get_content_blobs_no_next_page_header(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    size_t max_size = OS_SIZE_8192;
+
+    const char* url = "test_url";
+    const char* token = "test_token";
+    char *next_page_value = NULL;
+    char **next_page = &next_page_value;
+    bool buffer_size_reached = 0;
+    char *error_msg = NULL;
+
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 200;
+    os_strdup("[{\"contentUri\":\"https://example.com/content\"}]", data->response->body);
+    os_strdup("Content-Type: application/json\r\nX-AspNet-Version: 4.0.30319\r\n", data->response->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_string(__wrap_wurl_http_request, header, "Content-Type: application/json");
+
+    char expHeader[OS_SIZE_8192];
+    snprintf(expHeader, OS_SIZE_8192 -1, "Authorization: Bearer %s", token);
+
+    expect_string(__wrap_wurl_http_request, header, expHeader);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
+
+    cJSON *blob = wm_office365_get_content_blobs(url, token, next_page, max_size, &buffer_size_reached, &error_msg);
+    assert_non_null(blob);
+    assert_null(error_msg);
+    assert_null(next_page_value);
+
+    cJSON_Delete(blob);
     os_free(data->response->body);
     os_free(data->response->header);
     os_free(data->response);
@@ -2138,6 +2411,7 @@ void test_wm_office365_get_logs_from_blob_response_null(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, NULL);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -2180,6 +2454,7 @@ void test_wm_office365_get_logs_from_blob_response_max_size_reached(void **state
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -2228,6 +2503,7 @@ void test_wm_office365_get_logs_from_blob_response_parsing_error(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -2276,6 +2552,7 @@ void test_wm_office365_get_logs_from_blob_response_code_400(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -2325,6 +2602,7 @@ void test_wm_office365_get_logs_from_blob_response_no_array(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -2374,6 +2652,7 @@ void test_wm_office365_get_logs_from_blob_ok(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -2404,6 +2683,8 @@ void test_wm_office365_execute_scan_all(void **state) {
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
     data->office365_config->auth->next = NULL;
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
@@ -2439,10 +2720,12 @@ void test_wm_office365_execute_scan_all(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Office 365 API access token URL: 'https://login.microsoftonline.com/test_tenant_id/oauth2/v2.0/token'");
+    const char expected_token_url[] = "Office 365 API access token URL: 'https://" WM_OFFICE365_DEFAULT_API_LOGIN_FQDN "/test_tenant_id/oauth2/v2.0/token'";
+    expect_string(__wrap__mtdebug1, formatted_msg, expected_token_url);
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
@@ -2464,10 +2747,12 @@ void test_wm_office365_execute_scan_all(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Office 365 API subscription URL: 'https://manage.office.com/api/v1.0/test_client_id/activity/feed/subscriptions/start?contentType=test_subscription_name'");
+    const char expected_subscription_url[] = "Office 365 API subscription URL: 'https://" WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN "/api/v1.0/test_client_id/activity/feed/subscriptions/start?contentType=test_subscription_name'";
+    expect_string(__wrap__mtdebug1, formatted_msg, expected_subscription_url);
 
     #ifndef WIN32
         will_return(__wrap_gmtime_r, 1);
@@ -2491,12 +2776,14 @@ void test_wm_office365_execute_scan_all(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, get_content_blobs_response);
 
     expect_any(__wrap__mdebug1, formatted_msg);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Office 365 API content blobs URL: 'https://manage.office.com/api/v1.0/test_client_id/activity/feed/subscriptions/content?contentType=test_subscription_name&startTime=2021-05-07 12:24:56&endTime=2021-05-07 12:24:56'");
+    const char expected_blob_url[] = "Office 365 API content blobs URL: 'https://" WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN "/api/v1.0/test_client_id/activity/feed/subscriptions/content?contentType=test_subscription_name&startTime=2021-05-07 12:24:56&endTime=2021-05-07 12:24:56'";
+    expect_string(__wrap__mtdebug1, formatted_msg, expected_blob_url);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mtdebug1, formatted_msg, "Office 365 API content URI: 'https://contentUri1.com'");
@@ -2513,6 +2800,7 @@ void test_wm_office365_execute_scan_all(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, get_content_blobs_response);
 
     expect_value(__wrap_wurl_free_response, response, get_content_blobs_response);
@@ -2556,6 +2844,8 @@ void test_wm_office365_execute_scan_initial_scan_only_future_events(void **state
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
     data->office365_config->only_future_events = 1;
@@ -2598,6 +2888,8 @@ void test_wm_office365_execute_scan_access_token_null(void **state) {
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
     data->office365_config->only_future_events = 1;
@@ -2616,6 +2908,7 @@ void test_wm_office365_execute_scan_access_token_null(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -2643,6 +2936,8 @@ void test_wm_office365_execute_scan_manage_subscription_error(void **state) {
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
     data->office365_config->only_future_events = 0;
@@ -2661,6 +2956,7 @@ void test_wm_office365_execute_scan_manage_subscription_error(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -2686,6 +2982,7 @@ void test_wm_office365_execute_scan_manage_subscription_error(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, NULL);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -2708,6 +3005,8 @@ void test_wm_office365_execute_scan_saving_running_state_error(void **state) {
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
@@ -2727,6 +3026,7 @@ void test_wm_office365_execute_scan_saving_running_state_error(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -2767,6 +3067,8 @@ void test_wm_office365_execute_scan_content_blobs_fail(void **state) {
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
     data->office365_config->only_future_events = 0;
 
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
@@ -2787,6 +3089,7 @@ void test_wm_office365_execute_scan_content_blobs_fail(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -2809,6 +3112,7 @@ void test_wm_office365_execute_scan_content_blobs_fail(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -2840,6 +3144,7 @@ void test_wm_office365_execute_scan_content_blobs_fail(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, NULL);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -2868,6 +3173,8 @@ void test_wm_office365_execute_scan_get_logs_from_blob_response_null(void **stat
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
     data->office365_config->only_future_events = 0;
@@ -2886,6 +3193,7 @@ void test_wm_office365_execute_scan_get_logs_from_blob_response_null(void **stat
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -2914,6 +3222,7 @@ void test_wm_office365_execute_scan_get_logs_from_blob_response_null(void **stat
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, manage_subscription_response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -2952,6 +3261,7 @@ void test_wm_office365_execute_scan_get_logs_from_blob_response_null(void **stat
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, get_content_blobs_response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -2971,6 +3281,7 @@ void test_wm_office365_execute_scan_get_logs_from_blob_response_null(void **stat
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, NULL);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -3027,6 +3338,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_error_client_secret_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_client_secret_path, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_client_secret_path_1, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_error_api_type, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_error_api_type_1, setup_test_read, teardown_test_read),
     };
     const struct CMUnitTest tests_functionality[] = {
         cmocka_unit_test_setup_teardown(test_wm_office365_main_disabled, setup_conf, teardown_conf),
@@ -3057,6 +3370,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_office365_get_content_blobs_error_json_response, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_content_blobs_bad_response, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_content_blobs_400_code_AF20055, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_get_content_blobs_next_page_with_multi_line_header, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_get_content_blobs_no_next_page_header, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_scan_failure_action_null, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_scan_failure_action_no_fail, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_scan_failure_action_null_mult_next, setup_conf, teardown_conf),

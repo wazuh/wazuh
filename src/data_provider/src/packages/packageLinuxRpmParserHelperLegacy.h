@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * January 28, 2021.
  *
  * This program is free software; you can redistribute it
@@ -15,6 +15,7 @@
 #include "sharedDefs.h"
 #include "stringHelper.h"
 #include "json.hpp"
+#include "timeHelper.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -57,14 +58,18 @@ namespace PackageLinuxHelper
                 }
 
                 ret["name"]         = name;
-                ret["size"]         = size.empty() || size.compare(DEFAULT_VALUE) == 0 ? 0 : stoi(size);
-                ret["install_time"] = install_time.empty() || install_time.compare(DEFAULT_VALUE) == 0 ? "" : install_time;
-                ret["groups"]       = groups.empty() || groups.compare(DEFAULT_VALUE) == 0 ? "" : groups;
-                ret["version"]      = version.empty() || version.compare(DEFAULT_VALUE) == 0 ? "" : version;
-                ret["architecture"] = architecture.empty() || architecture.compare(DEFAULT_VALUE) == 0 ? "" : architecture;
-                ret["format"]       = "rpm";
-                ret["vendor"]       = vendor.empty() || vendor.compare(DEFAULT_VALUE) == 0 ? "" : vendor;
-                ret["description"]  = description.empty() || description.compare(DEFAULT_VALUE) == 0 ? "" : description;
+                ret["size"]         = size.empty() || size.compare(DEFAULT_VALUE) == 0 ? 0 : stoll(size);
+                ret["installed"]    = install_time.empty() || install_time.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : Utils::rawTimestampToISO8601(static_cast<uint32_t>(stoll(install_time)));
+                ret["path"]         = UNKNOWN_VALUE;
+                ret["category"]     = groups.empty() || groups.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : groups;
+                ret["version_"]     = version.empty() || version.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : version;
+                ret["priority"]     = UNKNOWN_VALUE;
+                ret["architecture"] = architecture.empty() || architecture.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : architecture;
+                ret["source"]       = UNKNOWN_VALUE;
+                ret["type"]         = "rpm";
+                ret["vendor"]       = vendor.empty() || vendor.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : vendor;
+                ret["description"]  = description.empty() || description.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : description;
+                // The multiarch field won't have a default value
             }
         }
 

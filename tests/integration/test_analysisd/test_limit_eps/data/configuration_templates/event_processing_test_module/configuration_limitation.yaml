@@ -1,0 +1,17 @@
+- sections:
+    - section: remote
+      elements:
+        - port:
+            value: PORT
+        - protocol:
+            value: PROTOCOL
+    - section: global
+      elements:
+        - limits:
+            elements:
+              - eps:
+                  elements:
+                    - maximum:
+                        value: MAXIMUM
+                    - timeframe:
+                        value: TIMEFRAME

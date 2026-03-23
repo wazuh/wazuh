@@ -1,0 +1,125 @@
+- name: ignore_file_pattern_over_restrict_regex_scheduled
+  description: Check ignore pattern is applied over restrict regex
+  configuration_parameters:
+    REALTIME: 'no'
+    WHODATA: 'no'
+    RESTRICT: testfile$
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_1]
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_1]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_1/testfile]
+    is_pattern: true
+    regex: .*?Ignoring path '(.*)' due to pattern '(.*)'.*
+    fim_mode: scheduled
+
+- name: ignore_file_pattern_over_restrict_regex_realtime
+  description: Check ignore pattern is applied over restrict regex
+  configuration_parameters:
+    REALTIME: 'yes'
+    WHODATA: 'no'
+    RESTRICT: testfile$
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_1]
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_1]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_1/testfile]
+    is_pattern: true
+    regex: .*?Ignoring path '(.*)' due to pattern '(.*)'.*
+    fim_mode: realtime
+
+- name: ignore_file_pattern_over_restrict_regex_whodata
+  description: Check ignore pattern is applied over restrict regex
+  configuration_parameters:
+    REALTIME: 'no'
+    WHODATA: 'yes'
+    RESTRICT: testfile$
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_1]
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_1]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_1/testfile]
+    is_pattern: true
+    regex: .*?Ignoring path '(.*)' due to pattern '(.*)'.*
+    fim_mode: whodata
+
+- name: ignore_sregex_over_restrict_regex_different_regex_scheduled
+  description: Check ignore with sregex is applied over restrict regex - Regexes are different
+  configuration_parameters:
+    REALTIME: 'no'
+    WHODATA: 'no'
+    RESTRICT: testfile$
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_1]
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_1]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_1/regex_testfile]
+    is_pattern: false
+    regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
+    fim_mode: scheduled
+
+- name: ignore_sregex_over_restrict_regex_different_regex_realtime
+  description: Check ignore with sregex is applied over restrict regex - Regexes are different
+  configuration_parameters:
+    REALTIME: 'yes'
+    WHODATA: 'no'
+    RESTRICT: testfile$
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_1]
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_1]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_1/regex_testfile]
+    is_pattern: false
+    regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
+    fim_mode: realtime
+
+- name: ignore_sregex_over_restrict_regex_different_regex_whodata
+  description: Check ignore with sregex is applied over restrict regex - Regexes are different
+  configuration_parameters:
+    REALTIME: 'no'
+    WHODATA: 'yes'
+    RESTRICT: testfile$
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_1]
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_1]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_1/regex_testfile]
+    is_pattern: false
+    regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
+    fim_mode: whodata
+
+- name: ignore_sregex_over_restrict_regex_same_regex_scheduled
+  description: Check ignore with sregex is applied over restrict regex - Regexes are the same
+  configuration_parameters:
+    REALTIME: 'no'
+    WHODATA: 'no'
+    RESTRICT: regex_testfile$
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_2]
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_2]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_2/regex_testfile]
+    is_pattern: false
+    regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
+    fim_mode: scheduled
+
+- name: ignore_sregex_over_restrict_regex_same_regex_realtime
+  description: Check ignore with sregex is applied over restrict regex - Regexes are the same
+  configuration_parameters:
+    REALTIME: 'yes'
+    WHODATA: 'no'
+    RESTRICT: regex_testfile$
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_2]
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_2]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_2/regex_testfile]
+    is_pattern: false
+    regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
+    fim_mode: realtime
+
+- name: ignore_sregex_over_restrict_regex_same_regex_whodata
+  description: Check ignore with sregex is applied over restrict regex - Regexes are the same
+  configuration_parameters:
+    REALTIME: 'no'
+    WHODATA: 'yes'
+    RESTRICT: regex_testfile$
+    TEST_DIR: !!python/object/apply:os.path.join [/test_dir_2]
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir_2]
+    file_to_monitor: !!python/object/apply:os.path.join [/test_dir_2/regex_testfile]
+    is_pattern: false
+    regex: .*?Ignoring path '(.*)' due to sregex '(.*)'.*
+    fim_mode: whodata

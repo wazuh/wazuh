@@ -12,6 +12,7 @@ from sqlalchemy import create_engine
 from importlib import reload
 
 from wazuh.core.exception import WazuhError
+from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.tests.utils import init_db
 
 test_path = os.path.dirname(os.path.realpath(__file__))
@@ -25,8 +26,9 @@ def db_setup():
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.decorators as decorator
-                    reload(decorator)
+
     init_db('schema_security_test.sql', test_data_path)
+    reload(decorator)
 
     yield decorator
 
@@ -90,13 +92,15 @@ def test_expose_resources(db_setup, decorator_params, function_params, rbac, fak
     with patch('wazuh.rbac.decorators._expand_resource', side_effect=mock_expand_resource):
         @db_setup.expose_resources(**decorator_params)
         def framework_dummy(**kwargs):
-            for target_param, allowed_resource in zip(get_identifier(decorator_params['resources']),
-                                                      allowed_resources):
+            for target_param, allowed_resource in zip(get_identifier(decorator_params['resources']), allowed_resources):
                 assert set(kwargs[target_param]) == set(allowed_resource)
+                assert 'call_func' not in kwargs
+                return True
 
         try:
-            framework_dummy(**function_params)
+            output = framework_dummy(**function_params)
             assert (result is None or result == "allow")
+            assert output == function_params.get('call_func', True) or isinstance(output, AffectedItemsWazuhResult)
         except WazuhError as e:
             assert (result is None or result == "deny")
             for allowed_resource in allowed_resources:
@@ -124,3 +128,64 @@ def test_expose_resourcesless(db_setup, decorator_params, rbac, allowed, mode):
         except WazuhError as e:
             assert (not allowed)
             assert (e.code == 4000)
+
+
+def _conf_payload():
+    return {
+        "auth": {
+            "use_password": "yes",
+            "ssl_manager_key": "etc/sslmanager.key"
+        },
+        "integration": {
+            "secret": "topsecret",
+            "token": "abcd-1234"
+        },
+        "authd.pass": "P4ssW0rd!"
+    }
+
+
+def _conf_result_payload():
+    r = AffectedItemsWazuhResult(all_msg="ok", some_msg="ok", none_msg="ok")
+    r.affected_items.append({
+        "auth": {"use_password": "no", "ssl_manager_key": "etc/sslmanager.key"},
+        "integration": {"secret": "topsecret"},
+        "authd.pass": "P4ssW0rd!"
+    })
+    r.total_affected_items = 1
+    return r
+
+
+def test_mask_sensitive_config_without_permissions(db_setup):
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf():
+        return _conf_payload()
+
+    result = get_conf()
+    assert result["authd.pass"] == "*****"
+    assert result["integration"]["secret"] == "topsecret"
+
+
+def test_mask_sensitive_config_with_permissions(db_setup):
+    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*': 'allow'}})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf():
+        return _conf_payload()
+
+    result = get_conf()
+    assert result["authd.pass"] == "P4ssW0rd!"
+
+
+def test_mask_sensitive_config_on_affected_items_result(db_setup):
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_result():
+        return _conf_result_payload()
+
+    res = get_conf_result()
+    item = res.affected_items[0]
+    assert item["authd.pass"] == "*****"
+    assert item["integration"]["secret"] == "topsecret"

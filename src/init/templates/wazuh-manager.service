@@ -6,11 +6,13 @@ After=network.target network-online.target
 [Service]
 Type=forking
 LimitNOFILE=65536
+TimeoutSec=45
 
-ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control start
-ExecStop=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control stop
-ExecReload=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control reload
-KillMode=none
+ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control start
+ExecStop=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control stop
+ExecReload=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control reload
+
+KillMode=process
 RemainAfterExit=yes
 
 [Install]

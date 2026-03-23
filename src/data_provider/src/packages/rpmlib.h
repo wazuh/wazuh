@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December 22, 2021.
  *
  * This program is free software; you can redistribute it
@@ -82,6 +82,11 @@ class RpmLib final : public IRpmLibWrapper
             return ::rpmtsInitIterator(ts, rpmtag, keypointer, keylen);
         }
 
+        rpmVSFlags rpmtsSetVSFlags(rpmts ts, rpmVSFlags vsflags) override
+        {
+            return ::rpmtsSetVSFlags(ts, vsflags);
+        }
+
         Header rpmdbNextIterator(rpmdbMatchIterator mi) override
         {
             return ::rpmdbNextIterator(mi);
@@ -90,6 +95,31 @@ class RpmLib final : public IRpmLibWrapper
         rpmdbMatchIterator rpmdbFreeIterator(rpmdbMatchIterator mi) override
         {
             return ::rpmdbFreeIterator(mi);
+        }
+
+        rpmfi rpmfiNew(rpmts ts, Header h, rpmTagVal tag, rpmfiFlags flags) override
+        {
+            return ::rpmfiNew(ts, h, tag, flags);
+        }
+
+        rpm_count_t rpmfiFC(rpmfi fi) override
+        {
+            return ::rpmfiFC(fi);
+        }
+
+        int rpmfiNext(rpmfi fi) override
+        {
+            return ::rpmfiNext(fi);
+        }
+
+        const char* rpmfiFN(rpmfi fi) override
+        {
+            return ::rpmfiFN(fi);
+        }
+
+        rpmfi rpmfiFree(rpmfi fi) override
+        {
+            return ::rpmfiFree(fi);
         }
 };
 #endif //_RPMLIB_H

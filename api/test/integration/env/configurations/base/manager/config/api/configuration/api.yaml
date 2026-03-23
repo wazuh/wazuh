@@ -1,12 +1,12 @@
-host: 0.0.0.0
+host: [0.0.0.0]
 port: 55000
 
 # Advanced configuration
 
 https:
  enabled: yes
- key: "server.key"
- cert: "server.crt"
+ key: "manager.key"
+ cert: "manager.crt"
  use_ca: False
  ca: "ca.crt"
 
@@ -24,18 +24,10 @@ cors:
  allow_headers: "*"
  allow_credentials: no
 
-# Cache (time in seconds)
-cache:
-  enabled: yes
-  time: 0.750
-
 # Access parameters
 access:
   max_login_attempts: 10000
   max_request_per_minute: 10000
 
-# Drop privileges (Run as wazuh user)
+# Drop privileges (Run as wazuh-manager user)
 drop_privileges: yes
-
-# Enable features under development
-experimental_features: yes

@@ -1,6 +1,0 @@
----
-- actions:
-  - ciscat:read
-  resources:
-  - agent:id:002
-  effect: deny

@@ -17,15 +17,19 @@
 #include <map>
 #include <memory>
 #include <vector>
+#include <array>
 #include <system_error>
 #include <winsock2.h>
 #include <windows.h>
+#include <time.h>
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
+#include <netioapi.h>
 #include <versionhelpers.h>
 #include "mem_op.h"
 #include "stringHelper.h"
 #include "encodingWindowsHelper.h"
+#include "timeHelper.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -78,6 +82,22 @@ typedef struct SMBIOSBaseboardInfoStructure
     BYTE Version;
     BYTE SerialNumber;
 } SMBIOSBaseboardInfoStructure;
+constexpr auto REFERENCE_YEAR
+{
+    1900
+};
+
+//140512 represents 14:05:12.
+constexpr auto HOURMINSEC_VALUE_SIZE
+{
+    6
+};
+
+constexpr auto INSTALLDATE_REGISTRY_VALUE_SIZE
+{
+    8
+};
+
 
 namespace Utils
 {
@@ -109,7 +129,7 @@ namespace Utils
         return ret;
     }
 
-    typedef NETIOAPI_API (WINAPI* ConvertLengthToIpv4Mask_t)(ULONG, PULONG);
+    typedef DWORD (WINAPI* ConvertLengthToIpv4Mask_t)(ULONG, PULONG);
     static ConvertLengthToIpv4Mask_t getConvertLengthToIpv4MaskFunctionAddress()
     {
         ConvertLengthToIpv4Mask_t ret{nullptr};
@@ -123,7 +143,7 @@ namespace Utils
         return ret;
     }
 
-    typedef NETIOAPI_API (WINAPI* GetIfEntry2_t)(PMIB_IF_ROW2);
+    typedef DWORD (WINAPI* GetIfEntry2_t)(PMIB_IF_ROW2);
     static GetIfEntry2_t getIfEntry2FunctionAddress()
     {
         GetIfEntry2_t ret{nullptr};
@@ -165,15 +185,71 @@ namespace Utils
         return ret;
     }
 
-    static bool isVistaOrLater()
+    // https://en.wikipedia.org/wiki/ISO_8601#Calendar_dates
+    // https://en.wikipedia.org/wiki/ISO_8601#Combined_date_and_time_representations
+    static std::string normalizeTimestamp(const std::string& dateISO8601CalendarDateFormat, const std::string& dateISO8601CombinedFormat)
     {
-        static const bool ret
-        {
-            IsWindowsVistaOrGreater()
-        };
-        return ret;
-    }
+        std::string normalizedTimestamp;
 
+        if (dateISO8601CalendarDateFormat.size() != INSTALLDATE_REGISTRY_VALUE_SIZE)
+        {
+            throw std::runtime_error("Invalid dateISO8601CalendarDateFormat size.");
+        }
+
+        if (!isNumber(dateISO8601CalendarDateFormat))
+        {
+            throw std::runtime_error("Invalid dateISO8601CalendarDateFormat format.");
+        }
+
+        const auto pos = dateISO8601CombinedFormat.find(' ');
+
+        if (pos != std::string::npos)
+        {
+            // Substracts "YYYY/MM/DD" from "YYYY/MM/DD hh:mm:ss" string.
+            auto dateTrimmed = dateISO8601CombinedFormat.substr(0, pos);
+            // Substracts "hh:mm:ss" from "YYYY/MM/DD hh:mm:ss" string.
+            auto timeTrimmed = dateISO8601CombinedFormat.substr(pos + 1);
+
+            // Converts "YYYY/MM/DD" string to "YYYYMMDD".
+            Utils::replaceAll(dateTrimmed, "/", "");
+            // Converts "hh:mm:ss" string to "hhmmss".
+            Utils::replaceAll(timeTrimmed, ":", "");
+
+            if (dateTrimmed.size() == INSTALLDATE_REGISTRY_VALUE_SIZE
+                    || timeTrimmed.size() == HOURMINSEC_VALUE_SIZE)
+            {
+                if (dateTrimmed.compare(dateISO8601CalendarDateFormat) == 0)
+                {
+                    normalizedTimestamp = dateISO8601CombinedFormat;
+                }
+                else
+                {
+                    tm local_time_s {};
+
+                    // Parsing YYYYMMDD date format string.
+                    local_time_s.tm_year = std::stoi(dateISO8601CalendarDateFormat.substr(0, 4)) - REFERENCE_YEAR;
+                    local_time_s.tm_mon = std::stoi(dateISO8601CalendarDateFormat.substr(4, 2)) - 1;
+                    local_time_s.tm_mday = std::stoi(dateISO8601CalendarDateFormat.substr(6, 2));
+                    local_time_s.tm_hour = 0;
+                    local_time_s.tm_min = 0;
+                    local_time_s.tm_sec = 0;
+                    time_t local_time = mktime(&local_time_s);
+
+                    normalizedTimestamp = Utils::getTimestamp(local_time, false);
+                }
+            }
+            else
+            {
+                throw std::runtime_error("Invalid dateISO8601CombinedFormat format.");
+            }
+        }
+        else
+        {
+            throw std::runtime_error("Invalid dateISO8601CombinedFormat date/time separator.");
+        }
+
+        return normalizedTimestamp;
+    }
 
     /* Reference: https://www.dmtf.org/sites/default/files/standards/documents/DSP0134_2.6.0.pdf */
     static std::string getSerialNumberFromSmbios(const BYTE* rawData, const DWORD rawDataSize)
@@ -245,17 +321,28 @@ namespace Utils
         return serialNumber;
     }
 
+    static std::string buildTimestamp(const ULONGLONG time)
+    {
+        // Format of value is 18-digit LDAP/FILETIME timestamps.
+        // 18-digit LDAP/FILETIME timestamps -> Epoch/Unix time
+        // (value/10000000ULL) - 11644473600ULL
+        const time_t epochTime { static_cast<long int> ((time / 10000000ULL) - WINDOWS_UNIX_EPOCH_DIFF_SECONDS) };
+        char formatString[20] = {0};
+
+        tm utc_time;
+        gmtime_s(&utc_time, &epochTime);
+
+        std::strftime(formatString, sizeof(formatString), "%Y/%m/%d %H:%M:%S", &utc_time);
+        return formatString;
+    }
+
     class NetworkWindowsHelper final
     {
             static DWORD getAdapterAddresses(PIP_ADAPTER_ADDRESSES& ipAdapterAddresses)
             {
                 // Set the flags to pass to GetAdaptersAddresses()
                 // When the GAA_FLAG_INCLUDE_PREFIX flag is set, IP address prefixes are returned for both IPv6 and IPv4 addresses.
-                const auto adapterAddressesFlags
-                {
-                    isVistaOrLater() ? (GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS)
-                    : 0
-                };
+                const auto adapterAddressesFlags = GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS;
 
                 ULONG bufferLen { WORKING_ADAPTERS_INFO_BUFFER_SIZE };
                 DWORD dwRetVal  { 0 };
@@ -297,47 +384,6 @@ namespace Utils
                 return dwRetVal;
             }
 
-            static DWORD getAdapterInfoXP(PIP_ADAPTER_INFO& ipAdapterInfo)
-            {
-                // Windows XP additional IPv4 interfaces data
-
-                ULONG bufferLen { WORKING_ADAPTERS_INFO_BUFFER_SIZE };
-                DWORD dwRetVal  { 0 };
-                auto attempts   { 0 };
-                bool adapterInfoFound { false };
-
-                while (!adapterInfoFound && attempts < MAX_ADAPTERS_INFO_TRIES)
-                {
-                    ipAdapterInfo = reinterpret_cast<IP_ADAPTER_INFO*>(win_alloc(bufferLen));
-
-                    if (!ipAdapterInfo)
-                    {
-                        throw std::system_error
-                        {
-                            static_cast<int>(GetLastError()),
-                            std::system_category(),
-                            "Unable to allocate memory for IP_ADAPTER_INFO struct."
-                        };
-                    }
-
-                    dwRetVal = GetAdaptersInfo(ipAdapterInfo, &bufferLen);
-
-                    if (ERROR_BUFFER_OVERFLOW == dwRetVal)
-                    {
-                        win_free(ipAdapterInfo);
-                        ipAdapterInfo = nullptr;
-                    }
-                    else
-                    {
-                        adapterInfoFound = true;
-                    }
-
-                    ++attempts;
-                }
-
-                return dwRetVal;
-            }
-
         public:
 
             enum NetworkFamilyTypes
@@ -373,49 +419,16 @@ namespace Utils
                 }
             }
 
-            static void getAdapterInfo(std::unique_ptr<IP_ADAPTER_INFO, IPAddressSmartDeleter>& adapterInfo)
-            {
-                PIP_ADAPTER_INFO ipAdapterInfo { nullptr };
-                const DWORD dwRetVal { getAdapterInfoXP(ipAdapterInfo) };
-
-                if (NO_ERROR == dwRetVal)
-                {
-                    adapterInfo.reset(ipAdapterInfo);
-                }
-                else
-                {
-                    throw std::system_error
-                    {
-                        static_cast<int>(dwRetVal),
-                        std::system_category(),
-                        "Error reading network adapter info"
-                    };
-                }
-            }
-
             static std::string IAddressToString(const int family, in_addr address)
             {
                 std::string retVal;
                 auto plainAddress { std::make_unique<char[]>(NI_MAXHOST) };
 
-                if (isVistaOrLater())
-                {
-                    static auto pfnInetNtop { getInetNtopFunctionAddress() };
+                static auto pfnInetNtop { getInetNtopFunctionAddress() };
 
-                    if (pfnInetNtop)
-                    {
-                        if (pfnInetNtop(family, &address, plainAddress.get(), NI_MAXHOST))
-                        {
-                            retVal = plainAddress.get();
-                        }
-                    }
-                }
-                else
+                if (pfnInetNtop)
                 {
-                    // Windows XP
-                    plainAddress.reset(inet_ntoa(address));
-
-                    if (plainAddress)
+                    if (pfnInetNtop(family, &address, plainAddress.get(), NI_MAXHOST))
                     {
                         retVal = plainAddress.get();
                     }
@@ -429,20 +442,16 @@ namespace Utils
                 std::string retVal;
                 auto plainAddress { std::make_unique<char[]>(NI_MAXHOST) };
 
-                if (isVistaOrLater())
-                {
-                    static auto pfnInetNtop { getInetNtopFunctionAddress() };
+                static auto pfnInetNtop { getInetNtopFunctionAddress() };
 
-                    if (pfnInetNtop)
+                if (pfnInetNtop)
+                {
+                    if (pfnInetNtop(family, &address, plainAddress.get(), NI_MAXHOST))
                     {
-                        if (pfnInetNtop(family, &address, plainAddress.get(), NI_MAXHOST))
-                        {
-                            retVal = plainAddress.get();
-                        }
+                        retVal = plainAddress.get();
                     }
                 }
 
-                // IPv6 in Windows XP is not supported
                 return retVal;
             }
 
@@ -470,56 +479,23 @@ namespace Utils
 
             static std::string getIpV6Address(const uint8_t* addrParam)
             {
-                std::string retVal;
-
-                if (addrParam)
-                {
-                    constexpr auto IPV6_BUFFER_ADDRESS_SIZE { 16 };
-                    std::array<char, IPV6_BUFFER_ADDRESS_SIZE> buffer;
-                    memcpy(buffer.data(), addrParam, IPV6_BUFFER_ADDRESS_SIZE);
-
-                    std::array<char, IPV6_BUFFER_ADDRESS_SIZE> addrComparator;
-                    addrComparator.fill(0);
-
-                    if (std::equal(buffer.begin(), buffer.end(), addrComparator.begin()))
-                    {
-                        retVal = "::";
-                    }
-                    else
-                    {
-                        addrComparator.at(IPV6_BUFFER_ADDRESS_SIZE - 1) = 0x1;
-
-                        if (std::equal(buffer.begin(), buffer.end(), addrComparator.begin()))
-                        {
-                            retVal = "::1";
-                        }
-                        else
-                        {
-                            std::stringstream ss;
-                            bool separator { false };
-                            ss << std::hex << std::setfill('0');
-
-                            for (const auto& value : buffer)
-                            {
-                                ss << std::setw(2) << (static_cast<unsigned>(value) & 0xFF);
-
-                                if (separator)
-                                {
-                                    ss << ":";
-                                }
-
-                                separator = !separator;
-                            }
-
-                            retVal = ss.str();
-                            Utils::replaceAll(retVal, "0000", "");
-                            Utils::replaceAll(retVal, ":::", "::");
-                            retVal = retVal.substr(0, retVal.size() - 1);
-                        }
-                    }
+                if (!addrParam ) {
+                    return "";
                 }
 
-                return retVal;
+                sockaddr_in6 sa6 {};
+                sa6.sin6_family = AF_INET6;
+                memcpy(&sa6.sin6_addr, addrParam, 16);
+
+                char buffer[INET6_ADDRSTRLEN] = {};
+                DWORD bufSize = sizeof(buffer);
+
+                if (WSAAddressToStringA(reinterpret_cast<SOCKADDR*>(&sa6), sizeof(sa6), nullptr, buffer, &bufSize) != 0)
+                {
+                    return "";
+                }
+
+                return std::string(buffer);
             }
 
             static std::string ipv6Netmask(const uint8_t maskLength)
@@ -527,7 +503,7 @@ namespace Utils
                 static const auto MAX_BITS_LENGTH { 128 };
                 std::string netmask;
 
-                if (maskLength < MAX_BITS_LENGTH)
+                if (maskLength <= MAX_BITS_LENGTH)
                 {
                     // For a unicast IPv6 address, any value greater than 128 is an illegal value
 

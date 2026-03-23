@@ -1,0 +1,40 @@
+# Name of the helper function
+name: rename
+
+metadata:
+  description: |
+    Moves existing “input_field” to the field name provided (field). Replace if field exist.
+    This helper function is used in the map stage.
+  keywords:
+    - undefined
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input_field:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+skipped:
+  - success_cases # Target field 'target_field' already exists"
+
+target_field:
+  type:
+    - object
+    - array
+    - string
+    - number
+    - boolean
+
+test:
+  - arguments:
+      input_field: 42
+    target_field: elapsed_time
+    should_pass: false
+    expected: elapsed_time
+    description: Target field 'target_field' already exists

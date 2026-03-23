@@ -56,6 +56,16 @@ namespace Utils
                 if (inet_ntop(family, address, broadcastAddrPlain.get(), NI_MAXHOST))
                 {
                     retVal = broadcastAddrPlain.get();
+                    // Sanitize IPv6 addresses by replacing ":::" with "::"
+                    if (family == AF_INET6)
+                    {
+                        size_t pos = 0;
+                        while ((pos = retVal.find(":::", pos)) != std::string::npos)
+                        {
+                            retVal.replace(pos, 3, "::");
+                            pos += 2;
+                        }
+                    }
                 }
 
                 return retVal;

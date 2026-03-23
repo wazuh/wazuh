@@ -1,0 +1,23 @@
+    - sections:
+      - section: client
+        elements:
+            - notify_time:
+                value: 10
+            - time-reconnect:
+                value: 60
+            - auto_restart:
+                value: 'yes'
+            - enrollment:
+                elements:
+                - enabled:
+                    value: 'ENROLL'
+            - manager:
+                elements:
+                - address:
+                    value: '127.0.0.1'
+                - port:
+                    value: '1514'
+                - max_retries:
+                    value: MAX_RETRIES
+                - retry_interval:
+                    value: RETRY_INTERVAL

@@ -16,8 +16,8 @@
 #include <cmocka.h>
 #include <time.h>
 #include "shared.h"
-#include "wazuh_modules/wmodules.h"
-#include "wazuh_modules/wm_aws.h"
+#include "wmodules.h"
+#include "wm_aws.h"
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/common.h"
 #include "../../wrappers/libc/stdlib_wrappers.h"
@@ -26,6 +26,8 @@
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 
 #define TEST_MAX_DATES 5
+
+#define WM_AWS_TEST_LOGTAG "wazuh-modulesd:aws-s3"
 
 static wmodule *aws_module;
 static OS_XML *lxml;
@@ -142,7 +144,7 @@ void test_interval_execution(void **state) {
         will_return(__wrap_wm_state_io, -1);
     }
 
-    expect_string_count(__wrap__mterror, tag, "wazuh-modulesd:aws-s3", TEST_MAX_DATES + 1);
+    expect_string_count(__wrap__mterror, tag, WM_AWS_TEST_LOGTAG, TEST_MAX_DATES + 1);
     expect_string_count(__wrap__mterror, formatted_msg, "Couldn't save running state.", TEST_MAX_DATES + 1);
     expect_any_always(__wrap__mtinfo, tag);
     expect_any_always(__wrap__mtinfo, formatted_msg);

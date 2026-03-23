@@ -20,6 +20,6 @@ stages:
           hostname: !anystr
           license_name: !anystr
           license_url: !anystr
-          revision: !anyint
+          revision: !anystr
           timestamp: !anystr
           title: !anystr

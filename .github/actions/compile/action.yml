@@ -1,0 +1,34 @@
+name: "Compile"
+description: "Executes a compilation."
+
+inputs:
+  path:
+    required: true
+    description: "Path to compile and test"
+    default: src/
+
+runs:
+  using: "composite"
+  steps:
+      - name: Compile
+        run: |
+          SRC_FOLDER=$(pwd)/src
+
+          if [[ -s VERSION.json ]]; then
+            VERSION="v$(grep '"version"' VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+            REVISION=$(grep '"stage"' VERSION.json | sed -E 's/.*"stage": *"([^"]+)".*/\1/')
+          elif [[ -s src/VERSION && -s src/REVISION ]]; then
+            VERSION=$(cat src/VERSION)
+            REVISION=$(cat src/REVISION)
+          else
+            echo "Version file not found." >&2
+            exit 1
+          fi
+
+          echo $VERSION
+          echo $REVISION
+
+          cd ${{ inputs.path }}
+          mkdir -p build && cd build
+          cmake -DSRC_FOLDER=${SRC_FOLDER} -DVERSION="$VERSION" -DREVISION="$REVISION" .. && make -j2
+        shell: bash

@@ -4,8 +4,7 @@ no="h"
 yesmatch="e"
 nomatch="h"
 agent="aracı"
-local="yerel"
-server="sunucu"
+server="manager"
 help="yardım"
 
 # Global
@@ -21,10 +20,9 @@ system="Sistem"
 user="Kullanıcı"
 host="Bilgisayar"
 hitanyorabort="Devam etmek için ENTER veya çıkmak için Ctrl-C ye basın"
-whattoinstall="Ne tür kurulum yapmak istiyorsunuz (sunucu,aracı,yerel veya yardım)?"
-serverchose="Sunucu kurulumu seçildi"
+whattoinstall="Ne tür kurulum yapmak istiyorsunuz (sunucu, aracı veya yardım)?"
+serverchose="Manager kurulumu seçildi"
 clientchose="Aracı(istemci) kurulumu seçildi"
-localchose="Yerel kurulum seçildi"
 
 # Part 2
 settingupenv="Kurulum ortamı hazırlanıyor"
@@ -43,8 +41,8 @@ usingsmtp="SMTP sunucu kullanılıyor: "
 whatsmtp="SMTP sunucunuzun IP adresi veya ismi nedir?"
 
 # Part 3.1/agent
-serverip="Wazuh sunucusunun IP adresi nedir?"
-serveraddr="Wazuh sunucusunun IP adresi veya ismi nedir?"
+serverip="Wazuh yöneticisinin IP adresi nedir?"
+serveraddr="Wazuh yöneticisinin IP adresi veya adı nedir?"
 addingip="Sunucu IP adresi ekleniyor"
 addingname="Sunucu ismi ekleniyor"
 
@@ -59,11 +57,6 @@ runrootcheck="rootkit tespit etme motorunun çalışmasını ister misiniz?"
 norootcheck="rootcheck çalıştırılmıyor (rootkit tespit etme)"
 yesrootcheck="rootcheck çalıştırılıyor (rootkit tespit etme)"
 
-# Part 3.4
-runopenscap="Güvenilirlik/bütünlük OpenSCAP çalıştırılmasını ister misiniz?"
-norunopenscap="OpenSCAP çalıştırılmıyor"
-yesrunopenscap="OpenSCAP çalıştırılıyor"
-
 # Part 3.5/server/local
 enable_ar="Etkin yanıt üretmenin (Active response) etkin kılınmasını ister misiniz?"
 noactive="Etkin yanıt üretme(Active response) etkisiz kılındı"
@@ -75,11 +68,6 @@ yesfirewall="Uyarı seviyesi >= 6 için firewall-drop etkin kılındı (yerel)"
 defaultwhitelist="Etkin yanıt üretme için öntanımlı beyaz liste:"
 addwhite="Beyaz listeye başka IP adreslerini de eklemek ister misiniz?"
 ipswhite="IPler (boşlukla ayrılmış): "
-
-# Part 3.5/server/local
-syslog="Uzak syslog'un (514 udp) etkin kılınmasını ister misiniz?"
-nosyslog="Uzak syslog etkisiz kılındı"
-yessyslog="Uzak syslog etkin kılındı"
 
 # Part 3.4/3.5
 readlogs="Bu dosyaları incelemek için yapılandırma oluşturuluyor:"

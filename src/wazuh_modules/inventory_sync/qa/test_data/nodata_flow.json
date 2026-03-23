@@ -1,0 +1,19 @@
+{
+    "description": "Basic inventory sync flow test: start",
+    "messages": [
+      {
+        "type": "start",
+        "data": {
+          "module": "inventory_sync",
+          "mode": 0,
+          "size": 0,
+          "agentid": "001",
+          "agentname": "test-agent",
+          "agentversion": "4.8.0"
+        },
+        "description": "Start synchronization session",
+        "delay": 0.5,
+        "expect_session_response": true
+      }
+    ]
+  }

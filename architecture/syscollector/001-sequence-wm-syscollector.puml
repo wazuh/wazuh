@@ -18,10 +18,10 @@ main -> wm_syscollector++: start syscollector
 wm_syscollector -> wm_syscollector: load dynamic libraries
 note over wm_syscollector
     wm_syscollector dynamic libraries deps:
-    - libsyscollector
-    - libdbsync
-    - libsysinfo
-    - librsync
+    - libsyscollector (inventory collection & processing)
+    - libdbsync (local database management)
+    - libagent_sync_protocol (persistent synchronization)
+    - libsysinfo (system information provider)
 end note
 loop every ""interval"" seconds
     wm_syscollector -> wm_syscollector: scan

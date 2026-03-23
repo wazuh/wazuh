@@ -1,0 +1,9 @@
+- sections:
+    - section: remote
+      elements:
+        - port:
+            value: PORT
+        - protocol:
+            value: TCP
+        - rids_closing_time:
+            value: RIDS_CLOSING_TIME

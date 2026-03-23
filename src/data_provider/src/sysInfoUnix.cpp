@@ -22,19 +22,6 @@ static void getOsInfoFromUname(nlohmann::json& info)
     std::string platform;
     const auto osPlatform{Utils::exec("uname")};
 
-    if (osPlatform.find("SunOS") != std::string::npos)
-    {
-        constexpr auto SOLARIS_RELEASE_FILE{"/etc/release"};
-        const auto spParser{FactorySysOsParser::create("solaris")};
-        std::fstream file{SOLARIS_RELEASE_FILE, std::ios_base::in};
-        result = spParser && file.is_open() && spParser->parseFile(file, info);
-    }
-    else if (osPlatform.find("HP-UX") != std::string::npos)
-    {
-        const auto spParser{FactorySysOsParser::create("hp-ux")};
-        result = spParser && spParser->parseUname(Utils::exec("uname -r"), info);
-    }
-
     if (!result)
     {
         info["os_name"] = "Unix";
@@ -44,26 +31,42 @@ static void getOsInfoFromUname(nlohmann::json& info)
 }
 
 
-std::string SysInfo::getSerialNumber() const
+static std::string getSerialNumber()
 {
     return UNKNOWN_VALUE;
 }
-std::string SysInfo::getCpuName() const
+
+static std::string getCpuName()
 {
     return UNKNOWN_VALUE;
 }
-int SysInfo::getCpuMHz() const
+
+static int getCpuMHz()
 {
     return 0;
 }
-int SysInfo::getCpuCores() const
+
+static int getCpuCores()
 {
     return 0;
 }
-void SysInfo::getMemory(nlohmann::json& /*info*/) const
+
+static void getMemory(nlohmann::json& /*info*/)
 {
 
 }
+
+nlohmann::json SysInfo::getHardware() const
+{
+    nlohmann::json hardware;
+    hardware["serial_number"] = getSerialNumber();
+    hardware["cpu_name"] = getCpuName();
+    hardware["cpu_cores"] = getCpuCores();
+    hardware["cpu_speed"] = double(getCpuMHz());
+    getMemory(hardware);
+    return hardware;
+}
+
 nlohmann::json SysInfo::getPackages() const
 {
     return nlohmann::json {};
@@ -76,11 +79,11 @@ nlohmann::json SysInfo::getOsInfo() const
 
     if (uname(&uts) >= 0)
     {
-        ret["sysname"] = uts.sysname;
+        ret["os_kernel_name"] = uts.sysname;
         ret["hostname"] = uts.nodename;
-        ret["version"] = uts.version;
+        ret["os_kernel_version"] = uts.version;
         ret["architecture"] = uts.machine;
-        ret["release"] = uts.release;
+        ret["os_kernel_release"] = uts.release;
     }
 
     return ret;
@@ -110,5 +113,29 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> /*callback*/) con
 nlohmann::json SysInfo::getHotfixes() const
 {
     // Currently not supported for this OS.
+    return nlohmann::json();
+}
+
+nlohmann::json SysInfo::getGroups() const
+{
+    //TODO: Pending implementation.
+    return nlohmann::json();
+}
+
+nlohmann::json SysInfo::getUsers() const
+{
+    //TODO: Pending implementation.
+    return nlohmann::json();
+}
+
+nlohmann::json SysInfo::getServices() const
+{
+    //TODO: Pending implementation.
+    return nlohmann::json();
+}
+
+nlohmann::json SysInfo::getBrowserExtensions() const
+{
+    //TODO: Pending implementation.
     return nlohmann::json();
 }

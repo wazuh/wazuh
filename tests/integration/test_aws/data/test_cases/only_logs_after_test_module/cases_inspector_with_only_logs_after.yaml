@@ -1,0 +1,14 @@
+- name: inspector_with_only_logs_after
+  description: Inspector only logs after configurations
+  configuration_parameters:
+    SERVICE_TYPE: inspector
+    ONLY_LOGS_AFTER: 2025-SEP-15
+  metadata:
+    service_type: inspector
+    aws_profile: inspector_tests
+    only_logs_after: 2025-SEP-15
+    # Validate V1 and V2 separately:
+    # - V1 must execute successfully (can return 0+ events)
+    # - V2 must execute successfully (returns 106-155 events for this dataset)
+    # - Total must be at least 106 events
+    expected_results_min: 106

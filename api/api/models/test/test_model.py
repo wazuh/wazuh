@@ -1,23 +1,25 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import importlib.util
 import inspect
 import sys
 from json import JSONDecodeError
 from os import listdir
 from os.path import abspath, dirname, join
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from connexion import ProblemException
 
+from api.controllers.util import JSON_CONTENT_TYPE
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['api.authentication'] = MagicMock()
         from api.models import base_model_ as bm
-        from wazuh import WazuhError
         from api.util import deserialize_model
+        from wazuh import WazuhError
 
         del sys.modules['api.authentication']
 
@@ -26,7 +28,8 @@ models_path = dirname(dirname(abspath(__file__)))
 
 class TestModel(bm.Body):
     """Test class for custom Model. Body inherits from Model and has all the attributes required for testing."""
-
+    __test__ = False
+    
     def __init__(self, *args):
 
         self.swagger_types = {f"arg_{i + 1}": type(arg) for i, arg in enumerate(args)}
@@ -48,7 +51,7 @@ class RequestMock:
         self._content_type = content_type
 
     @property
-    def content_type(self):
+    def mimetype(self):
         return self._content_type
 
 
@@ -101,7 +104,6 @@ def test_model_operator_overloading():
 
     # Operator __repr__ (for print)
     # Assert that we can print a Model right away
-    print(test_model)
 
     equal_model = TestModel(*list(original_dict.values()))
     not_equal_model = TestModel('test')
@@ -245,7 +247,7 @@ def test_body_decode_body_ko():
 
 def test_body_validate_content_type():
     """Test class Body `validate_content_type` method."""
-    content_type = 'application/json'
+    content_type = JSON_CONTENT_TYPE
     request = RequestMock(content_type)
 
     TestModel.validate_content_type(request, content_type)
@@ -253,7 +255,7 @@ def test_body_validate_content_type():
 
 def test_body_validate_content_type_ko():
     """Test class Body `validate_content_type` method exceptions."""
-    request = RequestMock('application/json')
+    request = RequestMock(JSON_CONTENT_TYPE)
 
     with pytest.raises(ProblemException) as exc:
         TestModel.validate_content_type(request, 'application/xml')

@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * January 28, 2021.
  *
  * This program is free software; you can redistribute it
@@ -14,6 +14,10 @@
 
 #include "json.hpp"
 #include "rpmPackageManager.h"
+#include "sharedDefs.h"
+#include "timeHelper.h"
+
+#include "stringHelper.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -38,14 +42,18 @@ namespace PackageLinuxHelper
 
         if (package.name.compare("gpg-pubkey") != 0 && !package.name.empty())
         {
+
             ret["name"]         = package.name;
             ret["size"]         = package.size;
-            ret["install_time"] = package.installTime;
-            ret["groups"]       = package.group;
-            ret["version"]      = version;
+            ret["installed"]    = package.installTime.empty() ? UNKNOWN_VALUE : Utils::rawTimestampToISO8601(static_cast<uint32_t>(std::stoll(package.installTime)));
+            ret["path"]         = UNKNOWN_VALUE;
+            ret["category"]     = package.group;
+            ret["version_"]     = version;
+            ret["priority"]     = UNKNOWN_VALUE;
             ret["architecture"] = package.architecture;
-            ret["format"]       = "rpm";
-            ret["vendor"]       = package.vendor;
+            ret["source"]       = UNKNOWN_VALUE;
+            ret["type"]         = "rpm";
+            ret["vendor"]       = package.vendor.empty() ? UNKNOWN_VALUE : package.vendor;
             ret["description"]  = package.description;
         }
 

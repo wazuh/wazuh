@@ -10,10 +10,11 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 #include <stdio.h>
 #include <string.h>
-#include "headers/defs.h"
+#include "defs.h"
 #include "../common.h"
 
 fpos_t * test_position = NULL;
@@ -121,6 +122,25 @@ void expect_fprintf(FILE *__stream, const char *formatted_msg, int ret) {
 #endif
 }
 
+int __wrap_snprintf(char *__s, size_t __maxlen, const char *__format, ...) {
+    if (test_mode) {
+        check_expected_ptr(__maxlen);
+        check_expected_ptr(__format);
+        memset(__s, 0, __maxlen);
+
+        return mock_type(int);
+    } else {
+        va_list args;
+        va_start(args, __format);
+
+        int val = vsnprintf(__s, __maxlen, __format, args);
+
+        va_end(args);
+
+        return val;
+    }
+}
+
 extern size_t __real_fread(void *ptr, size_t size, size_t n, FILE *stream);
 size_t __wrap_fread(void *ptr, size_t size, size_t n, FILE *stream) {
     if (test_mode) {
@@ -200,19 +220,47 @@ int __wrap__fseeki64(__attribute__ ((__unused__)) FILE *stream, \
      return mock();
 }
 
+extern FILE *__real_popen(const char *command, const char *type);
 FILE *__wrap_popen(const char *command, const char *type) {
+    if(!test_mode){
+        return __real_popen(command, type);
+    }
     check_expected(command);
     check_expected(type);
     return mock_ptr_type(FILE*);
 }
 
-int __wrap_pclose(FILE *stream) {
-    check_expected(stream);
+void expect_popen(const char *command, const char *type, FILE *ret) {
+    expect_string(__wrap_popen, command, command);
+    expect_string(__wrap_popen, type, type);
+    will_return(__wrap_popen, ret);
+}
+
+extern int __real_pclose(FILE *__stream);
+int __wrap_pclose(FILE *__stream) {
+    check_expected(__stream);
     return mock();
+}
+
+void expect_pclose(FILE *__stream, int ret) {
+    expect_value(__wrap_pclose, __stream, __stream);
+    will_return(__wrap_pclose, ret);
 }
 
 int __wrap_fputc(char character, FILE *stream) {
     check_expected(character);
     check_expected(stream);
     return mock();
+}
+
+FILE *__wrap_open_memstream(char **__bufloc, size_t *__sizeloc) {
+    *__bufloc = mock_type(char *);
+    *__sizeloc = mock_type(size_t);
+    return mock_ptr_type(FILE*);
+}
+
+ssize_t __wrap_getline(char ** lineptr, size_t * n, FILE * stream) {
+    *lineptr = mock_ptr_type(char *);
+    *n = strlen(*lineptr);
+    return *n;
 }

@@ -1,0 +1,31 @@
+- name: Test_case_0
+  description: Check connection via TCP
+  configuration_parameters:
+    MAX_RETRIES: 3
+    RETRY_INTERVAL: 3
+    ENROLL: 'no'
+  metadata:
+
+- name: Test_case_1
+  description: Check connection via TCP
+  configuration_parameters:
+    MAX_RETRIES: 5
+    RETRY_INTERVAL: 5
+    ENROLL: 'no'
+  metadata:
+
+- name: Test_case_2
+  description: Check connection via TCP
+  configuration_parameters:
+    MAX_RETRIES: 10
+    RETRY_INTERVAL: 10
+    ENROLL: 'no'
+  metadata:
+
+- name: Test_case_3
+  description: Check connection via TCP with enrollment
+  configuration_parameters:
+    MAX_RETRIES: 5
+    RETRY_INTERVAL: 5
+    ENROLL: 'yes'
+  metadata:

@@ -1,0 +1,55 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+
+@startuml 001-sequence-initialization-with-persistence
+
+actor "wazuh-modules" as module
+participant "dbsync" as dbsync
+database "file.db" as db
+
+' The initialization uses a std::vector of std::string to store the queries
+' The index 0 is the present version 1 of the database
+' The index 1 is the present version 2 of the database
+' The index n is the present version n+1 of the database
+module -> dbsync: Initialize
+alt vector is empty
+    alt file.db exists
+        dbsync -> db: Delete file.db
+    end
+    dbsync -> db: Create the database with the current schema
+else vector is not empty
+    ' Condition: If file.db exists and is not empty check the database version
+    ' Condition: If file.db exists and is empty, create the database
+    ' Condition: If file.db does not exist, create the database
+    ' Condition: If the database version is not the same as the current version, update the database
+    ' Condition: If the database version is the same as the current version, do nothing
+
+    alt file.db exists
+        dbsync->db: Get database version
+        db-->dbsync: Return database version
+        alt file.db version is null
+            dbsync -> db: delete all and create database
+            dbsync -> db: write metadata
+        else file.db version not null
+            alt vector size of databases versions is not the same as the current version
+                loop for each database version from current version to the last version
+                    alt database version is not the same as the current version
+                        dbsync -> db: Update database
+                        dbsync -> db: Update metadata
+                    end
+                end
+            else vector size of databases version is the same as the current version
+                dbsync -> db: Do nothing
+            end
+        end
+    else file.db does not exist
+        dbsync -> db: Create database with the current schema version
+        dbsync -> db: Write metadata
+    end
+end
+
+dbsync -> module: Return
+@enduml
+
